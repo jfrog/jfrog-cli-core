@@ -3,7 +3,7 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -14,7 +14,7 @@ import (
 
 // @param allowUsingSavedPassword - Prevent changing username or url without changing the password.
 // False iff the user changed the username or the url.
-func ReadCredentialsFromConsole(details, savedDetails cliutils.Credentials, allowUsingSavedPassword bool) error {
+func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, allowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""
 		ScanFromConsole("User", &tempUser, savedDetails.GetUser())
@@ -83,12 +83,4 @@ func UnixToWinPathSeparator(filePath string) string {
 
 func WinToUnixPathSeparator(filePath string) string {
 	return strings.Replace(filePath, "\\", "/", -1)
-}
-
-func PrepareFilePathForUnix(path string) string {
-	if cliutils.IsWindows() {
-		path = strings.Replace(path, "\\\\", "/", -1)
-		path = strings.Replace(path, "\\", "/", -1)
-	}
-	return path
 }

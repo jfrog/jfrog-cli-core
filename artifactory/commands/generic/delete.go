@@ -1,8 +1,8 @@
 package generic
 
 import (
-	"github.com/jfrog/jfrog-cli/artifactory/spec"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"

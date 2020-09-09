@@ -1,9 +1,9 @@
 package repository
 
 import (
-	rtUtils "github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 type RepoDeleteCommand struct {
@@ -40,7 +40,7 @@ func (rdc *RepoDeleteCommand) CommandName() string {
 }
 
 func (rdc *RepoDeleteCommand) Run() (err error) {
-	if !rdc.quiet && !cliutils.AskYesNo("Are you sure you want to permanently delete the repository "+rdc.repoKey+" including all of it content?", false) {
+	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the repository "+rdc.repoKey+" including all of it content?", false) {
 		return nil
 	}
 	servicesManager, err := rtUtils.CreateServiceManager(rdc.rtDetails, false)

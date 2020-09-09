@@ -1,7 +1,7 @@
 package dotnet
 
 import (
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"io"
 	"os/exec"
@@ -47,7 +47,7 @@ func (toolchainType ToolchainType) GetAddSourceArgs() []string {
 
 func NewToolchainCmd(cmdType ToolchainType) (*Cmd, error) {
 	// On non Windows OS, NuGet may be run using mono.
-	if cmdType == Nuget && cliutils.IsLinux() {
+	if cmdType == Nuget && coreutils.IsLinux() {
 		return newNonWindowsNugetCmd()
 	}
 	execPath, err := exec.LookPath(cmdType.String())
@@ -91,7 +91,7 @@ func CreateDotnetAddSourceCmd(cmdType ToolchainType, sourceUrl string) (*Cmd, er
 	case DotnetCore:
 		addSourceCmd.Command = append(addSourceCmd.Command, sourceUrl)
 		// DotnetCore cli does not support password encryption on non-Windows OS, so we will write the raw password.
-		if !cliutils.IsWindows() {
+		if !coreutils.IsWindows() {
 			addSourceCmd.CommandFlags = append(addSourceCmd.CommandFlags, "--store-password-in-clear-text")
 		}
 	}

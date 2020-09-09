@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -10,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
-	"github.com/jfrog/jfrog-cli/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
@@ -82,7 +83,7 @@ var defaultPropertiesValues = map[string]string{
 	"artifactory.publish.ivy":                            "false",
 	"buildInfoConfig.includeEnvVars":                     "false",
 	"buildInfoConfig.envVarsExcludePatterns":             "*password*,*psw*,*secret*,*key*,*token*",
-	"buildInfo.agent.name":                               cliutils.ClientAgent + "/" + cliutils.GetVersion(),
+	"buildInfo.agent.name":                               coreutils.GetClientAgent() + "/" + coreutils.GetVersion(),
 	"buildInfo.licenseControl.autoDiscover":              "true",
 	"buildInfo.licenseControl.includePublishedArtifacts": "false",
 	"buildInfo.licenseControl.runChecks":                 "false",
@@ -176,7 +177,7 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber string, config *viper.
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
 
-	propertiesPath := filepath.Join(cliutils.GetCliPersistentTempDirPath(), PROPERTIES_TEMP_PATH)
+	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PROPERTIES_TEMP_PATH)
 	err := os.MkdirAll(propertiesPath, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err

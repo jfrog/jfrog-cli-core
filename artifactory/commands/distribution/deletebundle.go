@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jfrog/jfrog-cli/artifactory/spec"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/distribution/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -103,7 +103,7 @@ func (db *DeleteReleaseBundleCommand) distributionRulesEmpty() bool {
 func (db *DeleteReleaseBundleCommand) confirmDelete(distributionRulesEmpty bool) (bool, error) {
 	message := fmt.Sprintf("Are you sure you want to delete the release bundle \"%s\"/\"%s\" ", db.deleteBundlesParams.Name, db.deleteBundlesParams.Version)
 	if distributionRulesEmpty && db.deleteBundlesParams.DeleteFromDistribution {
-		return cliutils.AskYesNo(message+"locally from distribution?\n"+
+		return coreutils.AskYesNo(message+"locally from distribution?\n"+
 			"You can avoid this confirmation message by adding --quiet to the command.", false), nil
 	}
 
@@ -124,6 +124,6 @@ func (db *DeleteReleaseBundleCommand) confirmDelete(distributionRulesEmpty bool)
 	if db.deleteBundlesParams.DeleteFromDistribution {
 		fmt.Println("This command will also delete the release bundle locally from distribution.")
 	}
-	return cliutils.AskYesNo(message+"with the above distribution rules?\n"+
+	return coreutils.AskYesNo(message+"with the above distribution rules?\n"+
 		"You can avoid this confirmation message by adding --quiet to the command.", false), nil
 }

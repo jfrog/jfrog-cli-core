@@ -1,7 +1,0 @@
-{
-  "files": [
-    {
-      "pattern": "${GO_REPO}/github.com/pkg/errors/*.mod"
-    }
-  ]
-}

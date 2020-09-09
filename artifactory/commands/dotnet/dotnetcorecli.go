@@ -2,7 +2,7 @@ package dotnet
 
 import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli/artifactory/utils/dotnet"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 )

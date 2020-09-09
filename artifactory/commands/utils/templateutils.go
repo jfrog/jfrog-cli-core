@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"strings"
@@ -28,8 +28,8 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 	}
 	// Replace vars string-by-string if needed
 	if len(tuc.Vars()) > 0 {
-		templateVars := cliutils.SpecVarsStringToMap(tuc.Vars())
-		content = cliutils.ReplaceVars(content, templateVars)
+		templateVars := coreutils.SpecVarsStringToMap(tuc.Vars())
+		content = coreutils.ReplaceVars(content, templateVars)
 	}
 	// Unmarshal template to a map
 	var configMap map[string]interface{}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -31,7 +31,7 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 	}
 
 	if len(specVars) > 0 {
-		content = cliutils.ReplaceVars(content, specVars)
+		content = coreutils.ReplaceVars(content, specVars)
 	}
 
 	err = json.Unmarshal(content, spec)

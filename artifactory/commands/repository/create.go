@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
 )
 
 type RepoCreateCommand struct {

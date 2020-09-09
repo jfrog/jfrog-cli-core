@@ -1,7 +1,7 @@
 package permissiontarget
 
 import (
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
 )
 
 type PermissionTargetCreateCommand struct {

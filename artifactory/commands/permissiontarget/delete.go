@@ -1,9 +1,9 @@
 package permissiontarget
 
 import (
-	rtUtils "github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 type PermissionTargetDeleteCommand struct {
@@ -40,7 +40,7 @@ func (ptdc *PermissionTargetDeleteCommand) CommandName() string {
 }
 
 func (ptdc *PermissionTargetDeleteCommand) Run() (err error) {
-	if !ptdc.quiet && !cliutils.AskYesNo("Are you sure you want to permanently delete the permission target "+ptdc.permissionTargetName+"?", false) {
+	if !ptdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the permission target "+ptdc.permissionTargetName+"?", false) {
 		return nil
 	}
 	servicesManager, err := rtUtils.CreateServiceManager(ptdc.rtDetails, false)

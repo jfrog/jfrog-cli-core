@@ -1,6 +1,0 @@
-{
-  "key": "${MAVEN_REPO2}",
-  "packageType": "maven",
-  "enableNpmSupport": true,
-  "rclass": "local"
-}

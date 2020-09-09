@@ -1,7 +1,7 @@
 package dotnet
 
 import (
-	"github.com/jfrog/jfrog-cli/artifactory/utils/dotnet"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet"
 )
 
 type NugetLegacyCommand struct {

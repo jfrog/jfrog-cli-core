@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,8 +18,8 @@ func init() {
 	log.SetDefaultLogger()
 }
 
-const certsConversionResources = "../../testdata/config/configconversion"
-const encryptionResources = "../../testdata/config/encryption"
+const certsConversionResources = "testdata/config/configconversion"
+const encryptionResources = "testdata/config/encryption"
 
 func TestCovertConfigV0ToV1(t *testing.T) {
 	configV0 := `
@@ -84,14 +84,14 @@ func TestConvertConfigV1ToV3(t *testing.T) {
 
 	tempDirPath, oldHomeDir := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(cliutils.HomeDir, oldHomeDir)
+	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
 	copyResources(t, certsConversionResources, tempDirPath)
 
 	content, err := convertIfNeeded([]byte(config))
 	assert.NoError(t, err)
 	configV3 := new(ConfigV3)
 	assert.NoError(t, json.Unmarshal(content, &configV3))
-	assertionHelper(t, configV3, cliutils.GetConfigVersion(), false)
+	assertionHelper(t, configV3, coreutils.GetConfigVersion(), false)
 
 	assert.Equal(t, "user", configV3.Artifactory[0].User, "The config conversion to version 3 is supposed to save the username as lowercase")
 
@@ -100,7 +100,7 @@ func TestConvertConfigV1ToV3(t *testing.T) {
 
 func assertCertsMigrationAndBackupCreation(t *testing.T) {
 	assertCertsMigration(t)
-	backupDir, err := cliutils.GetJfrogBackupDir()
+	backupDir, err := coreutils.GetJfrogBackupDir()
 	assert.NoError(t, err)
 	assert.DirExists(t, backupDir)
 }
@@ -123,21 +123,21 @@ func TestConvertConfigV0ToV2(t *testing.T) {
 
 	tempDirPath, oldHomeDir := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(cliutils.HomeDir, oldHomeDir)
+	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
 	copyResources(t, certsConversionResources, tempDirPath)
 
 	content, err := convertIfNeeded([]byte(configV0))
 	assert.NoError(t, err)
 	ConfigV3 := new(ConfigV3)
 	assert.NoError(t, json.Unmarshal(content, &ConfigV3))
-	assertionHelper(t, ConfigV3, cliutils.GetConfigVersion(), false)
+	assertionHelper(t, ConfigV3, coreutils.GetConfigVersion(), false)
 	assertCertsMigrationAndBackupCreation(t)
 }
 
 func TestConfigEncryption(t *testing.T) {
 	tempDirPath, oldHomeDir := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(cliutils.HomeDir, oldHomeDir)
+	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
 	copyResources(t, encryptionResources, tempDirPath)
 
 	// Original decrypted config, read directly from file
@@ -176,8 +176,8 @@ func readConfFromFile(t *testing.T) *ConfigV3 {
 func createTempEnv(t *testing.T) (newHomeDir, oldHomeDir string) {
 	tmpDir, err := ioutil.TempDir("", "config_test")
 	assert.NoError(t, err)
-	oldHome := os.Getenv(cliutils.HomeDir)
-	assert.NoError(t, os.Setenv(cliutils.HomeDir, tmpDir))
+	oldHome := os.Getenv(coreutils.HomeDir)
+	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
 	return tmpDir, oldHome
 }
 
@@ -224,17 +224,17 @@ func TestGetJfrogDependenciesPath(t *testing.T) {
 	// Check default value of dependencies path, should be JFROG_CLI_HOME/dependencies
 	dependenciesPath, err := GetJfrogDependenciesPath()
 	assert.NoError(t, err)
-	jfrogHomeDir, err := cliutils.GetJfrogHomeDir()
+	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
 	assert.NoError(t, err)
-	expectedDependenciesPath := filepath.Join(jfrogHomeDir, cliutils.JfrogDependenciesDirName)
+	expectedDependenciesPath := filepath.Join(jfrogHomeDir, coreutils.JfrogDependenciesDirName)
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 
 	// Check dependencies path when JFROG_DEPENDENCIES_DIR is set, should be JFROG_DEPENDENCIES_DIR/
-	previousDependenciesDirEnv := os.Getenv(cliutils.DependenciesDir)
+	previousDependenciesDirEnv := os.Getenv(coreutils.DependenciesDir)
 	expectedDependenciesPath = "/tmp/my-dependencies/"
-	err = os.Setenv(cliutils.DependenciesDir, expectedDependenciesPath)
+	err = os.Setenv(coreutils.DependenciesDir, expectedDependenciesPath)
 	assert.NoError(t, err)
-	defer os.Setenv(cliutils.DependenciesDir, previousDependenciesDirEnv)
+	defer os.Setenv(coreutils.DependenciesDir, previousDependenciesDirEnv)
 	dependenciesPath, err = GetJfrogDependenciesPath()
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 }
@@ -312,10 +312,10 @@ func verifyEncryptionStatus(t *testing.T, original, actual *ConfigV3, encryption
 
 	if encryptionExpected {
 		// Verify non match.
-		assert.Zero(t, cliutils.SumTrueValues(equals))
+		assert.Zero(t, coreutils.SumTrueValues(equals))
 	} else {
 		// Verify all match.
-		assert.Equal(t, cliutils.SumTrueValues(equals), len(equals))
+		assert.Equal(t, coreutils.SumTrueValues(equals), len(equals))
 	}
 }
 
@@ -324,10 +324,10 @@ func copyResources(t *testing.T, sourcePath string, destPath string) {
 }
 
 func assertCertsMigration(t *testing.T) {
-	certsDir, err := cliutils.GetJfrogCertsDir()
+	certsDir, err := coreutils.GetJfrogCertsDir()
 	assert.NoError(t, err)
 	assert.DirExists(t, certsDir)
-	secFile, err := cliutils.GetJfrogSecurityConfFilePath()
+	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	assert.NoError(t, err)
 	assert.FileExists(t, secFile)
 	files, err := ioutil.ReadDir(certsDir)

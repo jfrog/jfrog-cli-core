@@ -2,10 +2,10 @@ package buildinfo
 
 import (
 	"errors"
-	commandsutils "github.com/jfrog/jfrog-cli/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli/artifactory/spec"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"

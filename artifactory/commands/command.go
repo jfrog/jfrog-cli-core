@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -31,7 +31,7 @@ func Exec(command Command) error {
 
 func reportUsage(command Command, channel chan<- bool) {
 	defer signalReportUsageFinished(channel)
-	reportUsage, err := clientutils.GetBoolEnvValue(cliutils.ReportUsage, true)
+	reportUsage, err := clientutils.GetBoolEnvValue(coreutils.ReportUsage, true)
 	if err != nil {
 		log.Debug(usage.ReportUsagePrefix + err.Error())
 		return
@@ -49,7 +49,7 @@ func reportUsage(command Command, channel chan<- bool) {
 				log.Debug(usage.ReportUsagePrefix + err.Error())
 				return
 			}
-			err = usage.SendReportUsage(cliutils.GetUserAgent(), command.CommandName(), serviceManager)
+			err = usage.SendReportUsage(coreutils.GetUserAgent(), command.CommandName(), serviceManager)
 			if err != nil {
 				log.Debug(err.Error())
 				return

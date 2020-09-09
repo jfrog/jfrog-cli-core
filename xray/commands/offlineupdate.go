@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -119,7 +119,7 @@ func validateDates(from, to int64) error {
 }
 
 func getXrayTempDir() (string, error) {
-	xrayDir := filepath.Join(cliutils.GetCliPersistentTempDirPath(), "jfrog", "xray")
+	xrayDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), "jfrog", "xray")
 	if err := os.MkdirAll(xrayDir, 0777); err != nil {
 		errorutils.CheckError(err)
 		return "", nil

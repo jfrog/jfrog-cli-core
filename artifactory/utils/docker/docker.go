@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
@@ -261,7 +261,7 @@ type LoginCmd struct {
 }
 
 func (loginCmd *LoginCmd) GetCmd() *exec.Cmd {
-	if cliutils.IsWindows() {
+	if coreutils.IsWindows() {
 		return exec.Command("cmd", "/C", "echo", "%DOCKER_PASS%|", "docker", "login", loginCmd.DockerRegistry, "--username", loginCmd.Username, "--password-stdin")
 	}
 	cmd := "echo $DOCKER_PASS " + fmt.Sprintf(`| docker login %s --username="%s" --password-stdin`, loginCmd.DockerRegistry, loginCmd.Username)
@@ -306,7 +306,7 @@ func (pullCmd *pullCmd) GetErrWriter() io.WriteCloser {
 }
 
 func CreateServiceManager(artDetails *config.ArtifactoryDetails, threads int) (*artifactory.ArtifactoryServicesManager, error) {
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func DockerLogin(imageTag string, config *DockerLoginConfig) error {
 	cmd := &LoginCmd{DockerRegistry: imageRegistry, Username: username, Password: password}
 	err = gofrogcmd.RunCmd(cmd)
 
-	if exitCode := cliutils.GetExitCode(err, 0, 0, false); exitCode == cliutils.ExitCodeNoError {
+	if exitCode := coreutils.GetExitCode(err, 0, 0, false); exitCode == coreutils.ExitCodeNoError {
 		// Login succeeded
 		return nil
 	}

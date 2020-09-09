@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/codegangsta/cli"
+	"github.com/jfrog/jfrog-cli-core/plugins/components"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -18,7 +19,7 @@ func addHiddenPluginSignatureCommand(baseApp *cli.App) {
 		Hidden:   true,
 		HideHelp: true,
 		Action: func(c *cli.Context) error {
-			signature := PluginSignature{
+			signature := components.PluginSignature{
 				Name:  baseApp.Name,
 				Usage: baseApp.Usage,
 			}

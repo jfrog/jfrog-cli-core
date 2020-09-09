@@ -4,6 +4,7 @@ import (
 	"github.com/codegangsta/cli"
 	jfrogclicore "github.com/jfrog/jfrog-cli-core"
 	"github.com/jfrog/jfrog-cli-core/docs/common"
+	"github.com/jfrog/jfrog-cli-core/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -12,7 +13,7 @@ import (
 	"os"
 )
 
-func JfrogPluginMain(jfrogApp App) {
+func JfrogPluginMain(jfrogApp components.App) {
 	log.SetDefaultLogger()
 
 	// Set the plugin's user-agent as the jfrog-cli-core's.
@@ -21,7 +22,7 @@ func JfrogPluginMain(jfrogApp App) {
 	cli.CommandHelpTemplate = common.CommandHelpTemplate
 	cli.AppHelpTemplate = common.AppHelpTemplate
 
-	baseApp := jfrogApp.convert()
+	baseApp := jfrogApp.Convert()
 	addHiddenPluginSignatureCommand(baseApp)
 
 	args := os.Args

@@ -1,4 +1,4 @@
-package plugins
+package components
 
 type App struct {
 	Name        string
@@ -12,14 +12,9 @@ type Command struct {
 	Description string
 	Aliases     []string
 	Arguments   []Argument
-	Flags       []StringFlag
+	Flags       []Flag
 	EnvArgs     []EnvVar
 	Action      ActionFunc
-}
-
-type StringFlag struct {
-	Name  string
-	Usage string
 }
 
 type Argument struct {
@@ -31,11 +26,6 @@ type EnvVar struct {
 	Name        string
 	Default     string
 	Description string
-}
-
-type Context struct {
-	Arguments []string
-	Flags     map[string]string
 }
 
 type ActionFunc func(c *Context) error

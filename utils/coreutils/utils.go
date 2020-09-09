@@ -307,16 +307,3 @@ func SetClientAgent(clientAgentToSet string) {
 func GetClientAgent() string {
 	return clientAgent
 }
-
-func GetCliLogLevel() log.LevelType {
-	switch os.Getenv(LogLevel) {
-	case "ERROR":
-		return log.ERROR
-	case "WARN":
-		return log.WARN
-	case "DEBUG":
-		return log.DEBUG
-	default:
-		return log.INFO
-	}
-}

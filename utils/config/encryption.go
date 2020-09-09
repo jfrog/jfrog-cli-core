@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
@@ -128,7 +128,7 @@ func handleSecrets(config *ConfigV3, handler secretHandler, key string) error {
 }
 
 func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err error) {
-	secFile, err := cliutils.GetJfrogSecurityConfFilePath()
+	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	if err != nil {
 		return "", false, err
 	}

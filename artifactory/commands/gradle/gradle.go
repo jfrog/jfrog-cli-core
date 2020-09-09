@@ -3,9 +3,9 @@ package gradle
 import (
 	"fmt"
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -203,7 +203,7 @@ func (config *gradleRunConfig) GetErrWriter() io.WriteCloser {
 
 func getGradleExecPath(useWrapper bool) (string, error) {
 	if useWrapper {
-		if cliutils.IsWindows() {
+		if coreutils.IsWindows() {
 			return "gradlew.bat", nil
 		}
 		return "./gradlew", nil

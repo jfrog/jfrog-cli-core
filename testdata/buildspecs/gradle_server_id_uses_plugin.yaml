@@ -1,9 +1,0 @@
-version: 1
-type: gradle
-usePlugin: true
-resolver:
-    repo: ${GRADLE_REMOTE_REPO}
-    serverID: default
-deployer:
-    repo: ${GRADLE_REPO}
-    serverID: default

@@ -3,15 +3,14 @@ package permissiontarget
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/c-bata/go-prompt"
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"sort"
 	"strings"
-
-	"github.com/c-bata/go-prompt"
-	"github.com/jfrog/jfrog-cli/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli/utils/config"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type PermissionTargetTemplateCommand struct {

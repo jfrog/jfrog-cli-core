@@ -8,10 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/jfrog/jfrog-cli/artifactory/spec"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/progressbar"
+	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -27,6 +26,7 @@ type DownloadCommand struct {
 	GenericCommand
 	configuration *utils.DownloadConfiguration
 	logFile       *os.File
+	progressBar   ioUtils.Progress
 }
 
 func NewDownloadCommand() *DownloadCommand {
@@ -51,28 +51,24 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 	return dc
 }
 
+func (dc *DownloadCommand) SetProgressBarComponents(progressBar ioUtils.Progress, logFile *os.File) *DownloadCommand {
+	dc.progressBar = progressBar
+	dc.logFile = logFile
+	return dc
+}
+
 func (dc *DownloadCommand) CommandName() string {
 	return "rt_download"
 }
 
 func (dc *DownloadCommand) Run() error {
-	if dc.SyncDeletesPath() != "" && !dc.Quiet() && !cliutils.AskYesNo("Sync-deletes may delete some files in your local file system. Are you sure you want to continue?\n"+
+	if dc.SyncDeletesPath() != "" && !dc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some files in your local file system. Are you sure you want to continue?\n"+
 		"You can avoid this confirmation message by adding --quiet to the command.", false) {
 		return nil
 	}
-	// Initialize Progress bar, set logger to a log file
-	var err error
-	var progressBar ioUtils.Progress
-	progressBar, dc.logFile, err = progressbar.InitProgressBarIfPossible()
-	if err != nil {
-		return err
-	}
-	if progressBar != nil {
-		defer progressBar.Quit()
-	}
 
 	// Create Service Manager:
-	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), progressBar)
+	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progressBar)
 	if err != nil {
 		return err
 	}

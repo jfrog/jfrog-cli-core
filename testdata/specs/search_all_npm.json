@@ -1,7 +1,0 @@
-{
-  "files": [
-    {
-      "pattern": "${NPM_REPO}/*"
-    }
-  ]
-}

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
-	"github.com/jfrog/jfrog-cli/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -158,13 +158,13 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	// Verify setting the option disables refreshable tokens.
 	outputConfig, err := configAndGetTestServer(t, &inputDetails, true)
 	assert.NoError(t, err)
-	assert.Equal(t, cliutils.TokenRefreshDisabled, outputConfig.TokenRefreshInterval, "expected refreshable token to be disabled")
+	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.TokenRefreshInterval, "expected refreshable token to be disabled")
 	assert.NoError(t, DeleteConfig("test"))
 
 	// Verify setting the option enables refreshable tokens.
 	outputConfig, err = configAndGetTestServer(t, &inputDetails, false)
 	assert.NoError(t, err)
-	assert.Equal(t, cliutils.TokenRefreshDefaultInterval, outputConfig.TokenRefreshInterval, "expected refreshable token to be enabled")
+	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.TokenRefreshInterval, "expected refreshable token to be enabled")
 	assert.NoError(t, DeleteConfig("test"))
 }
 

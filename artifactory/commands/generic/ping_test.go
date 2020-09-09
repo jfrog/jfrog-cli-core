@@ -2,8 +2,8 @@ package generic
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli/utils/config"
-	"github.com/jfrog/jfrog-cli/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"net/http"
 	"net/http/httptest"
 	"testing"

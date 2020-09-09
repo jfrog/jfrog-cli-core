@@ -8,17 +8,16 @@ import (
 	"testing"
 
 	"github.com/codegangsta/cli"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/log"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	os.Setenv(cliutils.LogLevel, "WARN") // Disable "[Info] *** build config successfully created." messages
-	log.SetDefaultLogger()
+	clientlog.SetLogger(clientlog.NewLogger(clientlog.WARN, nil)) // Disable "[Info] *** build config successfully created." messages
 }
 
 func TestGoConfigFile(t *testing.T) {
@@ -225,7 +224,7 @@ func TestValidateConfigDeployer(t *testing.T) {
 func createTempEnv(t *testing.T) string {
 	tmpDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	err = os.Setenv(cliutils.HomeDir, tmpDir)
+	err = os.Setenv(coreutils.HomeDir, tmpDir)
 	assert.NoError(t, err)
 	return tmpDir
 }

@@ -1,9 +1,9 @@
 package replication
 
 import (
-	rtUtils "github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 type ReplicationDeleteCommand struct {
@@ -40,7 +40,7 @@ func (rdc *ReplicationDeleteCommand) CommandName() string {
 }
 
 func (rdc *ReplicationDeleteCommand) Run() (err error) {
-	if !rdc.quiet && !cliutils.AskYesNo("Are you sure you want to delete the replication for  "+rdc.repoKey+" ?", false) {
+	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to delete the replication for  "+rdc.repoKey+" ?", false) {
 		return nil
 	}
 	servicesManager, err := rtUtils.CreateServiceManager(rdc.rtDetails, false)

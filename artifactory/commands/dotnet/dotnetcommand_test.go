@@ -2,7 +2,7 @@ package dotnet
 
 import (
 	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli/artifactory/utils/dotnet"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"

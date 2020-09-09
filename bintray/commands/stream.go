@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli/bintray/helpers"
+	"github.com/jfrog/jfrog-cli-core/bintray/helpers"
 	"github.com/jfrog/jfrog-client-go/bintray/auth"
 	"io"
 	"net/http"
@@ -15,9 +15,10 @@ const timeout = 90
 const timeoutDuration = timeout * time.Second
 const onErrorReconnectDuration = 3 * time.Second
 
-func Stream(streamDetails *StreamDetails, writer io.Writer) {
+func Stream(streamDetails *StreamDetails, writer io.Writer) error {
 	var resp *http.Response
 	var connected bool
+	var err error
 	lastServerInteraction := time.Now()
 	streamManager := createStreamManager(streamDetails)
 
@@ -25,7 +26,10 @@ func Stream(streamDetails *StreamDetails, writer io.Writer) {
 		for {
 			connected = false
 			var connectionEstablished bool
-			connectionEstablished, resp = streamManager.Connect()
+			connectionEstablished, resp, err = streamManager.Connect()
+			if err != nil {
+				return
+			}
 			if !connectionEstablished {
 				time.Sleep(onErrorReconnectDuration)
 				continue
@@ -37,6 +41,9 @@ func Stream(streamDetails *StreamDetails, writer io.Writer) {
 	}()
 
 	for true {
+		if err != nil {
+			break
+		}
 		if !connected {
 			time.Sleep(timeoutDuration)
 			continue
@@ -51,7 +58,7 @@ func Stream(streamDetails *StreamDetails, writer io.Writer) {
 			continue
 		}
 	}
-	return
+	return err
 }
 
 func buildIncludeFilterMap(filterPattern string) map[string]struct{} {

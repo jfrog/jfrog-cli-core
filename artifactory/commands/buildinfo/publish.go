@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
@@ -84,10 +84,10 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	sort.Sort(partials)
 
 	buildInfo := buildinfo.New()
-	buildInfo.SetAgentName(cliutils.ClientAgent)
-	buildInfo.SetAgentVersion(cliutils.GetVersion())
-	buildInfo.SetBuildAgentVersion(cliutils.GetVersion())
-	buildInfo.SetArtifactoryPluginVersion(cliutils.GetUserAgent())
+	buildInfo.SetAgentName(coreutils.GetClientAgent())
+	buildInfo.SetAgentVersion(coreutils.GetVersion())
+	buildInfo.SetBuildAgentVersion(coreutils.GetVersion())
+	buildInfo.SetArtifactoryPluginVersion(coreutils.GetUserAgent())
 	buildInfo.Name = buildName
 	buildInfo.Number = buildNumber
 	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber)

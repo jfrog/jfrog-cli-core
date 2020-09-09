@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	cliLog "github.com/jfrog/jfrog-cli/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	cliLog "github.com/jfrog/jfrog-cli-core/utils/log"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
@@ -82,7 +82,7 @@ func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeR
 			details.AccessToken = ""
 			details.RefreshToken = ""
 		}
-		details.TokenRefreshInterval = cliutils.TokenRefreshDisabled
+		details.TokenRefreshInterval = coreutils.TokenRefreshDisabled
 	}
 	return details, nil
 }
@@ -202,7 +202,7 @@ func SaveBintrayConf(details *BintrayDetails) error {
 }
 
 func saveConfig(config *ConfigV3) error {
-	config.Version = cliutils.GetConfigVersion()
+	config.Version = coreutils.GetConfigVersion()
 	err := config.encrypt()
 	if err != nil {
 		return err
@@ -273,7 +273,7 @@ func (config *ConfigV3) getContent() ([]byte, error) {
 
 // Move SSL certificates from the old location in security dir to certs dir.
 func convertCertsDir() error {
-	securityDir, err := cliutils.GetJfrogSecurityDir()
+	securityDir, err := coreutils.GetJfrogSecurityDir()
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func convertCertsDir() error {
 		return err
 	}
 
-	certsDir, err := cliutils.GetJfrogCertsDir()
+	certsDir, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return err
 	}
@@ -302,7 +302,7 @@ func convertCertsDir() error {
 	log.Debug("Migrating SSL certificates to the new location at: " + certsDir)
 	for _, f := range files {
 		// Skip directories and the security configuration file
-		if !f.IsDir() && f.Name() != cliutils.JfrogSecurityConfFile {
+		if !f.IsDir() && f.Name() != coreutils.JfrogSecurityConfFile {
 			err = fileutils.CreateDirIfNotExist(certsDir)
 			if err != nil {
 				return err
@@ -337,7 +337,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 
 	// Switch contains FALLTHROUGH to convert from a certain version to the latest.
 	switch version {
-	case cliutils.GetConfigVersion():
+	case coreutils.GetConfigVersion():
 		return content, nil
 	case "0":
 		content, err = convertConfigV0toV1(content)
@@ -382,11 +382,11 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 
 // Creating a homedir backup prior to converting.
 func createHomeDirBackup() error {
-	homeDir, err := cliutils.GetJfrogHomeDir()
+	homeDir, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return err
 	}
-	backupDir, err := cliutils.GetJfrogBackupDir()
+	backupDir, err := coreutils.GetJfrogBackupDir()
 	if err != nil {
 		return err
 	}
@@ -395,7 +395,7 @@ func createHomeDirBackup() error {
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
-	exclude := []string{cliutils.JfrogBackupDirName, cliutils.JfrogDependenciesDirName, cliutils.JfrogLockDirName, cliutils.JfrogLogsDirName}
+	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLockDirName, coreutils.JfrogLogsDirName}
 	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
@@ -438,24 +438,24 @@ func convertConfigV2toV3(content []byte) ([]byte, error) {
 }
 
 func GetJfrogDependenciesPath() (string, error) {
-	dependenciesDir := os.Getenv(cliutils.DependenciesDir)
+	dependenciesDir := os.Getenv(coreutils.DependenciesDir)
 	if dependenciesDir != "" {
 		return utils.AddTrailingSlashIfNeeded(dependenciesDir), nil
 	}
-	jfrogHome, err := cliutils.GetJfrogHomeDir()
+	jfrogHome, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(jfrogHome, cliutils.JfrogDependenciesDirName), nil
+	return filepath.Join(jfrogHome, coreutils.JfrogDependenciesDirName), nil
 }
 
 func getConfFilePath() (string, error) {
-	confPath, err := cliutils.GetJfrogHomeDir()
+	confPath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err
 	}
 	os.MkdirAll(confPath, 0777)
-	return filepath.Join(confPath, cliutils.JfrogConfigFile), nil
+	return filepath.Join(confPath, coreutils.JfrogConfigFile), nil
 }
 
 // This struct is suitable for versions 1, 2 and 3.

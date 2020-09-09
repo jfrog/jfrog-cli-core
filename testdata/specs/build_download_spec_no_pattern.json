@@ -1,8 +1,0 @@
-{
-  "files": [
-    {
-      "target": "out/download/aql_by_build/",
-      "build": "${BUILD_NAME1}/10"
-    }
-  ]
-}

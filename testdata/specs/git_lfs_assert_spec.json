@@ -1,8 +1,0 @@
-{
-  "files": [
-    {
-      "pattern": "${LFS_REPO}/*",
-      "recursive": "true"
-    }
-  ]
-}

@@ -1,23 +1,23 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
 )
 
 func TestGetHomeDir(t *testing.T) {
-	homeDir, err := cliutils.GetJfrogHomeDir()
+	homeDir, err := coreutils.GetJfrogHomeDir()
 	assert.NoError(t, err)
-	secPath, err := cliutils.GetJfrogSecurityDir()
+	secPath, err := coreutils.GetJfrogSecurityDir()
 	assert.NoError(t, err)
-	secFile, err := cliutils.GetJfrogSecurityConfFilePath()
+	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	assert.NoError(t, err)
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	assert.NoError(t, err)
 
-	assert.Equal(t, secPath, filepath.Join(homeDir, cliutils.JfrogSecurityDirName))
-	assert.Equal(t, secFile, filepath.Join(secPath, cliutils.JfrogSecurityConfFile))
-	assert.Equal(t, certsPath, filepath.Join(secPath, cliutils.JfrogCertsDirName))
+	assert.Equal(t, secPath, filepath.Join(homeDir, coreutils.JfrogSecurityDirName))
+	assert.Equal(t, secFile, filepath.Join(secPath, coreutils.JfrogSecurityConfFile))
+	assert.Equal(t, certsPath, filepath.Join(secPath, coreutils.JfrogCertsDirName))
 }

@@ -1,7 +1,0 @@
-{
-  "files": [
-    {
-      "pattern": "${REPO1}/test_resources/*"
-    }
-  ]
-}

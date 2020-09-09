@@ -2,10 +2,10 @@ package buildinfo
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/log"
-	"github.com/jfrog/jfrog-cli/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"os"
 	"path/filepath"
@@ -149,7 +149,7 @@ func TestAddGitDoCollect(t *testing.T) {
 			Regexp:            `(.+-[0-9]+)\s-\s(.+)`,
 			TrackerName:       "test",
 		},
-		buildConfiguration: &utils.BuildConfiguration{BuildNumber: "1", BuildName: tests.RtBuildName1},
+		buildConfiguration: &utils.BuildConfiguration{BuildNumber: "1", BuildName: "cli-tests-rt-build1"},
 		configFilePath:     "",
 		dotGitPath:         dotGitPath,
 	}
@@ -192,16 +192,16 @@ func TestRtDetailsFromConfigFile(t *testing.T) {
 	expectedUrl := "http://localhost:8081/artifactory/"
 	expectedUser := "admin"
 
-	homeEnv := os.Getenv(cliutils.HomeDir)
+	homeEnv := os.Getenv(coreutils.HomeDir)
 	if homeEnv == "" {
-		homeEnv = os.Getenv(cliutils.JfrogHomeEnv)
+		homeEnv = os.Getenv(coreutils.JfrogHomeEnv)
 	}
-	defer os.Setenv(cliutils.HomeDir, homeEnv)
+	defer os.Setenv(coreutils.HomeDir, homeEnv)
 	baseDir, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
 	}
-	err = os.Setenv(cliutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
+	err = os.Setenv(coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -226,17 +226,17 @@ func TestRtDetailsWithoutConfigFile(t *testing.T) {
 	expectedUrl := "http://localhost:8082/artifactory/"
 	expectedUser := "admin2"
 
-	homeEnv := os.Getenv(cliutils.HomeDir)
+	homeEnv := os.Getenv(coreutils.HomeDir)
 	if homeEnv == "" {
-		homeEnv = os.Getenv(cliutils.JfrogHomeEnv)
+		homeEnv = os.Getenv(coreutils.JfrogHomeEnv)
 	}
-	defer os.Setenv(cliutils.HomeDir, homeEnv)
+	defer os.Setenv(coreutils.HomeDir, homeEnv)
 
 	baseDir, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
 	}
-	err = os.Setenv(cliutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
+	err = os.Setenv(coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 	if err != nil {
 		t.Error(err)
 	}

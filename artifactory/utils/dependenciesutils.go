@@ -3,9 +3,9 @@ package utils
 import (
 	"errors"
 	"fmt"
-	bintrayutils "github.com/jfrog/jfrog-cli/bintray/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	bintrayutils "github.com/jfrog/jfrog-cli-core/bintray/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	rthttpclient "github.com/jfrog/jfrog-client-go/artifactory/httpclient"
 	"github.com/jfrog/jfrog-client-go/bintray"
 	"github.com/jfrog/jfrog-client-go/bintray/auth"
@@ -104,7 +104,7 @@ func downloadFileFromArtifactory(artDetails *config.ArtifactoryDetails, download
 	if err != nil {
 		return err
 	}
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return err
 	}

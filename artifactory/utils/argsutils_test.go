@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -169,10 +169,10 @@ func TestExtractBuildDetailsFromEnv(t *testing.T) {
 		{[]string{"foo", "-X", "123", "--bar", "--foox"}, []string{"foo", "-X", "123", "--bar", "--foox"}, &BuildConfiguration{buildNameEnv, buildNumberEnv, ""}},
 	}
 
-	os.Setenv(cliutils.BuildName, buildNameEnv)
-	os.Setenv(cliutils.BuildNumber, buildNumberEnv)
-	defer os.Unsetenv(cliutils.BuildName)
-	defer os.Unsetenv(cliutils.BuildNumber)
+	os.Setenv(coreutils.BuildName, buildNameEnv)
+	os.Setenv(coreutils.BuildNumber, buildNumberEnv)
+	defer os.Unsetenv(coreutils.BuildName)
+	defer os.Unsetenv(coreutils.BuildNumber)
 	for _, test := range tests {
 		actualArgs, actualBuildConfig, err := ExtractBuildDetailsFromArgs(test.command)
 		if err != nil {

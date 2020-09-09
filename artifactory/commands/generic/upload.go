@@ -2,15 +2,14 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli/artifactory/spec"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/progressbar"
+	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -24,6 +23,7 @@ type UploadCommand struct {
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *utils.BuildConfiguration
 	logFile             *os.File
+	progressBar         ioUtils.Progress
 }
 
 func NewUploadCommand() *UploadCommand {
@@ -48,6 +48,12 @@ func (uc *UploadCommand) SetUploadConfiguration(uploadConfiguration *utils.Uploa
 	return uc
 }
 
+func (uc *UploadCommand) SetProgressBarComponents(progressBar ioUtils.Progress, logFile *os.File) *UploadCommand {
+	uc.progressBar = progressBar
+	uc.logFile = logFile
+	return uc
+}
+
 func (uc *UploadCommand) CommandName() string {
 	return "rt_upload"
 }
@@ -62,26 +68,17 @@ func (uc *UploadCommand) upload() error {
 	// In case of sync-delete get the user to confirm first, and save the operation timestamp.
 	syncDeletesProp := ""
 	if !uc.DryRun() && uc.SyncDeletesPath() != "" {
-		if !uc.Quiet() && !cliutils.AskYesNo("Sync-deletes may delete some artifacts in Artifactory. Are you sure you want to continue?\n"+
+		if !uc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some artifacts in Artifactory. Are you sure you want to continue?\n"+
 			"You can avoid this confirmation message by adding --quiet to the command.", false) {
 			return nil
 		}
 		timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 		syncDeletesProp = ";sync.deletes.timestamp=" + timestamp
 	}
-	// Initialize Progress bar, set logger to a log file
-	var err error
-	var progressBar ioUtils.Progress
 	addVcsProps := false
-	progressBar, uc.logFile, err = progressbar.InitProgressBarIfPossible()
-	if err != nil {
-		return err
-	}
-	if progressBar != nil {
-		defer progressBar.Quit()
-	}
 
 	// Create Service Manager:
+	var err error
 	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
 	if err != nil {
 		return err
@@ -90,7 +87,7 @@ func (uc *UploadCommand) upload() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), progressBar)
+	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progressBar)
 	if err != nil {
 		return err
 	}

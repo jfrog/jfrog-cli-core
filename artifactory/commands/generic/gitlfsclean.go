@@ -3,8 +3,8 @@ package generic
 import (
 	"fmt"
 
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -98,7 +98,7 @@ func (glc *GitLfsCommand) interactiveDeleteLfsFiles(filesToDelete *content.Conte
 		return err
 	}
 	filesToDelete.Reset()
-	confirmed := cliutils.AskYesNo("Are you sure you want to delete the above files?\n"+
+	confirmed := coreutils.AskYesNo("Are you sure you want to delete the above files?\n"+
 		"You can avoid this confirmation message by adding --quiet to the command.", false)
 	if confirmed {
 		err := glc.deleteLfsFilesFromArtifactory(filesToDelete)

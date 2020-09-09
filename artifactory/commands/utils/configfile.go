@@ -7,11 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-
 	"github.com/codegangsta/cli"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -117,7 +116,7 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 }
 
 func isInteractive(c *cli.Context) bool {
-	if strings.ToLower(os.Getenv(cliutils.CI)) == "true" {
+	if strings.ToLower(os.Getenv(coreutils.CI)) == "true" {
 		return false
 	}
 	return !isAnyFlagSet(c, ResolutionServerId, ResolutionRepo, DeploymentServerId, DeploymentRepo)
@@ -171,7 +170,7 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 		if !configFile.Interactive {
 			return nil
 		}
-		override := cliutils.AskYesNo("Configuration file already exists at "+configFilePath+". Override it?", false)
+		override := coreutils.AskYesNo("Configuration file already exists at "+configFilePath+". Override it?", false)
 		if !override {
 			return errorutils.CheckError(errors.New("operation canceled"))
 		}
@@ -242,8 +241,8 @@ func (configFile *ConfigFile) configGradle() error {
 }
 
 func (configFile *ConfigFile) readGradleGlobalConfig() {
-	configFile.UsePlugin = cliutils.AskYesNo("Is the Gradle Artifactory Plugin already applied in the build script?", false)
-	configFile.UseWrapper = cliutils.AskYesNo("Use Gradle wrapper?", false)
+	configFile.UsePlugin = coreutils.AskYesNo("Is the Gradle Artifactory Plugin already applied in the build script?", false)
+	configFile.UseWrapper = coreutils.AskYesNo("Use Gradle wrapper?", false)
 }
 
 func (configFile *ConfigFile) setDeployer() error {
@@ -301,8 +300,8 @@ func (configFile *ConfigFile) setRepo(repo *string, message string, serverId str
 }
 
 func (configFile *ConfigFile) setMavenIvyDescriptors() {
-	configFile.Deployer.DeployMavenDesc = cliutils.AskYesNo("Deploy Maven descriptors?", false)
-	configFile.Deployer.DeployIvyDesc = cliutils.AskYesNo("Deploy Ivy descriptors?", false)
+	configFile.Deployer.DeployMavenDesc = coreutils.AskYesNo("Deploy Maven descriptors?", false)
+	configFile.Deployer.DeployIvyDesc = coreutils.AskYesNo("Deploy Ivy descriptors?", false)
 
 	if configFile.Deployer.DeployIvyDesc {
 		configFile.Deployer.IvyPattern = AskStringWithDefault("", "Set Ivy descriptor pattern", "[organization]/[module]/ivy-[revision].xml")
@@ -358,7 +357,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 
 	// Ask whether to use artifactory
 	if useArtifactoryQuestion != "" {
-		useArtifactory := cliutils.AskYesNo(useArtifactoryQuestion, true)
+		useArtifactory := coreutils.AskYesNo(useArtifactoryQuestion, true)
 		if !useArtifactory {
 			return "", nil
 		}

@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/lock"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/lock"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -190,7 +190,7 @@ func refreshExpiredToken(artifactoryDetails *ArtifactoryDetails, currentAccessTo
 }
 
 func createTokensServiceManager(artDetails *ArtifactoryDetails) (*artifactory.ArtifactoryServicesManager, error) {
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}

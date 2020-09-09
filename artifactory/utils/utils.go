@@ -9,8 +9,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
@@ -37,7 +37,7 @@ func getConfigDir(global bool) (string, error) {
 		}
 		return filepath.Join(wd, ".jfrog"), nil
 	}
-	return cliutils.GetJfrogHomeDir()
+	return coreutils.GetJfrogHomeDir()
 }
 
 func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, insecureTls bool) (string, error) {
@@ -47,7 +47,7 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	}
 	u.Path = path.Join(u.Path, "api/security/encryptedPassword")
 	httpClientsDetails := artifactoryAuth.CreateHttpClientDetails()
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func CreateServiceManager(artDetails *config.ArtifactoryDetails, isDryRun bool) 
 }
 
 func CreateServiceManagerWithThreads(artDetails *config.ArtifactoryDetails, isDryRun bool, threads int) (*artifactory.ArtifactoryServicesManager, error) {
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func CreateServiceManagerWithThreads(artDetails *config.ArtifactoryDetails, isDr
 }
 
 func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, threads int, dryRun bool, progressBar io.Progress) (*artifactory.ArtifactoryServicesManager, error) {
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, 
 }
 
 func CreateDistributionServiceManager(artDetails *config.ArtifactoryDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {
-	certsPath, err := cliutils.GetJfrogCertsDir()
+	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
@@ -184,27 +184,7 @@ func GetBuildNameAndNumber(buildName, buildNumber string) (string, string) {
 	if buildName != "" || buildNumber != "" {
 		return buildName, buildNumber
 	}
-	return os.Getenv(cliutils.BuildName), os.Getenv(cliutils.BuildNumber)
-}
-
-func GetBuildName(buildName string) string {
-	return getOrDefaultEnv(buildName, cliutils.BuildName)
-}
-
-func GetBuildUrl(buildUrl string) string {
-	return getOrDefaultEnv(buildUrl, cliutils.BuildUrl)
-}
-
-func GetEnvExclude(envExclude string) string {
-	return getOrDefaultEnv(envExclude, cliutils.EnvExclude)
-}
-
-// Return argument if not empty or retrieve from environment variable
-func getOrDefaultEnv(arg, envKey string) string {
-	if arg != "" {
-		return arg
-	}
-	return os.Getenv(envKey)
+	return os.Getenv(coreutils.BuildName), os.Getenv(coreutils.BuildNumber)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.

@@ -7,15 +7,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/log"
-	"github.com/jfrog/jfrog-cli/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils/checksum"
 )
 
 func TestArchiveProject(t *testing.T) {
 	log.SetDefaultLogger()
-	if cliutils.IsWindows() {
+	if coreutils.IsWindows() {
 		t.Skip("Skipping archive test...")
 	}
 	pwd, err := os.Getwd()

@@ -3,6 +3,8 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"io/ioutil"
 	"reflect"
 	"strings"
@@ -11,12 +13,10 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
-	"github.com/jfrog/jfrog-cli/artifactory/commands/generic"
-	"github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
-	"github.com/jfrog/jfrog-cli/utils/ioutils"
-	"github.com/jfrog/jfrog-cli/utils/lock"
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/lock"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -144,7 +144,7 @@ func (cc *ConfigCommand) configRefreshableToken() {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.
-	cc.details.TokenRefreshInterval = cliutils.TokenRefreshDefaultInterval
+	cc.details.TokenRefreshInterval = coreutils.TokenRefreshDefaultInterval
 }
 
 func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ArtifactoryDetails, error) {
@@ -251,7 +251,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
 		return
 	}
-	if cliutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
+	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
 		if cc.details.ClientCertPath == "" {
 			ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
 		}
@@ -263,7 +263,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 
 func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
 	if !cc.useBasicAuthOnly && ((cc.details.ApiKey != "" || cc.details.Password != "") && cc.details.AccessToken == "") {
-		useRefreshableToken := cliutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
+		useRefreshableToken := coreutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
 			"JFrog CLI supports replacing the configured username and password/API key with automatically created access token that's refreshed hourly. "+
 			"Enable this setting?", true)
 		cc.useBasicAuthOnly = !useRefreshableToken
@@ -468,7 +468,7 @@ func Use(serverId string) error {
 
 func ClearConfig(interactive bool) {
 	if interactive {
-		confirmed := cliutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
+		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
 		if !confirmed {
 			return
 		}
@@ -501,7 +501,7 @@ func (cc *ConfigCommand) encryptPassword() error {
 
 func checkSingleAuthMethod(details *config.ArtifactoryDetails) error {
 	boolArr := []bool{details.User != "" && details.Password != "", details.ApiKey != "", fileutils.IsSshUrl(details.Url), details.AccessToken != ""}
-	if cliutils.SumTrueValues(boolArr) > 1 {
+	if coreutils.SumTrueValues(boolArr) > 1 {
 		return errorutils.CheckError(errors.New("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token."))
 	}
 	return nil

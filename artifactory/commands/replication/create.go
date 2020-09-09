@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli/artifactory/commands/utils"
-	rtUtils "github.com/jfrog/jfrog-cli/artifactory/utils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-	"github.com/jfrog/jfrog-cli/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -54,8 +54,8 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	}
 	// Replace vars string-by-string if needed
 	if len(rcc.vars) > 0 {
-		templateVars := cliutils.SpecVarsStringToMap(rcc.vars)
-		content = cliutils.ReplaceVars(content, templateVars)
+		templateVars := coreutils.SpecVarsStringToMap(rcc.vars)
+		content = coreutils.ReplaceVars(content, templateVars)
 	}
 	// Unmarshal template to a map
 	var replicationConfigMap map[string]interface{}

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
@@ -82,30 +81,30 @@ func (sm *StreamManager) setReconnectHeader() {
 	sm.HttpClientDetails.Headers[BINTRAY_RECONNECT_HEADER] = sm.ReconnectId
 }
 
-func (sm *StreamManager) Connect() (bool, *http.Response) {
+func (sm *StreamManager) Connect() (bool, *http.Response, error) {
 	if sm.isReconnection() {
 		sm.setReconnectHeader()
 	}
 	log.Debug("Connecting...")
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
-		return false, nil
+		return false, nil, nil
 	}
 	resp, _, _, e := client.Stream(sm.Url, sm.HttpClientDetails)
 	if e != nil {
-		return false, resp
+		return false, resp, nil
 	}
 	if resp.StatusCode != http.StatusOK {
 		errorutils.CheckError(errors.New("response: " + resp.Status))
 		msgBody, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode > 400 && resp.StatusCode < 500 {
-			cliutils.ExitOnErr(errors.New(string(msgBody)))
+			return false, nil, errors.New(string(msgBody))
 		}
-		return false, resp
+		return false, resp, nil
 
 	}
 	sm.ReconnectId = resp.Header.Get(BINTRAY_RECONNECT_HEADER)
 	log.Debug("Connected.")
-	return true, resp
+	return true, resp, nil
 }

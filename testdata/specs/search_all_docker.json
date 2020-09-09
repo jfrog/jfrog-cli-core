@@ -1,8 +1,0 @@
-{
-  "files": [
-    {
-      "pattern": "${DOCKER_REPO}/*",
-      "exclusions": ["${DOCKER_REPO}/*sha256*"]
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-    "files": [
-        {
-            "pattern": "tmp/download/(github.com/*)",
-            "target": "${REPO1}/upload_simple_wildcard/{1}",
-            "regexp": "true"
-        }
-    ]
-}

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
-
 	"github.com/c-bata/go-prompt"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 const (
@@ -186,7 +186,7 @@ func AskFromListWithMismatchConfirmation(promptPrefix, misMatchMsg string, optio
 				return answer
 			}
 		}
-		if cliutils.AskYesNo(misMatchMsg+" continue anyway?", false) {
+		if coreutils.AskYesNo(misMatchMsg+" continue anyway?", false) {
 			return answer
 		}
 	}

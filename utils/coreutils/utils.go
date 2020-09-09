@@ -70,6 +70,22 @@ func PanicOnError(err error) error {
 	return err
 }
 
+func ExitOnErr(err error) {
+	if err, ok := err.(CliError); ok {
+		traceExit(err.ExitCode, err)
+	}
+	if exitCode := GetExitCode(err, 0, 0, false); exitCode != ExitCodeNoError {
+		traceExit(exitCode, err)
+	}
+}
+
+func traceExit(exitCode ExitCode, err error) {
+	if err != nil && len(err.Error()) > 0 {
+		log.Error(err)
+	}
+	os.Exit(exitCode.Code)
+}
+
 func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 	// Error occurred - Return 1
 	if err != nil || failed > 0 {

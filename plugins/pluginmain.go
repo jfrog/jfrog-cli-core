@@ -46,7 +46,7 @@ GLOBAL OPTIONS:
 
 `
 
-func JfrogPluginMain(jfrogApp components.App) {
+func PluginMain(jfrogApp components.App) {
 	log.SetDefaultLogger()
 
 	// Set the plugin's user-agent as the jfrog-cli-core's.

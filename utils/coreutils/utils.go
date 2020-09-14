@@ -240,6 +240,14 @@ func GetJfrogBackupDir() (string, error) {
 	return filepath.Join(homeDir, JfrogBackupDirName), nil
 }
 
+func GetJfrogPluginsDir() (string, error) {
+	homeDir, err := GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, JfrogPluginsDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"

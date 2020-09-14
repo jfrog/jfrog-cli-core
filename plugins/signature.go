@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/plugins/components"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -25,7 +24,6 @@ func addHiddenPluginSignatureCommand(baseApp *cli.App) {
 			}
 			content, err := json.Marshal(signature)
 			if err == nil {
-				fmt.Print(string(content))
 				log.Output(clientutils.IndentJson(content))
 			}
 			return err

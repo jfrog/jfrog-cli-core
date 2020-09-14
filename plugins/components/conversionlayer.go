@@ -5,6 +5,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/docs/common"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strings"
 )
 
 func (jfrogApp *App) Convert() *cli.App {
@@ -35,7 +36,7 @@ func (cmd *Command) convert(appName string) cli.Command {
 		Usage:        cmd.Description,
 		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, cmd.createCommandUsage(appName)),
 		UsageText:    cmd.createArgumentsSummary(),
-		ArgsUsage:    common.CreateEnvVars(cmd.createEnvVarsSummary()...),
+		ArgsUsage:    cmd.createEnvVarsSummary(),
 		BashComplete: common.CreateBashCompletionFunc(),
 		// Passing any other interface than 'cli.ActionFunc' will fail the command.
 		Action: cmd.getActionFunc(),
@@ -64,7 +65,7 @@ func (cmd *Command) createArgumentsSummary() string {
 	return summary
 }
 
-func (cmd *Command) createEnvVarsSummary() []string {
+func (cmd *Command) createEnvVarsSummary() string {
 	var envVarsSummary []string
 	for i, env := range cmd.EnvArgs {
 		summary := ""
@@ -78,7 +79,7 @@ func (cmd *Command) createEnvVarsSummary() []string {
 		summary += "\t\t" + env.Description
 		envVarsSummary = append(envVarsSummary, summary)
 	}
-	return envVarsSummary
+	return strings.Join(envVarsSummary[:], "\n\n")
 }
 
 func (cmd *Command) convertFlags() []cli.Flag {

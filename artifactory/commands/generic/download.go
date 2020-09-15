@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -221,27 +222,27 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 	return
 }
 
-// We will create the same downloaded hierarchies under a temp dirctory with 0-size files.
-// We will use this "empty reflection" of the download operation to determine whether a file was downloded or not while walking the real filesystem from sync-deletes root.
+// We will create the same downloaded hierarchies under a temp directory with 0-size files.
+// We will use this "empty reflection" of the download operation to determine whether a file was downloaded or not while walking the real filesystem from sync-deletes root.
 func createDownloadResultEmptyTmpReflection(reader *content.ContentReader) (tmpRoot string, err error) {
 	tmpRoot, err = fileutils.CreateTempDir()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
 	for path := new(localPath); reader.NextRecord(path) == nil; path = new(localPath) {
-		var absDownlaodPath string
-		absDownlaodPath, err = filepath.Abs(path.LocalPath)
+		var absDownloadPath string
+		absDownloadPath, err = filepath.Abs(path.LocalPath)
 		if errorutils.CheckError(err) != nil {
 			return
 		}
-		tmpFilePath := filepath.Join(tmpRoot, absDownlaodPath)
-		tmpFileRoot := filepath.Dir(tmpFilePath)
+		legalPath := createLegalPath(tmpRoot, absDownloadPath)
+		tmpFileRoot := filepath.Dir(legalPath)
 		err = os.MkdirAll(tmpFileRoot, os.ModePerm)
 		if errorutils.CheckError(err) != nil {
 			return
 		}
 		var tmpFile *os.File
-		tmpFile, err = os.Create(tmpFilePath)
+		tmpFile, err = os.Create(legalPath)
 		if errorutils.CheckError(err) != nil {
 			return
 		}
@@ -253,6 +254,19 @@ func createDownloadResultEmptyTmpReflection(reader *content.ContentReader) (tmpR
 	return
 }
 
+// Creates absolute path for temp file suitable for all environments
+func createLegalPath(root, path string) string {
+	// Avoid concatenating the volume name (e.g "C://") in Windows environment.
+	volumeName := filepath.VolumeName(path)
+	if volumeName != "" && strings.HasPrefix(path, volumeName) {
+		alternativeVolumeName := "VolumeName" + string(volumeName[0])
+		path = strings.Replace(path, volumeName, alternativeVolumeName, 1)
+	}
+	// Join the current path to the temp root provided.
+	path = filepath.Join(root, path)
+	return path
+}
+
 func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		// Convert path to absolute path
@@ -260,10 +274,10 @@ func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 		if errorutils.CheckError(err) != nil {
 			return err
 		}
-		// Join the current absolute path to the temp root provided.
-		tmpFilePath := filepath.Join(tempRoot, path)
+		pathToCheck := createLegalPath(tempRoot, path)
+
 		// If the path exists under the temp root directory, it means it's been downloaded during the last operations, and cannot be deleted.
-		if fileutils.IsPathExists(tmpFilePath, false) {
+		if fileutils.IsPathExists(pathToCheck, false) {
 			return nil
 		}
 		log.Info("Deleting:", path)

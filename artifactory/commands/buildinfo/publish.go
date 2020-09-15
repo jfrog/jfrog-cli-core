@@ -1,20 +1,38 @@
 package buildinfo
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"sort"
+	"strings"
+	"time"
 
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+)
+
+// Artifactory has a max number of character for a single request,
+// therefore we limit the maximum number of sha1 and repositories for a single AQL request.
+const (
+	sha1BatchSize = 125
+	repoBatchSize = 5
 )
 
 type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	rtDetails          *config.ArtifactoryDetails
 	config             *buildinfo.Configuration
+	threads            int
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
@@ -23,6 +41,11 @@ func NewBuildPublishCommand() *BuildPublishCommand {
 
 func (bpc *BuildPublishCommand) SetConfig(config *buildinfo.Configuration) *BuildPublishCommand {
 	bpc.config = config
+	return bpc
+}
+
+func (bpc *BuildPublishCommand) SetThreads(threads int) *BuildPublishCommand {
+	bpc.threads = threads
 	return bpc
 }
 
@@ -57,6 +80,10 @@ func (bpc *BuildPublishCommand) Run() error {
 
 	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
 	if err != nil {
+		return err
+	}
+
+	if err := bpc.addBuildToDependencies(generatedBuildsInfo); err != nil {
 		return err
 	}
 
@@ -247,4 +274,216 @@ func createDefaultModule(moduleId string) *buildinfo.Module {
 type partialModule struct {
 	artifacts    map[string]buildinfo.Artifact
 	dependencies map[string]buildinfo.Dependency
+}
+
+// The dependencies included in the build-info can be artifacts of other builds (included as artifacts in a previous build-info).
+// For dependencies which are the artifacts of other builds, this function finds those builds, so that they can be added to the build-info dependencies.
+func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buildinfo.PartialBuildInfo) error {
+	log.Info("Collecting dependencies' build information... This may take a few minutes...")
+	sm, err := utils.CreateServiceManager(bpc.rtDetails, bpc.config.DryRun)
+	if err != nil {
+		return err
+	}
+	repositoriesDetails, err := getRepositoriesDetails(sm)
+	if err != nil {
+		return err
+	}
+	// Key: dependency sha1, Value: a list of pointers to dependency build property.
+	depBuildMap := make(map[string][]*string)
+	var searchResults []servicesutils.ResultItem
+	for _, partialBuildInfo := range partialsBuildInfo {
+		localRepositories, err := filterNonLocalRepos(partialBuildInfo.ResolverRepositories, repositoriesDetails, sm)
+		if err != nil {
+			return err
+		}
+		if len(localRepositories) == 0 {
+			continue
+		}
+		// List of dependencies sha1.
+		sha1Set := coreutils.NewStringSet()
+		for _, module := range partialBuildInfo.Modules {
+			for i := 0; i < len(module.Dependencies); i++ {
+				dependency := module.Dependencies[i]
+				if dependency.Checksum != nil {
+					// Sha1 may be present in more than a single module.
+					depBuildMap[dependency.Sha1] = append(depBuildMap[dependency.Sha1], &dependency.Build)
+					sha1Set.Add(dependency.Sha1)
+				}
+			}
+		}
+		if sha1Set.TotalStrings() == 0 {
+			continue
+		}
+		partialSearchResults, err := bpc.getArtifactsPropsBySha1(localRepositories, sha1Set, sm)
+		if err != nil {
+			return err
+		}
+		searchResults = append(searchResults, partialSearchResults...)
+	}
+	// Update the dependencies build.
+	for _, searchResult := range searchResults {
+		var buildName, buildNumber, timestamp string
+		for _, prop := range searchResult.Properties {
+			switch prop.Key {
+			case "build.name":
+				buildName = prop.Value + "/"
+			case "build.number":
+				buildNumber = prop.Value + "/"
+			case "build.timestamp":
+				timestamp = prop.Value
+			}
+		}
+		for _, buildPrt := range depBuildMap[searchResult.Actual_Sha1] {
+			*buildPrt = buildName + buildNumber + timestamp
+		}
+	}
+	return nil
+}
+
+// Search for artifacts properties by sha1 among all the repositories.
+// AQL requests have a size limit, therefore, we split the requests into small groups.
+func (bpc *BuildPublishCommand) getArtifactsPropsBySha1(repositories []string, sha1s *coreutils.StringSet, sm artifactory.ArtifactoryServicesManager) (totalResults []servicesutils.ResultItem, err error) {
+	reposBatches := aggregateItems(repositories, repoBatchSize)
+	for _, repoBach := range reposBatches {
+		if sha1s.IsEmpty() {
+			break
+		}
+		sha1Batches := aggregateItems(sha1s.ToSlice(), sha1BatchSize)
+		searchResults := make([]*servicesutils.AqlSearchResult, len(sha1Batches))
+		producerConsumer := parallel.NewBounedRunner(bpc.threads, false)
+		errorsQueue := clientutils.NewErrorsQueue(1)
+		handlerFunc := bpc.createGetArtifactsPropsBySha1Func(repoBach, sm, searchResults)
+		go func() {
+			defer producerConsumer.Done()
+			for i, sha1Bach := range sha1Batches {
+				producerConsumer.AddTaskWithError(handlerFunc(sha1Bach, i), errorsQueue.AddError)
+			}
+		}()
+		producerConsumer.Run()
+		if err := errorsQueue.GetError(); err != nil {
+			return nil, err
+		}
+		for _, batchResult := range searchResults {
+			if batchResult == nil || batchResult.Results == nil {
+				continue
+			}
+			totalResults = append(totalResults, batchResult.Results...)
+			// Delete the sha1 that have already been found.
+			for _, result := range batchResult.Results {
+				sha1s.Delete(result.Actual_Sha1)
+			}
+		}
+	}
+	return totalResults, nil
+}
+
+// Creates a function that fetches dependency data from Artifactory.
+func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []string, sm artifactory.ArtifactoryServicesManager, searchResult []*servicesutils.AqlSearchResult) func(sha1s []string, index int) parallel.TaskFunc {
+	return func(sha1s []string, index int) parallel.TaskFunc {
+		return func(threadId int) error {
+			start := time.Now()
+			stream, err := sm.Aql(servicesutils.CreateSearchBySha1AndRepoAqlQuery(repoBach, sha1s))
+			t := time.Now()
+			elapsed := t.Sub(start)
+			if err != nil {
+				return err
+			}
+			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Finish to search artifacts properties by sha1 in", repoBach, ". Took ", elapsed.Seconds(), " seconds to complete the operation.\n")
+			result, err := ioutil.ReadAll(stream)
+			if err != nil {
+				return errorutils.CheckError(err)
+			}
+			parsedResult := new(servicesutils.AqlSearchResult)
+			err = json.Unmarshal(result, &parsedResult)
+			if err = errorutils.CheckError(err); err != nil {
+				return err
+			}
+			if len(parsedResult.Results) > 0 {
+				searchResult[index] = parsedResult
+			}
+			return nil
+		}
+	}
+}
+
+// Aggregate the slice into small groups.
+func aggregateItems(sliceToAggregate []string, aggregateSize int) [][]string {
+	var batches [][]string
+	if aggregateSize > len(sliceToAggregate) {
+		return append(batches, sliceToAggregate)
+	}
+	for aggregateSize < len(sliceToAggregate) {
+		sliceToAggregate, batches = sliceToAggregate[aggregateSize:], append(batches, sliceToAggregate[0:aggregateSize:aggregateSize])
+	}
+	return batches
+}
+
+// Returns only local repositories from 'repositories' including local repositories inside virtual repositories.
+func filterNonLocalRepos(repositories []string, repositoriesDetails map[string]*services.RepositoryDetails, sm artifactory.ArtifactoryServicesManager) ([]string, error) {
+	if repositories == nil || len(repositories) == 0 {
+		return nil, nil
+	}
+	filteredRepositories := coreutils.NewStringSet()
+	for _, repo := range repositories {
+		if repositoriesDetails[repo] == nil {
+			continue
+		}
+		switch strings.ToLower(repositoriesDetails[repo].Rclass) {
+		case "local":
+			filteredRepositories.Add(repo)
+		case "virtual":
+			virtualRepoDetails, err := sm.GetRepository(repo)
+			if err != nil {
+				return nil, err
+			}
+			if virtualRepoDetails != nil && len(virtualRepoDetails.Repositories) > 0 {
+				localRepos, err := filterNonLocalRepos(virtualRepoDetails.Repositories, repositoriesDetails, sm)
+				if err != nil {
+					return nil, err
+				}
+				filteredRepositories.AddAll(localRepos...)
+			}
+		}
+	}
+	return filteredRepositories.ToSlice(), nil
+}
+
+// Get a list of all accessable repositories in Artifactory.
+// Return a map of:
+// Key: repo key, Value: repo details.
+func getRepositoriesDetails(sm artifactory.ArtifactoryServicesManager) (map[string]*services.RepositoryDetails, error) {
+	var repositoriesDetails map[string]*services.RepositoryDetails
+	repositoriesSearchResults, err := sm.GetRepositories()
+	if err != nil {
+		return nil, err
+	}
+	repositoriesDetails = make(map[string]*services.RepositoryDetails)
+	for _, repo := range repositoriesSearchResults {
+		repositoriesDetails[repo.Key] = repo
+	}
+	return repositoriesDetails, nil
+}
+
+func searchArtifactsPropsBySha1(repositories, sha1s []string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.AqlSearchResult, error) {
+	if len(sha1s) == 0 {
+		return nil, nil
+	}
+	start := time.Now()
+	stream, err := servicesManager.Aql(servicesutils.CreateSearchBySha1AndRepoAqlQuery(repositories, sha1s))
+	t := time.Now()
+	elapsed := t.Sub(start)
+	log.Debug(fmt.Sprintf("Finish to search artifacts properties by sha1 in %f seconds\n", elapsed.Seconds()))
+	if err != nil {
+		return nil, err
+	}
+	result, err := ioutil.ReadAll(stream)
+	if err != nil {
+		return nil, err
+	}
+	parsedResult := new(servicesutils.AqlSearchResult)
+	err = json.Unmarshal(result, &parsedResult)
+	if err = errorutils.CheckError(err); err != nil {
+		return nil, err
+	}
+	return parsedResult, nil
 }

@@ -147,7 +147,7 @@ func SavePartialBuildInfo(buildName, buildNumber string, populatePartialBuildInf
 	return saveBuildData(partialBuildInfo, buildName, buildNumber)
 }
 
-func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.BuildInfo, error) {
+func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.PartialBuildInfo, error) {
 	buildDir, err := GetBuildDir(buildName, buildNumber)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.BuildIn
 		return nil, err
 	}
 
-	var generatedBuildsInfo []*buildinfo.BuildInfo
+	var generatedBuildsInfo []*buildinfo.PartialBuildInfo
 	for _, buildFile := range buildFiles {
 		dir, err := fileutils.IsDirExists(buildFile, false)
 		if err != nil {
@@ -170,7 +170,7 @@ func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.BuildIn
 		if err != nil {
 			return nil, err
 		}
-		buildInfo := new(buildinfo.BuildInfo)
+		buildInfo := new(buildinfo.PartialBuildInfo)
 		json.Unmarshal(content, &buildInfo)
 		generatedBuildsInfo = append(generatedBuildsInfo, buildInfo)
 	}

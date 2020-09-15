@@ -178,6 +178,7 @@ func convertFileInfoToBuildDependencies(filesInfo []clientutils.FileInfo) []buil
 		dependency := buildinfo.Dependency{Checksum: &buildinfo.Checksum{}}
 		dependency.Md5 = fileInfo.Md5
 		dependency.Sha1 = fileInfo.Sha1
+		dependency.Build = fileInfo.Build
 		// Artifact name in build info as the name in artifactory
 		filename, _ := fileutils.GetFileAndDirFromPath(fileInfo.ArtifactoryPath)
 		dependency.Id = filename

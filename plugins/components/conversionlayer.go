@@ -45,7 +45,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 		Flags:        convertedFlags,
 		Aliases:      cmd.Aliases,
 		Usage:        cmd.Description,
-		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, createCommandUsage(cmd, appName)),
+		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, []string{createCommandUsage(cmd, appName)}),
 		UsageText:    createArgumentsSummary(cmd),
 		ArgsUsage:    createEnvVarsSummary(cmd),
 		BashComplete: common.CreateBashCompletionFunc(),
@@ -54,7 +54,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 	}, nil
 }
 
-func createCommandUsage(cmd Command, appName string) []string {
+func createCommandUsage(cmd Command, appName string) string {
 	usage := fmt.Sprintf("jfrog %s %s", appName, cmd.Name)
 	if len(cmd.Flags) > 0 {
 		usage += " [command options]"
@@ -62,7 +62,7 @@ func createCommandUsage(cmd Command, appName string) []string {
 	for _, argument := range cmd.Arguments {
 		usage += fmt.Sprintf(" <%s>", argument.Name)
 	}
-	return []string{usage}
+	return usage
 }
 
 func createArgumentsSummary(cmd Command) string {
@@ -169,28 +169,39 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
 		if stringFlag, ok := flag.(StringFlag); ok {
-			if baseContext.String(stringFlag.Name) != "" {
-				c.stringFlags[stringFlag.Name] = baseContext.String(stringFlag.Name)
-				continue
+			finalValue, err := getValueForStringFlag(stringFlag, baseContext.String(stringFlag.Name))
+			if err != nil {
+				return err
 			}
-			// Empty but has a default value defined.
-			if stringFlag.DefaultValue != "" {
-				c.stringFlags[stringFlag.Name] = stringFlag.DefaultValue
-				continue
-			}
-			// Empty but mandatory.
-			if stringFlag.Mandatory {
-				return errors.New("Mandatory flag '" + stringFlag.Name + "' is missing")
-			}
+			c.stringFlags[stringFlag.Name] = finalValue
+			continue
 		}
 
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			if boolFlag.DefaultValue {
-				c.boolFlags[boolFlag.Name] = baseContext.BoolT(boolFlag.Name)
-			} else {
-				c.boolFlags[boolFlag.Name] = baseContext.Bool(boolFlag.Name)
-			}
+			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
 		}
 	}
 	return nil
+}
+
+func getValueForStringFlag(f StringFlag, receivedValue string) (finalValue string, err error) {
+	if receivedValue != "" {
+		return receivedValue, nil
+	}
+	// Empty but has a default value defined.
+	if f.DefaultValue != "" {
+		return f.DefaultValue, nil
+	}
+	// Empty but mandatory.
+	if f.Mandatory {
+		return "", errors.New("Mandatory flag '" + f.Name + "' is missing")
+	}
+	return "", nil
+}
+
+func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {
+	if f.DefaultValue {
+		return baseContext.BoolT(f.Name)
+	}
+	return baseContext.Bool(f.Name)
 }

@@ -196,6 +196,10 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		vConfig.Set(utils.FORK_COUNT, mc.threads)
 	}
 
+	if !vConfig.IsSet("deployer") {
+		setEmptyDeployer(vConfig)
+	}
+
 	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
@@ -213,6 +217,13 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		generatedBuildInfoPath: vConfig.GetString(utils.GENERATED_BUILD_INFO),
 		mavenOpts:              mavenOpts,
 	}, nil
+}
+
+func setEmptyDeployer(vConfig *viper.Viper) {
+	vConfig.Set(utils.DEPLOYER_PREFIX+utils.DEPLOY_ARTIFACTS, "false")
+	vConfig.Set(utils.DEPLOYER_PREFIX+utils.URL, "http://empty_url")
+	vConfig.Set(utils.DEPLOYER_PREFIX+utils.RELEASE_REPO, "empty_repo")
+	vConfig.Set(utils.DEPLOYER_PREFIX+utils.SNAPSHOT_REPO, "empty_repo")
 }
 
 func (config *mvnRunConfig) GetCmd() *exec.Cmd {

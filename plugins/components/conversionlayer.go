@@ -2,36 +2,47 @@ package components
 
 import (
 	"errors"
+	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/docs/common"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 )
 
-func ConvertApp(jfrogApp App) *cli.App {
+func ConvertApp(jfrogApp App) (*cli.App, error) {
+	var err error
 	app := cli.NewApp()
 	app.Name = jfrogApp.Name
 	app.Usage = jfrogApp.Description
 	app.Version = jfrogApp.Version
-	app.Commands = convertCommands(jfrogApp)
-
+	app.Commands, err = convertCommands(jfrogApp)
+	if err != nil {
+		return nil, err
+	}
 	// Defaults:
 	app.EnableBashCompletion = true
-	return app
+	return app, nil
 }
 
-func convertCommands(jfrogApp App) []cli.Command {
+func convertCommands(jfrogApp App) ([]cli.Command, error) {
 	var converted []cli.Command
 	for _, cmd := range jfrogApp.Commands {
-		converted = append(converted, convertCommand(cmd, jfrogApp.Name))
+		cur, err := convertCommand(cmd, jfrogApp.Name)
+		if err != nil {
+			return converted, err
+		}
+		converted = append(converted, cur)
 	}
-	return converted
+	return converted, nil
 }
 
-func convertCommand(cmd Command, appName string) cli.Command {
+func convertCommand(cmd Command, appName string) (cli.Command, error) {
+	convertedFlags, err := convertFlags(cmd)
+	if err != nil {
+		return cli.Command{}, err
+	}
 	return cli.Command{
 		Name:         cmd.Name,
-		Flags:        convertFlags(cmd),
+		Flags:        convertedFlags,
 		Aliases:      cmd.Aliases,
 		Usage:        cmd.Description,
 		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, createCommandUsage(cmd, appName)),
@@ -40,16 +51,16 @@ func convertCommand(cmd Command, appName string) cli.Command {
 		BashComplete: common.CreateBashCompletionFunc(),
 		// Passing any other interface than 'cli.ActionFunc' will fail the command.
 		Action: getActionFunc(cmd),
-	}
+	}, nil
 }
 
 func createCommandUsage(cmd Command, appName string) []string {
-	usage := "jfrog " + appName + " " + cmd.Name
+	usage := fmt.Sprintf("jfrog %s %s", appName, cmd.Name)
 	if len(cmd.Flags) > 0 {
 		usage += " [command options]"
 	}
 	for _, argument := range cmd.Arguments {
-		usage += " <" + argument.Name + ">"
+		usage += fmt.Sprintf(" <%s>", argument.Name)
 	}
 	return []string{usage}
 }
@@ -82,26 +93,28 @@ func createEnvVarsSummary(cmd Command) string {
 	return strings.Join(envVarsSummary[:], "\n\n")
 }
 
-func convertFlags(cmd Command) []cli.Flag {
+func convertFlags(cmd Command) ([]cli.Flag, error) {
 	var convertedFlags []cli.Flag
 	for _, flag := range cmd.Flags {
-		converted := convertByType(flag)
+		converted, err := convertByType(flag)
+		if err != nil {
+			return convertedFlags, err
+		}
 		if converted != nil {
 			convertedFlags = append(convertedFlags, converted)
 		}
 	}
-	return convertedFlags
+	return convertedFlags, nil
 }
 
-func convertByType(flag Flag) cli.Flag {
+func convertByType(flag Flag) (cli.Flag, error) {
 	if f, ok := flag.(StringFlag); ok {
-		return convertStringFlag(f)
+		return convertStringFlag(f), nil
 	}
 	if f, ok := flag.(BoolFlag); ok {
-		return convertBoolFlag(f)
+		return convertBoolFlag(f), nil
 	}
-	log.Warn("Flag '%s' does not match any known flag type.", flag.GetName())
-	return nil
+	return nil, errors.New(fmt.Sprintf("Flag '%s' does not match any known flag type.", flag.GetName()))
 }
 
 func convertStringFlag(f StringFlag) cli.Flag {

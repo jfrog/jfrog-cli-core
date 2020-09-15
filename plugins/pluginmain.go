@@ -55,11 +55,14 @@ func PluginMain(jfrogApp components.App) {
 	cli.CommandHelpTemplate = commandHelpTemplate
 	cli.AppHelpTemplate = appHelpTemplate
 
-	baseApp := components.ConvertApp(jfrogApp)
+	baseApp, err := components.ConvertApp(jfrogApp)
+	if err != nil {
+		coreutils.ExitOnErr(err)
+	}
 	addHiddenPluginSignatureCommand(baseApp)
 
 	args := os.Args
-	err := baseApp.Run(args)
+	err = baseApp.Run(args)
 
 	if cleanupErr := fileutils.CleanOldDirs(); cleanupErr != nil {
 		clientLog.Warn(cleanupErr)

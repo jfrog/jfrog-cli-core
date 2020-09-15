@@ -19,5 +19,5 @@ We welcome pull requests from the community.
 Use the following command to run the tests:
 
 ```sh
-go test -v github.com/jfrog/jfrog-cli-core -timeout 0
+go test -v ./... -timeout 0
 ```

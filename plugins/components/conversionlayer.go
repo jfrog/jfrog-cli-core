@@ -67,7 +67,7 @@ func (cmd *Command) createArgumentsSummary() string {
 
 func (cmd *Command) createEnvVarsSummary() string {
 	var envVarsSummary []string
-	for i, env := range cmd.EnvArgs {
+	for i, env := range cmd.EnvVars {
 		summary := ""
 		if i > 0 {
 			summary += "\n"

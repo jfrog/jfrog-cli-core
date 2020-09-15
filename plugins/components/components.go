@@ -13,7 +13,7 @@ type Command struct {
 	Aliases     []string
 	Arguments   []Argument
 	Flags       []Flag
-	EnvArgs     []EnvVar
+	EnvVars     []EnvVar
 	Action      ActionFunc
 }
 

@@ -17,19 +17,6 @@ type Command struct {
 	Action      ActionFunc
 }
 
-type Argument struct {
-	Name        string
-	Description string
-}
-
-type EnvVar struct {
-	Name        string
-	Default     string
-	Description string
-}
-
-type ActionFunc func(c *Context) error
-
 type PluginSignature struct {
 	Name  string `json:"name,omitempty"`
 	Usage string `json:"usage,omitempty"`

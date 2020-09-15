@@ -55,7 +55,7 @@ func PluginMain(jfrogApp components.App) {
 	cli.CommandHelpTemplate = commandHelpTemplate
 	cli.AppHelpTemplate = appHelpTemplate
 
-	baseApp := jfrogApp.Convert()
+	baseApp := components.ConvertApp(jfrogApp)
 	addHiddenPluginSignatureCommand(baseApp)
 
 	args := os.Args

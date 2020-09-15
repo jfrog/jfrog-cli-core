@@ -8,42 +8,42 @@ import (
 	"strings"
 )
 
-func (jfrogApp *App) Convert() *cli.App {
+func ConvertApp(jfrogApp App) *cli.App {
 	app := cli.NewApp()
 	app.Name = jfrogApp.Name
 	app.Usage = jfrogApp.Description
 	app.Version = jfrogApp.Version
-	app.Commands = jfrogApp.convertCommands()
+	app.Commands = convertCommands(jfrogApp)
 
 	// Defaults:
 	app.EnableBashCompletion = true
 	return app
 }
 
-func (jfrogApp *App) convertCommands() []cli.Command {
+func convertCommands(jfrogApp App) []cli.Command {
 	var converted []cli.Command
 	for _, cmd := range jfrogApp.Commands {
-		converted = append(converted, cmd.convert(jfrogApp.Name))
+		converted = append(converted, convertCommand(cmd, jfrogApp.Name))
 	}
 	return converted
 }
 
-func (cmd *Command) convert(appName string) cli.Command {
+func convertCommand(cmd Command, appName string) cli.Command {
 	return cli.Command{
 		Name:         cmd.Name,
-		Flags:        cmd.convertFlags(),
+		Flags:        convertFlags(cmd),
 		Aliases:      cmd.Aliases,
 		Usage:        cmd.Description,
-		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, cmd.createCommandUsage(appName)),
-		UsageText:    cmd.createArgumentsSummary(),
-		ArgsUsage:    cmd.createEnvVarsSummary(),
+		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, createCommandUsage(cmd, appName)),
+		UsageText:    createArgumentsSummary(cmd),
+		ArgsUsage:    createEnvVarsSummary(cmd),
 		BashComplete: common.CreateBashCompletionFunc(),
 		// Passing any other interface than 'cli.ActionFunc' will fail the command.
-		Action: cmd.getActionFunc(),
+		Action: getActionFunc(cmd),
 	}
 }
 
-func (cmd *Command) createCommandUsage(appName string) []string {
+func createCommandUsage(cmd Command, appName string) []string {
 	usage := "jfrog " + appName + " " + cmd.Name
 	if len(cmd.Flags) > 0 {
 		usage += " [command options]"
@@ -54,7 +54,7 @@ func (cmd *Command) createCommandUsage(appName string) []string {
 	return []string{usage}
 }
 
-func (cmd *Command) createArgumentsSummary() string {
+func createArgumentsSummary(cmd Command) string {
 	summary := ""
 	for i, argument := range cmd.Arguments {
 		if i > 0 {
@@ -65,7 +65,7 @@ func (cmd *Command) createArgumentsSummary() string {
 	return summary
 }
 
-func (cmd *Command) createEnvVarsSummary() string {
+func createEnvVarsSummary(cmd Command) string {
 	var envVarsSummary []string
 	for i, env := range cmd.EnvVars {
 		summary := ""
@@ -82,7 +82,7 @@ func (cmd *Command) createEnvVarsSummary() string {
 	return strings.Join(envVarsSummary[:], "\n\n")
 }
 
-func (cmd *Command) convertFlags() []cli.Flag {
+func convertFlags(cmd Command) []cli.Flag {
 	var convertedFlags []cli.Flag
 	for _, flag := range cmd.Flags {
 		converted := convertByType(flag)
@@ -95,16 +95,16 @@ func (cmd *Command) convertFlags() []cli.Flag {
 
 func convertByType(flag Flag) cli.Flag {
 	if f, ok := flag.(StringFlag); ok {
-		return f.convert()
+		return convertStringFlag(f)
 	}
 	if f, ok := flag.(BoolFlag); ok {
-		return f.convert()
+		return convertBoolFlag(f)
 	}
 	log.Warn("Flag '%s' does not match any known flag type.", flag.GetName())
 	return nil
 }
 
-func (f StringFlag) convert() cli.Flag {
+func convertStringFlag(f StringFlag) cli.Flag {
 	stringFlag := cli.StringFlag{
 		Name:  f.Name,
 		Usage: f.Usage + "` `",
@@ -123,7 +123,7 @@ func (f StringFlag) convert() cli.Flag {
 	return stringFlag
 }
 
-func (f BoolFlag) convert() cli.Flag {
+func convertBoolFlag(f BoolFlag) cli.Flag {
 	if f.DefaultValue {
 		return cli.BoolTFlag{
 			Name:  f.Name,
@@ -137,19 +137,19 @@ func (f BoolFlag) convert() cli.Flag {
 }
 
 // Wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
-func (cmd *Command) getActionFunc() cli.ActionFunc {
-	return func(c *cli.Context) error {
-		context := &Context{}
-		context.Arguments = c.Args()
-		err := context.fillFlagMaps(c, cmd.Flags)
+func getActionFunc(cmd Command) cli.ActionFunc {
+	return func(baseContext *cli.Context) error {
+		pluginContext := &Context{}
+		pluginContext.Arguments = baseContext.Args()
+		err := fillFlagMaps(pluginContext, baseContext, cmd.Flags)
 		if err != nil {
 			return err
 		}
-		return cmd.Action(context)
+		return cmd.Action(pluginContext)
 	}
 }
 
-func (c *Context) fillFlagMaps(baseContext *cli.Context, originalFlags []Flag) error {
+func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) error {
 	c.stringFlags = make(map[string]string)
 	c.boolFlags = make(map[string]bool)
 

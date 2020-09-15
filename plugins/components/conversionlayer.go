@@ -122,9 +122,9 @@ func convertStringFlag(f StringFlag) cli.Flag {
 		Name:  f.Name,
 		Usage: f.Usage + "` `",
 	}
-	// If default is set, add it's value and return.
+	// If default is set, add its value and return.
 	if f.DefaultValue != "" {
-		stringFlag.Usage = "[Default: " + f.DefaultValue + "] " + stringFlag.Usage
+		stringFlag.Usage = fmt.Sprintf("[Default: %s] %s", f.DefaultValue, stringFlag.Usage)
 		return stringFlag
 	}
 	// Otherwise, mark as mandatory/optional accordingly.

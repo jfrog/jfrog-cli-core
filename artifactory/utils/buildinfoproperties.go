@@ -55,6 +55,7 @@ const SERVER_ID = "serverId"
 const URL = "url"
 const USERNAME = "username"
 const PASSWORD = "password"
+const DEPLOY_ARTIFACTS = "artifacts"
 
 const MAVEN_DESCRIPTOR = "deployMavenDescriptors"
 const IVY_DESCRIPTOR = "deployIvyDescriptors"
@@ -107,7 +108,7 @@ var commonConfigMapping = map[string]string{
 	"artifactory.publish.contextUrl":                     DEPLOYER_PREFIX + URL,
 	"artifactory.publish.username":                       DEPLOYER_PREFIX + USERNAME,
 	"artifactory.publish.password":                       DEPLOYER_PREFIX + PASSWORD,
-	"artifactory.publish.artifacts":                      "",
+	"artifactory.publish.artifacts":                      DEPLOYER_PREFIX + DEPLOY_ARTIFACTS,
 	"artifactory.deploy.build.name":                      BUILD_NAME,
 	"artifactory.deploy.build.number":                    BUILD_NUMBER,
 	"artifactory.deploy.build.timestamp":                 BUILD_TIMESTAMP,

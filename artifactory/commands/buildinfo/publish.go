@@ -305,8 +305,9 @@ func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buil
 			for i := 0; i < len(module.Dependencies); i++ {
 				dependency := module.Dependencies[i]
 				if dependency.Checksum != nil {
+					depBuilds := depBuildMap[dependency.Sha1]
 					// Sha1 may be present in more than a single module.
-					depBuildMap[dependency.Sha1] = append(depBuildMap[dependency.Sha1], &dependency.Build)
+					depBuilds = append(depBuilds, &dependency.Build)
 					sha1Set.Add(dependency.Sha1)
 				}
 			}
@@ -343,12 +344,12 @@ func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buil
 // Search for artifacts properties by sha1 among all the repositories.
 // AQL requests have a size limit, therefore, we split the requests into small groups.
 func (bpc *BuildPublishCommand) getArtifactsPropsBySha1(repositories []string, sha1s *coreutils.StringSet, sm artifactory.ArtifactoryServicesManager) (totalResults []servicesutils.ResultItem, err error) {
-	reposBatches := aggregateItems(repositories, repoBatchSize)
+	reposBatches := groupItems(repositories, repoBatchSize)
 	for _, repoBach := range reposBatches {
 		if sha1s.IsEmpty() {
 			break
 		}
-		sha1Batches := aggregateItems(sha1s.ToSlice(), sha1BatchSize)
+		sha1Batches := groupItems(sha1s.ToSlice(), sha1BatchSize)
 		searchResults := make([]*servicesutils.AqlSearchResult, len(sha1Batches))
 		producerConsumer := parallel.NewBounedRunner(bpc.threads, false)
 		errorsQueue := clientutils.NewErrorsQueue(1)
@@ -388,7 +389,8 @@ func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []str
 			if err != nil {
 				return err
 			}
-			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Finish to search artifacts properties by sha1 in", repoBach, ". Took ", elapsed.Seconds(), " seconds to complete the operation.\n")
+			defer stream.Close()
+			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Finished searching artifacts properties by sha1 in", repoBach, ". Took ", elapsed.Seconds(), " seconds to complete the operation.\n")
 			result, err := ioutil.ReadAll(stream)
 			if err != nil {
 				return errorutils.CheckError(err)
@@ -406,16 +408,18 @@ func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []str
 	}
 }
 
-// Aggregate the slice into small groups.
-func aggregateItems(sliceToAggregate []string, aggregateSize int) [][]string {
-	var batches [][]string
-	if aggregateSize > len(sliceToAggregate) {
-		return append(batches, sliceToAggregate)
+// Group large slice into small groups, for example :
+// sliceToGroup = []string{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}; groupSize = 3
+// returns : [['0' '1' '2'] ['3' '4' '5'] ['6' '7' '8'] ['9]]
+func groupItems(sliceToGroup []string, groupSize int) [][]string {
+	var groups [][]string
+	if groupSize > len(sliceToGroup) {
+		return append(groups, sliceToGroup)
 	}
-	for aggregateSize < len(sliceToAggregate) {
-		sliceToAggregate, batches = sliceToAggregate[aggregateSize:], append(batches, sliceToAggregate[0:aggregateSize:aggregateSize])
+	for groupSize < len(sliceToGroup) {
+		sliceToGroup, groups = sliceToGroup[groupSize:], append(groups, sliceToGroup[0:groupSize:groupSize])
 	}
-	return batches
+	return groups
 }
 
 // Returns only local repositories from 'repositories' including local repositories inside virtual repositories.
@@ -462,28 +466,4 @@ func getRepositoriesDetails(sm artifactory.ArtifactoryServicesManager) (map[stri
 		repositoriesDetails[repo.Key] = repo
 	}
 	return repositoriesDetails, nil
-}
-
-func searchArtifactsPropsBySha1(repositories, sha1s []string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.AqlSearchResult, error) {
-	if len(sha1s) == 0 {
-		return nil, nil
-	}
-	start := time.Now()
-	stream, err := servicesManager.Aql(servicesutils.CreateSearchBySha1AndRepoAqlQuery(repositories, sha1s))
-	t := time.Now()
-	elapsed := t.Sub(start)
-	log.Debug(fmt.Sprintf("Finish to search artifacts properties by sha1 in %f seconds\n", elapsed.Seconds()))
-	if err != nil {
-		return nil, err
-	}
-	result, err := ioutil.ReadAll(stream)
-	if err != nil {
-		return nil, err
-	}
-	parsedResult := new(servicesutils.AqlSearchResult)
-	err = json.Unmarshal(result, &parsedResult)
-	if err = errorutils.CheckError(err); err != nil {
-		return nil, err
-	}
-	return parsedResult, nil
 }

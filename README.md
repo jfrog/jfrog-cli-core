@@ -16,7 +16,7 @@ We welcome pull requests from the community.
 
 # Tests
 
-Use the following command to run the tests:
+To run the tests, execute the following command from within the root directory of the project:
 
 ```sh
 go test -v ./... -timeout 0

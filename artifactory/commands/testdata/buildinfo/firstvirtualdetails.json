@@ -1,0 +1,9 @@
+{
+    "key": "virtual-repo",
+    "packageType": "???",
+    "repositories": [
+        "remote-repo",
+        "another-virtual-repo"
+    ],
+    "rclass": "virtual"
+}

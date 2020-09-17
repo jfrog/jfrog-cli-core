@@ -1,0 +1,38 @@
+[
+    {
+        "key": "local-repo",
+        "Rclass": "LOCAL",
+        "url": "https://artifactory.com",
+        "packageType": "Generic"
+    },
+    {
+        "key": "another-local-repo",
+        "Rclass": "LOCAL",
+        "url": "https://artifactory.com",
+        "packageType": "Generic"
+    },
+    {
+        "key": "remote-repo",
+        "Rclass": "REMOTE",
+        "url": "https://artifactory.com",
+        "packageType": "abc"
+    },
+    {
+        "key": "another-remote-repo",
+        "Rclass": "REMOTE",
+        "url": "https://artifactory.com",
+        "packageType": "abc"
+    },
+    {
+        "key": "virtual-repo",
+        "Rclass": "VIRTUAL",
+        "url": "https://artifactory.com",
+        "packageType": "Generic"
+    },
+    {
+        "key": "another-virtual-repo",
+        "Rclass": "VIRTUAL",
+        "url": "https://artifactory.com",
+        "packageType": "Generic"
+    }
+]

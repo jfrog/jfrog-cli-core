@@ -24,9 +24,10 @@ import (
 // Artifactory has a max number of character for a single request,
 // therefore we limit the maximum number of sha1 and repositories for a single AQL request.
 const (
-	sha1BatchSize = 125
 	repoBatchSize = 5
 )
+
+var sha1BatchSize = 125
 
 type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
@@ -419,7 +420,7 @@ func groupItems(sliceToGroup []string, groupSize int) [][]string {
 	for groupSize < len(sliceToGroup) {
 		sliceToGroup, groups = sliceToGroup[groupSize:], append(groups, sliceToGroup[0:groupSize:groupSize])
 	}
-	return groups
+	return append(groups, sliceToGroup)
 }
 
 // Returns only local repositories from 'repositories' including local repositories inside virtual repositories.

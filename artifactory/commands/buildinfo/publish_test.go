@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -98,17 +99,20 @@ func (psmm *publishServiceManagerMock) GetRepositories() ([]*services.Repository
 }
 
 func (psmm *publishServiceManagerMock) Aql(aql string) (io.ReadCloser, error) {
-	switch {
-	case strings.Contains(aql, "1"):
-		return ioutil.NopCloser(strings.NewReader("shiny!")), nil
-	case strings.Contains(aql, "2"):
-		return ioutil.NopCloser(strings.NewReader("shiny!")), nil
-
-	case strings.Contains(aql, "3"):
-		return ioutil.NopCloser(strings.NewReader("shiny!")), nil
-
+	testDataPath, err := getTestDataPath()
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	switch {
+	case strings.Contains(aql, "FirstFile"):
+		return os.Open(filepath.Join(testDataPath, "firstresult.json"))
+	case strings.Contains(aql, "SecondFile"):
+		return os.Open(filepath.Join(testDataPath, "secondresult.json"))
+	case strings.Contains(aql, "ThirdFile"):
+		return os.Open(filepath.Join(testDataPath, "thirdresult.json"))
+	default:
+		return os.Open(filepath.Join(testDataPath, "zeroresult.json"))
+	}
 }
 
 func (psmm *publishServiceManagerMock) GetRepository(repoKey string) (*services.RepositoryDetails, error) {
@@ -178,4 +182,28 @@ func TestGetRepositoriesDetails(t *testing.T) {
 	for key, repo := range repositoriesDetails {
 		assert.Equal(t, key, repo.Key)
 	}
+}
+
+func TestGetArtifactsPropsBySha1(t *testing.T) {
+	dummyRepo := []string{"local-repo"}
+	defer func(oldSize int) { sha1BatchSize = oldSize }(sha1BatchSize)
+	sha1BatchSize = 1
+	publishcmd := NewBuildPublishCommand().SetThreads(3)
+	smMock := new(publishServiceManagerMock)
+
+	// excepts no results
+	sha1Set := coreutils.NewStringSet("Unknown")
+	results, err := publishcmd.getArtifactsPropsBySha1(dummyRepo, sha1Set, smMock)
+	assert.NoError(t, err)
+	assert.Len(t, results, 0)
+
+	sha1Set = coreutils.NewStringSet("FirstFile", "SecondFile", "ThirdFile", "Unknown")
+	results, err = publishcmd.getArtifactsPropsBySha1(dummyRepo, sha1Set, smMock)
+	assert.NoError(t, err)
+	assert.Len(t, results, 3)
+	files := sha1Set.ToSlice()
+	for i := 0; i < 3; i++ {
+		assert.Equal(t, files[i], results[i].Name)
+	}
+
 }

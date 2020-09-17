@@ -1,0 +1,18 @@
+{
+    "results": [
+        {
+            "name": "ThirdFile",
+            "path": "cli-tests-rt1-1599725413/or",
+            "type": "file",
+            "created": "2020-09-10T11:10:14.334+03:00",
+            "modified": "2020-09-10T11:10:14.334+03:00",
+            "sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "md5": "d41d8cd98f00b204e9800998ecf8427e",
+            "props": {
+                "k1": [
+                    "v1"
+                ]
+            }
+        }
+    ]
+}

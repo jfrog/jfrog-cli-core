@@ -70,6 +70,22 @@ func PanicOnError(err error) error {
 	return err
 }
 
+func ExitOnErr(err error) {
+	if err, ok := err.(CliError); ok {
+		traceExit(err.ExitCode, err)
+	}
+	if exitCode := GetExitCode(err, 0, 0, false); exitCode != ExitCodeNoError {
+		traceExit(exitCode, err)
+	}
+}
+
+func traceExit(exitCode ExitCode, err error) {
+	if err != nil && len(err.Error()) > 0 {
+		log.Error(err)
+	}
+	os.Exit(exitCode.Code)
+}
+
 func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 	// Error occurred - Return 1
 	if err != nil || failed > 0 {
@@ -224,6 +240,14 @@ func GetJfrogBackupDir() (string, error) {
 	return filepath.Join(homeDir, JfrogBackupDirName), nil
 }
 
+func GetJfrogPluginsDir() (string, error) {
+	homeDir, err := GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, JfrogPluginsDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"
@@ -290,17 +314,4 @@ func SetClientAgent(clientAgentToSet string) {
 
 func GetClientAgent() string {
 	return clientAgent
-}
-
-func GetCliLogLevel() log.LevelType {
-	switch os.Getenv(LogLevel) {
-	case "ERROR":
-		return log.ERROR
-	case "WARN":
-		return log.WARN
-	case "DEBUG":
-		return log.DEBUG
-	default:
-		return log.INFO
-	}
 }

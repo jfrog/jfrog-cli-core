@@ -2,7 +2,7 @@ package utils
 
 import (
 	"bytes"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	corelog "github.com/jfrog/jfrog-cli-core/utils/log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +19,7 @@ func TestPrintSearchResults(t *testing.T) {
 	reader := content.NewContentReader(filepath.Join(testdataPath, "search_results.json"), content.DefaultKey)
 
 	previousLog := log.Logger
-	newLog := log.NewLogger(coreutils.GetCliLogLevel(), nil)
+	newLog := log.NewLogger(corelog.GetCliLogLevel(), nil)
 	// Restore previous logger when the function returns.
 	defer log.SetLogger(previousLog)
 

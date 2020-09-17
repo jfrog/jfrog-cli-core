@@ -29,12 +29,12 @@ func (c *Context) GetBoolFlagValue(flagName string) bool {
 
 type Flag interface {
 	GetName() string
-	GetUsage() string
+	GetDescription() string
 }
 
 type StringFlag struct {
-	Name  string
-	Usage string
+	Name        string
+	Description string
 	// A flag with default value cannot be mandatory.
 	DefaultValue string
 	Mandatory    bool
@@ -44,8 +44,8 @@ func (f StringFlag) GetName() string {
 	return f.Name
 }
 
-func (f StringFlag) GetUsage() string {
-	return f.Usage
+func (f StringFlag) GetDescription() string {
+	return f.Description
 }
 
 func (f StringFlag) GetDefault() string {
@@ -58,7 +58,7 @@ func (f StringFlag) isMandatory() bool {
 
 type BoolFlag struct {
 	Name         string
-	Usage        string
+	Description  string
 	DefaultValue bool
 }
 
@@ -66,8 +66,8 @@ func (f BoolFlag) GetName() string {
 	return f.Name
 }
 
-func (f BoolFlag) GetUsage() string {
-	return f.Usage
+func (f BoolFlag) GetDescription() string {
+	return f.Description
 }
 
 func (f BoolFlag) GetDefault() bool {

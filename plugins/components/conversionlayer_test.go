@@ -95,7 +95,7 @@ func (f invalidFlag) GetName() string {
 	return f.Name
 }
 
-func (f invalidFlag) GetUsage() string {
+func (f invalidFlag) GetDescription() string {
 	return f.Usage
 }
 
@@ -111,7 +111,7 @@ func TestConvertByTypeFailWithInvalidFlag(t *testing.T) {
 func TestConvertStringFlagDefault(t *testing.T) {
 	f := StringFlag{
 		Name:         "string-flag",
-		Usage:        "This is how you use it.",
+		Description:  "This is how you use it.",
 		DefaultValue: "def",
 	}
 	converted, err := convertByType(f)
@@ -136,9 +136,9 @@ func TestConvertStringFlagDefault(t *testing.T) {
 
 func TestConvertStringFlagMandatory(t *testing.T) {
 	f := StringFlag{
-		Name:      "string-flag",
-		Usage:     "This is how you use it.",
-		Mandatory: true,
+		Name:        "string-flag",
+		Description: "This is how you use it.",
+		Mandatory:   true,
 	}
 	converted, err := convertByType(f)
 	assert.NoError(t, err)
@@ -162,7 +162,7 @@ func TestConvertStringFlagMandatory(t *testing.T) {
 func TestConvertBoolFlag(t *testing.T) {
 	f := BoolFlag{
 		Name:         "bool-flag",
-		Usage:        "This is how you use it.",
+		Description:  "This is how you use it.",
 		DefaultValue: true,
 	}
 	converted, err := convertByType(f)
@@ -186,9 +186,9 @@ func TestConvertBoolFlag(t *testing.T) {
 
 func TestGetValueForStringFlag(t *testing.T) {
 	f := StringFlag{
-		Name:      "string-flag",
-		Usage:     "This is how you use it.",
-		Mandatory: false,
+		Name:        "string-flag",
+		Description: "This is how you use it.",
+		Mandatory:   false,
 	}
 
 	// Not received, no default or mandatory.

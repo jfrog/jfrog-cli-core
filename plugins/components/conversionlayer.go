@@ -120,7 +120,7 @@ func convertByType(flag Flag) (cli.Flag, error) {
 func convertStringFlag(f StringFlag) cli.Flag {
 	stringFlag := cli.StringFlag{
 		Name:  f.Name,
-		Usage: f.Usage + "` `",
+		Usage: f.Description + "` `",
 	}
 	// If default is set, add its value and return.
 	if f.DefaultValue != "" {
@@ -140,12 +140,12 @@ func convertBoolFlag(f BoolFlag) cli.Flag {
 	if f.DefaultValue {
 		return cli.BoolTFlag{
 			Name:  f.Name,
-			Usage: "[Default: true] " + f.Usage + "` `",
+			Usage: "[Default: true] " + f.Description + "` `",
 		}
 	}
 	return cli.BoolFlag{
 		Name:  f.Name,
-		Usage: "[Default: false] " + f.Usage + "` `",
+		Usage: "[Default: false] " + f.Description + "` `",
 	}
 }
 

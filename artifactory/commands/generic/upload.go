@@ -99,7 +99,7 @@ func (uc *UploadCommand) upload() error {
 		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber); err != nil {
 			return err
 		}
-		buildProps, err = addBuildProps(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
+		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
 		if err != nil {
 			return err
 		}
@@ -177,14 +177,6 @@ func getMinChecksumDeploySize() (int64, error) {
 		return 0, err
 	}
 	return minSize * 1000, nil
-}
-
-func addBuildProps(buildName, buildNumber string) (props string, err error) {
-	buildProps, err := utils.CreateBuildProperties(buildName, buildNumber)
-	if err != nil {
-		return "", err
-	}
-	return buildProps, nil
 }
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bulidProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {

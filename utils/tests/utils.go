@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,5 +41,19 @@ func RenamePath(oldPath, newPath string, t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
+	}
+}
+
+func SetJfrogHome(homePath string) {
+	if err := os.Setenv(coreutils.HomeDir, homePath); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+}
+
+func CleanUnitTestsJfrogHome(homePath string) {
+	os.RemoveAll(homePath)
+	if err := os.Unsetenv(coreutils.HomeDir); err != nil {
+		os.Exit(1)
 	}
 }

@@ -69,30 +69,17 @@ func (bpc *BuildPublishCommand) RtDetails() (*config.ArtifactoryDetails, error) 
 }
 
 func (bpc *BuildPublishCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bpc.rtDetails, bpc.config.DryRun)
+	sm, err := utils.CreateServiceManager(bpc.rtDetails, bpc.config.DryRun)
 	if err != nil {
 		return err
 	}
 
-	buildInfo, err := bpc.createBuildInfoFromPartials()
+	buildInfo, err := bpc.GenerateBuildInfo(sm)
 	if err != nil {
 		return err
 	}
 
-	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
-	if err != nil {
-		return err
-	}
-
-	if err := bpc.addBuildToDependencies(generatedBuildsInfo); err != nil {
-		return err
-	}
-
-	for _, v := range generatedBuildsInfo {
-		buildInfo.Append(v)
-	}
-
-	if err = servicesManager.PublishBuildInfo(buildInfo); err != nil {
+	if err = sm.PublishBuildInfo(buildInfo); err != nil {
 		return err
 	}
 
@@ -100,6 +87,27 @@ func (bpc *BuildPublishCommand) Run() error {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
 	}
 	return nil
+}
+
+func (bpc *BuildPublishCommand) GenerateBuildInfo(sm artifactory.ArtifactoryServicesManager) (*buildinfo.BuildInfo, error) {
+	buildInfo, err := bpc.createBuildInfoFromPartials()
+	if err != nil {
+		return nil, err
+	}
+
+	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := bpc.addBuildToDependencies(generatedBuildsInfo, sm); err != nil {
+		return nil, err
+	}
+
+	for _, v := range generatedBuildsInfo {
+		buildInfo.Append(v)
+	}
+	return buildInfo, nil
 }
 
 func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildInfo, error) {
@@ -279,12 +287,8 @@ type partialModule struct {
 
 // The dependencies included in the build-info can be artifacts of other builds (included as artifacts in a previous build-info).
 // For dependencies which are the artifacts of other builds, this function finds those builds, so that they can be added to the build-info dependencies.
-func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buildinfo.PartialBuildInfo) error {
+func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buildinfo.PartialBuildInfo, sm artifactory.ArtifactoryServicesManager) error {
 	log.Info("Collecting dependencies' build information... This may take a few minutes...")
-	sm, err := utils.CreateServiceManager(bpc.rtDetails, bpc.config.DryRun)
-	if err != nil {
-		return err
-	}
 	repositoriesDetails, err := getRepositoriesDetails(sm)
 	if err != nil {
 		return err

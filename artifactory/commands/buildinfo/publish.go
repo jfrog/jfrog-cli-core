@@ -297,7 +297,7 @@ func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buil
 	depBuildMap := make(map[string][]*string)
 	var searchResults []servicesutils.ResultItem
 	for _, partialBuildInfo := range partialsBuildInfo {
-		localRepositories, err := filterNonLocalRepos(partialBuildInfo.ResolverRepositories, repositoriesDetails, sm)
+		localRepositories, err := filterNonLocalRepos(partialBuildInfo.ResolutionRepositories, repositoriesDetails, sm)
 		if err != nil {
 			return err
 		}
@@ -310,9 +310,8 @@ func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buil
 			for i := 0; i < len(module.Dependencies); i++ {
 				dependency := module.Dependencies[i]
 				if dependency.Checksum != nil {
-					depBuilds := depBuildMap[dependency.Sha1]
 					// Sha1 may be present in more than a single module.
-					depBuilds = append(depBuilds, &dependency.Build)
+					depBuildMap[dependency.Sha1] = append(depBuildMap[dependency.Sha1], &module.Dependencies[i].Build)
 					sha1Set.Add(dependency.Sha1)
 				}
 			}
@@ -339,8 +338,9 @@ func (bpc *BuildPublishCommand) addBuildToDependencies(partialsBuildInfo []*buil
 				timestamp = prop.Value
 			}
 		}
-		for _, buildPrt := range depBuildMap[searchResult.Actual_Sha1] {
-			*buildPrt = buildName + buildNumber + timestamp
+		dependencies := depBuildMap[searchResult.Actual_Sha1]
+		for i := 0; i < len(dependencies); i++ {
+			*dependencies[i] = buildName + buildNumber + timestamp
 		}
 	}
 	return nil

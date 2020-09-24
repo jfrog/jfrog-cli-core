@@ -39,7 +39,7 @@ func (s *StringSet) TotalStrings() int {
 	return len(s.m)
 }
 
-// Strings returns strings in the set.
+// ToSlice returns strings in the set.
 func (s *StringSet) ToSlice() []string {
 	totalStringSet := len(s.m)
 	if s.IsEmpty() {

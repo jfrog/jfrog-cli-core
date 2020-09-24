@@ -190,6 +190,9 @@ func Create(w io.Writer, m module.Version, files []File) (err error) {
 	// Check that the version is canonical, the module path is well-formed, and
 	// the major version suffix matches the major version.
 	if vers := module.CanonicalVersion(m.Version); vers != m.Version {
+		if vers == "" {
+			vers = "from type v1.2.3"
+		}
 		return fmt.Errorf("version %q is not canonical (should be %q)", m.Version, vers)
 	}
 	if err := module.Check(m.Path, m.Version); err != nil {

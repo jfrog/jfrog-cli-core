@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
@@ -75,7 +74,6 @@ func (uc *UploadCommand) upload() error {
 		timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 		syncDeletesProp = ";sync.deletes.timestamp=" + timestamp
 	}
-	addVcsProps := false
 
 	// Create Service Manager:
 	var err error
@@ -92,6 +90,8 @@ func (uc *UploadCommand) upload() error {
 		return err
 	}
 
+	addVcsProps := false
+	buildProps := ""
 	// Build Info Collection:
 	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
@@ -99,8 +99,9 @@ func (uc *UploadCommand) upload() error {
 		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber); err != nil {
 			return err
 		}
-		for i := 0; i < len(uc.Spec().Files); i++ {
-			addBuildProps(&uc.Spec().Get(i).Props, uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
+		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -110,7 +111,7 @@ func (uc *UploadCommand) upload() error {
 	for i := 0; i < len(uc.Spec().Files); i++ {
 		file := uc.Spec().Get(i)
 		file.Props += syncDeletesProp
-		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, addVcsProps)
+		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -178,23 +179,7 @@ func getMinChecksumDeploySize() (int64, error) {
 	return minSize * 1000, nil
 }
 
-func addBuildProps(props *string, buildName, buildNumber string) error {
-	if buildName == "" || buildNumber == "" {
-		return nil
-	}
-	buildProps, err := utils.CreateBuildProperties(buildName, buildNumber)
-	if err != nil {
-		return err
-	}
-
-	if len(*props) > 0 && !strings.HasSuffix(*props, ";") && len(buildProps) > 0 {
-		*props += ";"
-	}
-	*props += buildProps
-	return nil
-}
-
-func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, addVcsProps bool) (uploadParams services.UploadParams, err error) {
+func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bulidProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
 	uploadParams = services.NewUploadParams()
 	uploadParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
 	uploadParams.Deb = configuration.Deb
@@ -202,6 +187,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, add
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
 	uploadParams.Retries = configuration.Retries
 	uploadParams.AddVcsProps = addVcsProps
+	uploadParams.BuildProps = bulidProps
 
 	uploadParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {

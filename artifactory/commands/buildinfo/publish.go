@@ -389,12 +389,12 @@ func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []str
 		return func(threadId int) error {
 			start := time.Now()
 			stream, err := sm.Aql(servicesutils.CreateSearchBySha1AndRepoAqlQuery(repoBach, sha1s))
-			t := time.Now()
-			elapsed := t.Sub(start)
 			if err != nil {
 				return err
 			}
 			defer stream.Close()
+			t := time.Now()
+			elapsed := t.Sub(start)
 			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Finished searching artifacts properties by sha1 in", repoBach, ". Took ", elapsed.Seconds(), " seconds to complete the operation.\n")
 			result, err := ioutil.ReadAll(stream)
 			if err != nil {
@@ -402,8 +402,8 @@ func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []str
 			}
 			parsedResult := new(servicesutils.AqlSearchResult)
 			err = json.Unmarshal(result, &parsedResult)
-			if err = errorutils.CheckError(err); err != nil {
-				return err
+			if err != nil {
+				return errorutils.CheckError(err)
 			}
 			if len(parsedResult.Results) > 0 {
 				searchResult[index] = parsedResult
@@ -413,7 +413,7 @@ func (bpc *BuildPublishCommand) createGetArtifactsPropsBySha1Func(repoBach []str
 	}
 }
 
-// Group large slice into small groups, for example :
+// Group large slice into small groups, for example:
 // sliceToGroup = []string{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}; groupSize = 3
 // returns : [['0' '1' '2'] ['3' '4' '5'] ['6' '7' '8'] ['9]]
 func groupItems(sliceToGroup []string, groupSize int) [][]string {
@@ -427,7 +427,7 @@ func groupItems(sliceToGroup []string, groupSize int) [][]string {
 	return append(groups, sliceToGroup)
 }
 
-// Returns only local repositories from 'repositories' including local repositories inside virtual repositories.
+// Recursively returns only local repositories from 'repositories' including local repositories inside virtual repositories.
 func filterNonLocalRepos(repositories []string, repositoriesDetails map[string]*services.RepositoryDetails, sm artifactory.ArtifactoryServicesManager) ([]string, error) {
 	if repositories == nil || len(repositories) == 0 {
 		return nil, nil

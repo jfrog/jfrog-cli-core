@@ -191,7 +191,7 @@ func TestGetArtifactsPropsBySha1(t *testing.T) {
 	publishcmd := NewBuildPublishCommand().SetThreads(3)
 	smMock := new(publishServiceManagerMock)
 
-	// excepts no results
+	// Excepts no results.
 	sha1Set := coreutils.NewStringSet("Unknown")
 	results, err := publishcmd.getArtifactsPropsBySha1(dummyRepo, sha1Set, smMock)
 	assert.NoError(t, err)
@@ -205,5 +205,4 @@ func TestGetArtifactsPropsBySha1(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		assert.Equal(t, files[i], results[i].Name)
 	}
-
 }

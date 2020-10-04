@@ -52,8 +52,16 @@ func SetJfrogHome(homePath string) {
 }
 
 func CleanUnitTestsJfrogHome(homePath string) {
-	os.RemoveAll(homePath)
+	errorOccurred := false
+	if err := os.RemoveAll(homePath); err != nil {
+		errorOccurred = true
+		log.Error(err)
+	}
 	if err := os.Unsetenv(coreutils.HomeDir); err != nil {
+		errorOccurred = true
+		log.Error(err)
+	}
+	if errorOccurred {
 		os.Exit(1)
 	}
 }

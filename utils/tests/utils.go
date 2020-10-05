@@ -44,11 +44,25 @@ func RenamePath(oldPath, newPath string, t *testing.T) {
 	}
 }
 
-func SetJfrogHome(homePath string) {
-	if err := os.Setenv(coreutils.HomeDir, homePath); err != nil {
-		log.Error(err)
-		os.Exit(1)
+// Set HomeDir to desired location.
+// Caller is responsible to set the old home location back.
+func SetJfrogHome(newHome string) (oldHome string, err error) {
+	homePath, err := filepath.Abs(newHome)
+	if err != nil {
+		return "", err
 	}
+
+	oldHome, err = coreutils.GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	err = os.Setenv(coreutils.HomeDir, homePath)
+	if err != nil {
+		return "", err
+	}
+
+	return oldHome, nil
 }
 
 func CleanUnitTestsJfrogHome(homePath string) {

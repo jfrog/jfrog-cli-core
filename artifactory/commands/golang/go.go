@@ -82,11 +82,6 @@ func (gc *GoCommand) Run() error {
 			return err
 		}
 	}
-	// The version is not necessary because we are collecting the dependencies only.
-	goProject, err := project.Load("-")
-	if err != nil {
-		return err
-	}
 
 	resolverDetails, err := gc.resolverParams.RtDetails()
 	if err != nil {
@@ -122,6 +117,11 @@ func (gc *GoCommand) Run() error {
 		return err
 	}
 	if isCollectBuildInfo {
+		// The version is not necessary because we are collecting the dependencies only.
+		goProject, err := project.Load("-")
+		if err != nil {
+			return err
+		}
 		includeInfoFiles, err := shouldIncludeInfoFiles(deployerServiceManager, resolverServiceManager)
 		if err != nil {
 			return err

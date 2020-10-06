@@ -58,6 +58,9 @@ func (uc *UploadCommand) CommandName() string {
 }
 
 func (uc *UploadCommand) Run() error {
+	if uc.progressBar != nil {
+		defer uc.progressBar.Quit()
+	}
 	return uc.upload()
 }
 

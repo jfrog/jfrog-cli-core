@@ -191,9 +191,9 @@ func Create(w io.Writer, m module.Version, files []File) (err error) {
 	// the major version suffix matches the major version.
 	if vers := module.CanonicalVersion(m.Version); vers != m.Version {
 		if vers == "" {
-			vers = "from type v1.2.3"
+			vers = "the version structure to be vX.Y.Z"
 		}
-		return fmt.Errorf("version %q is not canonical (should be %q)", m.Version, vers)
+		return fmt.Errorf("version %q is not canonical (expected %q)", m.Version, vers)
 	}
 	if err := module.Check(m.Path, m.Version); err != nil {
 		return err

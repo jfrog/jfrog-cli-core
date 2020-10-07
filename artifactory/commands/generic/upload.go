@@ -21,16 +21,11 @@ type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *utils.BuildConfiguration
-	logFile             *os.File
-	progressBar         ioUtils.Progress
+	progress            ioUtils.Progress
 }
 
 func NewUploadCommand() *UploadCommand {
 	return &UploadCommand{GenericCommand: *NewGenericCommand()}
-}
-
-func (uc *UploadCommand) LogFile() *os.File {
-	return uc.logFile
 }
 
 func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *UploadCommand {
@@ -47,10 +42,8 @@ func (uc *UploadCommand) SetUploadConfiguration(uploadConfiguration *utils.Uploa
 	return uc
 }
 
-func (uc *UploadCommand) SetProgressBarComponents(progressBar ioUtils.Progress, logFile *os.File) *UploadCommand {
-	uc.progressBar = progressBar
-	uc.logFile = logFile
-	return uc
+func (uc *UploadCommand) SetProgress(progress ioUtils.Progress) {
+	uc.progress = progress
 }
 
 func (uc *UploadCommand) CommandName() string {
@@ -58,9 +51,6 @@ func (uc *UploadCommand) CommandName() string {
 }
 
 func (uc *UploadCommand) Run() error {
-	if uc.progressBar != nil {
-		defer uc.progressBar.Quit()
-	}
 	return uc.upload()
 }
 
@@ -88,7 +78,7 @@ func (uc *UploadCommand) upload() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progressBar)
+	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progress)
 	if err != nil {
 		return err
 	}

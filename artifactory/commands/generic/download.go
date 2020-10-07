@@ -26,16 +26,11 @@ type DownloadCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
-	logFile       *os.File
-	progressBar   ioUtils.Progress
+	progress      ioUtils.Progress
 }
 
 func NewDownloadCommand() *DownloadCommand {
 	return &DownloadCommand{GenericCommand: *NewGenericCommand()}
-}
-
-func (dc *DownloadCommand) LogFile() *os.File {
-	return dc.logFile
 }
 
 func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *DownloadCommand {
@@ -52,10 +47,8 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 	return dc
 }
 
-func (dc *DownloadCommand) SetProgressBarComponents(progressBar ioUtils.Progress, logFile *os.File) *DownloadCommand {
-	dc.progressBar = progressBar
-	dc.logFile = logFile
-	return dc
+func (dc *DownloadCommand) SetProgress(progress ioUtils.Progress) {
+	dc.progress = progress
 }
 
 func (dc *DownloadCommand) CommandName() string {
@@ -63,9 +56,6 @@ func (dc *DownloadCommand) CommandName() string {
 }
 
 func (dc *DownloadCommand) Run() error {
-	if dc.progressBar != nil {
-		defer dc.progressBar.Quit()
-	}
 	return dc.download()
 }
 
@@ -76,7 +66,7 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	// Create Service Manager:
-	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progressBar)
+	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progress)
 	if err != nil {
 		return err
 	}

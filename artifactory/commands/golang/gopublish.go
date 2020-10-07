@@ -92,7 +92,7 @@ func (gpc *GoPublishCommand) Run() error {
 		}
 	}
 
-	goProject, err := project.Load(gpc.version)
+	goProject, err := project.Load(gpc.version, "")
 	if err != nil {
 		return err
 	}

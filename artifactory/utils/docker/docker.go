@@ -90,7 +90,7 @@ func (image *image) Path() string {
 	return path.Join(image.tag[indexOfFirstSlash:indexOfLastColon], image.tag[indexOfLastColon+1:])
 }
 
-// Get docker image manifest
+// Get docker image manifest from 'docker manifest inspect' cmd
 func (image *image) Manifest() (string, error) {
 	cmd := &getImageManifestCmd{image: image}
 	content, err := gofrogcmd.RunCmdOutput(cmd)

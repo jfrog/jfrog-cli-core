@@ -193,7 +193,7 @@ func Create(w io.Writer, m module.Version, files []File) (err error) {
 		if vers == "" {
 			vers = "the version structure to be vX.Y.Z"
 		}
-		return fmt.Errorf("version %q is not canonical (expected %q)", m.Version, vers)
+		return fmt.Errorf("version %q is not canonical (expected %s)", m.Version, vers)
 	}
 	if err := module.Check(m.Path, m.Version); err != nil {
 		return err

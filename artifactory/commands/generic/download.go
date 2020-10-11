@@ -26,16 +26,11 @@ type DownloadCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
-	logFile       *os.File
-	progressBar   ioUtils.Progress
+	progress      ioUtils.Progress
 }
 
 func NewDownloadCommand() *DownloadCommand {
 	return &DownloadCommand{GenericCommand: *NewGenericCommand()}
-}
-
-func (dc *DownloadCommand) LogFile() *os.File {
-	return dc.logFile
 }
 
 func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *DownloadCommand {
@@ -52,10 +47,8 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 	return dc
 }
 
-func (dc *DownloadCommand) SetProgressBarComponents(progressBar ioUtils.Progress, logFile *os.File) *DownloadCommand {
-	dc.progressBar = progressBar
-	dc.logFile = logFile
-	return dc
+func (dc *DownloadCommand) SetProgress(progress ioUtils.Progress) {
+	dc.progress = progress
 }
 
 func (dc *DownloadCommand) CommandName() string {
@@ -63,13 +56,17 @@ func (dc *DownloadCommand) CommandName() string {
 }
 
 func (dc *DownloadCommand) Run() error {
+	return dc.download()
+}
+
+func (dc *DownloadCommand) download() error {
 	if dc.SyncDeletesPath() != "" && !dc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some files in your local file system. Are you sure you want to continue?\n"+
 		"You can avoid this confirmation message by adding --quiet to the command.", false) {
 		return nil
 	}
 
 	// Create Service Manager:
-	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progressBar)
+	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progress)
 	if err != nil {
 		return err
 	}

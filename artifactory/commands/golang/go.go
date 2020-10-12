@@ -198,7 +198,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetai
 	packageNameSplitted := strings.Split(packageName, "@")
 	name := packageNameSplitted[0]
 	// The case the user ask for a specifc version
-	if len(packageNameSplitted) == 2 && strings.HasSuffix(packageNameSplitted[1], "v") {
+	if len(packageNameSplitted) == 2 && strings.HasPrefix(packageNameSplitted[1], "v") {
 		version = packageNameSplitted[1]
 	} else {
 		branchName := ""

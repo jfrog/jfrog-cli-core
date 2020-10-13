@@ -231,25 +231,32 @@ func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	writer, err :=  writeLayersToFile(builder.layers)
+	pathToFile, err := writeLayersToFile(builder.layers)
 	if err != nil {
 		return 0, err
 	}
-	reader := content.NewContentReader(writer.GetFilePath(), content.DefaultKey)
+	reader := content.NewContentReader(pathToFile, content.DefaultKey)
 	defer reader.Close()
 	return builder.serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
 }
 
-func writeLayersToFile(layers []utils.ResultItem) (*content.ContentWriter, error) {
+func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	writer, err := content.NewContentWriter("results", true, false)
+	defer func() {
+		deferErr := writer.Close()
+		if err == nil {
+			err = deferErr
+		}
+	}()
 	if err != nil {
 		log.Error("Fail to create new content writer for docker layer")
-		return nil, err
+		return
 	}
 	for _, layer := range layers {
 		writer.Write(layer)
 	}
-	return writer, writer.Close()
+	filePath = writer.GetFilePath()
+	return
 }
 
 // Create docker build info

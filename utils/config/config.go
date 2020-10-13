@@ -69,6 +69,9 @@ func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeR
 		}
 		if len(serverId) == 0 {
 			details, err := GetDefaultConfiguredArtifactoryConf(configs)
+			if excludeRefreshableTokens {
+				excludeRefreshableTokensFromDetails(details)
+			}
 			return details, errorutils.CheckError(err)
 		}
 	}
@@ -78,13 +81,18 @@ func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeR
 		return nil, err
 	}
 	if excludeRefreshableTokens {
-		if details.AccessToken != "" && details.RefreshToken != "" {
-			details.AccessToken = ""
-			details.RefreshToken = ""
-		}
-		details.TokenRefreshInterval = coreutils.TokenRefreshDisabled
+		excludeRefreshableTokensFromDetails(details)
 	}
 	return details, nil
+}
+
+// Disables refreshable tokens if set in details.
+func excludeRefreshableTokensFromDetails(details *ArtifactoryDetails) {
+	if details.AccessToken != "" && details.RefreshToken != "" {
+		details.AccessToken = ""
+		details.RefreshToken = ""
+	}
+	details.TokenRefreshInterval = coreutils.TokenRefreshDisabled
 }
 
 // Returns the default server configuration or error if not found.

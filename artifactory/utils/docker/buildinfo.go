@@ -41,7 +41,6 @@ func NewBuildInfoBuilder(image Image, repository, buildName, buildNumber string,
 		return nil, err
 	}
 	builder.image = image
-	builder.repository = repository
 	builder.buildName = buildName
 	builder.buildNumber = buildNumber
 	builder.serviceManager = serviceManager

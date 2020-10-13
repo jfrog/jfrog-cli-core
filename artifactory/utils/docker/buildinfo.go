@@ -242,16 +242,16 @@ func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
 
 func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	writer, err := content.NewContentWriter("results", true, false)
+	if err != nil {
+		log.Error("Fail to create new content writer for docker layer")
+		return
+	}
 	defer func() {
 		deferErr := writer.Close()
 		if err == nil {
 			err = deferErr
 		}
 	}()
-	if err != nil {
-		log.Error("Fail to create new content writer for docker layer")
-		return
-	}
 	for _, layer := range layers {
 		writer.Write(layer)
 	}

@@ -244,8 +244,8 @@ func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
 
 func writeLayers(layers []utils.ResultItem, writer *content.ContentWriter) {
 	defer writer.Close()
-	for _, item := range layers {
-		writer.Write(item)
+	for _, layer := range layers {
+		writer.Write(layer)
 	}
 }
 

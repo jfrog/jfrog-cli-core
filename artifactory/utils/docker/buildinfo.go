@@ -236,13 +236,17 @@ func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
 		log.Error("Fail to create new content writer for docker layer")
 		return 0, err
 	}
-	defer writer.Close()
-	for _, item := range builder.layers {
-		writer.Write(item)
-	}
+	writeLayers(builder.layers, writer)
 	reader := content.NewContentReader(writer.GetFilePath(), content.DefaultKey)
 	defer reader.Close()
 	return builder.serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
+}
+
+func writeLayers(layers []utils.ResultItem, writer *content.ContentWriter) {
+	defer writer.Close()
+	for _, item := range layers {
+		writer.Write(item)
+	}
 }
 
 // Create docker build info

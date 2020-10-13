@@ -247,10 +247,7 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 		return
 	}
 	defer func() {
-		deferErr := writer.Close()
-		if err == nil {
-			err = deferErr
-		}
+		err = writer.Close()
 	}()
 	for _, layer := range layers {
 		writer.Write(layer)

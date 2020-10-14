@@ -73,7 +73,7 @@ func (gc *GenericCommand) DetailedSummary() bool {
 	return gc.detailedSummary
 }
 
-func (gc *GenericCommand) SetDetailedSummaryt(detailedSummary bool) *GenericCommand {
+func (gc *GenericCommand) SetDetailedSummary(detailedSummary bool) *GenericCommand {
 	gc.detailedSummary = detailedSummary
 	return gc
 }

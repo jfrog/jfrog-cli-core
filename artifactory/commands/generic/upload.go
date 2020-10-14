@@ -2,10 +2,11 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -14,6 +15,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -137,6 +139,17 @@ func (uc *UploadCommand) upload() error {
 			if err != nil {
 				return err
 			}
+		}
+		if uc.DetailedSummary() {
+			rw, err := content.NewContentWriter(content.DefaultKey, true, false)
+			if err != nil {
+				return err
+			}
+			defer rw.Close()
+			for _, fileInfo := range filesInfo {
+				rw.Write(fileInfo)
+			}
+			uc.result.SetReader(content.NewContentReader(rw.GetFilePath(), content.DefaultKey))
 		}
 		// Build Info
 		if isCollectBuildInfo {

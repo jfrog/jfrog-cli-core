@@ -116,7 +116,16 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Perform upload.
-	filesInfo, successCount, failCount, err := servicesManager.UploadFiles(uploadParamsArray...)
+	// In case of build-info collection or a detailed summary request, we use the upload service which provides results file reader,
+	// otherwise we use the upload service which provides only general counters.
+	var successCount, failCount int
+	var resultsReader *content.ContentReader = nil
+	if uc.DetailedSummary() || isCollectBuildInfo {
+		resultsReader, successCount, failCount, err = servicesManager.UploadFilesWithResultReader(uploadParamsArray...)
+		uc.result.SetReader(resultsReader)
+	} else {
+		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
+	}
 	if err != nil {
 		errorOccurred = true
 		log.Error(err)
@@ -124,6 +133,14 @@ func (uc *UploadCommand) upload() error {
 	result := uc.Result()
 	result.SetSuccessCount(successCount)
 	result.SetFailCount(failCount)
+	// If the 'details summary' was requested, then the reader should not be closed now.
+	// It will be closed after it will be used to generate the summary.
+	if resultsReader != nil && !uc.DetailedSummary() {
+		defer func() {
+			resultsReader.Close()
+			uc.result.SetReader(nil)
+		}()
+	}
 	if errorOccurred {
 		err = errors.New("Upload finished with errors, Please review the logs.")
 		return err
@@ -140,20 +157,11 @@ func (uc *UploadCommand) upload() error {
 				return err
 			}
 		}
-		if uc.DetailedSummary() {
-			rw, err := content.NewContentWriter(content.DefaultKey, true, false)
-			if err != nil {
-				return err
-			}
-			defer rw.Close()
-			for _, fileInfo := range filesInfo {
-				rw.Write(fileInfo)
-			}
-			uc.result.SetReader(content.NewContentReader(rw.GetFilePath(), content.DefaultKey))
-		}
 		// Build Info
 		if isCollectBuildInfo {
-			buildArtifacts := convertFileInfoToBuildArtifacts(filesInfo)
+			var uploaded clientutils.ResultBuildInfo
+			err = utils.ReadAllContent(resultsReader, &uploaded)
+			buildArtifacts := convertFileInfoToBuildArtifacts(uploaded.FilesInfo)
 			populateFunc := func(partial *buildinfo.Partial) {
 				partial.Artifacts = buildArtifacts
 				partial.ModuleId = uc.buildConfiguration.Module

@@ -49,12 +49,12 @@ func (rdc *RepoDeleteCommand) Run() (err error) {
 		return err
 	}
 
-	// Regular repo key
+	// A single repo to be deleted
 	if !strings.Contains(rdc.repoPattern, "*") {
 		return rdc.deleteRepo(&servicesManager, rdc.repoPattern)
 	}
 
-	// Repo key is pattern
+	// A pattern for the repo name was received
 	repos, err := servicesManager.GetAllRepositories()
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (rdc *RepoDeleteCommand) Run() (err error) {
 }
 
 func (rdc *RepoDeleteCommand) deleteRepo(servicesManager *artifactory.ArtifactoryServicesManager, repoKey string) error {
-	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the repository "+repoKey+" including all of it content?", false) {
+	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the repository "+repoKey+" including all of its content?", false) {
 		return nil
 	}
 	return (*servicesManager).DeleteRepository(repoKey)

@@ -164,9 +164,8 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 			for k, v := range envAfterExcludeFilter {
 				env[k] = v
 			}
-		case partial.ModuleType == buildinfo.Build:
-			partialModules[partial.ModuleId] = partialModule{}
 		}
+		// partialModules[partial.ModuleId] = partialModule{}
 	}
 	return partialModulesToModules(partialModules), env, vcs, issuesMapToArray(issues, issuesMap), nil
 }

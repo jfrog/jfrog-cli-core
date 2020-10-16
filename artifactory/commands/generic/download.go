@@ -162,6 +162,7 @@ func (dc *DownloadCommand) download() error {
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
 			partial.ModuleId = dc.buildConfiguration.Module
+			partial.Type = buildinfo.Generic
 		}
 		err = utils.SavePartialBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, populateFunc)
 	}

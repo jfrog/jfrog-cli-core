@@ -43,7 +43,7 @@ func (bac *BuildAppendCommand) Run() error {
 
 	log.Debug("Appending build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "to build info")
 	populateFunc := func(partial *buildinfo.Partial) {
-		partial.ModuleType = buildinfo.Build
+		partial.Type = buildinfo.Build
 		partial.ModuleId = bac.buildNameToAppend + "/" + bac.buildNumberToAppend
 	}
 	return utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, populateFunc)

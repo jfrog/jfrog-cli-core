@@ -1,23 +1,27 @@
 package repository
 
 import (
+	"path/filepath"
+	"strings"
+
 	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 )
 
 type RepoDeleteCommand struct {
-	rtDetails *config.ArtifactoryDetails
-	repoKey   string
-	quiet     bool
+	rtDetails   *config.ArtifactoryDetails
+	repoPattern string
+	quiet       bool
 }
 
 func NewRepoDeleteCommand() *RepoDeleteCommand {
 	return &RepoDeleteCommand{}
 }
 
-func (rdc *RepoDeleteCommand) SetRepoKey(repoKey string) *RepoDeleteCommand {
-	rdc.repoKey = repoKey
+func (rdc *RepoDeleteCommand) SetRepoPattern(repoPattern string) *RepoDeleteCommand {
+	rdc.repoPattern = repoPattern
 	return rdc
 }
 
@@ -40,12 +44,38 @@ func (rdc *RepoDeleteCommand) CommandName() string {
 }
 
 func (rdc *RepoDeleteCommand) Run() (err error) {
-	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the repository "+rdc.repoKey+" including all of it content?", false) {
-		return nil
-	}
 	servicesManager, err := rtUtils.CreateServiceManager(rdc.rtDetails, false)
 	if err != nil {
 		return err
 	}
-	return servicesManager.DeleteRepository(rdc.repoKey)
+
+	// A single repo to be deleted
+	if !strings.Contains(rdc.repoPattern, "*") {
+		return rdc.deleteRepo(&servicesManager, rdc.repoPattern)
+	}
+
+	// A pattern for the repo name was received
+	repos, err := servicesManager.GetAllRepositories()
+	if err != nil {
+		return err
+	}
+	for _, repo := range *repos {
+		matched, err := filepath.Match(rdc.repoPattern, repo.Key)
+		if err != nil {
+			return err
+		}
+		if matched {
+			if err := rdc.deleteRepo(&servicesManager, repo.Key); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (rdc *RepoDeleteCommand) deleteRepo(servicesManager *artifactory.ArtifactoryServicesManager, repoKey string) error {
+	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to permanently delete the repository "+repoKey+" including all of its content?", false) {
+		return nil
+	}
+	return (*servicesManager).DeleteRepository(repoKey)
 }

@@ -206,16 +206,17 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 	}
 
 	return &mvnRunConfig{
-		java:                   javaExecPath,
-		pluginDependencies:     dependenciesPath,
-		plexusClassworlds:      plexusClassworlds[0],
-		cleassworldsConfig:     filepath.Join(dependenciesPath, classworldsConfFileName),
-		mavenHome:              mavenHome,
-		workspace:              currentWorkdir,
-		goals:                  mc.goals,
-		buildInfoProperties:    buildInfoProperties,
-		generatedBuildInfoPath: vConfig.GetString(utils.GENERATED_BUILD_INFO),
-		mavenOpts:              mavenOpts,
+		java:                         javaExecPath,
+		pluginDependencies:           dependenciesPath,
+		plexusClassworlds:            plexusClassworlds[0],
+		cleassworldsConfig:           filepath.Join(dependenciesPath, classworldsConfFileName),
+		mavenHome:                    mavenHome,
+		workspace:                    currentWorkdir,
+		goals:                        mc.goals,
+		buildInfoProperties:          buildInfoProperties,
+		artifactoryResolutionEnabled: vConfig.IsSet("resolver"),
+		generatedBuildInfoPath:       vConfig.GetString(utils.GENERATED_BUILD_INFO),
+		mavenOpts:                    mavenOpts,
 	}, nil
 }
 
@@ -232,6 +233,9 @@ func (config *mvnRunConfig) GetCmd() *exec.Cmd {
 	cmd = append(cmd, "-classpath", config.plexusClassworlds)
 	cmd = append(cmd, "-Dmaven.home="+config.mavenHome)
 	cmd = append(cmd, "-DbuildInfoConfig.propertiesFile="+config.buildInfoProperties)
+	if config.artifactoryResolutionEnabled {
+		cmd = append(cmd, "-DbuildInfoConfig.artifactoryResolutionEnabled=true")
+	}
 	cmd = append(cmd, "-Dm3plugin.lib="+config.pluginDependencies)
 	cmd = append(cmd, "-Dclassworlds.conf="+config.cleassworldsConfig)
 	cmd = append(cmd, "-Dmaven.multiModuleProjectDirectory="+config.workspace)
@@ -256,15 +260,16 @@ func (config *mvnRunConfig) GetErrWriter() io.WriteCloser {
 }
 
 type mvnRunConfig struct {
-	java                   string
-	plexusClassworlds      string
-	cleassworldsConfig     string
-	mavenHome              string
-	pluginDependencies     string
-	workspace              string
-	pom                    string
-	goals                  string
-	buildInfoProperties    string
-	generatedBuildInfoPath string
-	mavenOpts              string
+	java                         string
+	plexusClassworlds            string
+	cleassworldsConfig           string
+	mavenHome                    string
+	pluginDependencies           string
+	workspace                    string
+	pom                          string
+	goals                        string
+	buildInfoProperties          string
+	artifactoryResolutionEnabled bool
+	generatedBuildInfoPath       string
+	mavenOpts                    string
 }

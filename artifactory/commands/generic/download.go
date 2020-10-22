@@ -149,6 +149,9 @@ func (dc *DownloadCommand) download() error {
 	if isCollectBuildInfo {
 		var downloaded clientutils.ResultBuildInfo
 		err = utils.ReadAllContent(resultsReader, &downloaded)
+		if err != nil {
+			return err
+		}
 		buildDependencies := convertFileInfoToBuildDependencies(downloaded.FilesInfo)
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies

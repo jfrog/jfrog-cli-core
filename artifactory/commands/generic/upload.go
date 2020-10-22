@@ -161,6 +161,9 @@ func (uc *UploadCommand) upload() error {
 		if isCollectBuildInfo {
 			var uploaded clientutils.ResultBuildInfo
 			err = utils.ReadAllContent(resultsReader, &uploaded)
+			if err != nil {
+				return err
+			}
 			buildArtifacts := convertFileInfoToBuildArtifacts(uploaded.FilesInfo)
 			populateFunc := func(partial *buildinfo.Partial) {
 				partial.Artifacts = buildArtifacts

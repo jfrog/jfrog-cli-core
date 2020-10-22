@@ -282,8 +282,8 @@ func ReadAllContent(cr *content.ContentReader, pointer interface{}) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
+	defer file.Close()
 	byteValue, _ := ioutil.ReadAll(file)
-	file.Close()
 	err = json.Unmarshal(byteValue, pointer)
-	return err
+	return errorutils.CheckError(err)
 }

@@ -33,7 +33,7 @@ const decryptErrorPrefix = "cannot decrypt config: "
 type secretHandler func(string, string) (string, error)
 
 // Encrypt config file if security configuration file exists and contains master key.
-func (config *ConfigV3) encrypt() error {
+func (config *ConfigV4) encrypt() error {
 	key, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || key == "" {
 		return err
@@ -44,7 +44,7 @@ func (config *ConfigV3) encrypt() error {
 }
 
 // Decrypt config if encrypted and master key exists.
-func (config *ConfigV3) decrypt() error {
+func (config *ConfigV4) decrypt() error {
 	if !config.Enc {
 		return updateEncryptionIfNeeded(config)
 	}
@@ -62,7 +62,7 @@ func (config *ConfigV3) decrypt() error {
 }
 
 // Encrypt the config file if it is decrypted while security configuration file exists and contains a master key.
-func updateEncryptionIfNeeded(originalConfig *ConfigV3) error {
+func updateEncryptionIfNeeded(originalConfig *ConfigV4) error {
 	masterKey, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || masterKey == "" {
 		return err
@@ -73,7 +73,7 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV3) error {
 	if err != nil {
 		return err
 	}
-	tmpEncConfig := new(ConfigV3)
+	tmpEncConfig := new(ConfigV4)
 	err = json.Unmarshal(decryptedContent, &tmpEncConfig)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -88,7 +88,7 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV3) error {
 }
 
 // Encrypt/Decrypt all secrets in the provided config, with the provided master key.
-func handleSecrets(config *ConfigV3, handler secretHandler, key string) error {
+func handleSecrets(config *ConfigV4, handler secretHandler, key string) error {
 	var err error
 	for _, rtDetails := range config.Artifactory {
 		rtDetails.Password, err = handler(rtDetails.Password, key)

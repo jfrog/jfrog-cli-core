@@ -100,7 +100,7 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 }
 
 func GetConfigVersion() string {
-	return "3"
+	return "4"
 }
 
 func SumTrueValues(boolArr []bool) int {

@@ -136,7 +136,7 @@ func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// The path argument is a directory. sln/csproj file will be searched under this directory.
+	// The path argument is a directory. sln/project file will be searched under this directory.
 	if exist {
 		dc.updateSolutionPath(cmdFirstArg)
 		return "", err
@@ -151,8 +151,8 @@ func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {
 			dc.updateSolutionPath(filepath.Dir(cmdFirstArg))
 			return filepath.Base(cmdFirstArg), nil
 		}
-		// The path argument is a .csproj/packages.config file.
-		if strings.HasSuffix(cmdFirstArg, ".csproj") || strings.HasSuffix(cmdFirstArg, "packages.config") {
+		// The path argument is a .*proj/packages.config file.
+		if strings.HasSuffix(filepath.Ext(cmdFirstArg), "proj") || strings.HasSuffix(cmdFirstArg, "packages.config") {
 			dc.updateSolutionPath(filepath.Dir(cmdFirstArg))
 		}
 	}

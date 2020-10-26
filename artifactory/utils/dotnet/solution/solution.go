@@ -117,8 +117,8 @@ func (solution *solution) loadProjectsFromSolutionFile(slnProjects []string) err
 
 func (solution *solution) loadSingleProjectFromDir() error {
 	// List files with .*proj extension.
-	projFiles, err := fileutils.ListFilesWithExtensionByCompareFunc(solution.path, func(actualExt string) (bool, error) {
-		return strings.HasSuffix(actualExt, "proj"), nil
+	projFiles, err := fileutils.ListFilesByFilterFunc(solution.path, func(filePath string) (bool, error) {
+		return strings.HasSuffix(filepath.Ext(filePath), "proj"), nil
 	})
 	if err != nil {
 		return err
@@ -183,7 +183,9 @@ func (solution *solution) getSlnFiles() (slnFiles []string, err error) {
 	if solution.slnFile != "" {
 		slnFiles = append(slnFiles, filepath.Join(solution.path, solution.slnFile))
 	} else {
-		slnFiles, err = fileutils.ListFilesWithExtension(solution.path, ".sln")
+		slnFiles, err = fileutils.ListFilesByFilterFunc(solution.path, func(filePath string) (bool, error) {
+			return filepath.Ext(filePath) == ".sln", nil
+		})
 	}
 	return
 }

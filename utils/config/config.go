@@ -209,8 +209,8 @@ func SaveBintrayConf(details *BintrayDetails) error {
 	return saveConfig(config)
 }
 
-func saveConfig(config *ConfigV3) error {
-	config.Version = coreutils.GetConfigVersion()
+func saveConfig(config *ConfigV4) error {
+	config.Version = strconv.Itoa(coreutils.GetConfigVersion())
 	err := config.encrypt()
 	if err != nil {
 		return err
@@ -233,30 +233,21 @@ func saveConfig(config *ConfigV3) error {
 	return nil
 }
 
-func readConf() (*ConfigV3, error) {
-	confFilePath, err := getConfFilePath()
-	if err != nil {
-		return nil, err
-	}
-	config := new(ConfigV3)
-	exists, err := fileutils.IsFileExists(confFilePath, false)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return config, nil
-	}
-	content, err := fileutils.ReadFile(confFilePath)
+func readConf() (*ConfigV4, error) {
+	config := new(ConfigV4)
+	content, err := getConfigFile()
 	if err != nil {
 		return nil, err
 	}
 	if len(content) == 0 {
-		return new(ConfigV3), nil
+		// No config file was found, returns a new empty config.
+		return config, nil
 	}
 	content, err = convertIfNeeded(content)
 	if err != nil {
 		return nil, err
 	}
+
 	err = json.Unmarshal(content, &config)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -266,7 +257,40 @@ func readConf() (*ConfigV3, error) {
 	return config, err
 }
 
-func (config *ConfigV3) getContent() ([]byte, error) {
+func getConfigFile() (content []byte, err error) {
+	confFilePath, err := getConfFilePath()
+	if err != nil {
+		return
+	}
+	exists, err := fileutils.IsFileExists(confFilePath, false)
+	if err != nil {
+		return
+	}
+	if exists {
+		content, err = fileutils.ReadFile(confFilePath)
+		return
+
+	}
+	// Try to look for older config files
+	for i := coreutils.GetConfigVersion() - 1; i >= 3; i-- {
+		versionedConfigPath, err := getLegacyConfigFilePath(i)
+		if err != nil {
+			return nil, err
+		}
+		if exists, err := fileutils.IsFileExists(versionedConfigPath, false); exists {
+			// If an old config file was found returns its content or an error.
+			content, err = fileutils.ReadFile(versionedConfigPath)
+			return content, err
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return content, nil
+}
+
+func (config *ConfigV4) getContent() ([]byte, error) {
 	b, err := json.Marshal(&config)
 	if err != nil {
 		return []byte{}, errorutils.CheckError(err)
@@ -345,7 +369,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 
 	// Switch contains FALLTHROUGH to convert from a certain version to the latest.
 	switch version {
-	case coreutils.GetConfigVersion():
+	case strconv.Itoa(coreutils.GetConfigVersion()):
 		return content, nil
 	case "0":
 		content, err = convertConfigV0toV1(content)
@@ -364,7 +388,6 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		}
 		fallthrough
 	case "2":
-		log.Debug("Converting JFrog CLI's config to the latest version...")
 		content, err = convertConfigV2toV3(content)
 		if err != nil {
 			return nil, err
@@ -372,7 +395,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 	}
 
 	// Save config after all conversions (also updates version).
-	result := new(ConfigV3)
+	result := new(ConfigV4)
 	err = json.Unmarshal(content, &result)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -420,7 +443,7 @@ func getKeyFromConfig(content []byte, key string) (value string, exists bool, er
 }
 
 func convertConfigV0toV1(content []byte) ([]byte, error) {
-	result := new(ConfigV3)
+	result := new(ConfigV4)
 	configV0 := new(ConfigV0)
 	err := json.Unmarshal(content, &configV0)
 	if errorutils.CheckError(err) != nil {
@@ -433,7 +456,7 @@ func convertConfigV0toV1(content []byte) ([]byte, error) {
 }
 
 func convertConfigV2toV3(content []byte) ([]byte, error) {
-	config := new(ConfigV3)
+	config := new(ConfigV4)
 	err := json.Unmarshal(content, &config)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -463,11 +486,28 @@ func getConfFilePath() (string, error) {
 		return "", err
 	}
 	os.MkdirAll(confPath, 0777)
-	return filepath.Join(confPath, coreutils.JfrogConfigFile), nil
+
+	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
+	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile+versionString)
+	return confPath, nil
 }
 
-// This struct is suitable for versions 1, 2 and 3.
-type ConfigV3 struct {
+func getLegacyConfigFilePath(version int) (string, error) {
+	confPath, err := coreutils.GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile)
+	// Before version 4 all the config files were saved with the same name.
+	if version < 4 {
+		return confPath, nil
+	}
+	return confPath + ".v" + strconv.Itoa(version), nil
+
+}
+
+// This struct is suitable for versions 1, 2, 3 and 4.
+type ConfigV4 struct {
 	Artifactory    []*ArtifactoryDetails  `json:"artifactory"`
 	Bintray        *BintrayDetails        `json:"bintray,omitempty"`
 	MissionControl *MissionControlDetails `json:"missionControl,omitempty"`
@@ -482,8 +522,8 @@ type ConfigV0 struct {
 	MissionControl *MissionControlDetails `json:"MissionControl,omitempty"`
 }
 
-func (o *ConfigV0) Convert() *ConfigV3 {
-	config := new(ConfigV3)
+func (o *ConfigV0) Convert() *ConfigV4 {
+	config := new(ConfigV4)
 	config.Bintray = o.Bintray
 	config.MissionControl = o.MissionControl
 	if o.Artifactory != nil {

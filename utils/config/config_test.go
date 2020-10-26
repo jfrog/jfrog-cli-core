@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -40,7 +41,7 @@ func TestCovertConfigV0ToV1(t *testing.T) {
 	assert.NoError(t, err)
 	configV1 := new(ConfigV4)
 	assert.NoError(t, json.Unmarshal(content, &configV1))
-	assertionHelper(t, configV1, "1", false)
+	assertionHelper(t, configV1, 1, false)
 }
 
 func TestCovertConfigV0ToV1EmptyArtifactory(t *testing.T) {
@@ -239,8 +240,8 @@ func TestGetJfrogDependenciesPath(t *testing.T) {
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 }
 
-func assertionHelper(t *testing.T, convertedConfig *ConfigV4, expectedVersion string, expectedEnc bool) {
-	assert.Equal(t, expectedVersion, convertedConfig.Version)
+func assertionHelper(t *testing.T, convertedConfig *ConfigV4, expectedVersion int, expectedEnc bool) {
+	assert.Equal(t, strconv.Itoa(expectedVersion), convertedConfig.Version)
 	assert.Equal(t, expectedEnc, convertedConfig.Enc)
 
 	rtConverted := convertedConfig.Artifactory

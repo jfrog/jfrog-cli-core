@@ -210,7 +210,7 @@ func SaveBintrayConf(details *BintrayDetails) error {
 }
 
 func saveConfig(config *ConfigV4) error {
-	config.Version = coreutils.GetConfigVersion()
+	config.Version = strconv.Itoa(coreutils.GetConfigVersion())
 	err := config.encrypt()
 	if err != nil {
 		return err
@@ -234,52 +234,20 @@ func saveConfig(config *ConfigV4) error {
 }
 
 func readConf() (*ConfigV4, error) {
-	confFilePath, err := getConfFilePath()
-	if err != nil {
-		return nil, err
-	}
-	exists, err := fileutils.IsFileExists(confFilePath, false)
-	if err != nil {
-		return nil, err
-	}
 	config := new(ConfigV4)
-	var content []byte
-	if exists {
-		content, err = fileutils.ReadFile(confFilePath)
-		if err != nil {
-			return nil, err
-		}
-		if len(content) == 0 {
-			return config, nil
-		}
-	} else {
-		// Try to look up for older config files
-		currentVersion, _ := strconv.Atoi(coreutils.GetConfigVersion())
-		for i := currentVersion - 1; i >= 3; i-- {
-			versionedConfigPath, err := getLegacyConfigFilePath(strconv.Itoa(i))
-			if err != nil {
-				return nil, err
-			}
-			if exists, err := fileutils.IsFileExists(versionedConfigPath, false); exists {
-				content, err = fileutils.ReadFile(versionedConfigPath)
-				if err != nil {
-					return nil, err
-				}
-				break
-			}
-		}
-
-		if len(content) == 0 {
-			// No config file was found, returns a new empty config.
-			return config, nil
-		}
-
-		content, err = convertIfNeeded(content)
-		if err != nil {
-			return nil, err
-		}
-
+	content, err := getConfigFile()
+	if err != nil {
+		return nil, err
 	}
+	if len(content) == 0 {
+		// No config file was found, returns a new empty config.
+		return config, nil
+	}
+	content, err = convertIfNeeded(content)
+	if err != nil {
+		return nil, err
+	}
+
 	err = json.Unmarshal(content, &config)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -287,6 +255,39 @@ func readConf() (*ConfigV4, error) {
 
 	err = config.decrypt()
 	return config, err
+}
+
+func getConfigFile() (content []byte, err error) {
+	confFilePath, err := getConfFilePath()
+	if err != nil {
+		return
+	}
+	exists, err := fileutils.IsFileExists(confFilePath, false)
+	if err != nil {
+		return
+	}
+	if exists {
+		content, err = fileutils.ReadFile(confFilePath)
+		return
+
+	}
+	// Try to look for older config files
+	for i := coreutils.GetConfigVersion() - 1; i >= 3; i-- {
+		versionedConfigPath, err := getLegacyConfigFilePath(i)
+		if err != nil {
+			return nil, err
+		}
+		if exists, err := fileutils.IsFileExists(versionedConfigPath, false); exists {
+			// If an old config file was found returns its content or an error.
+			content, err = fileutils.ReadFile(versionedConfigPath)
+			return content, err
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return content, nil
 }
 
 func (config *ConfigV4) getContent() ([]byte, error) {
@@ -368,7 +369,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 
 	// Switch contains FALLTHROUGH to convert from a certain version to the latest.
 	switch version {
-	case coreutils.GetConfigVersion():
+	case strconv.Itoa(coreutils.GetConfigVersion()):
 		return content, nil
 	case "0":
 		content, err = convertConfigV0toV1(content)
@@ -388,13 +389,6 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		fallthrough
 	case "2":
 		content, err = convertConfigV2toV3(content)
-		if err != nil {
-			return nil, err
-		}
-		fallthrough
-	case "3":
-		log.Debug("Converting JFrog CLI's config to the latest version...")
-		content, err = convertConfigV3toV4(content)
 		if err != nil {
 			return nil, err
 		}
@@ -474,16 +468,6 @@ func convertConfigV2toV3(content []byte) ([]byte, error) {
 	return content, errorutils.CheckError(err)
 }
 
-func convertConfigV3toV4(content []byte) ([]byte, error) {
-	config := new(ConfigV4)
-	err := json.Unmarshal(content, &config)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-	content, err = json.Marshal(&config)
-	return content, errorutils.CheckError(err)
-}
-
 func GetJfrogDependenciesPath() (string, error) {
 	dependenciesDir := os.Getenv(coreutils.DependenciesDir)
 	if dependenciesDir != "" {
@@ -503,22 +487,22 @@ func getConfFilePath() (string, error) {
 	}
 	os.MkdirAll(confPath, 0777)
 
-	versionString := ".v" + coreutils.GetConfigVersion()
+	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
 	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile+versionString)
 	return confPath, nil
 }
 
-func getLegacyConfigFilePath(version string) (string, error) {
+func getLegacyConfigFilePath(version int) (string, error) {
 	confPath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err
 	}
 	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile)
 	// Before version 4 all the config files were saved with the same name.
-	if ver, _ := strconv.Atoi(version); ver < 4 {
+	if version < 4 {
 		return confPath, nil
 	}
-	return confPath + ".v" + version, nil
+	return confPath + ".v" + strconv.Itoa(version), nil
 
 }
 

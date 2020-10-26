@@ -13,9 +13,9 @@ type Project interface {
 	CreateDependencyTree() error
 }
 
-func Load(name, rootPath, dependeciesSource string) (Project, error) {
+func Load(name, rootPath, dependenciesSource string) (Project, error) {
 	var err error
-	project := &project{name: name, rootPath: rootPath, dependenciesSource: dependeciesSource}
+	project := &project{name: name, rootPath: rootPath, dependenciesSource: dependenciesSource}
 	project.extractor, err = project.getCompatibleExtractor()
 	return project, err
 }

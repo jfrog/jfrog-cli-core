@@ -74,7 +74,9 @@ func TestUpdateSolutionPathAndGetFileName(t *testing.T) {
 		{"nonExistingFile", filepath.Join(".", "dir1", "sol.sln"), workingDir, "", workingDir},
 		{"nonExistingPath", filepath.Join(workingDir, "non", "existing", "path"), workingDir, "", workingDir},
 		{"relCsprojFile", filepath.Join("testdata", "slnDir", "proj.csproj"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"relVbprojFile", filepath.Join("testdata", "slnDir", "projTwo.vbproj"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
 		{"absCsprojFile", filepath.Join(workingDir, "testdata", "slnDir", "proj.csproj"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"absVbprojFile", filepath.Join(workingDir, "testdata", "slnDir", "projTwo.vbproj"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
 		{"relPackagesConfigFile", filepath.Join("testdata", "slnDir", "packages.config"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
 		{"absPackagesConfigFile", filepath.Join(workingDir, "testdata", "slnDir", "packages.config"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
 	}

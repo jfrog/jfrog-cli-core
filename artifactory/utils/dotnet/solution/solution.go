@@ -100,51 +100,56 @@ func (solution *solution) loadProjects() error {
 
 func (solution *solution) loadProjectsFromSolutionFile(slnProjects []string) error {
 	for _, projectLine := range slnProjects {
-		projectName, csprojPath, err := parseProject(projectLine, solution.path)
+		projectName, projFilePath, err := parseProjectLine(projectLine, solution.path)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		if !strings.HasSuffix(csprojPath, ".csproj") {
-			log.Debug(fmt.Sprintf("Skipping a project \"%s\", since it doesn't have a csproj file path.", projectName))
+		// Looking for .*proj files.
+		if !strings.HasSuffix(filepath.Ext(projFilePath), "proj") {
+			log.Debug(fmt.Sprintf("Skipping a project \"%s\", since it doesn't have a '.*proj' file path.", projectName))
 			continue
 		}
-		solution.loadSingleProject(projectName, csprojPath)
+		solution.loadSingleProject(projectName, projFilePath)
 	}
 	return nil
 }
 
 func (solution *solution) loadSingleProjectFromDir() error {
-	csprojFiles, err := fileutils.ListFilesWithExtension(solution.path, ".csproj")
+	// List files with .*proj extension.
+	projFiles, err := fileutils.ListFilesByFilterFunc(solution.path, func(filePath string) (bool, error) {
+		return strings.HasSuffix(filepath.Ext(filePath), "proj"), nil
+	})
 	if err != nil {
 		return err
 	}
-	if len(csprojFiles) == 1 {
-		projectName := strings.TrimSuffix(filepath.Base(csprojFiles[0]), ".csproj")
-		solution.loadSingleProject(projectName, csprojFiles[0])
+
+	if len(projFiles) == 1 {
+		projectName := strings.TrimSuffix(filepath.Base(projFiles[0]), filepath.Ext(projFiles[0]))
+		solution.loadSingleProject(projectName, projFiles[0])
 	}
 	return nil
 }
 
-func (solution *solution) loadSingleProject(projectName, csprojPath string) {
+func (solution *solution) loadSingleProject(projectName, projFilePath string) {
 	// First we wil find the project's dependencies source.
 	// It can be located in the project's root directory or in a directory with the project name under the solution root.
-	projectRootPath := filepath.Dir(csprojPath)
+	projectRootPath := filepath.Dir(projFilePath)
 	projectPathPattern := projectRootPath + string(filepath.Separator)
 	projectNamePattern := string(filepath.Separator) + projectName + string(filepath.Separator)
-	var dependeciesSource string
+	var dependenciesSource string
 	for _, source := range solution.dependenciesSources {
 		if strings.Contains(source, projectPathPattern) || strings.Contains(source, projectNamePattern) {
-			dependeciesSource = source
+			dependenciesSource = source
 			break
 		}
 	}
 	// If no dependencies source was found, we will skip the current project
-	if len(dependeciesSource) == 0 {
+	if len(dependenciesSource) == 0 {
 		log.Debug(fmt.Sprintf("Project dependencies was not found for project: %s", projectName))
 		return
 	}
-	proj, err := project.Load(projectName, projectRootPath, dependeciesSource)
+	proj, err := project.Load(projectName, projectRootPath, dependenciesSource)
 	if err != nil {
 		log.Error(err)
 		return
@@ -178,14 +183,16 @@ func (solution *solution) getSlnFiles() (slnFiles []string, err error) {
 	if solution.slnFile != "" {
 		slnFiles = append(slnFiles, filepath.Join(solution.path, solution.slnFile))
 	} else {
-		slnFiles, err = fileutils.ListFilesWithExtension(solution.path, ".sln")
+		slnFiles, err = fileutils.ListFilesByFilterFunc(solution.path, func(filePath string) (bool, error) {
+			return filepath.Ext(filePath) == ".sln", nil
+		})
 	}
 	return
 }
 
 // Parses the project line for the project name and path information.
-// Returns the name and path to csproj
-func parseProject(projectLine, path string) (projectName, csprojPath string, err error) {
+// Returns the name and path to proj file
+func parseProjectLine(projectLine, path string) (projectName, projFilePath string, err error) {
 	parsedLine := strings.Split(projectLine, "=")
 	if len(parsedLine) <= 1 {
 		return "", "", errors.New("Unexpected project line format: " + projectLine)
@@ -196,14 +203,14 @@ func parseProject(projectLine, path string) (projectName, csprojPath string, err
 		return "", "", errors.New("Unexpected project information format: " + parsedLine[1])
 	}
 	projectName = removeQuotes(projectInfo[0])
-	// In case we are running on a non-Windows OS, the solution root path and the relative path to csproj file might used different path separators.
-	// We want to make sure we will get a valid path after we join both parts, so we will replace the csproj separators.
+	// In case we are running on a non-Windows OS, the solution root path and the relative path to proj file might used different path separators.
+	// We want to make sure we will get a valid path after we join both parts, so we will replace the proj separators.
 	if utils.IsWindows() {
 		projectInfo[1] = ioutils.UnixToWinPathSeparator(projectInfo[1])
 	} else {
 		projectInfo[1] = ioutils.WinToUnixPathSeparator(projectInfo[1])
 	}
-	csprojPath = filepath.Join(path, filepath.FromSlash(removeQuotes(projectInfo[1])))
+	projFilePath = filepath.Join(path, filepath.FromSlash(removeQuotes(projectInfo[1])))
 	return
 }
 

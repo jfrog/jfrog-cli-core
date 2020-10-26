@@ -65,12 +65,12 @@ EndProject`}},
 	}
 }
 
-func TestParseProject(t *testing.T) {
+func TestParseProjectLine(t *testing.T) {
 	tests := []struct {
-		name                string
-		projectLine         string
-		expectedCsprojPath  string
-		expectedProjectName string
+		name                 string
+		projectLine          string
+		expectedProjFilePath string
+		expectedProjectName  string
 	}{
 		{"packagename", `Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "packagename", "packagesconfig.csproj", "{D1FFA0DC-0ACC-4108-ADC1-2A71122C09AF}"
 EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig.csproj"), "packagename"},
@@ -78,17 +78,19 @@ EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig.csproj"), "p
 EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig", "packagesconfig.csproj"), "packagename"},
 		{"sameprojectname", `Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "packagesconfig", "packagesconfig/packagesconfig.csproj", "{D1FFA0DC-0ACC-4108-ADC1-2A71122C09AF}"
 EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig", "packagesconfig.csproj"), "packagesconfig"},
+		{"vbproj", `Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "packagesconfig", "packagesconfig/packagesconfig.vbproj", "{D1FFA0DC-0ACC-4108-ADC1-2A71122C09AF}"
+EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig", "packagesconfig.vbproj"), "packagesconfig"},
 	}
 
 	path := filepath.Join("jfrog", "path", "test")
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			projectName, csprojPath, err := parseProject(test.projectLine, path)
+			projectName, projFilePath, err := parseProjectLine(test.projectLine, path)
 			if err != nil {
 				t.Error(err)
 			}
-			if csprojPath != test.expectedCsprojPath {
-				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedCsprojPath, csprojPath))
+			if projFilePath != test.expectedProjFilePath {
+				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedProjFilePath, projFilePath))
 			}
 			if projectName != test.expectedProjectName {
 				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedProjectName, projectName))

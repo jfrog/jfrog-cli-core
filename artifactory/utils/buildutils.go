@@ -17,6 +17,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -273,4 +274,16 @@ func ValidateBuildAndModuleParams(buildConfig *BuildConfiguration) error {
 		return errors.New("the build-name and build-number options are mandatory when the module option is provided")
 	}
 	return nil
+}
+
+// ReadAllContent stores the entire content of the given contentReader in the value pointed by the given pointer.
+func ReadAllContent(cr *content.ContentReader, pointer interface{}) error {
+	file, err := os.Open(cr.GetFilePath())
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	defer file.Close()
+	byteValue, _ := ioutil.ReadAll(file)
+	err = json.Unmarshal(byteValue, pointer)
+	return errorutils.CheckError(err)
 }

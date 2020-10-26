@@ -247,10 +247,14 @@ func (project *goProject) readModFile() error {
 	}
 
 	modFilePath := filepath.Join(project.projectPath, "go.mod")
-	modFile, err := os.Open(modFilePath)
-	if err != nil {
+	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
+	if !modFileExists {
 		log.Info("Could not find go.mod in ", project.projectPath)
 		return nil
+	}
+	modFile, err := os.Open(modFilePath)
+	if err != nil {
+		return err
 	}
 	defer modFile.Close()
 	content, err := ioutil.ReadAll(modFile)

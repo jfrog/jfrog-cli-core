@@ -16,7 +16,7 @@ func TestBuildPackageVersionRequest(t *testing.T) {
 		t.Run(test.expectedRequest, func(t *testing.T) {
 			versionRequest := buildPackageVersionRequest(test.packageName, test.branchName)
 			if versionRequest != test.expectedRequest {
-				t.Error("Failed to build package version request. The version request", versionRequest, "expected to be", test.expectedRequest)
+				t.Error("Failed to build package version request. The version request is", versionRequest, " but it is expected to be", test.expectedRequest)
 			}
 		})
 	}

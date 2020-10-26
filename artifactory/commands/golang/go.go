@@ -171,7 +171,7 @@ func (gc *GoCommand) Run() error {
 	return err
 }
 
-// copyGoPackageFiles copies the package files from the go mode cache directory to the given destPath.
+// copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
 // The path to those chache files is retrived using the supplied package name and Artifactory details.
 func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) error {
 	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, rtDetails)
@@ -186,7 +186,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, rtDetails au
 	return nil
 }
 
-// getPackageFilePathFromArtifactory returns a string represents the package files chache path.
+// getPackageFilePathFromArtifactory returns a string that represents the package files chache path.
 // In most cases the path to those chache files is retrived using the supplied package name and Artifactory details.
 // However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
@@ -197,12 +197,12 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetai
 	}
 	packageNameSplitted := strings.Split(packageName, "@")
 	name := packageNameSplitted[0]
-	// The case the user ask for a specifc version
+	// The case the user asks for a specifc version
 	if len(packageNameSplitted) == 2 && strings.HasPrefix(packageNameSplitted[1], "v") {
 		version = packageNameSplitted[1]
 	} else {
 		branchName := ""
-		// The case the user ask for a specifc branch
+		// The case the user asks for a specifc branch
 		if len(packageNameSplitted) == 2 {
 			branchName = packageNameSplitted[1]
 		}
@@ -217,9 +217,9 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetai
 
 }
 
-// buildPackageVersionRequest returns a string represents the version request to Artifactory.
+// buildPackageVersionRequest returns a string representing the version request to Artifactory.
 // The resulted string is in the following format: "<Package Name>/@V/<Branch Name>.info".
-// If a branch name is not given the branch name will be replaced with the "latest" keyword.
+// If a branch name is not given, the branch name will be replaced with the "latest" keyword.
 // ("<Package Name>/@V/latest.info").
 func buildPackageVersionRequest(name, branchName string) string {
 	packageVersionRequest := path.Join(name, "@v")

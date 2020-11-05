@@ -103,7 +103,7 @@ func (pi *PipInstaller) runPipInstallWithLogParsing(pipInstallCmd *PipCmd) error
 	if err != nil {
 		return err
 	}
-	downloadFileRegexp, err := clientutils.GetRegExp(`^\s\sDownloading\s[^\s]*\/packages\/[^\s]*\/([^\s]*)`)
+	downloadFileRegexp, err := clientutils.GetRegExp(`^\s\sDownloading\s[^\s]*\/([^\s]*)`)
 	if err != nil {
 		return err
 	}

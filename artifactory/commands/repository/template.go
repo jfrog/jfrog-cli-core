@@ -47,6 +47,7 @@ const (
 	MaxUniqueSnapshots           = "maxUniqueSnapshots"
 	SuppressPomConsistencyChecks = "suppressPomConsistencyChecks"
 	BlackedOut                   = "blackedOut"
+	XrayIndex                    = "xrayIndex"
 	PropertySets                 = "propertySets"
 	DownloadRedirect             = "downloadRedirect"
 	BlockPushingSchema1          = "blockPushingSchema1"
@@ -62,7 +63,6 @@ const (
 	ChecksumPolicyType              = "checksumPolicyType"
 	MaxUniqueTags                   = "maxUniqueTags"
 	SnapshotVersionBehavior         = "snapshotVersionBehavior"
-	XrayIndex                       = "xrayIndex"
 	ArchiveBrowsingEnabled          = "archiveBrowsingEnabled"
 	CalculateYumMetadata            = "calculateYumMetadata"
 	YumRootDepth                    = "yumRootDepth"
@@ -317,7 +317,7 @@ var dockerLocalRepoConfKeys = []string{
 
 var baseRemoteRepoConfKeys = []string{
 	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, HardFail, Offline,
-	BlackedOut, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
+	BlackedOut, XrayIndex, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
 	MissedRetrievalCachePeriodSecs, UnusedArtifactsCleanupEnabled, UnusedArtifactsCleanupPeriodHours, AssumedOfflinePeriodSecs,
 	ShareConfiguration, SynchronizeProperties, BlockMismatchingMimeTypes, PropertySets, AllowAnyHostAuth, EnableCookieManagement,
 	BypassHeadRequests, ClientTlsCertificate, DownloadRedirect, BlockPushingSchema1, ContentSynchronisation,

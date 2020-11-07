@@ -41,14 +41,15 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 		return cli.Command{}, err
 	}
 	return cli.Command{
-		Name:         cmd.Name,
-		Flags:        convertedFlags,
-		Aliases:      cmd.Aliases,
-		Usage:        cmd.Description,
-		HelpName:     common.CreateUsage(appName+" "+cmd.Name, cmd.Description, []string{createCommandUsage(cmd, appName)}),
-		UsageText:    createArgumentsSummary(cmd),
-		ArgsUsage:    createEnvVarsSummary(cmd),
-		BashComplete: common.CreateBashCompletionFunc(),
+		Name:            cmd.Name,
+		Flags:           convertedFlags,
+		Aliases:         cmd.Aliases,
+		Usage:           cmd.Description,
+		HelpName:        common.CreateUsage(appName+" "+cmd.Name, cmd.Description, []string{createCommandUsage(cmd, appName)}),
+		UsageText:       createArgumentsSummary(cmd),
+		ArgsUsage:       createEnvVarsSummary(cmd),
+		BashComplete:    common.CreateBashCompletionFunc(),
+		SkipFlagParsing: cmd.SkipFlagParsing,
 		// Passing any other interface than 'cli.ActionFunc' will fail the command.
 		Action: getActionFunc(cmd),
 	}, nil

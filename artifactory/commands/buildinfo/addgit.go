@@ -284,11 +284,11 @@ func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfigu
 
 	// Get latest build-info from Artifactory.
 	buildInfoParams := services.BuildInfoParams{BuildName: config.buildConfiguration.BuildName, BuildNumber: "LATEST"}
-	publishedBuildInfo, notFound, err := sm.GetBuildInfo(buildInfoParams)
+	publishedBuildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return nil, err
 	}
-	if notFound {
+	if !found {
 		return &buildinfo.BuildInfo{}, nil
 	}
 

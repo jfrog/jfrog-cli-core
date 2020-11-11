@@ -11,9 +11,7 @@ require (
 	github.com/jfrog/gofrog v1.0.6
 	github.com/jfrog/jfrog-client-go v0.15.0
 	github.com/magiconair/properties v1.8.0
-	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-shellwords v1.0.3
-	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/viper v1.2.1
 	github.com/stretchr/testify v1.4.0
@@ -22,6 +20,6 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 )
 
-replace github.com/jfrog/jfrog-client-go => /Users/robin/proj-dev/jfrog-client-go
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v0.15.1-0.20201111101506-50779cee9c0f
 
 // replace github.com/jfrog/gocmd => github.com/jfrog/gocmd master

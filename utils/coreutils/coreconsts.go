@@ -29,6 +29,7 @@ const (
 	DependenciesDir = "JFROG_CLI_DEPENDENCIES_DIR"
 	BuildName       = "JFROG_CLI_BUILD_NAME"
 	BuildNumber     = "JFROG_CLI_BUILD_NUMBER"
+	Project         = "JFROG_CLI_BUILD_PROJECT"
 	CI              = "CI"
 	// Deprecated:
 	JfrogHomeEnv = "JFROG_CLI_HOME"

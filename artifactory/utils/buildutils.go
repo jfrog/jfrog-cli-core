@@ -264,6 +264,7 @@ type BuildConfiguration struct {
 	BuildName   string
 	BuildNumber string
 	Module      string
+	Project     string
 }
 
 func ValidateBuildAndModuleParams(buildConfig *BuildConfiguration) error {

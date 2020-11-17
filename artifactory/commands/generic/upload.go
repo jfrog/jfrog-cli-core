@@ -159,12 +159,11 @@ func (uc *UploadCommand) upload() error {
 		}
 		// Build Info
 		if isCollectBuildInfo {
-			var uploaded clientutils.ResultBuildInfo
-			err = utils.ReadAllContent(resultsReader, &uploaded)
+			err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
 			if err != nil {
 				return err
 			}
-			buildArtifacts := convertFileInfoToBuildArtifacts(uploaded.FilesInfo)
+			buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
 			populateFunc := func(partial *buildinfo.Partial) {
 				partial.Artifacts = buildArtifacts
 				partial.ModuleId = uc.buildConfiguration.Module

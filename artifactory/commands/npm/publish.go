@@ -217,12 +217,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.Artifac
 	}
 	resultsReader, _, failed, err := servicesManager.UploadFilesWithResultReader(up)
 	defer resultsReader.Close()
-	var uploaded specutils.ResultBuildInfo
-	err = utils.ReadAllContent(resultsReader, &uploaded)
+	err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
 	if err != nil {
 		return nil, err
 	}
-	artifactsFileInfo = uploaded.FilesInfo
+	artifactsFileInfo = resultBuildInfo.FilesInfo
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if failed > 0 {

@@ -23,7 +23,7 @@ type DownloadCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
-	progress      ioUtils.Progress
+	progress      ioUtils.ProgressMgr
 }
 
 func NewDownloadCommand() *DownloadCommand {
@@ -44,7 +44,7 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 	return dc
 }
 
-func (dc *DownloadCommand) SetProgress(progress ioUtils.Progress) {
+func (dc *DownloadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	dc.progress = progress
 }
 

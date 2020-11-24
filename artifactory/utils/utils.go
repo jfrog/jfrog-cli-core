@@ -107,7 +107,7 @@ func CreateServiceManagerWithThreads(artDetails *config.ArtifactoryDetails, isDr
 	return artifactory.New(&artAuth, serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, threads int, dryRun bool, progressBar io.Progress) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err

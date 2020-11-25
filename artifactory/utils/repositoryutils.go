@@ -75,12 +75,17 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 // Since we can't search dependencies in a remote repository, we will turn the search to the repository's cache.
 // Local/Virtual repository name will be returned as is.
 func GetRepoNameForDependenciesSearch(repoName string, serviceManager artifactory.ArtifactoryServicesManager) (string, error) {
-	repoDetails, err := serviceManager.GetRepository(repoName)
+	isRemote, err := IsRemoteRepo(repoName, serviceManager)
 	if err != nil {
 		return "", err
 	}
-	if repoDetails.Rclass == "remote" {
+	if isRemote {
 		repoName += "-cache"
 	}
 	return repoName, err
+}
+
+func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryServicesManager) (bool, error) {
+	repoDetails, err := serviceManager.GetRepository(repoName)
+	return repoDetails.Rclass == "remote", err
 }

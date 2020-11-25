@@ -1,4 +1,4 @@
-package docker
+package container
 
 import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"

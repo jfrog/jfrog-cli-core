@@ -1,15 +1,13 @@
-package docker
+package container
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 
-	buildutils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	artutils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -24,19 +22,20 @@ const (
 	Push                      CommandType = "push"
 	foreignLayerMediaType     string      = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
 	imageNotFoundErrorMessage string      = "Could not find docker image in Artifactory, expecting image ID: %s"
-	dockerMarkerLayerSuffix   string      = ".marker"
+	markerLayerSuffix         string      = ".marker"
 )
 
-// Docker image build info builder.
+// Container image build info builder.
 type Builder interface {
 	Build(module string) (*buildinfo.BuildInfo, error)
 }
 
-// Create instance of docker build info builder.
-func NewBuildInfoBuilder(image Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType) (Builder, error) {
+// Create instance of container build info builder.
+func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
 	var err error
 	builder := &buildInfoBuilder{}
-	builder.repository, err = buildutils.GetRepoNameForDependenciesSearch(repository, serviceManager)
+	builder.repositoryDetails.key = repository
+	builder.repositoryDetails.isRemote, err = artutils.IsRemoteRepo(repository, serviceManager)
 	if err != nil {
 		return nil, err
 	}
@@ -45,15 +44,17 @@ func NewBuildInfoBuilder(image Image, repository, buildName, buildNumber string,
 	builder.buildNumber = buildNumber
 	builder.serviceManager = serviceManager
 	builder.commandType = commandType
+	builder.containerManager = containerManager
 	return builder, nil
 }
 
 type buildInfoBuilder struct {
-	image          Image
-	repository     string
-	buildName      string
-	buildNumber    string
-	serviceManager artifactory.ArtifactoryServicesManager
+	image             *Image
+	containerManager  ContainerManager
+	repositoryDetails RepositoryDetails
+	buildName         string
+	buildNumber       string
+	serviceManager    artifactory.ArtifactoryServicesManager
 
 	// internal fields
 	imageId      string
@@ -63,10 +64,15 @@ type buildInfoBuilder struct {
 	commandType  CommandType
 }
 
-// Create build info for docker image.
+type RepositoryDetails struct {
+	key      string
+	isRemote bool
+}
+
+// Create build info for container image.
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	var err error
-	builder.imageId, err = builder.image.Id()
+	builder.imageId, err = builder.containerManager.Id(builder.image)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +80,6 @@ func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, err
 	if err != nil {
 		return nil, err
 	}
-
 	// Set build properties only when pushing image.
 	if builder.commandType == Push {
 		_, err = builder.setBuildProperties()
@@ -86,7 +91,14 @@ func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, err
 	return builder.createBuildInfo(module)
 }
 
-// Search, validate and create artifacts and dependencies of docker image.
+func (builder *buildInfoBuilder) getSearchableRepo() string {
+	if builder.repositoryDetails.isRemote {
+		return builder.repositoryDetails.key + "-cache"
+	}
+	return builder.repositoryDetails.key
+}
+
+// Search, validate and create artifacts and dependencies of container image.
 func (builder *buildInfoBuilder) updateArtifactsAndDependencies() error {
 	// Search for all image layers to get the local path inside Artifactory.
 	searchResults, err := builder.getImageLayersFromArtifactory()
@@ -116,8 +128,15 @@ func (builder *buildInfoBuilder) updateArtifactsAndDependencies() error {
 func (builder *buildInfoBuilder) getImageLayersFromArtifactory() (searchResults map[string]utils.ResultItem, err error) {
 	imagePath := builder.image.Path()
 
+	// Search results may include artifacts from the remote-cache repository and not the remote repository itself.
+	// When artifact is expired it cannot be downloaded from the remote-cache.
+	// To solve this, change back the search results' repository, to its origin remote/virtual.
+	defer func() {
+		searchResults = modifySearchResultRepo(builder.repositoryDetails.key, searchResults)
+	}()
+
 	// Search layers - assuming reverse proxy.
-	searchResults, err = searchImageLayers(builder, path.Join(builder.repository, imagePath, "*"))
+	searchResults, err = searchImageLayers(builder, path.Join(builder.getSearchableRepo(), imagePath, "*"))
 	if err != nil || searchResults != nil {
 		return searchResults, err
 	}
@@ -140,7 +159,7 @@ func (builder *buildInfoBuilder) getImageLayersFromArtifactory() (searchResults 
 	}
 
 	// Assume reverse proxy - this time with 'library' as part of the path.
-	searchResults, err = searchImageLayers(builder, path.Join(builder.repository, "library", imagePath, "*"))
+	searchResults, err = searchImageLayers(builder, path.Join(builder.getSearchableRepo(), "library", imagePath, "*"))
 	if err != nil || searchResults != nil {
 		return searchResults, err
 	}
@@ -157,7 +176,7 @@ func (builder *buildInfoBuilder) getImageLayersFromArtifactory() (searchResults 
 
 func (builder *buildInfoBuilder) buildReverseProxyPathWithLibrary() string {
 	endOfRepoNameIndex := strings.Index(builder.image.Path()[1:], "/")
-	return path.Join(builder.repository, "library", builder.image.Path()[endOfRepoNameIndex+1:])
+	return path.Join(builder.getSearchableRepo(), "library", builder.image.Path()[endOfRepoNameIndex+1:])
 }
 
 func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDependency buildinfo.Dependency, imageManifest *manifest, searchResults map[string]utils.ResultItem) error {
@@ -225,9 +244,9 @@ func (builder *buildInfoBuilder) handleMissingLayer(layerMediaType, layerFileNam
 	return errorutils.CheckError(errors.New("Could not find layer: " + layerFileName + " in Artifactory"))
 }
 
-// Set build properties on docker image layers in Artifactory.
+// Set build properties on image layers in Artifactory.
 func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
-	props, err := buildutils.CreateBuildProperties(builder.buildName, builder.buildNumber)
+	props, err := artutils.CreateBuildProperties(builder.buildName, builder.buildNumber)
 	if err != nil {
 		return 0, err
 	}
@@ -243,7 +262,6 @@ func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
 func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	writer, err := content.NewContentWriter("results", true, false)
 	if err != nil {
-		log.Error("Fail to create new content writer for docker layer")
 		return
 	}
 	defer func() {
@@ -256,13 +274,13 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	return
 }
 
-// Create docker build info
+// Create container build info
 func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.BuildInfo, error) {
 	imageProperties := map[string]string{}
 	imageProperties["docker.image.id"] = builder.imageId
 	imageProperties["docker.image.tag"] = builder.image.Tag()
 
-	parentId, err := builder.image.ParentId()
+	parentId, err := builder.containerManager.ParentId(builder.image)
 	if err != nil {
 		return nil, err
 	}
@@ -290,24 +308,15 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 // dependency - manifest as buildinfo.Dependency object.
 func getManifest(imageId string, searchResults map[string]utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (imageManifest *manifest, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
 	item := searchResults["manifest.json"]
-	ioReaderCloser, err := serviceManager.ReadRemoteFile(item.GetItemRelativePath())
-	if err != nil {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
-	defer ioReaderCloser.Close()
-	content, err := ioutil.ReadAll(ioReaderCloser)
-	if err != nil {
+	imageManifest = new(manifest)
+
+	if err := artutils.RemoteUnmarshal(serviceManager, item.GetItemRelativePath(), &imageManifest); err != nil {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
 	}
 
-	imageManifest = new(manifest)
-	err = json.Unmarshal(content, &imageManifest)
-	if errorutils.CheckError(err) != nil {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
 	// Remove duplicate layers.
-	// Docker manifest may hold 'empty layers', as a result, docker promote will fail to promote the same layer more than once.
-	imageManifest.Layers = removeDuplicateDockerLayers(imageManifest.Layers)
+	// Manifest may hold 'empty layers', as a result, promotion will fail to promote the same layer more than once.
+	imageManifest.Layers = removeDuplicateLayers(imageManifest.Layers)
 	// Check that the manifest ID is the right one.
 	if imageManifest.Config.Digest != imageId {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, errorutils.CheckError(errors.New("Found incorrect manifest.json file, expecting image ID: " + imageId))
@@ -325,22 +334,11 @@ func getManifest(imageId string, searchResults map[string]utils.ResultItem, serv
 // dependency - configuration layer as buildinfo.Dependency object.
 func getConfigLayer(imageId string, searchResults map[string]utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (configurationLayer *configLayer, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
 	item := searchResults[digestToLayer(imageId)]
-	ioReaderCloser, err := serviceManager.ReadRemoteFile(item.GetItemRelativePath())
-	if err != nil {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
-	defer ioReaderCloser.Close()
-	content, err := ioutil.ReadAll(ioReaderCloser)
-	if err != nil {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
-
 	configurationLayer = new(configLayer)
-	err = json.Unmarshal(content, &configurationLayer)
-	if err != nil {
+	if err := artutils.RemoteUnmarshal(serviceManager, item.GetItemRelativePath(), &configurationLayer); err != nil {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
 
+	}
 	artifact = buildinfo.Artifact{Name: digestToLayer(imageId), Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
 	dependency = buildinfo.Dependency{Id: digestToLayer(imageId), Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
 	return
@@ -358,35 +356,41 @@ func searchImageLayers(builder *buildInfoBuilder, imagePathPattern string) (map[
 		// In case of a fat-manifest, Artifactory will create two folders.
 		// One folder named as the image tag, which contains the fat manifest.
 		// The second folder, named as image's manifest digest, contains the image layers and the image's manifest.
-		if _, ok := resultMap["list.manifest.json"]; ok {
-			v, err := builder.image.Manifest()
-			if err != nil {
-				log.Error("Fail to run docker inspect " + builder.image.Tag() + " \nError: " + err.Error())
+		if searchResult, ok := resultMap["list.manifest.json"]; ok {
+			var fatManifest FatManifest
+			// incase of remote repo, override the cache repo
+			if builder.repositoryDetails.isRemote {
+				searchResult.Repo = builder.repositoryDetails.key
+			}
+			if err := artutils.RemoteUnmarshal(builder.serviceManager, searchResult.GetItemRelativePath(), &fatManifest); err != nil {
 				return nil, err
 			}
-			var listManifest []Manifest
-			err = json.Unmarshal([]byte(v), &listManifest)
+			imageOs, imageArch, err := builder.containerManager.ImageCompatibility(builder.image)
 			if err != nil {
-				log.Error("json.Unmarshal failed with " + err.Error() + "\n" + v)
 				return nil, err
 			}
-			result := ""
-			for _, manifest := range listManifest {
-				if *manifest.SchemaV2Manifest.Config.Digest == builder.imageId {
-					result = *manifest.Descriptor.Digest
-					break
-				}
-			}
-			if result != "" {
-				// Remove the tag from the pattern, and place the manifest digest instead.
+			digest := searchManifestDigest(imageOs, imageArch, fatManifest.Manifests)
+			if digest != "" {
+				// Remove tag from pattern, place the manifest digest instead.
 				imagePathPattern = strings.Replace(imagePathPattern, "/*", "", 1)
-				imagePathPattern = path.Join(imagePathPattern[:strings.LastIndex(imagePathPattern, "/")], strings.Replace(result, ":", "__", 1), "*")
+				imagePathPattern = path.Join(imagePathPattern[:strings.LastIndex(imagePathPattern, "/")], strings.Replace(digest, ":", "__", 1), "*")
 				return searchImageHandler(imagePathPattern, builder)
 			}
 		}
 		return nil, nil
 	}
 	return resultMap, nil
+}
+
+// Return manifest digest from fat-manifest accoring to os and arch.
+func searchManifestDigest(imageOs, imageArch string, manifestList []ManifestDetails) (digest string) {
+	for _, manifest := range manifestList {
+		if manifest.Platform.Os == imageOs && manifest.Platform.Architecture == imageArch {
+			digest = manifest.Digest
+			break
+		}
+	}
+	return
 }
 
 func searchImageHandler(imagePathPattern string, builder *buildInfoBuilder) (map[string]utils.ResultItem, error) {
@@ -443,7 +447,7 @@ func (configLayer *configLayer) getNumberOfDependentLayers() int {
 	return layersNum
 }
 
-func removeDuplicateDockerLayers(imageMLayers []layer) []layer {
+func removeDuplicateLayers(imageMLayers []layer) []layer {
 	res := imageMLayers[:0]
 	// Use map to record duplicates as we find them.
 	encountered := map[string]bool{}
@@ -456,20 +460,20 @@ func removeDuplicateDockerLayers(imageMLayers []layer) []layer {
 	return res
 }
 
-// When a client tries to pull a docker image from a remote repository in Artifactory and the client has some the layers cached locally on the disk,
+// When a client tries to pull a image from a remote repository in Artifactory and the client has some the layers cached locally on the disk,
 // then Artifactory will not download these layers into the remote repository cache. Instead, it will mark the layer artifacts with .marker suffix files in the remote cache.
 // This function download all the marker layers into the remote cache repository.
 func downloadMarkerLayersToRemoteCache(resultMap map[string]utils.ResultItem, builder *buildInfoBuilder) (int, error) {
-	if !strings.HasSuffix(builder.repository, "-cache") || len(resultMap) == 0 {
+	if !builder.repositoryDetails.isRemote || len(resultMap) == 0 {
 		return 0, nil
 	}
 	totalDownloaded := 0
-	remoteRepo := strings.TrimSuffix(builder.repository, "-cache")
-	imageName := getDockerImageName(builder.image.Tag())
+	remoteRepo := builder.repositoryDetails.key
+	imageName := getImageName(builder.image.Tag())
 	clientDetails := builder.serviceManager.GetConfig().GetServiceDetails().CreateHttpClientDetails()
 	// Search for marker layers
 	for _, layerData := range resultMap {
-		if strings.HasSuffix(layerData.Name, dockerMarkerLayerSuffix) {
+		if strings.HasSuffix(layerData.Name, markerLayerSuffix) {
 			log.Debug(fmt.Sprintf("Downloading %s layer into remote repository cache...", layerData.Name))
 			baseUrl := builder.serviceManager.GetConfig().GetServiceDetails().GetUrl()
 			endpoint := "api/docker/" + remoteRepo + "/v2/" + imageName + "/blobs/" + toNoneMarkerLayer(layerData.Name)
@@ -486,7 +490,7 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]utils.ResultItem, bu
 	return totalDownloaded, nil
 }
 
-func getDockerImageName(image string) string {
+func getImageName(image string) string {
 	imageId, tag := strings.Index(image, "/"), strings.Index(image, ":")
 	if imageId == -1 || tag == -1 {
 		return ""
@@ -526,3 +530,13 @@ type layer struct {
 }
 
 type CommandType string
+
+// Override search results repository.
+func modifySearchResultRepo(repo string, searchResults map[string]utils.ResultItem) map[string]utils.ResultItem {
+	result := make(map[string]utils.ResultItem)
+	for key, value := range searchResults {
+		value.Repo = repo
+		result[key] = value
+	}
+	return result
+}

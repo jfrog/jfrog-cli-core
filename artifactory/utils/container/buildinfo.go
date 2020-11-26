@@ -105,21 +105,17 @@ func (builder *buildInfoBuilder) updateArtifactsAndDependencies() error {
 	if err != nil {
 		return err
 	}
-
 	manifest, manifestArtifact, manifestDependency, err := getManifest(builder.imageId, searchResults, builder.serviceManager)
 	if err != nil {
 		return err
 	}
-
 	configLayer, configLayerArtifact, configLayerDependency, err := getConfigLayer(builder.imageId, searchResults, builder.serviceManager)
 	if err != nil {
 		return err
 	}
-
 	if builder.commandType == Push {
 		return builder.handlePush(manifestArtifact, configLayerArtifact, manifest, configLayer, searchResults)
 	}
-
 	return builder.handlePull(manifestDependency, configLayerDependency, manifest, searchResults)
 }
 
@@ -183,7 +179,6 @@ func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDepen
 	// Add dependencies.
 	builder.dependencies = append(builder.dependencies, manifestDependency)
 	builder.dependencies = append(builder.dependencies, configLayerDependency)
-
 	// Add image layers as dependencies.
 	for i := 0; i < len(imageManifest.Layers); i++ {
 		layerFileName := digestToLayer(imageManifest.Layers[i].Digest)
@@ -240,7 +235,6 @@ func (builder *buildInfoBuilder) handleMissingLayer(layerMediaType, layerFileNam
 		log.Info(fmt.Sprintf("Foreign layer: %s is missing in Artifactory and therefore will not be added to the build-info.", layerFileName))
 		return nil
 	}
-
 	return errorutils.CheckError(errors.New("Could not find layer: " + layerFileName + " in Artifactory"))
 }
 
@@ -279,7 +273,6 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	imageProperties := map[string]string{}
 	imageProperties["docker.image.id"] = builder.imageId
 	imageProperties["docker.image.tag"] = builder.image.Tag()
-
 	parentId, err := builder.containerManager.ParentId(builder.image)
 	if err != nil {
 		return nil, err
@@ -287,7 +280,6 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	if parentId != "" {
 		imageProperties["docker.image.parent"] = parentId
 	}
-
 	if module == "" {
 		module = builder.image.Name()
 	}
@@ -309,11 +301,9 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 func getManifest(imageId string, searchResults map[string]utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (imageManifest *manifest, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
 	item := searchResults["manifest.json"]
 	imageManifest = new(manifest)
-
 	if err := artutils.RemoteUnmarshal(serviceManager, item.GetItemRelativePath(), &imageManifest); err != nil {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
 	}
-
 	// Remove duplicate layers.
 	// Manifest may hold 'empty layers', as a result, promotion will fail to promote the same layer more than once.
 	imageManifest.Layers = removeDuplicateLayers(imageManifest.Layers)
@@ -321,7 +311,6 @@ func getManifest(imageId string, searchResults map[string]utils.ResultItem, serv
 	if imageManifest.Config.Digest != imageId {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, errorutils.CheckError(errors.New("Found incorrect manifest.json file, expecting image ID: " + imageId))
 	}
-
 	artifact = buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
 	dependency = buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
 	return
@@ -350,7 +339,6 @@ func searchImageLayers(builder *buildInfoBuilder, imagePathPattern string) (map[
 	if err != nil {
 		return nil, err
 	}
-
 	// Validate image ID layer exists.
 	if _, ok := resultMap[digestToLayer(builder.imageId)]; !ok {
 		// In case of a fat-manifest, Artifactory will create two folders.
@@ -434,11 +422,9 @@ func (configLayer *configLayer) getNumberOfDependentLayers() int {
 		if newImageLayers {
 			layersNum--
 		}
-
 		if !newImageLayers && configLayer.History[i].EmptyLayer {
 			layersNum--
 		}
-
 		createdBy := configLayer.History[i].CreatedBy
 		if strings.Contains(createdBy, "ENTRYPOINT") || strings.Contains(createdBy, "MAINTAINER") {
 			newImageLayers = false

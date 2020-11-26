@@ -229,7 +229,6 @@ func ResolveRegistryFromTag(imageTag string) (string, error) {
 		err := errorutils.CheckError(errors.New("Invalid image tag received for pushing to Artifactory - tag does not include a slash."))
 		return "", err
 	}
-
 	indexOfSecondSlash := strings.Index(imageTag[indexOfFirstSlash+1:], "/")
 	// Reverse proxy Artifactory
 	if indexOfSecondSlash < 0 {
@@ -300,7 +299,6 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	if err != nil {
 		return err
 	}
-
 	username := config.ArtifactoryDetails.User
 	password := config.ArtifactoryDetails.Password
 	// If access-token exists, perform login with it.
@@ -312,22 +310,18 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 		}
 		password = config.ArtifactoryDetails.AccessToken
 	}
-
 	// Perform login.
 	cmd := &LoginCmd{ContainerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
 	err = gofrogcmd.RunCmd(cmd)
-
 	if exitCode := coreutils.GetExitCode(err, 0, 0, false); exitCode == coreutils.ExitCodeNoError {
 		// Login succeeded
 		return nil
 	}
 	log.Debug(containerManager.String()+" login while assuming proxy-less failed:", err)
-
 	indexOfSlash := strings.Index(imageRegistry, "/")
 	if indexOfSlash < 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())))
 	}
-
 	cmd = &LoginCmd{ContainerRegistry: imageRegistry[:indexOfSlash], Username: config.ArtifactoryDetails.User, Password: config.ArtifactoryDetails.Password}
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
@@ -335,7 +329,6 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage,
 			containerManager.String(), fmt.Sprintf("%s, %s", imageRegistry, imageRegistry[:indexOfSlash]), containerManager.String()) + " " + err.Error()))
 	}
-
 	// Login succeeded
 	return nil
 }

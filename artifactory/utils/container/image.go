@@ -18,7 +18,6 @@ func (image *Image) Tag() string {
 func (image *Image) Path() string {
 	indexOfFirstSlash := strings.Index(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
-
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfFirstSlash {
 		return path.Join(image.tag[indexOfFirstSlash:], "latest")
 	}
@@ -29,7 +28,6 @@ func (image *Image) Path() string {
 func (image *Image) Name() string {
 	indexOfLastSlash := strings.LastIndex(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
-
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfLastSlash {
 		return image.tag[indexOfLastSlash+1:] + ":latest"
 	}

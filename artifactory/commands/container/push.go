@@ -41,7 +41,6 @@ func (pc *PushCommand) Run() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-
 	if !pc.skipLogin {
 		loginConfig := &container.ContainerManagerLoginConfig{ArtifactoryDetails: rtDetails}
 		err = container.ContainerManagerLogin(pc.imageTag, loginConfig, pc.containerManagerType)
@@ -49,7 +48,6 @@ func (pc *PushCommand) Run() error {
 			return err
 		}
 	}
-
 	// Perform push
 	if strings.LastIndex(pc.imageTag, ":") == -1 {
 		pc.imageTag = pc.imageTag + ":latest"
@@ -60,21 +58,17 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
 	// Return if no build name and number was provided
 	if pc.buildConfiguration.BuildName == "" || pc.buildConfiguration.BuildNumber == "" {
 		return nil
 	}
-
 	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber); err != nil {
 		return err
 	}
-
 	serviceManager, err := utils.CreateServiceManagerWithThreads(rtDetails, false, pc.threads)
 	if err != nil {
 		return err
 	}
-
 	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, serviceManager, container.Push, cm)
 	if err != nil {
 		return err

@@ -26,13 +26,11 @@ func (pc *PullCommand) Run() error {
 			return err
 		}
 	}
-
 	// Perform login
 	rtDetails, err := pc.RtDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-
 	if !pc.skipLogin {
 		loginConfig := &container.ContainerManagerLoginConfig{ArtifactoryDetails: rtDetails}
 		err = container.ContainerManagerLogin(pc.imageTag, loginConfig, pc.containerManagerType)
@@ -40,7 +38,6 @@ func (pc *PullCommand) Run() error {
 			return err
 		}
 	}
-
 	// Perform pull
 	if strings.LastIndex(pc.imageTag, ":") == -1 {
 		pc.imageTag = pc.imageTag + ":latest"
@@ -51,23 +48,19 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
 	buildName := pc.BuildConfiguration().BuildName
 	buildNumber := pc.BuildConfiguration().BuildNumber
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {
 		return nil
 	}
-
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
 		return err
 	}
-
 	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
 	if err != nil {
 		return err
 	}
-
 	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err

@@ -9,8 +9,8 @@ import (
 )
 
 // Download and unmarshal a file from artifactory.
-func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, url string, loadTarget interface{}) (err error) {
-	ioReaderCloser, err := serviceManager.ReadRemoteFile(url)
+func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remoteFileUrl string, loadTarget interface{}) (err error) {
+	ioReaderCloser, err := serviceManager.ReadRemoteFile(remoteFileUrl)
 	if err != nil {
 		return
 	}

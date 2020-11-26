@@ -370,7 +370,7 @@ func searchImageLayers(builder *buildInfoBuilder, imagePathPattern string) (map[
 	return resultMap, nil
 }
 
-// Return manifest digest from fat-manifest accoring to os and arch.
+// Search for manifest digest in fat manifest, which contains specific platforms.
 func searchManifestDigest(imageOs, imageArch string, manifestList []ManifestDetails) (digest string) {
 	for _, manifest := range manifestList {
 		if manifest.Platform.Os == imageOs && manifest.Platform.Architecture == imageArch {
@@ -446,7 +446,7 @@ func removeDuplicateLayers(imageMLayers []layer) []layer {
 	return res
 }
 
-// When a client tries to pull a image from a remote repository in Artifactory and the client has some the layers cached locally on the disk,
+// When a client tries to pull an image from a remote repository in Artifactory and the client has some the layers cached locally on the disk,
 // then Artifactory will not download these layers into the remote repository cache. Instead, it will mark the layer artifacts with .marker suffix files in the remote cache.
 // This function download all the marker layers into the remote cache repository.
 func downloadMarkerLayersToRemoteCache(resultMap map[string]utils.ResultItem, builder *buildInfoBuilder) (int, error) {

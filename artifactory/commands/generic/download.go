@@ -9,7 +9,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -49,6 +48,10 @@ func (dc *DownloadCommand) SetProgress(progress ioUtils.Progress) {
 	dc.progress = progress
 }
 
+func (dc *DownloadCommand) ShouldPrompt() bool {
+	return !dc.DryRun() && dc.SyncDeletesPath() != "" && !dc.Quiet()
+}
+
 func (dc *DownloadCommand) CommandName() string {
 	return "rt_download"
 }
@@ -58,11 +61,6 @@ func (dc *DownloadCommand) Run() error {
 }
 
 func (dc *DownloadCommand) download() error {
-	if dc.SyncDeletesPath() != "" && !dc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some files in your local file system. Are you sure you want to continue?\n"+
-		"You can avoid this confirmation message by adding --quiet to the command.", false) {
-		return nil
-	}
-
 	// Create Service Manager:
 	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progress)
 	if err != nil {

@@ -1,9 +1,7 @@
 package generic
 
 import (
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -149,16 +147,11 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if isCollectBuildInfo {
-		// Unmarshal all info of the downloaded files from the results file reader
-		file, err := os.Open(resultsReader.GetFilePath())
+		err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
 		if err != nil {
-			return errorutils.CheckError(err)
+			return err
 		}
-		byteValue, _ := ioutil.ReadAll(file)
-		file.Close()
-		var downloaded downlodedBuildInfo
-		err = json.Unmarshal(byteValue, &downloaded)
-		buildDependencies := convertFileInfoToBuildDependencies(downloaded.FilesInfo)
+		buildDependencies := convertFileInfoToBuildDependencies(resultBuildInfo.FilesInfo)
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
 			partial.ModuleId = dc.buildConfiguration.Module
@@ -292,14 +285,6 @@ func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 
 		return errorutils.CheckError(err)
 	}
-}
-
-type downlodedBuildInfo struct {
-	FilesInfo []clientutils.FileInfo `json:"results,omitempty"`
-}
-
-type downlodedInfo struct {
-	DownlodedFiles []localPath `json:"results,omitempty"`
 }
 
 type localPath struct {

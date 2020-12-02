@@ -8,13 +8,14 @@ type App struct {
 }
 
 type Command struct {
-	Name        string
-	Description string
-	Aliases     []string
-	Arguments   []Argument
-	Flags       []Flag
-	EnvVars     []EnvVar
-	Action      ActionFunc
+	Name            string
+	Description     string
+	Aliases         []string
+	Arguments       []Argument
+	Flags           []Flag
+	EnvVars         []EnvVar
+	Action          ActionFunc
+	SkipFlagParsing bool
 }
 
 type PluginSignature struct {

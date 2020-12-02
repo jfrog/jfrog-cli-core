@@ -274,6 +274,7 @@ func (config *BuildAddGitCommand) getLatestVcsRevision() (string, error) {
 	return lastVcsRevision, nil
 }
 
+// Returns build info, or empty build info struct if not found.
 func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfiguration) (*buildinfo.BuildInfo, error) {
 	// Create services manager to get build-info from Artifactory.
 	sm, err := utils.CreateServiceManager(issuesConfig.ArtDetails, false)
@@ -283,12 +284,15 @@ func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfigu
 
 	// Get latest build-info from Artifactory.
 	buildInfoParams := services.BuildInfoParams{BuildName: config.buildConfiguration.BuildName, BuildNumber: "LATEST"}
-	buildInfo, err := sm.GetBuildInfo(buildInfoParams)
+	publishedBuildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return nil, err
 	}
+	if !found {
+		return &buildinfo.BuildInfo{}, nil
+	}
 
-	return buildInfo, nil
+	return &publishedBuildInfo.BuildInfo, nil
 }
 
 func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath string) (err error) {

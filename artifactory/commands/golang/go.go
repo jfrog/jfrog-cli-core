@@ -1,7 +1,14 @@
 package golang
 
 import (
+	"errors"
+	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/gocmd"
+	executersutils "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
@@ -9,6 +16,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
+	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
@@ -82,11 +92,6 @@ func (gc *GoCommand) Run() error {
 			return err
 		}
 	}
-	// The version is not necessary because we are collecting the dependencies only.
-	goProject, err := project.Load("-")
-	if err != nil {
-		return err
-	}
 
 	resolverDetails, err := gc.resolverParams.RtDetails()
 	if err != nil {
@@ -122,6 +127,32 @@ func (gc *GoCommand) Run() error {
 		return err
 	}
 	if isCollectBuildInfo {
+		tempDirPath := ""
+		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
+			if len(gc.goArg) < 2 {
+				// Package name was not supplied. Invalid go get commend
+				return errorutils.CheckError(errors.New("Invalid get command. Package name is missing"))
+			}
+			tempDirPath, err = fileutils.CreateTempDir()
+			if err != nil {
+				return err
+			}
+			// Cleanup the temp working directory at the end.
+			defer fileutils.RemoveTempDir(tempDirPath)
+			// Get Artifactory config in order to extract the package version.
+			rtDetails, err := resolverDetails.CreateArtAuthConfig()
+			if err != nil {
+				return err
+			}
+			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), rtDetails)
+			if err != nil {
+				return err
+			}
+		}
+		goProject, err := project.Load("-", tempDirPath)
+		if err != nil {
+			return err
+		}
 		includeInfoFiles, err := shouldIncludeInfoFiles(deployerServiceManager, resolverServiceManager)
 		if err != nil {
 			return err
@@ -138,6 +169,66 @@ func (gc *GoCommand) Run() error {
 	}
 
 	return err
+}
+
+// copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
+// The path to those chache files is retrived using the supplied package name and Artifactory details.
+func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) error {
+	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, rtDetails)
+	if err != nil {
+		return err
+	}
+	// Copy the entire content of the relevant Go pkg directory to the requested destination path.
+	err = fileutils.CopyDir(packageFilesPath, destPath, true, nil)
+	if err != nil {
+		return fmt.Errorf("Couldn't find suitable package files: %s", packageFilesPath)
+	}
+	return nil
+}
+
+// getPackageFilePathFromArtifactory returns a string that represents the package files chache path.
+// In most cases the path to those chache files is retrived using the supplied package name and Artifactory details.
+// However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
+func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
+	var version string
+	packageCachePath, err := executersutils.GetGoModCachePath()
+	if err != nil {
+		return
+	}
+	packageNameSplitted := strings.Split(packageName, "@")
+	name := packageNameSplitted[0]
+	// The case the user asks for a specifc version
+	if len(packageNameSplitted) == 2 && strings.HasPrefix(packageNameSplitted[1], "v") {
+		version = packageNameSplitted[1]
+	} else {
+		branchName := ""
+		// The case the user asks for a specifc branch
+		if len(packageNameSplitted) == 2 {
+			branchName = packageNameSplitted[1]
+		}
+		packageVersionRequest := buildPackageVersionRequest(name, branchName)
+		// Retrive the package version using Artifactory
+		version, err = executersutils.GetPackageVersion(rtTargetRepo, packageVersionRequest, rtDetails)
+		if err != nil {
+			return
+		}
+	}
+	return filepath.Join(packageCachePath, name+"@"+version), nil
+
+}
+
+// buildPackageVersionRequest returns a string representing the version request to Artifactory.
+// The resulted string is in the following format: "<Package Name>/@V/<Branch Name>.info".
+// If a branch name is not given, the branch name will be replaced with the "latest" keyword.
+// ("<Package Name>/@V/latest.info").
+func buildPackageVersionRequest(name, branchName string) string {
+	packageVersionRequest := path.Join(name, "@v")
+	if branchName != "" {
+		// A branch name was given by the user
+		return path.Join(packageVersionRequest, branchName+".info")
+	}
+	// No version was given to "go get" command, so the latest version should be requested
+	return path.Join(packageVersionRequest, "latest.info")
 }
 
 // Returns true/false if info files should be included in the build info.

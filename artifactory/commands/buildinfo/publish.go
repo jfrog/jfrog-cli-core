@@ -64,7 +64,8 @@ func (bpc *BuildPublishCommand) Run() error {
 		buildInfo.Append(v)
 	}
 
-	if err = servicesManager.PublishBuildInfo(buildInfo); err != nil {
+	project := utils.GetBuildProject(bpc.buildConfiguration.Project)
+	if err = servicesManager.PublishBuildInfo(buildInfo, project); err != nil {
 		return err
 	}
 

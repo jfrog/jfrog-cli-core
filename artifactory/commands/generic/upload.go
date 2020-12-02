@@ -2,10 +2,11 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -14,6 +15,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -114,7 +116,16 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Perform upload.
-	filesInfo, successCount, failCount, err := servicesManager.UploadFiles(uploadParamsArray...)
+	// In case of build-info collection or a detailed summary request, we use the upload service which provides results file reader,
+	// otherwise we use the upload service which provides only general counters.
+	var successCount, failCount int
+	var resultsReader *content.ContentReader = nil
+	if uc.DetailedSummary() || isCollectBuildInfo {
+		resultsReader, successCount, failCount, err = servicesManager.UploadFilesWithResultReader(uploadParamsArray...)
+		uc.result.SetReader(resultsReader)
+	} else {
+		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
+	}
 	if err != nil {
 		errorOccurred = true
 		log.Error(err)
@@ -122,6 +133,14 @@ func (uc *UploadCommand) upload() error {
 	result := uc.Result()
 	result.SetSuccessCount(successCount)
 	result.SetFailCount(failCount)
+	// If the 'details summary' was requested, then the reader should not be closed now.
+	// It will be closed after it will be used to generate the summary.
+	if resultsReader != nil && !uc.DetailedSummary() {
+		defer func() {
+			resultsReader.Close()
+			uc.result.SetReader(nil)
+		}()
+	}
 	if errorOccurred {
 		err = errors.New("Upload finished with errors, Please review the logs.")
 		return err
@@ -140,7 +159,11 @@ func (uc *UploadCommand) upload() error {
 		}
 		// Build Info
 		if isCollectBuildInfo {
-			buildArtifacts := convertFileInfoToBuildArtifacts(filesInfo)
+			err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
+			if err != nil {
+				return err
+			}
+			buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
 			populateFunc := func(partial *buildinfo.Partial) {
 				partial.Artifacts = buildArtifacts
 				partial.ModuleId = uc.buildConfiguration.Module

@@ -48,8 +48,8 @@ type goProject struct {
 }
 
 // Load go project.
-func Load(version string) (Go, error) {
-	goProject := &goProject{version: version}
+func Load(version, projectPath string) (Go, error) {
+	goProject := &goProject{version: version, projectPath: projectPath}
 	err := goProject.readModFile()
 	return goProject, err
 }
@@ -83,7 +83,7 @@ func (project *goProject) loadDependencies() ([]executers.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	modulesMap, err := cmd.GetDependenciesGraph()
+	modulesMap, err := cmd.GetDependenciesGraph(project.projectPath)
 	if err != nil {
 		return nil, err
 	}
@@ -239,15 +239,22 @@ func (project *goProject) getId() string {
 // Read go.mod file and add it as an artifact to the build info.
 func (project *goProject) readModFile() error {
 	var err error
-	project.projectPath, err = cmd.GetProjectRoot()
-	if err != nil {
-		return errorutils.CheckError(err)
+	if project.projectPath == "" {
+		project.projectPath, err = cmd.GetProjectRoot()
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	modFilePath := filepath.Join(project.projectPath, "go.mod")
+	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
+	if !modFileExists {
+		log.Info("Could not find go.mod in ", project.projectPath)
+		return nil
+	}
 	modFile, err := os.Open(modFilePath)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
 	defer modFile.Close()
 	content, err := ioutil.ReadAll(modFile)

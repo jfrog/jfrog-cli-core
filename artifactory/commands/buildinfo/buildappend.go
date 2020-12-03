@@ -1,6 +1,8 @@
 package buildinfo
 
 import (
+	"errors"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -35,27 +37,36 @@ func (bac *BuildAppendCommand) RtDetails() (*config.ArtifactoryDetails, error) {
 
 func (bac *BuildAppendCommand) Run() error {
 	log.Info("Running Build Append command...")
+	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber); err != nil {
+		return err
+	}
+
+	// Calculate build timestamp
 	timestamp, err := bac.getBuildTimestamp()
 	if err != nil {
 		return err
 	}
 
+	// Get checksum headers from the build info artifact
 	checksumDetails, err := bac.getChecksumDetails(timestamp)
 	if err != nil {
 		return err
 	}
-	// if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber); err != nil {
-	// 	return err
-	// }
 
 	log.Debug("Appending build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "to build info")
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.ModuleType = buildinfo.Build
 		partial.ModuleId = bac.buildNameToAppend + "/" + bac.buildNumberToAppend
-		partial.Checksum.Sha1 = checksumDetails.Sha1
-		partial.Checksum.Md5 = checksumDetails.Md5
+		partial.Checksum = &buildinfo.Checksum{
+			Sha1: checksumDetails.Sha1,
+			Md5:  checksumDetails.Md5,
+		}
 	}
-	return utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, populateFunc)
+	if err == nil {
+		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", bac.buildConfiguration.BuildName+"/"+bac.buildConfiguration.BuildNumber)
+	}
+	return err
 }
 
 func (bac *BuildAppendCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildAppendCommand {
@@ -78,6 +89,8 @@ func (bac *BuildAppendCommand) SetBuildNumberToAppend(buildNumber string) *Build
 	return bac
 }
 
+// Get build timestamp of the build to append. The build timestamp has to be converted to milliseconds from epoch.
+// For example, start time of: 2020-11-27T14:33:38.538+0200 should be converted to 1606480418538.
 func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	// Create services manager to get build-info from Artifactory.
 	sm, err := utils.CreateServiceManager(bac.rtDetails, false)
@@ -87,28 +100,44 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 
 	// Get published build-info from Artifactory.
 	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend}
-	buildInfo, err := sm.GetBuildInfo(buildInfoParams)
-	if buildInfo.Name == "" {
-		return 0, err
-	}
-	timestamp, err := time.Parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", buildInfo.Started)
+	buildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return 0, err
 	}
-	return timestamp.Unix(), err
+	if !found {
+		return 0, errorutils.CheckError(errors.New("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + " not found in Artifactory."))
+	}
+
+	buildTime, err := time.Parse("2006-01-02T15:04:05.999Z0700", buildInfo.BuildInfo.Started)
+	if err != nil {
+		return 0, err
+	}
+
+	// Convert from nanoseconds to milliseconds
+	timestamp := buildTime.UnixNano() / 1000000
+	log.Debug("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + ". Started: " + buildInfo.BuildInfo.Started + ". Calculated timestamp: " + strconv.FormatInt(timestamp, 10))
+
+	return timestamp, err
 }
 
-func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (*fileutils.ChecksumDetails, error) {
+// Download MD5 and SHA1 from the build info artifact.
+func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.ChecksumDetails, error) {
 	serviceDetails, err := bac.rtDetails.CreateArtAuthConfig()
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
-		return nil, err
+		return fileutils.ChecksumDetails{}, err
 	}
 
-	buildInfoPath := serviceDetails.GetUrl() + "/artifactory-build-info/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
-	details, _, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
+	buildInfoPath := serviceDetails.GetUrl() + "artifactory-build-info/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
+	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
-		return nil, errorutils.CheckError(err)
+		return fileutils.ChecksumDetails{}, errorutils.CheckError(err)
 	}
-	return &details.Checksum, nil
+	log.Debug("Artifactory response: ", resp.Status)
+	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
+	if errorutils.CheckError(err) != nil {
+		return fileutils.ChecksumDetails{}, err
+	}
+
+	return details.Checksum, nil
 }

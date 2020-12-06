@@ -21,7 +21,7 @@ const (
 	Pull                      CommandType = "pull"
 	Push                      CommandType = "push"
 	foreignLayerMediaType     string      = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
-	imageNotFoundErrorMessage string      = "Could not find docker image in Artifactory, expecting image ID: %s"
+	imageNotFoundErrorMessage string      = "Could not find docker image in Artifactory, expecting image tag: %s"
 	markerLayerSuffix         string      = ".marker"
 )
 
@@ -31,13 +31,11 @@ type Builder interface {
 }
 
 // Create instance of container build info builder.
-func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
-	var err error
-	builder := &buildInfoBuilder{}
+func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (err error) {
 	builder.repositoryDetails.key = repository
 	builder.repositoryDetails.isRemote, err = artutils.IsRemoteRepo(repository, serviceManager)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	builder.image = image
 	builder.buildName = buildName
@@ -45,7 +43,27 @@ func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber string
 	builder.serviceManager = serviceManager
 	builder.commandType = commandType
 	builder.containerManager = containerManager
-	return builder, nil
+	return nil
+}
+
+func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
+	builder := &buildInfoBuilder{}
+	var err error
+	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, serviceManager, commandType, containerManager); err != nil {
+		return nil, err
+	}
+	builder.imageId, err = builder.containerManager.Id(builder.image)
+	return builder, err
+}
+
+func NewKanikoBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager, manifestSha256 string) (Builder, error) {
+	builder := &buildInfoBuilder{}
+	var err error
+	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, serviceManager, commandType, containerManager); err != nil {
+		return nil, err
+	}
+	builder.manifestSha256 = manifestSha256
+	return builder, err
 }
 
 type buildInfoBuilder struct {
@@ -57,11 +75,12 @@ type buildInfoBuilder struct {
 	serviceManager    artifactory.ArtifactoryServicesManager
 
 	// internal fields
-	imageId      string
-	layers       []utils.ResultItem
-	artifacts    []buildinfo.Artifact
-	dependencies []buildinfo.Dependency
-	commandType  CommandType
+	imageId        string
+	manifestSha256 string
+	layers         []utils.ResultItem
+	artifacts      []buildinfo.Artifact
+	dependencies   []buildinfo.Dependency
+	commandType    CommandType
 }
 
 type RepositoryDetails struct {
@@ -71,23 +90,18 @@ type RepositoryDetails struct {
 
 // Create build info for container image.
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
-	var err error
-	builder.imageId, err = builder.containerManager.Id(builder.image)
-	if err != nil {
-		return nil, err
-	}
-	err = builder.updateArtifactsAndDependencies()
-	if err != nil {
-		return nil, err
-	}
-	// Set build properties only when pushing image.
-	if builder.commandType == Push {
-		_, err = builder.setBuildProperties()
-		if err != nil {
+	if err := builder.updateArtifactsAndDependencies(); err != nil {
+		log.Warn(`failed to collect build-info, couldn't find image "` + builder.image.tag + `" in Artifactory`)
+		if builder.containerManager.GetContainerManagerType() == Kaniko {
 			return nil, err
 		}
 	}
-
+	// Set build properties only when pushing image.
+	if builder.commandType == Push {
+		if _, err := builder.setBuildProperties(); err != nil {
+			return nil, err
+		}
+	}
 	return builder.createBuildInfo(module)
 }
 
@@ -98,76 +112,57 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 	return builder.repositoryDetails.key
 }
 
-// Search, validate and create artifacts and dependencies of container image.
+// Search, validate and create image's artifacts and dependencies.
 func (builder *buildInfoBuilder) updateArtifactsAndDependencies() error {
-	// Search for all image layers to get the local path inside Artifactory.
-	searchResults, err := builder.getImageLayersFromArtifactory()
+	// Search for image's manifest and layers.
+	manifestLayers, manifestContent, err := builder.getManifestAndLayersDetails()
 	if err != nil {
 		return err
 	}
-	manifest, manifestArtifact, manifestDependency, err := getManifest(builder.imageId, searchResults, builder.serviceManager)
-	if err != nil {
-		return err
-	}
-	configLayer, configLayerArtifact, configLayerDependency, err := getConfigLayer(builder.imageId, searchResults, builder.serviceManager)
+	log.Debug("found manifest.json, continue to collect build-info")
+	// Manifest may hold 'empty layers', as a result, promotion will fail to promote the same layer more than once.
+	manifestContent.Layers = removeDuplicateLayers(manifestContent.Layers)
+	manifestArtifact, manifestDependency := getManifestArt(manifestLayers), getManifestDep(manifestLayers)
+	configLayer, configLayerArtifact, configLayerDependency, err := getConfigLayer(builder.imageId, manifestLayers, builder.serviceManager)
 	if err != nil {
 		return err
 	}
 	if builder.commandType == Push {
-		return builder.handlePush(manifestArtifact, configLayerArtifact, manifest, configLayer, searchResults)
+		return builder.handlePush(manifestArtifact, configLayerArtifact, manifestContent, configLayer, manifestLayers)
 	}
-	return builder.handlePull(manifestDependency, configLayerDependency, manifest, searchResults)
+	return builder.handlePull(manifestDependency, configLayerDependency, manifestContent, manifestLayers)
 }
 
-// First we will try to get assuming using a reverse proxy (sub domain or port methods).
-// If fails, we will try the repository path (proxy-less).
-func (builder *buildInfoBuilder) getImageLayersFromArtifactory() (searchResults map[string]utils.ResultItem, err error) {
-	imagePath := builder.image.Path()
-
-	// Search results may include artifacts from the remote-cache repository and not the remote repository itself.
-	// When artifact is expired it cannot be downloaded from the remote-cache.
-	// To solve this, change back the search results' repository, to its origin remote/virtual.
-	defer func() {
-		searchResults = modifySearchResultRepo(builder.repositoryDetails.key, searchResults)
-	}()
-
-	// Search layers - assuming reverse proxy.
-	searchResults, err = searchImageLayers(builder, path.Join(builder.getSearchableRepo(), imagePath, "*"))
-	if err != nil || searchResults != nil {
-		return searchResults, err
+// Return all the search patterns in which manifest can be found.
+func getManifestPaths(imagePath, repo string, commandType CommandType) []string {
+	// pattern 1: reverse proxy e.g. ecosysjfrog-docker-local.jfrog.io.
+	paths := []string{path.Join(repo, imagePath, "*")}
+	// pattern 2: proxy-less e.g. orgab.jfrog.team/docker-local.
+	endOfRepoNameIndex := strings.Index(imagePath[1:], "/")
+	proxylessTag := imagePath[endOfRepoNameIndex+1:]
+	paths = append(paths, path.Join(repo, proxylessTag, "*"))
+	// If image path includes more than 3 slashes, Artifactory doesn't store this image under 'library', thus we should not look further.
+	if commandType != Push && strings.Count(imagePath, "/") <= 3 {
+		// pattern 3: reverse proxy - this time with 'library' as part of the path.
+		paths = append(paths, path.Join(repo, "library", imagePath, "*"))
+		// pattern 4: Assume proxy-less - this time with 'library' as part of the path.
+		paths = append(paths, path.Join(repo, "library", proxylessTag, "*"))
 	}
+	return paths
+}
 
-	// Search layers - assuming proxy-less (repository path).
-	// Need to remove the "/" from the image path.
-	searchResults, err = searchImageLayers(builder, path.Join(imagePath[1:], "*"))
-	if err != nil || searchResults != nil {
-		return searchResults, err
+// Search for image manifest and layers in Artifactory.
+func (builder *buildInfoBuilder) getManifestAndLayersDetails() (layers map[string]*utils.ResultItem, manifestContent *manifest, err error) {
+	manifestPathsCandidates := getManifestPaths(builder.image.Path(), builder.getSearchableRepo(), builder.commandType)
+	log.Debug("start searching for image manifest.json")
+	for _, path := range manifestPathsCandidates {
+		log.Debug(`searching in:"` + path + `"`)
+		layers, manifestContent, err = searchManifestAndLayersDetails(builder, path)
+		if err != nil || manifestContent != nil {
+			return layers, manifestContent, err
+		}
 	}
-
-	if builder.commandType == Push {
-		return nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.imageId)))
-	}
-
-	// If image path includes more than 3 slashes, Artifactory doesn't store this image under 'library',
-	// thus we should not look further.
-	if strings.Count(imagePath, "/") > 3 {
-		return nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.imageId)))
-	}
-
-	// Assume reverse proxy - this time with 'library' as part of the path.
-	searchResults, err = searchImageLayers(builder, path.Join(builder.getSearchableRepo(), "library", imagePath, "*"))
-	if err != nil || searchResults != nil {
-		return searchResults, err
-	}
-
-	// Assume proxy-less - this time with 'library' as part of the path.
-	searchResults, err = searchImageLayers(builder, path.Join(builder.buildReverseProxyPathWithLibrary(), "*"))
-	if err != nil || searchResults != nil {
-		return searchResults, err
-	}
-
-	// Image layers not found.
-	return nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.imageId)))
+	return nil, nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.image.tag)))
 }
 
 func (builder *buildInfoBuilder) buildReverseProxyPathWithLibrary() string {
@@ -175,7 +170,7 @@ func (builder *buildInfoBuilder) buildReverseProxyPathWithLibrary() string {
 	return path.Join(builder.getSearchableRepo(), "library", builder.image.Path()[endOfRepoNameIndex+1:])
 }
 
-func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDependency buildinfo.Dependency, imageManifest *manifest, searchResults map[string]utils.ResultItem) error {
+func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDependency buildinfo.Dependency, imageManifest *manifest, searchResults map[string]*utils.ResultItem) error {
 	// Add dependencies.
 	builder.dependencies = append(builder.dependencies, manifestDependency)
 	builder.dependencies = append(builder.dependencies, configLayerDependency)
@@ -184,28 +179,24 @@ func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDepen
 		layerFileName := digestToLayer(imageManifest.Layers[i].Digest)
 		item, layerExists := searchResults[layerFileName]
 		if !layerExists {
-			// Check if layer marker exists in Artifactory.
-			item, layerExists = searchResults[layerFileName+".marker"]
-			if !layerExists {
-				err := builder.handleMissingLayer(imageManifest.Layers[i].MediaType, layerFileName)
-				if err != nil {
-					return err
-				}
-				continue
+			err := builder.handleMissingLayer(imageManifest.Layers[i].MediaType, layerFileName)
+			if err != nil {
+				return err
 			}
+			continue
 		}
 		builder.dependencies = append(builder.dependencies, item.ToDependency())
 	}
 	return nil
 }
 
-func (builder *buildInfoBuilder) handlePush(manifestArtifact, configLayerArtifact buildinfo.Artifact, imageManifest *manifest, configurationLayer *configLayer, searchResults map[string]utils.ResultItem) error {
-	// Add artifacts
+func (builder *buildInfoBuilder) handlePush(manifestArtifact, configLayerArtifact buildinfo.Artifact, imageManifest *manifest, configurationLayer *configLayer, searchResults map[string]*utils.ResultItem) error {
+	// Add artifacts.
 	builder.artifacts = append(builder.artifacts, manifestArtifact)
 	builder.artifacts = append(builder.artifacts, configLayerArtifact)
-	// Add layers
-	builder.layers = append(builder.layers, searchResults["manifest.json"])
-	builder.layers = append(builder.layers, searchResults[digestToLayer(builder.imageId)])
+	// Add layers.
+	builder.layers = append(builder.layers, *searchResults["manifest.json"])
+	builder.layers = append(builder.layers, *searchResults[digestToLayer(builder.imageId)])
 	totalLayers := len(imageManifest.Layers)
 	totalDependencies := configurationLayer.getNumberOfDependentLayers()
 	// Add image layers as artifacts and dependencies.
@@ -224,7 +215,7 @@ func (builder *buildInfoBuilder) handlePush(manifestArtifact, configLayerArtifac
 			builder.dependencies = append(builder.dependencies, item.ToDependency())
 		}
 		builder.artifacts = append(builder.artifacts, item.ToArtifact())
-		builder.layers = append(builder.layers, item)
+		builder.layers = append(builder.layers, *item)
 	}
 	return nil
 }
@@ -268,18 +259,11 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	return
 }
 
-// Create container build info
+// Create a container build info.
 func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.BuildInfo, error) {
 	imageProperties := map[string]string{}
 	imageProperties["docker.image.id"] = builder.imageId
 	imageProperties["docker.image.tag"] = builder.image.Tag()
-	parentId, err := builder.containerManager.ParentId(builder.image)
-	if err != nil {
-		return nil, err
-	}
-	if parentId != "" {
-		imageProperties["docker.image.parent"] = parentId
-	}
 	if module == "" {
 		module = builder.image.Name()
 	}
@@ -293,27 +277,16 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	return buildInfo, nil
 }
 
-// Download and read the manifest from Artifactory.
-// Returned values:
-// imageManifest - pointer to the manifest struct, retrieved from Artifactory.
-// artifact - manifest as buildinfo.Artifact object.
-// dependency - manifest as buildinfo.Dependency object.
-func getManifest(imageId string, searchResults map[string]utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (imageManifest *manifest, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
+// Return - manifest artifacts as buildinfo.Artifact object.
+func getManifestArt(searchResults map[string]*utils.ResultItem) (artifact buildinfo.Artifact) {
 	item := searchResults["manifest.json"]
-	imageManifest = new(manifest)
-	if err := artutils.RemoteUnmarshal(serviceManager, item.GetItemRelativePath(), &imageManifest); err != nil {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
-	}
-	// Remove duplicate layers.
-	// Manifest may hold 'empty layers', as a result, promotion will fail to promote the same layer more than once.
-	imageManifest.Layers = removeDuplicateLayers(imageManifest.Layers)
-	// Check that the manifest ID is the right one.
-	if imageManifest.Config.Digest != imageId {
-		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, errorutils.CheckError(errors.New("Found incorrect manifest.json file, expecting image ID: " + imageId))
-	}
-	artifact = buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
-	dependency = buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
-	return
+	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
+}
+
+// Return - manifest dependency as buildinfo.Dependency object.
+func getManifestDep(searchResults map[string]*utils.ResultItem) (dependency buildinfo.Dependency) {
+	item := searchResults["manifest.json"]
+	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
 }
 
 // Download and read the config layer from Artifactory.
@@ -321,7 +294,7 @@ func getManifest(imageId string, searchResults map[string]utils.ResultItem, serv
 // configurationLayer - pointer to the configuration layer struct, retrieved from Artifactory.
 // artifact - configuration layer as buildinfo.Artifact object.
 // dependency - configuration layer as buildinfo.Dependency object.
-func getConfigLayer(imageId string, searchResults map[string]utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (configurationLayer *configLayer, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
+func getConfigLayer(imageId string, searchResults map[string]*utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (configurationLayer *configLayer, artifact buildinfo.Artifact, dependency buildinfo.Dependency, err error) {
 	item := searchResults[digestToLayer(imageId)]
 	configurationLayer = new(configLayer)
 	if err := artutils.RemoteUnmarshal(serviceManager, item.GetItemRelativePath(), &configurationLayer); err != nil {
@@ -333,41 +306,89 @@ func getConfigLayer(imageId string, searchResults map[string]utils.ResultItem, s
 	return
 }
 
-// Search for image layers in Artifactory.
-func searchImageLayers(builder *buildInfoBuilder, imagePathPattern string) (map[string]utils.ResultItem, error) {
-	resultMap, err := searchImageHandler(imagePathPattern, builder)
-	if err != nil {
-		return nil, err
+func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern string) (resultMap map[string]*utils.ResultItem, manifestContent *manifest, err error) {
+	resultMap, err = searchHandler(imagePathPattern, builder)
+	if err != nil || len(resultMap) == 0 {
+		log.Debug("couldn't find manifest.json")
+		return
 	}
-	// Validate image ID layer exists.
-	if _, ok := resultMap[digestToLayer(builder.imageId)]; !ok {
+	// Verify manifest content.
+	if builder.containerManager.GetContainerManagerType() == Kaniko {
+		manifestContent = getManifestBySha256(resultMap, builder)
+	} else {
+		manifestContent = getManifestByDigest(resultMap, builder)
+	}
+	if manifestContent == nil {
 		// In case of a fat-manifest, Artifactory will create two folders.
 		// One folder named as the image tag, which contains the fat manifest.
 		// The second folder, named as image's manifest digest, contains the image layers and the image's manifest.
 		if searchResult, ok := resultMap["list.manifest.json"]; ok {
-			var fatManifest FatManifest
-			// incase of remote repo, override the cache repo
-			if builder.repositoryDetails.isRemote {
-				searchResult.Repo = builder.repositoryDetails.key
-			}
-			if err := artutils.RemoteUnmarshal(builder.serviceManager, searchResult.GetItemRelativePath(), &fatManifest); err != nil {
-				return nil, err
-			}
-			imageOs, imageArch, err := builder.containerManager.ImageCompatibility(builder.image)
-			if err != nil {
-				return nil, err
-			}
-			digest := searchManifestDigest(imageOs, imageArch, fatManifest.Manifests)
+			log.Debug("found list.manifest.json (fat-manifest), searching for the image manifest digest in list.manifest.json")
+			digest := getImageDigestFromFatManifest(searchResult, builder)
 			if digest != "" {
 				// Remove tag from pattern, place the manifest digest instead.
 				imagePathPattern = strings.Replace(imagePathPattern, "/*", "", 1)
 				imagePathPattern = path.Join(imagePathPattern[:strings.LastIndex(imagePathPattern, "/")], strings.Replace(digest, ":", "__", 1), "*")
-				return searchImageHandler(imagePathPattern, builder)
+				// Retry search.
+				return searchManifestAndLayersDetails(builder, imagePathPattern)
 			}
+			log.Debug("couldn't find maching digest in list.manifest.json")
 		}
-		return nil, nil
 	}
-	return resultMap, nil
+	return
+}
+
+func getImageDigestFromFatManifest(fatManifest *utils.ResultItem, builder *buildInfoBuilder) string {
+	// In case of remote repo, override the cache repo.
+	var fatManifestContent FatManifest
+	fatManifestPath := fatManifest.GetItemRelativePath()
+	if err := artutils.RemoteUnmarshal(builder.serviceManager, fatManifestPath, &fatManifestContent); err != nil {
+		log.Debug(`failed to unmarshal fat-manifest in:"` + fatManifestPath + `", error: ` + err.Error())
+		return ""
+	}
+	imageOs, imageArch, err := builder.containerManager.ImageCompatibility(builder.image)
+	if err != nil {
+		log.Debug(`failed to get image os and arch, error: ` + err.Error())
+		return ""
+	}
+	return searchManifestDigest(imageOs, imageArch, fatManifestContent.Manifests)
+}
+
+func getManifestBySha256(resultMap map[string]*utils.ResultItem, builder *buildInfoBuilder) (imageManifest *manifest) {
+	searchesult, ok := resultMap["manifest.json"]
+	if !ok {
+		return
+	}
+	// Verify manifest by sha256.
+	if searchesult.GetProperty("docker.manifest.digest") != builder.manifestSha256 {
+		log.Debug(`found incorrect manifest.json file, except sha256 "` + builder.manifestSha256 + `" found "` + searchesult.GetProperty("sha256"))
+		return
+	}
+	manifestPath := searchesult.GetItemRelativePath()
+	log.Debug(`found manifest.json with expected sha256: "` + builder.manifestSha256 + `" in "` + manifestPath + `"`)
+	if err := artutils.RemoteUnmarshal(builder.serviceManager, manifestPath, &imageManifest); err != nil {
+		log.Debug(`failed to unmarshal the following manifest.json "` + manifestPath + ` ", error: "` + err.Error() + `"`)
+		return
+	}
+	builder.imageId = imageManifest.Config.Digest
+	return
+}
+
+func getManifestByDigest(resultMap map[string]*utils.ResultItem, builder *buildInfoBuilder) (imageManifest *manifest) {
+	searchesult, ok := resultMap["manifest.json"]
+	if !ok {
+		return
+	}
+	if err := artutils.RemoteUnmarshal(builder.serviceManager, searchesult.GetItemRelativePath(), &imageManifest); err != nil {
+		log.Debug(`couldn't find manifest.json to download from path: "` + searchesult.GetItemRelativePath() + `" error: "` + err.Error() + `"`)
+		return
+	}
+	// Verify manifest by comparing config digest, which references to the image digest.
+	if imageManifest.Config.Digest != builder.imageId {
+		log.Debug(`"found incorrect manifest.json file, expecting image ID: except digest "` + builder.imageId + `" found "` + imageManifest.Config.Digest)
+		return nil
+	}
+	return
 }
 
 // Search for manifest digest in fat manifest, which contains specific platforms.
@@ -381,18 +402,29 @@ func searchManifestDigest(imageOs, imageArch string, manifestList []ManifestDeta
 	return
 }
 
-func searchImageHandler(imagePathPattern string, builder *buildInfoBuilder) (map[string]utils.ResultItem, error) {
-	resultMap, err := performSearch(imagePathPattern, builder.serviceManager)
+func searchHandler(imagePathPattern string, builder *buildInfoBuilder) (resultMap map[string]*utils.ResultItem, err error) {
+	resultMap, err = performSearch(imagePathPattern, builder.serviceManager)
 	if err != nil {
-		return resultMap, err
+		return
 	}
+	// Search results may include artifacts from the remote-cache repository and not the remote repository itself.
+	// When artifact is expired it cannot be downloaded from the remote-cache.
+	// To solve this, change back the search results' repository, to its origin remote/virtual.
+	if builder.repositoryDetails.isRemote {
+		defer func() {
+			resultMap = modifySearchResultRepo(builder.repositoryDetails.key, resultMap)
+		}()
+	}
+	// Validate there are no .marker layers.
 	if totalDownloaded, err := downloadMarkerLayersToRemoteCache(resultMap, builder); err != nil || totalDownloaded == 0 {
 		return resultMap, err
 	}
+	log.Debug("marker layers were found, updating search results")
 	return performSearch(imagePathPattern, builder.serviceManager)
 }
 
-func performSearch(imagePathPattern string, serviceManager artifactory.ArtifactoryServicesManager) (map[string]utils.ResultItem, error) {
+// return a map of: layer-digest -> layer-search-result
+func performSearch(imagePathPattern string, serviceManager artifactory.ArtifactoryServicesManager) (resultMap map[string]*utils.ResultItem, err error) {
 	searchParams := services.NewSearchParams()
 	searchParams.ArtifactoryCommonParams = &utils.ArtifactoryCommonParams{}
 	searchParams.Pattern = imagePathPattern
@@ -400,10 +432,14 @@ func performSearch(imagePathPattern string, serviceManager artifactory.Artifacto
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
-	resultMap := map[string]utils.ResultItem{}
+	defer func() {
+		if deferErr := reader.Close(); err == nil {
+			err = deferErr
+		}
+	}()
+	resultMap = map[string]*utils.ResultItem{}
 	for resultItem := new(utils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(utils.ResultItem) {
-		resultMap[resultItem.Name] = *resultItem
+		resultMap[resultItem.Name] = resultItem
 	}
 	return resultMap, reader.GetError()
 }
@@ -449,7 +485,7 @@ func removeDuplicateLayers(imageMLayers []layer) []layer {
 // When a client tries to pull an image from a remote repository in Artifactory and the client has some the layers cached locally on the disk,
 // then Artifactory will not download these layers into the remote repository cache. Instead, it will mark the layer artifacts with .marker suffix files in the remote cache.
 // This function download all the marker layers into the remote cache repository.
-func downloadMarkerLayersToRemoteCache(resultMap map[string]utils.ResultItem, builder *buildInfoBuilder) (int, error) {
+func downloadMarkerLayersToRemoteCache(resultMap map[string]*utils.ResultItem, builder *buildInfoBuilder) (int, error) {
 	if !builder.repositoryDetails.isRemote || len(resultMap) == 0 {
 		return 0, nil
 	}
@@ -477,7 +513,7 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]utils.ResultItem, bu
 }
 
 func getImageName(image string) string {
-	imageId, tag := strings.Index(image, "/"), strings.Index(image, ":")
+	imageId, tag := strings.LastIndex(image, "/"), strings.LastIndex(image, ":")
 	if imageId == -1 || tag == -1 {
 		return ""
 	}
@@ -518,8 +554,8 @@ type layer struct {
 type CommandType string
 
 // Override search results repository.
-func modifySearchResultRepo(repo string, searchResults map[string]utils.ResultItem) map[string]utils.ResultItem {
-	result := make(map[string]utils.ResultItem)
+func modifySearchResultRepo(repo string, searchResults map[string]*utils.ResultItem) map[string]*utils.ResultItem {
+	result := make(map[string]*utils.ResultItem)
 	for key, value := range searchResults {
 		value.Repo = repo
 		result[key] = value

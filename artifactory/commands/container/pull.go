@@ -38,8 +38,10 @@ func (pc *PullCommand) Run() error {
 			return err
 		}
 	}
-	// Perform pull
-	if strings.LastIndex(pc.imageTag, ":") == -1 {
+	// Perform pull.
+	// Skip port colon.
+	imagePath := pc.imageTag[strings.Index(pc.imageTag, "/"):]
+	if strings.LastIndex(imagePath, ":") == -1 {
 		pc.imageTag = pc.imageTag + ":latest"
 	}
 	cm := container.NewContainerManager(pc.containerManagerType)

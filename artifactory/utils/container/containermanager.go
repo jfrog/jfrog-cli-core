@@ -35,19 +35,20 @@ type ContainerManagerType int
 const (
 	Docker ContainerManagerType = iota
 	Podman
+	Kaniko
 )
 
 func (cmt ContainerManagerType) String() string {
-	return [...]string{"docker", "podman"}[cmt]
+	return [...]string{"docker", "podman", "kaniko"}[cmt]
 }
 
 // Container image
 type ContainerManager interface {
 	Push(image *Image) error
 	Id(image *Image) (string, error)
-	ParentId(image *Image) (string, error)
 	ImageCompatibility(image *Image) (string, string, error)
 	Pull(image *Image) error
+	GetContainerManagerType() ContainerManagerType
 }
 
 type containerManager struct {
@@ -71,13 +72,6 @@ func (containerManager *containerManager) Id(image *Image) (string, error) {
 	return content[:strings.Index(content, "\n")], err
 }
 
-// Get parent image ID
-func (containerManager *containerManager) ParentId(image *Image) (string, error) {
-	cmd := &getParentId{image: image, containerManager: containerManager.Type}
-	content, err := gofrogcmd.RunCmdOutput(cmd)
-	return content[:strings.Index(content, "\n")], err
-}
-
 // Pull image
 func (containerManager *containerManager) Pull(image *Image) error {
 	cmd := &pullCmd{image: image, containerManager: containerManager.Type}
@@ -97,6 +91,10 @@ func (containerManager *containerManager) ImageCompatibility(image *Image) (stri
 		return "", "", errorutils.CheckError(errors.New("couldn't find Image OS and architecture of image:" + image.tag))
 	}
 	return content[:firstSeparator], content[firstSeparator+1:], err
+}
+
+func (containerManager *containerManager) GetContainerManagerType() ContainerManagerType {
+	return containerManager.Type
 }
 
 func NewImage(tag string) *Image {
@@ -166,32 +164,6 @@ type ManifestDetails struct {
 type Platform struct {
 	Architecture string `json:"architecture"`
 	Os           string `json:"os"`
-}
-
-// Image get parent image id command
-type getParentId struct {
-	image            *Image
-	containerManager ContainerManagerType
-}
-
-func (getParentId *getParentId) GetCmd() *exec.Cmd {
-	var cmd []string
-	cmd = append(cmd, "inspect")
-	cmd = append(cmd, "--format", "{{.Parent}}")
-	cmd = append(cmd, getParentId.image.tag)
-	return exec.Command(getParentId.containerManager.String(), cmd[:]...)
-}
-
-func (getParentId *getParentId) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (getParentId *getParentId) GetStdWriter() io.WriteCloser {
-	return nil
-}
-
-func (getParentId *getParentId) GetErrWriter() io.WriteCloser {
-	return nil
 }
 
 // Get image system compatibility details

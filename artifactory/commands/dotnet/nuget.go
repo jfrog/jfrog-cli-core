@@ -10,19 +10,13 @@ import (
 )
 
 type NugetCommand struct {
-	configFilePath string
 	*DotnetCommand
 }
 
 func NewNugetCommand() *NugetCommand {
-	nugetCmd := NugetCommand{"", &DotnetCommand{}}
+	nugetCmd := NugetCommand{&DotnetCommand{}}
 	nugetCmd.SetToolchainType(dotnet.Nuget)
 	return &nugetCmd
-}
-
-func (nc *NugetCommand) SetConfigFilePath(configFilePath string) *NugetCommand {
-	nc.configFilePath = configFilePath
-	return nc
 }
 
 func (nc *NugetCommand) Run() error {

@@ -25,12 +25,13 @@ const SourceName = "JFrogCli"
 type DotnetCommand struct {
 	toolchainType      dotnet.ToolchainType
 	subCommand         string
-	argAndFlags        string
+	argAndFlags        []string
 	repoName           string
 	solutionPath       string
 	useNugetAddSource  bool
 	buildConfiguration *utils.BuildConfiguration
 	rtDetails          *config.ArtifactoryDetails
+	legacy			   bool
 }
 
 func (dc *DotnetCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DotnetCommand {
@@ -58,7 +59,7 @@ func (dc *DotnetCommand) SetRepoName(repoName string) *DotnetCommand {
 	return dc
 }
 
-func (dc *DotnetCommand) SetArgAndFlags(argAndFlags string) *DotnetCommand {
+func (dc *DotnetCommand) SetArgAndFlags(argAndFlags []string) *DotnetCommand {
 	dc.argAndFlags = argAndFlags
 	return dc
 }
@@ -126,12 +127,11 @@ func (dc *DotnetCommand) Exec() error {
 }
 
 func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {
-	argsAndFlags := strings.Split(dc.argAndFlags, " ")
-	cmdFirstArg := argsAndFlags[0]
 	// The path argument wasn't provided, sln file will be searched under working directory.
-	if len(cmdFirstArg) == 0 || strings.HasPrefix(cmdFirstArg, "-") {
+	if len(dc.argAndFlags) == 0 || strings.HasPrefix(dc.argAndFlags[0], "-") {
 		return "", nil
 	}
+	cmdFirstArg := dc.argAndFlags[0]
 	exist, err := fileutils.IsDirExists(cmdFirstArg, false)
 	if err != nil {
 		return "", err
@@ -335,6 +335,17 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
+	if dc.legacy {
+		return dc.createLegacyCmd(c)
+	}
+	if dc.subCommand != "" {
+		c.Command = append(c.Command, strings.Split(dc.subCommand, " ")...)
+	}
+	c.CommandFlags = dc.argAndFlags
+	return c, nil
+}
+
+func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
 	if dc.subCommand != "" {
 		subCommand, err := utils.ParseArgs(strings.Split(dc.subCommand, " "))
 		if err != nil {
@@ -342,10 +353,10 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 		}
 		c.Command = append(c.Command, subCommand...)
 	}
-
-	if dc.argAndFlags != "" {
-		c.CommandFlags, err = utils.ParseArgs(strings.Split(dc.argAndFlags, " "))
+	var err error
+	if len(dc.argAndFlags) > 0 {
+		c.CommandFlags, err = utils.ParseArgs(dc.argAndFlags)
 	}
-
 	return c, errorutils.CheckError(err)
 }
+

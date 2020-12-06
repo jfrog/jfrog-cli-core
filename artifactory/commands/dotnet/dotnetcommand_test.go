@@ -60,25 +60,25 @@ func TestUpdateSolutionPathAndGetFileName(t *testing.T) {
 	assert.NoError(t, err)
 	tests := []struct {
 		name                 string
-		flags                string
+		flags                []string
 		solutionPath         string
 		expectedSlnFile      string
 		expectedSolutionPath string
 	}{
-		{"emptyFlags", "", workingDir, "", workingDir},
-		{"justFlags", "-flag1 value1 -flag2 value2", workingDir, "", workingDir},
-		{"relFileArgRelPath1", filepath.Join("testdata", "slnDir", "sol.sln"), filepath.Join("rel", "path"), "sol.sln", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"relDirArgRelPath2", filepath.Join("testdata", "slnDir"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absFileArgRelPath1", filepath.Join(workingDir, "testdata", "slnDir", "sol.sln"), filepath.Join(".", "rel", "path"), "sol.sln", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"absDirArgRelPath2", filepath.Join(workingDir, "testdata", "slnDir") + " -flag value", filepath.Join(".", "rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"nonExistingFile", filepath.Join(".", "dir1", "sol.sln"), workingDir, "", workingDir},
-		{"nonExistingPath", filepath.Join(workingDir, "non", "existing", "path"), workingDir, "", workingDir},
-		{"relCsprojFile", filepath.Join("testdata", "slnDir", "proj.csproj"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"relVbprojFile", filepath.Join("testdata", "slnDir", "projTwo.vbproj"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absCsprojFile", filepath.Join(workingDir, "testdata", "slnDir", "proj.csproj"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"absVbprojFile", filepath.Join(workingDir, "testdata", "slnDir", "projTwo.vbproj"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"relPackagesConfigFile", filepath.Join("testdata", "slnDir", "packages.config"), filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absPackagesConfigFile", filepath.Join(workingDir, "testdata", "slnDir", "packages.config"), filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"emptyFlags", []string{}, workingDir, "", workingDir},
+		{"justFlags", []string{"-flag1", "value1", "-flag2", "value2"}, workingDir, "", workingDir},
+		{"relFileArgRelPath1", []string{filepath.Join("testdata", "slnDir", "sol.sln")}, filepath.Join("rel", "path"), "sol.sln", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"relDirArgRelPath2", []string{filepath.Join("testdata", "slnDir")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"absFileArgRelPath1", []string{filepath.Join(workingDir, "testdata", "slnDir", "sol.sln")}, filepath.Join(".", "rel", "path"), "sol.sln", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"absDirArgRelPath2", []string{filepath.Join(workingDir, "testdata", "slnDir"), "-flag", "value"}, filepath.Join(".", "rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"nonExistingFile", []string{filepath.Join(".", "dir1", "sol.sln")}, workingDir, "", workingDir},
+		{"nonExistingPath", []string{filepath.Join(workingDir, "non", "existing", "path")}, workingDir, "", workingDir},
+		{"relCsprojFile", []string{filepath.Join("testdata", "slnDir", "proj.csproj")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"relVbprojFile", []string{filepath.Join("testdata", "slnDir", "projTwo.vbproj")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"absCsprojFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "proj.csproj")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"absVbprojFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "projTwo.vbproj")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
+		{"relPackagesConfigFile", []string{filepath.Join("testdata", "slnDir", "packages.config")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
+		{"absPackagesConfigFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "packages.config")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

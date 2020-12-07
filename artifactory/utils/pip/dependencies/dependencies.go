@@ -3,91 +3,154 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"strings"
-
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io/ioutil"
+	"strings"
 )
 
-// Populate project's dependencies with checksums and file names.
-// If the dependency was downloaded in this pip-install execution, checksum will be fetched from Artifactory.
-// Otherwise, check if exists in cache.
-// Return dependency-names of all dependencies which its information could not be obtained.
-func AddDepsInfoAndReturnMissingDeps(dependenciesMap map[string]*buildinfo.Dependency, dependenciesCache *DependenciesCache, dependencyToFileMap map[string]string, servicesManager artifactory.ArtifactoryServicesManager, repository string) ([]string, error) {
-	var missingDeps []string
-	// Iterate dependencies map to update info.
-	for depName := range dependenciesMap {
-		// Get dependency info.
-		depFileName, depChecksum, err := getDependencyInfo(depName, repository, dependenciesCache, dependencyToFileMap, servicesManager)
+const aqlFilePart = `{"$and":[{` +
+	`"path":{"$match":"*"},` +
+	`"name":{"$match":"%s"}` +
+	`}]},`
+const aqlBulkSize = 50
+
+// Create project's 'buildinfo.Dependency' structs for all dependencies.
+// 'dependencyToFileMap' contains a mapping between each dependency (package-name) to its actual file (tar.gz, zip, whl etc).
+// If a dependency was downloaded in this pip-install execution, checksum will be fetched from Artifactory.
+// Otherwise, check if the information exists in the cache.
+// Return each package and its dependency struct, and a list of all the dependencies which their information could not be obtained.
+func GetDependencies(dependencyToFileMap map[string]string, dependenciesCache *DependenciesCache, servicesManager artifactory.ArtifactoryServicesManager, repository string) (dependenciesMap map[string]*buildinfo.Dependency, missingDeps []string, err error) {
+	dependenciesMap = make(map[string]*buildinfo.Dependency)
+	getFromArtifactoryMap := make(map[string]string)
+
+	for depName, depFileName := range dependencyToFileMap {
+		if depFileName != "" {
+			// Dependency downloaded from Artifactory.
+			getFromArtifactoryMap[depFileName] = depName
+			continue
+		}
+		// Dependency wasn't downloaded in this execution, check cache for dependency info.
+		if dependenciesCache != nil {
+			dep := dependenciesCache.GetDependency(depName)
+			if dep != nil {
+				// Dependency found in cache.
+				dependenciesMap[depName] = dep
+				continue
+			}
+		}
+		// Dependency wasn't downloaded from Artifactory nor found in cache.
+		missingDeps = append(missingDeps, depName)
+	}
+
+	missingDependenciesFromArtifactory, err := addDependenciesFromArtifactory(dependenciesMap, getFromArtifactoryMap, repository, servicesManager)
+	if err != nil {
+		return nil, nil, err
+	}
+	missingDeps = append(missingDeps, missingDependenciesFromArtifactory...)
+
+	return dependenciesMap, missingDeps, nil
+}
+
+// Get the checksums for the files in 'fileToPackageMap' from Artifactory.
+// Create a dependency struct for each file, and update 'dependenciesMap'.
+// Return the packages which couldn't be found in Artifactory.
+func addDependenciesFromArtifactory(dependenciesMap map[string]*buildinfo.Dependency, fileToPackageMap map[string]string,
+	repository string, servicesManager artifactory.ArtifactoryServicesManager) (missingDeps []string, err error) {
+	if len(fileToPackageMap) < 1 {
+		return
+	}
+
+	aqlQueries := createAqlQueries(fileToPackageMap, repository, aqlBulkSize)
+	queriesResults, err := getQueriesResults(aqlQueries, servicesManager)
+	if err != nil {
+		return
+	}
+	for _, result := range queriesResults {
+		dependency := createDependencyFromResult(result, fileToPackageMap)
+		if dependency != nil {
+			dependenciesMap[fileToPackageMap[result.Name]] = dependency
+		}
+	}
+
+	// Collect missing dependencies.
+	for fileName, packageName := range fileToPackageMap {
+		if _, ok := dependenciesMap[packageName]; !ok {
+			log.Debug(fmt.Sprintf("Failed getting checksums from Artifactory for file: '%s'", fileName))
+			missingDeps = append(missingDeps, packageName)
+		}
+	}
+
+	return
+}
+
+// Create a Dependency from the info received in 'result'.
+// A result from Artifactory contains the file-name and checksums.
+func createDependencyFromResult(result *results, fileToPackageMap map[string]string) *buildinfo.Dependency {
+	fileName := result.Name
+	if _, ok := fileToPackageMap[fileName]; !ok {
+		return nil
+	}
+	sha1 := result.Actual_sha1
+	md5 := result.Actual_md5
+	if sha1 == "" || md5 == "" {
+		return nil
+	}
+	fileType := ""
+	if i := strings.LastIndex(fileName, "."); i != -1 {
+		fileType = fileName[i+1:]
+	}
+	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", fileName, sha1, md5))
+	return &buildinfo.Dependency{Id: fileName, Checksum: &buildinfo.Checksum{Sha1: sha1, Md5: md5}, Type: fileType}
+}
+
+func createAqlQueries(fileToPackageMap map[string]string, repository string, bulkSize int) []string {
+	var aqlQueries []string
+	var querySb strings.Builder
+	filesCounter := 0
+	for fileName := range fileToPackageMap {
+		filesCounter++
+		querySb.WriteString(fmt.Sprintf(aqlFilePart, fileName))
+		if filesCounter == bulkSize {
+			aqlQueries = append(aqlQueries, serviceutils.CreateAqlQueryForPypi(repository, strings.TrimSuffix(querySb.String(), ",")))
+			filesCounter = 0
+			querySb.Reset()
+		}
+	}
+	if querySb.Len() > 0 {
+		aqlQueries = append(aqlQueries, serviceutils.CreateAqlQueryForPypi(repository, strings.TrimSuffix(querySb.String(), ",")))
+	}
+	return aqlQueries
+}
+
+func getQueriesResults(aqlQueries []string, servicesManager artifactory.ArtifactoryServicesManager) ([]*results, error) {
+	var results []*results
+	for _, query := range aqlQueries {
+		// Run query.
+		queryResult, err := runQuery(query, servicesManager)
 		if err != nil {
 			return nil, err
 		}
-
-		// Check if info not found.
-		if depFileName == "" || depChecksum == nil {
-			// Dependency either wasn't downloaded in this run nor stored in cache.
-			missingDeps = append(missingDeps, depName)
-
-			// dependenciesMapT should contain only dependencies with checksums.
-			delete(dependenciesMap, depName)
-
-			continue
+		// Append results.
+		if len(queryResult.Results) > 0 {
+			results = append(results, queryResult.Results...)
 		}
-		fileType := ""
-		// Update dependency info.
-		dependenciesMap[depName].Id = depFileName
-		if i := strings.LastIndex(depFileName, "."); i != -1 {
-			fileType = depFileName[i+1:]
-		}
-		dependenciesMap[depName].Type = fileType
-		dependenciesMap[depName].Checksum = depChecksum
 	}
-
-	return missingDeps, nil
+	return results, nil
 }
 
-// Get dependency information.
-// If dependency was downloaded in this pip-install execution, fetch info from Artifactory.
-// Otherwise, fetch info from cache.
-func getDependencyInfo(depName, repository string, dependenciesCache *DependenciesCache, dependencyToFileMap map[string]string, servicesManager artifactory.ArtifactoryServicesManager) (string, *buildinfo.Checksum, error) {
-	// Check if this dependency was updated during this pip-install execution, and we have its file-name.
-	// If updated - fetch checksum from Artifactory, regardless of what was previously stored in cache.
-	depFileName, ok := dependencyToFileMap[depName]
-	if ok && depFileName != "" {
-		checksum, err := getDependencyChecksumFromArtifactory(servicesManager, repository, depFileName)
-		return depFileName, checksum, err
-	}
-
-	// Check cache for dependency checksum.
-	if dependenciesCache != nil {
-		dep := dependenciesCache.GetDependency(depName)
-		if dep != nil {
-			// Checksum found in cache, return info
-			return dep.Id, dep.Checksum, nil
-		}
-	}
-
-	return "", nil, nil
-}
-
-// Fetch checksum for file from Artifactory.
-// If the file isn't found, or md5 or sha1 are missing, return nil.
-func getDependencyChecksumFromArtifactory(servicesManager artifactory.ArtifactoryServicesManager, repository, dependencyFile string) (*buildinfo.Checksum, error) {
-	log.Debug(fmt.Sprintf("Fetching checksums for: %s", dependencyFile))
-	repository, err := utils.GetRepoNameForDependenciesSearch(repository, servicesManager)
-	if err != nil {
-		return nil, err
-	}
-	stream, err := servicesManager.Aql(serviceutils.CreateAqlQueryForPypi(repository, dependencyFile))
+func runQuery(query string, servicesManager artifactory.ArtifactoryServicesManager) (*aqlResult, error) {
+	// Run query.
+	stream, err := servicesManager.Aql(query)
 	if err != nil {
 		return nil, err
 	}
 	defer stream.Close()
+
+	// Read results.
 	result, err := ioutil.ReadAll(stream)
 	if err != nil {
 		return nil, err
@@ -97,25 +160,7 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	if err = errorutils.CheckError(err); err != nil {
 		return nil, err
 	}
-	if len(parsedResult.Results) == 0 {
-		log.Debug(fmt.Sprintf("File: %s could not be found in repository: %s", dependencyFile, repository))
-		return nil, nil
-	}
-
-	// Verify checksum exist.
-	sha1 := parsedResult.Results[0].Actual_sha1
-	md5 := parsedResult.Results[0].Actual_md5
-	if sha1 == "" || md5 == "" {
-		// Missing checksum.
-		log.Debug(fmt.Sprintf("Missing checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
-		return nil, nil
-	}
-
-	// Update checksum.
-	checksum := &buildinfo.Checksum{Sha1: sha1, Md5: md5}
-	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
-
-	return checksum, nil
+	return parsedResult, nil
 }
 
 type aqlResult struct {
@@ -123,6 +168,7 @@ type aqlResult struct {
 }
 
 type results struct {
-	Actual_md5  string `json:"actual_md5,omitempty"`
 	Actual_sha1 string `json:"actual_sha1,omitempty"`
+	Actual_md5  string `json:"actual_md5,omitempty"`
+	Name        string `json:"name,omitempty"`
 }

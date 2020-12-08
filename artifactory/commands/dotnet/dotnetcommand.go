@@ -29,6 +29,7 @@ type DotnetCommand struct {
 	repoName           string
 	solutionPath       string
 	useNugetAddSource  bool
+	useNugetV2         bool
 	buildConfiguration *utils.BuildConfiguration
 	rtDetails          *config.ArtifactoryDetails
 }
@@ -55,6 +56,11 @@ func (dc *DotnetCommand) SetSolutionPath(solutionPath string) *DotnetCommand {
 
 func (dc *DotnetCommand) SetRepoName(repoName string) *DotnetCommand {
 	dc.repoName = repoName
+	return dc
+}
+
+func (dc *DotnetCommand) SetUseNugetV2(useNugetV2 bool) *DotnetCommand {
+	dc.useNugetV2 = useNugetV2
 	return dc
 }
 
@@ -309,7 +315,11 @@ func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, e
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	u.Path = path.Join(u.Path, "api/nuget", dc.repoName)
+	nugetApi := "api/nuget/v3"
+	if dc.useNugetV2 {
+		nugetApi = "api/nuget"
+	}
+	u.Path = path.Join(u.Path, nugetApi, dc.repoName)
 	sourceURL = u.String()
 
 	user = dc.rtDetails.User

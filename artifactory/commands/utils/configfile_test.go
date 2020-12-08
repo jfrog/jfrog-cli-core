@@ -88,6 +88,7 @@ func TestNugetConfigFile(t *testing.T) {
 	config := checkCommonAndGetConfiguration(t, utils.Nuget.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
 }
 
 func TestMavenConfigFile(t *testing.T) {
@@ -232,7 +233,7 @@ func createTempEnv(t *testing.T) string {
 // Create new Codegangsta context with all required flags.
 func createContext(stringFlags ...string) *cli.Context {
 	flagSet := flag.NewFlagSet("TestFlagSet", flag.ContinueOnError)
-	flags := setBoolFlags(flagSet, Global, UsesPlugin, UseWrapper, DeployMavenDesc, DeployIvyDesc)
+	flags := setBoolFlags(flagSet, Global, UsesPlugin, UseWrapper, DeployMavenDesc, DeployIvyDesc, NugetV2)
 	flags = append(flags, setStringFlags(flagSet, stringFlags...)...)
 	flagSet.Parse(flags)
 	return cli.NewContext(nil, flagSet, nil)

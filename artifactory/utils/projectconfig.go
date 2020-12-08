@@ -55,6 +55,7 @@ type Repository struct {
 	DeployIvyDesc    bool   `yaml:"deployIvyDescriptors,omitempty"`
 	IvyPattern       string `yaml:"ivyPattern,omitempty"`
 	ArtifactsPattern string `yaml:"artifactPattern,omitempty"`
+	NugetV2          bool   `yaml:"nugetV2,omitempty"`
 }
 
 type RepositoryConfig struct {

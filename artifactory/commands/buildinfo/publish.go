@@ -96,7 +96,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 		return nil, err
 	}
 	buildInfo.Started = buildGeneralDetails.Timestamp.Format("2006-01-02T15:04:05.000-0700")
-	modules, env, vcs, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
+	modules, env, versionControlSystems, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +105,10 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	}
 	buildInfo.ArtifactoryPrincipal = bpc.rtDetails.User
 	buildInfo.BuildUrl = bpc.config.BuildUrl
-	if vcs != (buildinfo.Vcs{}) {
-		buildInfo.Revision = vcs.Revision
-		buildInfo.Url = vcs.Url
+	for _, vcs := range versionControlSystems {
+		buildInfo.VersionControlSystems = append(buildInfo.VersionControlSystems, vcs)
 	}
+
 	// Check for Tracker as it must be set
 	if issues.Tracker != nil && issues.Tracker.Name != "" {
 		buildInfo.Issues = &issues
@@ -122,8 +122,8 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	return buildInfo, nil
 }
 
-func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter buildinfo.Filter) ([]buildinfo.Module, buildinfo.Env, buildinfo.Vcs, buildinfo.Issues, error) {
-	var vcs buildinfo.Vcs
+func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter buildinfo.Filter) ([]buildinfo.Module, buildinfo.Env, []buildinfo.Vcs, buildinfo.Issues, error) {
+	var vcs []buildinfo.Vcs
 	var issues buildinfo.Issues
 	env := make(map[string]string)
 	partialModules := make(map[string]partialModule)
@@ -138,8 +138,10 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 			for _, dependency := range partial.Dependencies {
 				addDependencyToPartialModule(dependency, partial.ModuleId, partialModules)
 			}
-		case partial.Vcs != nil:
-			vcs = *partial.Vcs
+		case partial.VersionControlSystems != nil:
+			for _, partialVcs := range partial.VersionControlSystems {
+				vcs = append(vcs, partialVcs)
+			}
 			if partial.Issues == nil {
 				continue
 			}

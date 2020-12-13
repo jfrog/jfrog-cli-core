@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -565,19 +566,23 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	id := name + ":" + ver
 	if dep, ok := previousBuildDependencies[id]; ok {
 		// Get checksum from previous build.
-		return dep.Checksum, dep.Type, nil
+		checksum = dep.Checksum
+		fileType = dep.Type
+		return
 	}
 
 	// Get info from Artifactory.
 	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Fetching checksums for", name, ":", ver)
-	stream, err := servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
+	var stream io.ReadCloser
+	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
 	if err != nil {
-		return nil, "", err
+		return
 	}
 	defer stream.Close()
-	result, err := ioutil.ReadAll(stream)
+	var result []byte
+	result, err = ioutil.ReadAll(stream)
 	if err != nil {
-		return nil, "", err
+		return
 	}
 	parsedResult := new(aqlResult)
 	if err = json.Unmarshal(result, parsedResult); err != nil {
@@ -585,7 +590,7 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 	if len(parsedResult.Results) == 0 {
 		log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, ":", ver, "could not be found in Artifactory.")
-		return nil, "", nil
+		return
 	}
 	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
 		fileType = parsedResult.Results[0].Name[i+1:]
@@ -594,7 +599,8 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 		"sha1:", parsedResult.Results[0].Actual_sha1,
 		"md5", parsedResult.Results[0].Actual_md5)
 
-	return &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}, fileType, nil
+	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
+	return
 }
 
 // Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.

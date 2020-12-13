@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -23,7 +21,7 @@ type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *utils.BuildConfiguration
-	progress            ioUtils.Progress
+	progress            ioUtils.ProgressMgr
 }
 
 func NewUploadCommand() *UploadCommand {
@@ -44,8 +42,16 @@ func (uc *UploadCommand) SetUploadConfiguration(uploadConfiguration *utils.Uploa
 	return uc
 }
 
-func (uc *UploadCommand) SetProgress(progress ioUtils.Progress) {
+func (uc *UploadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	uc.progress = progress
+}
+
+func (uc *UploadCommand) ShouldPrompt() bool {
+	return uc.syncDelete() && !uc.Quiet()
+}
+
+func (uc *UploadCommand) syncDelete() bool {
+	return !uc.DryRun() && uc.SyncDeletesPath() != ""
 }
 
 func (uc *UploadCommand) CommandName() string {
@@ -61,11 +67,7 @@ func (uc *UploadCommand) Run() error {
 func (uc *UploadCommand) upload() error {
 	// In case of sync-delete get the user to confirm first, and save the operation timestamp.
 	syncDeletesProp := ""
-	if !uc.DryRun() && uc.SyncDeletesPath() != "" {
-		if !uc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some artifacts in Artifactory. Are you sure you want to continue?\n"+
-			"You can avoid this confirmation message by adding --quiet to the command.", false) {
-			return nil
-		}
+	if uc.syncDelete() {
 		timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 		syncDeletesProp = ";sync.deletes.timestamp=" + timestamp
 	}
@@ -149,27 +151,27 @@ func (uc *UploadCommand) upload() error {
 		return err
 	}
 
-	if !uc.DryRun() {
-		// Handle sync-deletes
-		if uc.SyncDeletesPath() != "" {
-			err = uc.handleSyncDeletes(syncDeletesProp)
-			if err != nil {
-				return err
-			}
+	// Handle sync-deletes
+	if uc.syncDelete() {
+		err = uc.handleSyncDeletes(syncDeletesProp)
+		if err != nil {
+			return err
 		}
-		// Build Info
-		if isCollectBuildInfo {
-			err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
-			if err != nil {
-				return err
-			}
-			buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
-			populateFunc := func(partial *buildinfo.Partial) {
-				partial.Artifacts = buildArtifacts
-				partial.ModuleId = uc.buildConfiguration.Module
-			}
-			err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+	}
+
+	// Build info
+	if !uc.DryRun() && isCollectBuildInfo {
+		err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
+		if err != nil {
+			return err
 		}
+		buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
+		populateFunc := func(partial *buildinfo.Partial) {
+			partial.Artifacts = buildArtifacts
+			partial.ModuleId = uc.buildConfiguration.Module
+		}
+		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+
 	}
 	return err
 }

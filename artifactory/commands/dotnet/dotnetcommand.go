@@ -31,7 +31,8 @@ type DotnetCommand struct {
 	useNugetAddSource  bool
 	buildConfiguration *utils.BuildConfiguration
 	rtDetails          *config.ArtifactoryDetails
-	legacy			   bool
+	// Indicates the command is run through the legacy syntax, before the 'native' syntax introduction.
+	legacy bool
 }
 
 func (dc *DotnetCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DotnetCommand {
@@ -345,6 +346,7 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 	return c, nil
 }
 
+// In the legacy syntax, parsing args is required since they might include environment variables, or need escaping.
 func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
 	if dc.subCommand != "" {
 		subCommand, err := utils.ParseArgs(strings.Split(dc.subCommand, " "))
@@ -359,4 +361,3 @@ func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
 	}
 	return c, errorutils.CheckError(err)
 }
-

@@ -101,7 +101,7 @@ func (config *BuildAddGitCommand) Run() error {
 
 	// Populate partials with VCS info.
 	populateFunc := func(partial *buildinfo.Partial) {
-		partial.VersionControlSystems = append(partial.VersionControlSystems, buildinfo.Vcs{
+		partial.VcsList = append(partial.VcsList, buildinfo.Vcs{
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
 		})
@@ -268,7 +268,7 @@ func (config *BuildAddGitCommand) getLatestVcsRevision(vcsUrl string) (string, e
 
 	// Get previous VCS Revision from BuildInfo.
 	lastVcsRevision := ""
-	for _, vcs := range buildInfo.VersionControlSystems {
+	for _, vcs := range buildInfo.VcsList {
 		if vcs.Url == vcsUrl {
 			lastVcsRevision = vcs.Revision
 			break

@@ -96,7 +96,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 		return nil, err
 	}
 	buildInfo.Started = buildGeneralDetails.Timestamp.Format("2006-01-02T15:04:05.000-0700")
-	modules, env, versionControlSystems, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
+	modules, env, vcsList, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +105,8 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	}
 	buildInfo.ArtifactoryPrincipal = bpc.rtDetails.User
 	buildInfo.BuildUrl = bpc.config.BuildUrl
-	for _, vcs := range versionControlSystems {
-		buildInfo.VersionControlSystems = append(buildInfo.VersionControlSystems, vcs)
+	for _, vcs := range vcsList {
+		buildInfo.VcsList = append(buildInfo.VcsList, vcs)
 	}
 
 	// Check for Tracker as it must be set
@@ -138,8 +138,8 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 			for _, dependency := range partial.Dependencies {
 				addDependencyToPartialModule(dependency, partial.ModuleId, partialModules)
 			}
-		case partial.VersionControlSystems != nil:
-			for _, partialVcs := range partial.VersionControlSystems {
+		case partial.VcsList != nil:
+			for _, partialVcs := range partial.VcsList {
 				vcs = append(vcs, partialVcs)
 			}
 			if partial.Issues == nil {

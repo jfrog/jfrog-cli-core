@@ -21,7 +21,7 @@ type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *utils.BuildConfiguration
-	progress            ioUtils.Progress
+	progress            ioUtils.ProgressMgr
 }
 
 func NewUploadCommand() *UploadCommand {
@@ -42,7 +42,7 @@ func (uc *UploadCommand) SetUploadConfiguration(uploadConfiguration *utils.Uploa
 	return uc
 }
 
-func (uc *UploadCommand) SetProgress(progress ioUtils.Progress) {
+func (uc *UploadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	uc.progress = progress
 }
 

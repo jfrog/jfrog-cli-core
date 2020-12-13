@@ -74,21 +74,21 @@ func TestParseDependencies(t *testing.T) {
 	}
 
 	expectedDependenciesList := []string{
-		"underscore-1.4.4",
-		"@jfrog/npm_scoped-1.0.0",
-		"xml-1.0.1",
-		"xpm-0.1.1",
-		"binary-search-tree-0.2.4",
-		"nedb-1.0.2",
-		"@ilg/es6-promisifier-0.1.9",
-		"wscript-avoider-3.0.2",
-		"yaml-0.2.3",
-		"@ilg/cli-start-options-0.1.19",
-		"async-0.2.10",
-		"find-0.2.7",
-		"jquery-3.2.0",
-		"nub-1.0.0",
-		"shopify-liquid-1.d7.9",
+		"underscore:1.4.4",
+		"@jfrog/npm_scoped:1.0.0",
+		"xml:1.0.1",
+		"xpm:0.1.1",
+		"binary-search-tree:0.2.4",
+		"nedb:1.0.2",
+		"@ilg/es6-promisifier:0.1.9",
+		"wscript-avoider:3.0.2",
+		"yaml:0.2.3",
+		"@ilg/cli-start-options:0.1.19",
+		"async:0.2.10",
+		"find:0.2.7",
+		"jquery:3.2.0",
+		"nub:1.0.0",
+		"shopify-liquid:1.d7.9",
 	}
 	npmi := NpmCommandArgs{}
 	npmi.dependencies = make(map[string]*dependency)

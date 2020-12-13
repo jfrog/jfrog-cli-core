@@ -161,29 +161,20 @@ func (uc *UploadCommand) upload() error {
 
 	// Build info
 	if !uc.DryRun() && isCollectBuildInfo {
-		// Handle sync-deletes
-		if uc.SyncDeletesPath() != "" {
-			err = uc.handleSyncDeletes(syncDeletesProp)
-			if err != nil {
-				return err
-			}
+		err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
+		if err != nil {
+			return err
 		}
-		// Build Info
-		if isCollectBuildInfo {
-			err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
-			if err != nil {
-				return err
-			}
-			buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
-			populateFunc := func(partial *buildinfo.Partial) {
-				partial.Artifacts = buildArtifacts
-				partial.ModuleId = uc.buildConfiguration.Module
-				partial.ModuleType = buildinfo.Generic
-			}
-			err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+		buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
+		populateFunc := func(partial *buildinfo.Partial) {
+			partial.Artifacts = buildArtifacts
+			partial.ModuleId = uc.buildConfiguration.Module
+			partial.ModuleType = buildinfo.Generic
 		}
+		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
 
 	}
+
 	return err
 }
 

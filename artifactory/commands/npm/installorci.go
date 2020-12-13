@@ -354,11 +354,8 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 func getDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
 	buildDependencies := make(map[string]*buildinfo.Dependency)
 	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: "LATEST"})
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return buildDependencies, nil
+	if err != nil || !found {
+		return buildDependencies, err
 	}
 	for _, module := range previousBuild.BuildInfo.Modules {
 		for _, dependency := range module.Dependencies {

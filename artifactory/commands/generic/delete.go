@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 )
@@ -73,6 +74,11 @@ func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
 		return nil, err
 	}
 	temp := []*content.ContentReader{}
+	defer func() {
+		for _, reader := range temp {
+			reader.Close()
+		}
+	}()
 	for i := 0; i < len(dc.Spec().Files); i++ {
 		deleteParams, err := getDeleteParams(dc.Spec().Get(i))
 		if err != nil {
@@ -83,15 +89,20 @@ func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
 			return nil, err
 		}
 		temp = append(temp, reader)
-		if i == 0 {
-			defer func() {
-				for _, reader := range temp {
-					reader.Close()
-				}
-			}()
-		}
 	}
-	return content.MergeReaders(temp, content.DefaultKey)
+	tempMergedReader, err := content.MergeReaders(temp, content.DefaultKey)
+	if err != nil {
+		return nil, err
+	}
+	defer tempMergedReader.Close()
+
+	// After merge, remove top chain dirs as we may encounter duplicates and collisions between files and directories to delete.
+	// For example:
+	// Reader1: {"a"}
+	// Reader2: {"a/b","a/c"}
+	// After merge, received a Reader: {"a","a/b","a/c"}.
+	// If "a" is deleted prior to "a/b" or "a/c", the delete operation returns a failure.
+	return clientutils.ReduceTopChainDirResult(clientutils.ResultItem{}, tempMergedReader)
 }
 
 func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCount, failedCount int, err error) {

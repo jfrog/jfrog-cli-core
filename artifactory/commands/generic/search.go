@@ -40,6 +40,11 @@ func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	// Search Loop
 	log.Info("Searching artifacts...")
 	var searchResults []*content.ContentReader
+	defer func() {
+		for _, reader := range searchResults {
+			reader.Close()
+		}
+	}()
 	for i := 0; i < len(sc.Spec().Files); i++ {
 		searchParams, err := utils.GetSearchParams(sc.Spec().Get(i))
 		if err != nil {
@@ -53,13 +58,6 @@ func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 			return nil, err
 		}
 		searchResults = append(searchResults, reader)
-		if i == 0 {
-			defer func() {
-				for _, reader := range searchResults {
-					reader.Close()
-				}
-			}()
-		}
 	}
 	reader, err := utils.AqlResultToSearchResult(searchResults)
 	if err != nil {

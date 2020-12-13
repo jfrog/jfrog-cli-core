@@ -11,47 +11,56 @@ import (
 
 type MoveCommand struct {
 	GenericCommand
+	threads int
 }
 
 func NewMoveCommand() *MoveCommand {
 	return &MoveCommand{GenericCommand: *NewGenericCommand()}
 }
 
+func (mc *MoveCommand) Threads() int {
+	return mc.threads
+}
+
+func (mc *MoveCommand) SetThreads(threads int) *MoveCommand {
+	mc.threads = threads
+	return mc
+}
+
 // Moves the artifacts using the specified move pattern.
 func (mc *MoveCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManager(mc.rtDetails, mc.DryRun())
+	servicesManager, err := utils.CreateServiceManagerWithThreads(mc.rtDetails, mc.DryRun(), mc.threads)
 	if err != nil {
 		return err
 	}
 
 	var errorOccurred = false
-	// Move Loop:
+	var moveParamsArray []services.MoveCopyParams
+	// Create MoveParams for all File-Spec groups.
 	for i := 0; i < len(mc.Spec().Files); i++ {
-
 		moveParams, err := getMoveParams(mc.Spec().Get(i))
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
 			continue
 		}
-
-		partialSuccess, partialFailed, err := servicesManager.Move(moveParams)
-		success := mc.result.SuccessCount() + partialSuccess
-		mc.result.SetSuccessCount(success)
-		failed := mc.result.FailCount() + partialFailed
-		mc.result.SetFailCount(failed)
-		if err != nil {
-			errorOccurred = true
-			log.Error(err)
-			continue
-		}
+		moveParamsArray = append(moveParamsArray, moveParams)
 	}
+
+	// Perform move.
+	totalMoved, totalFailed, err := servicesManager.Move(moveParamsArray...)
+	if err != nil {
+		errorOccurred = true
+		log.Error(err)
+	}
+	mc.result.SetSuccessCount(totalMoved)
+	mc.result.SetFailCount(totalFailed)
+
 	if errorOccurred {
 		return errors.New("Move finished with errors, please review the logs.")
 	}
 	return err
-
 }
 
 func (mc *MoveCommand) CommandName() string {

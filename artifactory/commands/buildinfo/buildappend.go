@@ -131,7 +131,7 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.Ch
 	buildInfoPath := serviceDetails.GetUrl() + "artifactory-build-info/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
-		return fileutils.ChecksumDetails{}, errorutils.CheckError(err)
+		return fileutils.ChecksumDetails{}, err
 	}
 	log.Debug("Artifactory response: ", resp.Status)
 	err = errorutils.CheckResponseStatus(resp, http.StatusOK)

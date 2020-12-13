@@ -95,7 +95,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	if err != nil {
 		return nil, err
 	}
-	buildInfo.Started = buildGeneralDetails.Timestamp.Format("2006-01-02T15:04:05.000-0700")
+	buildInfo.Started = buildGeneralDetails.Timestamp.Format(buildinfo.TimeLayout)
 	modules, env, vcs, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
 	if err != nil {
 		return nil, err

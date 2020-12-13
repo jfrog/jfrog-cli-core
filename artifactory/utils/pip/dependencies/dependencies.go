@@ -12,11 +12,13 @@ import (
 	"strings"
 )
 
-const aqlFilePart = `{"$and":[{` +
-	`"path":{"$match":"*"},` +
-	`"name":{"$match":"%s"}` +
-	`}]},`
-const aqlBulkSize = 50
+const (
+	aqlBulkSize = 50
+	aqlFilePart = `{"$and":[{` +
+		`"path":{"$match":"*"},` +
+		`"name":{"$match":"%s"}` +
+		`}]},`
+)
 
 // Create project's 'buildinfo.Dependency' structs for all dependencies.
 // 'dependencyToFileMap' contains a mapping between each dependency (package-name) to its actual file (tar.gz, zip, whl etc).

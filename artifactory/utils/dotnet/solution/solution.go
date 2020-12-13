@@ -47,7 +47,7 @@ type solution struct {
 }
 
 func (solution *solution) BuildInfo(module string) (*buildinfo.BuildInfo, error) {
-	buildInfo := &buildinfo.BuildInfo{}
+	build := &buildinfo.BuildInfo{}
 	var modules []buildinfo.Module
 	for _, project := range solution.projects {
 		// Get All project dependencies
@@ -60,11 +60,11 @@ func (solution *solution) BuildInfo(module string) (*buildinfo.BuildInfo, error)
 		for _, dep := range dependencies {
 			projectDependencies = append(projectDependencies, *dep)
 		}
-		module := buildinfo.Module{Id: getModuleId(module, project.Name()), Dependencies: projectDependencies}
+		module := buildinfo.Module{Id: getModuleId(module, project.Name()), Type: buildinfo.Nuget, Dependencies: projectDependencies}
 		modules = append(modules, module)
 	}
-	buildInfo.Modules = modules
-	return buildInfo, nil
+	build.Modules = modules
+	return build, nil
 }
 
 func getModuleId(customModuleID, projectName string) string {

@@ -174,7 +174,6 @@ func (uc *UploadCommand) upload() error {
 		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
 
 	}
-
 	return err
 }
 

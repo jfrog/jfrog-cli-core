@@ -40,6 +40,9 @@ const (
 	DeployIvyDesc       = "deploy-ivy-desc"
 	IvyDescPattern      = "ivy-desc-pattern"
 	IvyArtifactsPattern = "ivy-artifacts-pattern"
+
+	// Nuget flags
+	NugetV2 = "nuget-v2"
 )
 
 type ConfigFile struct {
@@ -58,10 +61,13 @@ func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 		ConfigType: confType.String(),
 	}
 	configFile.populateConfigFromFlags(c)
-	if confType == utils.Maven {
+	switch confType {
+	case utils.Maven:
 		configFile.populateMavenConfigFromFlags(c)
-	} else if confType == utils.Gradle {
+	case utils.Gradle:
 		configFile.populateGradleConfigFromFlags(c)
+	case utils.Nuget, utils.Dotnet:
+		configFile.populateNugetConfigFromFlags(c)
 	}
 	return configFile
 }
@@ -160,6 +166,12 @@ func (configFile *ConfigFile) populateGradleConfigFromFlags(c *cli.Context) {
 	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, DeployMavenDesc, DeployIvyDesc, IvyDescPattern, IvyArtifactsPattern, UsesPlugin, UseWrapper)
 }
 
+// Populate NuGet related configuration from cli flags
+func (configFile *ConfigFile) populateNugetConfigFromFlags(c *cli.Context) {
+	configFile.Resolver.NugetV2 = c.Bool(NugetV2)
+	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, NugetV2)
+}
+
 // Verify config file doesn't exist or prompt to override it
 func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	exists, err := fileutils.IsFileExists(configFilePath, false)
@@ -200,7 +212,13 @@ func (configFile *ConfigFile) configNpm() error {
 }
 
 func (configFile *ConfigFile) configDotnet() error {
-	return configFile.setResolver()
+	if err := configFile.setResolver(); err != nil {
+		return err
+	}
+	if configFile.Resolver.ServerId != "" {
+		configFile.setUseNugetV2()
+	}
+	return nil
 }
 
 func (configFile *ConfigFile) configMaven() error {
@@ -307,6 +325,10 @@ func (configFile *ConfigFile) setMavenIvyDescriptors() {
 		configFile.Deployer.IvyPattern = AskStringWithDefault("", "Set Ivy descriptor pattern", "[organization]/[module]/ivy-[revision].xml")
 		configFile.Deployer.ArtifactsPattern = AskStringWithDefault("", "Set Ivy artifact pattern", "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]")
 	}
+}
+
+func (configFile *ConfigFile) setUseNugetV2() {
+	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
 // Check correctness of spec file configuration

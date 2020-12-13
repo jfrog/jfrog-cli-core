@@ -9,7 +9,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -24,7 +23,7 @@ type DownloadCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
-	progress      ioUtils.Progress
+	progress      ioUtils.ProgressMgr
 }
 
 func NewDownloadCommand() *DownloadCommand {
@@ -45,8 +44,12 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 	return dc
 }
 
-func (dc *DownloadCommand) SetProgress(progress ioUtils.Progress) {
+func (dc *DownloadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	dc.progress = progress
+}
+
+func (dc *DownloadCommand) ShouldPrompt() bool {
+	return !dc.DryRun() && dc.SyncDeletesPath() != "" && !dc.Quiet()
 }
 
 func (dc *DownloadCommand) CommandName() string {
@@ -58,11 +61,6 @@ func (dc *DownloadCommand) Run() error {
 }
 
 func (dc *DownloadCommand) download() error {
-	if dc.SyncDeletesPath() != "" && !dc.Quiet() && !coreutils.AskYesNo("Sync-deletes may delete some files in your local file system. Are you sure you want to continue?\n"+
-		"You can avoid this confirmation message by adding --quiet to the command.", false) {
-		return nil
-	}
-
 	// Create Service Manager:
 	servicesManager, err := utils.CreateDownloadServiceManager(dc.rtDetails, dc.configuration.Threads, dc.DryRun(), dc.progress)
 	if err != nil {

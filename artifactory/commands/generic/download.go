@@ -208,6 +208,16 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 		return
 	}
 
+	downParams.ExcludeArtifacts, err = f.IsExcludeArtifacts(false)
+	if err != nil {
+		return
+	}
+
+	downParams.IncludeDeps, err = f.IsIncludeDeps(false)
+	if err != nil {
+		return
+	}
+
 	return
 }
 

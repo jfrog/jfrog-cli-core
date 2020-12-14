@@ -16,6 +16,8 @@ type builder struct {
 	offset           int
 	limit            int
 	build            string
+	excludeArtifacts bool
+	includeDeps      bool
 	bundle           string
 	recursive        bool
 	flat             bool
@@ -94,6 +96,16 @@ func (b *builder) Build(build string) *builder {
 	return b
 }
 
+func (b *builder) ExcludeArtifacts(excludeArtifacts bool) *builder {
+	b.excludeArtifacts = excludeArtifacts
+	return b
+}
+
+func (b *builder) IncludeDeps(includeDeps bool) *builder {
+	b.includeDeps = includeDeps
+	return b
+}
+
 func (b *builder) Bundle(bundle string) *builder {
 	b.bundle = bundle
 	return b
@@ -142,12 +154,14 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Build:            b.build,
 				Bundle:           b.bundle,
 				Explode:          b.explode,
+				ArchiveEntries:   b.archiveEntries,
 				Recursive:        strconv.FormatBool(b.recursive),
 				Flat:             strconv.FormatBool(b.flat),
 				Regexp:           strconv.FormatBool(b.regexp),
 				IncludeDirs:      strconv.FormatBool(b.includeDirs),
-				ArchiveEntries:   b.archiveEntries,
 				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
+				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),
+				IncludeDeps:      strconv.FormatBool(b.includeDeps),
 			},
 		},
 	}

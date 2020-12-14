@@ -125,6 +125,14 @@ func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCoun
 func getDeleteParams(f *spec.File) (deleteParams services.DeleteParams, err error) {
 	deleteParams = services.NewDeleteParams()
 	deleteParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	deleteParams.ExcludeArtifacts, err = f.IsExcludeArtifacts(false)
+	if err != nil {
+		return
+	}
+	deleteParams.IncludeDeps, err = f.IsIncludeDeps(false)
+	if err != nil {
+		return
+	}
 	deleteParams.Recursive, err = f.IsRecursive(true)
 	return
 }

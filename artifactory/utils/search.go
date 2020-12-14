@@ -98,7 +98,14 @@ func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err erro
 	if err != nil {
 		return
 	}
-
+	searchParams.ExcludeArtifacts, err = f.IsExcludeArtifacts(false)
+	if err != nil {
+		return
+	}
+	searchParams.IncludeDeps, err = f.IsIncludeDeps(false)
+	if err != nil {
+		return
+	}
 	searchParams.IncludeDirs, err = f.IsIncludeDirs(false)
 	return
 }

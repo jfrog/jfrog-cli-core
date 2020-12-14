@@ -95,7 +95,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	if err != nil {
 		return nil, err
 	}
-	buildInfo.Started = buildGeneralDetails.Timestamp.Format("2006-01-02T15:04:05.000-0700")
+	buildInfo.Started = buildGeneralDetails.Timestamp.Format(buildinfo.TimeFormat)
 	modules, env, vcsList, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
 	if err != nil {
 		return nil, err
@@ -167,6 +167,11 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 			for k, v := range envAfterExcludeFilter {
 				env[k] = v
 			}
+		case partial.ModuleType == buildinfo.Build:
+			partialModules[partial.ModuleId] = partialModule{
+				moduleType: partial.ModuleType,
+				checksum:   partial.Checksum,
+			}
 		}
 	}
 	return partialModulesToModules(partialModules), env, vcs, issuesMapToArray(issues, issuesMap), nil
@@ -177,7 +182,7 @@ func partialModulesToModules(partialModules map[string]partialModule) []buildinf
 	for moduleId, singlePartialModule := range partialModules {
 		moduleArtifacts := artifactsMapToList(singlePartialModule.artifacts)
 		moduleDependencies := dependenciesMapToList(singlePartialModule.dependencies)
-		modules = append(modules, *createModule(moduleId, moduleArtifacts, moduleDependencies))
+		modules = append(modules, *createModule(moduleId, singlePartialModule.moduleType, singlePartialModule.checksum, moduleArtifacts, moduleDependencies))
 	}
 	return modules
 }
@@ -227,8 +232,10 @@ func dependenciesMapToList(dependenciesMap map[string]buildinfo.Dependency) []bu
 	return dependencies
 }
 
-func createModule(moduleId string, artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency) *buildinfo.Module {
+func createModule(moduleId string, moduleType buildinfo.ModuleType, checksum *buildinfo.Checksum, artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency) *buildinfo.Module {
 	module := createDefaultModule(moduleId)
+	module.Type = moduleType
+	module.Checksum = checksum
 	if artifacts != nil && len(artifacts) > 0 {
 		module.Artifacts = append(module.Artifacts, artifacts...)
 	}
@@ -248,6 +255,8 @@ func createDefaultModule(moduleId string) *buildinfo.Module {
 }
 
 type partialModule struct {
+	moduleType   buildinfo.ModuleType
 	artifacts    map[string]buildinfo.Artifact
 	dependencies map[string]buildinfo.Dependency
+	checksum     *buildinfo.Checksum
 }

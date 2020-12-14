@@ -275,6 +275,7 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	}
 	buildInfo := &buildinfo.BuildInfo{Modules: []buildinfo.Module{{
 		Id:           module,
+		Type:         buildinfo.Docker,
 		Properties:   imageProperties,
 		Artifacts:    builder.artifacts,
 		Dependencies: builder.dependencies,

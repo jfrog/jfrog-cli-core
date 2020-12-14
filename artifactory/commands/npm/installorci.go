@@ -376,6 +376,7 @@ func (nca *NpmCommandArgs) saveDependenciesData() error {
 			nca.buildConfiguration.Module = nca.packageInfo.BuildInfoModuleId()
 		}
 		partial.ModuleId = nca.buildConfiguration.Module
+		partial.ModuleType = buildinfo.Npm
 	}
 
 	if err := utils.SavePartialBuildInfo(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, populateFunc); err != nil {

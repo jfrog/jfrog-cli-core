@@ -243,6 +243,7 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 			npc.buildConfiguration.Module = npc.packageInfo.BuildInfoModuleId()
 		}
 		partial.ModuleId = npc.buildConfiguration.Module
+		partial.ModuleType = buildinfo.Npm
 	}
 	return utils.SavePartialBuildInfo(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, populateFunc)
 }

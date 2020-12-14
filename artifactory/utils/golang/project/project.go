@@ -224,7 +224,7 @@ func (project *goProject) BuildInfo(includeArtifacts bool, module, targetReposit
 			artifact.Path = targetPath
 		}
 	}
-	buildInfoModule := buildinfo.Module{Id: module, Artifacts: artifacts, Dependencies: buildInfoDependencies}
+	buildInfoModule := buildinfo.Module{Id: module, Type: buildinfo.Go, Artifacts: artifacts, Dependencies: buildInfoDependencies}
 	if module == "" {
 		buildInfoModule.Id = project.getId()
 	}

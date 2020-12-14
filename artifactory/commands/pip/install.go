@@ -92,7 +92,7 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	}
 
 	// Save build-info.
-	module := buildinfo.Module{Id: pic.buildConfiguration.Module, Dependencies: projectDependencies}
+	module := buildinfo.Module{Id: pic.buildConfiguration.Module, Type: buildinfo.Pip, Dependencies: projectDependencies}
 	modules = append(modules, module)
 
 	buildInfo.Modules = modules

@@ -108,7 +108,7 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 		return 0, errorutils.CheckError(errors.New("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + " not found in Artifactory."))
 	}
 
-	buildTime, err := time.Parse(buildinfo.TimeLayout, buildInfo.BuildInfo.Started)
+	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.BuildInfo.Started)
 	if errorutils.CheckError(err) != nil {
 		return 0, err
 	}

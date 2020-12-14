@@ -64,6 +64,11 @@ func createPropsServiceManager(threads int, artDetails *config.ArtifactoryDetail
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {
 	var errorOccurred = false
 	temp := []*content.ContentReader{}
+	defer func() {
+		for _, reader := range temp {
+			reader.Close()
+		}
+	}()
 	writer, err := content.NewContentWriter("results", true, false)
 	if err != nil {
 		return
@@ -83,13 +88,6 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 			continue
 		}
 		temp = append(temp, reader)
-		if i == 0 {
-			defer func() {
-				for _, reader := range temp {
-					reader.Close()
-				}
-			}()
-		}
 	}
 	resultReader, err = content.MergeReaders(temp, content.DefaultKey)
 	if err != nil {

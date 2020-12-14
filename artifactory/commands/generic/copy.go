@@ -11,10 +11,20 @@ import (
 
 type CopyCommand struct {
 	GenericCommand
+	threads int
 }
 
 func NewCopyCommand() *CopyCommand {
 	return &CopyCommand{GenericCommand: *NewGenericCommand()}
+}
+
+func (cc *CopyCommand) Threads() int {
+	return cc.threads
+}
+
+func (cc *CopyCommand) SetThreads(threads int) *CopyCommand {
+	cc.threads = threads
+	return cc
 }
 
 func (cc *CopyCommand) CommandName() string {
@@ -24,33 +34,33 @@ func (cc *CopyCommand) CommandName() string {
 // Copies the artifacts using the specified move pattern.
 func (cc *CopyCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManager(cc.rtDetails, cc.dryRun)
+	servicesManager, err := utils.CreateServiceManagerWithThreads(cc.rtDetails, cc.dryRun, cc.threads)
 	if err != nil {
 		return err
 	}
 
 	var errorOccurred = false
-	// Copy Loop:
+	var copyParamsArray []services.MoveCopyParams
+	// Create CopyParams for all File-Spec groups.
 	for i := 0; i < len(cc.spec.Files); i++ {
-
 		copyParams, err := getCopyParams(cc.spec.Get(i))
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
 			continue
 		}
-
-		partialSuccess, partialFailed, err := servicesManager.Copy(copyParams)
-		success := cc.result.SuccessCount() + partialSuccess
-		cc.result.SetSuccessCount(success)
-		failed := cc.result.FailCount() + partialFailed
-		cc.result.SetFailCount(failed)
-		if err != nil {
-			errorOccurred = true
-			log.Error(err)
-			continue
-		}
+		copyParamsArray = append(copyParamsArray, copyParams)
 	}
+
+	// Perform copy.
+	totalCopied, totalFailed, err := servicesManager.Copy(copyParamsArray...)
+	if err != nil {
+		errorOccurred = true
+		log.Error(err)
+	}
+	cc.result.SetSuccessCount(totalCopied)
+	cc.result.SetFailCount(totalFailed)
+
 	if errorOccurred {
 		return errors.New("Copy finished with errors, please review the logs.")
 	}

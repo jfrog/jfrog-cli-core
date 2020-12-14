@@ -96,7 +96,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 		return nil, err
 	}
 	buildInfo.Started = buildGeneralDetails.Timestamp.Format(buildinfo.TimeFormat)
-	modules, env, vcs, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
+	modules, env, vcsList, issues, err := extractBuildInfoData(partials, bpc.config.IncludeFilter(), bpc.config.ExcludeFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +105,10 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	}
 	buildInfo.ArtifactoryPrincipal = bpc.rtDetails.User
 	buildInfo.BuildUrl = bpc.config.BuildUrl
-	if vcs != (buildinfo.Vcs{}) {
-		buildInfo.Revision = vcs.Revision
-		buildInfo.Url = vcs.Url
+	for _, vcs := range vcsList {
+		buildInfo.VcsList = append(buildInfo.VcsList, vcs)
 	}
+
 	// Check for Tracker as it must be set
 	if issues.Tracker != nil && issues.Tracker.Name != "" {
 		buildInfo.Issues = &issues
@@ -122,8 +122,8 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	return buildInfo, nil
 }
 
-func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter buildinfo.Filter) ([]buildinfo.Module, buildinfo.Env, buildinfo.Vcs, buildinfo.Issues, error) {
-	var vcs buildinfo.Vcs
+func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter buildinfo.Filter) ([]buildinfo.Module, buildinfo.Env, []buildinfo.Vcs, buildinfo.Issues, error) {
+	var vcs []buildinfo.Vcs
 	var issues buildinfo.Issues
 	env := make(map[string]string)
 	partialModules := make(map[string]partialModule)
@@ -138,8 +138,10 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 			for _, dependency := range partial.Dependencies {
 				addDependencyToPartialModule(dependency, partial.ModuleId, partialModules)
 			}
-		case partial.Vcs != nil:
-			vcs = *partial.Vcs
+		case partial.VcsList != nil:
+			for _, partialVcs := range partial.VcsList {
+				vcs = append(vcs, partialVcs)
+			}
 			if partial.Issues == nil {
 				continue
 			}

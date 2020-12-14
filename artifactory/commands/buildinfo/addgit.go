@@ -3,6 +3,11 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
+
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/utils/config"
@@ -13,10 +18,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
-	"io"
-	"os"
-	"os/exec"
-	"strconv"
 )
 
 const (
@@ -92,7 +93,7 @@ func (config *BuildAddGitCommand) Run() error {
 	// Collect issues if required.
 	var issues []buildinfo.AffectedIssue
 	if config.configFilePath != "" {
-		issues, err = config.collectBuildIssues()
+		issues, err = config.collectBuildIssues(gitManager.GetUrl())
 		if err != nil {
 			return err
 		}
@@ -100,10 +101,10 @@ func (config *BuildAddGitCommand) Run() error {
 
 	// Populate partials with VCS info.
 	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Vcs = &buildinfo.Vcs{
+		partial.VcsList = append(partial.VcsList, buildinfo.Vcs{
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
-		}
+		})
 
 		if config.configFilePath != "" {
 			partial.Issues = &buildinfo.Issues{
@@ -148,7 +149,7 @@ func (config *BuildAddGitCommand) CommandName() string {
 	return "rt_build_add_git"
 }
 
-func (config *BuildAddGitCommand) collectBuildIssues() ([]buildinfo.AffectedIssue, error) {
+func (config *BuildAddGitCommand) collectBuildIssues(vcsUrl string) ([]buildinfo.AffectedIssue, error) {
 	log.Info("Collecting build issues from VCS...")
 
 	// Check that git exists in path.
@@ -167,7 +168,7 @@ func (config *BuildAddGitCommand) collectBuildIssues() ([]buildinfo.AffectedIssu
 	}
 
 	// Get latest build's VCS revision from Artifactory.
-	lastVcsRevision, err := config.getLatestVcsRevision()
+	lastVcsRevision, err := config.getLatestVcsRevision(vcsUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +259,7 @@ func (config *BuildAddGitCommand) createIssuesConfigs() (err error) {
 	return
 }
 
-func (config *BuildAddGitCommand) getLatestVcsRevision() (string, error) {
+func (config *BuildAddGitCommand) getLatestVcsRevision(vcsUrl string) (string, error) {
 	// Get latest build's build-info from Artifactory
 	buildInfo, err := config.getLatestBuildInfo(config.issuesConfig)
 	if err != nil {
@@ -267,8 +268,11 @@ func (config *BuildAddGitCommand) getLatestVcsRevision() (string, error) {
 
 	// Get previous VCS Revision from BuildInfo.
 	lastVcsRevision := ""
-	if buildInfo.Vcs != nil {
-		lastVcsRevision = buildInfo.Vcs.Revision
+	for _, vcs := range buildInfo.VcsList {
+		if vcs.Url == vcsUrl {
+			lastVcsRevision = vcs.Revision
+			break
+		}
 	}
 
 	return lastVcsRevision, nil

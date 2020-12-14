@@ -24,7 +24,7 @@ const classworldsConfFileName = "classworlds.conf"
 const MavenHome = "M2_HOME"
 
 type MvnCommand struct {
-	goals         string
+	goals         []string
 	configPath    string
 	insecureTls   bool
 	configuration *utils.BuildConfiguration
@@ -51,7 +51,7 @@ func (mc *MvnCommand) SetConfigPath(configPath string) *MvnCommand {
 	return mc
 }
 
-func (mc *MvnCommand) SetGoals(goals string) *MvnCommand {
+func (mc *MvnCommand) SetGoals(goals []string) *MvnCommand {
 	mc.goals = goals
 	return mc
 }
@@ -243,7 +243,7 @@ func (config *mvnRunConfig) GetCmd() *exec.Cmd {
 		cmd = append(cmd, strings.Split(config.mavenOpts, " ")...)
 	}
 	cmd = append(cmd, "org.codehaus.plexus.classworlds.launcher.Launcher")
-	cmd = append(cmd, strings.Split(config.goals, " ")...)
+	cmd = append(cmd, config.goals...)
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
@@ -267,7 +267,7 @@ type mvnRunConfig struct {
 	pluginDependencies           string
 	workspace                    string
 	pom                          string
-	goals                        string
+	goals                        []string
 	buildInfoProperties          string
 	artifactoryResolutionEnabled bool
 	generatedBuildInfoPath       string

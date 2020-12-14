@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/httpclient"
@@ -333,9 +335,13 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 		return err
 	}
 
+	previousBuildDependencies, err := getDependenciesFromLatestBuild(servicesManager, nca.buildConfiguration.BuildName)
+	if err != nil {
+		return err
+	}
 	producerConsumer := parallel.NewBounedRunner(nca.threads, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
-	handlerFunc := nca.createGetDependencyInfoFunc(servicesManager)
+	handlerFunc := nca.createGetDependencyInfoFunc(servicesManager, previousBuildDependencies)
 	go func() {
 		defer producerConsumer.Done()
 		for i := range nca.dependencies {
@@ -344,6 +350,21 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 	}()
 	producerConsumer.Run()
 	return errorsQueue.GetError()
+}
+
+func getDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
+	buildDependencies := make(map[string]*buildinfo.Dependency)
+	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: "LATEST"})
+	if err != nil || !found {
+		return buildDependencies, err
+	}
+	for _, module := range previousBuild.BuildInfo.Modules {
+		for _, dependency := range module.Dependencies {
+			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id,
+				Checksum: &buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
+		}
+	}
+	return buildDependencies, nil
 }
 
 func (nca *NpmCommandArgs) saveDependenciesData() error {
@@ -364,7 +385,7 @@ func (nca *NpmCommandArgs) saveDependenciesData() error {
 	if len(missingDependencies) > 0 {
 		var missingDependenciesText []string
 		for _, dependency := range missingDependencies {
-			missingDependenciesText = append(missingDependenciesText, dependency.name+"-"+dependency.version)
+			missingDependenciesText = append(missingDependenciesText, dependency.name+":"+dependency.version)
 		}
 		log.Warn(strings.Join(missingDependenciesText, "\n"))
 		log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
@@ -506,7 +527,7 @@ func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string) error {
 }
 
 func (nca *NpmCommandArgs) appendDependency(key []byte, ver []byte, scope string) {
-	dependencyKey := string(key) + "-" + string(ver)
+	dependencyKey := string(key) + ":" + string(ver)
 	if nca.dependencies[dependencyKey] == nil {
 		nca.dependencies[dependencyKey] = &dependency{name: string(key), version: string(ver), scopes: []string{scope}}
 	} else if !scopeAlreadyExists(scope, nca.dependencies[dependencyKey].scopes) {
@@ -514,51 +535,81 @@ func (nca *NpmCommandArgs) appendDependency(key []byte, ver []byte, scope string
 	}
 }
 
-// Creates a function that fetches dependency data from Artifactory. Can be applied from a producer-consumer mechanism
-func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifactory.ArtifactoryServicesManager) getDependencyInfoFunc {
+// Creates a function that fetches dependency data.
+// If a dependency was included in the previous build, take the checksums information from it.
+// Otherwise, fetch the checksum from Artifactory.
+// Can be applied from a producer-consumer mechanism.
+func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifactory.ArtifactoryServicesManager,
+	previousBuildDependencies map[string]*buildinfo.Dependency) getDependencyInfoFunc {
 	return func(dependencyIndex string) parallel.TaskFunc {
 		return func(threadId int) error {
 			name := nca.dependencies[dependencyIndex].name
 			ver := nca.dependencies[dependencyIndex].version
-			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Fetching checksums for", name, "-", ver)
-			stream, err := servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
-			if err != nil {
+
+			// Get dependency info.
+			checksum, fileType, err := getDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
+			if err != nil || checksum == nil {
 				return err
 			}
-			defer stream.Close()
-			result, err := ioutil.ReadAll(stream)
-			if err != nil {
-				return err
-			}
-			parsedResult := new(aqlResult)
-			if err = json.Unmarshal(result, parsedResult); err != nil {
-				return errorutils.CheckError(err)
-			}
-			if len(parsedResult.Results) == 0 {
-				log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, "-", ver, "could not be found in Artifactory.")
-				return nil
-			}
-			nca.dependencies[dependencyIndex].artifactName = parsedResult.Results[0].Name
-			nca.dependencies[dependencyIndex].checksum =
-				&buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
-			log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Found", parsedResult.Results[0].Name,
-				"sha1:", parsedResult.Results[0].Actual_sha1,
-				"md5", parsedResult.Results[0].Actual_md5)
+
+			// Update dependency.
+			nca.dependencies[dependencyIndex].fileType = fileType
+			nca.dependencies[dependencyIndex].checksum = checksum
 			return nil
 		}
 	}
 }
 
+// Get dependency's checksum and type.
+func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
+	servicesManager artifactory.ArtifactoryServicesManager, threadId int) (checksum *buildinfo.Checksum, fileType string, err error) {
+	id := name + ":" + ver
+	if dep, ok := previousBuildDependencies[id]; ok {
+		// Get checksum from previous build.
+		checksum = dep.Checksum
+		fileType = dep.Type
+		return
+	}
+
+	// Get info from Artifactory.
+	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Fetching checksums for", name, ":", ver)
+	var stream io.ReadCloser
+	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
+	if err != nil {
+		return
+	}
+	defer stream.Close()
+	var result []byte
+	result, err = ioutil.ReadAll(stream)
+	if err != nil {
+		return
+	}
+	parsedResult := new(aqlResult)
+	if err = json.Unmarshal(result, parsedResult); err != nil {
+		return nil, "", errorutils.CheckError(err)
+	}
+	if len(parsedResult.Results) == 0 {
+		log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, ":", ver, "could not be found in Artifactory.")
+		return
+	}
+	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
+		fileType = parsedResult.Results[0].Name[i+1:]
+	}
+	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Found", parsedResult.Results[0].Name,
+		"sha1:", parsedResult.Results[0].Actual_sha1,
+		"md5", parsedResult.Results[0].Actual_md5)
+
+	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
+	return
+}
+
 // Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.
 func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dependency, missingDependencies []dependency) {
 	for _, dependency := range nca.dependencies {
-		if dependency.artifactName != "" {
-			fileType := ""
-			if i := strings.LastIndex(dependency.artifactName, "."); i != -1 {
-				fileType = dependency.artifactName[i+1:]
-			}
+		if dependency.checksum != nil {
 			dependencies = append(dependencies,
-				buildinfo.Dependency{Id: dependency.artifactName, Type: fileType, Scopes: dependency.scopes, Checksum: dependency.checksum})
+				buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
+					Scopes: dependency.scopes, Checksum: dependency.checksum})
 		} else {
 			missingDependencies = append(missingDependencies, *dependency)
 		}
@@ -717,11 +768,11 @@ func filterFlags(splitArgs []string) []string {
 type getDependencyInfoFunc func(string) parallel.TaskFunc
 
 type dependency struct {
-	name         string
-	version      string
-	scopes       []string
-	artifactName string
-	checksum     *buildinfo.Checksum
+	name     string
+	version  string
+	scopes   []string
+	fileType string
+	checksum *buildinfo.Checksum
 }
 
 type aqlResult struct {

@@ -2,15 +2,16 @@ package buildinfo
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"github.com/jfrog/jfrog-cli-core/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 const (
@@ -78,12 +79,14 @@ func getBuildDir(t *testing.T) string {
 
 func checkVCSUrl(partials buildinfo.Partials, t *testing.T) {
 	for _, partial := range partials {
-		if partial.Vcs != nil {
-			url := partial.Vcs.Url
-			urlSplitted := strings.Split(url, ".git")
-			if len(urlSplitted) != 2 {
-				t.Error("Argumanets value is different then two: ", urlSplitted)
-				break
+		if partial.VcsList != nil {
+			for _, vcs := range partial.VcsList {
+				url := vcs.Url
+				urlSplitted := strings.Split(url, ".git")
+				if len(urlSplitted) != 2 {
+					t.Error("Argumanets value is different then two: ", urlSplitted)
+					break
+				}
 			}
 		} else {
 			t.Error("VCS cannot be nil")

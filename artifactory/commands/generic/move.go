@@ -74,7 +74,14 @@ func getMoveParams(f *spec.File) (moveParams services.MoveCopyParams, err error)
 	if err != nil {
 		return
 	}
-
+	moveParams.ExcludeArtifacts, err = f.IsExcludeArtifacts(false)
+	if err != nil {
+		return
+	}
+	moveParams.IncludeDeps, err = f.IsIncludeDeps(false)
+	if err != nil {
+		return
+	}
 	moveParams.Flat, err = f.IsFlat(false)
 	if err != nil {
 		return

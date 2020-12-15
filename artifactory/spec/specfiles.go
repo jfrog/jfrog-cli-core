@@ -56,6 +56,8 @@ type File struct {
 	Offset           int
 	Limit            int
 	Build            string
+	ExcludeArtifacts string
+	IncludeDeps      string
 	Bundle           string
 	Recursive        string
 	Flat             string
@@ -87,6 +89,14 @@ func (f File) IsIncludeDirs(defaultValue bool) (bool, error) {
 
 func (f File) IsVlidateSymlinks(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.ValidateSymlinks, defaultValue)
+}
+
+func (f File) IsExcludeArtifacts(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.ExcludeArtifacts, defaultValue)
+}
+
+func (f File) IsIncludeDeps(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.IncludeDeps, defaultValue)
 }
 
 func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
@@ -123,6 +133,8 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isSortOrder := len(file.SortOrder) > 0
 		isSortBy := len(file.SortBy) > 0
 		isBuild := len(file.Build) > 0
+		isExcludeArtifacts, _ := file.IsExcludeArtifacts(false)
+		isIncludeDeps, _ := file.IsIncludeDeps(false)
 		isBundle := len(file.Bundle) > 0
 		isOffset := file.Offset > 0
 		isLimit := file.Limit > 0
@@ -175,6 +187,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		}
 		if isSortOrder && !isValidSortOrder {
 			return errors.New("The value of 'sort-order' can only be 'asc' or 'desc'.")
+		}
+		if !isBuild && (isExcludeArtifacts || isIncludeDeps) {
+			return errors.New("Spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included.")
 		}
 	}
 	if excludePatternsUsed {

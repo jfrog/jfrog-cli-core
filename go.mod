@@ -8,7 +8,7 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/jfrog/gocmd v0.1.17
 	github.com/jfrog/gofrog v1.0.6
-	github.com/jfrog/jfrog-client-go v0.16.0
+	github.com/jfrog/jfrog-client-go v0.17.0
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-shellwords v1.0.3
 	github.com/pkg/errors v0.9.1
@@ -19,6 +19,6 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go dev
+// replace github.com/jfrog/jfrog-client-go => /Users/eyalb/dev/jfrog-client-go
 
 // replace github.com/jfrog/gocmd => github.com/jfrog/gocmd master

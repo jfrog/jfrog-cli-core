@@ -61,6 +61,7 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 		return err
 	}
 
+	allDependencies := pic.getAllDependencies(dependencyToFileMap)
 	dependenciesCache, err := dependencies.GetProjectDependenciesCache()
 	if err != nil {
 		return err
@@ -71,7 +72,7 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 	if err != nil {
 		return err
 	}
-	allDependencies, missingDeps, err := dependencies.GetDependencies(dependencyToFileMap, dependenciesCache, servicesManager, pic.repository)
+	missingDeps, err := dependencies.AddDepsInfoAndReturnMissingDeps(allDependencies, dependenciesCache, dependencyToFileMap, servicesManager, pic.repository)
 	if err != nil {
 		return err
 	}
@@ -80,6 +81,16 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 	dependencies.UpdateDependenciesCache(allDependencies)
 	pic.saveBuildInfo(allDependencies)
 	return nil
+}
+
+// Convert dependencyToFileMap to Dependencies map.
+func (pic *PipInstallCommand) getAllDependencies(dependencyToFileMap map[string]string) map[string]*buildinfo.Dependency {
+	dependenciesMap := make(map[string]*buildinfo.Dependency, len(dependencyToFileMap))
+	for depName := range dependencyToFileMap {
+		dependenciesMap[depName] = &buildinfo.Dependency{Id: depName}
+	}
+
+	return dependenciesMap
 }
 
 func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dependency) {

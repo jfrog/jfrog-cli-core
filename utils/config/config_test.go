@@ -11,6 +11,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -136,6 +137,7 @@ func TestConvertConfigV0ToV2(t *testing.T) {
 }
 
 func TestConfigEncryption(t *testing.T) {
+	// Config
 	tempDirPath, oldHomeDir := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
 	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
@@ -183,6 +185,11 @@ func createTempEnv(t *testing.T) (newHomeDir, oldHomeDir string) {
 }
 
 func TestGetArtifactoriesFromConfig(t *testing.T) {
+	oldHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer os.Setenv(coreutils.HomeDir, oldHome)
+	defer tests.CleanUnitTestsJfrogHome()
+
 	config := `
 		{
 		  "artifactory": [

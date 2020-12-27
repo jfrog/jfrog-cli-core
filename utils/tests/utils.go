@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-const JfrogTestsHome = ".jfrogCliCoreTest"
+const JfrogTestsHome = ".jfrogTest"
 
 // Prepare the .git environment for the test. Takes an existing folder and making it .git dir.
 // sourceDirPath - Relative path to the source dir to change to .git

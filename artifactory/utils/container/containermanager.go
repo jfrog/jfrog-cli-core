@@ -39,7 +39,7 @@ const (
 )
 
 func (cmt ContainerManagerType) String() string {
-	return [...]string{"docker-client", "podman", "kaniko"}[cmt]
+	return [...]string{"docker", "podman", "kaniko"}[cmt]
 }
 
 // Container image

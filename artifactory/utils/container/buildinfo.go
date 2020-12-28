@@ -93,6 +93,7 @@ type RepositoryDetails struct {
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	if err := builder.updateArtifactsAndDependencies(); err != nil {
 		log.Warn(`Failed to collect build-info, couldn't find image "` + builder.image.tag + `" in Artifactory`)
+		// Don't generate an empty build-info for build-docker-create if the image manifest was not found in Artifactory.
 		if builder.containerManager.GetContainerManagerType() == Kaniko {
 			return nil, err
 		}
@@ -428,14 +429,12 @@ func searchHandler(imagePathPattern string, builder *buildInfoBuilder) (resultMa
 	if err != nil {
 		return
 	}
-	// Search results may include artifacts from the remote-cache repository and not the remote repository itself.
+	// Search results may include artifacts from the remote-cache repository.
 	// When artifact is expired, it cannot be downloaded from the remote-cache.
 	// To solve this, change back the search results' repository, to its origin remote/virtual.
-	if builder.repositoryDetails.isRemote {
-		defer func() {
-			resultMap = modifySearchResultRepo(builder.repositoryDetails.key, resultMap)
-		}()
-	}
+	defer func() {
+		resultMap = modifySearchResultRepo(builder.repositoryDetails.key, resultMap)
+	}()
 	// Validate there are no .marker layers.
 	if totalDownloaded, err := downloadMarkerLayersToRemoteCache(resultMap, builder); err != nil || totalDownloaded == 0 {
 		return resultMap, err

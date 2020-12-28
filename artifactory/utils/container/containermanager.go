@@ -23,30 +23,30 @@ var ApiVersionRegex = regexp.MustCompile(`^(\d+)\.(\d+)$`)
 // Docker API version 1.31 is compatible with Docker version 17.07.0, according to https://docs.docker.com/engine/api/#api-version-matrix
 const MinSupportedApiVersion string = "1.31"
 
-// Container login error message
+// Docker login error message
 const LoginFailureMessage string = "%s login failed for: %s.\n %s image must be in the form: registry-domain/path-in-repository/image-name:version."
 
-func NewContainerManager(containerManagerType ContainerManagerType) ContainerManager {
+func NewManager(containerManagerType ContainerManagerType) ContainerManager {
 	return &containerManager{Type: containerManagerType}
 }
 
 type ContainerManagerType int
 
 const (
-	Docker ContainerManagerType = iota
+	DockerClient ContainerManagerType = iota
 	Podman
 	Kaniko
 )
 
 func (cmt ContainerManagerType) String() string {
-	return [...]string{"docker", "podman", "kaniko"}[cmt]
+	return [...]string{"docker-client", "podman", "kaniko"}[cmt]
 }
 
 // Container image
 type ContainerManager interface {
 	Push(image *Image) error
 	Id(image *Image) (string, error)
-	ImageCompatibility(image *Image) (string, string, error)
+	OsCompatibility(image *Image) (string, string, error)
 	Pull(image *Image) error
 	GetContainerManagerType() ContainerManagerType
 }
@@ -79,7 +79,7 @@ func (containerManager *containerManager) Pull(image *Image) error {
 }
 
 // Return the OS and architecture on which the image runs e.g. (linux, amd64, nil).
-func (containerManager *containerManager) ImageCompatibility(image *Image) (string, string, error) {
+func (containerManager *containerManager) OsCompatibility(image *Image) (string, string, error) {
 	cmd := &getImageSystemCompatibilityCmd{image: image, containerManager: containerManager.Type}
 	content, err := gofrogcmd.RunCmdOutput(cmd)
 	if err != nil {
@@ -88,7 +88,7 @@ func (containerManager *containerManager) ImageCompatibility(image *Image) (stri
 	content = strings.Trim(content, "\n")
 	firstSeparator := strings.Index(content, ",")
 	if firstSeparator == -1 {
-		return "", "", errorutils.CheckError(errors.New("couldn't find Image OS and architecture of image:" + image.tag))
+		return "", "", errorutils.CheckError(errors.New("couldn't find OS and architecture of image:" + image.tag))
 	}
 	return content[:firstSeparator], content[firstSeparator+1:], err
 }
@@ -213,17 +213,17 @@ func ResolveRegistryFromTag(imageTag string) (string, error) {
 
 // Login command
 type LoginCmd struct {
-	ContainerRegistry string
-	Username          string
-	Password          string
-	containerManager  ContainerManagerType
+	DockerRegistry   string
+	Username         string
+	Password         string
+	containerManager ContainerManagerType
 }
 
 func (loginCmd *LoginCmd) GetCmd() *exec.Cmd {
 	if coreutils.IsWindows() {
-		return exec.Command("cmd", "/C", "echo", "%CONTAINER_MANAGER_PASS%|", "docker", "login", loginCmd.ContainerRegistry, "--username", loginCmd.Username, "--password-stdin")
+		return exec.Command("cmd", "/C", "echo", "%CONTAINER_MANAGER_PASS%|", "docker", "login", loginCmd.DockerRegistry, "--username", loginCmd.Username, "--password-stdin")
 	}
-	cmd := "echo $CONTAINER_MANAGER_PASS " + fmt.Sprintf(`| `+loginCmd.containerManager.String()+` login %s --username="%s" --password-stdin`, loginCmd.ContainerRegistry, loginCmd.Username)
+	cmd := "echo $CONTAINER_MANAGER_PASS " + fmt.Sprintf(`| `+loginCmd.containerManager.String()+` login %s --username="%s" --password-stdin`, loginCmd.DockerRegistry, loginCmd.Username)
 	return exec.Command("sh", "-c", cmd)
 }
 
@@ -264,7 +264,7 @@ func (pullCmd *pullCmd) GetErrWriter() io.WriteCloser {
 	return nil
 }
 
-// First will try to login assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
+// First we'll try to login assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
 // If fails, we will try assuming a reverse proxy tag (e.g. "registry-address-docker-repo/image:ver").
 func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
 	imageRegistry, err := ResolveRegistryFromTag(imageTag)
@@ -283,7 +283,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 		password = config.ArtifactoryDetails.AccessToken
 	}
 	// Perform login.
-	cmd := &LoginCmd{ContainerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
+	cmd := &LoginCmd{DockerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
 	err = gofrogcmd.RunCmd(cmd)
 	if exitCode := coreutils.GetExitCode(err, 0, 0, false); exitCode == coreutils.ExitCodeNoError {
 		// Login succeeded
@@ -294,7 +294,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	if indexOfSlash < 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())))
 	}
-	cmd = &LoginCmd{ContainerRegistry: imageRegistry[:indexOfSlash], Username: config.ArtifactoryDetails.User, Password: config.ArtifactoryDetails.Password}
+	cmd = &LoginCmd{DockerRegistry: imageRegistry[:indexOfSlash], Username: config.ArtifactoryDetails.User, Password: config.ArtifactoryDetails.Password}
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		// Login failed for both attempts
@@ -306,7 +306,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 }
 
 // Version command
-// Docker only
+// Docker-client provides an API for interacting with the Docker daemon. This cmd should be used for docker client only.
 type VersionCmd struct{}
 
 func (versionCmd *VersionCmd) GetCmd() *exec.Cmd {

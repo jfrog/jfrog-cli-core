@@ -1,7 +1,10 @@
 package container
 
 import (
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 )
 
@@ -19,6 +22,12 @@ func (cmc *ContainerManagerCommand) ImageTag() string {
 
 func (cmc *ContainerManagerCommand) SetImageTag(imageTag string) *ContainerManagerCommand {
 	cmc.imageTag = imageTag
+	// Remove base URL from the image tag.
+	imageRelativePath := imageTag[strings.Index(imageTag, "/"):]
+	// Use the default image tag if none exist.
+	if strings.LastIndex(imageRelativePath, ":") == -1 {
+		cmc.imageTag += ":latest"
+	}
 	return cmc
 }
 
@@ -52,4 +61,12 @@ func (cmc *ContainerManagerCommand) RtDetails() *config.ArtifactoryDetails {
 func (cmc *ContainerManagerCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *ContainerManagerCommand {
 	cmc.rtDetails = rtDetails
 	return cmc
+}
+
+func (cmc *ContainerManagerCommand) PerformLogin(rtDetails *config.ArtifactoryDetails, containerManagerType container.ContainerManagerType) error {
+	if !cmc.skipLogin {
+		loginConfig := &container.ContainerManagerLoginConfig{ArtifactoryDetails: rtDetails}
+		return container.ContainerManagerLogin(cmc.imageTag, loginConfig, containerManagerType)
+	}
+	return nil
 }

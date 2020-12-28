@@ -9,7 +9,7 @@ type Image struct {
 	tag string
 }
 
-//Get image tag
+// Get image tag
 func (image *Image) Tag() string {
 	return image.tag
 }

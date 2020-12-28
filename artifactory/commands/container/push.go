@@ -1,8 +1,6 @@
 package container
 
 import (
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -30,31 +28,22 @@ func (pc *PushCommand) SetThreads(threads int) *PushCommand {
 
 // Push image and create build info if needed
 func (pc *PushCommand) Run() error {
-	if pc.containerManagerType == container.Docker {
+	if pc.containerManagerType == container.DockerClient {
 		err := container.ValidateClientApiVersion()
 		if err != nil {
 			return err
 		}
 	}
-	// Perform login
 	rtDetails, err := pc.RtDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	if !pc.skipLogin {
-		loginConfig := &container.ContainerManagerLoginConfig{ArtifactoryDetails: rtDetails}
-		err = container.ContainerManagerLogin(pc.imageTag, loginConfig, pc.containerManagerType)
-		if err != nil {
-			return err
-		}
+	// Perform login
+	if err := pc.PerformLogin(rtDetails, pc.containerManagerType); err != nil {
+		return err
 	}
 	// Perform push.
-	// Skip port colon.
-	imagePath := pc.imageTag[strings.Index(pc.imageTag, "/"):]
-	if strings.LastIndex(imagePath, ":") == -1 {
-		pc.imageTag = pc.imageTag + ":latest"
-	}
-	cm := container.NewContainerManager(pc.containerManagerType)
+	cm := container.NewManager(pc.containerManagerType)
 	image := container.NewImage(pc.imageTag)
 	err = cm.Push(image)
 	if err != nil {
@@ -83,7 +72,7 @@ func (pc *PushCommand) Run() error {
 }
 
 func (pc *PushCommand) CommandName() string {
-	return "rt_container_push"
+	return "rt_docker_push"
 }
 
 func (pc *PushCommand) RtDetails() (*config.ArtifactoryDetails, error) {

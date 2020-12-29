@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -202,4 +204,22 @@ var buildScanError = errors.New("issues found during xray build scan")
 
 func GetBuildScanError() error {
 	return buildScanError
+}
+
+// Download and unmarshal a file from artifactory.
+func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remoteFileUrl string, loadTarget interface{}) (err error) {
+	ioReaderCloser, err := serviceManager.ReadRemoteFile(remoteFileUrl)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if localErr := ioReaderCloser.Close(); err == nil {
+			err = localErr
+		}
+	}()
+	content, err := ioutil.ReadAll(ioReaderCloser)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
 }

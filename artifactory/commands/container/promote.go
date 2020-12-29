@@ -1,4 +1,4 @@
-package docker
+package container
 
 import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -21,7 +21,6 @@ func (dp *DockerPromoteCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
 	// Promote docker
 	return servicesManager.PromoteDocker(dp.params)
 }

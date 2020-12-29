@@ -1,4 +1,4 @@
-package docker
+package container
 
 import (
 	"testing"
@@ -18,7 +18,7 @@ func TestGetImagePath(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result := New(v.in).Path()
+		result := NewImage(v.in).Path()
 		if result != v.expected {
 			t.Errorf("Path(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
@@ -39,7 +39,7 @@ func TestGetImageName(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result := New(v.in).Name()
+		result := NewImage(v.in).Name()
 		if result != v.expected {
 			t.Errorf("Name(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}

@@ -24,7 +24,7 @@ func (cmc *ContainerManagerCommand) SetImageTag(imageTag string) *ContainerManag
 	cmc.imageTag = imageTag
 	// Remove base URL from the image tag.
 	imageRelativePath := imageTag[strings.Index(imageTag, "/"):]
-	// Use the default image tag if none exist.
+	// Use the default image tag if none exists.
 	if strings.LastIndex(imageRelativePath, ":") == -1 {
 		cmc.imageTag += ":latest"
 	}

@@ -279,13 +279,13 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	return buildInfo, nil
 }
 
-// Return - manifest artifacts as buildinfo.Artifact object.
+// Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(searchResults map[string]*utils.ResultItem) (artifact buildinfo.Artifact) {
 	item := searchResults["manifest.json"]
 	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
 }
 
-// Return - manifest dependency as buildinfo.Dependency object.
+// Return - manifest dependency as buildinfo.Dependency struct.
 func getManifestDependency(searchResults map[string]*utils.ResultItem) (dependency buildinfo.Dependency) {
 	item := searchResults["manifest.json"]
 	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
@@ -311,7 +311,7 @@ func getConfigLayer(imageId string, searchResults map[string]*utils.ResultItem, 
 func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern string) (resultMap map[string]*utils.ResultItem, manifestContent *manifest, err error) {
 	resultMap, err = searchHandler(imagePathPattern, builder)
 	if err != nil || len(resultMap) == 0 {
-		log.Debug("Couldn't find manifest.json. Image path pattern: " + imagePathPattern + ".")
+		log.Debug("Couldn't find manifest.json. Image path pattern: ", imagePathPattern, ".")
 		return
 	}
 	// Verify manifest content.

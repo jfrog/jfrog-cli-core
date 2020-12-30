@@ -3,13 +3,14 @@ package commands
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+
 	"github.com/jfrog/jfrog-cli-core/missioncontrol/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-client-go/httpclient"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/http"
 )
 
 func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {

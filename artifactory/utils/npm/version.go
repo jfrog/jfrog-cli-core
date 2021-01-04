@@ -1,10 +1,11 @@
 package npm
 
 import (
-	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"io"
 	"io/ioutil"
+
+	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 func Version(executablePath string) ([]byte, error) {

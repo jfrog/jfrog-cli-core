@@ -500,9 +500,10 @@ func (cc *ConfigCommand) encryptPassword() error {
 }
 
 func checkSingleAuthMethod(details *config.ArtifactoryDetails) error {
-	boolArr := []bool{details.User != "" && details.Password != "", details.ApiKey != "", fileutils.IsSshUrl(details.Url), details.AccessToken != ""}
+	boolArr := []bool{details.User != "" && details.Password != "", details.ApiKey != "", fileutils.IsSshUrl(details.Url),
+		details.AccessToken != "" && details.RefreshToken == ""}
 	if coreutils.SumTrueValues(boolArr) > 1 {
-		return errorutils.CheckError(errors.New("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token."))
+		return errorutils.CheckError(errors.New("only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token"))
 	}
 	return nil
 }

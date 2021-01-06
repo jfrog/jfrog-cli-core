@@ -81,6 +81,7 @@ func (containerManager *containerManager) Pull(image *Image) error {
 // Return the OS and architecture on which the image runs e.g. (linux, amd64, nil).
 func (containerManager *containerManager) OsCompatibility(image *Image) (string, string, error) {
 	cmd := &getImageSystemCompatibilityCmd{image: image, containerManager: containerManager.Type}
+	log.Debug("Running image inspect...")
 	content, err := gofrogcmd.RunCmdOutput(cmd)
 	if err != nil {
 		return "", "", err

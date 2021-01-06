@@ -97,7 +97,7 @@ func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, err
 		if builder.containerManager.GetContainerManagerType() == Kaniko {
 			return nil, err
 		} else {
-			log.Error("Error: " + err.Error())
+			log.Error("Failed populating the build-info module with docker artifacts and dependencies. Reason: " + err.Error())
 		}
 	}
 	// Set build properties only when pushing image.
@@ -329,7 +329,7 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 	// Check if search results contain manifest.json
 	searchesult, ok := resultMap["manifest.json"]
 	if ok {
-		// Found a manifest, verify manifest is the same as the builder image.
+		// Found a manifest. Verify manifest is the same as the builder image.
 		if builder.containerManager.GetContainerManagerType() == Kaniko {
 			manifestContent, err = verifyManifestBySha256(*searchesult, builder)
 		} else {
@@ -373,7 +373,7 @@ func getImageDigestFromFatManifest(fatManifest utils.ResultItem, builder *buildI
 // Verify manifest contains the builder image digest. If there is no match, return nil.
 func verifyManifestBySha256(manifestSearchResult utils.ResultItem, builder *buildInfoBuilder) (imageManifest *manifest, err error) {
 	if manifestSearchResult.GetProperty("docker.manifest.digest") != builder.manifestSha256 {
-		log.Debug(`Found incorrect manifest.json file, except sha256 "` + builder.manifestSha256 + `" found "` + manifestSearchResult.GetProperty("sha256"))
+		log.Debug(`Found incorrect manifest.json file. Expects sha256 "` + builder.manifestSha256 + `" found "` + manifestSearchResult.GetProperty("sha256"))
 		return
 	}
 	log.Debug(`Found manifest.json with expected sha256: "` + builder.manifestSha256)
@@ -390,7 +390,7 @@ func verifyManifestByDigest(manifestSearchResult utils.ResultItem, builder *buil
 		return
 	}
 	if imageManifest.Config.Digest != builder.imageId {
-		log.Debug(`Found incorrect manifest.json file, Excepts digest "` + builder.imageId + `" found "` + imageManifest.Config.Digest)
+		log.Debug(`Found incorrect manifest.json file. Expects digest "` + builder.imageId + `" found "` + imageManifest.Config.Digest)
 		imageManifest = nil
 	}
 	return

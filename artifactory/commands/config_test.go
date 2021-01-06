@@ -85,15 +85,17 @@ func TestAccessToken(t *testing.T) {
 }
 
 func TestRefreshToken(t *testing.T) {
+	// Import after tokens were generated.
 	inputDetails := config.ArtifactoryDetails{
 		Url:             "http://localhost:8080/artifactory",
 		DistributionUrl: "http://localhost:8080/distribution",
-		User:            "", Password: "",
+		User:            "user", Password: "pass",
 		ApiKey: "", SshKeyPath: "", AccessToken: "accessToken", RefreshToken: "refreshToken",
 		ServerId:  "test",
 		IsDefault: false}
 	configAndTest(t, &inputDetails)
 
+	// Import before tokens were generated.
 	inputDetails = config.ArtifactoryDetails{
 		Url:             "http://localhost:8080/artifactory",
 		DistributionUrl: "http://localhost:8080/distribution",

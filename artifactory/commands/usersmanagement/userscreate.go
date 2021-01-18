@@ -54,7 +54,7 @@ func (ucc *UsersCreateCommand) ReplaceExistUsersFlag() bool {
 }
 
 func (ucc *UsersCreateCommand) CommandName() string {
-	return "rt_users-create"
+	return "rt_users_create"
 }
 
 func (ucc *UsersCreateCommand) Run() error {

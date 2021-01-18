@@ -55,8 +55,8 @@ func (guc *GroupUpdateCommand) Run() error {
 	group := new(services.Group)
 	group.Name = guc.Name()
 	group.UsersNames = guc.Users()
-
-	servicesManager.UpdateGroup(*group)
-
+	params := new(services.GroupParams)
+	params.GroupDetails = *group
+	servicesManager.UpdateGroup(*params)
 	return err
 }

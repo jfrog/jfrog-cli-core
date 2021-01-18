@@ -65,7 +65,10 @@ func (ucc *UsersCreateCommand) Run() error {
 
 	for _, user := range ucc.users {
 		user.Groups = ucc.usersGroups
-		err = servicesManager.CreateUser(user, ucc.ReplaceExistUsersFlag())
+		params := new(services.UsersParams)
+		params.UserDetails = user
+		params.ReplaceExistUsers = ucc.ReplaceExistUsersFlag()
+		err = servicesManager.CreateUser(*params)
 		if err != nil {
 			break
 		}

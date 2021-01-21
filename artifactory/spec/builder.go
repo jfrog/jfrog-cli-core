@@ -10,7 +10,7 @@ type builder struct {
 	target           string
 	explode          string
 	props            string
-	addedProps       string
+	addProps         string
 	excludeProps     string
 	sortOrder        string
 	sortBy           []string
@@ -67,8 +67,8 @@ func (b *builder) Props(props string) *builder {
 	return b
 }
 
-func (b *builder) AddedProps(addedProps string) *builder {
-	b.addedProps = addedProps
+func (b *builder) AddProps(addProps string) *builder {
+	b.addProps = addProps
 	return b
 }
 
@@ -152,7 +152,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Exclusions:       b.exclusions,
 				Target:           b.target,
 				Props:            b.props,
-				AddedProps:       b.addedProps,
+				AddProps:         b.addProps,
 				ExcludeProps:     b.excludeProps,
 				SortOrder:        b.sortOrder,
 				SortBy:           b.sortBy,

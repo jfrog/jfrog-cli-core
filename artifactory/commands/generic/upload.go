@@ -107,7 +107,7 @@ func (uc *UploadCommand) upload() error {
 	// Create UploadParams for all File-Spec groups.
 	for i := 0; i < len(uc.Spec().Files); i++ {
 		file := uc.Spec().Get(i)
-		file.AddedProps += syncDeletesProp
+		file.AddProps += syncDeletesProp
 		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
 			errorOccurred = true

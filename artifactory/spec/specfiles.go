@@ -50,7 +50,7 @@ type File struct {
 	Target           string
 	Explode          string
 	Props            string
-    AddedProps       string
+	AddedProps       string
 	ExcludeProps     string
 	SortOrder        string
 	SortBy           []string

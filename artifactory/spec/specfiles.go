@@ -120,11 +120,12 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	return params
 }
 
-func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error {
+func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload bool) error {
 	if len(files) == 0 {
 		return errors.New("Spec must include at least one file group")
 	}
 	excludePatternsUsed := false
+	propsUsedInUpload := false
 	for _, file := range files {
 		isAql := len(file.Aql.ItemsFind) > 0
 		isPattern := len(file.Pattern) > 0
@@ -141,6 +142,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isOffset := file.Offset > 0
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
+		propsUsedInUpload = propsUsedInUpload || (isUpload && len(file.Props) > 0)
 
 		if isTargetMandatory && !isTarget {
 			return errors.New("Spec must include target.")
@@ -197,6 +199,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 	if excludePatternsUsed {
 		showDeprecationOnExcludePatterns()
 	}
+	if propsUsedInUpload {
+		showDeprecationOnProps()
+	}
 	return nil
 }
 
@@ -214,4 +219,9 @@ func showDeprecationOnExcludePatterns() {
 	"exclusions": ["repo-name/a.zip"]
 	or
 	"exclusions": ["*/a.zip"]`)
+}
+
+func showDeprecationOnProps() {
+	log.Warn(`The --props command option and the 'Props' File Spec property are deprecated in Upload.
+	Please use the --added-props command option or the 'addedProps' File Spec property instead.`)
 }

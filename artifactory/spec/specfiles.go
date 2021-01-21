@@ -50,6 +50,7 @@ type File struct {
 	Target           string
 	Explode          string
 	Props            string
+    AddedProps       string
 	ExcludeProps     string
 	SortOrder        string
 	SortBy           []string
@@ -107,6 +108,7 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	params.Exclusions = f.Exclusions
 	params.Target = f.Target
 	params.Props = f.Props
+	params.AddedProps = f.AddedProps
 	params.ExcludeProps = f.ExcludeProps
 	params.Build = f.Build
 	params.Bundle = f.Bundle

@@ -151,7 +151,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonP
 func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
-	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.IsRegexp(), false)
+	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonP
 }
 
 func collectPatternMatchingFiles(addDepsParams *specutils.ArtifactoryCommonParams, rootPath string) ([]string, error) {
-	addDepsParams.SetPattern(clientutils.PrepareLocalPathForUpload(addDepsParams.Pattern, addDepsParams.IsRegexp()))
+	addDepsParams.SetPattern(clientutils.PrepareLocalPathForUpload(addDepsParams.Pattern, addDepsParams.GetPatternType()))
 	excludePathPattern := fspatterns.PrepareExcludePathPattern(addDepsParams)
 	patternRegex, err := regxp.Compile(addDepsParams.Pattern)
 	if errorutils.CheckError(err) != nil {

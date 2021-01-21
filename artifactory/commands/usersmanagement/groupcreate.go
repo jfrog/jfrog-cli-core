@@ -7,9 +7,9 @@ import (
 )
 
 type GroupCreateCommand struct {
-	rtDetails         *config.ArtifactoryDetails
-	name              string
-	replaceExistGroup bool
+	rtDetails       *config.ArtifactoryDetails
+	name            string
+	replaceIfExists bool
 }
 
 func NewGroupCreateCommand() *GroupCreateCommand {
@@ -34,13 +34,13 @@ func (gcc *GroupCreateCommand) Name() string {
 	return gcc.name
 }
 
-func (gcc *GroupCreateCommand) SetReplaceExistGroupFlag(replaceExistGroup bool) *GroupCreateCommand {
-	gcc.replaceExistGroup = replaceExistGroup
+func (gcc *GroupCreateCommand) SetReplaceIfExists(replaceIfExists bool) *GroupCreateCommand {
+	gcc.replaceIfExists = replaceIfExists
 	return gcc
 }
 
-func (gcc *GroupCreateCommand) ReplaceExistGroupFlag() bool {
-	return gcc.replaceExistGroup
+func (gcc *GroupCreateCommand) ReplaceIfExists() bool {
+	return gcc.replaceIfExists
 }
 
 func (gcc *GroupCreateCommand) CommandName() string {
@@ -56,8 +56,6 @@ func (gcc *GroupCreateCommand) Run() error {
 	group.Name = gcc.Name()
 	params := new(services.GroupParams)
 	params.GroupDetails = *group
-	params.ReplaceExistGroup = gcc.ReplaceExistGroupFlag()
-	servicesManager.CreateGroup(*params)
-
-	return err
+	params.ReplaceIfExists = gcc.ReplaceIfExists()
+	return servicesManager.CreateGroup(*params)
 }

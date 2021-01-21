@@ -1,16 +1,19 @@
 package usersmanagement
 
 import (
+	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type UsersCreateCommand struct {
-	rtDetails         *config.ArtifactoryDetails
-	users             []services.User
-	usersGroups       []string
-	replaceExistUsers bool
+	rtDetails       *config.ArtifactoryDetails
+	users           []services.User
+	usersGroups     []string
+	replaceIfExists bool
 }
 
 func NewUsersCreateCommand() *UsersCreateCommand {
@@ -44,13 +47,13 @@ func (ucc *UsersCreateCommand) UsersGroups() []string {
 	return ucc.usersGroups
 }
 
-func (ucc *UsersCreateCommand) SetReplaceExistUsersFlag(replaceExistUsers bool) *UsersCreateCommand {
-	ucc.replaceExistUsers = replaceExistUsers
+func (ucc *UsersCreateCommand) SetReplaceIfExists(replaceIfExists bool) *UsersCreateCommand {
+	ucc.replaceIfExists = replaceIfExists
 	return ucc
 }
 
-func (ucc *UsersCreateCommand) ReplaceExistUsersFlag() bool {
-	return ucc.replaceExistUsers
+func (ucc *UsersCreateCommand) ReplaceIfExists() bool {
+	return ucc.replaceIfExists
 }
 
 func (ucc *UsersCreateCommand) CommandName() string {
@@ -64,10 +67,11 @@ func (ucc *UsersCreateCommand) Run() error {
 	}
 
 	for _, user := range ucc.users {
+		log.Info(fmt.Sprintf("Creating user %s...", user.Name))
 		user.Groups = ucc.usersGroups
-		params := new(services.UsersParams)
+		params := new(services.UserParams)
 		params.UserDetails = user
-		params.ReplaceExistUsers = ucc.ReplaceExistUsersFlag()
+		params.ReplaceIfExists = ucc.ReplaceIfExists()
 		err = servicesManager.CreateUser(*params)
 		if err != nil {
 			break

@@ -1,8 +1,11 @@
 package usersmanagement
 
 import (
+	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type UsersDeleteCommand struct {
@@ -43,6 +46,7 @@ func (udc *UsersDeleteCommand) Run() error {
 	}
 
 	for _, userName := range udc.usersNames {
+		log.Info(fmt.Sprintf("Deleting user %s...", userName))
 		err = servicesManager.DeleteUser(userName)
 		if err != nil {
 			break

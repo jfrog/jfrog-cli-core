@@ -10,7 +10,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -69,7 +70,7 @@ func (uc *UploadCommand) upload() error {
 	syncDeletesProp := ""
 	if uc.syncDelete() {
 		timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
-		syncDeletesProp = ";sync.deletes.timestamp=" + timestamp
+		syncDeletesProp = "sync.deletes.timestamp=" + timestamp
 	}
 
 	// Create Service Manager:
@@ -107,7 +108,8 @@ func (uc *UploadCommand) upload() error {
 	// Create UploadParams for all File-Spec groups.
 	for i := 0; i < len(uc.Spec().Files); i++ {
 		file := uc.Spec().Get(i)
-		file.Props += syncDeletesProp
+		file.TargetProps = clientUtils.AddProps(file.TargetProps, file.Props)
+		file.TargetProps = clientUtils.AddProps(file.TargetProps, syncDeletesProp)
 		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
 			errorOccurred = true
@@ -177,7 +179,7 @@ func (uc *UploadCommand) upload() error {
 	return err
 }
 
-func convertFileInfoToBuildArtifacts(filesInfo []clientutils.FileInfo) []buildinfo.Artifact {
+func convertFileInfoToBuildArtifacts(filesInfo []rtServicesUtils.FileInfo) []buildinfo.Artifact {
 	buildArtifacts := make([]buildinfo.Artifact, len(filesInfo))
 	for i, fileInfo := range filesInfo {
 		buildArtifacts[i] = fileInfo.ToBuildArtifacts()

@@ -87,5 +87,8 @@ func GetRepoNameForDependenciesSearch(repoName string, serviceManager artifactor
 
 func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryServicesManager) (bool, error) {
 	repoDetails, err := serviceManager.GetRepository(repoName)
-	return repoDetails.Rclass == "remote", err
+	if err != nil {
+		return false, errorutils.CheckError(errors.New("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error()))
+	}
+	return repoDetails.Rclass == "remote", nil
 }

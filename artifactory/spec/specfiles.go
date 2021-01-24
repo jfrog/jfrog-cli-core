@@ -50,7 +50,7 @@ type File struct {
 	Target           string
 	Explode          string
 	Props            string
-	AddProps         string
+	TargetProps      string
 	ExcludeProps     string
 	SortOrder        string
 	SortBy           []string
@@ -108,7 +108,7 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	params.Exclusions = f.Exclusions
 	params.Target = f.Target
 	params.Props = f.Props
-	params.AddProps = f.AddProps
+	params.TargetProps = f.TargetProps
 	params.ExcludeProps = f.ExcludeProps
 	params.Build = f.Build
 	params.Bundle = f.Bundle
@@ -223,5 +223,5 @@ func showDeprecationOnExcludePatterns() {
 
 func showDeprecationOnProps() {
 	log.Warn(`The --props command option and the 'Props' File Spec property are deprecated in Upload.
-	Please use the --add-props command option or the 'addProps' File Spec property instead.`)
+	Please use the --target-props command option or the 'targetProps' File Spec property instead.`)
 }

@@ -159,13 +159,9 @@ func getPackageName(pythonExecutablePath string, pipArgs []string) (string, erro
 	// Build uses setup.py file.
 	// Setup.py should be in current dir.
 	filePath, err := getSetupPyFilePath()
-	if err != nil {
+	if err != nil || filePath == "" {
+		// Error was returned or setup.py does not exist in directory.
 		return "", err
-	}
-
-	if filePath == "" {
-		// setup.py does not exist in directory.
-		return "", nil
 	}
 
 	// Extract package name from setup.py.

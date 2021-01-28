@@ -11,7 +11,6 @@ import (
 
 type DeleteCommand struct {
 	GenericCommand
-	quiet   bool
 	threads int
 }
 
@@ -25,15 +24,6 @@ func (dc *DeleteCommand) Threads() int {
 
 func (dc *DeleteCommand) SetThreads(threads int) *DeleteCommand {
 	dc.threads = threads
-	return dc
-}
-
-func (dc *DeleteCommand) Quiet() bool {
-	return dc.quiet
-}
-
-func (dc *DeleteCommand) SetQuiet(quiet bool) *DeleteCommand {
-	dc.quiet = quiet
 	return dc
 }
 

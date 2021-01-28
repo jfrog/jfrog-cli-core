@@ -27,10 +27,6 @@ func (dc *DeleteCommand) SetThreads(threads int) *DeleteCommand {
 	return dc
 }
 
-func (dc *DeleteCommand) Quiet() bool {
-	return dc.quiet
-}
-
 func (dc *DeleteCommand) CommandName() string {
 	return "rt_delete"
 }

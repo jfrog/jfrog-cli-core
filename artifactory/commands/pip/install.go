@@ -156,25 +156,12 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 }
 
 func getPackageName(pythonExecutablePath string, pipArgs []string) (string, error) {
-	// Check if using requirements file.
-	isRequirementsFileUsed, err := isCommandUsesRequirementsFile(pipArgs)
-	if err != nil {
-		return "", err
-	}
-	if isRequirementsFileUsed {
-		return "", nil
-	}
-
 	// Build uses setup.py file.
 	// Setup.py should be in current dir.
-	filePath, err := getSetuppyFilePath()
-	if err != nil {
+	filePath, err := getSetupPyFilePath()
+	if err != nil || filePath == "" {
+		// Error was returned or setup.py does not exist in directory.
 		return "", err
-	}
-
-	if filePath == "" {
-		// Couldn't resolve requirements file or setup.py.
-		return "", errorutils.CheckError(errors.New("Could not find installation file for pip command, the command must include '--requirement' or be executed from within the directory containing the 'setup.py' file."))
 	}
 
 	// Extract package name from setup.py.
@@ -185,22 +172,9 @@ func getPackageName(pythonExecutablePath string, pipArgs []string) (string, erro
 	return packageName, err
 }
 
-// Look for 'requirements' flag in command args.
-// If found, validate the file exists and return its path.
-func isCommandUsesRequirementsFile(args []string) (bool, error) {
-	// Get requirements flag args.
-	_, _, requirementsFilePath, err := utils.FindFlagFirstMatch([]string{"-r", "--requirement"}, args)
-	if err != nil || requirementsFilePath == "" {
-		// Args don't include a path to requirements file.
-		return false, err
-	}
-
-	return true, nil
-}
-
 // Look for 'setup.py' file in current work dir.
 // If found, return its absolute path.
-func getSetuppyFilePath() (string, error) {
+func getSetupPyFilePath() (string, error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return "", err
@@ -213,7 +187,8 @@ func getSetuppyFilePath() (string, error) {
 		return "", err
 	}
 	if !validPath {
-		return "", errorutils.CheckError(errors.New(fmt.Sprintf("Could not find setup.py file in current directory: %s", wd)))
+		log.Debug("Could not find setup.py file in current directory:", wd)
+		return "", nil
 	}
 
 	return filePath, nil

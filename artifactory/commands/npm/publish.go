@@ -209,11 +209,10 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.Artifac
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
 	if npc.collectBuildInfo {
 		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
-		props, err := utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
+		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
 		if err != nil {
 			return nil, err
 		}
-		up.ArtifactoryCommonParams.Props = props
 	}
 	resultsReader, _, failed, err := servicesManager.UploadFilesWithResultReader(up)
 	defer resultsReader.Close()

@@ -8,7 +8,7 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/jfrog/gocmd v0.1.19
 	github.com/jfrog/gofrog v1.0.6
-	github.com/jfrog/jfrog-client-go v0.19.0
+	github.com/jfrog/jfrog-client-go v0.19.1
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-shellwords v1.0.3
 	github.com/pkg/errors v0.9.1

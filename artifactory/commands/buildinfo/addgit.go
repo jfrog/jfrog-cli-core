@@ -104,6 +104,7 @@ func (config *BuildAddGitCommand) Run() error {
 		partial.VcsList = append(partial.VcsList, buildinfo.Vcs{
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
+			Branch:   gitManager.GetBranch(),
 		})
 
 		if config.configFilePath != "" {

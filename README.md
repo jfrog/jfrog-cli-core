@@ -2,7 +2,7 @@
 
 ## General
 
-**jfrog-cli-core** is a go module which contains the core code components used by the [JFrog CLI source code](https://github.com/jfrog-cli).
+**jfrog-cli-core** is a go module which contains the core code components used by the [JFrog CLI source code](https://github.com/jfrog/jfrog-cli).
 
 ## Pull Requests
 

@@ -209,7 +209,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.Artifac
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
 	if npc.collectBuildInfo {
 		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
-		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
+		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
 		if err != nil {
 			return nil, err
 		}

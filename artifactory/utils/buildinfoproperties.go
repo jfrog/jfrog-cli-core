@@ -40,6 +40,7 @@ const (
 // For key/value binding
 const BUILD_NAME = "build.name"
 const BUILD_NUMBER = "build.number"
+const BUILD_PROJECT = "build.project"
 const BUILD_TIMESTAMP = "build.timestamp"
 const GENERATED_BUILD_INFO = "buildInfo.generated"
 const INSECURE_TLS = "insecureTls"
@@ -77,46 +78,41 @@ const PORT = "port"
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
-	"artifactory.publish.artifacts":                      "true",
-	"artifactory.publish.buildInfo":                      "false",
-	"artifactory.publish.unstable":                       "false",
-	"artifactory.publish.maven":                          "false",
-	"artifactory.publish.ivy":                            "false",
-	"buildInfoConfig.includeEnvVars":                     "false",
-	"buildInfoConfig.envVarsExcludePatterns":             "*password*,*psw*,*secret*,*key*,*token*",
-	"buildInfo.agent.name":                               coreutils.GetClientAgent() + "/" + coreutils.GetVersion(),
-	"buildInfo.licenseControl.autoDiscover":              "true",
-	"buildInfo.licenseControl.includePublishedArtifacts": "false",
-	"buildInfo.licenseControl.runChecks":                 "false",
-	"org.jfrog.build.extractor.maven.recorder.activate":  "true",
-	"buildInfo.env.extractor.used":                       "true",
-	"artifactory.publish.forkCount":                      "3",
+	"artifactory.publish.artifacts":                     "true",
+	"artifactory.publish.buildInfo":                     "false",
+	"artifactory.publish.unstable":                      "false",
+	"artifactory.publish.maven":                         "false",
+	"artifactory.publish.ivy":                           "false",
+	"buildInfoConfig.includeEnvVars":                    "false",
+	"buildInfoConfig.envVarsExcludePatterns":            "*password*,*psw*,*secret*,*key*,*token*",
+	"buildInfo.agent.name":                              coreutils.GetClientAgent() + "/" + coreutils.GetVersion(),
+	"org.jfrog.build.extractor.maven.recorder.activate": "true",
+	"buildInfo.env.extractor.used":                      "true",
+	"artifactory.publish.forkCount":                     "3",
 }
 
 var commonConfigMapping = map[string]string{
-	"artifactory.publish.buildInfo":                      "",
-	"artifactory.publish.unstable":                       "",
-	"buildInfoConfig.includeEnvVars":                     "",
-	"buildInfoConfig.envVarsExcludePatterns":             "",
-	"buildInfo.agent.name":                               "",
-	"buildInfo.licenseControl.autoDiscover":              "",
-	"buildInfo.licenseControl.includePublishedArtifacts": "",
-	"buildInfo.licenseControl.runChecks":                 "",
-	"artifactory.resolve.contextUrl":                     RESOLVER_PREFIX + URL,
-	"artifactory.resolve.username":                       RESOLVER_PREFIX + USERNAME,
-	"artifactory.resolve.password":                       RESOLVER_PREFIX + PASSWORD,
-	"artifactory.publish.contextUrl":                     DEPLOYER_PREFIX + URL,
-	"artifactory.publish.username":                       DEPLOYER_PREFIX + USERNAME,
-	"artifactory.publish.password":                       DEPLOYER_PREFIX + PASSWORD,
-	"artifactory.publish.artifacts":                      DEPLOYER_PREFIX + DEPLOY_ARTIFACTS,
-	"artifactory.deploy.build.name":                      BUILD_NAME,
-	"artifactory.deploy.build.number":                    BUILD_NUMBER,
-	"artifactory.deploy.build.timestamp":                 BUILD_TIMESTAMP,
-	"buildInfo.generated.build.info":                     GENERATED_BUILD_INFO,
-	"artifactory.proxy.host":                             PROXY + HOST,
-	"artifactory.proxy.port":                             PROXY + PORT,
-	"artifactory.publish.forkCount":                      FORK_COUNT,
-	"artifactory.insecureTls":                            INSECURE_TLS,
+	"artifactory.publish.buildInfo":          "",
+	"artifactory.publish.unstable":           "",
+	"buildInfoConfig.includeEnvVars":         "",
+	"buildInfoConfig.envVarsExcludePatterns": "",
+	"buildInfo.agent.name":                   "",
+	"artifactory.resolve.contextUrl":         RESOLVER_PREFIX + URL,
+	"artifactory.resolve.username":           RESOLVER_PREFIX + USERNAME,
+	"artifactory.resolve.password":           RESOLVER_PREFIX + PASSWORD,
+	"artifactory.publish.contextUrl":         DEPLOYER_PREFIX + URL,
+	"artifactory.publish.username":           DEPLOYER_PREFIX + USERNAME,
+	"artifactory.publish.password":           DEPLOYER_PREFIX + PASSWORD,
+	"artifactory.publish.artifacts":          DEPLOYER_PREFIX + DEPLOY_ARTIFACTS,
+	"artifactory.deploy.build.name":          BUILD_NAME,
+	"artifactory.deploy.build.number":        BUILD_NUMBER,
+	"artifactory.deploy.build.project":       BUILD_PROJECT,
+	"artifactory.deploy.build.timestamp":     BUILD_TIMESTAMP,
+	"buildInfo.generated.build.info":         GENERATED_BUILD_INFO,
+	"artifactory.proxy.host":                 PROXY + HOST,
+	"artifactory.proxy.port":                 PROXY + PORT,
+	"artifactory.publish.forkCount":          FORK_COUNT,
+	"artifactory.insecureTls":                INSECURE_TLS,
 }
 
 var mavenConfigMapping = map[string]string{
@@ -173,7 +169,7 @@ func GetRtDetails(vConfig *viper.Viper) (*config.ArtifactoryDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber string, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -205,7 +201,7 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber string, config *viper.
 		if err != nil {
 			return "", err
 		}
-		err = createGeneratedBuildInfoFile(buildName, buildNumber, config)
+		err = createGeneratedBuildInfoFile(buildName, buildNumber, projectKey, config)
 		if err != nil {
 			return "", err
 		}
@@ -291,9 +287,10 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 // Generated build info file is template file where build-info will be written to during the
 // Maven or Gradle build.
 // Creating this file only if build name and number is provided.
-func createGeneratedBuildInfoFile(buildName, buildNumber string, config *viper.Viper) error {
+func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, config *viper.Viper) error {
 	config.Set(BUILD_NAME, buildName)
 	config.Set(BUILD_NUMBER, buildNumber)
+	config.Set(BUILD_PROJECT, projectKey)
 
 	buildPath, err := GetBuildDir(config.GetString(BUILD_NAME), config.GetString(BUILD_NUMBER))
 	if err != nil {

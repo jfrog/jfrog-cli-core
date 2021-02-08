@@ -36,16 +36,22 @@ func GetBuildDir(buildName, buildNumber string) (string, error) {
 	return buildsDir, nil
 }
 
-func CreateBuildProperties(buildName, buildNumber string) (string, error) {
+func CreateBuildProperties(buildName, buildNumber, projectKey string) (string, error) {
 	if buildName == "" || buildNumber == "" {
 		return "", nil
 	}
+
+	buildRepo := utils.BuildRepoNameFromPrpjectKey(projectKey)
+	if buildRepo != "" {
+		buildRepo = ";build.repo=" + buildRepo
+	}
+
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber)
 	if err != nil {
-		return fmt.Sprintf("build.name=%s;build.number=%s", buildName, buildNumber), err
+		return fmt.Sprintf("build.name=%s;build.number=%s%s", buildName, buildNumber, buildRepo), err
 	}
 	timestamp := strconv.FormatInt(buildGeneralDetails.Timestamp.UnixNano()/int64(time.Millisecond), 10)
-	return fmt.Sprintf("build.name=%s;build.number=%s;build.timestamp=%s", buildName, buildNumber, timestamp), nil
+	return fmt.Sprintf("build.name=%s;build.number=%s;build.timestamp=%s%s", buildName, buildNumber, timestamp, buildRepo), nil
 }
 
 func getPartialsBuildDir(buildName, buildNumber string) (string, error) {

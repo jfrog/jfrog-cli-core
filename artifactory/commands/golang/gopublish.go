@@ -84,6 +84,7 @@ func (gpc *GoPublishCommand) Run() error {
 
 	buildName := gpc.buildConfiguration.BuildName
 	buildNumber := gpc.buildConfiguration.BuildNumber
+	projectKey := gpc.buildConfiguration.Project
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
 		err = utils.SaveBuildGeneralDetails(buildName, buildNumber)
@@ -99,7 +100,7 @@ func (gpc *GoPublishCommand) Run() error {
 
 	// Publish the package to Artifactory
 	if gpc.publishPackage {
-		err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, serviceManager)
+		err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 		if err != nil {
 			return err
 		}

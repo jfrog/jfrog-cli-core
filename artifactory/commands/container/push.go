@@ -60,7 +60,7 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, serviceManager, container.Push, cm)
+	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, pc.BuildConfiguration().Project, serviceManager, container.Push, cm)
 	if err != nil {
 		return err
 	}

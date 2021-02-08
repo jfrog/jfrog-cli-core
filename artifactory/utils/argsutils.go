@@ -154,8 +154,17 @@ func ExtractBuildDetailsFromArgs(args []string) (cleanArgs []string, buildConfig
 	}
 	RemoveFlagFromCommand(&cleanArgs, flagIndex, valueIndex)
 
+	flagIndex, valueIndex, buildConfig.Project, err = FindFlag("--project", cleanArgs)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valueIndex)
+
 	// Retrieve build name and build number from env if both missing
 	buildConfig.BuildName, buildConfig.BuildNumber = GetBuildNameAndNumber(buildConfig.BuildName, buildConfig.BuildNumber)
+	// Retrieve project from env if missing
+	buildConfig.Project = GetBuildProject(buildConfig.Project)
+
 	flagIndex, valueIndex, buildConfig.Module, err = FindFlag("--module", cleanArgs)
 	if err != nil {
 		return

@@ -41,6 +41,7 @@ func (pc *PullCommand) Run() error {
 	}
 	buildName := pc.BuildConfiguration().BuildName
 	buildNumber := pc.BuildConfiguration().BuildNumber
+	project := pc.BuildConfiguration().Project
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {
 		return nil
@@ -52,7 +53,7 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, serviceManager, container.Pull, cm)
+	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err
 	}

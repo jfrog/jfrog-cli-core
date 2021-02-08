@@ -185,6 +185,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 	if len(mc.configuration.BuildName) > 0 && len(mc.configuration.BuildNumber) > 0 {
 		vConfig.Set(utils.BUILD_NAME, mc.configuration.BuildName)
 		vConfig.Set(utils.BUILD_NUMBER, mc.configuration.BuildNumber)
+		vConfig.Set(utils.BUILD_PROJECT, mc.configuration.Project)
 		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber)
 		if err != nil {
 			return nil, err
@@ -200,7 +201,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		setEmptyDeployer(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

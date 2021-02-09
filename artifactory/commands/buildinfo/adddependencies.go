@@ -43,7 +43,7 @@ func (badc *BuildAddDependenciesCommand) RtDetails() (*config.ArtifactoryDetails
 func (badc *BuildAddDependenciesCommand) Run() error {
 	log.Info("Running Build Add Dependencies command...")
 	if !badc.dryRun {
-		if err := utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber); err != nil {
+		if err := utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project); err != nil {
 			return err
 		}
 	}
@@ -203,7 +203,7 @@ func (badc *BuildAddDependenciesCommand) saveDependenciesToFileSystem(files map[
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = convertFileInfoToDependencies(files)
 	}
-	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, populateFunc)
+	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project, populateFunc)
 }
 
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {

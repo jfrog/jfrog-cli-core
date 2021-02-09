@@ -55,7 +55,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
+	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	}
 
 	if !bpc.config.DryRun {
-		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
+		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}
 	return nil
 }
@@ -77,7 +77,8 @@ func (bpc *BuildPublishCommand) Run() error {
 func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildInfo, error) {
 	buildName := bpc.buildConfiguration.BuildName
 	buildNumber := bpc.buildConfiguration.BuildNumber
-	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber)
+	projectKey := bpc.buildConfiguration.Project
+	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +91,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	buildInfo.SetArtifactoryPluginVersion(coreutils.GetUserAgent())
 	buildInfo.Name = buildName
 	buildInfo.Number = buildNumber
-	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber)
+	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}

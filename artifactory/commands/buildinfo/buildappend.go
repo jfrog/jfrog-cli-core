@@ -38,7 +38,7 @@ func (bac *BuildAppendCommand) RtDetails() (*config.ArtifactoryDetails, error) {
 
 func (bac *BuildAppendCommand) Run() error {
 	log.Info("Running Build Append command...")
-	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project); err != nil {
 		return err
 	}
 
@@ -63,7 +63,7 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project, populateFunc)
 	if err == nil {
 		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", bac.buildConfiguration.BuildName+"/"+bac.buildConfiguration.BuildNumber)
 	}
@@ -129,7 +129,7 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.Ch
 		return fileutils.ChecksumDetails{}, err
 	}
 
-	buildInfoRepo := servicesutils.BuildRepoNameFromPrpjectKey(bac.buildConfiguration.Project)
+	buildInfoRepo := servicesutils.BuildRepoNameFromProjectKey(bac.buildConfiguration.Project)
 	if buildInfoRepo == "" {
 		buildInfoRepo = "artifactory-build-info"
 	}

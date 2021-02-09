@@ -193,11 +193,11 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, co
 		return "", err
 	}
 	if buildName != "" || buildNumber != "" {
-		err = SaveBuildGeneralDetails(buildName, buildNumber)
+		err = SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
 		if err != nil {
 			return "", err
 		}
-		err = setBuildTimestampToConfig(buildName, buildNumber, config)
+		err = setBuildTimestampToConfig(buildName, buildNumber, projectKey, config)
 		if err != nil {
 			return "", err
 		}
@@ -292,7 +292,7 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	config.Set(BUILD_NUMBER, buildNumber)
 	config.Set(BUILD_PROJECT, projectKey)
 
-	buildPath, err := GetBuildDir(config.GetString(BUILD_NAME), config.GetString(BUILD_NUMBER))
+	buildPath, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}
@@ -308,8 +308,8 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	return nil
 }
 
-func setBuildTimestampToConfig(buildName, buildNumber string, config *viper.Viper) error {
-	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber)
+func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
+	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}

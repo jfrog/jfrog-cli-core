@@ -24,14 +24,14 @@ func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *ut
 
 func (bcec *BuildCollectEnvCommand) Run() error {
 	log.Info("Collecting environment variables...")
-	err := utils.SaveBuildGeneralDetails(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber)
+	err := utils.SaveBuildGeneralDetails(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Env = getEnvVariables()
 	}
-	err = utils.SavePartialBuildInfo(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project, populateFunc)
 	if err != nil {
 		return err
 	}

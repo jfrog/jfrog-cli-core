@@ -26,8 +26,8 @@ import (
 const BuildInfoDetails = "details"
 const BuildTempPath = "jfrog/builds/"
 
-func GetBuildDir(buildName, buildNumber string) (string, error) {
-	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber))
+func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
+	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "-" + projectKey))
 	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, encodedDirName)
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
@@ -41,12 +41,12 @@ func CreateBuildProperties(buildName, buildNumber, projectKey string) (string, e
 		return "", nil
 	}
 
-	buildRepo := utils.BuildRepoNameFromPrpjectKey(projectKey)
+	buildRepo := utils.BuildRepoNameFromProjectKey(projectKey)
 	if buildRepo != "" {
 		buildRepo = ";build.repo=" + buildRepo
 	}
 
-	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber)
+	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {
 		return fmt.Sprintf("build.name=%s;build.number=%s%s", buildName, buildNumber, buildRepo), err
 	}
@@ -54,8 +54,8 @@ func CreateBuildProperties(buildName, buildNumber, projectKey string) (string, e
 	return fmt.Sprintf("build.name=%s;build.number=%s;build.timestamp=%s%s", buildName, buildNumber, timestamp, buildRepo), nil
 }
 
-func getPartialsBuildDir(buildName, buildNumber string) (string, error) {
-	buildDir, err := GetBuildDir(buildName, buildNumber)
+func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, error) {
+	buildDir, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return "", err
 	}
@@ -67,7 +67,7 @@ func getPartialsBuildDir(buildName, buildNumber string) (string, error) {
 	return buildDir, nil
 }
 
-func saveBuildData(action interface{}, buildName, buildNumber string) error {
+func saveBuildData(action interface{}, buildName, buildNumber, projectKey string) error {
 	b, err := json.Marshal(&action)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -77,7 +77,7 @@ func saveBuildData(action interface{}, buildName, buildNumber string) error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	dirPath, err := getPartialsBuildDir(buildName, buildNumber)
+	dirPath, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func saveBuildData(action interface{}, buildName, buildNumber string) error {
 	return err
 }
 
-func SaveBuildInfo(buildName, buildNumber string, buildInfo *buildinfo.BuildInfo) error {
+func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildinfo.BuildInfo) error {
 	b, err := json.Marshal(buildInfo)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -101,7 +101,7 @@ func SaveBuildInfo(buildName, buildNumber string, buildInfo *buildinfo.BuildInfo
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	dirPath, err := GetBuildDir(buildName, buildNumber)
+	dirPath, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}
@@ -115,8 +115,8 @@ func SaveBuildInfo(buildName, buildNumber string, buildInfo *buildinfo.BuildInfo
 	return errorutils.CheckError(err)
 }
 
-func SaveBuildGeneralDetails(buildName, buildNumber string) error {
-	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber)
+func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
+	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}
@@ -148,15 +148,15 @@ func SaveBuildGeneralDetails(buildName, buildNumber string) error {
 
 type populatePartialBuildInfo func(partial *buildinfo.Partial)
 
-func SavePartialBuildInfo(buildName, buildNumber string, populatePartialBuildInfoFunc populatePartialBuildInfo) error {
+func SavePartialBuildInfo(buildName, buildNumber, projectKey string, populatePartialBuildInfoFunc populatePartialBuildInfo) error {
 	partialBuildInfo := new(buildinfo.Partial)
 	partialBuildInfo.Timestamp = time.Now().UnixNano() / int64(time.Millisecond)
 	populatePartialBuildInfoFunc(partialBuildInfo)
-	return saveBuildData(partialBuildInfo, buildName, buildNumber)
+	return saveBuildData(partialBuildInfo, buildName, buildNumber, projectKey)
 }
 
-func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.BuildInfo, error) {
-	buildDir, err := GetBuildDir(buildName, buildNumber)
+func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*buildinfo.BuildInfo, error) {
+	buildDir, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -185,9 +185,9 @@ func GetGeneratedBuildsInfo(buildName, buildNumber string) ([]*buildinfo.BuildIn
 	return generatedBuildsInfo, nil
 }
 
-func ReadPartialBuildInfoFiles(buildName, buildNumber string) (buildinfo.Partials, error) {
+func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (buildinfo.Partials, error) {
 	var partials buildinfo.Partials
-	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber)
+	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +218,8 @@ func ReadPartialBuildInfoFiles(buildName, buildNumber string) (buildinfo.Partial
 	return partials, nil
 }
 
-func ReadBuildInfoGeneralDetails(buildName, buildNumber string) (*buildinfo.General, error) {
-	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber)
+func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*buildinfo.General, error) {
+	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +233,8 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber string) (*buildinfo.Gene
 	return details, nil
 }
 
-func RemoveBuildDir(buildName, buildNumber string) error {
-	tempDirPath, err := GetBuildDir(buildName, buildNumber)
+func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
+	tempDirPath, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}

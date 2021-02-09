@@ -210,7 +210,7 @@ func (nca *NpmCommandArgs) prepareBuildInfo() error {
 	var err error
 	if len(nca.buildConfiguration.BuildName) > 0 && len(nca.buildConfiguration.BuildNumber) > 0 {
 		nca.collectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber); err != nil {
+		if err = utils.SaveBuildGeneralDetails(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, nca.buildConfiguration.Project); err != nil {
 			return err
 		}
 
@@ -379,7 +379,7 @@ func (nca *NpmCommandArgs) saveDependenciesData() error {
 		partial.ModuleType = buildinfo.Npm
 	}
 
-	if err := utils.SavePartialBuildInfo(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, populateFunc); err != nil {
+	if err := utils.SavePartialBuildInfo(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, nca.buildConfiguration.Project, populateFunc); err != nil {
 		return err
 	}
 

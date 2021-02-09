@@ -94,7 +94,7 @@ func (uc *UploadCommand) upload() error {
 	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
 		addVcsProps = true
-		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber); err != nil {
+		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {
 			return err
 		}
 		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project)
@@ -173,7 +173,7 @@ func (uc *UploadCommand) upload() error {
 			partial.ModuleId = uc.buildConfiguration.Module
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project, populateFunc)
 
 	}
 	return err

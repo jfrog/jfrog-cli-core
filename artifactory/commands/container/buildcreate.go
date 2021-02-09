@@ -35,7 +35,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	buildName := bpc.BuildConfiguration().BuildName
 	buildNumber := bpc.BuildConfiguration().BuildNumber
 	project := bpc.BuildConfiguration().Project
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
@@ -50,7 +50,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, buildInfo)
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (pc *BuildDockerCreateCommand) CommandName() string {

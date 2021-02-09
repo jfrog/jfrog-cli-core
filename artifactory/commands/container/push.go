@@ -53,7 +53,7 @@ func (pc *PushCommand) Run() error {
 	if pc.buildConfiguration.BuildName == "" || pc.buildConfiguration.BuildNumber == "" {
 		return nil
 	}
-	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManagerWithThreads(rtDetails, false, pc.threads)
@@ -68,7 +68,7 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, buildInfo)
+	return utils.SaveBuildInfo(pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, pc.BuildConfiguration().Project, buildInfo)
 }
 
 func (pc *PushCommand) CommandName() string {

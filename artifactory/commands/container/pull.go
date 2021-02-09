@@ -46,7 +46,7 @@ func (pc *PullCommand) Run() error {
 	if buildName == "" || buildNumber == "" {
 		return nil
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
@@ -61,7 +61,7 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, buildInfo)
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (pc *PullCommand) CommandName() string {

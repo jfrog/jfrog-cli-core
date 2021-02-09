@@ -87,7 +87,7 @@ func (gpc *GoPublishCommand) Run() error {
 	projectKey := gpc.buildConfiguration.Project
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber)
+		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, goProject.BuildInfo(true, gpc.buildConfiguration.Module, gpc.RepositoryConfig.TargetRepo()))
+		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(true, gpc.buildConfiguration.Module, gpc.RepositoryConfig.TargetRepo()))
 	}
 
 	return err

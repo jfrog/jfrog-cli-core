@@ -186,7 +186,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		vConfig.Set(utils.BUILD_NAME, mc.configuration.BuildName)
 		vConfig.Set(utils.BUILD_NUMBER, mc.configuration.BuildNumber)
 		vConfig.Set(utils.BUILD_PROJECT, mc.configuration.Project)
-		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber)
+		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project)
 		if err != nil {
 			return nil, err
 		}

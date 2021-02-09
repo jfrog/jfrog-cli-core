@@ -66,7 +66,7 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 
 func (config *BuildAddGitCommand) Run() error {
 	log.Info("Collecting git revision and remote url...")
-	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber)
+	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project, populateFunc)
 	if err != nil {
 		return err
 	}

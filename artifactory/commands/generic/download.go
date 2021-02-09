@@ -70,7 +70,7 @@ func (dc *DownloadCommand) download() error {
 	// Build Info Collection:
 	isCollectBuildInfo := len(dc.buildConfiguration.BuildName) > 0 && len(dc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !dc.DryRun() {
-		if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber); err != nil {
+		if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
 			return err
 		}
 	}
@@ -155,7 +155,7 @@ func (dc *DownloadCommand) download() error {
 			partial.ModuleId = dc.buildConfiguration.Module
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, populateFunc)
+		err = utils.SavePartialBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, populateFunc)
 	}
 
 	return err

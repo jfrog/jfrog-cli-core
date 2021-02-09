@@ -30,7 +30,7 @@ func (bcc *BuildCleanCommand) RtDetails() (*config.ArtifactoryDetails, error) {
 
 func (bcc *BuildCleanCommand) Run() error {
 	log.Info("Cleaning build info...")
-	err := utils.RemoveBuildDir(bcc.buildConfiguration.BuildName, bcc.buildConfiguration.BuildNumber)
+	err := utils.RemoveBuildDir(bcc.buildConfiguration.BuildName, bcc.buildConfiguration.BuildNumber, bcc.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}

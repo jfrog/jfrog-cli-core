@@ -107,7 +107,7 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	modules = append(modules, module)
 
 	buildInfo.Modules = modules
-	utils.SaveBuildInfo(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, buildInfo)
+	utils.SaveBuildInfo(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project, buildInfo)
 }
 
 func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) error {
@@ -147,7 +147,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 	// Prepare build-info.
 	if pic.buildConfiguration.BuildName != "" && pic.buildConfiguration.BuildNumber != "" {
 		pic.shouldCollectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber); err != nil {
+		if err = utils.SaveBuildGeneralDetails(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project); err != nil {
 			return
 		}
 	}
@@ -195,7 +195,7 @@ func getSetupPyFilePath() (string, error) {
 }
 
 func (pic *PipInstallCommand) cleanBuildInfoDir() {
-	if err := utils.RemoveBuildDir(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber); err != nil {
+	if err := utils.RemoveBuildDir(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project); err != nil {
 		log.Error(fmt.Sprintf("Failed cleaning build-info directory: %s", err.Error()))
 	}
 }

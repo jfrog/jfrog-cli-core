@@ -36,7 +36,7 @@ func runTest(t *testing.T, originalDir string) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalDir, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
-	partials := getBuildInfoPartials(baseDir, t, buildName, "1")
+	partials := getBuildInfoPartials(baseDir, t, buildName, "1", "")
 	checkFailureAndClean(t, buildDir, dotGitPath)
 	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
@@ -53,14 +53,14 @@ func checkFailureAndClean(t *testing.T, buildDir string, oldPath string) {
 	}
 }
 
-func getBuildInfoPartials(baseDir string, t *testing.T, buildName string, buildNumber string) buildinfo.Partials {
+func getBuildInfoPartials(baseDir string, t *testing.T, buildName, buildNumber, projectKey string) buildinfo.Partials {
 	buildAddGitConfiguration := new(BuildAddGitCommand).SetDotGitPath(baseDir).SetBuildConfiguration(&utils.BuildConfiguration{BuildName: buildName, BuildNumber: buildNumber})
 	err := buildAddGitConfiguration.Run()
 	if err != nil {
 		t.Error("Cannot run build add git due to: " + err.Error())
 		return nil
 	}
-	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber)
+	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
 	if err != nil {
 		t.Error("Cannot read partial build info due to: " + err.Error())
 		return nil
@@ -69,7 +69,7 @@ func getBuildInfoPartials(baseDir string, t *testing.T, buildName string, buildN
 }
 
 func getBuildDir(t *testing.T) string {
-	buildDir, err := utils.GetBuildDir(buildName, "1")
+	buildDir, err := utils.GetBuildDir(buildName, "1", "")
 	if err != nil {
 		t.Error("Cannot create temp dir due to: " + err.Error())
 		return ""

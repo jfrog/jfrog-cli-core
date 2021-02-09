@@ -34,14 +34,15 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	image := container.NewImage(bpc.imageTag)
 	buildName := bpc.BuildConfiguration().BuildName
 	buildNumber := bpc.BuildConfiguration().BuildNumber
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
+	project := bpc.BuildConfiguration().Project
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewKanikoBuildInfoBuilder(image, bpc.Repo(), buildName, buildNumber, serviceManager, container.Push, cm, bpc.manifestSha256)
+	builder, err := container.NewKanikoBuildInfoBuilder(image, bpc.Repo(), buildName, buildNumber, project, serviceManager, container.Push, cm, bpc.manifestSha256)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, buildInfo)
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (pc *BuildDockerCreateCommand) CommandName() string {

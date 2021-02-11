@@ -17,7 +17,7 @@ import (
 type CurlCommand struct {
 	arguments      []string
 	executablePath string
-	rtDetails      *config.ArtifactoryDetails
+	serverDetails  *config.ServerDetails
 }
 
 func NewCurlCommand() *CurlCommand {
@@ -34,8 +34,8 @@ func (curlCmd *CurlCommand) SetExecutablePath(executablePath string) *CurlComman
 	return curlCmd
 }
 
-func (curlCmd *CurlCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *CurlCommand {
-	curlCmd.rtDetails = rtDetails
+func (curlCmd *CurlCommand) SetServerDetails(serverDetails *config.ServerDetails) *CurlCommand {
+	curlCmd.serverDetails = serverDetails
 	return curlCmd
 }
 
@@ -53,12 +53,12 @@ func (curlCmd *CurlCommand) Run() error {
 	}
 
 	// If the command already includes certificates flag, return an error.
-	if curlCmd.rtDetails.ClientCertPath != "" && curlCmd.isCertificateFlagExists() {
+	if curlCmd.serverDetails.ClientCertPath != "" && curlCmd.isCertificateFlagExists() {
 		return errorutils.CheckError(errors.New("Curl command must not include certificate flag (--cert or --key)."))
 	}
 
 	// Get target url for the curl command.
-	uriIndex, targetUri, err := curlCmd.buildCommandUrl(curlCmd.rtDetails.Url)
+	uriIndex, targetUri, err := curlCmd.buildCommandUrl(curlCmd.serverDetails.ArtifactoryUrl)
 	if err != nil {
 		return err
 	}
@@ -78,23 +78,23 @@ func (curlCmd *CurlCommand) Run() error {
 func (curlCmd *CurlCommand) addCommandCredentials() (string, error) {
 	certificateHelpPrefix := ""
 
-	if curlCmd.rtDetails.ClientCertPath != "" {
+	if curlCmd.serverDetails.ClientCertPath != "" {
 		curlCmd.arguments = append(curlCmd.arguments,
-			"--cert", curlCmd.rtDetails.ClientCertPath,
-			"--key", curlCmd.rtDetails.ClientCertKeyPath)
+			"--cert", curlCmd.serverDetails.ClientCertPath,
+			"--key", curlCmd.serverDetails.ClientCertKeyPath)
 		certificateHelpPrefix = "--cert *** --key *** "
 	}
 
-	if curlCmd.rtDetails.AccessToken != "" {
+	if curlCmd.serverDetails.AccessToken != "" {
 		// Add access token header.
-		tokenHeader := fmt.Sprintf("Authorization: Bearer %s", curlCmd.rtDetails.AccessToken)
+		tokenHeader := fmt.Sprintf("Authorization: Bearer %s", curlCmd.serverDetails.AccessToken)
 		curlCmd.arguments = append(curlCmd.arguments, "-H", tokenHeader)
 
 		return certificateHelpPrefix + "-H \"Authorization: Bearer ***\"", nil
 	}
 
 	// Add credentials flag to Command. In case of flag duplication, the latter is used by Curl.
-	credFlag := fmt.Sprintf("-u%s:%s", curlCmd.rtDetails.User, curlCmd.rtDetails.Password)
+	credFlag := fmt.Sprintf("-u%s:%s", curlCmd.serverDetails.User, curlCmd.serverDetails.Password)
 	curlCmd.arguments = append(curlCmd.arguments, credFlag)
 
 	return certificateHelpPrefix + "-u***:***", nil
@@ -127,14 +127,14 @@ func (curlCmd *CurlCommand) buildCommandUrl(artifactoryUrl string) (uriIndex int
 }
 
 // Returns Artifactory details
-func (curlCmd *CurlCommand) GetArtifactoryDetails() (*config.ArtifactoryDetails, error) {
+func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 	// Get --server-id flag value from the command, and remove it.
 	flagIndex, valueIndex, serverIdValue, err := utils.FindFlag("--server-id", curlCmd.arguments)
 	if err != nil {
 		return nil, err
 	}
 	utils.RemoveFlagFromCommand(&curlCmd.arguments, flagIndex, valueIndex)
-	return config.GetArtifactorySpecificConfig(serverIdValue, true, true)
+	return config.GetSpecificConfig(serverIdValue, true, true)
 }
 
 // Find the URL argument in the Curl Command.
@@ -218,8 +218,8 @@ func (curlCmd *CurlCommand) GetErrWriter() io.WriteCloser {
 	return nil
 }
 
-func (curlCmd *CurlCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return curlCmd.rtDetails, nil
+func (curlCmd *CurlCommand) ServerDetails() (*config.ServerDetails, error) {
+	return curlCmd.serverDetails, nil
 }
 
 func (curlCmd *CurlCommand) CommandName() string {

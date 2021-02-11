@@ -7,7 +7,7 @@ import (
 )
 
 type GroupCreateCommand struct {
-	rtDetails       *config.ArtifactoryDetails
+	rtDetails       *config.ServerDetails
 	name            string
 	replaceIfExists bool
 }
@@ -16,12 +16,12 @@ func NewGroupCreateCommand() *GroupCreateCommand {
 	return &GroupCreateCommand{}
 }
 
-func (gcc *GroupCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (gcc *GroupCreateCommand) ServerDetails() (*config.ServerDetails, error) {
 	return gcc.rtDetails, nil
 }
 
-func (gcc *GroupCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *GroupCreateCommand {
-	gcc.rtDetails = rtDetails
+func (gcc *GroupCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *GroupCreateCommand {
+	gcc.rtDetails = serverDetails
 	return gcc
 }
 

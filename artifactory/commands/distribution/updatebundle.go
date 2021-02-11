@@ -9,7 +9,7 @@ import (
 )
 
 type UpdateBundleCommand struct {
-	rtDetails            *config.ArtifactoryDetails
+	serverDetails        *config.ServerDetails
 	releaseBundlesParams distributionServicesUtils.ReleaseBundleParams
 	spec                 *spec.SpecFiles
 	dryRun               bool
@@ -19,8 +19,8 @@ func NewReleaseBundleUpdateCommand() *UpdateBundleCommand {
 	return &UpdateBundleCommand{}
 }
 
-func (cb *UpdateBundleCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *UpdateBundleCommand {
-	cb.rtDetails = rtDetails
+func (cb *UpdateBundleCommand) SetServerDetails(serverDetails *config.ServerDetails) *UpdateBundleCommand {
+	cb.serverDetails = serverDetails
 	return cb
 }
 
@@ -40,7 +40,7 @@ func (cb *UpdateBundleCommand) SetDryRun(dryRun bool) *UpdateBundleCommand {
 }
 
 func (cb *UpdateBundleCommand) Run() error {
-	servicesManager, err := utils.CreateDistributionServiceManager(cb.rtDetails, cb.dryRun)
+	servicesManager, err := utils.CreateDistributionServiceManager(cb.serverDetails, cb.dryRun)
 	if err != nil {
 		return err
 	}
@@ -53,8 +53,8 @@ func (cb *UpdateBundleCommand) Run() error {
 	return servicesManager.UpdateReleaseBundle(params)
 }
 
-func (cb *UpdateBundleCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return cb.rtDetails, nil
+func (cb *UpdateBundleCommand) ServerDetails() (*config.ServerDetails, error) {
+	return cb.serverDetails, nil
 }
 
 func (cb *UpdateBundleCommand) CommandName() string {

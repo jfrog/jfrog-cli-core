@@ -81,23 +81,23 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status))
 }
 
-func CreateServiceManager(artDetails *config.ArtifactoryDetails, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithThreads(artDetails, isDryRun, 0)
+func CreateServiceManager(serverDetails *config.ServerDetails, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithThreads(serverDetails, isDryRun, 0)
 }
 
-func CreateServiceManagerWithThreads(artDetails *config.ArtifactoryDetails, isDryRun bool, threads int) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryRun bool, threads int) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
-	artAuth, err := artDetails.CreateArtAuthConfig()
+	artAuth, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return nil, err
 	}
 	config := clientConfig.NewConfigBuilder().
 		SetServiceDetails(artAuth).
 		SetCertificatesPath(certsPath).
-		SetInsecureTls(artDetails.InsecureTls).
+		SetInsecureTls(serverDetails.InsecureTls).
 		SetDryRun(isDryRun)
 	if threads > 0 {
 		config.SetThreads(threads)
@@ -109,12 +109,12 @@ func CreateServiceManagerWithThreads(artDetails *config.ArtifactoryDetails, isDr
 	return artifactory.New(&artAuth, serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
-	artAuth, err := artDetails.CreateArtAuthConfig()
+	artAuth, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, 
 		SetServiceDetails(artAuth).
 		SetDryRun(dryRun).
 		SetCertificatesPath(certsPath).
-		SetInsecureTls(artDetails.InsecureTls).
+		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
 		Build()
 
@@ -132,7 +132,7 @@ func CreateServiceManagerWithProgressBar(artDetails *config.ArtifactoryDetails, 
 	return artifactory.NewWithProgress(&artAuth, servicesConfig, progressBar)
 }
 
-func CreateDistributionServiceManager(artDetails *config.ArtifactoryDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {
+func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err

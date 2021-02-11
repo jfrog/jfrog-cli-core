@@ -67,11 +67,11 @@ func (gc *GoCommand) SetGoArg(goArg []string) *GoCommand {
 	return gc
 }
 
-func (gc *GoCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	if gc.deployerParams != nil && !gc.deployerParams.IsRtDetailsEmpty() {
-		return gc.deployerParams.RtDetails()
+func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {
+	if gc.deployerParams != nil && !gc.deployerParams.IsServerDetailsEmpty() {
+		return gc.deployerParams.ServerDetails()
 	}
-	return gc.resolverParams.RtDetails()
+	return gc.resolverParams.ServerDetails()
 }
 
 func (gc *GoCommand) CommandName() string {
@@ -93,7 +93,7 @@ func (gc *GoCommand) Run() error {
 		}
 	}
 
-	resolverDetails, err := gc.resolverParams.RtDetails()
+	resolverDetails, err := gc.resolverParams.ServerDetails()
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (gc *GoCommand) Run() error {
 	var targetRepo string
 	var deployerServiceManager artifactory.ArtifactoryServicesManager
 	if gc.publishDeps {
-		deployerDetails, err := gc.deployerParams.RtDetails()
+		deployerDetails, err := gc.deployerParams.ServerDetails()
 		if err != nil {
 			return err
 		}
@@ -140,11 +140,11 @@ func (gc *GoCommand) Run() error {
 			// Cleanup the temp working directory at the end.
 			defer fileutils.RemoveTempDir(tempDirPath)
 			// Get Artifactory config in order to extract the package version.
-			rtDetails, err := resolverDetails.CreateArtAuthConfig()
+			serverDetails, err := resolverDetails.CreateArtAuthConfig()
 			if err != nil {
 				return err
 			}
-			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), rtDetails)
+			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
 			}
@@ -173,8 +173,8 @@ func (gc *GoCommand) Run() error {
 
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
 // The path to those chache files is retrived using the supplied package name and Artifactory details.
-func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) error {
-	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, rtDetails)
+func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) error {
+	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, authArtDetails)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, rtDetails au
 // getPackageFilePathFromArtifactory returns a string that represents the package files chache path.
 // In most cases the path to those chache files is retrived using the supplied package name and Artifactory details.
 // However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
-func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
+func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
 	packageCachePath, err := executersutils.GetGoModCachePath()
 	if err != nil {
@@ -208,7 +208,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, rtDetai
 		}
 		packageVersionRequest := buildPackageVersionRequest(name, branchName)
 		// Retrive the package version using Artifactory
-		version, err = executersutils.GetPackageVersion(rtTargetRepo, packageVersionRequest, rtDetails)
+		version, err = executersutils.GetPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
 		if err != nil {
 			return
 		}

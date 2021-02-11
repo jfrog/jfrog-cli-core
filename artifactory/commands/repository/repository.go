@@ -15,9 +15,9 @@ import (
 )
 
 type RepoCommand struct {
-	rtDetails    *config.ArtifactoryDetails
-	templatePath string
-	vars         string
+	serverDetails *config.ServerDetails
+	templatePath  string
+	vars          string
 }
 
 func (rc *RepoCommand) Vars() string {
@@ -44,7 +44,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	// Write a JSON with the correct values
 	content, err := json.Marshal(repoConfigMap)
 
-	servicesManager, err := rtUtils.CreateServiceManager(rc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, false)
 	if err != nil {
 		return err
 	}

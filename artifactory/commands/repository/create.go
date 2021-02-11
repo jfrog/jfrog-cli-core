@@ -22,13 +22,13 @@ func (rcc *RepoCreateCommand) SetVars(vars string) *RepoCreateCommand {
 	return rcc
 }
 
-func (rcc *RepoCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *RepoCreateCommand {
-	rcc.rtDetails = rtDetails
+func (rcc *RepoCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *RepoCreateCommand {
+	rcc.serverDetails = serverDetails
 	return rcc
 }
 
-func (rcc *RepoCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return rcc.rtDetails, nil
+func (rcc *RepoCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return rcc.serverDetails, nil
 }
 
 func (rcc *RepoCreateCommand) CommandName() string {

@@ -12,7 +12,10 @@ const tokenVersion = 1
 type configToken struct {
 	Version              int    `json:"version,omitempty"`
 	Url                  string `json:"url,omitempty"`
+	ArtifactoryUrl       string `json:"artifactoryUrl,omitempty"`
 	DistributionUrl      string `json:"distributionUrl,omitempty"`
+	XrayUrl              string `json:"xrayUrl,omitempty"`
+	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -26,11 +29,14 @@ type configToken struct {
 	ApiKey               string `json:"apiKey,omitempty"`
 }
 
-func fromArtifactoryDetails(details *ArtifactoryDetails) *configToken {
+func fromServerDetails(details *ServerDetails) *configToken {
 	return &configToken{
 		Version:              tokenVersion,
 		Url:                  details.Url,
+		ArtifactoryUrl:       details.ArtifactoryUrl,
 		DistributionUrl:      details.DistributionUrl,
+		XrayUrl:              details.XrayUrl,
+		MissionControlUrl:    details.MissionControlUrl,
 		User:                 details.User,
 		Password:             details.Password,
 		SshKeyPath:           details.SshKeyPath,
@@ -45,10 +51,13 @@ func fromArtifactoryDetails(details *ArtifactoryDetails) *configToken {
 	}
 }
 
-func toArtifactoryDetails(detailsSerialization *configToken) *ArtifactoryDetails {
-	return &ArtifactoryDetails{
+func toServerDetails(detailsSerialization *configToken) *ServerDetails {
+	return &ServerDetails{
 		Url:                  detailsSerialization.Url,
+		ArtifactoryUrl:       detailsSerialization.ArtifactoryUrl,
 		DistributionUrl:      detailsSerialization.DistributionUrl,
+		MissionControlUrl:    detailsSerialization.MissionControlUrl,
+		XrayUrl:              detailsSerialization.XrayUrl,
 		User:                 detailsSerialization.User,
 		Password:             detailsSerialization.Password,
 		SshKeyPath:           detailsSerialization.SshKeyPath,
@@ -63,7 +72,7 @@ func toArtifactoryDetails(detailsSerialization *configToken) *ArtifactoryDetails
 	}
 }
 
-func Export(details *ArtifactoryDetails) (string, error) {
+func Export(details *ServerDetails) (string, error) {
 	conf, err := readConf()
 	if err != nil {
 		return "", err
@@ -82,14 +91,14 @@ func Export(details *ArtifactoryDetails) (string, error) {
 			return "", errorutils.CheckError(errors.New("could not generate config token: config is encrypted, and wrong master key was provided"))
 		}
 	}
-	buffer, err := json.Marshal(fromArtifactoryDetails(details))
+	buffer, err := json.Marshal(fromServerDetails(details))
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(buffer), nil
 }
 
-func Import(serverToken string) (*ArtifactoryDetails, error) {
+func Import(serverToken string) (*ServerDetails, error) {
 	decoded, err := base64.StdEncoding.DecodeString(serverToken)
 	if err != nil {
 		return nil, err
@@ -98,5 +107,5 @@ func Import(serverToken string) (*ArtifactoryDetails, error) {
 	if err = json.Unmarshal(decoded, token); err != nil {
 		return nil, err
 	}
-	return toArtifactoryDetails(token), nil
+	return toServerDetails(token), nil
 }

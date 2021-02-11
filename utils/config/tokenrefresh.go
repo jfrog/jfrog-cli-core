@@ -57,7 +57,7 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 		return "", err
 	}
 
-	serverConfiguration, err := GetArtifactorySpecificConfig(tokenRefreshServerId, true, false)
+	serverConfiguration, err := GetSpecificConfig(tokenRefreshServerId, true, false)
 	if err != nil {
 		return "", err
 	}
@@ -111,12 +111,12 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 	return newToken.AccessToken, nil
 }
 
-func writeNewTokens(serverConfiguration *ArtifactoryDetails, serverId, accessToken, refreshToken string) error {
+func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
 	serverConfiguration.SetAccessToken(accessToken)
 	serverConfiguration.SetRefreshToken(refreshToken)
 
 	// Get configurations list
-	configurations, err := GetAllArtifactoryConfigs()
+	configurations, err := GetAllServersConfigs()
 	if err != nil {
 		return err
 	}
@@ -126,17 +126,17 @@ func writeNewTokens(serverConfiguration *ArtifactoryDetails, serverId, accessTok
 
 	// Append the configuration to the configurations list
 	configurations = append(configurations, serverConfiguration)
-	return SaveArtifactoryConf(configurations)
+	return SaveServersConf(configurations)
 }
 
-func createTokensForConfig(artifactoryDetails *ArtifactoryDetails, expirySeconds int) (services.CreateTokenResponseData, error) {
-	servicesManager, err := createTokensServiceManager(artifactoryDetails)
+func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (services.CreateTokenResponseData, error) {
+	servicesManager, err := createTokensServiceManager(serverDetails)
 	if err != nil {
 		return services.CreateTokenResponseData{}, err
 	}
 
 	createTokenParams := services.NewCreateTokenParams()
-	createTokenParams.Username = artifactoryDetails.User
+	createTokenParams.Username = serverDetails.User
 	createTokenParams.ExpiresIn = expirySeconds
 	// User-scoped token
 	createTokenParams.Scope = "member-of-groups:*"
@@ -149,8 +149,8 @@ func createTokensForConfig(artifactoryDetails *ArtifactoryDetails, expirySeconds
 	return newToken, nil
 }
 
-func CreateInitialRefreshableTokensIfNeeded(artifactoryDetails *ArtifactoryDetails) (err error) {
-	if !(artifactoryDetails.TokenRefreshInterval > 0 && artifactoryDetails.RefreshToken == "" && artifactoryDetails.AccessToken == "") {
+func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
+	if !(serverDetails.TokenRefreshInterval > 0 && serverDetails.RefreshToken == "" && serverDetails.AccessToken == "") {
 		return nil
 	}
 	mutex.Lock()
@@ -161,23 +161,23 @@ func CreateInitialRefreshableTokensIfNeeded(artifactoryDetails *ArtifactoryDetai
 		return err
 	}
 
-	newToken, err := createTokensForConfig(artifactoryDetails, artifactoryDetails.TokenRefreshInterval*60)
+	newToken, err := createTokensForConfig(serverDetails, serverDetails.TokenRefreshInterval*60)
 	if err != nil {
 		return err
 	}
 	// Remove initializing value.
-	artifactoryDetails.TokenRefreshInterval = 0
-	return writeNewTokens(artifactoryDetails, artifactoryDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
+	serverDetails.TokenRefreshInterval = 0
+	return writeNewTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
 }
 
-func refreshExpiredToken(artifactoryDetails *ArtifactoryDetails, currentAccessToken string, refreshToken string) (services.CreateTokenResponseData, error) {
+func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (services.CreateTokenResponseData, error) {
 	// The tokens passed as parameters are also used for authentication
-	noCredsDetails := new(ArtifactoryDetails)
-	noCredsDetails.Url = artifactoryDetails.Url
-	noCredsDetails.ClientCertPath = artifactoryDetails.ClientCertPath
-	noCredsDetails.ClientCertKeyPath = artifactoryDetails.ClientCertKeyPath
-	noCredsDetails.ServerId = artifactoryDetails.ServerId
-	noCredsDetails.IsDefault = artifactoryDetails.IsDefault
+	noCredsDetails := new(ServerDetails)
+	noCredsDetails.ArtifactoryUrl = serverDetails.ArtifactoryUrl
+	noCredsDetails.ClientCertPath = serverDetails.ClientCertPath
+	noCredsDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
+	noCredsDetails.ServerId = serverDetails.ServerId
+	noCredsDetails.IsDefault = serverDetails.IsDefault
 
 	servicesManager, err := createTokensServiceManager(noCredsDetails)
 	if err != nil {
@@ -190,7 +190,7 @@ func refreshExpiredToken(artifactoryDetails *ArtifactoryDetails, currentAccessTo
 	return servicesManager.RefreshToken(refreshTokenParams)
 }
 
-func createTokensServiceManager(artDetails *ArtifactoryDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err

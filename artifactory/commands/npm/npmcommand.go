@@ -9,11 +9,11 @@ type NpmCommand struct {
 	repo               string
 	buildConfiguration *utils.BuildConfiguration
 	npmArgs            []string
-	rtDetails          *config.ArtifactoryDetails
+	serverDetails      *config.ServerDetails
 }
 
-func (nc *NpmCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *NpmCommand {
-	nc.rtDetails = rtDetails
+func (nc *NpmCommand) SetServerDetails(serverDetails *config.ServerDetails) *NpmCommand {
+	nc.serverDetails = serverDetails
 	return nc
 }
 

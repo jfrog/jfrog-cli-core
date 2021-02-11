@@ -22,11 +22,11 @@ func (deleteProps *DeletePropsCommand) CommandName() string {
 }
 
 func (deleteProps *DeletePropsCommand) Run() error {
-	rtDetails, err := deleteProps.RtDetails()
+	serverDetails, err := deleteProps.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := createPropsServiceManager(deleteProps.threads, rtDetails)
+	servicesManager, err := createPropsServiceManager(deleteProps.threads, serverDetails)
 	if err != nil {
 		return err
 	}

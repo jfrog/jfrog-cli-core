@@ -22,11 +22,11 @@ func (setProps *SetPropsCommand) CommandName() string {
 }
 
 func (setProps *SetPropsCommand) Run() error {
-	rtDetails, err := setProps.RtDetails()
+	serverDetails, err := setProps.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := createPropsServiceManager(setProps.threads, rtDetails)
+	servicesManager, err := createPropsServiceManager(setProps.threads, serverDetails)
 	if err != nil {
 		return err
 	}

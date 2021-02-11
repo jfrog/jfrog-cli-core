@@ -2,6 +2,9 @@ package buildinfo
 
 import (
 	"errors"
+	regxp "regexp"
+	"strconv"
+
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -13,8 +16,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	regxp "regexp"
-	"strconv"
 )
 
 type BuildAddDependenciesCommand struct {
@@ -36,8 +37,8 @@ func (badc *BuildAddDependenciesCommand) CommandName() string {
 	return "rt_build_add_dependencies"
 }
 
-func (badc *BuildAddDependenciesCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (badc *BuildAddDependenciesCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (badc *BuildAddDependenciesCommand) Run() error {

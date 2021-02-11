@@ -44,6 +44,23 @@ func init() {
 	fileutils.SetTempDirBase(cliTempDir)
 }
 
+func SetIfEmpty(str *string, defaultStr string) bool {
+	if *str == "" {
+		*str = defaultStr
+		return true
+	}
+	return false
+}
+
+func IsAnyEmpty(strings ...string) bool {
+	for _, str := range strings {
+		if str == "" {
+			return true
+		}
+	}
+	return false
+}
+
 // Exit codes:
 type ExitCode struct {
 	Code int
@@ -100,7 +117,7 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 }
 
 func GetConfigVersion() int {
-	return 4
+	return 5
 }
 
 func SumTrueValues(boolArr []bool) int {

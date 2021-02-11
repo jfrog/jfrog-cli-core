@@ -9,8 +9,8 @@ import (
 )
 
 type UsersDeleteCommand struct {
-	rtDetails  *config.ArtifactoryDetails
-	usersNames []string
+	serverDetails *config.ServerDetails
+	usersNames    []string
 }
 
 func NewUsersDeleteCommand() *UsersDeleteCommand {
@@ -26,12 +26,12 @@ func (udc *UsersDeleteCommand) UsersNames() []string {
 	return udc.usersNames
 }
 
-func (udc *UsersDeleteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return udc.rtDetails, nil
+func (udc *UsersDeleteCommand) ServerDetails() (*config.ServerDetails, error) {
+	return udc.serverDetails, nil
 }
 
-func (udc *UsersDeleteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *UsersDeleteCommand {
-	udc.rtDetails = rtDetails
+func (udc *UsersDeleteCommand) SetServerDetails(serverDetails *config.ServerDetails) *UsersDeleteCommand {
+	udc.serverDetails = serverDetails
 	return udc
 }
 
@@ -40,7 +40,7 @@ func (udc *UsersDeleteCommand) CommandName() string {
 }
 
 func (udc *UsersDeleteCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(udc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(udc.serverDetails, false)
 	if err != nil {
 		return err
 	}

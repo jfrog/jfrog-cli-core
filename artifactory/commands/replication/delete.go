@@ -7,9 +7,9 @@ import (
 )
 
 type ReplicationDeleteCommand struct {
-	rtDetails *config.ArtifactoryDetails
-	repoKey   string
-	quiet     bool
+	serverDetails *config.ServerDetails
+	repoKey       string
+	quiet         bool
 }
 
 func NewReplicationDeleteCommand() *ReplicationDeleteCommand {
@@ -26,13 +26,13 @@ func (rdc *ReplicationDeleteCommand) SetQuiet(quiet bool) *ReplicationDeleteComm
 	return rdc
 }
 
-func (rdc *ReplicationDeleteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *ReplicationDeleteCommand {
-	rdc.rtDetails = rtDetails
+func (rdc *ReplicationDeleteCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReplicationDeleteCommand {
+	rdc.serverDetails = serverDetails
 	return rdc
 }
 
-func (rdc *ReplicationDeleteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return rdc.rtDetails, nil
+func (rdc *ReplicationDeleteCommand) ServerDetails() (*config.ServerDetails, error) {
+	return rdc.serverDetails, nil
 }
 
 func (rdc *ReplicationDeleteCommand) CommandName() string {
@@ -43,7 +43,7 @@ func (rdc *ReplicationDeleteCommand) Run() (err error) {
 	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to delete the replication for  "+rdc.repoKey+" ?", false) {
 		return nil
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(rdc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, false)
 	if err != nil {
 		return err
 	}

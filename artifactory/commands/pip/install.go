@@ -3,6 +3,10 @@ package pip
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	piputils "github.com/jfrog/jfrog-cli-core/artifactory/utils/pip"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/pip/dependencies"
@@ -11,9 +15,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type PipInstallCommand struct {
@@ -34,7 +35,7 @@ func (pic *PipInstallCommand) Run() error {
 		return err
 	}
 
-	pipInstaller := &piputils.PipInstaller{Args: pic.args, RtDetails: pic.rtDetails, Repository: pic.repository, ShouldParseLogs: pic.shouldCollectBuildInfo}
+	pipInstaller := &piputils.PipInstaller{Args: pic.args, ServerDetails: pic.rtDetails, Repository: pic.repository, ShouldParseLogs: pic.shouldCollectBuildInfo}
 	err = pipInstaller.Install()
 	if err != nil {
 		pic.cleanBuildInfoDir()
@@ -212,6 +213,6 @@ func (pic *PipInstallCommand) CommandName() string {
 	return "rt_pip_install"
 }
 
-func (pic *PipInstallCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (pic *PipInstallCommand) ServerDetails() (*config.ServerDetails, error) {
 	return pic.rtDetails, nil
 }

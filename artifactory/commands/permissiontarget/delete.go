@@ -7,7 +7,7 @@ import (
 )
 
 type PermissionTargetDeleteCommand struct {
-	rtDetails            *config.ArtifactoryDetails
+	rtDetails            *config.ServerDetails
 	permissionTargetName string
 	quiet                bool
 }
@@ -26,12 +26,12 @@ func (ptdc *PermissionTargetDeleteCommand) SetQuiet(quiet bool) *PermissionTarge
 	return ptdc
 }
 
-func (ptdc *PermissionTargetDeleteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *PermissionTargetDeleteCommand {
-	ptdc.rtDetails = rtDetails
+func (ptdc *PermissionTargetDeleteCommand) SetServerDetails(serverDetails *config.ServerDetails) *PermissionTargetDeleteCommand {
+	ptdc.rtDetails = serverDetails
 	return ptdc
 }
 
-func (ptdc *PermissionTargetDeleteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (ptdc *PermissionTargetDeleteCommand) ServerDetails() (*config.ServerDetails, error) {
 	return ptdc.rtDetails, nil
 }
 

@@ -7,21 +7,21 @@ import (
 )
 
 type GroupUpdateCommand struct {
-	rtDetails *config.ArtifactoryDetails
-	name      string
-	users     []string
+	serverDetails *config.ServerDetails
+	name          string
+	users         []string
 }
 
 func NewGroupUpdateCommand() *GroupUpdateCommand {
 	return &GroupUpdateCommand{}
 }
 
-func (guc *GroupUpdateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return guc.rtDetails, nil
+func (guc *GroupUpdateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return guc.serverDetails, nil
 }
 
-func (guc *GroupUpdateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *GroupUpdateCommand {
-	guc.rtDetails = rtDetails
+func (guc *GroupUpdateCommand) SetServerDetails(serverDetails *config.ServerDetails) *GroupUpdateCommand {
+	guc.serverDetails = serverDetails
 	return guc
 }
 
@@ -48,7 +48,7 @@ func (guc *GroupUpdateCommand) CommandName() string {
 }
 
 func (guc *GroupUpdateCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(guc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(guc.serverDetails, false)
 	if err != nil {
 		return err
 	}

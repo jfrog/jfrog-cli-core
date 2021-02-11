@@ -6,7 +6,7 @@ import (
 )
 
 type GroupDeleteCommand struct {
-	rtDetails *config.ArtifactoryDetails
+	rtDetails *config.ServerDetails
 	name      string
 }
 
@@ -14,12 +14,12 @@ func NewGroupDeleteCommand() *GroupDeleteCommand {
 	return &GroupDeleteCommand{}
 }
 
-func (gdc *GroupDeleteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (gdc *GroupDeleteCommand) ServerDetails() (*config.ServerDetails, error) {
 	return gdc.rtDetails, nil
 }
 
-func (gdc *GroupDeleteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *GroupDeleteCommand {
-	gdc.rtDetails = rtDetails
+func (gdc *GroupDeleteCommand) SetServerDetails(serverDetails *config.ServerDetails) *GroupDeleteCommand {
+	gdc.rtDetails = serverDetails
 	return gdc
 }
 

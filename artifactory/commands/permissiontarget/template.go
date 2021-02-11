@@ -3,14 +3,15 @@ package permissiontarget
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"sort"
+	"strings"
+
 	"github.com/c-bata/go-prompt"
 	"github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"sort"
-	"strings"
 )
 
 type PermissionTargetTemplateCommand struct {
@@ -56,7 +57,7 @@ func (pttc *PermissionTargetTemplateCommand) SetTemplatePath(path string) *Permi
 	return pttc
 }
 
-func (pttc *PermissionTargetTemplateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (pttc *PermissionTargetTemplateCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Since it's a local command, usage won't be reported.
 	return nil, nil
 }

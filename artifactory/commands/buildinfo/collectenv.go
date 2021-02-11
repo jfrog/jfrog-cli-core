@@ -1,12 +1,13 @@
 package buildinfo
 
 import (
+	"os"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
 )
 
 type BuildCollectEnvCommand struct {
@@ -40,8 +41,8 @@ func (bcec *BuildCollectEnvCommand) Run() error {
 }
 
 // Returns the default configured Artifactory server
-func (bcec *BuildCollectEnvCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (bcec *BuildCollectEnvCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (bcec *BuildCollectEnvCommand) CommandName() string {

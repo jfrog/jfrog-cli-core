@@ -22,13 +22,13 @@ func (ptcc *PermissionTargetCreateCommand) SetVars(vars string) *PermissionTarge
 	return ptcc
 }
 
-func (ptcc *PermissionTargetCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *PermissionTargetCreateCommand {
-	ptcc.rtDetails = rtDetails
+func (ptcc *PermissionTargetCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *PermissionTargetCreateCommand {
+	ptcc.serverDetails = serverDetails
 	return ptcc
 }
 
-func (ptcc *PermissionTargetCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return ptcc.rtDetails, nil
+func (ptcc *PermissionTargetCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return ptcc.serverDetails, nil
 }
 
 func (ptcc *PermissionTargetCreateCommand) CommandName() string {

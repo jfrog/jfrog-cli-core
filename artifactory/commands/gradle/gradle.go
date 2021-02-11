@@ -2,13 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +9,14 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const gradleExtractorDependencyVersion = "4.18.0"
@@ -29,7 +30,7 @@ type GradleCommand struct {
 	tasks         string
 	configPath    string
 	configuration *utils.BuildConfiguration
-	rtDetails     *config.ArtifactoryDetails
+	serverDetails *config.ServerDetails
 	threads       int
 }
 
@@ -38,21 +39,21 @@ func NewGradleCommand() *GradleCommand {
 }
 
 // Returns the ArtfiactoryDetails. The information returns from the config file provided.
-func (gc *GradleCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	// Get the rtDetails from the config file.
+func (gc *GradleCommand) ServerDetails() (*config.ServerDetails, error) {
+	// Get the serverDetails from the config file.
 	var err error
-	if gc.rtDetails == nil {
+	if gc.serverDetails == nil {
 		vConfig, err := utils.ReadConfigFile(gc.configPath, utils.YAML)
 		if err != nil {
 			return nil, err
 		}
-		gc.rtDetails, err = utils.GetRtDetails(vConfig)
+		gc.serverDetails, err = utils.GetServerDetails(vConfig)
 	}
-	return gc.rtDetails, err
+	return gc.serverDetails, err
 }
 
-func (gc *GradleCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *GradleCommand {
-	gc.rtDetails = rtDetails
+func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *GradleCommand {
+	gc.serverDetails = serverDetails
 	return gc
 }
 

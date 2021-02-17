@@ -480,10 +480,34 @@ func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
 	}
 
 	// Parse the dependencies json object
-	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) (err error) {
 		if string(key) == "dependencies" {
-			err := nca.parseDependencies(value, typeRestriction)
-			if err != nil {
+			err = nca.parseDependencies(value, typeRestriction, []string{nca.packageInfo.BuildInfoModuleId()})
+		}
+		return err
+	})
+}
+
+// Parses npm dependencies recursively and adds the collected dependencies to nca.dependencies
+func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string, pathToRoot []string) error {
+	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+		depName := string(key)
+		ver, _, _, err := jsonparser.Get(data, depName, "version")
+		depVersion := string(ver)
+		depKey := depName + ":" + depVersion
+		if err != nil && err != jsonparser.KeyPathNotFoundError {
+			return errorutils.CheckError(err)
+		} else if err == jsonparser.KeyPathNotFoundError {
+			log.Warn(fmt.Sprintf("npm dependencies list contains the package '%s' without version information. The dependency will not be added to build-info.", string(key)))
+		} else {
+			nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
+		}
+		transitive, _, _, err := jsonparser.Get(data, string(key), "dependencies")
+		if err != nil && err.Error() != "Key path not found" {
+			return errorutils.CheckError(err)
+		}
+		if len(transitive) > 0 {
+			if err := nca.parseDependencies(transitive, scope, append([]string{depKey}, pathToRoot...)); err != nil {
 				return err
 			}
 		}
@@ -491,49 +515,13 @@ func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
 	})
 }
 
-// Parses npm dependencies recursively and adds the collected dependencies to nca.dependencies
-func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string) error {
-	var transitiveDependencies [][]byte
-	err := jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-		ver, _, _, err := jsonparser.Get(data, string(key), "version")
-		if err != nil && err != jsonparser.KeyPathNotFoundError {
-			return errorutils.CheckError(err)
-		} else if err == jsonparser.KeyPathNotFoundError {
-			log.Warn(fmt.Sprintf("npm dependencies list contains the package '%s' without version information. The dependency will not be added to build-info.", string(key)))
-		} else {
-			nca.appendDependency(key, ver, scope)
-		}
-		transitive, _, _, err := jsonparser.Get(data, string(key), "dependencies")
-		if err != nil && err.Error() != "Key path not found" {
-			return errorutils.CheckError(err)
-		}
-
-		if len(transitive) > 0 {
-			transitiveDependencies = append(transitiveDependencies, transitive)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
+func (nca *NpmCommandArgs) appendDependency(depKey, depName, depVersion, scope string, pathToRoot []string) {
+	if nca.dependencies[depKey] == nil {
+		nca.dependencies[depKey] = &dependency{name: depName, version: depVersion, scopes: []string{scope}}
+	} else if !scopeAlreadyExists(scope, nca.dependencies[depKey].scopes) {
+		nca.dependencies[depKey].scopes = append(nca.dependencies[depKey].scopes, scope)
 	}
-
-	for _, element := range transitiveDependencies {
-		err := nca.parseDependencies(element, scope)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (nca *NpmCommandArgs) appendDependency(key []byte, ver []byte, scope string) {
-	dependencyKey := string(key) + ":" + string(ver)
-	if nca.dependencies[dependencyKey] == nil {
-		nca.dependencies[dependencyKey] = &dependency{name: string(key), version: string(ver), scopes: []string{scope}}
-	} else if !scopeAlreadyExists(scope, nca.dependencies[dependencyKey].scopes) {
-		nca.dependencies[dependencyKey].scopes = append(nca.dependencies[dependencyKey].scopes, scope)
-	}
+	nca.dependencies[depKey].pathToRoot = append(nca.dependencies[depKey].pathToRoot, pathToRoot)
 }
 
 // Creates a function that fetches dependency data.
@@ -610,7 +598,7 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 		if dependency.checksum != nil {
 			dependencies = append(dependencies,
 				buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
-					Scopes: dependency.scopes, Checksum: dependency.checksum})
+					Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot})
 		} else {
 			missingDependencies = append(missingDependencies, *dependency)
 		}
@@ -769,11 +757,12 @@ func filterFlags(splitArgs []string) []string {
 type getDependencyInfoFunc func(string) parallel.TaskFunc
 
 type dependency struct {
-	name     string
-	version  string
-	scopes   []string
-	fileType string
-	checksum *buildinfo.Checksum
+	name       string
+	version    string
+	scopes     []string
+	fileType   string
+	checksum   *buildinfo.Checksum
+	pathToRoot [][]string
 }
 
 type aqlResult struct {

@@ -32,6 +32,7 @@ type PromptItem struct {
 // JFrog Distribution URL ()
 // JFrog Xray URL ()
 // JFrog Mission Control URL ()
+// JFrog Pipelines URL ()
 func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
@@ -43,6 +44,7 @@ func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 		Templates:    templates,
 		Stdout:       &bellSkipper{},
 		HideSelected: true,
+		Size:         len(items) + 1,
 	}
 	items = append([]PromptItem{{Option: "Continue"}}, items...)
 	for {

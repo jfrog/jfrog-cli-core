@@ -540,6 +540,7 @@ type ServerDetails struct {
 	DistributionUrl      string `json:"distributionUrl,omitempty"`
 	XrayUrl              string `json:"xrayUrl,omitempty"`
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
+	PipelinesUrl         string `json:"pipelines,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -624,6 +625,10 @@ func (serverDetails *ServerDetails) GetXrayUrl() string {
 
 func (serverDetails *ServerDetails) GetMissionControlUrl() string {
 	return serverDetails.MissionControlUrl
+}
+
+func (serverDetails *ServerDetails) GetPipelinesUrl() string {
+	return serverDetails.PipelinesUrl
 }
 
 func (serverDetails *ServerDetails) GetUser() string {

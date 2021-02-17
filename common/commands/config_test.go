@@ -21,6 +21,7 @@ func TestBasicAuth(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "admin", Password: "password",
 		ApiKey: "", SshKeyPath: "", AccessToken: "",
 		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
@@ -36,6 +37,7 @@ func TestUsernameSavedLowercase(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "ADMIN", Password: "password",
 		ApiKey: "", SshKeyPath: "", AccessToken: "",
 		ServerId:  "test",
@@ -55,6 +57,7 @@ func TestApiKey(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "", Password: "",
 		ApiKey: "apiKey", SshKeyPath: "", AccessToken: "",
 		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
@@ -73,6 +76,7 @@ func TestArtifactorySshKey(t *testing.T) {
 		DistributionUrl:   "http://localhost:1339/distribution",
 		XrayUrl:           "http://localhost:1339/xray",
 		MissionControlUrl: "http://localhost:1339/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "admin", Password: "password",
 		ApiKey: "", SshKeyPath: "/tmp/sshKey", AccessToken: "",
 		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
@@ -88,6 +92,7 @@ func TestAccessToken(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "", Password: "",
 		ApiKey: "", SshKeyPath: "", AccessToken: "accessToken",
 		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
@@ -104,6 +109,7 @@ func TestRefreshToken(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "user", Password: "pass",
 		ApiKey: "", SshKeyPath: "", AccessToken: "accessToken", RefreshToken: "refreshToken",
 		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
@@ -125,6 +131,7 @@ func TestEmptyCredentials(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "", Password: "",
 		ApiKey: "", SshKeyPath: "", AccessToken: "",
 		ServerId:  "test",
@@ -153,11 +160,13 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8080/distribution/", outputConfig.GetDistributionUrl())
 	assert.Equal(t, "http://localhost:8080/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8080/missioncontrol/", outputConfig.GetMissionControlUrl())
+	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl())
 
 	inputDetails.ArtifactoryUrl = "http://localhost:8081/artifactory"
 	inputDetails.DistributionUrl = "http://localhost:8081/distribution"
 	inputDetails.XrayUrl = "http://localhost:8081/xray"
 	inputDetails.MissionControlUrl = "http://localhost:8081/missioncontrol"
+	inputDetails.PipelinesUrl = "http://localhost:8081/pipelines"
 	outputConfig, err = configAndGetTestServer(t, &inputDetails, false, interactive)
 	assert.NoError(t, err)
 
@@ -166,6 +175,7 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8081/distribution/", outputConfig.GetDistributionUrl())
 	assert.Equal(t, "http://localhost:8081/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8081/missioncontrol/", outputConfig.GetMissionControlUrl())
+	assert.Equal(t, "http://localhost:8081/pipelines/", outputConfig.GetPipelinesUrl())
 }
 
 func TestBasicAuthOnlyOption(t *testing.T) {
@@ -175,6 +185,7 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
 		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
 		User:              "admin", Password: "password",
 		ServerId: "test", IsDefault: false}
 

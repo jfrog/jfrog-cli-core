@@ -16,6 +16,7 @@ type configToken struct {
 	DistributionUrl      string `json:"distributionUrl,omitempty"`
 	XrayUrl              string `json:"xrayUrl,omitempty"`
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
+	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -37,6 +38,7 @@ func fromServerDetails(details *ServerDetails) *configToken {
 		DistributionUrl:      details.DistributionUrl,
 		XrayUrl:              details.XrayUrl,
 		MissionControlUrl:    details.MissionControlUrl,
+		PipelinesUrl:         details.PipelinesUrl,
 		User:                 details.User,
 		Password:             details.Password,
 		SshKeyPath:           details.SshKeyPath,
@@ -57,6 +59,7 @@ func toServerDetails(detailsSerialization *configToken) *ServerDetails {
 		ArtifactoryUrl:       detailsSerialization.ArtifactoryUrl,
 		DistributionUrl:      detailsSerialization.DistributionUrl,
 		MissionControlUrl:    detailsSerialization.MissionControlUrl,
+		PipelinesUrl:         detailsSerialization.PipelinesUrl,
 		XrayUrl:              detailsSerialization.XrayUrl,
 		User:                 detailsSerialization.User,
 		Password:             detailsSerialization.Password,

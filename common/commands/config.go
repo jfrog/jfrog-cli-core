@@ -118,11 +118,13 @@ func (cc *ConfigCommand) Config() error {
 		coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
 		coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
 		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/")
+		coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
 	cc.details.DistributionUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
 	cc.details.XrayUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.XrayUrl)
 	cc.details.MissionControlUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.MissionControlUrl)
+	cc.details.PipelinesUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.PipelinesUrl)
 
 	// Artifactory expects the username to be lower-cased. In case it is not,
 	// Artifactory will silently save it lower-cased, but the token creation
@@ -234,10 +236,11 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 		printServicesUrls(cc.details)
 	}
 
-	if coreutils.IsAnyEmpty(cc.details.ArtifactoryUrl, cc.details.DistributionUrl, cc.details.XrayUrl, cc.details.MissionControlUrl) {
+	if coreutils.IsAnyEmpty(cc.details.ArtifactoryUrl, cc.details.DistributionUrl, cc.details.XrayUrl, cc.details.MissionControlUrl, cc.details.PipelinesUrl) {
 		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
 			return err
 		}
@@ -273,6 +276,7 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 		{Option: "JFrog Distribution URL", TargetValue: &cc.details.DistributionUrl, DefaultValue: cc.defaultDetails.DistributionUrl},
 		{Option: "JFrog Xray URL", TargetValue: &cc.details.XrayUrl, DefaultValue: cc.defaultDetails.XrayUrl},
 		{Option: "JFrog Mission Control URL", TargetValue: &cc.details.MissionControlUrl, DefaultValue: cc.defaultDetails.MissionControlUrl},
+		{Option: "JFrog Pipelines URL", TargetValue: &cc.details.PipelinesUrl, DefaultValue: cc.defaultDetails.PipelinesUrl},
 	}
 	return ioutils.PromptStrings(promptItems, "Select continue or modify any of the URLs", func() { *disallowUsingSavedPassword = true })
 }
@@ -423,6 +427,7 @@ func printServicesUrls(details *config.ServerDetails) {
 	logIfNotEmpty(details.DistributionUrl, "Distribution Url:\t", false)
 	logIfNotEmpty(details.XrayUrl, "Xray Url:\t\t", false)
 	logIfNotEmpty(details.MissionControlUrl, "Mission Control Url:\t", false)
+	logIfNotEmpty(details.PipelinesUrl, "Pipelines Url:\t\t", false)
 }
 
 func logIfNotEmpty(value, prefix string, mask bool) {

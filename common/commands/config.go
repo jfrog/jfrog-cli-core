@@ -36,6 +36,8 @@ type ConfigCommand struct {
 	encPassword      bool
 	useBasicAuthOnly bool
 	serverId         string
+	// For unit tests
+	disablePromptUrls bool
 }
 
 func NewConfigCommand() *ConfigCommand {
@@ -227,7 +229,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 	disallowUsingSavedPassword := false
 
 	if cc.details.Url == "" {
-		ioutils.ScanFromConsole("JFrog platform URL (Leave blank to configure JFrog services URLs separately)", &cc.details.Url, cc.defaultDetails.Url)
+		ioutils.ScanFromConsole("JFrog platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
 	if cc.details.Url != "" {
@@ -237,10 +239,9 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
-		printServicesUrls(cc.details)
 	}
 
-	if coreutils.IsAnyEmpty(cc.details.ArtifactoryUrl, cc.details.DistributionUrl, cc.details.XrayUrl, cc.details.MissionControlUrl, cc.details.PipelinesUrl) {
+	if !cc.disablePromptUrls {
 		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
 			return err
 		}
@@ -408,7 +409,11 @@ func printConfigs(configuration []*config.ServerDetails) {
 	for _, details := range configuration {
 		logIfNotEmpty(details.ServerId, "Server ID:\t\t", false)
 		logIfNotEmpty(details.Url, "JFrog platform Url:\t", false)
-		printServicesUrls(details)
+		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory Url:\t", false)
+		logIfNotEmpty(details.DistributionUrl, "Distribution Url:\t", false)
+		logIfNotEmpty(details.XrayUrl, "Xray Url:\t\t", false)
+		logIfNotEmpty(details.MissionControlUrl, "Mission Control Url:\t", false)
+		logIfNotEmpty(details.PipelinesUrl, "Pipelines Url:\t\t", false)
 		logIfNotEmpty(details.ApiKey, "API key:\t\t", true)
 		logIfNotEmpty(details.User, "User:\t\t\t", false)
 		logIfNotEmpty(details.Password, "Password:\t\t", true)
@@ -420,14 +425,6 @@ func printConfigs(configuration []*config.ServerDetails) {
 		log.Output("Default:\t\t" + strconv.FormatBool(details.IsDefault))
 		log.Output()
 	}
-}
-
-func printServicesUrls(details *config.ServerDetails) {
-	logIfNotEmpty(details.ArtifactoryUrl, "Artifactory Url:\t", false)
-	logIfNotEmpty(details.DistributionUrl, "Distribution Url:\t", false)
-	logIfNotEmpty(details.XrayUrl, "Xray Url:\t\t", false)
-	logIfNotEmpty(details.MissionControlUrl, "Mission Control Url:\t", false)
-	logIfNotEmpty(details.PipelinesUrl, "Pipelines Url:\t\t", false)
 }
 
 func logIfNotEmpty(value, prefix string, mask bool) {

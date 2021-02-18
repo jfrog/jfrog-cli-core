@@ -220,6 +220,7 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 
 func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, basicAuthOnly, interactive bool) (*config.ServerDetails, error) {
 	configCmd := NewConfigCommand().SetDetails(inputDetails).SetServerId("test").SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
+	configCmd.disablePromptUrls = true
 	assert.NoError(t, configCmd.Config())
 	return GetConfig("test", false)
 }

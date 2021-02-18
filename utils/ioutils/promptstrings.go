@@ -25,9 +25,9 @@ type PromptItem struct {
 	DefaultValue string
 }
 
-// Prompt strings by selecting from list until "continue" is selected.
+// Prompt strings by selecting from list until "Save and continue" is selected.
 // Usage example:
-// 🐸 Continue
+// 🐸 Save and continue
 // JFrog Artifactory URL (http://localhost:8080/artifactory/)
 // JFrog Distribution URL ()
 // JFrog Xray URL ()
@@ -37,7 +37,7 @@ func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
 		Active:   "🐸" + selectableItemTemplate,
-		Inactive: selectableItemTemplate,
+		Inactive: "  " + selectableItemTemplate,
 	}
 	prompt := promptui.Select{
 		Label:        label,
@@ -46,7 +46,7 @@ func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 		HideSelected: true,
 		Size:         len(items) + 1,
 	}
-	items = append([]PromptItem{{Option: "Continue"}}, items...)
+	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()

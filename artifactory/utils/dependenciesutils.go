@@ -46,7 +46,7 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 	if exists || err != nil {
 		return err
 	}
-
+	log.Debug("build-info-extractor does not  exist locally. Downloading the relevant jar")
 	artDetails, remotePath, err := GetJcenterRemoteDetails(downloadPath)
 	if err != nil {
 		return err
@@ -56,6 +56,7 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 	if artDetails != nil {
 		return downloadFileFromArtifactory(artDetails, remotePath, targetPath)
 	}
+	log.Debug("'" + JCenterRemoteServerEnv + "' environment variable is not configured. Downloading directly from jcenter")
 
 	// If not configured to download through a remote repository in Artifactory,
 	// download from jcenter.
@@ -129,6 +130,7 @@ func downloadFileFromArtifactory(artDetails *config.ArtifactoryDetails, download
 }
 
 func downloadFileFromBintray(downloadPath, targetPath string) error {
+	log.Info("Downloading build-info-extractor from ", downloadPath)
 	bintrayConfig := auth.NewBintrayDetails()
 	config := bintray.NewConfigBuilder().SetBintrayDetails(bintrayConfig).Build()
 

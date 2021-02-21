@@ -493,16 +493,13 @@ func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string, pathToRo
 	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
 		depName := string(key)
 		ver, _, _, err := jsonparser.Get(data, depName, "version")
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 		depVersion := string(ver)
 		depKey := depName + ":" + depVersion
-		if err != nil && err != jsonparser.KeyPathNotFoundError {
-			return errorutils.CheckError(err)
-		} else if err == jsonparser.KeyPathNotFoundError {
-			log.Warn(fmt.Sprintf("npm dependencies list contains the package '%s' without version information. The dependency will not be added to build-info.", string(key)))
-		} else {
-			nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
-		}
-		transitive, _, _, err := jsonparser.Get(data, string(key), "dependencies")
+		nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
+		transitive, _, _, err := jsonparser.Get(data, depName, "dependencies")
 		if err != nil && err.Error() != "Key path not found" {
 			return errorutils.CheckError(err)
 		}

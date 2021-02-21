@@ -110,6 +110,7 @@ func (uc *UploadCommand) upload() error {
 		file := uc.Spec().Get(i)
 		file.TargetProps = clientUtils.AddProps(file.TargetProps, file.Props)
 		file.TargetProps = clientUtils.AddProps(file.TargetProps, syncDeletesProp)
+		file.Props += syncDeletesProp
 		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
 			errorOccurred = true
@@ -216,6 +217,11 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	}
 
 	uploadParams.Regexp, err = f.IsRegexp(false)
+	if err != nil {
+		return
+	}
+
+	uploadParams.Ant, err = f.IsAnt(false)
 	if err != nil {
 		return
 	}

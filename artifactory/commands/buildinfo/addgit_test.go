@@ -3,7 +3,7 @@ package buildinfo
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	tests2 "github.com/jfrog/jfrog-client-go/utils/tests"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -54,7 +54,7 @@ func runTest(t *testing.T, originalDir string) {
 
 func TestBuildAddGitSubmodules(t *testing.T) {
 	var projectPath, tmpDir string
-	projectPath, tmpDir = tests2.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"))
+	projectPath, tmpDir = testsutils.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"))
 	defer fileutils.RemoveTempDir(tmpDir)
 
 	testsName := []string{"dotGitProvided", "dotGitSearched"}
@@ -242,6 +242,11 @@ func TestAddGitDoCollect(t *testing.T) {
 		// Error - should find 2 issues
 		t.Errorf("Issues list expected to have 2 issues, instead found %d issues: %v", len(issues), issues)
 	}
+
+	// Test collection with a made up revision - the command should not throw an error, and 0 issues should be returned.
+	issues, err = config.DoCollect(config.issuesConfig, "abcdefABCDEF1234567890123456789012345678")
+	assert.NoError(t, err)
+	assert.Empty(t, issues)
 
 	// Clean git path
 	tests.RenamePath(dotGitPath, filepath.Join(baseDir, originalFolder), t)

@@ -1,6 +1,8 @@
 package spec
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type builder struct {
 	pattern string
@@ -23,6 +25,7 @@ type builder struct {
 	recursive        bool
 	flat             bool
 	regexp           bool
+	ant              bool
 	includeDirs      bool
 	archiveEntries   string
 	validateSymlinks bool
@@ -132,6 +135,11 @@ func (b *builder) Regexp(regexp bool) *builder {
 	return b
 }
 
+func (b *builder) Ant(ant bool) *builder {
+	b.ant = ant
+	return b
+}
+
 func (b *builder) IncludeDirs(includeDirs bool) *builder {
 	b.includeDirs = includeDirs
 	return b
@@ -165,6 +173,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Recursive:        strconv.FormatBool(b.recursive),
 				Flat:             strconv.FormatBool(b.flat),
 				Regexp:           strconv.FormatBool(b.regexp),
+				Ant:              strconv.FormatBool(b.ant),
 				IncludeDirs:      strconv.FormatBool(b.includeDirs),
 				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
 				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),

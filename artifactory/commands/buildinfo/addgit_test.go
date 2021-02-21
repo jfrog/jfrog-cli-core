@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,6 +187,11 @@ func TestAddGitDoCollect(t *testing.T) {
 		// Error - should find 2 issues
 		t.Errorf("Issues list expected to have 2 issues, instead found %d issues: %v", len(issues), issues)
 	}
+
+	// Test collection with a made up revision - the command should not throw an error, and 0 issues should be returned.
+	issues, err = config.DoCollect(config.issuesConfig, "abcdefABCDEF1234567890123456789012345678")
+	assert.NoError(t, err)
+	assert.Empty(t, issues)
 
 	// Clean git path
 	tests.RenamePath(dotGitPath, filepath.Join(baseDir, originalFolder), t)

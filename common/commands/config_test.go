@@ -15,35 +15,20 @@ func init() {
 }
 
 func TestBasicAuth(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "admin", Password: "password",
-		ApiKey: "", SshKeyPath: "", AccessToken: "",
-		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	inputDetails := createTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 }
 
 func TestUsernameSavedLowercase(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "ADMIN", Password: "password",
-		ApiKey: "", SshKeyPath: "", AccessToken: "",
-		ServerId:  "test",
-		IsDefault: false}
+	inputDetails := createTestServerDetails()
+	inputDetails.User = "ADMIN"
+	inputDetails.Password = "password"
 
-	outputConfig, err := configAndGetTestServer(t, &inputDetails, false, false)
+	outputConfig, err := configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, outputConfig.User, "admin", "The config command is supposed to save username as lowercase")
 }
@@ -51,92 +36,54 @@ func TestUsernameSavedLowercase(t *testing.T) {
 func TestApiKey(t *testing.T) {
 	// API key is no longer allowed to be configured without providing a username.
 	// This test is here to make sure that old configurations (with API key and no username) are still accepted.
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "", Password: "",
-		ApiKey: "apiKey", SshKeyPath: "", AccessToken: "",
-		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
+	inputDetails := createTestServerDetails()
+	inputDetails.ApiKey = "apiKey"
+	configAndTest(t, inputDetails, false)
 
 	inputDetails.User = "admin"
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 }
 
 func TestArtifactorySshKey(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:1339",
-		ArtifactoryUrl:    "ssh://localhost:1339/",
-		DistributionUrl:   "http://localhost:1339/distribution",
-		XrayUrl:           "http://localhost:1339/xray",
-		MissionControlUrl: "http://localhost:1339/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "admin", Password: "password",
-		ApiKey: "", SshKeyPath: "/tmp/sshKey", AccessToken: "",
-		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	inputDetails := createTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+	inputDetails.SshKeyPath = "/tmp/sshKey"
+	inputDetails.ArtifactoryUrl = "ssh://localhost:1339/"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 }
 
 func TestAccessToken(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "", Password: "",
-		ApiKey: "", SshKeyPath: "", AccessToken: "accessToken",
-		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	inputDetails := createTestServerDetails()
+	inputDetails.AccessToken = "accessToken"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 }
 
 func TestRefreshToken(t *testing.T) {
 	// Import after tokens were generated.
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "user", Password: "pass",
-		ApiKey: "", SshKeyPath: "", AccessToken: "accessToken", RefreshToken: "refreshToken",
-		ServerId: "test", ClientCertPath: "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	inputDetails := createTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+	inputDetails.AccessToken = "accessToken"
+	inputDetails.RefreshToken = "refreshToken"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 
 	// Import before tokens were generated.
 	inputDetails.AccessToken = ""
 	inputDetails.RefreshToken = ""
-	configAndTest(t, &inputDetails, false)
-	configAndTest(t, &inputDetails, true)
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
 }
 
 func TestEmptyCredentials(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "", Password: "",
-		ApiKey: "", SshKeyPath: "", AccessToken: "",
-		ServerId:  "test",
-		IsDefault: false}
-	configAndTest(t, &inputDetails, false)
+	configAndTest(t, createTestServerDetails(), false)
 }
 
 func TestUrls(t *testing.T) {
@@ -146,9 +93,7 @@ func TestUrls(t *testing.T) {
 
 func testUrls(t *testing.T, interactive bool) {
 	inputDetails := config.ServerDetails{
-		Url:  "http://localhost:8080",
-		User: "admin", Password: "password",
-		ApiKey: "", SshKeyPath: "", AccessToken: "",
+		Url: "http://localhost:8080", User: "admin", Password: "password",
 		ServerId: "test", ClientCertPath: "test/cert/path", ClientCertKeyPath: "test/cert/key/path",
 		IsDefault: false}
 
@@ -179,24 +124,18 @@ func testUrls(t *testing.T, interactive bool) {
 }
 
 func TestBasicAuthOnlyOption(t *testing.T) {
-	inputDetails := config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		User:              "admin", Password: "password",
-		ServerId: "test", IsDefault: false}
+	inputDetails := createTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
 
 	// Verify setting the option disables refreshable tokens.
-	outputConfig, err := configAndGetTestServer(t, &inputDetails, true, false)
+	outputConfig, err := configAndGetTestServer(t, inputDetails, true, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.TokenRefreshInterval, "expected refreshable token to be disabled")
 	assert.NoError(t, DeleteConfig("test"))
 
 	// Verify setting the option enables refreshable tokens.
-	outputConfig, err = configAndGetTestServer(t, &inputDetails, false, false)
+	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.TokenRefreshInterval, "expected refreshable token to be enabled")
 	assert.NoError(t, DeleteConfig("test"))
@@ -229,4 +168,18 @@ func configStructToString(artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
 	marshaledStruct, _ := json.Marshal(*artConfig)
 	return string(marshaledStruct)
+}
+
+func createTestServerDetails() *config.ServerDetails {
+	return &config.ServerDetails{
+		Url:               "http://localhost:8080",
+		ArtifactoryUrl:    "http://localhost:8080/artifactory",
+		DistributionUrl:   "http://localhost:8080/distribution",
+		XrayUrl:           "http://localhost:8080/xray",
+		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		PipelinesUrl:      "http://localhost:8080/pipelines",
+		ServerId:          "test",
+		IsDefault:         false,
+		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
+	}
 }

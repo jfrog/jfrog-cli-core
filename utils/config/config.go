@@ -399,14 +399,10 @@ func createHomeDirBackup() error {
 // Version key is "version" in version 2 and above
 func getVersion(content []byte) (value string, err error) {
 	value, err = jsonparser.GetString(bytes.ToLower(content), "version")
-	if err != nil {
-		if err.Error() == "Key path not found" {
-			return "0", nil
-		} else {
-			return "", errorutils.CheckError(err)
-		}
+	if err != nil && err.Error() == "Key path not found" {
+		return "0", nil
 	}
-	return value, nil
+	return value, errorutils.CheckError(err)
 }
 
 func convertConfigV0toV1(content []byte) ([]byte, error) {

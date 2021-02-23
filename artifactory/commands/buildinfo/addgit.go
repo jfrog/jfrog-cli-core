@@ -65,7 +65,7 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 }
 
 func (config *BuildAddGitCommand) Run() error {
-	log.Info("Collecting git revision and remote url...")
+	log.Info("Collecting git branch, revision and remote url...")
 	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber)
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (config *BuildAddGitCommand) Run() error {
 		}
 	}
 
-	// Collect URL and Revision into GitManager.
+	// Collect URL Branch and Revision into GitManager.
 	gitManager := clientutils.NewGitManager(config.dotGitPath)
 	err = gitManager.ReadConfig()
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 )
 
 type GenericCommand struct {
-	rtDetails       *config.ArtifactoryDetails
+	serverDetails   *config.ServerDetails
 	spec            *spec.SpecFiles
 	result          *commandsutils.Result
 	dryRun          bool
@@ -60,12 +60,12 @@ func (gc *GenericCommand) SetSpec(spec *spec.SpecFiles) *GenericCommand {
 	return gc
 }
 
-func (gc *GenericCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return gc.rtDetails, nil
+func (gc *GenericCommand) ServerDetails() (*config.ServerDetails, error) {
+	return gc.serverDetails, nil
 }
 
-func (gc *GenericCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *GenericCommand {
-	gc.rtDetails = rtDetails
+func (gc *GenericCommand) SetServerDetails(serverDetails *config.ServerDetails) *GenericCommand {
+	gc.serverDetails = serverDetails
 	return gc
 }
 

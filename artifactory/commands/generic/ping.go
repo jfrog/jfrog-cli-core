@@ -6,8 +6,8 @@ import (
 )
 
 type PingCommand struct {
-	rtDetails *config.ArtifactoryDetails
-	response  []byte
+	serverDetails *config.ServerDetails
+	response      []byte
 }
 
 func NewPingCommand() *PingCommand {
@@ -18,12 +18,12 @@ func (pc *PingCommand) Response() []byte {
 	return pc.response
 }
 
-func (pc *PingCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return pc.rtDetails, nil
+func (pc *PingCommand) ServerDetails() (*config.ServerDetails, error) {
+	return pc.serverDetails, nil
 }
 
-func (pc *PingCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *PingCommand {
-	pc.rtDetails = rtDetails
+func (pc *PingCommand) SetServerDetails(serverDetails *config.ServerDetails) *PingCommand {
+	pc.serverDetails = serverDetails
 	return pc
 }
 
@@ -41,7 +41,7 @@ func (pc *PingCommand) Run() error {
 }
 
 func (pc *PingCommand) Ping() ([]byte, error) {
-	servicesManager, err := utils.CreateServiceManager(pc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, false)
 	if err != nil {
 		return nil, err
 	}

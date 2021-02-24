@@ -22,8 +22,8 @@ func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {
 	if err != nil {
 		return errorutils.CheckError(errors.New("Failed to marshal json: " + err.Error()))
 	}
-	missionControlUrl := flags.MissionControlDetails.Url + "api/v1/buckets/" + bucketId + "/deploy"
-	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.MissionControlDetails)
+	missionControlUrl := flags.ServerDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/deploy"
+	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.ServerDetails)
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return err
@@ -46,6 +46,6 @@ type LicenseDeployRequestContent struct {
 }
 
 type LicenseDeployFlags struct {
-	MissionControlDetails *config.MissionControlDetails
-	LicenseCount          int
+	ServerDetails *config.ServerDetails
+	LicenseCount  int
 }

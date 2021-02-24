@@ -1,6 +1,8 @@
 package spec
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type builder struct {
 	pattern string
@@ -10,6 +12,7 @@ type builder struct {
 	target           string
 	explode          string
 	props            string
+	targetProps      string
 	excludeProps     string
 	sortOrder        string
 	sortBy           []string
@@ -22,6 +25,7 @@ type builder struct {
 	recursive        bool
 	flat             bool
 	regexp           bool
+	ant              bool
 	includeDirs      bool
 	archiveEntries   string
 	validateSymlinks bool
@@ -63,6 +67,11 @@ func (b *builder) Explode(explode string) *builder {
 
 func (b *builder) Props(props string) *builder {
 	b.props = props
+	return b
+}
+
+func (b *builder) TargetProps(targetProps string) *builder {
+	b.targetProps = targetProps
 	return b
 }
 
@@ -126,6 +135,11 @@ func (b *builder) Regexp(regexp bool) *builder {
 	return b
 }
 
+func (b *builder) Ant(ant bool) *builder {
+	b.ant = ant
+	return b
+}
+
 func (b *builder) IncludeDirs(includeDirs bool) *builder {
 	b.includeDirs = includeDirs
 	return b
@@ -146,6 +160,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Exclusions:       b.exclusions,
 				Target:           b.target,
 				Props:            b.props,
+				TargetProps:      b.targetProps,
 				ExcludeProps:     b.excludeProps,
 				SortOrder:        b.sortOrder,
 				SortBy:           b.sortBy,
@@ -158,6 +173,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Recursive:        strconv.FormatBool(b.recursive),
 				Flat:             strconv.FormatBool(b.flat),
 				Regexp:           strconv.FormatBool(b.regexp),
+				Ant:              strconv.FormatBool(b.ant),
 				IncludeDirs:      strconv.FormatBool(b.includeDirs),
 				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
 				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),

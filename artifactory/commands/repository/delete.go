@@ -11,9 +11,9 @@ import (
 )
 
 type RepoDeleteCommand struct {
-	rtDetails   *config.ArtifactoryDetails
-	repoPattern string
-	quiet       bool
+	serverDetails *config.ServerDetails
+	repoPattern   string
+	quiet         bool
 }
 
 func NewRepoDeleteCommand() *RepoDeleteCommand {
@@ -30,13 +30,13 @@ func (rdc *RepoDeleteCommand) SetQuiet(quiet bool) *RepoDeleteCommand {
 	return rdc
 }
 
-func (rdc *RepoDeleteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *RepoDeleteCommand {
-	rdc.rtDetails = rtDetails
+func (rdc *RepoDeleteCommand) SetServerDetails(serverDetails *config.ServerDetails) *RepoDeleteCommand {
+	rdc.serverDetails = serverDetails
 	return rdc
 }
 
-func (rdc *RepoDeleteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return rdc.rtDetails, nil
+func (rdc *RepoDeleteCommand) ServerDetails() (*config.ServerDetails, error) {
+	return rdc.serverDetails, nil
 }
 
 func (rdc *RepoDeleteCommand) CommandName() string {
@@ -44,7 +44,7 @@ func (rdc *RepoDeleteCommand) CommandName() string {
 }
 
 func (rdc *RepoDeleteCommand) Run() (err error) {
-	servicesManager, err := rtUtils.CreateServiceManager(rdc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, false)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@ type ContainerManagerCommand struct {
 	imageTag           string
 	repo               string
 	buildConfiguration *utils.BuildConfiguration
-	rtDetails          *config.ArtifactoryDetails
+	serverDetails      *config.ServerDetails
 	skipLogin          bool
 }
 
@@ -54,18 +54,18 @@ func (cmc *ContainerManagerCommand) SetSkipLogin(skipLogin bool) *ContainerManag
 	return cmc
 }
 
-func (cmc *ContainerManagerCommand) RtDetails() *config.ArtifactoryDetails {
-	return cmc.rtDetails
+func (cmc *ContainerManagerCommand) ServerDetails() *config.ServerDetails {
+	return cmc.serverDetails
 }
 
-func (cmc *ContainerManagerCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *ContainerManagerCommand {
-	cmc.rtDetails = rtDetails
+func (cmc *ContainerManagerCommand) SetServerDetails(serverDetails *config.ServerDetails) *ContainerManagerCommand {
+	cmc.serverDetails = serverDetails
 	return cmc
 }
 
-func (cmc *ContainerManagerCommand) PerformLogin(rtDetails *config.ArtifactoryDetails, containerManagerType container.ContainerManagerType) error {
+func (cmc *ContainerManagerCommand) PerformLogin(serverDetails *config.ServerDetails, containerManagerType container.ContainerManagerType) error {
 	if !cmc.skipLogin {
-		loginConfig := &container.ContainerManagerLoginConfig{ArtifactoryDetails: rtDetails}
+		loginConfig := &container.ContainerManagerLoginConfig{ServerDetails: serverDetails}
 		return container.ContainerManagerLogin(cmc.imageTag, loginConfig, containerManagerType)
 	}
 	return nil

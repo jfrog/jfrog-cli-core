@@ -24,13 +24,13 @@ func (bcc *BuildCleanCommand) CommandName() string {
 }
 
 // Returns the default Artifactory server
-func (bcc *BuildCleanCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (bcc *BuildCleanCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (bcc *BuildCleanCommand) Run() error {
 	log.Info("Cleaning build info...")
-	err := utils.RemoveBuildDir(bcc.buildConfiguration.BuildName, bcc.buildConfiguration.BuildNumber)
+	err := utils.RemoveBuildDir(bcc.buildConfiguration.BuildName, bcc.buildConfiguration.BuildNumber, bcc.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}

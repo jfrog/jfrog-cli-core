@@ -7,7 +7,7 @@ import (
 )
 
 type SignBundleCommand struct {
-	rtDetails         *config.ArtifactoryDetails
+	serverDetails     *config.ServerDetails
 	signBundlesParams services.SignBundleParams
 }
 
@@ -15,8 +15,8 @@ func NewReleaseBundleSignCommand() *SignBundleCommand {
 	return &SignBundleCommand{}
 }
 
-func (sb *SignBundleCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *SignBundleCommand {
-	sb.rtDetails = rtDetails
+func (sb *SignBundleCommand) SetServerDetails(serverDetails *config.ServerDetails) *SignBundleCommand {
+	sb.serverDetails = serverDetails
 	return sb
 }
 
@@ -26,7 +26,7 @@ func (sb *SignBundleCommand) SetReleaseBundleSignParams(params services.SignBund
 }
 
 func (sb *SignBundleCommand) Run() error {
-	servicesManager, err := utils.CreateDistributionServiceManager(sb.rtDetails, false)
+	servicesManager, err := utils.CreateDistributionServiceManager(sb.serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func (sb *SignBundleCommand) Run() error {
 	return servicesManager.SignReleaseBundle(sb.signBundlesParams)
 }
 
-func (sb *SignBundleCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return sb.rtDetails, nil
+func (sb *SignBundleCommand) ServerDetails() (*config.ServerDetails, error) {
+	return sb.serverDetails, nil
 }
 
 func (sb *SignBundleCommand) CommandName() string {

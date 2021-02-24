@@ -2,11 +2,12 @@ package generic
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/log"
 )
 
 func TestPingSuccess(t *testing.T) {
@@ -16,7 +17,7 @@ func TestPingSuccess(t *testing.T) {
 		fmt.Fprint(w, "OK")
 	}))
 	defer ts.Close()
-	responseBytes, err := new(PingCommand).SetRtDetails(&config.ArtifactoryDetails{Url: ts.URL + "/"}).Ping()
+	responseBytes, err := new(PingCommand).SetServerDetails(&config.ServerDetails{ArtifactoryUrl: ts.URL + "/"}).Ping()
 	if err != nil {
 		t.Log(fmt.Sprintf("Error received from Artifactory following ping request: %s", err))
 		t.Fail()
@@ -34,7 +35,7 @@ func TestPingFailed(t *testing.T) {
 		fmt.Fprint(w, `{"error":"error"}`)
 	}))
 	defer ts.Close()
-	_, err := new(PingCommand).SetRtDetails(&config.ArtifactoryDetails{Url: ts.URL + "/"}).Ping()
+	_, err := new(PingCommand).SetServerDetails(&config.ServerDetails{ArtifactoryUrl: ts.URL + "/"}).Ping()
 	if err == nil {
 		t.Log("Expected error from artifactory")
 		t.Fail()

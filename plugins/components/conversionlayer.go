@@ -12,7 +12,7 @@ func ConvertApp(jfrogApp App) (*cli.App, error) {
 	var err error
 	app := cli.NewApp()
 	app.Name = jfrogApp.Name
-	app.Usage = jfrogApp.Description
+	app.Description = jfrogApp.Description
 	app.Version = jfrogApp.Version
 	app.Commands, err = convertCommands(jfrogApp)
 	if err != nil {
@@ -44,7 +44,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 		Name:            cmd.Name,
 		Flags:           convertedFlags,
 		Aliases:         cmd.Aliases,
-		Usage:           cmd.Description,
+		Description:     cmd.Description,
 		HelpName:        common.CreateUsage(appName+" "+cmd.Name, cmd.Description, []string{createCommandUsage(cmd, appName)}),
 		UsageText:       createArgumentsSummary(cmd),
 		ArgsUsage:       createEnvVarsSummary(cmd),

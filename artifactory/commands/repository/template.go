@@ -470,7 +470,7 @@ func (rtc *RepoTemplateCommand) SetTemplatePath(path string) *RepoTemplateComman
 	return rtc
 }
 
-func (rtc *RepoTemplateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (rtc *RepoTemplateCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Since it's a local command, usage won't be reported.
 	return nil, nil
 }

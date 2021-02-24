@@ -54,14 +54,14 @@ func (rtc *ReplicationTemplateCommand) CommandName() string {
 	return "rt_replication_template"
 }
 
-func (rtc *ReplicationTemplateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (rtc *ReplicationTemplateCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Since it's a local command, usage won't be reported.
 	return nil, nil
 }
 
 func getArtifactoryServerIds() []prompt.Suggest {
 	suggest := make([]prompt.Suggest, 0)
-	if configurations, _ := config.GetAllArtifactoryConfigs(); configurations != nil {
+	if configurations, _ := config.GetAllServersConfigs(); configurations != nil {
 		for _, conf := range configurations {
 			suggest = append(suggest, prompt.Suggest{Text: conf.ServerId})
 		}

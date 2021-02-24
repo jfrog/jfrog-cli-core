@@ -1,6 +1,10 @@
 package golang
 
 import (
+	"io/ioutil"
+	"os"
+	"strings"
+
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
 	"github.com/jfrog/gocmd/executers"
@@ -11,9 +15,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"os"
-	"strings"
 )
 
 type GoRecursivePublishCommand struct {
@@ -25,11 +26,11 @@ func NewGoRecursivePublishCommand() *GoRecursivePublishCommand {
 }
 
 func (grp *GoRecursivePublishCommand) Run() error {
-	rtDetails, err := grp.RtDetails()
+	serverDetails, err := grp.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}

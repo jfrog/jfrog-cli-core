@@ -6,9 +6,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 )
 
-func GetMissionControlHttpClientDetails(missionControlDetails *config.MissionControlDetails) httputils.HttpClientDetails {
+func GetMissionControlHttpClientDetails(serverDetails *config.ServerDetails) httputils.HttpClientDetails {
 	return httputils.HttpClientDetails{
-		AccessToken: missionControlDetails.AccessToken,
+		User:        serverDetails.User,
+		Password:    serverDetails.Password,
+		AccessToken: serverDetails.AccessToken,
 		Headers:     map[string]string{"Content-Type": "application/json"}}
 }
 

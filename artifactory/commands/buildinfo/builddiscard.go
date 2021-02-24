@@ -7,7 +7,7 @@ import (
 )
 
 type BuildDiscardCommand struct {
-	rtDetails *config.ArtifactoryDetails
+	serverDetails *config.ServerDetails
 	services.DiscardBuildsParams
 }
 
@@ -15,8 +15,8 @@ func NewBuildDiscardCommand() *BuildDiscardCommand {
 	return &BuildDiscardCommand{}
 }
 
-func (buildDiscard *BuildDiscardCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildDiscardCommand {
-	buildDiscard.rtDetails = rtDetails
+func (buildDiscard *BuildDiscardCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildDiscardCommand {
+	buildDiscard.serverDetails = serverDetails
 	return buildDiscard
 }
 
@@ -26,15 +26,15 @@ func (buildDiscard *BuildDiscardCommand) SetDiscardBuildsParams(params services.
 }
 
 func (buildDiscard *BuildDiscardCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(buildDiscard.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(buildDiscard.serverDetails, false)
 	if err != nil {
 		return err
 	}
 	return servicesManager.DiscardBuilds(buildDiscard.DiscardBuildsParams)
 }
 
-func (buildDiscard *BuildDiscardCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return buildDiscard.rtDetails, nil
+func (buildDiscard *BuildDiscardCommand) ServerDetails() (*config.ServerDetails, error) {
+	return buildDiscard.serverDetails, nil
 }
 
 func (buildDiscard *BuildDiscardCommand) CommandName() string {

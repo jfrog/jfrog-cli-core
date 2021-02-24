@@ -24,12 +24,12 @@ func (pc *PullCommand) Run() error {
 			return err
 		}
 	}
-	rtDetails, err := pc.RtDetails()
+	serverDetails, err := pc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	// Perform login
-	if err := pc.PerformLogin(rtDetails, pc.containerManagerType); err != nil {
+	if err := pc.PerformLogin(serverDetails, pc.containerManagerType); err != nil {
 		return err
 	}
 	// Perform pull.
@@ -41,18 +41,19 @@ func (pc *PullCommand) Run() error {
 	}
 	buildName := pc.BuildConfiguration().BuildName
 	buildNumber := pc.BuildConfiguration().BuildNumber
+	project := pc.BuildConfiguration().Project
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {
 		return nil
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, serviceManager, container.Pull, cm)
+	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err
 	}
@@ -60,13 +61,13 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, buildInfo)
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (pc *PullCommand) CommandName() string {
 	return "rt_docker_pull"
 }
 
-func (pc *PullCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return pc.rtDetails, nil
+func (pc *PullCommand) ServerDetails() (*config.ServerDetails, error) {
+	return pc.serverDetails, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -18,7 +19,7 @@ import (
 
 type BuildAppendCommand struct {
 	buildConfiguration  *utils.BuildConfiguration
-	rtDetails           *config.ArtifactoryDetails
+	serverDetails       *config.ServerDetails
 	buildNameToAppend   string
 	buildNumberToAppend string
 }
@@ -31,13 +32,13 @@ func (bac *BuildAppendCommand) CommandName() string {
 	return "rt_build_append"
 }
 
-func (bac *BuildAppendCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (bac *BuildAppendCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (bac *BuildAppendCommand) Run() error {
 	log.Info("Running Build Append command...")
-	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project); err != nil {
 		return err
 	}
 
@@ -62,15 +63,15 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project, populateFunc)
 	if err == nil {
 		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", bac.buildConfiguration.BuildName+"/"+bac.buildConfiguration.BuildNumber)
 	}
 	return err
 }
 
-func (bac *BuildAppendCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildAppendCommand {
-	bac.rtDetails = rtDetails
+func (bac *BuildAppendCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildAppendCommand {
+	bac.serverDetails = serverDetails
 	return bac
 }
 
@@ -93,7 +94,7 @@ func (bac *BuildAppendCommand) SetBuildNumberToAppend(buildNumber string) *Build
 // For example, start time of: 2020-11-27T14:33:38.538+0200 should be converted to 1606480418538.
 func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(bac.rtDetails, false)
+	sm, err := utils.CreateServiceManager(bac.serverDetails, false)
 	if err != nil {
 		return 0, err
 	}
@@ -122,13 +123,17 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 
 // Download MD5 and SHA1 from the build info artifact.
 func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.ChecksumDetails, error) {
-	serviceDetails, err := bac.rtDetails.CreateArtAuthConfig()
+	serviceDetails, err := bac.serverDetails.CreateArtAuthConfig()
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return fileutils.ChecksumDetails{}, err
 	}
 
-	buildInfoPath := serviceDetails.GetUrl() + "artifactory-build-info/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
+	buildInfoRepo := servicesutils.BuildRepoNameFromProjectKey(bac.buildConfiguration.Project)
+	if buildInfoRepo == "" {
+		buildInfoRepo = "artifactory-build-info"
+	}
+	buildInfoPath := serviceDetails.GetUrl() + buildInfoRepo + "/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
 		return fileutils.ChecksumDetails{}, err

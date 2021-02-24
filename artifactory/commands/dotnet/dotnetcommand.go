@@ -31,13 +31,13 @@ type DotnetCommand struct {
 	useNugetAddSource  bool
 	useNugetV2         bool
 	buildConfiguration *utils.BuildConfiguration
-	rtDetails          *config.ArtifactoryDetails
+	serverDetails      *config.ServerDetails
 	// Indicates the command is run through the legacy syntax, before the 'native' syntax introduction.
 	legacy bool
 }
 
-func (dc *DotnetCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DotnetCommand {
-	dc.rtDetails = rtDetails
+func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *DotnetCommand {
+	dc.serverDetails = serverDetails
 	return dc
 }
 
@@ -81,8 +81,8 @@ func (dc *DotnetCommand) SetUseNugetAddSource(useNugetAddSource bool) *DotnetCom
 	return dc
 }
 
-func (dc *DotnetCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return dc.rtDetails, nil
+func (dc *DotnetCommand) ServerDetails() (*config.ServerDetails, error) {
+	return dc.serverDetails, nil
 }
 
 func (dc *DotnetCommand) CommandName() string {
@@ -123,14 +123,14 @@ func (dc *DotnetCommand) Exec() error {
 		return err
 	}
 
-	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber); err != nil {
+	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
 		return err
 	}
 	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.Module)
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, buildInfo)
+	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, buildInfo)
 }
 
 func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {
@@ -312,7 +312,7 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 
 func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, err error) {
 	var u *url.URL
-	u, err = url.Parse(dc.rtDetails.Url)
+	u, err = url.Parse(dc.serverDetails.ArtifactoryUrl)
 	if errorutils.CheckError(err) != nil {
 		return
 	}
@@ -323,20 +323,20 @@ func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, e
 	u.Path = path.Join(u.Path, nugetApi, dc.repoName)
 	sourceURL = u.String()
 
-	user = dc.rtDetails.User
-	password = dc.rtDetails.Password
+	user = dc.serverDetails.User
+	password = dc.serverDetails.Password
 	// If access-token is defined, extract user from it.
-	rtDetails, err := dc.RtDetails()
+	serverDetails, err := dc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	if rtDetails.AccessToken != "" {
+	if serverDetails.AccessToken != "" {
 		log.Debug("Using access-token details for nuget authentication.")
-		user, err = auth.ExtractUsernameFromAccessToken(rtDetails.AccessToken)
+		user, err = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
 		if err != nil {
 			return
 		}
-		password = rtDetails.AccessToken
+		password = serverDetails.AccessToken
 	}
 	return
 }

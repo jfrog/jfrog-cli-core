@@ -13,7 +13,7 @@ import (
 
 type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
-	rtDetails          *config.ArtifactoryDetails
+	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
 }
 
@@ -26,8 +26,8 @@ func (bpc *BuildPublishCommand) SetConfig(config *buildinfo.Configuration) *Buil
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildPublishCommand {
-	bpc.rtDetails = rtDetails
+func (bpc *BuildPublishCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildPublishCommand {
+	bpc.serverDetails = serverDetails
 	return bpc
 }
 
@@ -40,12 +40,12 @@ func (bpc *BuildPublishCommand) CommandName() string {
 	return "rt_build_publish"
 }
 
-func (bpc *BuildPublishCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return bpc.rtDetails, nil
+func (bpc *BuildPublishCommand) ServerDetails() (*config.ServerDetails, error) {
+	return bpc.serverDetails, nil
 }
 
 func (bpc *BuildPublishCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bpc.rtDetails, bpc.config.DryRun)
+	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, bpc.config.DryRun)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
+	generatedBuildsInfo, err := utils.GetGeneratedBuildsInfo(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
@@ -64,13 +64,12 @@ func (bpc *BuildPublishCommand) Run() error {
 		buildInfo.Append(v)
 	}
 
-	project := utils.GetBuildProject(bpc.buildConfiguration.Project)
-	if err = servicesManager.PublishBuildInfo(buildInfo, project); err != nil {
+	if err = servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project); err != nil {
 		return err
 	}
 
 	if !bpc.config.DryRun {
-		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
+		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}
 	return nil
 }
@@ -78,7 +77,8 @@ func (bpc *BuildPublishCommand) Run() error {
 func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildInfo, error) {
 	buildName := bpc.buildConfiguration.BuildName
 	buildNumber := bpc.buildConfiguration.BuildNumber
-	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber)
+	projectKey := bpc.buildConfiguration.Project
+	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	buildInfo.SetArtifactoryPluginVersion(coreutils.GetUserAgent())
 	buildInfo.Name = buildName
 	buildInfo.Number = buildNumber
-	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber)
+	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	if len(env) != 0 {
 		buildInfo.Properties = env
 	}
-	buildInfo.ArtifactoryPrincipal = bpc.rtDetails.User
+	buildInfo.ArtifactoryPrincipal = bpc.serverDetails.User
 	buildInfo.BuildUrl = bpc.config.BuildUrl
 	for _, vcs := range vcsList {
 		buildInfo.VcsList = append(buildInfo.VcsList, vcs)

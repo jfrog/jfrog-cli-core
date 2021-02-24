@@ -62,11 +62,11 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 	return downloadFileFromBintray(remotePath, targetPath)
 }
 
-func GetJcenterRemoteDetails(downloadPath string) (artDetails *config.ArtifactoryDetails, remotePath string, err error) {
+func GetJcenterRemoteDetails(downloadPath string) (serverDetails *config.ServerDetails, remotePath string, err error) {
 	// Download through a remote repository in Artifactory, if configured to do so.
 	serverId := os.Getenv(JCenterRemoteServerEnv)
 	if serverId != "" {
-		artDetails, err = config.GetArtifactorySpecificConfig(serverId, false, true)
+		serverDetails, err = config.GetSpecificConfig(serverId, false, true)
 		if err != nil {
 			return
 		}
@@ -89,7 +89,7 @@ func getJcenterRemoteRepoName() string {
 	return jcenterRemoteRepo
 }
 
-func downloadFileFromArtifactory(artDetails *config.ArtifactoryDetails, downloadPath, targetPath string) error {
+func downloadFileFromArtifactory(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
 	downloadUrl := fmt.Sprintf("%s%s", artDetails.Url, downloadPath)
 	log.Info("Downloading build-info-extractor from", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)

@@ -17,22 +17,22 @@ const (
 )
 
 type AccessTokenCreateCommand struct {
-	rtDetails   *config.ArtifactoryDetails
-	refreshable bool
-	expiry      int
-	userName    string
-	audience    string
-	groups      string
-	grantAdmin  bool
-	response    *services.CreateTokenResponseData
+	serverDetails *config.ServerDetails
+	refreshable   bool
+	expiry        int
+	userName      string
+	audience      string
+	groups        string
+	grantAdmin    bool
+	response      *services.CreateTokenResponseData
 }
 
 func NewAccessTokenCreateCommand() *AccessTokenCreateCommand {
 	return &AccessTokenCreateCommand{response: new(services.CreateTokenResponseData)}
 }
 
-func (atcc *AccessTokenCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *AccessTokenCreateCommand {
-	atcc.rtDetails = rtDetails
+func (atcc *AccessTokenCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *AccessTokenCreateCommand {
+	atcc.serverDetails = serverDetails
 	return atcc
 }
 
@@ -71,8 +71,8 @@ func (atcc *AccessTokenCreateCommand) Response() ([]byte, error) {
 	return content, errorutils.CheckError(err)
 }
 
-func (atcc *AccessTokenCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return atcc.rtDetails, nil
+func (atcc *AccessTokenCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return atcc.serverDetails, nil
 }
 
 func (atcc *AccessTokenCreateCommand) CommandName() string {
@@ -80,7 +80,7 @@ func (atcc *AccessTokenCreateCommand) CommandName() string {
 }
 
 func (atcc *AccessTokenCreateCommand) Run() error {
-	servicesManager, err := rtUtils.CreateServiceManager(atcc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(atcc.serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (atcc *AccessTokenCreateCommand) getTokenParams() (tokenParams services.Cre
 		tokenParams.Scope = GroupsPrefix + atcc.groups
 	}
 	if atcc.grantAdmin {
-		instanceId, err := getInstanceId(atcc.rtDetails)
+		instanceId, err := getInstanceId(atcc.serverDetails)
 		if err != nil {
 			return tokenParams, err
 		}
@@ -122,8 +122,8 @@ func (atcc *AccessTokenCreateCommand) getTokenParams() (tokenParams services.Cre
 	return
 }
 
-func getInstanceId(rtDetails *config.ArtifactoryDetails) (string, error) {
-	servicesManager, err := rtUtils.CreateServiceManager(rtDetails, false)
+func getInstanceId(serverDetails *config.ServerDetails) (string, error) {
+	servicesManager, err := rtUtils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return "", err
 	}

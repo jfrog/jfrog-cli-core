@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"path/filepath"
 	"reflect"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -59,8 +60,8 @@ type Repository struct {
 }
 
 type RepositoryConfig struct {
-	targetRepo string
-	rtDetails  *config.ArtifactoryDetails
+	targetRepo    string
+	serverDetails *config.ServerDetails
 }
 
 // If configuration file exists in the working dir or in one of its parent dirs return its path,
@@ -105,15 +106,15 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 	if serverId == "" {
 		return nil, fmt.Errorf("Missing server ID for %s within %s", prefix, configFilePath)
 	}
-	rtDetails, err := config.GetArtifactorySpecificConfig(serverId, false, true)
+	rtDetails, err := config.GetSpecificConfig(serverId, false, true)
 	if err != nil {
 		return nil, err
 	}
-	return &RepositoryConfig{targetRepo: repo, rtDetails: rtDetails}, nil
+	return &RepositoryConfig{targetRepo: repo, serverDetails: rtDetails}, nil
 }
 
-func (repo *RepositoryConfig) IsRtDetailsEmpty() bool {
-	if repo.rtDetails != nil && reflect.DeepEqual(config.ArtifactoryDetails{}, repo.rtDetails) {
+func (repo *RepositoryConfig) IsServerDetailsEmpty() bool {
+	if repo.serverDetails != nil && reflect.DeepEqual(config.ServerDetails{}, repo.serverDetails) {
 		return false
 	}
 	return true
@@ -128,13 +129,13 @@ func (repo *RepositoryConfig) TargetRepo() string {
 	return repo.targetRepo
 }
 
-func (repo *RepositoryConfig) SetRtDetails(rtDetails *config.ArtifactoryDetails) *RepositoryConfig {
-	repo.rtDetails = rtDetails
+func (repo *RepositoryConfig) SetServerDetails(rtDetails *config.ServerDetails) *RepositoryConfig {
+	repo.serverDetails = rtDetails
 	return repo
 }
 
-func (repo *RepositoryConfig) RtDetails() (*config.ArtifactoryDetails, error) {
-	return repo.rtDetails, nil
+func (repo *RepositoryConfig) ServerDetails() (*config.ServerDetails, error) {
+	return repo.serverDetails, nil
 }
 
 func GetResolutionOnlyConfiguration(projectType ProjectType) (*RepositoryConfig, error) {

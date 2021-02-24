@@ -6,7 +6,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io"
 )
 
-func CreateDownloadServiceManager(artDetails *config.ArtifactoryDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateDownloadServiceManager(artDetails *config.ServerDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	return CreateServiceManagerWithProgressBar(artDetails, threads, dryRun, progressBar)
 }
 

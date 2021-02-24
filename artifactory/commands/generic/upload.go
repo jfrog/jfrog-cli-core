@@ -10,7 +10,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -69,7 +70,7 @@ func (uc *UploadCommand) upload() error {
 	syncDeletesProp := ""
 	if uc.syncDelete() {
 		timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
-		syncDeletesProp = ";sync.deletes.timestamp=" + timestamp
+		syncDeletesProp = "sync.deletes.timestamp=" + timestamp
 	}
 
 	// Create Service Manager:
@@ -78,11 +79,11 @@ func (uc *UploadCommand) upload() error {
 	if err != nil {
 		return err
 	}
-	rtDetails, err := uc.RtDetails()
+	serverDetails, err := uc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progress)
+	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progress)
 	if err != nil {
 		return err
 	}
@@ -93,10 +94,10 @@ func (uc *UploadCommand) upload() error {
 	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
 		addVcsProps = true
-		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber); err != nil {
+		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {
 			return err
 		}
-		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
+		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project)
 		if err != nil {
 			return err
 		}
@@ -107,6 +108,8 @@ func (uc *UploadCommand) upload() error {
 	// Create UploadParams for all File-Spec groups.
 	for i := 0; i < len(uc.Spec().Files); i++ {
 		file := uc.Spec().Get(i)
+		file.TargetProps = clientUtils.AddProps(file.TargetProps, file.Props)
+		file.TargetProps = clientUtils.AddProps(file.TargetProps, syncDeletesProp)
 		file.Props += syncDeletesProp
 		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
@@ -171,13 +174,13 @@ func (uc *UploadCommand) upload() error {
 			partial.ModuleId = uc.buildConfiguration.Module
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project, populateFunc)
 
 	}
 	return err
 }
 
-func convertFileInfoToBuildArtifacts(filesInfo []clientutils.FileInfo) []buildinfo.Artifact {
+func convertFileInfoToBuildArtifacts(filesInfo []rtServicesUtils.FileInfo) []buildinfo.Artifact {
 	buildArtifacts := make([]buildinfo.Artifact, len(filesInfo))
 	for i, fileInfo := range filesInfo {
 		buildArtifacts[i] = fileInfo.ToBuildArtifacts()
@@ -218,6 +221,11 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 		return
 	}
 
+	uploadParams.Ant, err = f.IsAnt(false)
+	if err != nil {
+		return
+	}
+
 	uploadParams.IncludeDirs, err = f.IsIncludeDirs(false)
 	if err != nil {
 		return
@@ -237,7 +245,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 }
 
 func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) error {
-	servicesManager, err := utils.CreateServiceManager(uc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(uc.serverDetails, false)
 	if err != nil {
 		return err
 	}

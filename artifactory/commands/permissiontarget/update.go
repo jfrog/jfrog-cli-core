@@ -22,13 +22,13 @@ func (ptuc *PermissionTargetUpdateCommand) SetVars(vars string) *PermissionTarge
 	return ptuc
 }
 
-func (ptuc *PermissionTargetUpdateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *PermissionTargetUpdateCommand {
-	ptuc.rtDetails = rtDetails
+func (ptuc *PermissionTargetUpdateCommand) SetServerDetails(serverDetails *config.ServerDetails) *PermissionTargetUpdateCommand {
+	ptuc.serverDetails = serverDetails
 	return ptuc
 }
 
-func (ptuc *PermissionTargetUpdateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return ptuc.rtDetails, nil
+func (ptuc *PermissionTargetUpdateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return ptuc.serverDetails, nil
 }
 
 func (ptuc *PermissionTargetUpdateCommand) CommandName() string {

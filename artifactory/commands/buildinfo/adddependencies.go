@@ -43,7 +43,7 @@ func (badc *BuildAddDependenciesCommand) RtDetails() (*config.ArtifactoryDetails
 func (badc *BuildAddDependenciesCommand) Run() error {
 	log.Info("Running Build Add Dependencies command...")
 	if !badc.dryRun {
-		if err := utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber); err != nil {
+		if err := utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project); err != nil {
 			return err
 		}
 	}
@@ -151,7 +151,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonP
 func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
-	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.IsRegexp(), false)
+	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonP
 }
 
 func collectPatternMatchingFiles(addDepsParams *specutils.ArtifactoryCommonParams, rootPath string) ([]string, error) {
-	addDepsParams.SetPattern(clientutils.PrepareLocalPathForUpload(addDepsParams.Pattern, addDepsParams.IsRegexp()))
+	addDepsParams.SetPattern(clientutils.PrepareLocalPathForUpload(addDepsParams.Pattern, addDepsParams.GetPatternType()))
 	excludePathPattern := fspatterns.PrepareExcludePathPattern(addDepsParams)
 	patternRegex, err := regxp.Compile(addDepsParams.Pattern)
 	if errorutils.CheckError(err) != nil {
@@ -203,7 +203,7 @@ func (badc *BuildAddDependenciesCommand) saveDependenciesToFileSystem(files map[
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = convertFileInfoToDependencies(files)
 	}
-	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, populateFunc)
+	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project, populateFunc)
 }
 
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {

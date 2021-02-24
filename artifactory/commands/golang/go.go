@@ -85,9 +85,10 @@ func (gc *GoCommand) Run() error {
 	}
 	buildName := gc.buildConfiguration.BuildName
 	buildNumber := gc.buildConfiguration.BuildNumber
+	projectKey := gc.buildConfiguration.Project
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber)
+		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
 		if err != nil {
 			return err
 		}
@@ -165,7 +166,7 @@ func (gc *GoCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, goProject.BuildInfo(false, gc.buildConfiguration.Module, targetRepo))
+		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(false, gc.buildConfiguration.Module, targetRepo))
 	}
 
 	return err

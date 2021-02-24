@@ -130,7 +130,7 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 		vConfig.Set(utils.FORK_COUNT, threads)
 	}
 
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, vConfig, utils.Gradle)
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}

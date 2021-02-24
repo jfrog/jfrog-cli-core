@@ -32,7 +32,7 @@ type Builder interface {
 }
 
 // Create instance of docker build info builder.
-func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (err error) {
+func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (err error) {
 	builder.repositoryDetails.key = repository
 	builder.repositoryDetails.isRemote, err = artutils.IsRemoteRepo(repository, serviceManager)
 	if err != nil {
@@ -41,26 +41,27 @@ func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, bu
 	builder.image = image
 	builder.buildName = buildName
 	builder.buildNumber = buildNumber
+	builder.project = project
 	builder.serviceManager = serviceManager
 	builder.commandType = commandType
 	builder.containerManager = containerManager
 	return nil
 }
 
-func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
+func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
 	builder := &buildInfoBuilder{}
 	var err error
-	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, serviceManager, commandType, containerManager); err != nil {
+	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, project, serviceManager, commandType, containerManager); err != nil {
 		return nil, err
 	}
 	builder.imageId, err = builder.containerManager.Id(builder.image)
 	return builder, err
 }
 
-func NewKanikoBuildInfoBuilder(image *Image, repository, buildName, buildNumber string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager, manifestSha256 string) (Builder, error) {
+func NewKanikoBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager, manifestSha256 string) (Builder, error) {
 	builder := &buildInfoBuilder{}
 	var err error
-	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, serviceManager, commandType, containerManager); err != nil {
+	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, project, serviceManager, commandType, containerManager); err != nil {
 		return nil, err
 	}
 	builder.manifestSha256 = manifestSha256
@@ -73,6 +74,7 @@ type buildInfoBuilder struct {
 	repositoryDetails RepositoryDetails
 	buildName         string
 	buildNumber       string
+	project           string
 	serviceManager    artifactory.ArtifactoryServicesManager
 
 	// internal fields
@@ -235,7 +237,7 @@ func (builder *buildInfoBuilder) handleMissingLayer(layerMediaType, layerFileNam
 
 // Set build properties on image layers in Artifactory.
 func (builder *buildInfoBuilder) setBuildProperties() (int, error) {
-	props, err := artutils.CreateBuildProperties(builder.buildName, builder.buildNumber)
+	props, err := artutils.CreateBuildProperties(builder.buildName, builder.buildNumber, builder.project)
 	if err != nil {
 		return 0, err
 	}

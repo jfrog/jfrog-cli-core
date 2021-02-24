@@ -2,10 +2,15 @@ package buildinfo
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -36,11 +41,45 @@ func runTest(t *testing.T, originalDir string) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalDir, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
-	partials := getBuildInfoPartials(baseDir, t, buildName, "1")
+	err := runBuildAddGit(t, buildName, "1", baseDir, true)
+	if err != nil {
+		return
+	}
+	partials := getBuildInfoPartials(t, buildName, "1", "")
 	checkFailureAndClean(t, buildDir, dotGitPath)
 	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
 	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
+}
+
+func TestBuildAddGitSubmodules(t *testing.T) {
+	var projectPath, tmpDir string
+	projectPath, tmpDir = testsutils.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"))
+	defer fileutils.RemoveTempDir(tmpDir)
+
+	testsName := []string{"dotGitProvided", "dotGitSearched"}
+	for _, test := range testsName {
+		t.Run(test, func(t *testing.T) {
+			tmpBuildName := test + "-Build-" + strconv.FormatInt(time.Now().Unix(), 10)
+			err := runBuildAddGit(t, tmpBuildName, "1", projectPath, test == "dotGitProvided")
+			if err != nil {
+				return
+			}
+			partials := getBuildInfoPartials(t, tmpBuildName, "1", "")
+			assertVcsSubmodules(t, partials)
+		})
+	}
+}
+
+func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
+	assert.Len(t, partials, 1)
+	vcsList := partials[0].VcsList
+	assert.NotNil(t, vcsList)
+	assert.Len(t, vcsList, 1)
+	curVcs := vcsList[0]
+	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
+	assert.Equal(t, "d63c5957ad6819f4c02a817abe757f210d35ff92", curVcs.Revision)
+	assert.Equal(t, "submodule", curVcs.Branch)
 }
 
 // Clean the environment if fails
@@ -53,23 +92,41 @@ func checkFailureAndClean(t *testing.T, buildDir string, oldPath string) {
 	}
 }
 
-func getBuildInfoPartials(baseDir string, t *testing.T, buildName string, buildNumber string) buildinfo.Partials {
-	buildAddGitConfiguration := new(BuildAddGitCommand).SetDotGitPath(baseDir).SetBuildConfiguration(&utils.BuildConfiguration{BuildName: buildName, BuildNumber: buildNumber})
-	err := buildAddGitConfiguration.Run()
+func getBuildInfoPartials(t *testing.T, buildName, buildNumber, projectKey string) buildinfo.Partials {
+	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
 	if err != nil {
-		t.Error("Cannot run build add git due to: " + err.Error())
-		return nil
-	}
-	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber)
-	if err != nil {
-		t.Error("Cannot read partial build info due to: " + err.Error())
+		assert.NoError(t, err)
 		return nil
 	}
 	return partials
 }
 
+// Run BAG command. If setDotGit==true, provide baseDir to the command. Else, change wd to baseDir and make the command find .git manually.
+func runBuildAddGit(t *testing.T, buildName, buildNumber string, baseDir string, setDotGit bool) error {
+	buildAddGitConfiguration := new(BuildAddGitCommand).SetBuildConfiguration(&utils.BuildConfiguration{BuildName: buildName, BuildNumber: buildNumber})
+	if setDotGit {
+		buildAddGitConfiguration.SetDotGitPath(baseDir)
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			assert.Error(t, err)
+			return err
+		}
+		defer os.Chdir(wd)
+
+		err = os.Chdir(baseDir)
+		if err != nil {
+			assert.Error(t, err)
+			return err
+		}
+	}
+	err := buildAddGitConfiguration.Run()
+	assert.NoError(t, err)
+	return err
+}
+
 func getBuildDir(t *testing.T) string {
-	buildDir, err := utils.GetBuildDir(buildName, "1")
+	buildDir, err := utils.GetBuildDir(buildName, "1", "")
 	if err != nil {
 		t.Error("Cannot create temp dir due to: " + err.Error())
 		return ""
@@ -84,7 +141,7 @@ func checkVCSUrl(partials buildinfo.Partials, t *testing.T) {
 				url := vcs.Url
 				urlSplitted := strings.Split(url, ".git")
 				if len(urlSplitted) != 2 {
-					t.Error("Argumanets value is different then two: ", urlSplitted)
+					t.Error("Arguments value is different than two: ", urlSplitted)
 					break
 				}
 			}
@@ -186,6 +243,11 @@ func TestAddGitDoCollect(t *testing.T) {
 		// Error - should find 2 issues
 		t.Errorf("Issues list expected to have 2 issues, instead found %d issues: %v", len(issues), issues)
 	}
+
+	// Test collection with a made up revision - the command should not throw an error, and 0 issues should be returned.
+	issues, err = config.DoCollect(config.issuesConfig, "abcdefABCDEF1234567890123456789012345678")
+	assert.NoError(t, err)
+	assert.Empty(t, issues)
 
 	// Clean git path
 	tests.RenamePath(dotGitPath, filepath.Join(baseDir, originalFolder), t)

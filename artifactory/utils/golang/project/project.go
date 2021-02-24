@@ -32,7 +32,7 @@ import (
 type Go interface {
 	Dependencies() []executers.Package
 	CreateBuildInfoDependencies(includeInfoFiles bool) error
-	PublishPackage(targetRepo, buildName, buildNumber string, servicesManager artifactory.ArtifactoryServicesManager) error
+	PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) error
 	PublishDependencies(targetRepo string, servicesManager artifactory.ArtifactoryServicesManager, includeDepSlice []string) (succeeded, failed int, err error)
 	BuildInfo(includeArtifacts bool, module, targetRepository string) *buildinfo.BuildInfo
 	LoadDependencies() error
@@ -94,10 +94,10 @@ func (project *goProject) loadDependencies() ([]executers.Package, error) {
 }
 
 // Publish go project to Artifactory.
-func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber string, servicesManager artifactory.ArtifactoryServicesManager) error {
+func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) error {
 	log.Info("Publishing", project.getId(), "to", targetRepo)
 
-	props, err := utils.CreateBuildProperties(buildName, buildNumber)
+	props, err := utils.CreateBuildProperties(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}

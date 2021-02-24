@@ -41,18 +41,19 @@ func (pc *PullCommand) Run() error {
 	}
 	buildName := pc.BuildConfiguration().BuildName
 	buildNumber := pc.BuildConfiguration().BuildNumber
+	project := pc.BuildConfiguration().Project
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {
 		return nil
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, serviceManager, container.Pull, cm)
+	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, buildInfo)
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (pc *PullCommand) CommandName() string {

@@ -208,12 +208,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.Artifac
 	up := services.UploadParams{}
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
 	if npc.collectBuildInfo {
-		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
-		props, err := utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
+		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
 		if err != nil {
 			return nil, err
 		}
-		up.ArtifactoryCommonParams.Props = props
 	}
 	resultsReader, _, failed, err := servicesManager.UploadFilesWithResultReader(up)
 	defer resultsReader.Close()
@@ -245,7 +244,7 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 		partial.ModuleId = npc.buildConfiguration.Module
 		partial.ModuleType = buildinfo.Npm
 	}
-	return utils.SavePartialBuildInfo(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, populateFunc)
+	return utils.SavePartialBuildInfo(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project, populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {

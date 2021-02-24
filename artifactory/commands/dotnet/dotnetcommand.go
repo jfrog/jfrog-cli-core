@@ -123,14 +123,14 @@ func (dc *DotnetCommand) Exec() error {
 		return err
 	}
 
-	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber); err != nil {
+	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
 		return err
 	}
 	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.Module)
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, buildInfo)
+	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, buildInfo)
 }
 
 func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {

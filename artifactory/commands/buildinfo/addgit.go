@@ -82,7 +82,7 @@ func (config *BuildAddGitCommand) Run() error {
 		}
 	}
 
-	// Collect URL Branch and Revision into GitManager.
+	// Collect URL, branch and revision into GitManager.
 	gitManager := clientutils.NewGitManager(config.dotGitPath)
 	err = gitManager.ReadConfig()
 	if err != nil {

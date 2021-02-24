@@ -408,12 +408,12 @@ func Export(serverName string) error {
 func printConfigs(configuration []*config.ServerDetails) {
 	for _, details := range configuration {
 		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false)
-		logIfNotEmpty(details.Url, "JFrog platform Url:\t\t", false)
-		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory Url:\t\t", false)
-		logIfNotEmpty(details.DistributionUrl, "Distribution Url:\t\t", false)
-		logIfNotEmpty(details.XrayUrl, "Xray Url:\t\t\t", false)
-		logIfNotEmpty(details.MissionControlUrl, "Mission Control Url:\t\t", false)
-		logIfNotEmpty(details.PipelinesUrl, "Pipelines Url:\t\t\t", false)
+		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false)
+		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false)
+		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false)
+		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false)
+		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false)
+		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false)
 		logIfNotEmpty(details.ApiKey, "API key:\t\t\t", true)
 		logIfNotEmpty(details.User, "User:\t\t\t\t", false)
 		logIfNotEmpty(details.Password, "Password:\t\t\t", true)

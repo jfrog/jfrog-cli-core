@@ -10,7 +10,7 @@ import (
 )
 
 type UsersCreateCommand struct {
-	rtDetails       *config.ArtifactoryDetails
+	serverDetails   *config.ServerDetails
 	users           []services.User
 	usersGroups     []string
 	replaceIfExists bool
@@ -29,12 +29,12 @@ func (ucc *UsersCreateCommand) Users() []services.User {
 	return ucc.users
 }
 
-func (ucc *UsersCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return ucc.rtDetails, nil
+func (ucc *UsersCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return ucc.serverDetails, nil
 }
 
-func (ucc *UsersCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *UsersCreateCommand {
-	ucc.rtDetails = rtDetails
+func (ucc *UsersCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *UsersCreateCommand {
+	ucc.serverDetails = serverDetails
 	return ucc
 }
 
@@ -61,7 +61,7 @@ func (ucc *UsersCreateCommand) CommandName() string {
 }
 
 func (ucc *UsersCreateCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(ucc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(ucc.serverDetails, false)
 	if err != nil {
 		return err
 	}

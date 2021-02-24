@@ -55,11 +55,11 @@ func (dc *DeleteCommand) Run() error {
 }
 
 func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
-	rtDetails, err := dc.RtDetails()
+	serverDetails, err := dc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	servicesManager, err := utils.CreateServiceManager(rtDetails, dc.DryRun())
+	servicesManager, err := utils.CreateServiceManager(serverDetails, dc.DryRun())
 	if err != nil {
 		return nil, err
 	}
@@ -96,11 +96,11 @@ func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
 }
 
 func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCount, failedCount int, err error) {
-	rtDetails, err := dc.RtDetails()
+	serverDetails, err := dc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return 0, 0, err
 	}
-	servicesManager, err := utils.CreateDeleteServiceManager(rtDetails, dc.Threads(), dc.DryRun())
+	servicesManager, err := utils.CreateDeleteServiceManager(serverDetails, dc.Threads(), dc.DryRun())
 	if err != nil {
 		return 0, 0, err
 	}

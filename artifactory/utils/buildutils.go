@@ -249,18 +249,18 @@ func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
 }
 
 type BuildInfoConfiguration struct {
-	artDetails auth.ServiceDetails
-	DryRun     bool
-	EnvInclude string
-	EnvExclude string
+	serverDetails auth.ServiceDetails
+	DryRun        bool
+	EnvInclude    string
+	EnvExclude    string
 }
 
-func (config *BuildInfoConfiguration) GetArtifactoryDetails() auth.ServiceDetails {
-	return config.artDetails
+func (config *BuildInfoConfiguration) GetServerDetails() auth.ServiceDetails {
+	return config.serverDetails
 }
 
-func (config *BuildInfoConfiguration) SetArtifactoryDetails(art auth.ServiceDetails) {
-	config.artDetails = art
+func (config *BuildInfoConfiguration) SetServerDetails(art auth.ServiceDetails) {
+	config.serverDetails = art
 }
 
 func (config *BuildInfoConfiguration) IsDryRun() bool {

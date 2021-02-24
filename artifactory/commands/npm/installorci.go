@@ -50,7 +50,7 @@ type NpmCommandArgs struct {
 	collectBuildInfo bool
 	dependencies     map[string]*dependency
 	typeRestriction  string
-	artDetails       auth.ServiceDetails
+	authArtDetails   auth.ServiceDetails
 	packageInfo      *npm.PackageInfo
 	NpmCommand
 }
@@ -84,8 +84,8 @@ func (nic *NpmInstallOrCiCommand) SetArgs(args []string) *NpmInstallOrCiCommand 
 }
 
 func (nic *NpmInstallOrCiCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmInstallOrCiCommand {
-	rtDetails, _ := conf.RtDetails()
-	nic.NpmCommandArgs.SetRepo(conf.TargetRepo()).SetRtDetails(rtDetails)
+	serverDetails, _ := conf.ServerDetails()
+	nic.NpmCommandArgs.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
 	return nic
 }
 
@@ -124,8 +124,8 @@ func NewNpmCommandArgs(npmCommand string) *NpmCommandArgs {
 	return &NpmCommandArgs{command: npmCommand}
 }
 
-func (nca *NpmCommandArgs) RtDetails() (*config.ArtifactoryDetails, error) {
-	return nca.rtDetails, nil
+func (nca *NpmCommandArgs) ServerDetails() (*config.ServerDetails, error) {
+	return nca.serverDetails, nil
 }
 
 func (nca *NpmCommandArgs) run() error {
@@ -192,17 +192,17 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 }
 
 func (nca *NpmCommandArgs) prepareArtifactoryPrerequisites(repo string) (err error) {
-	npmAuth, err := getArtifactoryDetails(nca.artDetails)
+	npmAuth, err := getArtifactoryDetails(nca.authArtDetails)
 	if err != nil {
 		return err
 	}
 	nca.npmAuth = npmAuth
 
-	if err = utils.CheckIfRepoExists(repo, nca.artDetails); err != nil {
+	if err = utils.CheckIfRepoExists(repo, nca.authArtDetails); err != nil {
 		return err
 	}
 
-	nca.registry = getNpmRepositoryUrl(repo, nca.artDetails.GetUrl())
+	nca.registry = getNpmRepositoryUrl(repo, nca.authArtDetails.GetUrl())
 	return nil
 }
 
@@ -330,7 +330,7 @@ func (nca *NpmCommandArgs) setDependenciesList() (err error) {
 
 func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 	log.Info("Collecting dependencies information... This may take a few minutes...")
-	servicesManager, err := utils.CreateServiceManager(nca.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(nca.serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -626,14 +626,14 @@ func (nca *NpmCommandArgs) restoreNpmrcAndError(err error) error {
 }
 
 func (nca *NpmCommandArgs) setArtifactoryAuth() error {
-	authArtDetails, err := nca.rtDetails.CreateArtAuthConfig()
+	authArtDetails, err := nca.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
 	if authArtDetails.GetSshAuthHeaders() != nil {
 		return errorutils.CheckError(errors.New("SSH authentication is not supported in this command"))
 	}
-	nca.artDetails = authArtDetails
+	nca.authArtDetails = authArtDetails
 	return nil
 }
 
@@ -663,18 +663,18 @@ func (nca *NpmCommandArgs) setNpmExecutable() error {
 	return nil
 }
 
-func getArtifactoryDetails(artDetails auth.ServiceDetails) (npmAuth string, err error) {
+func getArtifactoryDetails(authArtDetails auth.ServiceDetails) (npmAuth string, err error) {
 	// Check Artifactory version.
-	err = validateArtifactoryVersion(artDetails)
+	err = validateArtifactoryVersion(authArtDetails)
 	if err != nil {
 		return "", err
 	}
 
 	// Get npm token from Artifactory.
-	if artDetails.GetAccessToken() == "" {
-		return getDetailsUsingBasicAuth(artDetails)
+	if authArtDetails.GetAccessToken() == "" {
+		return getDetailsUsingBasicAuth(authArtDetails)
 	}
-	return getDetailsUsingAccessToken(artDetails)
+	return getDetailsUsingAccessToken(authArtDetails)
 }
 
 func validateArtifactoryVersion(artDetails auth.ServiceDetails) error {

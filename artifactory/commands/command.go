@@ -12,8 +12,8 @@ import (
 type Command interface {
 	// Runs the command
 	Run() error
-	// Returns the Artifactory details. The usage report is sent to this Artifactory server.
-	RtDetails() (*config.ArtifactoryDetails, error)
+	// Returns the Server details. The usage report is sent to this server.
+	ServerDetails() (*config.ServerDetails, error)
 	// The command name for the usage report.
 	CommandName() string
 }
@@ -37,14 +37,14 @@ func reportUsage(command Command, channel chan<- bool) {
 		return
 	}
 	if reportUsage {
-		rtDetails, err := command.RtDetails()
+		serverDetails, err := command.ServerDetails()
 		if err != nil {
 			log.Debug(usage.ReportUsagePrefix + err.Error())
 			return
 		}
-		if rtDetails != nil {
+		if serverDetails != nil {
 			log.Debug(usage.ReportUsagePrefix + "Sending info...")
-			serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+			serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 			if err != nil {
 				log.Debug(usage.ReportUsagePrefix + err.Error())
 				return

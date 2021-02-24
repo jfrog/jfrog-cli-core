@@ -252,7 +252,7 @@ func TestAddGitDoCollect(t *testing.T) {
 	tests.RenamePath(dotGitPath, filepath.Join(baseDir, originalFolder), t)
 }
 
-func TestRtDetailsFromConfigFile(t *testing.T) {
+func TestServerDetailsFromConfigFile(t *testing.T) {
 	expectedUrl := "http://localhost:8081/artifactory/"
 	expectedUser := "admin"
 
@@ -273,20 +273,20 @@ func TestRtDetailsFromConfigFile(t *testing.T) {
 	config := BuildAddGitCommand{
 		configFilePath: configFilePath,
 	}
-	details, err := config.RtDetails()
+	details, err := config.ServerDetails()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if details.Url != expectedUrl {
-		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.Url))
+	if details.ArtifactoryUrl != expectedUrl {
+		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl))
 	}
 	if details.User != expectedUser {
 		t.Error(fmt.Sprintf("Expected %s, got %s", details.User, expectedUser))
 	}
 }
 
-func TestRtDetailsWithoutConfigFile(t *testing.T) {
+func TestServerDetailsWithoutConfigFile(t *testing.T) {
 	expectedUrl := "http://localhost:8082/artifactory/"
 	expectedUser := "admin2"
 
@@ -306,13 +306,13 @@ func TestRtDetailsWithoutConfigFile(t *testing.T) {
 	}
 
 	config := BuildAddGitCommand{}
-	details, err := config.RtDetails()
+	details, err := config.ServerDetails()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if details.Url != expectedUrl {
-		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.Url))
+	if details.ArtifactoryUrl != expectedUrl {
+		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl))
 	}
 
 	if details.User != expectedUser {

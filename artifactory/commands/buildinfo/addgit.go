@@ -128,7 +128,7 @@ func (config *BuildAddGitCommand) Run() error {
 // 1. 'server-id' flag.
 // 2. 'serverID' in config file.
 // 3. Default server.
-func (config *BuildAddGitCommand) RtDetails() (*utilsconfig.ArtifactoryDetails, error) {
+func (config *BuildAddGitCommand) ServerDetails() (*utilsconfig.ServerDetails, error) {
 	var serverId string
 	if config.serverId != "" {
 		serverId = config.serverId
@@ -141,7 +141,7 @@ func (config *BuildAddGitCommand) RtDetails() (*utilsconfig.ArtifactoryDetails, 
 		}
 		serverId = vConfig.GetString(ConfigIssuesPrefix + "serverID")
 	}
-	return utilsconfig.GetArtifactorySpecificConfig(serverId, true, false)
+	return utilsconfig.GetSpecificConfig(serverId, true, false)
 }
 
 func (config *BuildAddGitCommand) CommandName() string {
@@ -293,8 +293,8 @@ func (config *BuildAddGitCommand) createIssuesConfigs() (err error) {
 		config.issuesConfig.ServerID = config.serverId
 	}
 
-	// Build ArtifactoryDetails from provided serverID.
-	err = config.issuesConfig.setArtifactoryDetails()
+	// Build ServerDetails from provided serverID.
+	err = config.issuesConfig.setServerDetails()
 	if err != nil {
 		return
 	}
@@ -330,7 +330,7 @@ func (config *BuildAddGitCommand) getLatestVcsRevision(vcsUrl string) (string, e
 // Returns build info, or empty build info struct if not found.
 func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfiguration) (*buildinfo.BuildInfo, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(issuesConfig.ArtDetails, false)
+	sm, err := utils.CreateServiceManager(issuesConfig.ServerDetails, false)
 	if err != nil {
 		return nil, err
 	}
@@ -420,18 +420,18 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 	return nil
 }
 
-func (ic *IssuesConfiguration) setArtifactoryDetails() error {
+func (ic *IssuesConfiguration) setServerDetails() error {
 	// If no server-id provided, use default server.
-	artDetails, err := utilsconfig.GetArtifactorySpecificConfig(ic.ServerID, true, false)
+	serverDetails, err := utilsconfig.GetSpecificConfig(ic.ServerID, true, false)
 	if err != nil {
 		return err
 	}
-	ic.ArtDetails = artDetails
+	ic.ServerDetails = serverDetails
 	return nil
 }
 
 type IssuesConfiguration struct {
-	ArtDetails        *utilsconfig.ArtifactoryDetails
+	ServerDetails     *utilsconfig.ServerDetails
 	Regexp            string
 	LogLimit          int
 	TrackerUrl        string

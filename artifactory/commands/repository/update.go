@@ -22,13 +22,13 @@ func (ruc *RepoUpdateCommand) SetVars(vars string) *RepoUpdateCommand {
 	return ruc
 }
 
-func (ruc *RepoUpdateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *RepoUpdateCommand {
-	ruc.rtDetails = rtDetails
+func (ruc *RepoUpdateCommand) SetServerDetails(serverDetails *config.ServerDetails) *RepoUpdateCommand {
+	ruc.serverDetails = serverDetails
 	return ruc
 }
 
-func (ruc *RepoUpdateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return ruc.rtDetails, nil
+func (ruc *RepoUpdateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return ruc.serverDetails, nil
 }
 
 func (ruc *RepoUpdateCommand) CommandName() string {

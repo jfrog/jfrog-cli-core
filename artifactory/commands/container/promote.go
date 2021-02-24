@@ -7,8 +7,8 @@ import (
 )
 
 type DockerPromoteCommand struct {
-	rtDetails *config.ArtifactoryDetails
-	params    services.DockerPromoteParams
+	serverDetails *config.ServerDetails
+	params        services.DockerPromoteParams
 }
 
 func NewDockerPromoteCommand() *DockerPromoteCommand {
@@ -17,7 +17,7 @@ func NewDockerPromoteCommand() *DockerPromoteCommand {
 
 func (dp *DockerPromoteCommand) Run() error {
 	// Create Service Manager
-	servicesManager, err := utils.CreateServiceManager(dp.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(dp.serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -29,12 +29,12 @@ func (dp *DockerPromoteCommand) CommandName() string {
 	return "rt_docker_promote"
 }
 
-func (dp *DockerPromoteCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return dp.rtDetails, nil
+func (dp *DockerPromoteCommand) ServerDetails() (*config.ServerDetails, error) {
+	return dp.serverDetails, nil
 }
 
-func (dp *DockerPromoteCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DockerPromoteCommand {
-	dp.rtDetails = rtDetails
+func (dp *DockerPromoteCommand) SetServerDetails(serverDetails *config.ServerDetails) *DockerPromoteCommand {
+	dp.serverDetails = serverDetails
 	return dp
 }
 

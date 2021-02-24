@@ -31,11 +31,11 @@ func (glc *GitLfsCommand) SetConfiguration(configuration *GitLfsCleanConfigurati
 }
 
 func (glc *GitLfsCommand) Run() error {
-	rtDetails, err := glc.RtDetails()
+	serverDetails, err := glc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateServiceManager(rtDetails, glc.DryRun())
+	servicesManager, err := utils.CreateServiceManager(serverDetails, glc.DryRun())
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (glc *GitLfsCommand) CommandName() string {
 
 func (glc *GitLfsCommand) deleteLfsFilesFromArtifactory(deleteItems *content.ContentReader) error {
 	log.Info("Deleting", deleteItems.Length, "files from", glc.configuration.Repo, "...")
-	servicesManager, err := utils.CreateServiceManager(glc.rtDetails, glc.DryRun())
+	servicesManager, err := utils.CreateServiceManager(glc.serverDetails, glc.DryRun())
 	if err != nil {
 		return err
 	}

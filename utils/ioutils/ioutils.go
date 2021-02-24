@@ -12,14 +12,14 @@ import (
 	"syscall"
 )
 
-// @param allowUsingSavedPassword - Prevent changing username or url without changing the password.
+// disallowUsingSavedPassword - Prevent changing username or url without changing the password.
 // False iff the user changed the username or the url.
-func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, allowUsingSavedPassword bool) error {
+func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, disallowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""
 		ScanFromConsole("User", &tempUser, savedDetails.GetUser())
 		details.SetUser(tempUser)
-		allowUsingSavedPassword = false
+		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
 		print("Password/API key: ")
@@ -29,7 +29,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, all
 			return err
 		}
 		details.SetPassword(string(bytePassword))
-		if details.GetPassword() == "" && allowUsingSavedPassword {
+		if details.GetPassword() == "" && !disallowUsingSavedPassword {
 			details.SetPassword(savedDetails.GetPassword())
 		}
 		// New-line required after the password input:

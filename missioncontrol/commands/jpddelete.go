@@ -10,9 +10,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-func JpdDelete(jpdId string, mcDetails *config.MissionControlDetails) error {
-	missionControlUrl := mcDetails.Url + "api/v1/jpds/" + jpdId
-	httpClientDetails := utils.GetMissionControlHttpClientDetails(mcDetails)
+func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
+	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/jpds/" + jpdId
+	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return err

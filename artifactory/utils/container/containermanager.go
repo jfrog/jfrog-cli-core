@@ -56,7 +56,7 @@ type containerManager struct {
 }
 
 type ContainerManagerLoginConfig struct {
-	ArtifactoryDetails *config.ArtifactoryDetails
+	ServerDetails *config.ServerDetails
 }
 
 // Push image
@@ -272,16 +272,16 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	if err != nil {
 		return err
 	}
-	username := config.ArtifactoryDetails.User
-	password := config.ArtifactoryDetails.Password
+	username := config.ServerDetails.User
+	password := config.ServerDetails.Password
 	// If access-token exists, perform login with it.
-	if config.ArtifactoryDetails.AccessToken != "" {
+	if config.ServerDetails.AccessToken != "" {
 		log.Debug("Using access-token details in " + containerManager.String() + "-login command.")
-		username, err = auth.ExtractUsernameFromAccessToken(config.ArtifactoryDetails.AccessToken)
+		username, err = auth.ExtractUsernameFromAccessToken(config.ServerDetails.AccessToken)
 		if err != nil {
 			return err
 		}
-		password = config.ArtifactoryDetails.AccessToken
+		password = config.ServerDetails.AccessToken
 	}
 	// Perform login.
 	cmd := &LoginCmd{DockerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
@@ -295,7 +295,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	if indexOfSlash < 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())))
 	}
-	cmd = &LoginCmd{DockerRegistry: imageRegistry[:indexOfSlash], Username: config.ArtifactoryDetails.User, Password: config.ArtifactoryDetails.Password}
+	cmd = &LoginCmd{DockerRegistry: imageRegistry[:indexOfSlash], Username: config.ServerDetails.User, Password: config.ServerDetails.Password}
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		// Login failed for both attempts

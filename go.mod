@@ -5,11 +5,13 @@ go 1.14
 require (
 	github.com/buger/jsonparser v0.0.0-20180910192245-6acdf747ae99
 	github.com/c-bata/go-prompt v0.2.5
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/codegangsta/cli v1.20.0
 	github.com/jfrog/gocmd v0.1.19
 	github.com/jfrog/gofrog v1.0.6
 	github.com/jfrog/jfrog-client-go v0.19.1
 	github.com/magiconair/properties v1.8.1
+	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1

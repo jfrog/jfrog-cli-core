@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -10,6 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -156,15 +157,15 @@ func ReadConfigFile(configPath string, configType ConfigType) (*viper.Viper, err
 
 // Returns the Artifactory details
 // Checks first for the deployer information if exists and if not, checks for the resolver information.
-func GetRtDetails(vConfig *viper.Viper) (*config.ArtifactoryDetails, error) {
+func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	if vConfig.IsSet(DEPLOYER_PREFIX + SERVER_ID) {
 		serverId := vConfig.GetString(DEPLOYER_PREFIX + SERVER_ID)
-		return config.GetArtifactorySpecificConfig(serverId, true, true)
+		return config.GetSpecificConfig(serverId, true, true)
 	}
 
 	if vConfig.IsSet(RESOLVER_PREFIX + SERVER_ID) {
 		serverId := vConfig.GetString(RESOLVER_PREFIX + SERVER_ID)
-		return config.GetArtifactorySpecificConfig(serverId, true, true)
+		return config.GetSpecificConfig(serverId, true, true)
 	}
 	return nil, nil
 }
@@ -254,14 +255,14 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 	}
 
 	serverId := vConfig.GetString(contextPrefix + SERVER_ID)
-	artDetails, err := config.GetArtifactorySpecificConfig(serverId, true, true)
+	artDetails, err := config.GetSpecificConfig(serverId, true, true)
 	if err != nil {
 		return err
 	}
-	if artDetails.GetUrl() == "" {
+	if artDetails.GetArtifactoryUrl() == "" {
 		return errorutils.CheckError(errors.New("Server ID " + serverId + ": URL is required."))
 	}
-	vConfig.Set(contextPrefix+URL, artDetails.GetUrl())
+	vConfig.Set(contextPrefix+URL, artDetails.GetArtifactoryUrl())
 
 	if artDetails.GetApiKey() != "" {
 		return errorutils.CheckError(errors.New("Server ID " + serverId + ": Configuring an API key without a username is not supported."))

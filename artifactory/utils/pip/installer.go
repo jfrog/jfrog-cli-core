@@ -2,18 +2,19 @@ package pip
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
+
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/url"
-	"strings"
 )
 
 type PipInstaller struct {
-	RtDetails           *config.ArtifactoryDetails
+	ServerDetails       *config.ServerDetails
 	Args                []string
 	Repository          string
 	ShouldParseLogs     bool
@@ -44,7 +45,7 @@ func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err er
 		return
 	}
 
-	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.RtDetails, pi.Repository)
+	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
 	if err != nil {
 		return
 	}
@@ -52,22 +53,22 @@ func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err er
 	return
 }
 
-func getArtifactoryUrlWithCredentials(rtDetails *config.ArtifactoryDetails, repository string) (string, error) {
-	rtUrl, err := url.Parse(rtDetails.GetUrl())
+func getArtifactoryUrlWithCredentials(serverDetails *config.ServerDetails, repository string) (string, error) {
+	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 
-	username := rtDetails.GetUser()
-	password := rtDetails.GetPassword()
+	username := serverDetails.GetUser()
+	password := serverDetails.GetPassword()
 
 	// Get credentials from access-token if exists.
-	if rtDetails.GetAccessToken() != "" {
-		username, err = auth.ExtractUsernameFromAccessToken(rtDetails.GetAccessToken())
+	if serverDetails.GetAccessToken() != "" {
+		username, err = auth.ExtractUsernameFromAccessToken(serverDetails.GetAccessToken())
 		if err != nil {
 			return "", err
 		}
-		password = rtDetails.GetAccessToken()
+		password = serverDetails.GetAccessToken()
 	}
 
 	if username != "" && password != "" {

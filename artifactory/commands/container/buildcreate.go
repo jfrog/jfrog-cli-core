@@ -26,7 +26,7 @@ func (bpc *BuildDockerCreateCommand) SetImageNameWithDigest(filePath string) (er
 }
 
 func (bpc *BuildDockerCreateCommand) Run() error {
-	rtDetails, err := bpc.RtDetails()
+	serverDetails, err := bpc.ServerDetails()
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -57,6 +57,6 @@ func (pc *BuildDockerCreateCommand) CommandName() string {
 	return "rt_build_docker_create"
 }
 
-func (pc *BuildDockerCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return pc.rtDetails, nil
+func (pc *BuildDockerCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return pc.serverDetails, nil
 }

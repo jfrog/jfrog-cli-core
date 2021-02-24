@@ -49,8 +49,8 @@ func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
 	return &NpmPublishCommandArgs{}
 }
 
-func (npc *NpmPublishCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return npc.rtDetails, nil
+func (npc *NpmPublishCommand) ServerDetails() (*config.ServerDetails, error) {
+	return npc.serverDetails, nil
 }
 
 func (npc *NpmPublishCommand) SetConfigFilePath(configFilePath string) *NpmPublishCommand {
@@ -79,11 +79,11 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		rtDetails, err := deployerParams.RtDetails()
+		rtDetails, err := deployerParams.ServerDetails()
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetRtDetails(rtDetails)
+		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
 	return npc.run()
 }
@@ -161,7 +161,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 		return err
 	}
 
-	artDetails, err := npc.rtDetails.CreateArtAuthConfig()
+	artDetails, err := npc.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (npc *NpmPublishCommand) deploy() (err error) {
 	}
 
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
-	artifactsFileInfo, err := npc.doDeploy(target, npc.rtDetails)
+	artifactsFileInfo, err := npc.doDeploy(target, npc.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (npc *NpmPublishCommand) deploy() (err error) {
 	return nil
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ArtifactoryDetails) (artifactsFileInfo []specutils.FileInfo, err error) {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) (artifactsFileInfo []specutils.FileInfo, err error) {
 	servicesManager, err := utils.CreateServiceManager(artDetails, false)
 	if err != nil {
 		return nil, err

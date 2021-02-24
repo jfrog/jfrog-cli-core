@@ -8,7 +8,7 @@ import (
 )
 
 type DistributeReleaseBundleCommand struct {
-	rtDetails               *config.ArtifactoryDetails
+	serverDetails           *config.ServerDetails
 	distributeBundlesParams services.DistributionParams
 	distributionRules       *spec.DistributionRules
 	sync                    bool
@@ -20,8 +20,8 @@ func NewReleaseBundleDistributeCommand() *DistributeReleaseBundleCommand {
 	return &DistributeReleaseBundleCommand{}
 }
 
-func (db *DistributeReleaseBundleCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DistributeReleaseBundleCommand {
-	db.rtDetails = rtDetails
+func (db *DistributeReleaseBundleCommand) SetServerDetails(serverDetails *config.ServerDetails) *DistributeReleaseBundleCommand {
+	db.serverDetails = serverDetails
 	return db
 }
 
@@ -51,7 +51,7 @@ func (db *DistributeReleaseBundleCommand) SetDryRun(dryRun bool) *DistributeRele
 }
 
 func (db *DistributeReleaseBundleCommand) Run() error {
-	servicesManager, err := utils.CreateDistributionServiceManager(db.rtDetails, db.dryRun)
+	servicesManager, err := utils.CreateDistributionServiceManager(db.serverDetails, db.dryRun)
 	if err != nil {
 		return err
 	}
@@ -66,8 +66,8 @@ func (db *DistributeReleaseBundleCommand) Run() error {
 	return servicesManager.DistributeReleaseBundle(db.distributeBundlesParams)
 }
 
-func (db *DistributeReleaseBundleCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return db.rtDetails, nil
+func (db *DistributeReleaseBundleCommand) ServerDetails() (*config.ServerDetails, error) {
+	return db.serverDetails, nil
 }
 
 func (db *DistributeReleaseBundleCommand) CommandName() string {

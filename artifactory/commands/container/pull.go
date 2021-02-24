@@ -24,12 +24,12 @@ func (pc *PullCommand) Run() error {
 			return err
 		}
 	}
-	rtDetails, err := pc.RtDetails()
+	serverDetails, err := pc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	// Perform login
-	if err := pc.PerformLogin(rtDetails, pc.containerManagerType); err != nil {
+	if err := pc.PerformLogin(serverDetails, pc.containerManagerType); err != nil {
 		return err
 	}
 	// Perform pull.
@@ -49,7 +49,7 @@ func (pc *PullCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -68,6 +68,6 @@ func (pc *PullCommand) CommandName() string {
 	return "rt_docker_pull"
 }
 
-func (pc *PullCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return pc.rtDetails, nil
+func (pc *PullCommand) ServerDetails() (*config.ServerDetails, error) {
+	return pc.serverDetails, nil
 }

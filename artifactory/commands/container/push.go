@@ -34,12 +34,12 @@ func (pc *PushCommand) Run() error {
 			return err
 		}
 	}
-	rtDetails, err := pc.RtDetails()
+	serverDetails, err := pc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	// Perform login
-	if err := pc.PerformLogin(rtDetails, pc.containerManagerType); err != nil {
+	if err := pc.PerformLogin(serverDetails, pc.containerManagerType); err != nil {
 		return err
 	}
 	// Perform push.
@@ -56,7 +56,7 @@ func (pc *PushCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManagerWithThreads(rtDetails, false, pc.threads)
+	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads)
 	if err != nil {
 		return err
 	}
@@ -75,6 +75,6 @@ func (pc *PushCommand) CommandName() string {
 	return "rt_docker_push"
 }
 
-func (pc *PushCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return pc.rtDetails, nil
+func (pc *PushCommand) ServerDetails() (*config.ServerDetails, error) {
+	return pc.serverDetails, nil
 }

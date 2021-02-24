@@ -22,7 +22,7 @@ var (
 )
 
 type DeleteReleaseBundleCommand struct {
-	rtDetails           *config.ArtifactoryDetails
+	serverDetails       *config.ServerDetails
 	deleteBundlesParams services.DeleteDistributionParams
 	distributionRules   *spec.DistributionRules
 	dryRun              bool
@@ -33,8 +33,8 @@ func NewReleaseBundleDeleteParams() *DeleteReleaseBundleCommand {
 	return &DeleteReleaseBundleCommand{}
 }
 
-func (db *DeleteReleaseBundleCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *DeleteReleaseBundleCommand {
-	db.rtDetails = rtDetails
+func (db *DeleteReleaseBundleCommand) SetServerDetails(serverDetails *config.ServerDetails) *DeleteReleaseBundleCommand {
+	db.serverDetails = serverDetails
 	return db
 }
 
@@ -59,7 +59,7 @@ func (db *DeleteReleaseBundleCommand) SetQuiet(quiet bool) *DeleteReleaseBundleC
 }
 
 func (db *DeleteReleaseBundleCommand) Run() error {
-	servicesManager, err := utils.CreateDistributionServiceManager(db.rtDetails, db.dryRun)
+	servicesManager, err := utils.CreateDistributionServiceManager(db.serverDetails, db.dryRun)
 	if err != nil {
 		return err
 	}
@@ -85,8 +85,8 @@ func (db *DeleteReleaseBundleCommand) Run() error {
 	return servicesManager.DeleteReleaseBundle(db.deleteBundlesParams)
 }
 
-func (db *DeleteReleaseBundleCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return db.rtDetails, nil
+func (db *DeleteReleaseBundleCommand) ServerDetails() (*config.ServerDetails, error) {
+	return db.serverDetails, nil
 }
 
 func (db *DeleteReleaseBundleCommand) CommandName() string {

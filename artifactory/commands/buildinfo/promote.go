@@ -8,8 +8,8 @@ import (
 
 type BuildPromotionCommand struct {
 	services.PromotionParams
-	rtDetails *config.ArtifactoryDetails
-	dryRun    bool
+	serverDetails *config.ServerDetails
+	dryRun        bool
 }
 
 func NewBuildPromotionCommand() *BuildPromotionCommand {
@@ -21,8 +21,8 @@ func (bpc *BuildPromotionCommand) SetDryRun(dryRun bool) *BuildPromotionCommand 
 	return bpc
 }
 
-func (bpc *BuildPromotionCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildPromotionCommand {
-	bpc.rtDetails = rtDetails
+func (bpc *BuildPromotionCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildPromotionCommand {
+	bpc.serverDetails = serverDetails
 	return bpc
 }
 
@@ -32,15 +32,15 @@ func (bpc *BuildPromotionCommand) SetPromotionParams(params services.PromotionPa
 }
 
 func (bpc *BuildPromotionCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bpc.rtDetails, bpc.dryRun)
+	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, bpc.dryRun)
 	if err != nil {
 		return err
 	}
 	return servicesManager.PromoteBuild(bpc.PromotionParams)
 }
 
-func (bpc *BuildPromotionCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return bpc.rtDetails, nil
+func (bpc *BuildPromotionCommand) ServerDetails() (*config.ServerDetails, error) {
+	return bpc.serverDetails, nil
 }
 
 func (bpc *BuildPromotionCommand) CommandName() string {

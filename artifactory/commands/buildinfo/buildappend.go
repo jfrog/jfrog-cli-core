@@ -19,7 +19,7 @@ import (
 
 type BuildAppendCommand struct {
 	buildConfiguration  *utils.BuildConfiguration
-	rtDetails           *config.ArtifactoryDetails
+	serverDetails       *config.ServerDetails
 	buildNameToAppend   string
 	buildNumberToAppend string
 }
@@ -32,8 +32,8 @@ func (bac *BuildAppendCommand) CommandName() string {
 	return "rt_build_append"
 }
 
-func (bac *BuildAppendCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (bac *BuildAppendCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (bac *BuildAppendCommand) Run() error {
@@ -70,8 +70,8 @@ func (bac *BuildAppendCommand) Run() error {
 	return err
 }
 
-func (bac *BuildAppendCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildAppendCommand {
-	bac.rtDetails = rtDetails
+func (bac *BuildAppendCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildAppendCommand {
+	bac.serverDetails = serverDetails
 	return bac
 }
 
@@ -94,7 +94,7 @@ func (bac *BuildAppendCommand) SetBuildNumberToAppend(buildNumber string) *Build
 // For example, start time of: 2020-11-27T14:33:38.538+0200 should be converted to 1606480418538.
 func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(bac.rtDetails, false)
+	sm, err := utils.CreateServiceManager(bac.serverDetails, false)
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +123,7 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 
 // Download MD5 and SHA1 from the build info artifact.
 func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.ChecksumDetails, error) {
-	serviceDetails, err := bac.rtDetails.CreateArtAuthConfig()
+	serviceDetails, err := bac.serverDetails.CreateArtAuthConfig()
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return fileutils.ChecksumDetails{}, err

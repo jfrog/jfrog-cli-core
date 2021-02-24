@@ -79,6 +79,7 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	curVcs := vcsList[0]
 	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
 	assert.Equal(t, "d63c5957ad6819f4c02a817abe757f210d35ff92", curVcs.Revision)
+	assert.Equal(t, "submodule", curVcs.Branch)
 }
 
 // Clean the environment if fails

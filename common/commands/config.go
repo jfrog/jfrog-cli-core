@@ -330,7 +330,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 
 	// If path still not provided, return and warn about relying on agent.
 	if details.SshKeyPath == "" {
-		log.Info("SSH Key path not provided. You can also specify a key path using the --ssh-key-path command option. If no key will be specified, you will rely on ssh-agent only.")
+		log.Info("SSH Key path not provided. The ssh-agent (if active) will be used.")
 		return nil
 	}
 
@@ -341,6 +341,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		return err
 	}
 
+	optionalPrefix := ""
 	if exists {
 		sshKeyBytes, err := ioutil.ReadFile(details.SshKeyPath)
 		if err != nil {
@@ -351,10 +352,13 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		if err != nil || !encryptedKey {
 			return err
 		}
-		log.Info("The key file at the specified path is encrypted, you may pass the passphrase as an option with every command (but config).")
-
+		log.Info("The key file at the specified path is encrypted.")
 	} else {
-		log.Info("Could not find key in provided path. You may place the key file there later. If you choose to use an encrypted key, you may pass the passphrase as an option with every command.")
+		log.Info("Could not find key in provided path. You may place the key file there later.")
+		optionalPrefix = "(optional)"
+	}
+	if details.SshPassphrase == "" {
+		ioutils.ScanFromConsole("SSH key passphrase "+optionalPrefix, &details.SshPassphrase, "")
 	}
 
 	return err

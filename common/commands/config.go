@@ -330,7 +330,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 
 	// If path still not provided, return and warn about relying on agent.
 	if details.SshKeyPath == "" {
-		log.Info("SSH Key path not provided. You will rely on ssh-agent only.")
+		log.Info("SSH Key path not provided. The ssh-agent (if active) will be used.")
 		return nil
 	}
 

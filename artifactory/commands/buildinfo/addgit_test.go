@@ -46,10 +46,26 @@ func runTest(t *testing.T, originalDir string) {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
+	//checkVCSDetails(partials, t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
 	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
 	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
+}
+
+func checkVCSDetails(partials buildinfo.Partials, t *testing.T) {
+	for _, partial := range partials {
+		if partial.VcsList != nil {
+			for _, vcs := range partial.VcsList {
+				assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", vcs.Revision)
+				assert.Equal(t, "master", vcs.Branch)
+				assert.Equal(t, "TEST-2 - Adding text to file1.txt", vcs.Commit)
+			}
+		} else {
+			t.Error("VCS cannot be nil")
+			break
+		}
+	}
 }
 
 func TestBuildAddGitSubmodules(t *testing.T) {
@@ -69,6 +85,23 @@ func TestBuildAddGitSubmodules(t *testing.T) {
 			assertVcsSubmodules(t, partials)
 		})
 	}
+}
+
+func TestBuildAddGitCommitMessage(t *testing.T) {
+	originalFolder := "git_issues_.git_suffix"
+	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalFolder, filepath.Join("..", "testdata"))
+	buildDir := getBuildDir(t)
+	checkFailureAndClean(t, buildDir, dotGitPath)
+	err := runBuildAddGit(t, buildName, "1", baseDir, true)
+	if err != nil {
+		return
+	}
+	partials := getBuildInfoPartials(t, buildName, "1", "")
+	checkVCSDetails(partials, t)
+	checkFailureAndClean(t, buildDir, dotGitPath)
+	checkVCSUrl(partials, t)
+	tests.RemovePath(buildDir, t)
+	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalFolder), t)
 }
 
 func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {

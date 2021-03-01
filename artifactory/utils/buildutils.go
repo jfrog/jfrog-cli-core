@@ -15,10 +15,8 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -276,21 +274,4 @@ func ValidateBuildAndModuleParams(buildConfig *BuildConfiguration) error {
 		return errors.New("the build-name and build-number options are mandatory when the module option is provided")
 	}
 	return nil
-}
-
-// Reads ResultBuildInfo from the content reader.
-func ReadResultBuildInfo(cr *content.ContentReader) (error, utils.ResultBuildInfo) {
-	var resultBuildInfo utils.ResultBuildInfo
-	file, err := os.Open(cr.GetFilePath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			// The build info partials file is not generated. This would happen when no files were uploaded/downloaded.
-			return nil, resultBuildInfo
-		}
-		return errorutils.CheckError(err), resultBuildInfo
-	}
-	defer file.Close()
-	byteValue, _ := ioutil.ReadAll(file)
-	err = json.Unmarshal(byteValue, &resultBuildInfo)
-	return errorutils.CheckError(err), resultBuildInfo
 }

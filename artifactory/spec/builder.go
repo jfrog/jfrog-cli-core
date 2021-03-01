@@ -26,6 +26,7 @@ type builder struct {
 	includeDirs      bool
 	archiveEntries   string
 	validateSymlinks bool
+	symlinks         bool
 }
 
 func NewBuilder() *builder {
@@ -142,6 +143,11 @@ func (b *builder) ValidateSymlinks(validateSymlinks bool) *builder {
 	return b
 }
 
+func (b *builder) Symlinks(symlinks bool) *builder {
+	b.symlinks = symlinks
+	return b
+}
+
 func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
@@ -169,6 +175,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
 				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),
 				IncludeDeps:      strconv.FormatBool(b.includeDeps),
+				Symlinks:         strconv.FormatBool(b.symlinks),
 			},
 		},
 	}

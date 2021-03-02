@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	withGit    = "git_test_.git_suffix"
-	withoutGit = "git_test_no_.git_suffix"
-	buildName  = "TestExtractGitUrl"
+	withGit       = "git_test_.git_suffix"
+	withIssuesGit = "git_issues_.git_suffix"
+	withoutGit    = "git_test_no_.git_suffix"
+	buildName     = "TestExtractGitUrl"
 )
 
 func init() {
@@ -46,7 +47,7 @@ func runTest(t *testing.T, originalDir string) {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
-	//checkVCSDetails(partials, t)
+	checkVCSDetails(partials, t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
 	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
@@ -87,9 +88,8 @@ func TestBuildAddGitSubmodules(t *testing.T) {
 	}
 }
 
-func TestBuildAddGitCommitMessage(t *testing.T) {
-	originalFolder := "git_issues_.git_suffix"
-	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalFolder, filepath.Join("..", "testdata"))
+func TestBuildAddGitVCSDetails(t *testing.T) {
+	baseDir, dotGitPath := tests.PrepareDotGitDir(t, withIssuesGit, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
 	err := runBuildAddGit(t, buildName, "1", baseDir, true)
@@ -99,9 +99,8 @@ func TestBuildAddGitCommitMessage(t *testing.T) {
 	partials := getBuildInfoPartials(t, buildName, "1", "")
 	checkVCSDetails(partials, t)
 	checkFailureAndClean(t, buildDir, dotGitPath)
-	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
-	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalFolder), t)
+	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), withIssuesGit), t)
 }
 
 func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {

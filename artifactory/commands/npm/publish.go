@@ -195,7 +195,7 @@ func (npc *NpmPublishCommand) deploy() error {
 	return npc.doDeploy(target, npc.serverDetails)
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ArtifactoryDetails) error {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) error {
 	servicesManager, err := utils.CreateServiceManager(artDetails, false)
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -79,9 +80,7 @@ func TestBuildAddGitSubmodules(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			tmpBuildName := test + "-Build-" + strconv.FormatInt(time.Now().Unix(), 10)
 			err := runBuildAddGit(t, tmpBuildName, "1", projectPath, test == "dotGitProvided")
-			if err != nil {
-				return
-			}
+			require.NoError(t, err)
 			partials := getBuildInfoPartials(t, tmpBuildName, "1", "")
 			assertVcsSubmodules(t, partials)
 		})
@@ -110,8 +109,9 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	assert.Len(t, vcsList, 1)
 	curVcs := vcsList[0]
 	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
-	assert.Equal(t, "d63c5957ad6819f4c02a817abe757f210d35ff92", curVcs.Revision)
+	assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", curVcs.Revision)
 	assert.Equal(t, "submodule", curVcs.Branch)
+	assert.Equal(t, "TEST-2 - Adding text to file1.txt", curVcs.Commit)
 }
 
 // Clean the environment if fails

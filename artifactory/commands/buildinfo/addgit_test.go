@@ -61,7 +61,7 @@ func checkVCSDetails(partials buildinfo.Partials, t *testing.T) {
 			for _, vcs := range partial.VcsList {
 				assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", vcs.Revision)
 				assert.Equal(t, "master", vcs.Branch)
-				assert.Equal(t, "TEST-2 - Adding text to file1.txt", vcs.Commit)
+				assert.Equal(t, "TEST-2 - Adding text to file1.txt\n", vcs.Commit)
 			}
 		} else {
 			t.Error("VCS cannot be nil")
@@ -111,7 +111,7 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
 	assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", curVcs.Revision)
 	assert.Equal(t, "submodule", curVcs.Branch)
-	assert.Equal(t, "TEST-2 - Adding text to file1.txt", curVcs.Commit)
+	assert.Equal(t, "TEST-2 - Adding text to file1.txt\n", curVcs.Commit)
 }
 
 // Clean the environment if fails

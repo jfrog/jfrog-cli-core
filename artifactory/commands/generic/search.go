@@ -28,11 +28,11 @@ func (sc *SearchCommand) Run() error {
 
 func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	// Service Manager
-	rtDetails, err := sc.RtDetails()
+	serverDetails, err := sc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	servicesManager, err := utils.CreateServiceManager(rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return nil, err
 	}

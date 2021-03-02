@@ -3,11 +3,6 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"strconv"
-
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/utils/config"
@@ -18,6 +13,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
 )
 
 const (
@@ -65,16 +64,16 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 }
 
 func (config *BuildAddGitCommand) Run() error {
-	log.Info("Collecting git revision and remote url...")
-	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber)
+	log.Info("Collecting git branch, revision and remote url...")
+	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
 
-	// Find .git folder if it wasn't provided in the command.
+	// Find .git if it wasn't provided in the command.
 	if config.dotGitPath == "" {
 		var exists bool
-		config.dotGitPath, exists, err = fileutils.FindUpstream(".git", fileutils.Dir)
+		config.dotGitPath, exists, err = fileutils.FindUpstream(".git", fileutils.Any)
 		if err != nil {
 			return err
 		}
@@ -83,7 +82,7 @@ func (config *BuildAddGitCommand) Run() error {
 		}
 	}
 
-	// Collect URL and Revision into GitManager.
+	// Collect URL, branch and revision into GitManager.
 	gitManager := clientutils.NewGitManager(config.dotGitPath)
 	err = gitManager.ReadConfig()
 	if err != nil {
@@ -104,6 +103,7 @@ func (config *BuildAddGitCommand) Run() error {
 		partial.VcsList = append(partial.VcsList, buildinfo.Vcs{
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
+			Branch:   gitManager.GetBranch(),
 		})
 
 		if config.configFilePath != "" {
@@ -115,7 +115,7 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project, populateFunc)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (config *BuildAddGitCommand) Run() error {
 // 1. 'server-id' flag.
 // 2. 'serverID' in config file.
 // 3. Default server.
-func (config *BuildAddGitCommand) RtDetails() (*utilsconfig.ArtifactoryDetails, error) {
+func (config *BuildAddGitCommand) ServerDetails() (*utilsconfig.ServerDetails, error) {
 	var serverId string
 	if config.serverId != "" {
 		serverId = config.serverId
@@ -142,7 +142,7 @@ func (config *BuildAddGitCommand) RtDetails() (*utilsconfig.ArtifactoryDetails, 
 		}
 		serverId = vConfig.GetString(ConfigIssuesPrefix + "serverID")
 	}
-	return utilsconfig.GetArtifactorySpecificConfig(serverId, true, false)
+	return utilsconfig.GetSpecificConfig(serverId, true, false)
 }
 
 func (config *BuildAddGitCommand) CommandName() string {
@@ -178,34 +178,19 @@ func (config *BuildAddGitCommand) collectBuildIssues(vcsUrl string) ([]buildinfo
 }
 
 func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, lastVcsRevision string) ([]buildinfo.AffectedIssue, error) {
-	// Create regex pattern.
-	issueRegexp, err := clientutils.GetRegExp(issuesConfig.Regexp)
+	var foundIssues []buildinfo.AffectedIssue
+	logRegExp, err := createLogRegExpHandler(issuesConfig, &foundIssues)
+	if err != nil {
+		return nil, err
+	}
+
+	errRegExp, err := createErrRegExpHandler(lastVcsRevision)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get log with limit, starting from the latest commit.
 	logCmd := &LogCmd{logLimit: issuesConfig.LogLimit, lastVcsRevision: lastVcsRevision}
-	var foundIssues []buildinfo.AffectedIssue
-	logRegExp := gofrogcmd.CmdOutputPattern{
-		RegExp: issueRegexp,
-		ExecFunc: func(pattern *gofrogcmd.CmdOutputPattern) (string, error) {
-			// Reached here - means no error occurred.
-
-			// Check for out of bound results.
-			if len(pattern.MatchedResults)-1 < issuesConfig.KeyGroupIndex || len(pattern.MatchedResults)-1 < issuesConfig.SummaryGroupIndex {
-				return "", errors.New("Unexpected result while parsing issues from git log. Make sure that the regular expression used to find issues, includes two capturing groups, for the issue ID and the summary.")
-			}
-			// Create found Affected Issue.
-			foundIssue := buildinfo.AffectedIssue{Key: pattern.MatchedResults[issuesConfig.KeyGroupIndex], Summary: pattern.MatchedResults[issuesConfig.SummaryGroupIndex], Aggregated: false}
-			if issuesConfig.TrackerUrl != "" {
-				foundIssue.Url = issuesConfig.TrackerUrl + pattern.MatchedResults[issuesConfig.KeyGroupIndex]
-			}
-			foundIssues = append(foundIssues, foundIssue)
-			log.Debug("Found issue: " + pattern.MatchedResults[issuesConfig.KeyGroupIndex])
-			return "", nil
-		},
-	}
 
 	// Change working dir to where .git is.
 	wd, err := os.Getwd()
@@ -219,17 +204,82 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	}
 
 	// Run git command.
-	_, _, exitOk, err := gofrogcmd.RunCmdWithOutputParser(logCmd, false, &logRegExp)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
+	_, _, exitOk, err := gofrogcmd.RunCmdWithOutputParser(logCmd, false, logRegExp, errRegExp)
+	if err != nil {
+		if _, ok := err.(RevisionRangeError); ok {
+			// Revision not found in range. Ignore and don't collect new issues.
+			log.Info(err.Error())
+			return []buildinfo.AffectedIssue{}, nil
+		}
+		return nil, errorutils.CheckError(err)
 	}
 	if !exitOk {
 		// May happen when trying to run git log for non-existing revision.
-		return nil, errorutils.CheckError(errors.New("Failed executing git log command."))
+		return nil, errorutils.CheckError(errors.New("failed executing git log command"))
 	}
 
 	// Return found issues.
 	return foundIssues, nil
+}
+
+// Creates a regexp handler to parse and fetch issues from the the output of the git log command.
+func createLogRegExpHandler(issuesConfig *IssuesConfiguration, foundIssues *[]buildinfo.AffectedIssue) (*gofrogcmd.CmdOutputPattern, error) {
+	// Create regex pattern.
+	issueRegexp, err := clientutils.GetRegExp(issuesConfig.Regexp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create handler with exec function.
+	logRegExp := gofrogcmd.CmdOutputPattern{
+		RegExp: issueRegexp,
+		ExecFunc: func(pattern *gofrogcmd.CmdOutputPattern) (string, error) {
+			// Reached here - means no error occurred.
+
+			// Check for out of bound results.
+			if len(pattern.MatchedResults)-1 < issuesConfig.KeyGroupIndex || len(pattern.MatchedResults)-1 < issuesConfig.SummaryGroupIndex {
+				return "", errors.New("unexpected result while parsing issues from git log. Make sure that the regular expression used to find issues, includes two capturing groups, for the issue ID and the summary")
+			}
+			// Create found Affected Issue.
+			foundIssue := buildinfo.AffectedIssue{Key: pattern.MatchedResults[issuesConfig.KeyGroupIndex], Summary: pattern.MatchedResults[issuesConfig.SummaryGroupIndex], Aggregated: false}
+			if issuesConfig.TrackerUrl != "" {
+				foundIssue.Url = issuesConfig.TrackerUrl + pattern.MatchedResults[issuesConfig.KeyGroupIndex]
+			}
+			*foundIssues = append(*foundIssues, foundIssue)
+			log.Debug("Found issue: " + pattern.MatchedResults[issuesConfig.KeyGroupIndex])
+			return "", nil
+		},
+	}
+	return &logRegExp, nil
+}
+
+// Error to be thrown when revision could not be found in the git revision range.
+type RevisionRangeError struct {
+	ErrorMsg string
+}
+
+func (err RevisionRangeError) Error() string {
+	return err.ErrorMsg
+}
+
+// Creates a regexp handler to handle the event of revision missing in the git revision range.
+func createErrRegExpHandler(lastVcsRevision string) (*gofrogcmd.CmdOutputPattern, error) {
+	// Create regex pattern.
+	invalidRangeExp, err := clientutils.GetRegExp(`fatal: Invalid revision range [a-fA-F0-9]+\.\.`)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create handler with exec function.
+	errRegExp := gofrogcmd.CmdOutputPattern{
+		RegExp: invalidRangeExp,
+		ExecFunc: func(pattern *gofrogcmd.CmdOutputPattern) (string, error) {
+			// Revision could not be found in the revision range, probably due to a squash / revert. Ignore and don't collect new issues.
+			errMsg := "Revision: '" + lastVcsRevision + "' that was fetched from latest build info does not exist in the git revision range. No new issues are added."
+			return "", RevisionRangeError{ErrorMsg: errMsg}
+		},
+	}
+	return &errRegExp, nil
 }
 
 func (config *BuildAddGitCommand) createIssuesConfigs() (err error) {
@@ -244,8 +294,8 @@ func (config *BuildAddGitCommand) createIssuesConfigs() (err error) {
 		config.issuesConfig.ServerID = config.serverId
 	}
 
-	// Build ArtifactoryDetails from provided serverID.
-	err = config.issuesConfig.setArtifactoryDetails()
+	// Build ServerDetails from provided serverID.
+	err = config.issuesConfig.setServerDetails()
 	if err != nil {
 		return
 	}
@@ -281,7 +331,7 @@ func (config *BuildAddGitCommand) getLatestVcsRevision(vcsUrl string) (string, e
 // Returns build info, or empty build info struct if not found.
 func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfiguration) (*buildinfo.BuildInfo, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(issuesConfig.ArtDetails, false)
+	sm, err := utils.CreateServiceManager(issuesConfig.ServerDetails, false)
 	if err != nil {
 		return nil, err
 	}
@@ -371,18 +421,18 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 	return nil
 }
 
-func (ic *IssuesConfiguration) setArtifactoryDetails() error {
+func (ic *IssuesConfiguration) setServerDetails() error {
 	// If no server-id provided, use default server.
-	artDetails, err := utilsconfig.GetArtifactorySpecificConfig(ic.ServerID, true, false)
+	serverDetails, err := utilsconfig.GetSpecificConfig(ic.ServerID, true, false)
 	if err != nil {
 		return err
 	}
-	ic.ArtDetails = artDetails
+	ic.ServerDetails = serverDetails
 	return nil
 }
 
 type IssuesConfiguration struct {
-	ArtDetails        *utilsconfig.ArtifactoryDetails
+	ServerDetails     *utilsconfig.ServerDetails
 	Regexp            string
 	LogLimit          int
 	TrackerUrl        string

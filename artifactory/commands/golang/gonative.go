@@ -57,15 +57,15 @@ func (gnc *GoNativeCommand) Run() error {
 	return gnc.GoCommand.Run()
 }
 
-func (gnc *GoNativeCommand) RtDetails() (*config.ArtifactoryDetails, error) {
+func (gnc *GoNativeCommand) ServerDetails() (*config.ServerDetails, error) {
 	// If deployer Artifactory details exists, returs it.
-	if gnc.deployerParams != nil && !gnc.deployerParams.IsRtDetailsEmpty() {
-		return gnc.deployerParams.RtDetails()
+	if gnc.deployerParams != nil && !gnc.deployerParams.IsServerDetailsEmpty() {
+		return gnc.deployerParams.ServerDetails()
 	}
 
 	// If resolver Artifactory details exists, returs it.
-	if gnc.resolverParams != nil && !gnc.resolverParams.IsRtDetailsEmpty() {
-		return gnc.resolverParams.RtDetails()
+	if gnc.resolverParams != nil && !gnc.resolverParams.IsServerDetailsEmpty() {
+		return gnc.resolverParams.ServerDetails()
 	}
 
 	// If conf file exists, return the server configured in the conf file.
@@ -74,7 +74,7 @@ func (gnc *GoNativeCommand) RtDetails() (*config.ArtifactoryDetails, error) {
 		if err != nil {
 			return nil, err
 		}
-		return utils.GetRtDetails(vConfig)
+		return utils.GetServerDetails(vConfig)
 	}
 	return nil, nil
 }

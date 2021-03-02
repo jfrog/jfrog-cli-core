@@ -33,7 +33,7 @@ const decryptErrorPrefix = "cannot decrypt config: "
 type secretHandler func(string, string) (string, error)
 
 // Encrypt config file if security configuration file exists and contains master key.
-func (config *ConfigV4) encrypt() error {
+func (config *ConfigV5) encrypt() error {
 	key, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || key == "" {
 		return err
@@ -44,7 +44,7 @@ func (config *ConfigV4) encrypt() error {
 }
 
 // Decrypt config if encrypted and master key exists.
-func (config *ConfigV4) decrypt() error {
+func (config *ConfigV5) decrypt() error {
 	if !config.Enc {
 		return updateEncryptionIfNeeded(config)
 	}
@@ -62,7 +62,7 @@ func (config *ConfigV4) decrypt() error {
 }
 
 // Encrypt the config file if it is decrypted while security configuration file exists and contains a master key.
-func updateEncryptionIfNeeded(originalConfig *ConfigV4) error {
+func updateEncryptionIfNeeded(originalConfig *ConfigV5) error {
 	masterKey, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || masterKey == "" {
 		return err
@@ -73,7 +73,7 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV4) error {
 	if err != nil {
 		return err
 	}
-	tmpEncConfig := new(ConfigV4)
+	tmpEncConfig := new(ConfigV5)
 	err = json.Unmarshal(decryptedContent, &tmpEncConfig)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -88,38 +88,32 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV4) error {
 }
 
 // Encrypt/Decrypt all secrets in the provided config, with the provided master key.
-func handleSecrets(config *ConfigV4, handler secretHandler, key string) error {
+func handleSecrets(config *ConfigV5, handler secretHandler, key string) error {
 	var err error
-	for _, rtDetails := range config.Artifactory {
-		rtDetails.Password, err = handler(rtDetails.Password, key)
+	for _, serverDetails := range config.Servers {
+		serverDetails.Password, err = handler(serverDetails.Password, key)
 		if err != nil {
 			return err
 		}
-		rtDetails.AccessToken, err = handler(rtDetails.AccessToken, key)
+		serverDetails.AccessToken, err = handler(serverDetails.AccessToken, key)
 		if err != nil {
 			return err
 		}
-		rtDetails.ApiKey, err = handler(rtDetails.ApiKey, key)
+		serverDetails.ApiKey, err = handler(serverDetails.ApiKey, key)
 		if err != nil {
 			return err
 		}
-		rtDetails.SshPassphrase, err = handler(rtDetails.SshPassphrase, key)
+		serverDetails.SshPassphrase, err = handler(serverDetails.SshPassphrase, key)
 		if err != nil {
 			return err
 		}
-		rtDetails.RefreshToken, err = handler(rtDetails.RefreshToken, key)
+		serverDetails.RefreshToken, err = handler(serverDetails.RefreshToken, key)
 		if err != nil {
 			return err
 		}
 	}
 	if config.Bintray != nil {
 		config.Bintray.Key, err = handler(config.Bintray.Key, key)
-		if err != nil {
-			return err
-		}
-	}
-	if config.MissionControl != nil {
-		config.MissionControl.AccessToken, err = handler(config.MissionControl.AccessToken, key)
 		if err != nil {
 			return err
 		}

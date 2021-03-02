@@ -13,8 +13,8 @@ import (
 )
 
 func JpdAdd(flags *JpdAddFlags) error {
-	missionControlUrl := flags.MissionControlDetails.Url + "api/v1/jpds"
-	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.MissionControlDetails)
+	missionControlUrl := flags.ServerDetails.MissionControlUrl + "api/v1/jpds"
+	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.ServerDetails)
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return err
@@ -33,6 +33,6 @@ func JpdAdd(flags *JpdAddFlags) error {
 }
 
 type JpdAddFlags struct {
-	MissionControlDetails *config.MissionControlDetails
-	JpdConfig             []byte
+	ServerDetails *config.ServerDetails
+	JpdConfig     []byte
 }

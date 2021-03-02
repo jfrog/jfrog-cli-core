@@ -12,7 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-func LicenseAcquire(bucketId string, name string, mcDetails *config.MissionControlDetails) error {
+func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDetails) error {
 	postContent := LicenseAcquireRequestContent{
 		Name:         name,
 		LicenseCount: 1,
@@ -21,8 +21,8 @@ func LicenseAcquire(bucketId string, name string, mcDetails *config.MissionContr
 	if err != nil {
 		return errorutils.CheckError(errors.New("Failed to marshal json: " + err.Error()))
 	}
-	missionControlUrl := mcDetails.Url + "api/v1/buckets/" + bucketId + "/acquire"
-	httpClientDetails := utils.GetMissionControlHttpClientDetails(mcDetails)
+	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/acquire"
+	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
 	client, err := httpclient.ClientBuilder().Build()
 	if err != nil {
 		return err

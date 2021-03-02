@@ -50,8 +50,8 @@ func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
 	return &NpmPublishCommandArgs{}
 }
 
-func (npc *NpmPublishCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return npc.rtDetails, nil
+func (npc *NpmPublishCommand) ServerDetails() (*config.ServerDetails, error) {
+	return npc.serverDetails, nil
 }
 
 func (npc *NpmPublishCommand) SetConfigFilePath(configFilePath string) *NpmPublishCommand {
@@ -80,11 +80,11 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		rtDetails, err := deployerParams.RtDetails()
+		rtDetails, err := deployerParams.ServerDetails()
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetRtDetails(rtDetails)
+		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
 	return npc.run()
 }
@@ -162,7 +162,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 		return err
 	}
 
-	artDetails, err := npc.rtDetails.CreateArtAuthConfig()
+	artDetails, err := npc.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (npc *NpmPublishCommand) deploy() error {
 	}
 
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
-	return npc.doDeploy(target, npc.rtDetails)
+	return npc.doDeploy(target, npc.serverDetails)
 }
 
 func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ArtifactoryDetails) error {
@@ -203,12 +203,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.Artifac
 	up := services.UploadParams{}
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
 	if npc.collectBuildInfo {
-		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
-		props, err := utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber)
+		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
 		if err != nil {
 			return err
 		}
-		up.ArtifactoryCommonParams.Props = props
 	}
 	var totalFailed int
 	if npc.collectBuildInfo {
@@ -246,7 +245,7 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 		partial.ModuleId = npc.buildConfiguration.Module
 		partial.ModuleType = buildinfo.Npm
 	}
-	return utils.SavePartialBuildInfo(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, populateFunc)
+	return utils.SavePartialBuildInfo(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project, populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {

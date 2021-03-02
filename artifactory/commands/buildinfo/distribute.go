@@ -7,7 +7,7 @@ import (
 )
 
 type BuildDistributeCommnad struct {
-	rtDetails *config.ArtifactoryDetails
+	serverDetails *config.ServerDetails
 	services.BuildDistributionParams
 	dryRun bool
 }
@@ -16,8 +16,8 @@ func NewBuildDistributeCommnad() *BuildDistributeCommnad {
 	return &BuildDistributeCommnad{}
 }
 
-func (bdc *BuildDistributeCommnad) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildDistributeCommnad {
-	bdc.rtDetails = rtDetails
+func (bdc *BuildDistributeCommnad) SetServerDetails(serverDetails *config.ServerDetails) *BuildDistributeCommnad {
+	bdc.serverDetails = serverDetails
 	return bdc
 }
 
@@ -32,15 +32,15 @@ func (bdc *BuildDistributeCommnad) SetBuildDistributionParams(buildDistributePar
 }
 
 func (bdc *BuildDistributeCommnad) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bdc.rtDetails, bdc.dryRun)
+	servicesManager, err := utils.CreateServiceManager(bdc.serverDetails, bdc.dryRun)
 	if err != nil {
 		return err
 	}
 	return servicesManager.DistributeBuild(bdc.BuildDistributionParams)
 }
 
-func (bdc *BuildDistributeCommnad) RtDetails() (*config.ArtifactoryDetails, error) {
-	return bdc.rtDetails, nil
+func (bdc *BuildDistributeCommnad) ServerDetails() (*config.ServerDetails, error) {
+	return bdc.serverDetails, nil
 }
 
 func (bdc *BuildDistributeCommnad) CommandName() string {

@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"encoding/json"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -13,15 +14,15 @@ import (
 type BuildScanCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	failBuild          bool
-	rtDetails          *config.ArtifactoryDetails
+	serverDetails      *config.ServerDetails
 }
 
 func NewBuildScanCommand() *BuildScanCommand {
 	return &BuildScanCommand{}
 }
 
-func (bsc *BuildScanCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *BuildScanCommand {
-	bsc.rtDetails = rtDetails
+func (bsc *BuildScanCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildScanCommand {
+	bsc.serverDetails = serverDetails
 	return bsc
 }
 
@@ -39,18 +40,18 @@ func (bsc *BuildScanCommand) CommandName() string {
 	return "rt_build_scan"
 }
 
-func (bsc *BuildScanCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return bsc.rtDetails, nil
+func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
+	return bsc.serverDetails, nil
 }
 
 func (bsc *BuildScanCommand) Run() error {
 	log.Info("Triggered Xray build scan... The scan may take a few minutes.")
-	servicesManager, err := utils.CreateServiceManager(bsc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(bsc.serverDetails, false)
 	if err != nil {
 		return err
 	}
 
-	xrayScanParams := getXrayScanParams(bsc.buildConfiguration.BuildName, bsc.buildConfiguration.BuildNumber)
+	xrayScanParams := getXrayScanParams(*bsc.buildConfiguration)
 	result, err := servicesManager.XrayScanBuild(xrayScanParams)
 	if err != nil {
 		return err
@@ -88,10 +89,11 @@ type scanSummary struct {
 	Url         string `json:"more_details_url,omitempty"`
 }
 
-func getXrayScanParams(buildName, buildNumber string) services.XrayScanParams {
+func getXrayScanParams(buildConfiguration utils.BuildConfiguration) services.XrayScanParams {
 	xrayScanParams := services.NewXrayScanParams()
-	xrayScanParams.BuildName = buildName
-	xrayScanParams.BuildNumber = buildNumber
+	xrayScanParams.BuildName = buildConfiguration.BuildName
+	xrayScanParams.BuildNumber = buildConfiguration.BuildNumber
+	xrayScanParams.ProjectKey = buildConfiguration.Project
 
 	return xrayScanParams
 }

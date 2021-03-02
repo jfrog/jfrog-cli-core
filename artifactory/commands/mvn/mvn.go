@@ -3,13 +3,6 @@ package mvn
 import (
 	"errors"
 	"fmt"
-	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,6 +10,14 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/spf13/viper"
 )
 
 const mavenExtractorDependencyVersion = "2.20.0"
@@ -28,7 +29,7 @@ type MvnCommand struct {
 	configPath    string
 	insecureTls   bool
 	configuration *utils.BuildConfiguration
-	rtDetails     *config.ArtifactoryDetails
+	serverDetails *config.ServerDetails
 	threads       int
 }
 
@@ -36,8 +37,8 @@ func NewMvnCommand() *MvnCommand {
 	return &MvnCommand{}
 }
 
-func (mc *MvnCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *MvnCommand {
-	mc.rtDetails = rtDetails
+func (mc *MvnCommand) SetServerDetails(serverDetails *config.ServerDetails) *MvnCommand {
+	mc.serverDetails = serverDetails
 	return mc
 }
 
@@ -88,18 +89,18 @@ func (mc *MvnCommand) Run() error {
 	return gofrogcmd.RunCmd(mvnRunConfig)
 }
 
-// Returns the ArtfiactoryDetails. The information returns from the config file provided.
-func (mc *MvnCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	// Get the rtDetails from the config file.
+// Returns the ServerDetails. The information returns from the config file provided.
+func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
+	// Get the serverDetails from the config file.
 	var err error
-	if mc.rtDetails == nil {
+	if mc.serverDetails == nil {
 		vConfig, err := utils.ReadConfigFile(mc.configPath, utils.YAML)
 		if err != nil {
 			return nil, err
 		}
-		mc.rtDetails, err = utils.GetRtDetails(vConfig)
+		mc.serverDetails, err = utils.GetServerDetails(vConfig)
 	}
-	return mc.rtDetails, err
+	return mc.serverDetails, err
 }
 
 func (mc *MvnCommand) CommandName() string {
@@ -185,7 +186,8 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 	if len(mc.configuration.BuildName) > 0 && len(mc.configuration.BuildNumber) > 0 {
 		vConfig.Set(utils.BUILD_NAME, mc.configuration.BuildName)
 		vConfig.Set(utils.BUILD_NUMBER, mc.configuration.BuildNumber)
-		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber)
+		vConfig.Set(utils.BUILD_PROJECT, mc.configuration.Project)
+		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project)
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +202,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		setEmptyDeployer(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

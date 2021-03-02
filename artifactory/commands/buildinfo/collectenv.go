@@ -1,12 +1,13 @@
 package buildinfo
 
 import (
+	"os"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
 )
 
 type BuildCollectEnvCommand struct {
@@ -24,14 +25,14 @@ func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *ut
 
 func (bcec *BuildCollectEnvCommand) Run() error {
 	log.Info("Collecting environment variables...")
-	err := utils.SaveBuildGeneralDetails(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber)
+	err := utils.SaveBuildGeneralDetails(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project)
 	if err != nil {
 		return err
 	}
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Env = getEnvVariables()
 	}
-	err = utils.SavePartialBuildInfo(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, populateFunc)
+	err = utils.SavePartialBuildInfo(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project, populateFunc)
 	if err != nil {
 		return err
 	}
@@ -40,8 +41,8 @@ func (bcec *BuildCollectEnvCommand) Run() error {
 }
 
 // Returns the default configured Artifactory server
-func (bcec *BuildCollectEnvCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return config.GetDefaultArtifactoryConf()
+func (bcec *BuildCollectEnvCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetDefaultServerConf()
 }
 
 func (bcec *BuildCollectEnvCommand) CommandName() string {

@@ -79,11 +79,11 @@ func (uc *UploadCommand) upload() error {
 	if err != nil {
 		return err
 	}
-	rtDetails, err := uc.RtDetails()
+	serverDetails, err := uc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateUploadServiceManager(rtDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progress)
+	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.DryRun(), uc.progress)
 	if err != nil {
 		return err
 	}
@@ -94,10 +94,10 @@ func (uc *UploadCommand) upload() error {
 	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
 		addVcsProps = true
-		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber); err != nil {
+		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {
 			return err
 		}
-		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber)
+		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project)
 		if err != nil {
 			return err
 		}
@@ -110,6 +110,7 @@ func (uc *UploadCommand) upload() error {
 		file := uc.Spec().Get(i)
 		file.TargetProps = clientUtils.AddProps(file.TargetProps, file.Props)
 		file.TargetProps = clientUtils.AddProps(file.TargetProps, syncDeletesProp)
+		file.Props += syncDeletesProp
 		uploadParams, err := getUploadParams(file, uc.uploadConfiguration, buildProps, addVcsProps)
 		if err != nil {
 			errorOccurred = true
@@ -177,7 +178,7 @@ func (uc *UploadCommand) upload() error {
 			partial.ModuleId = uc.buildConfiguration.Module
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, populateFunc)
+		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project, populateFunc)
 
 	}
 	return err
@@ -215,6 +216,11 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 		return
 	}
 
+	uploadParams.Ant, err = f.IsAnt(false)
+	if err != nil {
+		return
+	}
+
 	uploadParams.IncludeDirs, err = f.IsIncludeDirs(false)
 	if err != nil {
 		return
@@ -239,7 +245,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 }
 
 func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) error {
-	servicesManager, err := utils.CreateServiceManager(uc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(uc.serverDetails, false)
 	if err != nil {
 		return err
 	}

@@ -402,7 +402,7 @@ func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType)
 }
 
 func getServersIdAndDefault() ([]string, string, error) {
-	allConfigs, err := config.GetAllArtifactoryConfigs()
+	allConfigs, err := config.GetAllServersConfigs()
 	if err != nil {
 		return nil, "", err
 	}
@@ -418,7 +418,7 @@ func getServersIdAndDefault() ([]string, string, error) {
 }
 
 func getRepositories(serverId string, repoTypes ...utils.RepoType) ([]string, error) {
-	artDetails, err := config.GetArtifactorySpecificConfig(serverId, false, true)
+	artDetails, err := config.GetSpecificConfig(serverId, false, true)
 	if err != nil {
 		return nil, err
 	}

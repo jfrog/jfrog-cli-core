@@ -14,9 +14,9 @@ import (
 const DefaultBuildRepositoriesValue = "artifactory-build-info"
 
 type PermissionTargetCommand struct {
-	rtDetails    *config.ArtifactoryDetails
-	templatePath string
-	vars         string
+	serverDetails *config.ServerDetails
+	templatePath  string
+	vars          string
 }
 
 func (ptc *PermissionTargetCommand) Vars() string {
@@ -62,7 +62,7 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(ptc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(ptc.serverDetails, false)
 	if err != nil {
 		return err
 	}

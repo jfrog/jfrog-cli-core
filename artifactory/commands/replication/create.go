@@ -15,9 +15,9 @@ import (
 )
 
 type ReplicationCreateCommand struct {
-	rtDetails    *config.ArtifactoryDetails
-	templatePath string
-	vars         string
+	serverDetails *config.ServerDetails
+	templatePath  string
+	vars          string
 }
 
 func NewReplicationCreateCommand() *ReplicationCreateCommand {
@@ -34,13 +34,13 @@ func (rcc *ReplicationCreateCommand) SetVars(vars string) *ReplicationCreateComm
 	return rcc
 }
 
-func (rcc *ReplicationCreateCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *ReplicationCreateCommand {
-	rcc.rtDetails = rtDetails
+func (rcc *ReplicationCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReplicationCreateCommand {
+	rcc.serverDetails = serverDetails
 	return rcc
 }
 
-func (rcc *ReplicationCreateCommand) RtDetails() (*config.ArtifactoryDetails, error) {
-	return rcc.rtDetails, nil
+func (rcc *ReplicationCreateCommand) ServerDetails() (*config.ServerDetails, error) {
+	return rcc.serverDetails, nil
 }
 
 func (rcc *ReplicationCreateCommand) CommandName() string {
@@ -87,7 +87,7 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(rcc.rtDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rcc.serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -114,11 +114,11 @@ func fillMissingDefaultValue(replicationConfigMap map[string]interface{}) {
 }
 
 func updateArtifactoryInfo(param *services.CreateReplicationParams, serverId, targetRepo string) error {
-	singleConfig, err := config.GetArtifactorySpecificConfig(serverId, true, false)
+	singleConfig, err := config.GetSpecificConfig(serverId, true, false)
 	if err != nil {
 		return err
 	}
-	param.Url, param.Password, param.Username = strings.TrimSuffix(singleConfig.GetUrl(), "/")+"/"+targetRepo, singleConfig.GetPassword(), singleConfig.GetUser()
+	param.Url, param.Password, param.Username = strings.TrimSuffix(singleConfig.GetArtifactoryUrl(), "/")+"/"+targetRepo, singleConfig.GetPassword(), singleConfig.GetUser()
 	return nil
 }
 

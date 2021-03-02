@@ -22,6 +22,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
 )
 
 func init() {
@@ -31,20 +32,12 @@ func init() {
 // This is the default server id. It is used when adding a server config without providing a server ID
 const DefaultServerId = "Default-Server"
 
-func IsArtifactoryConfExists() (bool, error) {
+func IsServerConfExists() (bool, error) {
 	conf, err := readConf()
 	if err != nil {
 		return false, err
 	}
-	return conf.Artifactory != nil && len(conf.Artifactory) > 0, nil
-}
-
-func IsMissionControlConfExists() (bool, error) {
-	conf, err := readConf()
-	if err != nil {
-		return false, err
-	}
-	return conf.MissionControl != nil && *conf.MissionControl != MissionControlDetails{}, nil
+	return conf.Servers != nil && len(conf.Servers) > 0, nil
 }
 
 func IsBintrayConfExists() (bool, error) {
@@ -58,17 +51,18 @@ func IsBintrayConfExists() (bool, error) {
 // Returns the configured server or error if the server id was not found.
 // If defaultOrEmpty: return empty details if no configurations found, or default conf for empty serverId.
 // Exclude refreshable tokens when working with external tools (build tools, curl, etc) or when sending requests not via ArtifactoryHttpClient.
-func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableTokens bool) (*ArtifactoryDetails, error) {
-	configs, err := GetAllArtifactoryConfigs()
+func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableTokens bool) (*ServerDetails, error) {
+	configs, err := GetAllServersConfigs()
 	if err != nil {
 		return nil, err
 	}
+
 	if defaultOrEmpty {
 		if len(configs) == 0 {
-			return new(ArtifactoryDetails), nil
+			return new(ServerDetails), nil
 		}
 		if len(serverId) == 0 {
-			details, err := GetDefaultConfiguredArtifactoryConf(configs)
+			details, err := GetDefaultConfiguredConf(configs)
 			if excludeRefreshableTokens {
 				excludeRefreshableTokensFromDetails(details)
 			}
@@ -76,7 +70,7 @@ func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeR
 		}
 	}
 
-	details, err := getArtifactoryConfByServerId(serverId, configs)
+	details, err := getServerConfByServerId(serverId, configs)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +81,7 @@ func GetArtifactorySpecificConfig(serverId string, defaultOrEmpty bool, excludeR
 }
 
 // Disables refreshable tokens if set in details.
-func excludeRefreshableTokensFromDetails(details *ArtifactoryDetails) {
+func excludeRefreshableTokensFromDetails(details *ServerDetails) {
 	if details.AccessToken != "" && details.RefreshToken != "" {
 		details.AccessToken = ""
 		details.RefreshToken = ""
@@ -97,9 +91,9 @@ func excludeRefreshableTokensFromDetails(details *ArtifactoryDetails) {
 
 // Returns the default server configuration or error if not found.
 // Caller should perform the check error if required.
-func GetDefaultConfiguredArtifactoryConf(configs []*ArtifactoryDetails) (*ArtifactoryDetails, error) {
+func GetDefaultConfiguredConf(configs []*ServerDetails) (*ServerDetails, error) {
 	if len(configs) == 0 {
-		details := new(ArtifactoryDetails)
+		details := new(ServerDetails)
 		details.IsDefault = true
 		return details, nil
 	}
@@ -112,8 +106,8 @@ func GetDefaultConfiguredArtifactoryConf(configs []*ArtifactoryDetails) (*Artifa
 }
 
 // Returns default artifactory conf. Returns nil if default server doesn't exists.
-func GetDefaultArtifactoryConf() (*ArtifactoryDetails, error) {
-	configurations, err := GetAllArtifactoryConfigs()
+func GetDefaultServerConf() (*ServerDetails, error) {
+	configurations, err := GetAllServersConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +117,11 @@ func GetDefaultArtifactoryConf() (*ArtifactoryDetails, error) {
 		return nil, err
 	}
 
-	return GetDefaultConfiguredArtifactoryConf(configurations)
+	return GetDefaultConfiguredConf(configurations)
 }
 
 // Returns the configured server or error if the server id not found
-func getArtifactoryConfByServerId(serverId string, configs []*ArtifactoryDetails) (*ArtifactoryDetails, error) {
+func getServerConfByServerId(serverId string, configs []*ServerDetails) (*ServerDetails, error) {
 	for _, conf := range configs {
 		if conf.ServerId == serverId {
 			return conf, nil
@@ -136,7 +130,7 @@ func getArtifactoryConfByServerId(serverId string, configs []*ArtifactoryDetails
 	return nil, errorutils.CheckError(errors.New(fmt.Sprintf("Server ID '%s' does not exist.", serverId)))
 }
 
-func GetAndRemoveConfiguration(serverName string, configs []*ArtifactoryDetails) (*ArtifactoryDetails, []*ArtifactoryDetails) {
+func GetAndRemoveConfiguration(serverName string, configs []*ServerDetails) (*ServerDetails, []*ServerDetails) {
 	for i, conf := range configs {
 		if conf.ServerId == serverName {
 			configs = append(configs[:i], configs[i+1:]...)
@@ -146,26 +140,14 @@ func GetAndRemoveConfiguration(serverName string, configs []*ArtifactoryDetails)
 	return nil, configs
 }
 
-func GetAllArtifactoryConfigs() ([]*ArtifactoryDetails, error) {
+func GetAllServersConfigs() ([]*ServerDetails, error) {
 	conf, err := readConf()
 	if err != nil {
 		return nil, err
 	}
-	details := conf.Artifactory
+	details := conf.Servers
 	if details == nil {
-		return make([]*ArtifactoryDetails, 0), nil
-	}
-	return details, nil
-}
-
-func ReadMissionControlConf() (*MissionControlDetails, error) {
-	conf, err := readConf()
-	if err != nil {
-		return nil, err
-	}
-	details := conf.MissionControl
-	if details == nil {
-		return new(MissionControlDetails), nil
+		return make([]*ServerDetails, 0), nil
 	}
 	return details, nil
 }
@@ -182,21 +164,12 @@ func ReadBintrayConf() (*BintrayDetails, error) {
 	return details, nil
 }
 
-func SaveArtifactoryConf(details []*ArtifactoryDetails) error {
+func SaveServersConf(details []*ServerDetails) error {
 	conf, err := readConf()
 	if err != nil {
 		return err
 	}
-	conf.Artifactory = details
-	return saveConfig(conf)
-}
-
-func SaveMissionControlConf(details *MissionControlDetails) error {
-	conf, err := readConf()
-	if err != nil {
-		return err
-	}
-	conf.MissionControl = details
+	conf.Servers = details
 	return saveConfig(conf)
 }
 
@@ -209,7 +182,7 @@ func SaveBintrayConf(details *BintrayDetails) error {
 	return saveConfig(config)
 }
 
-func saveConfig(config *ConfigV4) error {
+func saveConfig(config *ConfigV5) error {
 	config.Version = strconv.Itoa(coreutils.GetConfigVersion())
 	err := config.encrypt()
 	if err != nil {
@@ -233,8 +206,8 @@ func saveConfig(config *ConfigV4) error {
 	return nil
 }
 
-func readConf() (*ConfigV4, error) {
-	config := new(ConfigV4)
+func readConf() (*ConfigV5, error) {
+	config := new(ConfigV5)
 	content, err := getConfigFile()
 	if err != nil {
 		return nil, err
@@ -290,7 +263,7 @@ func getConfigFile() (content []byte, err error) {
 	return content, nil
 }
 
-func (config *ConfigV4) getContent() ([]byte, error) {
+func (config *ConfigV5) getContent() ([]byte, error) {
 	b, err := json.Marshal(&config)
 	if err != nil {
 		return []byte{}, errorutils.CheckError(err)
@@ -350,21 +323,9 @@ func convertCertsDir() error {
 
 // The configuration schema can change between versions, therefore we need to convert old versions to the new schema.
 func convertIfNeeded(content []byte) ([]byte, error) {
-	version, exists, err := getKeyFromConfig(content, "version")
+	version, err := getVersion(content)
 	if err != nil {
 		return nil, err
-	}
-
-	// If lower case "version" exists, version is 2 or higher
-	if !exists {
-		version, exists, err = getKeyFromConfig(content, "Version")
-		if err != nil {
-			return nil, err
-		}
-		// Config version 0 is before introducing the "Version" field
-		if !exists {
-			version = "0"
-		}
 	}
 
 	// Switch contains FALLTHROUGH to convert from a certain version to the latest.
@@ -392,10 +353,13 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		fallthrough
+	case "3", "4":
+		content, err = convertConfigV4toV5(content)
 	}
 
 	// Save config after all conversions (also updates version).
-	result := new(ConfigV4)
+	result := new(ConfigV5)
 	err = json.Unmarshal(content, &result)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -430,16 +394,15 @@ func createHomeDirBackup() error {
 	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
-func getKeyFromConfig(content []byte, key string) (value string, exists bool, err error) {
-	value, err = jsonparser.GetString(content, key)
-	if err != nil {
-		if err.Error() == "Key path not found" {
-			return "", false, nil
-		} else {
-			return "", false, errorutils.CheckError(err)
-		}
+// Version key doesn't exist in version 0
+// Version key is "Version" in version 1
+// Version key is "version" in version 2 and above
+func getVersion(content []byte) (value string, err error) {
+	value, err = jsonparser.GetString(bytes.ToLower(content), "version")
+	if err != nil && err.Error() == "Key path not found" {
+		return "0", nil
 	}
-	return value, true, nil
+	return value, errorutils.CheckError(err)
 }
 
 func convertConfigV0toV1(content []byte) ([]byte, error) {
@@ -465,6 +428,18 @@ func convertConfigV2toV3(content []byte) ([]byte, error) {
 		rtConfig.User = strings.ToLower(rtConfig.User)
 	}
 	content, err = json.Marshal(&config)
+	return content, errorutils.CheckError(err)
+}
+
+func convertConfigV4toV5(content []byte) ([]byte, error) {
+	config := new(ConfigV4)
+	err := json.Unmarshal(content, &config)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+
+	result := config.Convert()
+	content, err = json.Marshal(&result)
 	return content, errorutils.CheckError(err)
 }
 
@@ -506,18 +481,38 @@ func getLegacyConfigFilePath(version int) (string, error) {
 
 }
 
+type ConfigV5 struct {
+	Servers []*ServerDetails `json:"servers"`
+	Bintray *BintrayDetails  `json:"bintray,omitempty"`
+	Version string           `json:"version,omitempty"`
+	Enc     bool             `json:"enc,omitempty"`
+}
+
 // This struct is suitable for versions 1, 2, 3 and 4.
 type ConfigV4 struct {
-	Artifactory    []*ArtifactoryDetails  `json:"artifactory"`
+	Artifactory    []*ServerDetails       `json:"artifactory"`
 	Bintray        *BintrayDetails        `json:"bintray,omitempty"`
 	MissionControl *MissionControlDetails `json:"missionControl,omitempty"`
 	Version        string                 `json:"version,omitempty"`
 	Enc            bool                   `json:"enc,omitempty"`
 }
 
+func (o *ConfigV4) Convert() *ConfigV5 {
+	config := new(ConfigV5)
+	config.Servers = o.Artifactory
+	for _, server := range config.Servers {
+		server.ArtifactoryUrl = server.Url
+		server.Url = ""
+		if server.IsDefault && o.MissionControl != nil {
+			server.MissionControlUrl = o.MissionControl.Url
+		}
+	}
+	return config
+}
+
 // This struct was created before the version property was added to the config.
 type ConfigV0 struct {
-	Artifactory    *ArtifactoryDetails    `json:"artifactory,omitempty"`
+	Artifactory    *ServerDetails         `json:"artifactory,omitempty"`
 	Bintray        *BintrayDetails        `json:"bintray,omitempty"`
 	MissionControl *MissionControlDetails `json:"MissionControl,omitempty"`
 }
@@ -529,15 +524,19 @@ func (o *ConfigV0) Convert() *ConfigV4 {
 	if o.Artifactory != nil {
 		o.Artifactory.IsDefault = true
 		o.Artifactory.ServerId = DefaultServerId
-		config.Artifactory = []*ArtifactoryDetails{o.Artifactory}
+		config.Artifactory = []*ServerDetails{o.Artifactory}
 	}
 	return config
 }
 
-type ArtifactoryDetails struct {
+type ServerDetails struct {
 	Url                  string `json:"url,omitempty"`
 	SshUrl               string `json:"-"`
+	ArtifactoryUrl       string `json:"artifactoryUrl,omitempty"`
 	DistributionUrl      string `json:"distributionUrl,omitempty"`
+	XrayUrl              string `json:"xrayUrl,omitempty"`
+	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
+	PipelinesUrl         string `json:"pipelines,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -562,108 +561,131 @@ type BintrayDetails struct {
 	DefPackageLicense string `json:"defPackageLicense,omitempty"`
 }
 
+// Deprecated
 type MissionControlDetails struct {
 	Url         string `json:"url,omitempty"`
 	AccessToken string `json:"accessToken,omitempty"`
 }
 
-func (artifactoryDetails *ArtifactoryDetails) IsEmpty() bool {
-	return len(artifactoryDetails.Url) == 0
+func (serverDetails *ServerDetails) IsEmpty() bool {
+	return len(serverDetails.ServerId) == 0
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetApiKey(apiKey string) {
-	artifactoryDetails.ApiKey = apiKey
+func (serverDetails *ServerDetails) SetApiKey(apiKey string) {
+	serverDetails.ApiKey = apiKey
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetUser(username string) {
-	artifactoryDetails.User = username
+func (serverDetails *ServerDetails) SetUser(username string) {
+	serverDetails.User = username
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetPassword(password string) {
-	artifactoryDetails.Password = password
+func (serverDetails *ServerDetails) SetPassword(password string) {
+	serverDetails.Password = password
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetAccessToken(accessToken string) {
-	artifactoryDetails.AccessToken = accessToken
+func (serverDetails *ServerDetails) SetAccessToken(accessToken string) {
+	serverDetails.AccessToken = accessToken
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetRefreshToken(refreshToken string) {
-	artifactoryDetails.RefreshToken = refreshToken
+func (serverDetails *ServerDetails) SetRefreshToken(refreshToken string) {
+	serverDetails.RefreshToken = refreshToken
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetClientCertPath(certificatePath string) {
-	artifactoryDetails.ClientCertPath = certificatePath
+func (serverDetails *ServerDetails) SetClientCertPath(certificatePath string) {
+	serverDetails.ClientCertPath = certificatePath
 }
 
-func (artifactoryDetails *ArtifactoryDetails) SetClientCertKeyPath(certificatePath string) {
-	artifactoryDetails.ClientCertKeyPath = certificatePath
+func (serverDetails *ServerDetails) SetClientCertKeyPath(certificatePath string) {
+	serverDetails.ClientCertKeyPath = certificatePath
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetApiKey() string {
-	return artifactoryDetails.ApiKey
+func (serverDetails *ServerDetails) GetApiKey() string {
+	return serverDetails.ApiKey
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetUrl() string {
-	return artifactoryDetails.Url
+func (serverDetails *ServerDetails) GetUrl() string {
+	return serverDetails.Url
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetDistributionUrl() string {
-	return artifactoryDetails.DistributionUrl
+func (serverDetails *ServerDetails) GetArtifactoryUrl() string {
+	return serverDetails.ArtifactoryUrl
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetUser() string {
-	return artifactoryDetails.User
+func (serverDetails *ServerDetails) GetDistributionUrl() string {
+	return serverDetails.DistributionUrl
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetPassword() string {
-	return artifactoryDetails.Password
+func (serverDetails *ServerDetails) GetXrayUrl() string {
+	return serverDetails.XrayUrl
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetAccessToken() string {
-	return artifactoryDetails.AccessToken
+func (serverDetails *ServerDetails) GetMissionControlUrl() string {
+	return serverDetails.MissionControlUrl
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetRefreshToken() string {
-	return artifactoryDetails.RefreshToken
+func (serverDetails *ServerDetails) GetPipelinesUrl() string {
+	return serverDetails.PipelinesUrl
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetClientCertPath() string {
-	return artifactoryDetails.ClientCertPath
+func (serverDetails *ServerDetails) GetUser() string {
+	return serverDetails.User
 }
 
-func (artifactoryDetails *ArtifactoryDetails) GetClientCertKeyPath() string {
-	return artifactoryDetails.ClientCertKeyPath
+func (serverDetails *ServerDetails) GetPassword() string {
+	return serverDetails.Password
 }
 
-func (artifactoryDetails *ArtifactoryDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {
+func (serverDetails *ServerDetails) GetAccessToken() string {
+	return serverDetails.AccessToken
+}
+
+func (serverDetails *ServerDetails) GetRefreshToken() string {
+	return serverDetails.RefreshToken
+}
+
+func (serverDetails *ServerDetails) GetClientCertPath() string {
+	return serverDetails.ClientCertPath
+}
+
+func (serverDetails *ServerDetails) GetClientCertKeyPath() string {
+	return serverDetails.ClientCertKeyPath
+}
+
+func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := artifactoryAuth.NewArtifactoryDetails()
-	artAuth.SetUrl(artifactoryDetails.Url)
-	return artifactoryDetails.createArtAuthConfig(artAuth)
+	artAuth.SetUrl(serverDetails.ArtifactoryUrl)
+	return serverDetails.createAuthConfig(artAuth)
 }
 
-func (artifactoryDetails *ArtifactoryDetails) CreateDistAuthConfig() (auth.ServiceDetails, error) {
+func (serverDetails *ServerDetails) CreateDistAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := distributionAuth.NewDistributionDetails()
-	artAuth.SetUrl(artifactoryDetails.DistributionUrl)
-	return artifactoryDetails.createArtAuthConfig(artAuth)
+	artAuth.SetUrl(serverDetails.DistributionUrl)
+	return serverDetails.createAuthConfig(artAuth)
 }
 
-func (artifactoryDetails *ArtifactoryDetails) createArtAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {
-	details.SetSshUrl(artifactoryDetails.SshUrl)
-	details.SetAccessToken(artifactoryDetails.AccessToken)
+func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails, error) {
+	artAuth := xrayAuth.NewXrayDetails()
+	artAuth.SetUrl(serverDetails.XrayUrl)
+	return serverDetails.createAuthConfig(artAuth)
+}
+
+func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {
+	details.SetSshUrl(serverDetails.SshUrl)
+	details.SetAccessToken(serverDetails.AccessToken)
 	// If refresh token is not empty, set a refresh handler and skip other credentials.
-	if artifactoryDetails.RefreshToken != "" {
+	if serverDetails.RefreshToken != "" {
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
-		tokenRefreshServerId = artifactoryDetails.ServerId
+		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestInterceptor(AccessTokenRefreshPreRequestInterceptor)
 	} else {
-		details.SetApiKey(artifactoryDetails.ApiKey)
-		details.SetUser(artifactoryDetails.User)
-		details.SetPassword(artifactoryDetails.Password)
+		details.SetApiKey(serverDetails.ApiKey)
+		details.SetUser(serverDetails.User)
+		details.SetPassword(serverDetails.Password)
 	}
-	details.SetClientCertPath(artifactoryDetails.ClientCertPath)
-	details.SetClientCertKeyPath(artifactoryDetails.ClientCertKeyPath)
-	details.SetSshKeyPath(artifactoryDetails.SshKeyPath)
-	details.SetSshPassphrase(artifactoryDetails.SshPassphrase)
+	details.SetClientCertPath(serverDetails.ClientCertPath)
+	details.SetClientCertKeyPath(serverDetails.ClientCertKeyPath)
+	details.SetSshKeyPath(serverDetails.SshKeyPath)
+	details.SetSshPassphrase(serverDetails.SshPassphrase)
 	return details, nil
 }
 

@@ -64,11 +64,11 @@ func (gpc *GoPublishCommand) Run() error {
 		return err
 	}
 
-	rtDetails, err := gpc.RtDetails()
+	serverDetails, err := gpc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(rtDetails, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}
@@ -84,9 +84,10 @@ func (gpc *GoPublishCommand) Run() error {
 
 	buildName := gpc.buildConfiguration.BuildName
 	buildNumber := gpc.buildConfiguration.BuildNumber
+	projectKey := gpc.buildConfiguration.Project
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber)
+		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
 		if err != nil {
 			return err
 		}
@@ -99,7 +100,7 @@ func (gpc *GoPublishCommand) Run() error {
 
 	// Publish the package to Artifactory
 	if gpc.publishPackage {
-		err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, serviceManager)
+		err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 		if err != nil {
 			return err
 		}
@@ -134,7 +135,7 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, goProject.BuildInfo(true, gpc.buildConfiguration.Module, gpc.RepositoryConfig.TargetRepo()))
+		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(true, gpc.buildConfiguration.Module, gpc.RepositoryConfig.TargetRepo()))
 	}
 
 	return err

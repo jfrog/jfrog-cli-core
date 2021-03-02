@@ -63,6 +63,7 @@ type File struct {
 	Recursive        string
 	Flat             string
 	Regexp           string
+	Ant              string
 	IncludeDirs      string
 	ArchiveEntries   string
 	ValidateSymlinks string
@@ -80,6 +81,10 @@ func (f File) IsExplode(defaultValue bool) (bool, error) {
 
 func (f File) IsRegexp(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Regexp, defaultValue)
+}
+
+func (f File) IsAnt(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.Ant, defaultValue)
 }
 
 func (f File) IsRecursive(defaultValue bool) (bool, error) {
@@ -153,6 +158,8 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isArchive := len(file.Archive) > 0
 		isValidArchive := file.Archive == "zip"
 		isSymlinks, _ := file.IsSymlinks(false)
+		isRegexp := file.Regexp == "true"
+		isAnt := file.Ant == "true"
 
 		if isTargetMandatory && !isTarget {
 			return errors.New("Spec must include target.")
@@ -204,6 +211,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if !isBuild && (isExcludeArtifacts || isIncludeDeps) {
 			return errors.New("Spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included.")
+		}
+		if isRegexp && isAnt {
+			return errors.New("Can not use the option of regexp and ant together.")
 		}
 		if isArchive && isSymlinks {
 			return errors.New("Symlinks cannot be stored in an archive.")

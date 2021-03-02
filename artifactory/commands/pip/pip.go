@@ -5,13 +5,13 @@ import (
 )
 
 type PipCommand struct {
-	rtDetails  *config.ArtifactoryDetails
+	rtDetails  *config.ServerDetails
 	args       []string
 	repository string
 }
 
-func (pc *PipCommand) SetRtDetails(rtDetails *config.ArtifactoryDetails) *PipCommand {
-	pc.rtDetails = rtDetails
+func (pc *PipCommand) SetServerDetails(serverDetails *config.ServerDetails) *PipCommand {
+	pc.rtDetails = serverDetails
 	return pc
 }
 
@@ -26,10 +26,10 @@ func (pc *PipCommand) SetArgs(arguments []string) *PipCommand {
 }
 
 type PipCommandInterface interface {
-	SetRtDetails(rtDetails *config.ArtifactoryDetails) *PipCommand
+	SetServerDetails(rtDetails *config.ServerDetails) *PipCommand
 	SetRepo(repo string) *PipCommand
 	SetArgs(arguments []string) *PipCommand
-	RtDetails() (*config.ArtifactoryDetails, error)
+	ServerDetails() (*config.ServerDetails, error)
 	CommandName() string
 	Run() error
 }

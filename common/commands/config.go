@@ -119,7 +119,7 @@ func (cc *ConfigCommand) Config() error {
 		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
 		coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
 		coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/")
+		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 		coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -237,7 +237,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 	}
 

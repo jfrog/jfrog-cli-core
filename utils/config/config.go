@@ -536,7 +536,7 @@ type ServerDetails struct {
 	DistributionUrl      string `json:"distributionUrl,omitempty"`
 	XrayUrl              string `json:"xrayUrl,omitempty"`
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
-	PipelinesUrl         string `json:"pipelines,omitempty"`
+	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`

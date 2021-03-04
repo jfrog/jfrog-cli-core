@@ -15,7 +15,6 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/lock"
@@ -316,8 +315,6 @@ func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	fmt.Println()
 	if len(byteToken) > 0 {
 		details.SetAccessToken(string(byteToken))
-		_, err := new(generic.PingCommand).SetServerDetails(details).Ping()
-		return err
 	}
 	return nil
 }

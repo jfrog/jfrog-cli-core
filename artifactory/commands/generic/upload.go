@@ -126,24 +126,24 @@ func (uc *UploadCommand) upload() error {
 	var successCount, failCount int
 	var artifactsDetailsReader *content.ContentReader = nil
 	if uc.DetailedSummary() || isCollectBuildInfo {
-		var commandSummary *rtServicesUtils.CommandSummary
-		commandSummary, err = servicesManager.UploadFilesWithCommandSummary(uploadParamsArray...)
+		var summary *rtServicesUtils.OperationSummary
+		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
 		}
-		if commandSummary != nil {
-			artifactsDetailsReader = commandSummary.ArtifactsDetailsReader
+		if summary != nil {
+			artifactsDetailsReader = summary.ArtifactsDetailsReader
 			defer artifactsDetailsReader.Close()
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if uc.DetailedSummary() {
-				uc.result.SetReader(commandSummary.TransferDetailsReader)
+				uc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				commandSummary.TransferDetailsReader.Close()
+				summary.TransferDetailsReader.Close()
 			}
-			successCount = commandSummary.TotalSucceeded
-			failCount = commandSummary.TotalFailed
+			successCount = summary.TotalSucceeded
+			failCount = summary.TotalFailed
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
@@ -205,6 +205,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	uploadParams.Retries = configuration.Retries
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = bulidProps
+	uploadParams.Archive = f.Archive
 
 	uploadParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {

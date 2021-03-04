@@ -91,23 +91,23 @@ func (dc *DownloadCommand) download() error {
 	// In case of build-info collection/sync-deletes operation/a detailed summary is required, we use the download service which provides results file reader,
 	// otherwise we use the download service which provides only general counters.
 	var totalDownloaded, totalFailed int
-	var commandSummary *clientutils.CommandSummary
+	var summary *clientutils.OperationSummary
 	if isCollectBuildInfo || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
-		commandSummary, err = servicesManager.DownloadFilesWithCommandSummary(downloadParamsArray...)
+		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
 		}
-		defer commandSummary.ArtifactsDetailsReader.Close()
+		defer summary.ArtifactsDetailsReader.Close()
 		// If 'detailed summary' was requested, then the reader should not be closed here.
 		// It will be closed after it will be used to generate the summary.
 		if dc.DetailedSummary() {
-			dc.result.SetReader(commandSummary.TransferDetailsReader)
+			dc.result.SetReader(summary.TransferDetailsReader)
 		} else {
-			defer commandSummary.TransferDetailsReader.Close()
+			defer summary.TransferDetailsReader.Close()
 		}
-		totalDownloaded = commandSummary.TotalSucceeded
-		totalFailed = commandSummary.TotalFailed
+		totalDownloaded = summary.TotalSucceeded
+		totalFailed = summary.TotalFailed
 	} else {
 		totalDownloaded, totalFailed, err = servicesManager.DownloadFiles(downloadParamsArray...)
 		if err != nil {
@@ -132,7 +132,7 @@ func (dc *DownloadCommand) download() error {
 		}
 		if _, err = os.Stat(absSyncDeletesPath); err == nil {
 			// Unmarshal the local paths of the downloaded files from the results file reader
-			tmpRoot, err := createDownloadResultEmptyTmpReflection(commandSummary.TransferDetailsReader)
+			tmpRoot, err := createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
 			defer fileutils.RemoveTempDir(tmpRoot)
 			if err != nil {
 				return err
@@ -150,7 +150,7 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if isCollectBuildInfo {
-		buildDependencies := clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(commandSummary.ArtifactsDetailsReader)
+		buildDependencies := clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
 			partial.ModuleId = dc.buildConfiguration.Module

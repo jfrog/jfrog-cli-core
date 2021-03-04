@@ -211,13 +211,13 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	}
 	var totalFailed int
 	if npc.collectBuildInfo {
-		commandSummary, err := servicesManager.UploadFilesWithCommandSummary(up)
+		summary, err := servicesManager.UploadFilesWithSummary(up)
 		if err != nil {
 			return err
 		}
-		commandSummary.TransferDetailsReader.Close()
-		npc.artifactsDetailsReader = commandSummary.ArtifactsDetailsReader
-		totalFailed = commandSummary.TotalFailed
+		summary.TransferDetailsReader.Close()
+		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+		totalFailed = summary.TotalFailed
 	} else {
 		_, totalFailed, err = servicesManager.UploadFiles(up)
 		if err != nil {

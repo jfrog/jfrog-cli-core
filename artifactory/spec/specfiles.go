@@ -128,7 +128,6 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	params.Offset = f.Offset
 	params.Limit = f.Limit
 	params.ArchiveEntries = f.ArchiveEntries
-	params.Archive = f.Archive
 	return params
 }
 

@@ -221,7 +221,7 @@ func createDownloadResultEmptyTmpReflection(reader *content.ContentReader) (tmpR
 	}
 	for path := new(clientutils.FileTransferDetails); reader.NextRecord(path) == nil; path = new(clientutils.FileTransferDetails) {
 		var absDownloadPath string
-		absDownloadPath, err = filepath.Abs(path.LocalPath)
+		absDownloadPath, err = filepath.Abs(path.TargetPath)
 		if errorutils.CheckError(err) != nil {
 			return
 		}

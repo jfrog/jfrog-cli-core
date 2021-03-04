@@ -150,7 +150,11 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if isCollectBuildInfo {
-		buildDependencies := clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
+		var buildDependencies []buildinfo.Dependency
+		buildDependencies, err = clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
+		if err != nil {
+			return err
+		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
 			partial.ModuleId = dc.buildConfiguration.Module

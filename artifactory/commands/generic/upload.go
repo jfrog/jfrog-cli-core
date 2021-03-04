@@ -172,7 +172,11 @@ func (uc *UploadCommand) upload() error {
 
 	// Build info
 	if !uc.DryRun() && isCollectBuildInfo {
-		buildArtifacts := rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
+		var buildArtifacts []buildinfo.Artifact
+		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
+		if err != nil {
+			return err
+		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Artifacts = buildArtifacts
 			partial.ModuleId = uc.buildConfiguration.Module

@@ -104,7 +104,7 @@ func (config *BuildAddGitCommand) Run() error {
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
 			Branch:   gitManager.GetBranch(),
-			Commit:   gitManager.GetCommitMessage(),
+			Message:  gitManager.GetMessage(),
 		})
 
 		if config.configFilePath != "" {

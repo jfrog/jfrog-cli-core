@@ -42,14 +42,13 @@ func TestExtractGitUrlWithoutDotGit(t *testing.T) {
 func runTest(t *testing.T, originalDir string) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalDir, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
-	checkFailureAndClean(t, buildDir, dotGitPath)
+	checkFailureAndClean(t, buildDir, dotGitPath, originalDir)
 	err := runBuildAddGit(t, buildName, "1", baseDir, true)
 	if err != nil {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
-	checkVCSDetails(partials, t)
-	checkFailureAndClean(t, buildDir, dotGitPath)
+	checkFailureAndClean(t, buildDir, dotGitPath, originalDir)
 	checkVCSUrl(partials, t)
 	tests.RemovePath(buildDir, t)
 	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
@@ -61,7 +60,7 @@ func checkVCSDetails(partials buildinfo.Partials, t *testing.T) {
 			for _, vcs := range partial.VcsList {
 				assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", vcs.Revision)
 				assert.Equal(t, "master", vcs.Branch)
-				assert.Equal(t, "TEST-2 - Adding text to file1.txt\n", vcs.Commit)
+				assert.Equal(t, "TEST-2 - Adding text to file1.txt", vcs.Message)
 			}
 		} else {
 			t.Error("VCS cannot be nil")
@@ -90,14 +89,14 @@ func TestBuildAddGitSubmodules(t *testing.T) {
 func TestBuildAddGitVCSDetails(t *testing.T) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, withIssuesGit, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
-	checkFailureAndClean(t, buildDir, dotGitPath)
+	checkFailureAndClean(t, buildDir, dotGitPath, withIssuesGit)
 	err := runBuildAddGit(t, buildName, "1", baseDir, true)
 	if err != nil {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
 	checkVCSDetails(partials, t)
-	checkFailureAndClean(t, buildDir, dotGitPath)
+	checkFailureAndClean(t, buildDir, dotGitPath, withIssuesGit)
 	tests.RemovePath(buildDir, t)
 	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), withIssuesGit), t)
 }
@@ -111,15 +110,15 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
 	assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", curVcs.Revision)
 	assert.Equal(t, "submodule", curVcs.Branch)
-	assert.Equal(t, "TEST-2 - Adding text to file1.txt\n", curVcs.Commit)
+	assert.Equal(t, "TEST-2 - Adding text to file1.txt", curVcs.Message)
 }
 
 // Clean the environment if fails
-func checkFailureAndClean(t *testing.T, buildDir string, oldPath string) {
+func checkFailureAndClean(t *testing.T, buildDir, oldPath, originalDir string) {
 	if t.Failed() {
 		t.Log("Performing cleanup...")
 		tests.RemovePath(buildDir, t)
-		tests.RenamePath(oldPath, filepath.Join(filepath.Join("..", "testdata"), withGit), t)
+		tests.RenamePath(oldPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
 		t.FailNow()
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -69,13 +70,8 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 			reader.Close()
 		}
 	}()
-	writer, err := content.NewContentWriter("results", true, false)
-	if err != nil {
-		return
-	}
-	defer writer.Close()
 	for i := 0; i < len(spec.Files); i++ {
-		searchParams, err := getSearchParamsForProps(spec.Get(i))
+		searchParams, err := utils.GetSearchParams(spec.Get(i))
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -103,27 +99,5 @@ func GetPropsParams(reader *content.ContentReader, properties string) (propsPara
 	propsParams = services.NewPropsParams()
 	propsParams.Reader = reader
 	propsParams.Props = properties
-	return
-}
-
-func getSearchParamsForProps(f *spec.File) (searchParams services.SearchParams, err error) {
-	searchParams = services.NewSearchParams()
-	searchParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
-	searchParams.Recursive, err = f.IsRecursive(true)
-	if err != nil {
-		return
-	}
-	searchParams.ExcludeArtifacts, err = f.IsExcludeArtifacts(false)
-	if err != nil {
-		return
-	}
-	searchParams.IncludeDeps, err = f.IsIncludeDeps(false)
-	if err != nil {
-		return
-	}
-	searchParams.IncludeDirs, err = f.IsIncludeDirs(false)
-	if err != nil {
-		return
-	}
 	return
 }

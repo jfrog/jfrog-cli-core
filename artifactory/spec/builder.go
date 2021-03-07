@@ -30,6 +30,7 @@ type builder struct {
 	archiveEntries   string
 	validateSymlinks bool
 	symlinks         bool
+	archive          string
 }
 
 func NewBuilder() *builder {
@@ -121,6 +122,11 @@ func (b *builder) Bundle(bundle string) *builder {
 	return b
 }
 
+func (b *builder) Archive(archive string) *builder {
+	b.archive = archive
+	return b
+}
+
 func (b *builder) Recursive(recursive bool) *builder {
 	b.recursive = recursive
 	return b
@@ -176,6 +182,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Bundle:           b.bundle,
 				Explode:          b.explode,
 				ArchiveEntries:   b.archiveEntries,
+				Archive:          b.archive,
 				Recursive:        strconv.FormatBool(b.recursive),
 				Flat:             strconv.FormatBool(b.flat),
 				Regexp:           strconv.FormatBool(b.regexp),

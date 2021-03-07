@@ -29,6 +29,8 @@ type builder struct {
 	includeDirs      bool
 	archiveEntries   string
 	validateSymlinks bool
+	symlinks         bool
+	archive          string
 }
 
 func NewBuilder() *builder {
@@ -120,6 +122,11 @@ func (b *builder) Bundle(bundle string) *builder {
 	return b
 }
 
+func (b *builder) Archive(archive string) *builder {
+	b.archive = archive
+	return b
+}
+
 func (b *builder) Recursive(recursive bool) *builder {
 	b.recursive = recursive
 	return b
@@ -150,6 +157,11 @@ func (b *builder) ValidateSymlinks(validateSymlinks bool) *builder {
 	return b
 }
 
+func (b *builder) Symlinks(symlinks bool) *builder {
+	b.symlinks = symlinks
+	return b
+}
+
 func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
@@ -170,6 +182,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Bundle:           b.bundle,
 				Explode:          b.explode,
 				ArchiveEntries:   b.archiveEntries,
+				Archive:          b.archive,
 				Recursive:        strconv.FormatBool(b.recursive),
 				Flat:             strconv.FormatBool(b.flat),
 				Regexp:           strconv.FormatBool(b.regexp),
@@ -178,6 +191,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
 				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),
 				IncludeDeps:      strconv.FormatBool(b.includeDeps),
+				Symlinks:         strconv.FormatBool(b.symlinks),
 			},
 		},
 	}

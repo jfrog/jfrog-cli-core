@@ -83,7 +83,6 @@ func TestBuildAddGitVCSDetails(t *testing.T) {
 
 	for _, test := range bagTests {
 		t.Run(test.name, func(t *testing.T) {
-
 			baseDir, dotGitPath := tests.PrepareDotGitDir(t, test.originalDir, filepath.Join("..", "testdata"))
 			buildDir := getBuildDir(t)
 			checkFailureAndClean(t, buildDir, dotGitPath, test.originalDir)
@@ -96,7 +95,6 @@ func TestBuildAddGitVCSDetails(t *testing.T) {
 			checkFailureAndClean(t, buildDir, dotGitPath, test.originalDir)
 			tests.RemovePath(buildDir, t)
 			tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), test.originalDir), t)
-
 		})
 	}
 }

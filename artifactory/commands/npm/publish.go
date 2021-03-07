@@ -234,9 +234,9 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 
 func (npc *NpmPublishCommand) saveArtifactData() error {
 	log.Debug("Saving npm package artifact build info data.")
-	buildArtifacts, e := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
-	if e != nil {
-		return e
+	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
+	if err != nil {
+		return err
 	}
 	npc.artifactsDetailsReader.Close()
 

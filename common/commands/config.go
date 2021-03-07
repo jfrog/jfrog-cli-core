@@ -15,7 +15,6 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/lock"
@@ -119,7 +118,7 @@ func (cc *ConfigCommand) Config() error {
 		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
 		coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
 		coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/")
+		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 		coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -237,7 +236,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 	}
 
@@ -316,8 +315,6 @@ func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	fmt.Println()
 	if len(byteToken) > 0 {
 		details.SetAccessToken(string(byteToken))
-		_, err := new(generic.PingCommand).SetServerDetails(details).Ping()
-		return err
 	}
 	return nil
 }

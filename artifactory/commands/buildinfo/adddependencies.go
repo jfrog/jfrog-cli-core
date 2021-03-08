@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -110,13 +111,13 @@ func collectDependenciesChecksums(dependenciesPaths map[string]string) (map[stri
 
 func (badc *BuildAddDependenciesCommand) collectLocalDependencies() (success, fail int, err error) {
 	var dependenciesDetails map[string]*fileutils.FileDetails
-	dependenciesPaths, errorOccurred := badc.collectDependenciesBySpec()
+	dependenciesPaths, errorOccurred := badc.doCollectLocalDependencies()
 	dependenciesDetails, fail = collectDependenciesChecksums(dependenciesPaths)
 	if !badc.dryRun {
 		buildInfoDependencies := convertFileInfoToDependencies(dependenciesDetails)
-		err = badc.saveDependenciesToFileSystem(buildInfoDependencies)
+		err = badc.savePartialBuildInfo(buildInfoDependencies)
 		if err != nil {
-			// mark all as failures.
+			// Mark all as failures.
 			fail = len(dependenciesDetails)
 			return
 		}
@@ -133,18 +134,15 @@ func (badc *BuildAddDependenciesCommand) collectRemoteDependencies() (success, f
 	if err != nil {
 		return
 	}
-	reader, errorOccurred, err := searchItems(badc.dependenciesSpec, servicesManager)
+	reader, err := searchItems(badc.dependenciesSpec, servicesManager)
 	if err != nil {
 		return
 	}
-	success, fail, err = badc.collectDependenciesByReader(reader)
-	if errorOccurred && err == nil {
-		err = errorutils.CheckError(errors.New("Build Add Dependencies command finished with errors. Please review the logs."))
-	}
+	success, fail, err = badc.readRemoteDependencies(reader)
 	return
 }
 
-func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string]string, bool) {
+func (badc *BuildAddDependenciesCommand) doCollectLocalDependencies() (map[string]string, bool) {
 	errorOccurred := false
 	dependenciesPaths := make(map[string]string)
 	for _, specFile := range badc.dependenciesSpec.Files {
@@ -154,7 +152,7 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string
 			log.Error(err)
 			continue
 		}
-		paths, err := getDependenciesBySpecFileParams(params)
+		paths, err := getLocalDependencies(params)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -168,7 +166,7 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string
 	return dependenciesPaths, errorOccurred
 }
 
-func (badc *BuildAddDependenciesCommand) collectDependenciesByReader(reader *content.ContentReader) (success, fail int, err error) {
+func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.ContentReader) (success, fail int, err error) {
 	if badc.dryRun {
 		success, err = reader.Length()
 		return
@@ -176,13 +174,11 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesByReader(reader *con
 	count := 0
 	var buildInfoDependencies []buildinfo.Dependency
 	for resultItem := new(specutils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(specutils.ResultItem) {
-		buildInfoDependencies = append(buildInfoDependencies, convertSearchResultToDependencies(*resultItem))
+		buildInfoDependencies = append(buildInfoDependencies, convertSearchResultToDependency(*resultItem))
 		count++
 		if count > clientutils.MaxBufferSize {
-			err := badc.saveDependenciesToFileSystem(buildInfoDependencies)
-			if err != nil {
-				log.Error(err)
-				fail += count
+			if err = badc.savePartialBuildInfo(buildInfoDependencies); err != nil {
+				return
 			}
 			success += count
 			count = 0
@@ -192,11 +188,11 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesByReader(reader *con
 	if err = reader.GetError(); err != nil {
 		return
 	}
-	err = badc.saveDependenciesToFileSystem(buildInfoDependencies)
-	if err != nil {
-		log.Error(err)
-		fail += len(buildInfoDependencies)
-		return
+	if count > 0 {
+		if err = badc.savePartialBuildInfo(buildInfoDependencies); err != nil {
+			fail += len(buildInfoDependencies)
+			return
+		}
 	}
 	success += count
 	return
@@ -219,7 +215,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonP
 	return params, nil
 }
 
-func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
+func getLocalDependencies(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
 	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
@@ -269,7 +265,7 @@ func collectPatternMatchingFiles(addDepsParams *specutils.ArtifactoryCommonParam
 	return result, nil
 }
 
-func (badc *BuildAddDependenciesCommand) saveDependenciesToFileSystem(dependencies []buildinfo.Dependency) error {
+func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []buildinfo.Dependency) error {
 	log.Debug("Saving", strconv.Itoa(len(dependencies)), "dependencies.")
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = dependencies
@@ -290,31 +286,32 @@ func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []bu
 	return buildDependencies
 }
 
-func convertSearchResultToDependencies(resultItem specutils.ResultItem) buildinfo.Dependency {
+func convertSearchResultToDependency(resultItem specutils.ResultItem) buildinfo.Dependency {
 	dependency := buildinfo.Dependency{Checksum: &buildinfo.Checksum{Md5: resultItem.Actual_Md5, Sha1: resultItem.Actual_Sha1}}
 	dependency.Id = resultItem.Name
 	return dependency
 }
 
-func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, errorOccurred bool, err error) {
+func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {
 	temp := []*content.ContentReader{}
+	var searchParams services.SearchParams
+	var reader *content.ContentReader
 	defer func() {
 		for _, reader := range temp {
-			reader.Close()
+			e := reader.Close()
+			if err == nil {
+				err = e
+			}
 		}
 	}()
 	for i := 0; i < len(spec.Files); i++ {
-		searchParams, err := utils.GetSearchParams(spec.Get(i))
+		searchParams, err = utils.GetSearchParams(spec.Get(i))
 		if err != nil {
-			errorOccurred = true
-			log.Error(err)
-			continue
+			return
 		}
-		reader, err := servicesManager.SearchFiles(searchParams)
+		reader, err = servicesManager.SearchFiles(searchParams)
 		if err != nil {
-			errorOccurred = true
-			log.Error(err)
-			continue
+			return
 		}
 		temp = append(temp, reader)
 	}

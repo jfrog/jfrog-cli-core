@@ -42,7 +42,10 @@ func (badc *BuildAddDependenciesCommand) CommandName() string {
 }
 
 func (badc *BuildAddDependenciesCommand) ServerDetails() (*config.ServerDetails, error) {
-	return badc.serverDetails, nil
+	if badc.serverDetails != nil {
+		return badc.serverDetails, nil
+	}
+	return config.GetDefaultServerConf()
 }
 
 func (badc *BuildAddDependenciesCommand) Run() error {

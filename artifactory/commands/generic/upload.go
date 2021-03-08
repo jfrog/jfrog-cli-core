@@ -91,7 +91,7 @@ func (uc *UploadCommand) upload() error {
 	addVcsProps := false
 	buildProps := ""
 	// Build Info Collection:
-	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
+	isCollectBuildInfo := uc.buildConfiguration != nil && len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
 		addVcsProps = true
 		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {

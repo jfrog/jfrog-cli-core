@@ -90,34 +90,39 @@ func (dc *DownloadCommand) download() error {
 	// Perform download.
 	// In case of build-info collection/sync-deletes operation/a detailed summary is required, we use the download service which provides results file reader,
 	// otherwise we use the download service which provides only general counters.
-	var totalDownloaded, totalExpected int
-	var resultsReader *content.ContentReader = nil
+	var totalDownloaded, totalFailed int
+	var summary *clientutils.OperationSummary
 	if isCollectBuildInfo || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
-		resultsReader, totalDownloaded, totalExpected, err = servicesManager.DownloadFilesWithResultReader(downloadParamsArray...)
-		dc.result.SetReader(resultsReader)
+		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
+		if err != nil {
+			errorOccurred = true
+			log.Error(err)
+		}
+		defer summary.ArtifactsDetailsReader.Close()
+		// If 'detailed summary' was requested, then the reader should not be closed here.
+		// It will be closed after it will be used to generate the summary.
+		if dc.DetailedSummary() {
+			dc.result.SetReader(summary.TransferDetailsReader)
+		} else {
+			defer summary.TransferDetailsReader.Close()
+		}
+		totalDownloaded = summary.TotalSucceeded
+		totalFailed = summary.TotalFailed
 	} else {
-		totalDownloaded, totalExpected, err = servicesManager.DownloadFiles(downloadParamsArray...)
-	}
-	if err != nil {
-		errorOccurred = true
-		log.Error(err)
+		totalDownloaded, totalFailed, err = servicesManager.DownloadFiles(downloadParamsArray...)
+		if err != nil {
+			errorOccurred = true
+			log.Error(err)
+		}
 	}
 	dc.result.SetSuccessCount(totalDownloaded)
-	dc.result.SetFailCount(totalExpected - totalDownloaded)
-	// If the 'details summary' was requested, then the reader should not be closed now.
-	// It will be closed after it will be used to generate the summary.
-	if resultsReader != nil && !dc.DetailedSummary() {
-		defer func() {
-			resultsReader.Close()
-			dc.result.SetReader(nil)
-		}()
-	}
+	dc.result.SetFailCount(totalFailed)
 	// Check for errors.
 	if errorOccurred {
 		return errors.New("Download finished with errors, please review the logs.")
 	}
 	if dc.DryRun() {
-		dc.result.SetSuccessCount(totalExpected)
+		dc.result.SetSuccessCount(totalDownloaded)
 		dc.result.SetFailCount(0)
 		return err
 	} else if dc.SyncDeletesPath() != "" {
@@ -127,7 +132,7 @@ func (dc *DownloadCommand) download() error {
 		}
 		if _, err = os.Stat(absSyncDeletesPath); err == nil {
 			// Unmarshal the local paths of the downloaded files from the results file reader
-			tmpRoot, err := createDownloadResultEmptyTmpReflection(resultsReader)
+			tmpRoot, err := createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
 			defer fileutils.RemoveTempDir(tmpRoot)
 			if err != nil {
 				return err
@@ -145,11 +150,11 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if isCollectBuildInfo {
-		err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
+		var buildDependencies []buildinfo.Dependency
+		buildDependencies, err = clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		if err != nil {
 			return err
 		}
-		buildDependencies := convertFileInfoToBuildDependencies(resultBuildInfo.FilesInfo)
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
 			partial.ModuleId = dc.buildConfiguration.Module
@@ -159,20 +164,6 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	return err
-}
-
-func convertFileInfoToBuildDependencies(filesInfo []clientutils.FileInfo) []buildinfo.Dependency {
-	buildDependencies := make([]buildinfo.Dependency, len(filesInfo))
-	for i, fileInfo := range filesInfo {
-		dependency := buildinfo.Dependency{Checksum: &buildinfo.Checksum{}}
-		dependency.Md5 = fileInfo.Md5
-		dependency.Sha1 = fileInfo.Sha1
-		// Artifact name in build info as the name in artifactory
-		filename, _ := fileutils.GetFileAndDirFromPath(fileInfo.ArtifactoryPath)
-		dependency.Id = filename
-		buildDependencies[i] = dependency
-	}
-	return buildDependencies
 }
 
 func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration) (downParams services.DownloadParams, err error) {
@@ -228,9 +219,9 @@ func createDownloadResultEmptyTmpReflection(reader *content.ContentReader) (tmpR
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	for path := new(localPath); reader.NextRecord(path) == nil; path = new(localPath) {
+	for path := new(clientutils.FileTransferDetails); reader.NextRecord(path) == nil; path = new(clientutils.FileTransferDetails) {
 		var absDownloadPath string
-		absDownloadPath, err = filepath.Abs(path.LocalPath)
+		absDownloadPath, err = filepath.Abs(path.TargetPath)
 		if errorutils.CheckError(err) != nil {
 			return
 		}
@@ -293,8 +284,4 @@ func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 
 		return errorutils.CheckError(err)
 	}
-}
-
-type localPath struct {
-	LocalPath string `json:"localPath,omitempty"`
 }

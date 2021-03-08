@@ -9,11 +9,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -23,6 +26,7 @@ type BuildAddDependenciesCommand struct {
 	dependenciesSpec   *spec.SpecFiles
 	dryRun             bool
 	result             *commandsutils.Result
+	serverDetails      *config.ServerDetails
 }
 
 func NewBuildAddDependenciesCommand() *BuildAddDependenciesCommand {
@@ -38,35 +42,31 @@ func (badc *BuildAddDependenciesCommand) CommandName() string {
 }
 
 func (badc *BuildAddDependenciesCommand) ServerDetails() (*config.ServerDetails, error) {
+	if badc.serverDetails != nil {
+		return badc.serverDetails, nil
+	}
 	return config.GetDefaultServerConf()
 }
 
 func (badc *BuildAddDependenciesCommand) Run() error {
 	log.Info("Running Build Add Dependencies command...")
+	success, fail := 0, 0
+	var err error
 	if !badc.dryRun {
-		if err := utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project); err != nil {
+		if err = utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project); err != nil {
 			return err
 		}
 	}
-
-	dependenciesPaths, errorOccurred := badc.collectDependenciesBySpec()
-	dependenciesDetails, errorOccurred, failures := collectDependenciesChecksums(dependenciesPaths, errorOccurred)
-	if !badc.dryRun {
-		err := badc.saveDependenciesToFileSystem(dependenciesDetails)
-		if err != nil {
-			errorOccurred = true
-			log.Error(err)
-			// mark all as failures and clean the succeeded
-			failures += len(dependenciesDetails)
-			dependenciesDetails = make(map[string]*fileutils.FileDetails)
-		}
+	if badc.serverDetails != nil {
+		log.Debug("Searching dependencies on Artifactory...")
+		success, fail, err = badc.collectRemoteDependencies()
+	} else {
+		log.Debug("Searching dependencies on local file system...")
+		success, fail, err = badc.collectLocalDependencies()
 	}
-	badc.result.SetSuccessCount(len(dependenciesDetails))
-	badc.result.SetFailCount(failures)
-	if errorOccurred {
-		return errors.New("Build Add Dependencies command finished with errors. Please review the logs.")
-	}
-	return nil
+	badc.result.SetSuccessCount(success)
+	badc.result.SetFailCount(fail)
+	return err
 }
 
 func (badc *BuildAddDependenciesCommand) SetDryRun(dryRun bool) *BuildAddDependenciesCommand {
@@ -79,12 +79,17 @@ func (badc *BuildAddDependenciesCommand) SetDependenciesSpec(dependenciesSpec *s
 	return badc
 }
 
+func (badc *BuildAddDependenciesCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildAddDependenciesCommand {
+	badc.serverDetails = serverDetails
+	return badc
+}
+
 func (badc *BuildAddDependenciesCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAddDependenciesCommand {
 	badc.buildConfiguration = buildConfiguration
 	return badc
 }
 
-func collectDependenciesChecksums(dependenciesPaths map[string]string, errorOccurred bool) (map[string]*fileutils.FileDetails, bool, int) {
+func collectDependenciesChecksums(dependenciesPaths map[string]string) (map[string]*fileutils.FileDetails, int) {
 	failures := 0
 	dependenciesDetails := make(map[string]*fileutils.FileDetails)
 	for _, dependencyPath := range dependenciesPaths {
@@ -98,17 +103,49 @@ func collectDependenciesChecksums(dependenciesPaths map[string]string, errorOccu
 			details, err = fileutils.GetFileDetails(dependencyPath)
 		}
 		if err != nil {
-			errorOccurred = true
 			log.Error(err)
 			failures++
 			continue
 		}
 		dependenciesDetails[dependencyPath] = details
 	}
-	return dependenciesDetails, errorOccurred, failures
+	return dependenciesDetails, failures
 }
 
-func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string]string, bool) {
+func (badc *BuildAddDependenciesCommand) collectLocalDependencies() (success, fail int, err error) {
+	var dependenciesDetails map[string]*fileutils.FileDetails
+	dependenciesPaths, errorOccurred := badc.doCollectLocalDependencies()
+	dependenciesDetails, fail = collectDependenciesChecksums(dependenciesPaths)
+	if !badc.dryRun {
+		buildInfoDependencies := convertFileInfoToDependencies(dependenciesDetails)
+		err = badc.savePartialBuildInfo(buildInfoDependencies)
+		if err != nil {
+			// Mark all as failures.
+			fail = len(dependenciesDetails)
+			return
+		}
+	}
+	success = len(dependenciesDetails)
+	if errorOccurred || fail > 0 {
+		err = errors.New("Build Add Dependencies command finished with errors. Please review the logs.")
+	}
+	return
+}
+
+func (badc *BuildAddDependenciesCommand) collectRemoteDependencies() (success, fail int, err error) {
+	servicesManager, err := utils.CreateServiceManager(badc.serverDetails, false)
+	if err != nil {
+		return
+	}
+	reader, err := searchItems(badc.dependenciesSpec, servicesManager)
+	if err != nil {
+		return
+	}
+	success, fail, err = badc.readRemoteDependencies(reader)
+	return
+}
+
+func (badc *BuildAddDependenciesCommand) doCollectLocalDependencies() (map[string]string, bool) {
 	errorOccurred := false
 	dependenciesPaths := make(map[string]string)
 	for _, specFile := range badc.dependenciesSpec.Files {
@@ -118,7 +155,7 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string
 			log.Error(err)
 			continue
 		}
-		paths, err := getDependenciesBySpecFileParams(params)
+		paths, err := getLocalDependencies(params)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -130,6 +167,38 @@ func (badc *BuildAddDependenciesCommand) collectDependenciesBySpec() (map[string
 		}
 	}
 	return dependenciesPaths, errorOccurred
+}
+
+func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.ContentReader) (success, fail int, err error) {
+	if badc.dryRun {
+		success, err = reader.Length()
+		return
+	}
+	count := 0
+	var buildInfoDependencies []buildinfo.Dependency
+	for resultItem := new(specutils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(specutils.ResultItem) {
+		buildInfoDependencies = append(buildInfoDependencies, convertSearchResultToDependency(*resultItem))
+		count++
+		if count > clientutils.MaxBufferSize {
+			if err = badc.savePartialBuildInfo(buildInfoDependencies); err != nil {
+				return
+			}
+			success += count
+			count = 0
+			buildInfoDependencies = nil
+		}
+	}
+	if err = reader.GetError(); err != nil {
+		return
+	}
+	if count > 0 {
+		if err = badc.savePartialBuildInfo(buildInfoDependencies); err != nil {
+			fail += len(buildInfoDependencies)
+			return
+		}
+	}
+	success += count
+	return
 }
 
 func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonParams, error) {
@@ -149,7 +218,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonP
 	return params, nil
 }
 
-func getDependenciesBySpecFileParams(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
+func getLocalDependencies(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
 	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
@@ -199,10 +268,10 @@ func collectPatternMatchingFiles(addDepsParams *specutils.ArtifactoryCommonParam
 	return result, nil
 }
 
-func (badc *BuildAddDependenciesCommand) saveDependenciesToFileSystem(files map[string]*fileutils.FileDetails) error {
-	log.Debug("Saving", strconv.Itoa(len(files)), "dependencies.")
+func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []buildinfo.Dependency) error {
+	log.Debug("Saving", strconv.Itoa(len(dependencies)), "dependencies.")
 	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Dependencies = convertFileInfoToDependencies(files)
+		partial.Dependencies = dependencies
 	}
 	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project, populateFunc)
 }
@@ -218,4 +287,37 @@ func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []bu
 		buildDependencies = append(buildDependencies, dependency)
 	}
 	return buildDependencies
+}
+
+func convertSearchResultToDependency(resultItem specutils.ResultItem) buildinfo.Dependency {
+	dependency := buildinfo.Dependency{Checksum: &buildinfo.Checksum{Md5: resultItem.Actual_Md5, Sha1: resultItem.Actual_Sha1}}
+	dependency.Id = resultItem.Name
+	return dependency
+}
+
+func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {
+	temp := []*content.ContentReader{}
+	var searchParams services.SearchParams
+	var reader *content.ContentReader
+	defer func() {
+		for _, reader := range temp {
+			e := reader.Close()
+			if err == nil {
+				err = e
+			}
+		}
+	}()
+	for i := 0; i < len(spec.Files); i++ {
+		searchParams, err = utils.GetSearchParams(spec.Get(i))
+		if err != nil {
+			return
+		}
+		reader, err = servicesManager.SearchFiles(searchParams)
+		if err != nil {
+			return
+		}
+		temp = append(temp, reader)
+	}
+	resultReader, err = content.MergeReaders(temp, content.DefaultKey)
+	return
 }

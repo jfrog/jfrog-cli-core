@@ -14,7 +14,6 @@ type UploadConfiguration struct {
 	Deb                   string
 	Threads               int
 	MinChecksumDeploySize int64
-	Symlink               bool
 	ExplodeArchive        bool
 	Retries               int
 }

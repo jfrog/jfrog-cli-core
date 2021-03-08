@@ -57,6 +57,9 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 	}
 	// Convert the new JSON with the correct types to params struct
 	content, err := json.Marshal(permissionTargetConfigMap)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
 	params := services.NewPermissionTargetParams()
 	err = json.Unmarshal(content, &params)
 	if errorutils.CheckError(err) != nil {
@@ -96,6 +99,10 @@ func covertPermissionSection(value interface{}, isBuildSection bool) (*services.
 	}
 	if len(answer.Repositories) > 0 {
 		pts.Repositories = strings.Split(answer.Repositories, ",")
+	}
+
+	if answer.ActionsUsers != nil || answer.ActionsGroups != nil {
+		pts.Actions = &services.Actions{}
 	}
 	if answer.ActionsUsers != nil {
 		convertActionMap(answer.ActionsUsers, &pts.Actions.Users)

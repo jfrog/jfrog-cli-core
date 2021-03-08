@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -129,9 +128,9 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.Ch
 		return fileutils.ChecksumDetails{}, err
 	}
 
-	buildInfoRepo := servicesutils.BuildRepoNameFromProjectKey(bac.buildConfiguration.Project)
-	if buildInfoRepo == "" {
-		buildInfoRepo = "artifactory-build-info"
+	buildInfoRepo := "artifactory-build-info"
+	if bac.buildConfiguration.Project != "" {
+		buildInfoRepo = bac.buildConfiguration.Project + "-build-info"
 	}
 	buildInfoPath := serviceDetails.GetUrl() + buildInfoRepo + "/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())

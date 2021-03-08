@@ -15,7 +15,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -40,17 +39,12 @@ func CreateBuildProperties(buildName, buildNumber, projectKey string) (string, e
 		return "", nil
 	}
 
-	buildRepo := utils.BuildRepoNameFromProjectKey(projectKey)
-	if buildRepo != "" {
-		buildRepo = ";build.repo=" + buildRepo
-	}
-
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {
-		return fmt.Sprintf("build.name=%s;build.number=%s%s", buildName, buildNumber, buildRepo), err
+		return fmt.Sprintf("build.name=%s;build.number=%s", buildName, buildNumber), err
 	}
 	timestamp := strconv.FormatInt(buildGeneralDetails.Timestamp.UnixNano()/int64(time.Millisecond), 10)
-	return fmt.Sprintf("build.name=%s;build.number=%s;build.timestamp=%s%s", buildName, buildNumber, timestamp, buildRepo), nil
+	return fmt.Sprintf("build.name=%s;build.number=%s;build.timestamp=%s", buildName, buildNumber, timestamp), nil
 }
 
 func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, error) {

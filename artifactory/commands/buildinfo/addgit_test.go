@@ -42,16 +42,13 @@ func TestExtractGitUrlWithoutDotGit(t *testing.T) {
 func runTest(t *testing.T, originalDir string) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalDir, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
-	checkFailureAndClean(t, buildDir, dotGitPath, originalDir)
+	defer cleanUp(t, buildDir, dotGitPath, originalDir)
 	err := runBuildAddGit(t, buildName, "1", baseDir, true)
 	if err != nil {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
-	checkFailureAndClean(t, buildDir, dotGitPath, originalDir)
 	checkVCSUrl(partials, t)
-	tests.RemovePath(buildDir, t)
-	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
 }
 
 func TestBuildAddGitSubmodules(t *testing.T) {
@@ -86,21 +83,18 @@ func TestBuildAddGitVCSDetails(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			baseDir, dotGitPath := tests.PrepareDotGitDir(t, test.originalDir, filepath.Join("..", "testdata"))
 			buildDir := getBuildDir(t)
-			checkFailureAndClean(t, buildDir, dotGitPath, test.originalDir)
+			defer cleanUp(t, buildDir, dotGitPath, test.originalDir)
 			err := runBuildAddGit(t, buildName, "1", baseDir, true)
 			if err != nil {
 				return
 			}
 			partials := getBuildInfoPartials(t, buildName, "1", "")
-			checkVCSDetails(partials, test.revision, test.branch, test.message, t)
-			checkFailureAndClean(t, buildDir, dotGitPath, test.originalDir)
-			tests.RemovePath(buildDir, t)
-			tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), test.originalDir), t)
+			assertVCSDetails(partials, test.revision, test.branch, test.message, t)
 		})
 	}
 }
 
-func checkVCSDetails(partials buildinfo.Partials, revision, branch, message string, t *testing.T) {
+func assertVCSDetails(partials buildinfo.Partials, revision, branch, message string, t *testing.T) {
 	for _, partial := range partials {
 		if partial.VcsList != nil {
 			for _, vcs := range partial.VcsList {
@@ -127,13 +121,13 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	assert.Equal(t, "TEST-2 - Adding text to file1.txt", curVcs.Message)
 }
 
-// Clean the environment if fails
-func checkFailureAndClean(t *testing.T, buildDir, oldPath, originalDir string) {
-	if t.Failed() {
-		t.Log("Performing cleanup...")
+func cleanUp(t *testing.T, buildDir, dotGitPath, originalDir string) {
+	t.Log("Performing cleanup...")
+	if buildDir != "" {
 		tests.RemovePath(buildDir, t)
-		tests.RenamePath(oldPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
-		t.FailNow()
+	}
+	if dotGitPath != "" {
+		tests.RenamePath(dotGitPath, filepath.Join("..", "testdata", originalDir), t)
 	}
 }
 

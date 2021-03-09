@@ -1,4 +1,4 @@
-package commands
+package offlineupdate
 
 import (
 	"github.com/magiconair/properties/assert"

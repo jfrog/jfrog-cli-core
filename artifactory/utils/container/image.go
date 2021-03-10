@@ -26,7 +26,7 @@ func (image *Image) Path() (string, error) {
 	indexOfFirstSlash := strings.Index(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfFirstSlash {
-		log.Info("The image '%s' is missing tag. using the 'latest' tag.")
+		log.Info("The image '%s' is does not include tag. Using the 'latest' tag.")
 		return path.Join(image.tag[indexOfFirstSlash:], "latest"), nil
 	}
 	return path.Join(image.tag[indexOfFirstSlash:indexOfLastColon], image.tag[indexOfLastColon+1:]), nil
@@ -40,7 +40,7 @@ func (image *Image) Name() (string, error) {
 	indexOfLastSlash := strings.LastIndex(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfLastSlash {
-		log.Info("The image '%s' is missing tag. using the 'latest' tag.")
+		log.Info("The image '%s' is does not include tag. Using the 'latest' tag.")
 		return image.tag[indexOfLastSlash+1:] + ":latest", nil
 	}
 	return image.tag[indexOfLastSlash+1:], nil

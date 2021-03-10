@@ -122,7 +122,6 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 }
 
 func cleanUp(t *testing.T, buildDir, dotGitPath, originalDir string) {
-	t.Log("Performing cleanup...")
 	if buildDir != "" {
 		tests.RemovePath(buildDir, t)
 	}

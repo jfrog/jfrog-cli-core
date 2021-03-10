@@ -1,4 +1,4 @@
-package curl
+package commands
 
 import (
 	"testing"

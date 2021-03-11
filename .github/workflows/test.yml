@@ -13,6 +13,8 @@ jobs:
             - uses: actions/checkout@v1
             - name: Setup Go
               uses: actions/setup-go@v2
+            - name: Tidy
+              run: go mod tidy
             - name: Lint
               run: go vet ./...
             - name: Tests

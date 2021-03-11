@@ -159,7 +159,11 @@ func getManifestPaths(imagePath, repo string, commandType CommandType) []string 
 
 // Search for image manifest and layers in Artifactory.
 func (builder *buildInfoBuilder) getManifestAndLayersDetails() (layers map[string]*utils.ResultItem, manifestContent *manifest, err error) {
-	manifestPathsCandidates := getManifestPaths(builder.image.Path(), builder.getSearchableRepo(), builder.commandType)
+	imagePath, err := builder.image.Path()
+	if err != nil {
+		return nil, nil, err
+	}
+	manifestPathsCandidates := getManifestPaths(imagePath, builder.getSearchableRepo(), builder.commandType)
 	log.Debug("Start searching for image manifest.json")
 	for _, path := range manifestPathsCandidates {
 		log.Debug(`Searching in:"` + path + `"`)
@@ -169,11 +173,6 @@ func (builder *buildInfoBuilder) getManifestAndLayersDetails() (layers map[strin
 		}
 	}
 	return nil, nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.image.tag)))
-}
-
-func (builder *buildInfoBuilder) buildReverseProxyPathWithLibrary() string {
-	endOfRepoNameIndex := strings.Index(builder.image.Path()[1:], "/")
-	return path.Join(builder.getSearchableRepo(), "library", builder.image.Path()[endOfRepoNameIndex+1:])
 }
 
 func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDependency buildinfo.Dependency, imageManifest *manifest, searchResults map[string]*utils.ResultItem) error {
@@ -281,7 +280,11 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 	imageProperties["docker.image.id"] = builder.imageId
 	imageProperties["docker.image.tag"] = builder.image.Tag()
 	if module == "" {
-		module = builder.image.Name()
+		imageName, err := builder.image.Name()
+		if err != nil {
+			return nil, err
+		}
+		module = imageName
 	}
 	buildInfo := &buildinfo.BuildInfo{Modules: []buildinfo.Module{{
 		Id:           module,

@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 const (
 	withGit    = "git_test_.git_suffix"
 	withoutGit = "git_test_no_.git_suffix"
+	withBranch = "git_issues2_.git_suffix"
 	buildName  = "TestExtractGitUrl"
 )
 
@@ -40,16 +42,13 @@ func TestExtractGitUrlWithoutDotGit(t *testing.T) {
 func runTest(t *testing.T, originalDir string) {
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalDir, filepath.Join("..", "testdata"))
 	buildDir := getBuildDir(t)
-	checkFailureAndClean(t, buildDir, dotGitPath)
+	defer cleanUp(t, buildDir, dotGitPath, originalDir)
 	err := runBuildAddGit(t, buildName, "1", baseDir, true)
 	if err != nil {
 		return
 	}
 	partials := getBuildInfoPartials(t, buildName, "1", "")
-	checkFailureAndClean(t, buildDir, dotGitPath)
 	checkVCSUrl(partials, t)
-	tests.RemovePath(buildDir, t)
-	tests.RenamePath(dotGitPath, filepath.Join(filepath.Join("..", "testdata"), originalDir), t)
 }
 
 func TestBuildAddGitSubmodules(t *testing.T) {
@@ -62,12 +61,51 @@ func TestBuildAddGitSubmodules(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			tmpBuildName := test + "-Build-" + strconv.FormatInt(time.Now().Unix(), 10)
 			err := runBuildAddGit(t, tmpBuildName, "1", projectPath, test == "dotGitProvided")
-			if err != nil {
-				return
-			}
+			require.NoError(t, err)
 			partials := getBuildInfoPartials(t, tmpBuildName, "1", "")
 			assertVcsSubmodules(t, partials)
 		})
+	}
+}
+
+func TestBuildAddGitVCSDetails(t *testing.T) {
+	bagTests := []struct {
+		name        string
+		originalDir string
+		revision    string
+		branch      string
+		message     string
+	}{
+		{"Test vcs details without branch", withGit, "6198a6294722fdc75a570aac505784d2ec0d1818", "", "TEST-2 - Adding text to file1.txt"},
+		{"Test vcs details with branch", withBranch, "b033a0e508bdb52eee25654c9e12db33ff01b8ff", "master", "TEST-4 - Adding text to file2.txt"}}
+
+	for _, test := range bagTests {
+		t.Run(test.name, func(t *testing.T) {
+			baseDir, dotGitPath := tests.PrepareDotGitDir(t, test.originalDir, filepath.Join("..", "testdata"))
+			buildDir := getBuildDir(t)
+			defer cleanUp(t, buildDir, dotGitPath, test.originalDir)
+			err := runBuildAddGit(t, buildName, "1", baseDir, true)
+			if err != nil {
+				return
+			}
+			partials := getBuildInfoPartials(t, buildName, "1", "")
+			assertVCSDetails(partials, test.revision, test.branch, test.message, t)
+		})
+	}
+}
+
+func assertVCSDetails(partials buildinfo.Partials, revision, branch, message string, t *testing.T) {
+	for _, partial := range partials {
+		if partial.VcsList != nil {
+			for _, vcs := range partial.VcsList {
+				assert.Equal(t, revision, vcs.Revision)
+				assert.Equal(t, branch, vcs.Branch)
+				assert.Equal(t, message, vcs.Message)
+			}
+		} else {
+			t.Error("VCS cannot be nil")
+			break
+		}
 	}
 }
 
@@ -78,17 +116,17 @@ func assertVcsSubmodules(t *testing.T, partials buildinfo.Partials) {
 	assert.Len(t, vcsList, 1)
 	curVcs := vcsList[0]
 	assert.Equal(t, "https://github.com/jfrog/jfrog-cli.git", curVcs.Url)
-	assert.Equal(t, "d63c5957ad6819f4c02a817abe757f210d35ff92", curVcs.Revision)
+	assert.Equal(t, "6198a6294722fdc75a570aac505784d2ec0d1818", curVcs.Revision)
 	assert.Equal(t, "submodule", curVcs.Branch)
+	assert.Equal(t, "TEST-2 - Adding text to file1.txt", curVcs.Message)
 }
 
-// Clean the environment if fails
-func checkFailureAndClean(t *testing.T, buildDir string, oldPath string) {
-	if t.Failed() {
-		t.Log("Performing cleanup...")
+func cleanUp(t *testing.T, buildDir, dotGitPath, originalDir string) {
+	if buildDir != "" {
 		tests.RemovePath(buildDir, t)
-		tests.RenamePath(oldPath, filepath.Join(filepath.Join("..", "testdata"), withGit), t)
-		t.FailNow()
+	}
+	if dotGitPath != "" {
+		tests.RenamePath(dotGitPath, filepath.Join("..", "testdata", originalDir), t)
 	}
 }
 

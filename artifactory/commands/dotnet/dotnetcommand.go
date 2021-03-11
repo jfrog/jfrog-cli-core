@@ -2,6 +2,7 @@ package dotnet
 
 import (
 	"fmt"
+	commonutils "github.com/jfrog/jfrog-cli-core/common/utils"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -359,7 +360,7 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 // In the legacy syntax, parsing args is required since they might include environment variables, or need escaping.
 func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
 	if dc.subCommand != "" {
-		subCommand, err := utils.ParseArgs(strings.Split(dc.subCommand, " "))
+		subCommand, err := commonutils.ParseArgs(strings.Split(dc.subCommand, " "))
 		if err != nil {
 			return nil, errorutils.CheckError(err)
 		}
@@ -367,7 +368,7 @@ func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
 	}
 	var err error
 	if len(dc.argAndFlags) > 0 {
-		c.CommandFlags, err = utils.ParseArgs(dc.argAndFlags)
+		c.CommandFlags, err = commonutils.ParseArgs(dc.argAndFlags)
 	}
 	return c, errorutils.CheckError(err)
 }

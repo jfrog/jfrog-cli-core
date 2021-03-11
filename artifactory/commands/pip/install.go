@@ -3,6 +3,7 @@ package pip
 import (
 	"errors"
 	"fmt"
+	commonutils "github.com/jfrog/jfrog-cli-core/common/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,7 +141,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 		return
 	}
 
-	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
+	pic.args, pic.buildConfiguration, err = commonutils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {
 		return
 	}

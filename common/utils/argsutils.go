@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"strconv"
 	"strings"
 
@@ -136,9 +137,9 @@ func FindFlagFirstMatch(flags, args []string) (flagIndex, flagValueIndex int, fl
 	return
 }
 
-func ExtractBuildDetailsFromArgs(args []string) (cleanArgs []string, buildConfig *BuildConfiguration, err error) {
+func ExtractBuildDetailsFromArgs(args []string) (cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	var flagIndex, valueIndex int
-	buildConfig = &BuildConfiguration{}
+	buildConfig = &utils.BuildConfiguration{}
 	cleanArgs = append([]string(nil), args...)
 
 	// Extract build-info information from the args.
@@ -161,16 +162,16 @@ func ExtractBuildDetailsFromArgs(args []string) (cleanArgs []string, buildConfig
 	RemoveFlagFromCommand(&cleanArgs, flagIndex, valueIndex)
 
 	// Retrieve build name and build number from env if both missing
-	buildConfig.BuildName, buildConfig.BuildNumber = GetBuildNameAndNumber(buildConfig.BuildName, buildConfig.BuildNumber)
+	buildConfig.BuildName, buildConfig.BuildNumber = utils.GetBuildNameAndNumber(buildConfig.BuildName, buildConfig.BuildNumber)
 	// Retrieve project from env if missing
-	buildConfig.Project = GetBuildProject(buildConfig.Project)
+	buildConfig.Project = utils.GetBuildProject(buildConfig.Project)
 
 	flagIndex, valueIndex, buildConfig.Module, err = FindFlag("--module", cleanArgs)
 	if err != nil {
 		return
 	}
 	RemoveFlagFromCommand(&cleanArgs, flagIndex, valueIndex)
-	err = ValidateBuildAndModuleParams(buildConfig)
+	err = utils.ValidateBuildAndModuleParams(buildConfig)
 	return
 }
 

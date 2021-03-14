@@ -1,7 +1,7 @@
 package npm
 
 import (
-	commonutils "github.com/jfrog/jfrog-cli-core/common/utils"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -14,7 +14,7 @@ import (
 
 func RunList(flags, executablePath string) (stdResult, errResult []byte, err error) {
 	log.Debug("Running npm list command.")
-	splitFlags, err := commonutils.ParseArgs(strings.Split(flags, " "))
+	splitFlags, err := utils.ParseArgs(strings.Split(flags, " "))
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}

@@ -26,13 +26,13 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput bool, cle
 
 	// Since we use --json flag for retrieving the npm config for writing the temp .npmrc, json=true is written to the config list.
 	// We don't want to force the json output for all users, so we check whether the json output was explicitly required.
-	flagIndex, jsonOutput, err = commonutils.FindBooleanFlag("--json", args)
+	flagIndex, jsonOutput, err = utils.FindBooleanFlag("--json", args)
 	if err != nil {
 		return
 	}
 	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
 	commonutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
-	cleanArgs, buildConfig, err = commonutils.ExtractBuildDetailsFromArgs(args)
+	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 	return
 }

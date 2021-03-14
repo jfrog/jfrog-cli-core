@@ -1,13 +1,13 @@
 package npm
 
 import (
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"io"
 	"io/ioutil"
 	"strings"
 	"sync"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )

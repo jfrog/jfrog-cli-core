@@ -33,20 +33,9 @@ type PromptItem struct {
 // JFrog Xray URL ()
 // JFrog Mission Control URL ()
 // JFrog Pipelines URL ()
-func PromptStrings(items []PromptItem, label string, onSelect func()) error {
-	templates := &promptui.SelectTemplates{
-		Label:    "{{ . }}?",
-		Active:   "🐸" + selectableItemTemplate,
-		Inactive: "  " + selectableItemTemplate,
-	}
-	prompt := promptui.Select{
-		Label:        label,
-		Templates:    templates,
-		Stdout:       &bellSkipper{},
-		HideSelected: true,
-		Size:         len(items) + 1,
-	}
+func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
+	prompt := createSelectableList(len(items), label)
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()
@@ -56,9 +45,34 @@ func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 		if i == 0 {
 			return nil
 		}
-		ScanFromConsole(items[i].Option, items[i].TargetValue, items[i].DefaultValue)
-		onSelect()
+		onSelect(items[i])
 	}
+}
+
+func createSelectableList(numOfItems int, label string) (prompt *promptui.Select) {
+	templates := &promptui.SelectTemplates{
+		Label:    "{{ . }}?",
+		Active:   "🐸" + selectableItemTemplate,
+		Inactive: "  " + selectableItemTemplate,
+	}
+	return &promptui.Select{
+		Label:        label,
+		Templates:    templates,
+		Stdout:       &bellSkipper{},
+		HideSelected: true,
+		Size:         numOfItems,
+	}
+}
+
+func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) error {
+	selectableList := createSelectableList(len(items), label)
+	selectableList.Items = items
+	i, _, err := selectableList.Run()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	onSelect(items[i])
+	return nil
 }
 
 // In MacOS, Terminal bell is ringing when trying to select items using up and down arrows.

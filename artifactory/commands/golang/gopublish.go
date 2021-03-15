@@ -17,12 +17,13 @@ import (
 const minSupportedArtifactoryVersion = "6.2.0"
 
 type GoPublishCommand struct {
-	publishPackage     bool
 	buildConfiguration *utils.BuildConfiguration
 	dependencies       string
 	version            string
 	result             *commandutils.Result
 	utils.RepositoryConfig
+	// Deprecated.
+	publishPackage bool
 }
 
 func NewGoPublishCommand() *GoPublishCommand {
@@ -51,6 +52,20 @@ func (gpc *GoPublishCommand) SetBuildConfiguration(buildConfiguration *utils.Bui
 func (gpc *GoPublishCommand) SetPublishPackage(publishPackage bool) *GoPublishCommand {
 	gpc.publishPackage = publishPackage
 	return gpc
+}
+
+func (gpc *GoPublishCommand) SetConfigFilePath(configFilePath string) (err error) {
+	// Read config file.
+	vConfig, err := utils.ReadConfigFile(configFilePath, utils.YAML)
+	if err != nil {
+		return
+	}
+	repoConfig, err := utils.GetRepoConfigByPrefix(configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	if err != nil {
+		return
+	}
+	gpc.RepositoryConfig = *repoConfig
+	return
 }
 
 func (gpc *GoPublishCommand) Run() error {

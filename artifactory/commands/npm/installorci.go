@@ -493,12 +493,15 @@ func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string, pathToRo
 	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
 		depName := string(key)
 		ver, _, _, err := jsonparser.Get(data, depName, "version")
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
 		depVersion := string(ver)
 		depKey := depName + ":" + depVersion
-		nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
+		if err != nil && err != jsonparser.KeyPathNotFoundError {
+			return errorutils.CheckError(err)
+		} else if err == jsonparser.KeyPathNotFoundError {
+			log.Debug(fmt.Sprintf("%s dependency will not be included in the build-info, because the 'npm ls' command did not return its version.\nThe reason why the version wasn't returned may be because the package is a 'peerdependency', which was not manually installed.\n'npm install' does not download 'peerdependencies' automatically. It is therefore okay to skip this dependency.", string(key)))
+		} else {
+			nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
+		}
 		transitive, _, _, err := jsonparser.Get(data, depName, "dependencies")
 		if err != nil && err.Error() != "Key path not found" {
 			return errorutils.CheckError(err)

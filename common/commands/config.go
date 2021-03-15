@@ -15,7 +15,6 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/lock"
@@ -119,7 +118,7 @@ func (cc *ConfigCommand) Config() error {
 		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
 		coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
 		coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/")
+		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 		coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -237,7 +236,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"missioncontrol/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 	}
 
@@ -316,8 +315,6 @@ func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	fmt.Println()
 	if len(byteToken) > 0 {
 		details.SetAccessToken(string(byteToken))
-		_, err := new(generic.PingCommand).SetServerDetails(details).Ping()
-		return err
 	}
 	return nil
 }
@@ -330,7 +327,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 
 	// If path still not provided, return and warn about relying on agent.
 	if details.SshKeyPath == "" {
-		log.Info("SSH Key path not provided. You can also specify a key path using the --ssh-key-path command option. If no key will be specified, you will rely on ssh-agent only.")
+		log.Info("SSH Key path not provided. The ssh-agent (if active) will be used.")
 		return nil
 	}
 
@@ -341,6 +338,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		return err
 	}
 
+	optionalPrefix := ""
 	if exists {
 		sshKeyBytes, err := ioutil.ReadFile(details.SshKeyPath)
 		if err != nil {
@@ -351,10 +349,13 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		if err != nil || !encryptedKey {
 			return err
 		}
-		log.Info("The key file at the specified path is encrypted, you may pass the passphrase as an option with every command (but config).")
-
+		log.Info("The key file at the specified path is encrypted.")
 	} else {
-		log.Info("Could not find key in provided path. You may place the key file there later. If you choose to use an encrypted key, you may pass the passphrase as an option with every command.")
+		log.Info("Could not find key in provided path. You may place the key file there later.")
+		optionalPrefix = "(optional)"
+	}
+	if details.SshPassphrase == "" {
+		ioutils.ScanFromConsole("SSH key passphrase "+optionalPrefix, &details.SshPassphrase, "")
 	}
 
 	return err

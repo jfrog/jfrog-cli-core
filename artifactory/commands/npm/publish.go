@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"io"
 	"io/ioutil"
 	"os"
@@ -25,14 +26,14 @@ import (
 
 type NpmPublishCommandArgs struct {
 	NpmCommand
-	executablePath   string
-	workingDirectory string
-	collectBuildInfo bool
-	packedFilePath   string
-	packageInfo      *npm.PackageInfo
-	publishPath      string
-	tarballProvided  bool
-	artifactData     []specutils.FileInfo
+	executablePath         string
+	workingDirectory       string
+	collectBuildInfo       bool
+	packedFilePath         string
+	packageInfo            *npm.PackageInfo
+	publishPath            string
+	tarballProvided        bool
+	artifactsDetailsReader *content.ContentReader
 }
 
 type NpmPublishCommand struct {
@@ -184,26 +185,20 @@ func (npc *NpmPublishCommand) pack() error {
 	return nil
 }
 
-func (npc *NpmPublishCommand) deploy() (err error) {
+func (npc *NpmPublishCommand) deploy() error {
 	log.Debug("Deploying npm package.")
-	if err = npc.readPackageInfoFromTarball(); err != nil {
+	if err := npc.readPackageInfoFromTarball(); err != nil {
 		return err
 	}
 
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
-	artifactsFileInfo, err := npc.doDeploy(target, npc.serverDetails)
-	if err != nil {
-		return err
-	}
-
-	npc.artifactData = artifactsFileInfo
-	return nil
+	return npc.doDeploy(target, npc.serverDetails)
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) (artifactsFileInfo []specutils.FileInfo, err error) {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) error {
 	servicesManager, err := utils.CreateServiceManager(artDetails, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	up := services.UploadParams{}
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
@@ -211,30 +206,39 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
 		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	resultsReader, _, failed, err := servicesManager.UploadFilesWithResultReader(up)
-	defer resultsReader.Close()
-	err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
-	if err != nil {
-		return nil, err
+	var totalFailed int
+	if npc.collectBuildInfo {
+		summary, err := servicesManager.UploadFilesWithSummary(up)
+		if err != nil {
+			return err
+		}
+		summary.TransferDetailsReader.Close()
+		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+		totalFailed = summary.TotalFailed
+	} else {
+		_, totalFailed, err = servicesManager.UploadFiles(up)
+		if err != nil {
+			return err
+		}
 	}
-	artifactsFileInfo = resultBuildInfo.FilesInfo
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
-	if failed > 0 {
-		return nil, errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
+	if totalFailed > 0 {
+		return errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
 	}
-	return artifactsFileInfo, nil
+	return nil
 }
 
 func (npc *NpmPublishCommand) saveArtifactData() error {
 	log.Debug("Saving npm package artifact build info data.")
-	var buildArtifacts []buildinfo.Artifact
-	for _, artifact := range npc.artifactData {
-		buildArtifacts = append(buildArtifacts, artifact.ToBuildArtifacts())
+	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
+	if err != nil {
+		return err
 	}
+	npc.artifactsDetailsReader.Close()
 
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Artifacts = buildArtifacts

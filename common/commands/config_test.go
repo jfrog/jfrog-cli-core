@@ -104,13 +104,13 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8080/artifactory/", outputConfig.GetArtifactoryUrl())
 	assert.Equal(t, "http://localhost:8080/distribution/", outputConfig.GetDistributionUrl())
 	assert.Equal(t, "http://localhost:8080/xray/", outputConfig.GetXrayUrl())
-	assert.Equal(t, "http://localhost:8080/missioncontrol/", outputConfig.GetMissionControlUrl())
+	assert.Equal(t, "http://localhost:8080/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl())
 
 	inputDetails.ArtifactoryUrl = "http://localhost:8081/artifactory"
 	inputDetails.DistributionUrl = "http://localhost:8081/distribution"
 	inputDetails.XrayUrl = "http://localhost:8081/xray"
-	inputDetails.MissionControlUrl = "http://localhost:8081/missioncontrol"
+	inputDetails.MissionControlUrl = "http://localhost:8081/mc"
 	inputDetails.PipelinesUrl = "http://localhost:8081/pipelines"
 	outputConfig, err = configAndGetTestServer(t, &inputDetails, false, interactive)
 	assert.NoError(t, err)
@@ -119,7 +119,7 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8081/artifactory/", outputConfig.GetArtifactoryUrl())
 	assert.Equal(t, "http://localhost:8081/distribution/", outputConfig.GetDistributionUrl())
 	assert.Equal(t, "http://localhost:8081/xray/", outputConfig.GetXrayUrl())
-	assert.Equal(t, "http://localhost:8081/missioncontrol/", outputConfig.GetMissionControlUrl())
+	assert.Equal(t, "http://localhost:8081/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8081/pipelines/", outputConfig.GetPipelinesUrl())
 }
 
@@ -176,7 +176,7 @@ func createTestServerDetails() *config.ServerDetails {
 		ArtifactoryUrl:    "http://localhost:8080/artifactory",
 		DistributionUrl:   "http://localhost:8080/distribution",
 		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/missioncontrol",
+		MissionControlUrl: "http://localhost:8080/mc",
 		PipelinesUrl:      "http://localhost:8080/pipelines",
 		ServerId:          "test",
 		IsDefault:         false,

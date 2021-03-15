@@ -67,6 +67,8 @@ type File struct {
 	IncludeDirs      string
 	ArchiveEntries   string
 	ValidateSymlinks string
+	Archive          string
+	Symlinks         string
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {
@@ -103,6 +105,10 @@ func (f File) IsExcludeArtifacts(defaultValue bool) (bool, error) {
 
 func (f File) IsIncludeDeps(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.IncludeDeps, defaultValue)
+}
+
+func (f File) IsSymlinks(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.Symlinks, defaultValue)
 }
 
 func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
@@ -149,9 +155,12 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
 		propsUsedInUpload = propsUsedInUpload || (isUpload && len(file.Props) > 0)
 		isExcludeProps := len(file.ExcludeProps) > 0
-
+		isArchive := len(file.Archive) > 0
+		isValidArchive := file.Archive == "zip"
+		isSymlinks, _ := file.IsSymlinks(false)
 		isRegexp := file.Regexp == "true"
 		isAnt := file.Ant == "true"
+
 		if isTargetMandatory && !isTarget {
 			return errors.New("Spec must include target.")
 		}
@@ -208,6 +217,12 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if isRegexp && isAnt {
 			return errors.New("Can not use the option of regexp and ant together.")
+		}
+		if isArchive && isSymlinks {
+			return errors.New("Symlinks cannot be stored in an archive.")
+		}
+		if isArchive && !isValidArchive {
+			return errors.New("The value of 'archive' (if provided) must be 'zip'.")
 		}
 	}
 	if excludePatternsUsed {

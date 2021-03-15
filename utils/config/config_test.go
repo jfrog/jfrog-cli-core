@@ -75,7 +75,7 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 			"defPackageLicense": "Apache-2.0"
 		  },
 		  "missioncontrol": {
-			  "url": "http://localhost:8080/missioncontrol/"
+			  "url": "http://localhost:8080/mc/"
 		  }
 		}
 	`
@@ -113,7 +113,7 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 			"defPackageLicense": "Apache-2.0"
 		  },
 		  "missioncontrol": {
-			"url": "http://localhost:8080/missioncontrol/"
+			"url": "http://localhost:8080/mc/"
 		  },
 		  "Version": "1"
 		}
@@ -160,7 +160,7 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 			"defPackageLicense": "Apache-2.0"
 		  },
 		  "missioncontrol": {
-			"url": "http://localhost:8080/missioncontrol/"
+			"url": "http://localhost:8080/mc/"
 		  },
 		  "version": "4"
 		}
@@ -318,7 +318,7 @@ func assertionV5Helper(t *testing.T, convertedConfig *ConfigV5, expectedVersion 
 	assert.True(t, rtConverted[0].IsDefault)
 	assert.Equal(t, DefaultServerId, rtConverted[0].ServerId)
 	assert.Equal(t, "http://localhost:8080/artifactory/", rtConverted[0].ArtifactoryUrl)
-	assert.Equal(t, "http://localhost:8080/missioncontrol/", rtConverted[0].MissionControlUrl)
+	assert.Equal(t, "http://localhost:8080/mc/", rtConverted[0].MissionControlUrl)
 	assert.Equal(t, "user", rtConverted[0].User)
 	assert.Equal(t, "password", rtConverted[0].Password)
 }

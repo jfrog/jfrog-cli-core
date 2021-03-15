@@ -2,6 +2,8 @@ package container
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetImagePath(t *testing.T) {
@@ -18,11 +20,16 @@ func TestGetImagePath(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result := NewImage(v.in).Path()
+		result, err := NewImage(v.in).Path()
+		assert.NoError(t, err)
 		if result != v.expected {
 			t.Errorf("Path(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
+	// Validate failure upon missing image name
+	_, err := NewImage("domain").Path()
+	assert.Error(t, err)
+
 }
 
 func TestGetImageName(t *testing.T) {
@@ -39,11 +46,15 @@ func TestGetImageName(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result := NewImage(v.in).Name()
+		result, err := NewImage(v.in).Name()
+		assert.NoError(t, err)
 		if result != v.expected {
 			t.Errorf("Name(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
+	// Validate failure upon missing image name
+	_, err := NewImage("domain").Name()
+	assert.Error(t, err)
 }
 
 func TestResolveRegistryFromTag(t *testing.T) {

@@ -1,8 +1,12 @@
 package container
 
 import (
+	"fmt"
 	"path"
 	"strings"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type Image struct {
@@ -15,21 +19,36 @@ func (image *Image) Tag() string {
 }
 
 // Get image relative path in Artifactory.
-func (image *Image) Path() string {
+func (image *Image) Path() (string, error) {
+	if err := image.validateTag(); err != nil {
+		return "", err
+	}
 	indexOfFirstSlash := strings.Index(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfFirstSlash {
-		return path.Join(image.tag[indexOfFirstSlash:], "latest")
+		log.Info("The image '%s' is does not include tag. Using the 'latest' tag.")
+		return path.Join(image.tag[indexOfFirstSlash:], "latest"), nil
 	}
-	return path.Join(image.tag[indexOfFirstSlash:indexOfLastColon], image.tag[indexOfLastColon+1:])
+	return path.Join(image.tag[indexOfFirstSlash:indexOfLastColon], image.tag[indexOfLastColon+1:]), nil
 }
 
 // Get image name.
-func (image *Image) Name() string {
+func (image *Image) Name() (string, error) {
+	if err := image.validateTag(); err != nil {
+		return "", err
+	}
 	indexOfLastSlash := strings.LastIndex(image.tag, "/")
 	indexOfLastColon := strings.LastIndex(image.tag, ":")
 	if indexOfLastColon < 0 || indexOfLastColon < indexOfLastSlash {
-		return image.tag[indexOfLastSlash+1:] + ":latest"
+		log.Info("The image '%s' is does not include tag. Using the 'latest' tag.")
+		return image.tag[indexOfLastSlash+1:] + ":latest", nil
 	}
-	return image.tag[indexOfLastSlash+1:]
+	return image.tag[indexOfLastSlash+1:], nil
+}
+
+func (image *Image) validateTag() error {
+	if !strings.Contains(image.tag, "/") {
+		return errorutils.CheckError(fmt.Errorf("The image '%s' is missing '/' which indicates the image name/tag", image.tag))
+	}
+	return nil
 }

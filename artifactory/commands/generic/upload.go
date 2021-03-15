@@ -91,7 +91,7 @@ func (uc *UploadCommand) upload() error {
 	addVcsProps := false
 	buildProps := ""
 	// Build Info Collection:
-	isCollectBuildInfo := len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
+	isCollectBuildInfo := uc.buildConfiguration != nil && len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
 	if isCollectBuildInfo && !uc.DryRun() {
 		addVcsProps = true
 		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {
@@ -124,28 +124,36 @@ func (uc *UploadCommand) upload() error {
 	// In case of build-info collection or a detailed summary request, we use the upload service which provides results file reader,
 	// otherwise we use the upload service which provides only general counters.
 	var successCount, failCount int
-	var resultsReader *content.ContentReader = nil
+	var artifactsDetailsReader *content.ContentReader = nil
 	if uc.DetailedSummary() || isCollectBuildInfo {
-		resultsReader, successCount, failCount, err = servicesManager.UploadFilesWithResultReader(uploadParamsArray...)
-		uc.result.SetReader(resultsReader)
+		var summary *rtServicesUtils.OperationSummary
+		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
+		if err != nil {
+			errorOccurred = true
+			log.Error(err)
+		}
+		if summary != nil {
+			artifactsDetailsReader = summary.ArtifactsDetailsReader
+			defer artifactsDetailsReader.Close()
+			// If 'detailed summary' was requested, then the reader should not be closed here.
+			// It will be closed after it will be used to generate the summary.
+			if uc.DetailedSummary() {
+				uc.result.SetReader(summary.TransferDetailsReader)
+			} else {
+				summary.TransferDetailsReader.Close()
+			}
+			successCount = summary.TotalSucceeded
+			failCount = summary.TotalFailed
+		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
+		if err != nil {
+			errorOccurred = true
+			log.Error(err)
+		}
 	}
-	if err != nil {
-		errorOccurred = true
-		log.Error(err)
-	}
-	result := uc.Result()
-	result.SetSuccessCount(successCount)
-	result.SetFailCount(failCount)
-	// If the 'details summary' was requested, then the reader should not be closed now.
-	// It will be closed after it will be used to generate the summary.
-	if resultsReader != nil && !uc.DetailedSummary() {
-		defer func() {
-			resultsReader.Close()
-			uc.result.SetReader(nil)
-		}()
-	}
+	uc.result.SetSuccessCount(successCount)
+	uc.result.SetFailCount(failCount)
 	if errorOccurred {
 		err = errors.New("Upload finished with errors, Please review the logs.")
 		return err
@@ -164,11 +172,11 @@ func (uc *UploadCommand) upload() error {
 
 	// Build info
 	if !uc.DryRun() && isCollectBuildInfo {
-		err, resultBuildInfo := utils.ReadResultBuildInfo(resultsReader)
+		var buildArtifacts []buildinfo.Artifact
+		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
 			return err
 		}
-		buildArtifacts := convertFileInfoToBuildArtifacts(resultBuildInfo.FilesInfo)
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Artifacts = buildArtifacts
 			partial.ModuleId = uc.buildConfiguration.Module
@@ -178,14 +186,6 @@ func (uc *UploadCommand) upload() error {
 
 	}
 	return err
-}
-
-func convertFileInfoToBuildArtifacts(filesInfo []rtServicesUtils.FileInfo) []buildinfo.Artifact {
-	buildArtifacts := make([]buildinfo.Artifact, len(filesInfo))
-	for i, fileInfo := range filesInfo {
-		buildArtifacts[i] = fileInfo.ToBuildArtifacts()
-	}
-	return buildArtifacts
 }
 
 func getMinChecksumDeploySize() (int64, error) {
@@ -205,11 +205,11 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	uploadParams = services.NewUploadParams()
 	uploadParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
 	uploadParams.Deb = configuration.Deb
-	uploadParams.Symlink = configuration.Symlink
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
 	uploadParams.Retries = configuration.Retries
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = bulidProps
+	uploadParams.Archive = f.Archive
 
 	uploadParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {
@@ -237,6 +237,11 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	}
 
 	uploadParams.ExplodeArchive, err = f.IsExplode(false)
+	if err != nil {
+		return
+	}
+
+	uploadParams.Symlink, err = f.IsSymlinks(false)
 	if err != nil {
 		return
 	}

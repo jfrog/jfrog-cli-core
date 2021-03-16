@@ -159,6 +159,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
 		propsUsedInUpload = propsUsedInUpload || (isUpload && len(file.Props) > 0)
+		isExcludeProps := len(file.ExcludeProps) > 0
 		isArchive := len(file.Archive) > 0
 		isValidArchive := file.Archive == "zip"
 		isSymlinks, _ := file.IsSymlinks(false)
@@ -203,6 +204,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if isAql && isExclusions {
 			return fileSpecValidationError("aql", "exclusions")
+		}
+		if isAql && isExcludeProps {
+			return fileSpecValidationError("aql", "excludeProps")
 		}
 		if isExclusions && isExcludePatterns {
 			return fileSpecValidationError("exclusions", "exclude-patterns")

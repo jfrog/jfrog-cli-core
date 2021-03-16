@@ -13,7 +13,9 @@ import (
 const (
 	// Example:
 	// JFrog Artifactory URL (http://localhost:8080/artifactory/)
-	selectableItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	promtItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	// Npm-remote ()
+	selectableItemTemplate = " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
 )
 
 type PromptItem struct {
@@ -35,7 +37,7 @@ type PromptItem struct {
 // JFrog Pipelines URL ()
 func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
-	prompt := createSelectableList(len(items), label)
+	prompt := createSelectableList(len(items), label, promtItemTemplate)
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()
@@ -49,11 +51,11 @@ func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) 
 	}
 }
 
-func createSelectableList(numOfItems int, label string) (prompt *promptui.Select) {
+func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *promptui.Select) {
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
-		Active:   "🐸" + selectableItemTemplate,
-		Inactive: "  " + selectableItemTemplate,
+		Active:   "🐸" + itemTemplate,
+		Inactive: "  " + itemTemplate,
 	}
 	return &promptui.Select{
 		Label:        label,
@@ -65,7 +67,7 @@ func createSelectableList(numOfItems int, label string) (prompt *promptui.Select
 }
 
 func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) error {
-	selectableList := createSelectableList(len(items), label)
+	selectableList := createSelectableList(len(items), label, selectableItemTemplate)
 	selectableList.Items = items
 	i, _, err := selectableList.Run()
 	if err != nil {

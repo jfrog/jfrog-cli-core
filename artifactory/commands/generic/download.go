@@ -168,7 +168,10 @@ func (dc *DownloadCommand) download() error {
 
 func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration) (downParams services.DownloadParams, err error) {
 	downParams = services.NewDownloadParams()
-	downParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	downParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	downParams.Symlink = configuration.Symlink
 	downParams.MinSplitSize = configuration.MinSplitSize
 	downParams.SplitCount = configuration.SplitCount

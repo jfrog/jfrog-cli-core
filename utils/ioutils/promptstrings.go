@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/chzyer/readline"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -69,6 +70,13 @@ func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *p
 func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	selectableList := createSelectableList(len(items), label, selectableItemTemplate)
 	selectableList.Items = items
+	selectableList.StartInSearchMode = true
+	selectableList.Searcher = func(input string, index int) bool {
+		if found := strings.Index(items[index].Option, input); found != -1 {
+			return true
+		}
+		return false
+	}
 	i, _, err := selectableList.Run()
 	if err != nil {
 		return errorutils.CheckError(err)

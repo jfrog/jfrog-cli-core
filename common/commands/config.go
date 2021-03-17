@@ -309,7 +309,7 @@ func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
-	print("Access token (Leave blank for username and password/API key): ")
+	print("JFrog access token (Leave blank for username and password/API key): ")
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return errorutils.CheckError(err)

@@ -17,12 +17,12 @@ import (
 func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, disallowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""
-		ScanFromConsole("User", &tempUser, savedDetails.GetUser())
+		ScanFromConsole("JFrog username: ", &tempUser, savedDetails.GetUser())
 		details.SetUser(tempUser)
 		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
-		print("Password/API key: ")
+		print("JFrog password or API key: ")
 		bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
 		err = errorutils.CheckError(err)
 		if err != nil {

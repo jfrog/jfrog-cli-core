@@ -46,7 +46,11 @@ func (cb *UpdateBundleCommand) Run() error {
 	}
 
 	for _, spec := range cb.spec.Files {
-		cb.releaseBundlesParams.SpecFiles = append(cb.releaseBundlesParams.SpecFiles, spec.ToArtifactoryCommonParams())
+		params, err := spec.ToArtifactoryCommonParams()
+		if err != nil {
+			return err
+		}
+		cb.releaseBundlesParams.SpecFiles = append(cb.releaseBundlesParams.SpecFiles, params)
 	}
 
 	params := services.UpdateReleaseBundleParams{ReleaseBundleParams: cb.releaseBundlesParams}

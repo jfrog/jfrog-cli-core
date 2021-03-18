@@ -111,15 +111,20 @@ func (f File) IsSymlinks(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Symlinks, defaultValue)
 }
 
-func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
+func (f *File) ToArtifactoryCommonParams() (*utils.ArtifactoryCommonParams, error) {
+	var err error
 	params := new(utils.ArtifactoryCommonParams)
+	params.TargetProps, err = utils.ParseProperties(f.TargetProps)
+	if err != nil {
+		return nil, err
+	}
+
 	params.Aql = f.Aql
 	params.Pattern = f.Pattern
 	params.ExcludePatterns = f.ExcludePatterns
 	params.Exclusions = f.Exclusions
 	params.Target = f.Target
 	params.Props = f.Props
-	params.TargetProps = f.TargetProps
 	params.ExcludeProps = f.ExcludeProps
 	params.Build = f.Build
 	params.Bundle = f.Bundle
@@ -128,7 +133,7 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	params.Offset = f.Offset
 	params.Limit = f.Limit
 	params.ArchiveEntries = f.ArchiveEntries
-	return params
+	return params, nil
 }
 
 func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload bool) error {

@@ -3,13 +3,14 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
 	"strings"
 	"syscall"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -17,7 +18,7 @@ import (
 func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, disallowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""
-		ScanFromConsole("JFrog username: ", &tempUser, savedDetails.GetUser())
+		ScanFromConsole("JFrog username", &tempUser, savedDetails.GetUser())
 		details.SetUser(tempUser)
 		disallowUsingSavedPassword = true
 	}

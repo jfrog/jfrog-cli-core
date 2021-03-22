@@ -98,16 +98,18 @@ func (dc *DownloadCommand) download() error {
 			errorOccurred = true
 			log.Error(err)
 		}
-		defer summary.ArtifactsDetailsReader.Close()
-		// If 'detailed summary' was requested, then the reader should not be closed here.
-		// It will be closed after it will be used to generate the summary.
-		if dc.DetailedSummary() {
-			dc.result.SetReader(summary.TransferDetailsReader)
-		} else {
-			defer summary.TransferDetailsReader.Close()
+		if summary != nil {
+			defer summary.ArtifactsDetailsReader.Close()
+			// If 'detailed summary' was requested, then the reader should not be closed here.
+			// It will be closed after it will be used to generate the summary.
+			if dc.DetailedSummary() {
+				dc.result.SetReader(summary.TransferDetailsReader)
+			} else {
+				defer summary.TransferDetailsReader.Close()
+			}
+			totalDownloaded = summary.TotalSucceeded
+			totalFailed = summary.TotalFailed
 		}
-		totalDownloaded = summary.TotalSucceeded
-		totalFailed = summary.TotalFailed
 	} else {
 		totalDownloaded, totalFailed, err = servicesManager.DownloadFiles(downloadParamsArray...)
 		if err != nil {
@@ -208,6 +210,8 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 	if err != nil {
 		return
 	}
+
+	downParams.Transitive = strings.ToLower(os.Getenv("JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL")) == "true"
 
 	return
 }

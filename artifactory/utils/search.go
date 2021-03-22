@@ -107,6 +107,10 @@ func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err erro
 		return
 	}
 	searchParams.IncludeDirs, err = f.IsIncludeDirs(false)
+	if err != nil {
+		return
+	}
+	searchParams.Transitive, err = f.IsTransitive(false)
 	return
 }
 

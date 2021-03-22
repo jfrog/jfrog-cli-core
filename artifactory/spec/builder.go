@@ -31,6 +31,7 @@ type builder struct {
 	validateSymlinks bool
 	symlinks         bool
 	archive          string
+	transitive       bool
 }
 
 func NewBuilder() *builder {
@@ -162,6 +163,11 @@ func (b *builder) Symlinks(symlinks bool) *builder {
 	return b
 }
 
+func (b *builder) Transitive(transitive bool) *builder {
+	b.transitive = transitive
+	return b
+}
+
 func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
@@ -192,6 +198,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),
 				IncludeDeps:      strconv.FormatBool(b.includeDeps),
 				Symlinks:         strconv.FormatBool(b.symlinks),
+				Transitive:       strconv.FormatBool(b.transitive),
 			},
 		},
 	}

@@ -93,7 +93,10 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (*content.Content
 
 func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err error) {
 	searchParams = services.NewSearchParams()
-	searchParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	searchParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	searchParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {
 		return

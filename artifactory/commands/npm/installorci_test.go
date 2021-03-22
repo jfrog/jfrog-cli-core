@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPrepareConfigData(t *testing.T) {
@@ -73,26 +75,29 @@ func TestParseDependencies(t *testing.T) {
 		t.Error(err)
 	}
 
-	expectedDependenciesList := []string{
-		"underscore:1.4.4",
-		"@jfrog/npm_scoped:1.0.0",
-		"xml:1.0.1",
-		"xpm:0.1.1",
-		"binary-search-tree:0.2.4",
-		"nedb:1.0.2",
-		"@ilg/es6-promisifier:0.1.9",
-		"wscript-avoider:3.0.2",
-		"yaml:0.2.3",
-		"@ilg/cli-start-options:0.1.19",
-		"async:0.2.10",
-		"find:0.2.7",
-		"jquery:3.2.0",
-		"nub:1.0.0",
-		"shopify-liquid:1.d7.9",
+	expectedDependenciesList := []struct {
+		Key        string
+		pathToRoot [][]string
+	}{
+		{"underscore:1.4.4", [][]string{{"binary-search-tree:0.2.4", "nedb:1.0.2", "root"}}},
+		{"@jfrog/npm_scoped:1.0.0", [][]string{{"root"}}},
+		{"xml:1.0.1", [][]string{{"root"}}},
+		{"xpm:0.1.1", [][]string{{"@jfrog/npm_scoped:1.0.0", "root"}}},
+		{"binary-search-tree:0.2.4", [][]string{{"nedb:1.0.2", "root"}}},
+		{"nedb:1.0.2", [][]string{{"root"}}},
+		{"@ilg/es6-promisifier:0.1.9", [][]string{{"@ilg/cli-start-options:0.1.19", "xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
+		{"wscript-avoider:3.0.2", [][]string{{"@ilg/cli-start-options:0.1.19", "xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
+		{"yaml:0.2.3", [][]string{{"root"}}},
+		{"@ilg/cli-start-options:0.1.19", [][]string{{"xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
+		{"async:0.2.10", [][]string{{"nedb:1.0.2", "root"}}},
+		{"find:0.2.7", [][]string{{"root"}}},
+		{"jquery:3.2.0", [][]string{{"root"}}},
+		{"nub:1.0.0", [][]string{{"find:0.2.7", "root"}, {"root"}}},
+		{"shopify-liquid:1.d7.9", [][]string{{"xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
 	}
 	npmi := NpmCommandArgs{}
 	npmi.dependencies = make(map[string]*dependency)
-	err = npmi.parseDependencies([]byte(dependenciesJsonList), "myScope")
+	err = npmi.parseDependencies([]byte(dependenciesJsonList), "myScope", []string{"root"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -104,8 +109,8 @@ func TestParseDependencies(t *testing.T) {
 	}
 	for _, eDependency := range expectedDependenciesList {
 		found := false
-		for aDependency := range npmi.dependencies {
-			if aDependency == eDependency {
+		for aDependency, v := range npmi.dependencies {
+			if aDependency == eDependency.Key && assert.ElementsMatch(t, v.pathToRoot, eDependency.pathToRoot) {
 				found = true
 				break
 			}

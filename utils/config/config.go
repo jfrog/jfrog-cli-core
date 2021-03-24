@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -667,6 +668,12 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 	artAuth := xrayAuth.NewXrayDetails()
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)
+}
+
+func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDetails, error) {
+	pAuth := pipelinesAuth.NewPipelinesDetails()
+	pAuth.SetUrl(serverDetails.PipelinesUrl)
+	return serverDetails.createAuthConfig(pAuth)
 }
 
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {

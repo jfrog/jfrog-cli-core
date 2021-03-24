@@ -64,8 +64,8 @@ github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 h1:BHsljHzVlRcyQhjr
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
-github.com/gailazar300/gocmd v0.1.20-0.20210322154400-7dd8a06ae285 h1:RC1ta4oBRA3Z/SZNCRGERsQ1TLNkTgrtudgknWPXuGA=
-github.com/gailazar300/gocmd v0.1.20-0.20210322154400-7dd8a06ae285/go.mod h1:IBpcVPaX4pmS57yz6v4Jb2AtMFvN2ELY054Wc4wMuEU=
+github.com/gailazar300/gocmd v0.1.20-0.20210324090524-afcd63b26ed3 h1:LDuFw1LhYlreGWSieCfgpRdglcNGPytnwp7+ubgF1R0=
+github.com/gailazar300/gocmd v0.1.20-0.20210324090524-afcd63b26ed3/go.mod h1:OpIH5EuEfvYFF+PPj0zXH+favZDoqaF19Km/g9TBI10=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gliderlabs/ssh v0.1.1 h1:j3L6gSLQalDETeEg/Jg0mGY0/y/N6zI2xX1978P0Uqw=
 github.com/gliderlabs/ssh v0.1.1/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=

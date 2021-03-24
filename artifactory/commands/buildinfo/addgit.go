@@ -64,7 +64,7 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 }
 
 func (config *BuildAddGitCommand) Run() error {
-	log.Info("Reading the git branch, revision and remote url and adding them to the build-info.")
+	log.Info("Reading the git branch, revision and remote URL and adding them to the build-info.")
 	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project)
 	if err != nil {
 		return err

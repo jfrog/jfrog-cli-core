@@ -52,6 +52,8 @@ func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	if *scanInto == "" {
 		*scanInto = defaultValue
 	}
+	*scanInto = strings.TrimSpace(*scanInto)
+
 }
 
 func CopyFile(src, dst string, fileMode os.FileMode) error {

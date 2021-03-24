@@ -23,4 +23,4 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v0.20.3-0.20210321133437-f327beeca71b
 
-replace github.com/jfrog/gocmd => github.com/gailazar300/gocmd v0.1.20-0.20210324090524-afcd63b26ed3
+replace github.com/jfrog/gocmd => github.com/gailazar300/gocmd v0.1.20-0.20210324101758-319bcec2d87f

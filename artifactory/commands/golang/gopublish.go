@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -18,7 +19,7 @@ const minSupportedArtifactoryVersion = "6.2.0"
 
 type GoPublishCommand struct {
 	publishPackage     bool
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	dependencies       string
 	version            string
 	result             *commandutils.Result
@@ -43,7 +44,7 @@ func (gpc *GoPublishCommand) SetDependencies(dependencies string) *GoPublishComm
 	return gpc
 }
 
-func (gpc *GoPublishCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommand {
+func (gpc *GoPublishCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *GoPublishCommand {
 	gpc.buildConfiguration = buildConfiguration
 	return gpc
 }

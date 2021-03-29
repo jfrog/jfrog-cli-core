@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -28,7 +29,7 @@ type GoCommand struct {
 	noRegistry         bool
 	publishDeps        bool
 	goArg              []string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
 }
@@ -47,7 +48,7 @@ func (gc *GoCommand) SetDeployerParams(deployerParams *utils.RepositoryConfig) *
 	return gc
 }
 
-func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoCommand {
+func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *GoCommand {
 	gc.buildConfiguration = buildConfiguration
 	return gc
 }

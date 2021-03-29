@@ -8,6 +8,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -21,7 +22,7 @@ import (
 type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
-	buildConfiguration  *utils.BuildConfiguration
+	buildConfiguration  *coreutils.BuildConfiguration
 	progress            ioUtils.ProgressMgr
 }
 
@@ -29,7 +30,7 @@ func NewUploadCommand() *UploadCommand {
 	return &UploadCommand{GenericCommand: *NewGenericCommand()}
 }
 
-func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *UploadCommand {
+func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *UploadCommand {
 	uc.buildConfiguration = buildConfiguration
 	return uc
 }
@@ -203,7 +204,10 @@ func getMinChecksumDeploySize() (int64, error) {
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bulidProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
 	uploadParams = services.NewUploadParams()
-	uploadParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	uploadParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	uploadParams.Deb = configuration.Deb
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
 	uploadParams.Retries = configuration.Retries

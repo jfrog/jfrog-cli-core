@@ -14,6 +14,7 @@ import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -28,7 +29,7 @@ type MvnCommand struct {
 	goals         []string
 	configPath    string
 	insecureTls   bool
-	configuration *utils.BuildConfiguration
+	configuration *coreutils.BuildConfiguration
 	serverDetails *config.ServerDetails
 	threads       int
 }
@@ -42,7 +43,7 @@ func (mc *MvnCommand) SetServerDetails(serverDetails *config.ServerDetails) *Mvn
 	return mc
 }
 
-func (mc *MvnCommand) SetConfiguration(configuration *utils.BuildConfiguration) *MvnCommand {
+func (mc *MvnCommand) SetConfiguration(configuration *coreutils.BuildConfiguration) *MvnCommand {
 	mc.configuration = configuration
 	return mc
 }

@@ -29,7 +29,7 @@ const gradleBuildInfoProperties = "BUILDINFO_PROPFILE"
 type GradleCommand struct {
 	tasks         string
 	configPath    string
-	configuration *utils.BuildConfiguration
+	configuration *coreutils.BuildConfiguration
 	serverDetails *config.ServerDetails
 	threads       int
 }
@@ -77,7 +77,7 @@ func (gc *GradleCommand) CommandName() string {
 	return "rt_gradle"
 }
 
-func (gc *GradleCommand) SetConfiguration(configuration *utils.BuildConfiguration) *GradleCommand {
+func (gc *GradleCommand) SetConfiguration(configuration *coreutils.BuildConfiguration) *GradleCommand {
 	gc.configuration = configuration
 	return gc
 }
@@ -113,7 +113,7 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 	return
 }
 
-func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string) (*gradleRunConfig, error) {
+func createGradleRunConfig(tasks, configPath string, configuration *coreutils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string) (*gradleRunConfig, error) {
 	runConfig := &gradleRunConfig{env: map[string]string{}}
 	runConfig.tasks = tasks
 

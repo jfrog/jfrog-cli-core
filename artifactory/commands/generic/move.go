@@ -69,7 +69,10 @@ func (mc *MoveCommand) CommandName() string {
 
 func getMoveParams(f *spec.File) (moveParams services.MoveCopyParams, err error) {
 	moveParams = services.NewMoveCopyParams()
-	moveParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	moveParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	moveParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {
 		return

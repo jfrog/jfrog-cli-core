@@ -11,6 +11,7 @@ import (
 	piputils "github.com/jfrog/jfrog-cli-core/artifactory/utils/pip"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/pip/dependencies"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -19,7 +20,7 @@ import (
 
 type PipInstallCommand struct {
 	*PipCommand
-	buildConfiguration     *utils.BuildConfiguration
+	buildConfiguration     *coreutils.BuildConfiguration
 	shouldCollectBuildInfo bool
 }
 
@@ -140,7 +141,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 		return
 	}
 
-	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
+	pic.args, pic.buildConfiguration, err = coreutils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {
 		return
 	}

@@ -3,15 +3,15 @@ package container
 import (
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 type ContainerManagerCommand struct {
 	imageTag           string
 	repo               string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	skipLogin          bool
 }
@@ -40,11 +40,11 @@ func (cmc *ContainerManagerCommand) SetRepo(repo string) *ContainerManagerComman
 	return cmc
 }
 
-func (cmc *ContainerManagerCommand) BuildConfiguration() *utils.BuildConfiguration {
+func (cmc *ContainerManagerCommand) BuildConfiguration() *coreutils.BuildConfiguration {
 	return cmc.buildConfiguration
 }
 
-func (cmc *ContainerManagerCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *ContainerManagerCommand {
+func (cmc *ContainerManagerCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *ContainerManagerCommand {
 	cmc.buildConfiguration = buildConfiguration
 	return cmc
 }

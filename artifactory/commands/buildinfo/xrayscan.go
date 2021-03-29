@@ -5,6 +5,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -12,7 +13,7 @@ import (
 )
 
 type BuildScanCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	failBuild          bool
 	serverDetails      *config.ServerDetails
 }
@@ -31,7 +32,7 @@ func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanCommand {
+func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildScanCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
@@ -89,7 +90,7 @@ type scanSummary struct {
 	Url         string `json:"more_details_url,omitempty"`
 }
 
-func getXrayScanParams(buildConfiguration utils.BuildConfiguration) services.XrayScanParams {
+func getXrayScanParams(buildConfiguration coreutils.BuildConfiguration) services.XrayScanParams {
 	xrayScanParams := services.NewXrayScanParams()
 	xrayScanParams.BuildName = buildConfiguration.BuildName
 	xrayScanParams.BuildNumber = buildConfiguration.BuildNumber

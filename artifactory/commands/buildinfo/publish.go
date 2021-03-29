@@ -12,7 +12,7 @@ import (
 )
 
 type BuildPublishCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
 }
@@ -31,7 +31,7 @@ func (bpc *BuildPublishCommand) SetServerDetails(serverDetails *config.ServerDet
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildPublishCommand {
+func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildPublishCommand {
 	bpc.buildConfiguration = buildConfiguration
 	return bpc
 }

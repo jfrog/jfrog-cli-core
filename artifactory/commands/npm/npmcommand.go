@@ -1,13 +1,13 @@
 package npm
 
 import (
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 type NpmCommand struct {
 	repo               string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	npmArgs            []string
 	serverDetails      *config.ServerDetails
 }
@@ -22,7 +22,7 @@ func (nc *NpmCommand) SetNpmArgs(npmArgs []string) *NpmCommand {
 	return nc
 }
 
-func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *NpmCommand {
+func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *NpmCommand {
 	nc.buildConfiguration = buildConfiguration
 	return nc
 }

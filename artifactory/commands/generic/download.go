@@ -9,6 +9,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -20,7 +21,7 @@ import (
 )
 
 type DownloadCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
 	progress      ioUtils.ProgressMgr
@@ -30,7 +31,7 @@ func NewDownloadCommand() *DownloadCommand {
 	return &DownloadCommand{GenericCommand: *NewGenericCommand()}
 }
 
-func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *DownloadCommand {
+func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *DownloadCommand {
 	dc.buildConfiguration = buildConfiguration
 	return dc
 }
@@ -168,7 +169,10 @@ func (dc *DownloadCommand) download() error {
 
 func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration) (downParams services.DownloadParams, err error) {
 	downParams = services.NewDownloadParams()
-	downParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	downParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	downParams.Symlink = configuration.Symlink
 	downParams.MinSplitSize = configuration.MinSplitSize
 	downParams.SplitCount = configuration.SplitCount

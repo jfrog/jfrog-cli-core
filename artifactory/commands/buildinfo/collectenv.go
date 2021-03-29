@@ -6,19 +6,20 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type BuildCollectEnvCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 }
 
 func NewBuildCollectEnvCommand() *BuildCollectEnvCommand {
 	return &BuildCollectEnvCommand{}
 }
 
-func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildCollectEnvCommand {
+func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildCollectEnvCommand {
 	bcec.buildConfiguration = buildConfiguration
 	return bcec
 }

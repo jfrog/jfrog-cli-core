@@ -6,6 +6,7 @@ import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -27,7 +28,7 @@ const (
 )
 
 type BuildAddGitCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	dotGitPath         string
 	configFilePath     string
 	serverId           string
@@ -53,7 +54,7 @@ func (config *BuildAddGitCommand) SetDotGitPath(dotGitPath string) *BuildAddGitC
 	return config
 }
 
-func (config *BuildAddGitCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAddGitCommand {
+func (config *BuildAddGitCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildAddGitCommand {
 	config.buildConfiguration = buildConfiguration
 	return config
 }

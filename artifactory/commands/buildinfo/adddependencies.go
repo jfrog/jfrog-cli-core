@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -22,7 +23,7 @@ import (
 )
 
 type BuildAddDependenciesCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 	dependenciesSpec   *spec.SpecFiles
 	dryRun             bool
 	result             *commandsutils.Result
@@ -84,7 +85,7 @@ func (badc *BuildAddDependenciesCommand) SetServerDetails(serverDetails *config.
 	return badc
 }
 
-func (badc *BuildAddDependenciesCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAddDependenciesCommand {
+func (badc *BuildAddDependenciesCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildAddDependenciesCommand {
 	badc.buildConfiguration = buildConfiguration
 	return badc
 }
@@ -202,7 +203,11 @@ func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.
 }
 
 func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonParams, error) {
-	params := specFile.ToArtifactoryCommonParams()
+	params, err := specFile.ToArtifactoryCommonParams()
+	if err != nil {
+		return nil, err
+	}
+
 	recursive, err := clientutils.StringToBool(specFile.Recursive, true)
 	if err != nil {
 		return nil, err

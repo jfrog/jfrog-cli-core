@@ -3,18 +3,19 @@ package buildinfo
 import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type BuildCleanCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *coreutils.BuildConfiguration
 }
 
 func NewBuildCleanCommand() *BuildCleanCommand {
 	return &BuildCleanCommand{}
 }
 
-func (bcc *BuildCleanCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildCleanCommand {
+func (bcc *BuildCleanCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildCleanCommand {
 	bcc.buildConfiguration = buildConfiguration
 	return bcc
 }

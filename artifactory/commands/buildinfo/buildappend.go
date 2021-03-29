@@ -8,6 +8,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -17,7 +18,7 @@ import (
 )
 
 type BuildAppendCommand struct {
-	buildConfiguration  *utils.BuildConfiguration
+	buildConfiguration  *coreutils.BuildConfiguration
 	serverDetails       *config.ServerDetails
 	buildNameToAppend   string
 	buildNumberToAppend string
@@ -74,7 +75,7 @@ func (bac *BuildAppendCommand) SetServerDetails(serverDetails *config.ServerDeta
 	return bac
 }
 
-func (bac *BuildAppendCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAppendCommand {
+func (bac *BuildAppendCommand) SetBuildConfiguration(buildConfiguration *coreutils.BuildConfiguration) *BuildAppendCommand {
 	bac.buildConfiguration = buildConfiguration
 	return bac
 }

@@ -1,6 +1,8 @@
-package utils
+package coreutils
 
 import (
+	"github.com/stretchr/testify/assert"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -114,4 +116,98 @@ type testCase struct {
 	flagValue      string
 	flagValueIndex int
 	expectErr      bool
+}
+
+func TestFindBooleanFlag(t *testing.T) {
+	tests := []struct {
+		flagName      string
+		command       []string
+		expectedIndex int
+		expectedValue bool
+		shouldFail    bool
+	}{
+		{"--foo", []string{"-X", "--GET", "--foo/api/build/test1", "--foo", "bar"}, 3, true, false},
+		{"--server-id", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo"}, -1, false, false},
+		{"--bar", []string{"-X", "GET", "api/build/test3", "--foo", "bar"}, -1, false, false},
+		{"-X", []string{"-X=true", "GET", "api/build/test3", "--foo", "bar"}, 0, true, false},
+		{"--json", []string{"-X=true", "GET", "api/build/test3", "--foo", "--json=false"}, 4, false, false},
+		{"--dry-run", []string{"-X=falsee", "GET", "api/build/test3", "--dry-run=falsee", "--json"}, 3, false, true},
+	}
+
+	for testIndex, test := range tests {
+		actualIndex, actualValue, err := FindBooleanFlag(test.flagName, test.command)
+		if test.shouldFail && err == nil {
+			t.Errorf("Test #%d: Should fail to parse the boolean value, but ended with nil error.", testIndex)
+		}
+		if actualIndex != test.expectedIndex {
+			t.Errorf("Test #%d: Expected index value: %d, got: %d.", testIndex, test.expectedIndex, actualIndex)
+		}
+		if actualValue != test.expectedValue {
+			t.Errorf("Test #%d: Expected value: %t, got: %t.", testIndex, test.expectedValue, actualValue)
+		}
+	}
+}
+
+func TestFindFlagFirstMatch(t *testing.T) {
+	tests := []struct {
+		command            []string
+		flags              []string
+		expectedFlagIndex  int
+		expectedValueIndex int
+		expectedValue      string
+	}{
+		{[]string{"-test", "--build-name", "test1", "--foo", "--build-number", "1", "--module", "module1"}, []string{"--build", "--build-name"}, 1, 2, "test1"},
+		{[]string{"--module=module2", "--build-name", "test2", "--foo", "bar", "--build-number=2"}, []string{"--build-name", "--module"}, 1, 2, "test2"},
+		{[]string{"foo", "-X", "123", "--bar", "--build-number=3", "--foox=barx"}, []string{"-Y", "--foo", "--foox"}, 5, 5, "barx"},
+	}
+
+	for _, test := range tests {
+		actualFlagIndex, actualValueIndex, actualValue, err := FindFlagFirstMatch(test.flags, test.command)
+		if err != nil {
+			t.Error(err)
+		}
+		// Validate results.
+		if actualValue != test.expectedValue {
+			t.Errorf("Expected flag value of: %s, got: %s.", test.expectedValue, actualValue)
+		}
+		if actualValueIndex != test.expectedValueIndex {
+			t.Errorf("Expected flag value index of: %d, got: %d.", test.expectedValueIndex, actualValueIndex)
+		}
+		if actualFlagIndex != test.expectedFlagIndex {
+			t.Errorf("Expected flag index of: %d, got: %d.", test.expectedFlagIndex, actualFlagIndex)
+		}
+	}
+}
+
+func TestParseArgs(t *testing.T) {
+	// Check with no quote
+	want := []string{`rt`}
+	got, _ := ParseArgs([]string{`rt`})
+	assert.EqualValues(t, got, want)
+	// Check middle quote
+	want = []string{`pom.xml`}
+	got, _ = ParseArgs([]string{`"p"o"m.xml"`})
+	assert.EqualValues(t, got, want)
+
+	// Check with space and backslash
+	want = []string{`-f a\b\pom.xml`}
+	got, _ = ParseArgs([]string{`"-f a\b\pom.xml"`})
+	assert.EqualValues(t, got, want)
+	os.Setenv("JFROGPARSETEST", "jfrog")
+	defer os.Unsetenv("JFROGPARSETEST")
+
+	// Check env variable parse
+	want = []string{`--build-name=jfrog`}
+	got, _ = ParseArgs([]string{`"--build-name=$JFROGPARSETEST"`})
+	assert.EqualValues(t, got, want)
+
+	want = []string{`--build-name=jfrog jfrog`, "--build-number=1"}
+	got, _ = ParseArgs([]string{`"--build-name=jfrog jfrog"`, "--build-number=1"})
+	assert.EqualValues(t, got, want)
+
+	got, _ = ParseArgs([]string{`--build-name="jfrog jfrog"`, "--build-number=1"})
+	assert.EqualValues(t, got, want)
+
+	got, _ = ParseArgs([]string{`--build-name='jfrog jfrog'`, "--build-number=1"})
+	assert.EqualValues(t, got, want)
 }

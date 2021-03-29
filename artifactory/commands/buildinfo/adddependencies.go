@@ -202,7 +202,11 @@ func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.
 }
 
 func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonParams, error) {
-	params := specFile.ToArtifactoryCommonParams()
+	params, err := specFile.ToArtifactoryCommonParams()
+	if err != nil {
+		return nil, err
+	}
+
 	recursive, err := clientutils.StringToBool(specFile.Recursive, true)
 	if err != nil {
 		return nil, err

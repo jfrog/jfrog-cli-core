@@ -69,7 +69,10 @@ func (cc *CopyCommand) Run() error {
 
 func getCopyParams(f *spec.File) (copyParams services.MoveCopyParams, err error) {
 	copyParams = services.NewMoveCopyParams()
-	copyParams.ArtifactoryCommonParams = f.ToArtifactoryCommonParams()
+	copyParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	if err != nil {
+		return
+	}
 	copyParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {
 		return

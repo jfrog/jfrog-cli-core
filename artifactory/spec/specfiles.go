@@ -111,15 +111,20 @@ func (f File) IsSymlinks(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Symlinks, defaultValue)
 }
 
-func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
+func (f *File) ToArtifactoryCommonParams() (*utils.ArtifactoryCommonParams, error) {
+	var err error
 	params := new(utils.ArtifactoryCommonParams)
+	params.TargetProps, err = utils.ParseProperties(f.TargetProps)
+	if err != nil {
+		return nil, err
+	}
+
 	params.Aql = f.Aql
 	params.Pattern = f.Pattern
 	params.ExcludePatterns = f.ExcludePatterns
 	params.Exclusions = f.Exclusions
 	params.Target = f.Target
 	params.Props = f.Props
-	params.TargetProps = f.TargetProps
 	params.ExcludeProps = f.ExcludeProps
 	params.Build = f.Build
 	params.Bundle = f.Bundle
@@ -128,7 +133,7 @@ func (f *File) ToArtifactoryCommonParams() *utils.ArtifactoryCommonParams {
 	params.Offset = f.Offset
 	params.Limit = f.Limit
 	params.ArchiveEntries = f.ArchiveEntries
-	return params
+	return params, nil
 }
 
 func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload bool) error {
@@ -154,6 +159,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
 		propsUsedInUpload = propsUsedInUpload || (isUpload && len(file.Props) > 0)
+		isExcludeProps := len(file.ExcludeProps) > 0
 		isArchive := len(file.Archive) > 0
 		isValidArchive := file.Archive == "zip"
 		isSymlinks, _ := file.IsSymlinks(false)
@@ -198,6 +204,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if isAql && isExclusions {
 			return fileSpecValidationError("aql", "exclusions")
+		}
+		if isAql && isExcludeProps {
+			return fileSpecValidationError("aql", "excludeProps")
 		}
 		if isExclusions && isExcludePatterns {
 			return fileSpecValidationError("exclusions", "exclude-patterns")

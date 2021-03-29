@@ -3,7 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
-	commonutils "github.com/jfrog/jfrog-cli-core/common/utils"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"io"
 	"os/exec"
 	"strings"
@@ -135,11 +135,11 @@ func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue 
 // Returns server details
 func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 	// Get --server-id flag value from the command, and remove it.
-	flagIndex, valueIndex, serverIdValue, err := commonutils.FindFlag("--server-id", curlCmd.arguments)
+	flagIndex, valueIndex, serverIdValue, err := coreutils.FindFlag("--server-id", curlCmd.arguments)
 	if err != nil {
 		return nil, err
 	}
-	commonutils.RemoveFlagFromCommand(&curlCmd.arguments, flagIndex, valueIndex)
+	coreutils.RemoveFlagFromCommand(&curlCmd.arguments, flagIndex, valueIndex)
 	return config.GetSpecificConfig(serverIdValue, true, true)
 }
 

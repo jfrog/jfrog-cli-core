@@ -3,6 +3,7 @@ package golang
 import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -50,7 +51,7 @@ func (gnc *GoNativeCommand) Run() error {
 	}
 
 	// Extract build info information from the args.
-	gnc.goArg, gnc.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(gnc.goArg)
+	gnc.goArg, gnc.buildConfiguration, err = coreutils.ExtractBuildDetailsFromArgs(gnc.goArg)
 	if err != nil {
 		return err
 	}

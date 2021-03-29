@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"net/http"
 
 	"github.com/buger/jsonparser"
@@ -86,7 +87,8 @@ func GetRepoNameForDependenciesSearch(repoName string, serviceManager artifactor
 }
 
 func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryServicesManager) (bool, error) {
-	repoDetails, err := serviceManager.GetRepository(repoName)
+	repoDetails := &services.RepositoryDetails{}
+	err := serviceManager.GetRepository(repoName, &repoDetails)
 	if err != nil {
 		return false, errorutils.CheckError(errors.New("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error()))
 	}

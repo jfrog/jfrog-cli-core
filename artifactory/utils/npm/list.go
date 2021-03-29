@@ -7,14 +7,14 @@ import (
 	"sync"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 func RunList(flags, executablePath string) (stdResult, errResult []byte, err error) {
 	log.Debug("Running npm list command.")
-	splitFlags, err := utils.ParseArgs(strings.Split(flags, " "))
+	splitFlags, err := coreutils.ParseArgs(strings.Split(flags, " "))
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}

@@ -1,21 +1,20 @@
 package npm
 
 import (
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	commonutils "github.com/jfrog/jfrog-cli-core/common/utils"
+	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"strconv"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput bool, cleanArgs []string, buildConfig *coreutils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
-	flagIndex, valueIndex, numOfThreads, err := commonutils.FindFlag("--threads", args)
+	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
 	if err != nil {
 		return
 	}
-	commonutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	if numOfThreads != "" {
 		threads, err = strconv.Atoi(numOfThreads)
 		if err != nil {
@@ -26,13 +25,13 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput bool, cle
 
 	// Since we use --json flag for retrieving the npm config for writing the temp .npmrc, json=true is written to the config list.
 	// We don't want to force the json output for all users, so we check whether the json output was explicitly required.
-	flagIndex, jsonOutput, err = utils.FindBooleanFlag("--json", args)
+	flagIndex, jsonOutput, err = coreutils.FindBooleanFlag("--json", args)
 	if err != nil {
 		return
 	}
 	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	commonutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
+	cleanArgs, buildConfig, err = coreutils.ExtractBuildDetailsFromArgs(args)
 	return
 }

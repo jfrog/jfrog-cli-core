@@ -208,5 +208,5 @@ func createTokensServiceManager(artDetails *ServerDetails) (artifactory.Artifact
 	if err != nil {
 		return nil, err
 	}
-	return artifactory.New(&artAuth, serviceConfig)
+	return artifactory.New(serviceConfig)
 }

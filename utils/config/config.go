@@ -676,7 +676,7 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	if serverDetails.RefreshToken != "" {
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
-		details.AppendPreRequestInterceptor(AccessTokenRefreshPreRequestInterceptor)
+		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)
 	} else {
 		details.SetApiKey(serverDetails.ApiKey)
 		details.SetUser(serverDetails.User)

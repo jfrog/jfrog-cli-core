@@ -59,7 +59,7 @@ func createPropsServiceManager(threads int, serverDetails *config.ServerDetails)
 		SetThreads(threads).
 		Build()
 
-	return artifactory.New(&artAuth, serviceConfig)
+	return artifactory.New(serviceConfig)
 }
 
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {

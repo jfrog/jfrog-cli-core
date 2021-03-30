@@ -83,7 +83,7 @@ func (project *goProject) loadDependencies() ([]executers.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	modulesMap, err := cmd.GetDependenciesGraph(project.projectPath)
+	modulesMap, err := cmd.GetDependenciesList(project.projectPath)
 	if err != nil {
 		return nil, err
 	}

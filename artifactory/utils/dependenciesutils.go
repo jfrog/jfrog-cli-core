@@ -114,7 +114,9 @@ func downloadFileFromArtifactory(artDetails *config.ServerDetails, downloadPath,
 	client, err := jfroghttpclient.JfrogClientBuilder().
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(artDetails.InsecureTls).
-		SetServiceDetails(&auth).
+		SetClientCertPath(auth.GetClientCertPath()).
+		SetClientCertKeyPath(auth.GetClientCertKeyPath()).
+		AppendPreRequestInterceptor(auth.RunPreRequestFunctions).
 		Build()
 	if err != nil {
 		return err

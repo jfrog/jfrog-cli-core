@@ -106,7 +106,7 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 	if err != nil {
 		return nil, err
 	}
-	return artifactory.New(&artAuth, serviceConfig)
+	return artifactory.New(serviceConfig)
 }
 
 func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
@@ -129,7 +129,7 @@ func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, th
 	if err != nil {
 		return nil, err
 	}
-	return artifactory.NewWithProgress(&artAuth, servicesConfig, progressBar)
+	return artifactory.NewWithProgress(servicesConfig, progressBar)
 }
 
 func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {

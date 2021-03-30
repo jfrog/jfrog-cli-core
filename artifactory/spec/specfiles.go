@@ -69,6 +69,7 @@ type File struct {
 	ValidateSymlinks string
 	Archive          string
 	Symlinks         string
+	Transitive       string
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {
@@ -109,6 +110,10 @@ func (f File) IsIncludeDeps(defaultValue bool) (bool, error) {
 
 func (f File) IsSymlinks(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Symlinks, defaultValue)
+}
+
+func (f File) IsTransitive(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.Transitive, defaultValue)
 }
 
 func (f *File) ToArtifactoryCommonParams() (*utils.ArtifactoryCommonParams, error) {

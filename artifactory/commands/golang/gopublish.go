@@ -16,56 +16,31 @@ import (
 
 const minSupportedArtifactoryVersion = "6.2.0"
 
-type GoPublishCommand struct {
+type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
 	dependencies       string
 	version            string
 	result             *commandutils.Result
 	utils.RepositoryConfig
-	// Deprecated.
-	publishPackage bool
+}
+
+type GoPublishCommand struct {
+	configFilePath      string
+	internalCommandName string
+	*GoPublishCommandArgs
 }
 
 func NewGoPublishCommand() *GoPublishCommand {
-	return &GoPublishCommand{result: new(commandutils.Result)}
+	return &GoPublishCommand{GoPublishCommandArgs: &GoPublishCommandArgs{result: new(commandutils.Result)}, internalCommandName: "rt_go_publish"}
 }
 
-func (gpc *GoPublishCommand) Result() *commandutils.Result {
-	return gpc.result
+func (gpc *GoPublishCommand) CommandName() string {
+	return gpc.internalCommandName
 }
 
-func (gpc *GoPublishCommand) SetVersion(version string) *GoPublishCommand {
-	gpc.version = version
+func (gpc *GoPublishCommand) SetConfigFilePath(configFilePath string) *GoPublishCommand {
+	gpc.configFilePath = configFilePath
 	return gpc
-}
-
-func (gpc *GoPublishCommand) SetDependencies(dependencies string) *GoPublishCommand {
-	gpc.dependencies = dependencies
-	return gpc
-}
-
-func (gpc *GoPublishCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommand {
-	gpc.buildConfiguration = buildConfiguration
-	return gpc
-}
-
-func (gpc *GoPublishCommand) SetPublishPackage(publishPackage bool) *GoPublishCommand {
-	gpc.publishPackage = publishPackage
-	return gpc
-}
-
-func (gpc *GoPublishCommand) SetConfigFilePath(configFilePath string) (err error) {
-	// Read config file.
-	vConfig, err := utils.ReadConfigFile(configFilePath, utils.YAML)
-	if err != nil {
-		return
-	}
-	repoConfig, err := utils.GetRepoConfigByPrefix(configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
-	if err != nil {
-		return
-	}
-	gpc.RepositoryConfig = *repoConfig
-	return
 }
 
 func (gpc *GoPublishCommand) Run() error {
@@ -78,7 +53,16 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
+	// Read config file.
+	vConfig, err := utils.ReadConfigFile(gpc.configFilePath, utils.YAML)
+	if err != nil {
+		return err
+	}
+	repoConfig, err := utils.GetRepoConfigByPrefix(gpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	if err != nil {
+		return err
+	}
+	gpc.RepositoryConfig = *repoConfig
 	serverDetails, err := gpc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -114,11 +98,9 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	// Publish the package to Artifactory
-	if gpc.publishPackage {
-		err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
-		if err != nil {
-			return err
-		}
+	err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+	if err != nil {
+		return err
 	}
 
 	result := gpc.Result()
@@ -136,9 +118,7 @@ func (gpc *GoPublishCommand) Run() error {
 			return err
 		}
 	}
-	if gpc.publishPackage {
-		result.SetSuccessCount(result.SuccessCount() + 1)
-	}
+	result.SetSuccessCount(result.SuccessCount() + 1)
 
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
@@ -156,8 +136,23 @@ func (gpc *GoPublishCommand) Run() error {
 	return err
 }
 
-func (gpc *GoPublishCommand) CommandName() string {
-	return "rt_go_publish"
+func (gpca *GoPublishCommandArgs) Result() *commandutils.Result {
+	return gpca.result
+}
+
+func (gpca *GoPublishCommandArgs) SetVersion(version string) *GoPublishCommandArgs {
+	gpca.version = version
+	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) SetDependencies(dependencies string) *GoPublishCommandArgs {
+	gpca.dependencies = dependencies
+	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
+	gpca.buildConfiguration = buildConfiguration
+	return gpca
 }
 
 func validatePrerequisites() error {

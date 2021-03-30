@@ -2,6 +2,7 @@ package generic
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -214,7 +215,7 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 		return
 	}
 
-	downParams.Transitive = strings.ToLower(os.Getenv("JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL")) == "true"
+	downParams.Transitive = strings.ToLower(os.Getenv(coreutils.TransitiveDownload)) == "true"
 
 	return
 }

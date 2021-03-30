@@ -2,11 +2,11 @@ package utils
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"net/http"
 
 	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -92,5 +92,5 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 	if err != nil {
 		return false, errorutils.CheckError(errors.New("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error()))
 	}
-	return repoDetails.Rclass == "remote", nil
+	return repoDetails.GetRepoType() == "remote", nil
 }

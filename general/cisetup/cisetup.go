@@ -5,6 +5,7 @@ const ConfigServerId = "ci-setup-cmd"
 type CiSetupData struct {
 	RepositoryName          string
 	ProjectDomain           string
+	VcsBaseUrl              string
 	LocalDirPath            string
 	GitBranch               string
 	BuildCommand            string

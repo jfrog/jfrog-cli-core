@@ -97,12 +97,22 @@ func (pc *JFrogPipelinesConfigurator) createVcsIntegration(psm *pipelines.Pipeli
 	case Github:
 		integrationName = pc.createIntegrationName(services.GithubName)
 		integrationId, err = psm.CreateGithubIntegration(integrationName, pc.SetupData.VcsCredentials.AccessToken)
+	case GithubEnterprise:
+		integrationName = pc.createIntegrationName(services.GithubEnterpriseName)
+		integrationId, err = psm.CreateGithubEnterpriseIntegration(integrationName, pc.SetupData.VcsBaseUrl, pc.SetupData.VcsCredentials.AccessToken)
 	case Bitbucket:
 		integrationName = pc.createIntegrationName(services.BitbucketName)
 		integrationId, err = psm.CreateBitbucketIntegration(integrationName, pc.SetupData.VcsCredentials.User, pc.SetupData.VcsCredentials.AccessToken)
+	case BitbucketServer:
+		integrationName = pc.createIntegrationName(services.BitbucketServerName)
+		cred := pc.SetupData.VcsCredentials.AccessToken
+		if cred == "" {
+			cred = pc.SetupData.VcsCredentials.Password
+		}
+		integrationId, err = psm.CreateBitbucketServerIntegration(integrationName, pc.SetupData.VcsBaseUrl, pc.SetupData.VcsCredentials.User, cred)
 	case Gitlab:
 		integrationName = pc.createIntegrationName(services.GitlabName)
-		integrationId, err = psm.CreateGitlabIntegration(integrationName, pc.SetupData.VcsCredentials.Url, pc.SetupData.VcsCredentials.AccessToken)
+		integrationId, err = psm.CreateGitlabIntegration(integrationName, pc.SetupData.VcsBaseUrl, pc.SetupData.VcsCredentials.AccessToken)
 	default:
 		return "", -1, errorutils.CheckError(errors.New("vcs type is not supported at the moment"))
 	}

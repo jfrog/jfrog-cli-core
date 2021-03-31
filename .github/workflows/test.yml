@@ -9,6 +9,8 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest, windows-latest, macOS-latest]
+        env:
+            GOPROXY: direct
         steps:
             - uses: actions/checkout@v1
             - name: Setup Go

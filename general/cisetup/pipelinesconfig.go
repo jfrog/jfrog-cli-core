@@ -89,7 +89,7 @@ func (pc *JFrogPipelinesConfigurator) createPipelinesServiceManager(details *con
 	if err != nil {
 		return nil, err
 	}
-	return pipelines.New(&pAuth, serviceConfig)
+	return pipelines.New(serviceConfig)
 }
 
 func (pc *JFrogPipelinesConfigurator) createVcsIntegration(psm *pipelines.PipelinesServicesManager) (integrationName string, integrationId int, err error) {
@@ -200,7 +200,7 @@ func (pc *JFrogPipelinesConfigurator) createRtServiceManager(artDetails *config.
 	if err != nil {
 		return nil, err
 	}
-	return artifactory.New(&artAuth, serviceConfig)
+	return artifactory.New(serviceConfig)
 }
 
 func createPipelinesSuitableName(data *CiSetupData, suffix string) string {

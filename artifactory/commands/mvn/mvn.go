@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.20.0"
+const mavenExtractorDependencyVersion = "2.25.0"
 const classworldsConfFileName = "classworlds.conf"
 const MavenHome = "M2_HOME"
 

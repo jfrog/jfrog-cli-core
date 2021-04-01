@@ -6,14 +6,10 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
-	bintrayutils "github.com/jfrog/jfrog-cli-core/bintray/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/bintray"
-	"github.com/jfrog/jfrog-client-go/bintray/auth"
-	"github.com/jfrog/jfrog-client-go/bintray/services"
-	"github.com/jfrog/jfrog-client-go/bintray/services/utils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -23,13 +19,17 @@ import (
 
 const (
 	// This env var should be used for downloading the extractor jars through an Artifactory remote
-	// repository, instead of downloading directly from jcenter. The remote repository should be
-	// configured to proxy jcenter.
-	// The env var should store a server ID configured by JFrog CLI.
+	// repository, instead of downloading directly from ojo. The remote repository should be
+	// configured to proxy ojo.
+
+	// Deprecated. This env var should store a server ID configured by JFrog CLI.
 	JCenterRemoteServerEnv = "JFROG_CLI_JCENTER_REMOTE_SERVER"
-	// If the JCenterRemoteServerEnv env var is used, a maven remote repository named jcenter is assumed.
+	// Deprecated. If the JCenterRemoteServerEnv env var is used, a maven remote repository named jcenter is assumed.
 	// This env var can be used to use a different remote repository name.
 	JCenterRemoteRepoEnv = "JFROG_CLI_JCENTER_REMOTE_REPO"
+
+	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
+	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 )
 
 // Download the relevant build-info-extractor jar, if it does not already exist locally.
@@ -47,50 +47,57 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 		return err
 	}
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n You can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
-	artDetails, remotePath, err := GetJcenterRemoteDetails(downloadPath)
+	artDetails, remotePath, err := getServerDetails(downloadPath)
 	if err != nil {
 		return err
 	}
 
+	return downloadExtractor(artDetails, remotePath, targetPath)
+}
+
+func getServerDetails(downloadPath string) (*config.ServerDetails, string, error) {
 	// Download through a remote repository in Artifactory, if configured to do so.
-	if artDetails != nil {
-		return downloadFileFromArtifactory(artDetails, remotePath, targetPath)
+	jCenterRemoteServer := os.Getenv(JCenterRemoteServerEnv)
+	if jCenterRemoteServer != "" {
+		return getJcenterRepoDetails(jCenterRemoteServer)
 	}
-	log.Debug("'" + JCenterRemoteServerEnv + "' environment variable is not configured. Downloading directly from jcenter")
-
-	// If not configured to download through a remote repository in Artifactory,
-	// download from jcenter.
-	return downloadFileFromBintray(remotePath, targetPath)
-}
-
-func GetJcenterRemoteDetails(downloadPath string) (serverDetails *config.ServerDetails, remotePath string, err error) {
-	// Download through a remote repository in Artifactory, if configured to do so.
-	serverId := os.Getenv(JCenterRemoteServerEnv)
-	if serverId != "" {
-		serverDetails, err = config.GetSpecificConfig(serverId, false, true)
-		if err != nil {
-			return
-		}
-
-		remotePath = path.Join(getJcenterRemoteRepoName(), downloadPath)
-		return
+	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
+	if extractorsRemote != "" {
+		return getExtractorsRemoteDetails(extractorsRemote)
 	}
 
-	// If not configured to download through a remote repository in Artifactory,
-	// download from jcenter.
-	remotePath = path.Join("bintray/jcenter", downloadPath)
-	return
+	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from oss.jfrog.org.")
+	// If not configured to download through a remote repository in Artifactory, download from ojo.
+	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
-func getJcenterRemoteRepoName() string {
-	jcenterRemoteRepo := os.Getenv(JCenterRemoteRepoEnv)
-	if jcenterRemoteRepo == "" {
-		jcenterRemoteRepo = "jcenter"
+// Deprecated. Get Artifactory server details and a repository proxing JCenter/oss.jfrog.org according to 'JFROG_CLI_JCENTER_REMOTE_SERVER' and 'JFROG_CLI_JCENTER_REMOTE_REPO' env vars.
+func getJcenterRepoDetails(serverId string) (*config.ServerDetails, string, error) {
+	log.Warn(`It looks like the 'JFROG_CLI_JCENTER_REMOTE_SERVER' or 'JFROG_CLI_JCENTER_REMOTE_REPO' are set.
+	These environment variables are used by the JFrog CLI to download the build-info extractors JARs for Maven and Gradle builds. 
+	These environment variables are deprecated. 
+	For more information, please refer to the documentation at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs.`)
+	serverDetails, err := config.GetSpecificConfig(serverId, false, true)
+	repoName := os.Getenv(JCenterRemoteRepoEnv)
+	if repoName == "" {
+		repoName = "jcenter"
 	}
-	return jcenterRemoteRepo
+	return serverDetails, repoName, err
 }
 
-func downloadFileFromArtifactory(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
+// Get Artifactory server details and a repository proxing oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
+func getExtractorsRemoteDetails(extractorsRemote string) (*config.ServerDetails, string, error) {
+	serverAndRepo := strings.Split(extractorsRemote, "/")
+	splitLength := len(serverAndRepo)
+	if splitLength != 2 {
+		return nil, "", errorutils.CheckError(errors.New(fmt.Sprintf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)))
+	}
+
+	serverDetails, err := config.GetSpecificConfig(serverAndRepo[0], false, true)
+	return serverDetails, serverAndRepo[1], err
+}
+
+func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
 	downloadUrl := fmt.Sprintf("%s%s", artDetails.ArtifactoryUrl, downloadPath)
 	log.Info("Downloading build-info-extractor from", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)
@@ -128,24 +135,5 @@ func downloadFileFromArtifactory(artDetails *config.ServerDetails, downloadPath,
 		err = errorutils.CheckError(errors.New(resp.Status + " received when attempting to download " + downloadUrl))
 	}
 
-	return err
-}
-
-func downloadFileFromBintray(downloadPath, targetPath string) error {
-	log.Info("Downloading build-info-extractor from ", downloadPath)
-	bintrayConfig := auth.NewBintrayDetails()
-	config := bintray.NewConfigBuilder().SetBintrayDetails(bintrayConfig).Build()
-
-	pathDetails, err := utils.CreatePathDetails(downloadPath)
-	if err != nil {
-		return err
-	}
-
-	params := &services.DownloadFileParams{}
-	params.PathDetails = pathDetails
-	params.TargetPath = targetPath
-	params.Flat = true
-
-	_, _, err = bintrayutils.DownloadFileFromBintray(config, params)
 	return err
 }

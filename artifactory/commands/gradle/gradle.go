@@ -19,7 +19,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const gradleExtractorDependencyVersion = "4.18.0"
+const gradleExtractorDependencyVersion = "4.23.0"
 const gradleInitScriptTemplate = "gradle.init"
 
 const usePlugin = "useplugin"

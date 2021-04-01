@@ -47,7 +47,7 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 		return err
 	}
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n You can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
-	artDetails, remotePath, err := getServerDetails(downloadPath)
+	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -55,15 +55,15 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 	return downloadExtractor(artDetails, remotePath, targetPath)
 }
 
-func getServerDetails(downloadPath string) (*config.ServerDetails, string, error) {
+func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
 	// Download through a remote repository in Artifactory, if configured to do so.
 	jCenterRemoteServer := os.Getenv(JCenterRemoteServerEnv)
 	if jCenterRemoteServer != "" {
-		return getJcenterRepoDetails(jCenterRemoteServer)
+		return getJcenterRemoteDetails(jCenterRemoteServer, downloadPath)
 	}
 	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
 	if extractorsRemote != "" {
-		return getExtractorsRemoteDetails(extractorsRemote)
+		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
 
 	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from oss.jfrog.org.")
@@ -71,8 +71,8 @@ func getServerDetails(downloadPath string) (*config.ServerDetails, string, error
 	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
-// Deprecated. Get Artifactory server details and a repository proxing JCenter/oss.jfrog.org according to 'JFROG_CLI_JCENTER_REMOTE_SERVER' and 'JFROG_CLI_JCENTER_REMOTE_REPO' env vars.
-func getJcenterRepoDetails(serverId string) (*config.ServerDetails, string, error) {
+// Deprecated. Get Artifactory server details and a repository proxying JCenter/oss.jfrog.org according to 'JFROG_CLI_JCENTER_REMOTE_SERVER' and 'JFROG_CLI_JCENTER_REMOTE_REPO' env vars.
+func getJcenterRemoteDetails(serverId, downloadPath string) (*config.ServerDetails, string, error) {
 	log.Warn(`It looks like the 'JFROG_CLI_JCENTER_REMOTE_SERVER' or 'JFROG_CLI_JCENTER_REMOTE_REPO' are set.
 	These environment variables are used by the JFrog CLI to download the build-info extractors JARs for Maven and Gradle builds. 
 	These environment variables are deprecated. 
@@ -82,19 +82,19 @@ func getJcenterRepoDetails(serverId string) (*config.ServerDetails, string, erro
 	if repoName == "" {
 		repoName = "jcenter"
 	}
-	return serverDetails, repoName, err
+	return serverDetails, path.Join(repoName, downloadPath), err
 }
 
-// Get Artifactory server details and a repository proxing oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
-func getExtractorsRemoteDetails(extractorsRemote string) (*config.ServerDetails, string, error) {
-	serverAndRepo := strings.Split(extractorsRemote, "/")
-	splitLength := len(serverAndRepo)
-	if splitLength != 2 {
+// Get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
+func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.ServerDetails, string, error) {
+	lastSlashIndex := strings.LastIndex(extractorsRemote, "/")
+	if lastSlashIndex == -1 {
 		return nil, "", errorutils.CheckError(errors.New(fmt.Sprintf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)))
 	}
 
-	serverDetails, err := config.GetSpecificConfig(serverAndRepo[0], false, true)
-	return serverDetails, serverAndRepo[1], err
+	serverDetails, err := config.GetSpecificConfig(extractorsRemote[:lastSlashIndex], false, true)
+	repoName := extractorsRemote[lastSlashIndex+1:]
+	return serverDetails, path.Join(repoName, downloadPath), err
 }
 
 func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {

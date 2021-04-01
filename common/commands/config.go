@@ -144,7 +144,7 @@ func (cc *ConfigCommand) Config() error {
 	if cc.encPassword && cc.details.ArtifactoryUrl != "" {
 		err = cc.encryptPassword()
 		if err != nil {
-			return err
+			return errorutils.CheckError(fmt.Errorf("The following error was received while trying to encrypt your password: %s ", err))
 		}
 	}
 
@@ -278,7 +278,10 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 		{Option: "JFrog Mission Control URL", TargetValue: &cc.details.MissionControlUrl, DefaultValue: cc.defaultDetails.MissionControlUrl},
 		{Option: "JFrog Pipelines URL", TargetValue: &cc.details.PipelinesUrl, DefaultValue: cc.defaultDetails.PipelinesUrl},
 	}
-	return ioutils.PromptStrings(promptItems, "Select continue or modify any of the URLs", func() { *disallowUsingSavedPassword = true })
+	return ioutils.PromptStrings(promptItems, "Select 'Save and continue' or modify any of the URLs", func(item ioutils.PromptItem) {
+		*disallowUsingSavedPassword = true
+		ioutils.ScanFromConsole(item.Option, item.TargetValue, item.DefaultValue)
+	})
 }
 
 func (cc *ConfigCommand) readClientCertInfoFromConsole() {
@@ -306,7 +309,7 @@ func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
-	print("Access token (Leave blank for username and password/API key): ")
+	print("JFrog access token (Leave blank for username and password/API key): ")
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -514,8 +517,6 @@ func (cc *ConfigCommand) encryptPassword() error {
 	if cc.details.Password == "" {
 		return nil
 	}
-
-	log.Info("Encrypting password...")
 
 	artAuth, err := cc.details.CreateArtAuthConfig()
 	if err != nil {

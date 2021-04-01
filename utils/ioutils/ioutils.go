@@ -3,13 +3,14 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
 	"strings"
 	"syscall"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -17,12 +18,12 @@ import (
 func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, disallowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""
-		ScanFromConsole("User", &tempUser, savedDetails.GetUser())
+		ScanFromConsole("JFrog username", &tempUser, savedDetails.GetUser())
 		details.SetUser(tempUser)
 		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
-		print("Password/API key: ")
+		print("JFrog password or API key: ")
 		bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
 		err = errorutils.CheckError(err)
 		if err != nil {
@@ -51,6 +52,7 @@ func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	if *scanInto == "" {
 		*scanInto = defaultValue
 	}
+	*scanInto = strings.TrimSpace(*scanInto)
 }
 
 func CopyFile(src, dst string, fileMode os.FileMode) error {

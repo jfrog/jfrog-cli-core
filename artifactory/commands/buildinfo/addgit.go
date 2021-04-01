@@ -64,7 +64,7 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 }
 
 func (config *BuildAddGitCommand) Run() error {
-	log.Info("Collecting git branch, revision and remote url...")
+	log.Info("Reading the git branch, revision and remote URL and adding them to the build-info.")
 	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (config *BuildAddGitCommand) Run() error {
 	}
 
 	// Done.
-	log.Info("Collected VCS details for", config.buildConfiguration.BuildName+"/"+config.buildConfiguration.BuildNumber+".")
+	log.Debug("Collected VCS details for", config.buildConfiguration.BuildName+"/"+config.buildConfiguration.BuildNumber+".")
 	return nil
 }
 

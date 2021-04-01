@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/chzyer/readline"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -13,7 +14,9 @@ import (
 const (
 	// Example:
 	// JFrog Artifactory URL (http://localhost:8080/artifactory/)
-	selectableItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	promtItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	// Npm-remote ()
+	selectableItemTemplate = " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
 )
 
 type PromptItem struct {
@@ -33,20 +36,9 @@ type PromptItem struct {
 // JFrog Xray URL ()
 // JFrog Mission Control URL ()
 // JFrog Pipelines URL ()
-func PromptStrings(items []PromptItem, label string, onSelect func()) error {
-	templates := &promptui.SelectTemplates{
-		Label:    "{{ . }}?",
-		Active:   "🐸" + selectableItemTemplate,
-		Inactive: "  " + selectableItemTemplate,
-	}
-	prompt := promptui.Select{
-		Label:        label,
-		Templates:    templates,
-		Stdout:       &bellSkipper{},
-		HideSelected: true,
-		Size:         len(items) + 1,
-	}
+func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
+	prompt := createSelectableList(len(items), label, promtItemTemplate)
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()
@@ -56,9 +48,41 @@ func PromptStrings(items []PromptItem, label string, onSelect func()) error {
 		if i == 0 {
 			return nil
 		}
-		ScanFromConsole(items[i].Option, items[i].TargetValue, items[i].DefaultValue)
-		onSelect()
+		onSelect(items[i])
 	}
+}
+
+func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *promptui.Select) {
+	templates := &promptui.SelectTemplates{
+		Label:    "{{ . }}",
+		Active:   "🐸" + itemTemplate,
+		Inactive: "  " + itemTemplate,
+	}
+	return &promptui.Select{
+		Label:        label,
+		Templates:    templates,
+		Stdout:       &bellSkipper{},
+		HideSelected: true,
+		Size:         numOfItems,
+	}
+}
+
+func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) error {
+	selectableList := createSelectableList(len(items), label, selectableItemTemplate)
+	selectableList.Items = items
+	selectableList.StartInSearchMode = true
+	selectableList.Searcher = func(input string, index int) bool {
+		if found := strings.Index(items[index].Option, input); found != -1 {
+			return true
+		}
+		return false
+	}
+	i, _, err := selectableList.Run()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	onSelect(items[i])
+	return nil
 }
 
 // In MacOS, Terminal bell is ringing when trying to select items using up and down arrows.

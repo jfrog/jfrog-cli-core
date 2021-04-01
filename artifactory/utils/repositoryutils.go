@@ -6,6 +6,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -86,9 +87,10 @@ func GetRepoNameForDependenciesSearch(repoName string, serviceManager artifactor
 }
 
 func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryServicesManager) (bool, error) {
-	repoDetails, err := serviceManager.GetRepository(repoName)
+	repoDetails := &services.RepositoryDetails{}
+	err := serviceManager.GetRepository(repoName, &repoDetails)
 	if err != nil {
 		return false, errorutils.CheckError(errors.New("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error()))
 	}
-	return repoDetails.Rclass == "remote", nil
+	return repoDetails.GetRepoType() == "remote", nil
 }

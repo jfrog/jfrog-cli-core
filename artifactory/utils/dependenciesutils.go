@@ -71,9 +71,18 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
+// Deprecated. Return the version of the build-info extractor to download.
+// If 'JFROG_CLI_JCENTER_REMOTE_SERVER' is used, choose the latest published JCenter version.
+func GetExtractorVersion(ojoVersion, jCenterVersion string) string {
+	if os.Getenv(JCenterRemoteServerEnv) != "" {
+		return jCenterVersion
+	}
+	return ojoVersion
+}
+
 // Deprecated. Get Artifactory server details and a repository proxying JCenter/oss.jfrog.org according to 'JFROG_CLI_JCENTER_REMOTE_SERVER' and 'JFROG_CLI_JCENTER_REMOTE_REPO' env vars.
 func getJcenterRemoteDetails(serverId, downloadPath string) (*config.ServerDetails, string, error) {
-	log.Warn(`It looks like the 'JFROG_CLI_JCENTER_REMOTE_SERVER' or 'JFROG_CLI_JCENTER_REMOTE_REPO' are set.
+	log.Warn(`It looks like the 'JFROG_CLI_JCENTER_REMOTE_SERVER' or 'JFROG_CLI_JCENTER_REMOTE_REPO' environment variables are set.
 	These environment variables were used by the JFrog CLI to download the build-info extractors JARs for Maven and Gradle builds. 
 	These environment variables are now deprecated. 
 	For more information, please refer to the documentation at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs.`)

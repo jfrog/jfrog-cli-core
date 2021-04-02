@@ -20,6 +20,7 @@ import (
 )
 
 const gradleExtractorDependencyVersion = "4.23.0"
+const gradleExtractorDependencyJCenterVersion = "4.21.0"
 const gradleInitScriptTemplate = "gradle.init"
 
 const usePlugin = "useplugin"
@@ -102,10 +103,11 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 	if err != nil {
 		return
 	}
-	gradleDependenciesDir = filepath.Join(dependenciesPath, "gradle", gradleExtractorDependencyVersion)
-	gradlePluginFilename = fmt.Sprintf("build-info-extractor-gradle-%s-uber.jar", gradleExtractorDependencyVersion)
+	extractorVersion := utils.GetExtractorVersion(gradleExtractorDependencyVersion, gradleExtractorDependencyJCenterVersion)
+	gradleDependenciesDir = filepath.Join(dependenciesPath, "gradle", extractorVersion)
+	gradlePluginFilename = fmt.Sprintf("build-info-extractor-gradle-%s-uber.jar", extractorVersion)
 
-	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-gradle/%s", gradleExtractorDependencyVersion)
+	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-gradle/%s", extractorVersion)
 	downloadPath := path.Join(filePath, gradlePluginFilename)
 
 	filepath.Join(gradleDependenciesDir, gradlePluginFilename)

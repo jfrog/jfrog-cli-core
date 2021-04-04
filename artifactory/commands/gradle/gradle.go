@@ -20,6 +20,7 @@ import (
 )
 
 const gradleExtractorDependencyVersion = "4.23.0"
+// Deprecated. This version is the latest published in JCenter.
 const gradleExtractorDependencyJCenterVersion = "4.21.0"
 const gradleInitScriptTemplate = "gradle.init"
 

@@ -21,6 +21,8 @@ import (
 )
 
 const mavenExtractorDependencyVersion = "2.25.0"
+// Deprecated. This version is the latest published in JCenter.
+const mavenExtractorDependencyJCenterVersion = "2.23.0"
 const classworldsConfFileName = "classworlds.conf"
 const MavenHome = "M2_HOME"
 
@@ -121,10 +123,11 @@ func downloadDependencies() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dependenciesPath = filepath.Join(dependenciesPath, "maven", mavenExtractorDependencyVersion)
+	extractorVersion := utils.GetExtractorVersion(mavenExtractorDependencyVersion, mavenExtractorDependencyJCenterVersion)
+	dependenciesPath = filepath.Join(dependenciesPath, "maven", extractorVersion)
 
-	filename := fmt.Sprintf("build-info-extractor-maven3-%s-uber.jar", mavenExtractorDependencyVersion)
-	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-maven3/%s", mavenExtractorDependencyVersion)
+	filename := fmt.Sprintf("build-info-extractor-maven3-%s-uber.jar", extractorVersion)
+	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-maven3/%s", extractorVersion)
 	downloadPath := path.Join(filePath, filename)
 
 	err = utils.DownloadExtractorIfNeeded(downloadPath, filepath.Join(dependenciesPath, filename))

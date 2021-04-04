@@ -20,7 +20,7 @@ func addHiddenPluginSignatureCommand(baseApp *cli.App) {
 		Action: func(c *cli.Context) error {
 			signature := components.PluginSignature{
 				Name:  baseApp.Name,
-				Usage: baseApp.Usage,
+				Usage: baseApp.Description,
 			}
 			content, err := json.Marshal(signature)
 			if err == nil {

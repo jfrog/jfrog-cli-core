@@ -150,7 +150,7 @@ func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun
 	if err != nil {
 		return nil, err
 	}
-	return distribution.New(&distAuth, serviceConfig)
+	return distribution.New(serviceConfig)
 }
 
 func isRepoExists(repository string, artDetails auth.ServiceDetails) (bool, error) {

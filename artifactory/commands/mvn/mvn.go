@@ -21,6 +21,7 @@ import (
 )
 
 const mavenExtractorDependencyVersion = "2.25.0"
+
 // Deprecated. This version is the latest published in JCenter.
 const mavenExtractorDependencyJCenterVersion = "2.23.0"
 const classworldsConfFileName = "classworlds.conf"

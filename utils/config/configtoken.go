@@ -7,7 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const tokenVersion = 1
+const tokenVersion = 2
 
 type configToken struct {
 	Version              int    `json:"version,omitempty"`
@@ -28,6 +28,13 @@ type configToken struct {
 	ClientCertKeyPath    string `json:"clientCertKeyPath,omitempty"`
 	ServerId             string `json:"serverId,omitempty"`
 	ApiKey               string `json:"apiKey,omitempty"`
+}
+
+func (token *configToken) convertToV2() {
+	if token.ArtifactoryUrl == "" {
+		token.ArtifactoryUrl = token.Url
+		token.Url = ""
+	}
 }
 
 func fromServerDetails(details *ServerDetails) *configToken {
@@ -109,6 +116,9 @@ func Import(serverToken string) (*ServerDetails, error) {
 	token := &configToken{}
 	if err = json.Unmarshal(decoded, token); err != nil {
 		return nil, err
+	}
+	if token.Version < tokenVersion {
+		token.convertToV2()
 	}
 	return toServerDetails(token), nil
 }

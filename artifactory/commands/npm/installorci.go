@@ -471,7 +471,7 @@ func (nca *NpmCommandArgs) setTypeRestriction(key string, val interface{}) {
 // Run npm list and parse the returned json
 func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
 	// Run npm list
-	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, " -only="+typeRestriction), " "), nca.executablePath)
+	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, " --all -only="+typeRestriction), " "), nca.executablePath)
 	if err != nil {
 		log.Warn("npm list command failed with error:", err.Error())
 	}

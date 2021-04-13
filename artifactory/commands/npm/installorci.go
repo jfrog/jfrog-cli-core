@@ -1,6 +1,7 @@
 package npm
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -49,11 +50,20 @@ type NpmCommandArgs struct {
 	npmAuth          string
 	collectBuildInfo bool
 	dependencies     map[string]*dependency
-	typeRestriction  string
+	typeRestriction  typeRestriction
 	authArtDetails   auth.ServiceDetails
 	packageInfo      *npm.PackageInfo
 	NpmCommand
 }
+
+type typeRestriction int
+
+const (
+	defaultRestriction typeRestriction = iota
+	all
+	devOnly
+	prodOnly
+)
 
 type NpmInstallOrCiCommand struct {
 	configFilePath      string
@@ -137,12 +147,10 @@ func (nca *NpmCommandArgs) run() error {
 		return nca.restoreNpmrcAndError(err)
 	}
 
+	defer nca.restoreNpmrc()
+
 	if err := nca.runInstallOrCi(); err != nil {
 		return nca.restoreNpmrcAndError(err)
-	}
-
-	if err := nca.restoreNpmrc(); err != nil {
-		return err
 	}
 
 	if !nca.collectBuildInfo {
@@ -316,13 +324,13 @@ func (nca *NpmCommandArgs) runInstallOrCi() error {
 
 func (nca *NpmCommandArgs) setDependenciesList() (err error) {
 	nca.dependencies = make(map[string]*dependency)
-	// nca.scope can be empty, "production" or "development" in case of empty both of the functions should run
-	if nca.typeRestriction != "production" {
+	// nca.typeRestriction default is 'all'
+	if nca.typeRestriction != prodOnly {
 		if err = nca.prepareDependencies("development"); err != nil {
 			return
 		}
 	}
-	if nca.typeRestriction != "development" {
+	if nca.typeRestriction != devOnly {
 		err = nca.prepareDependencies("production")
 	}
 	return
@@ -434,36 +442,74 @@ func (nca *NpmCommandArgs) backupProjectNpmrc() error {
 // This func transforms "npm config list --json" result to key=val list of values that can be set to .npmrc file.
 // it filters any nil values key, changes registry and scope registries to Artifactory url and adds Artifactory authentication to the list
 func (nca *NpmCommandArgs) prepareConfigData(data []byte) ([]byte, error) {
-	var collectedConfig map[string]interface{}
 	var filteredConf []string
-	if err := json.Unmarshal(data, &collectedConfig); err != nil {
+	configString := string(data)
+	scanner := bufio.NewScanner(strings.NewReader(configString))
+
+	for scanner.Scan() {
+		currOption := scanner.Text()
+		if currOption != "" {
+			splitOption := strings.SplitN(currOption, "=", 2)
+			key := strings.TrimSpace(splitOption[0])
+			if len(splitOption) == 2 && isValidKey(key) {
+				value := strings.TrimSpace(splitOption[1])
+				if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+					filteredConf = addArrayConfigs(filteredConf, key, value)
+				} else {
+					filteredConf = append(filteredConf, currOption, "\n")
+				}
+				nca.setTypeRestriction(key, value)
+			} else if strings.HasPrefix(splitOption[0], "@") {
+				// Override scoped registries (@scope = xyz)
+				filteredConf = append(filteredConf, splitOption[0], " = ", nca.registry, "\n")
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
 
-	for i := range collectedConfig {
-		if isValidKeyVal(i, collectedConfig[i]) {
-			filteredConf = append(filteredConf, i, " = ", fmt.Sprint(collectedConfig[i]), "\n")
-		} else if strings.HasPrefix(i, "@") {
-			// Override scoped registries (@scope = xyz)
-			filteredConf = append(filteredConf, i, " = ", nca.registry, "\n")
-		}
-		nca.setTypeRestriction(i, collectedConfig[i])
-	}
 	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(nca.jsonOutput), "\n")
 	filteredConf = append(filteredConf, "registry = ", nca.registry, "\n")
 	filteredConf = append(filteredConf, nca.npmAuth)
 	return []byte(strings.Join(filteredConf, "")), nil
 }
 
-// npm install/ci type restriction can be set by "--production" or "-only={prod[uction]|dev[elopment]}" flags
-func (nca *NpmCommandArgs) setTypeRestriction(key string, val interface{}) {
-	if key == "production" && val != nil && (val == true || val == "true") {
-		nca.typeRestriction = "production"
-	} else if key == "only" && val != nil {
-		if strings.Contains(val.(string), "prod") {
-			nca.typeRestriction = "production"
-		} else if strings.Contains(val.(string), "dev") {
-			nca.typeRestriction = "development"
+// Gets a config with value which is an array, and adds it to the conf list
+func addArrayConfigs(conf []string, key, arrayValue string) []string {
+	if arrayValue == "[]" {
+		return conf
+	}
+
+	values := strings.TrimPrefix(strings.TrimSuffix(arrayValue, "]"), "[")
+	valuesSlice := strings.Split(values, ",")
+	for _, val := range valuesSlice {
+		confToAdd := fmt.Sprintf("%s[] = %s", key, val)
+		conf = append(conf, confToAdd, "\n")
+	}
+
+	return conf
+}
+
+func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {
+	// From npm 7, type restriction is determined by 'omit' and 'include' (both appear in 'npm config ls').
+	// Other options (like 'dev', 'production' and 'only') are deprecated, but if they're used anyway - 'omit' and 'include' are automatically calculated.
+	// So 'omit' is always preferred, if it exists.
+	if key == "omit" {
+		if strings.Contains(value, "dev") {
+			nca.typeRestriction = prodOnly
+		} else {
+			nca.typeRestriction = all
+		}
+	} else if nca.typeRestriction == defaultRestriction { // Until npm 6, configurations in 'npm config ls' are sorted by priority in descending order, so typeRestriction should be set only if it was not set before
+		if key == "only" {
+			if strings.Contains(value, "prod") {
+				nca.typeRestriction = prodOnly
+			} else if strings.Contains(value, "dev") {
+				nca.typeRestriction = devOnly
+			}
+		} else if key == "production" && strings.Contains(value, "true") {
+			nca.typeRestriction = prodOnly
 		}
 	}
 }
@@ -471,7 +517,7 @@ func (nca *NpmCommandArgs) setTypeRestriction(key string, val interface{}) {
 // Run npm list and parse the returned json
 func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
 	// Run npm list
-	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, " --all -only="+typeRestriction), " "), nca.executablePath)
+	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, "--all -only="+typeRestriction), " "), nca.executablePath)
 	if err != nil {
 		log.Warn("npm list command failed with error:", err.Error())
 	}
@@ -732,16 +778,14 @@ func scopeAlreadyExists(scope string, existingScopes []string) bool {
 	return false
 }
 
-// Valid configs keys are not related to registry (registry = xyz) or scoped registry (@scope = xyz)) and have data in their value
-// We want to avoid writing "json=true" because we ran the the configuration list command with "--json". We will add it explicitly if necessary.
-func isValidKeyVal(key string, val interface{}) bool {
+// To avoid writing configurations that are used by us
+func isValidKey(key string) bool {
 	return !strings.HasPrefix(key, "//") &&
-		!strings.HasPrefix(key, "@") &&
+		!strings.HasPrefix(key, ";") && // Comments
+		!strings.HasPrefix(key, "@") && // Scoped configurations
 		key != "registry" &&
 		key != "metrics-registry" &&
-		key != "json" &&
-		val != nil &&
-		val != ""
+		key != "json" // Handled separately because 'npm c ls' should run with json=false
 }
 
 func filterFlags(splitArgs []string) []string {

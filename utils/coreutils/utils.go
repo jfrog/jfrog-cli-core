@@ -22,11 +22,11 @@ type OnError string
 
 var cliTempDir string
 
-// User agent
+// User agent - the user of the program that uses this library (usually another program, or the same as the client agent), i.e 'jfrog-pipelines'
 var cliUserAgentName string
 var cliUserAgentVersion string
 
-// Client agent
+// Client agent - the program that uses this library, i.e 'jfrog-cli-go'
 var clientAgentName string
 var clientAgentVersion string
 

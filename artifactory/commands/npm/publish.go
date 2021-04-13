@@ -34,6 +34,7 @@ type NpmPublishCommandArgs struct {
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
+	TransferDetailsReader  *content.ContentReader
 }
 
 type NpmPublishCommand struct {
@@ -209,21 +210,17 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			return err
 		}
 	}
-	var totalFailed int
-	if npc.collectBuildInfo {
-		summary, err := servicesManager.UploadFilesWithSummary(up)
-		if err != nil {
-			return err
-		}
-		summary.TransferDetailsReader.Close()
-		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
-		totalFailed = summary.TotalFailed
-	} else {
-		_, totalFailed, err = servicesManager.UploadFiles(up)
-		if err != nil {
-			return err
-		}
+	summary, err := servicesManager.UploadFilesWithSummary(up)
+	if err != nil {
+		return err
 	}
+	totalFailed := summary.TotalFailed
+	if npc.collectBuildInfo {
+		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+	} else {
+		summary.ArtifactsDetailsReader.Close()
+	}
+	npc.TransferDetailsReader = summary.TransferDetailsReader
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {

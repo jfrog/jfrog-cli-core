@@ -25,7 +25,7 @@ const BuildInfoDetails = "details"
 const BuildTempPath = "jfrog/builds/"
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
-	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "-" + projectKey))
+	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "_" + projectKey))
 	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, encodedDirName)
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {

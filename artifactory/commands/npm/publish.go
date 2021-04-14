@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -34,17 +35,17 @@ type NpmPublishCommandArgs struct {
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
-	TransferDetailsReader  *content.ContentReader
 }
 
 type NpmPublishCommand struct {
 	configFilePath string
 	commandName    string
+	result         *commandsutils.Result
 	*NpmPublishCommandArgs
 }
 
 func NewNpmPublishCommand() *NpmPublishCommand {
-	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish"}
+	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", result: new(commandsutils.Result)}
 }
 
 func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
@@ -63,6 +64,10 @@ func (npc *NpmPublishCommand) SetConfigFilePath(configFilePath string) *NpmPubli
 func (nic *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
 	nic.NpmPublishCommandArgs.npmArgs = args
 	return nic
+}
+
+func (gc *NpmPublishCommand) Result() *commandsutils.Result {
+	return gc.result
 }
 
 func (npc *NpmPublishCommand) Run() error {
@@ -220,12 +225,14 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	} else {
 		summary.ArtifactsDetailsReader.Close()
 	}
-	npc.TransferDetailsReader = summary.TransferDetailsReader
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {
 		return errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
 	}
+	npc.result.SetReader(summary.TransferDetailsReader)
+	npc.result.SetFailCount(summary.TotalFailed)
+	npc.result.SetSuccessCount(summary.TotalSucceeded)
 	return nil
 }
 

@@ -441,7 +441,7 @@ func (nca *NpmCommandArgs) backupProjectNpmrc() error {
 	return nil
 }
 
-// This func transforms "npm config list --json" result to key=val list of values that can be set to .npmrc file.
+// This func transforms "npm config list" result to key=val list of values that can be set to .npmrc file.
 // it filters any nil values key, changes registry and scope registries to Artifactory url and adds Artifactory authentication to the list
 func (nca *NpmCommandArgs) prepareConfigData(data []byte) ([]byte, error) {
 	var filteredConf []string

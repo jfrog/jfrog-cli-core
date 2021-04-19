@@ -147,10 +147,12 @@ func (nca *NpmCommandArgs) run() error {
 		return nca.restoreNpmrcAndError(err)
 	}
 
-	defer nca.restoreNpmrc()
-
 	if err := nca.runInstallOrCi(); err != nil {
 		return nca.restoreNpmrcAndError(err)
+	}
+
+	if err := nca.restoreNpmrc(); err != nil {
+		return err
 	}
 
 	if !nca.collectBuildInfo {
@@ -326,12 +328,12 @@ func (nca *NpmCommandArgs) setDependenciesList() (err error) {
 	nca.dependencies = make(map[string]*dependency)
 	// nca.typeRestriction default is 'all'
 	if nca.typeRestriction != prodOnly {
-		if err = nca.prepareDependencies("development"); err != nil {
+		if err = nca.prepareDependencies("dev"); err != nil {
 			return
 		}
 	}
 	if nca.typeRestriction != devOnly {
-		err = nca.prepareDependencies("production")
+		err = nca.prepareDependencies("prod")
 	}
 	return
 }
@@ -514,10 +516,13 @@ func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {
 	}
 }
 
-// Run npm list and parse the returned json
+// Run npm list and parse the returned JSON.
+// typeRestriction must be one of: 'dev' or 'prod'!
 func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
 	// Run npm list
-	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, "--all -only="+typeRestriction), " "), nca.executablePath)
+	// Although this command can get --development as a flag (according to npm docs), it's not working on npm 6.
+	// Although this command can get --only=development as a flag (according to npm docs), it's not working on npm 7.
+	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, "--all", "--"+typeRestriction), " "), nca.executablePath)
 	if err != nil {
 		log.Warn("npm list command failed with error:", err.Error())
 	}

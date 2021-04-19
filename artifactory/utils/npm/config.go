@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-// This method runs "npm config list --json" command and returns the json object that contains the current configurations of npm
+// This method runs "npm c ls" command and returns the current npm configuration (calculated by all flags and .npmrc files).
 // For more info see https://docs.npmjs.com/cli/config
 func GetConfigList(npmFlags []string, executablePath string) ([]byte, error) {
 	pipeReader, pipeWriter := io.Pipe()
@@ -35,7 +35,7 @@ func createConfigListCmdConfig(executablePath string, splitFlags []string, pipeW
 	return &NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"c", "ls"},
-		CommandFlags: append(splitFlags, "--json"),
+		CommandFlags: splitFlags,
 		StrWriter:    pipeWriter,
 		ErrWriter:    nil,
 	}

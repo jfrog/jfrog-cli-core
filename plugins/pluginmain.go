@@ -25,7 +25,7 @@ Environment Variables:
 `
 
 const appHelpTemplate = `NAME:
-   {{.Name}} - {{.Usage}}
+   {{.Name}} - {{.Description}}
 
 USAGE:
    {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} [arguments...]{{end}}
@@ -37,7 +37,7 @@ AUTHOR(S):
    {{range .Authors}}{{ . }}{{end}}
    {{end}}{{if .VisibleCommands}}
 COMMANDS:
-   {{range .VisibleCommands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
+   {{range .VisibleCommands}}{{join .Names ", "}}{{ "\t" }}{{if .Description}}{{.Description}}{{else}}{{.Usage}}{{end}}
    {{end}}{{end}}{{if .VisibleFlags}}
 GLOBAL OPTIONS:
    {{range .VisibleFlags}}{{.}}

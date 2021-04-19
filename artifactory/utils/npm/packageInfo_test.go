@@ -47,21 +47,3 @@ func TestGetDeployPath(t *testing.T) {
 		})
 	}
 }
-
-func TestGetExpectedPackedFileName(t *testing.T) {
-	tests := []struct {
-		fileName string
-		pi       *PackageInfo
-	}{
-		{`jfrog-cli-tests-1.0.0.tgz`, &PackageInfo{Name: "jfrog-cli-tests", Version: "1.0.0", Scope: ""}},
-		{`jfrog-jfrog-cli-tests-1.0.0.tgz`, &PackageInfo{Name: "jfrog-cli-tests", Version: "1.0.0", Scope: "@jfrog"}},
-	}
-	for _, test := range tests {
-		t.Run(test.fileName, func(t *testing.T) {
-			actualFileName := test.pi.GetExpectedPackedFileName()
-			if actualFileName != test.fileName {
-				t.Error("expected:", test.fileName, "got:", actualFileName)
-			}
-		})
-	}
-}

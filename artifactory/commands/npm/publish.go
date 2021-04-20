@@ -38,9 +38,10 @@ type NpmPublishCommandArgs struct {
 }
 
 type NpmPublishCommand struct {
-	configFilePath string
-	commandName    string
-	result         *commandsutils.Result
+	configFilePath  string
+	commandName     string
+	result          *commandsutils.Result
+	detailedSummary bool
 	*NpmPublishCommandArgs
 }
 
@@ -66,11 +67,24 @@ func (nic *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
 	return nic
 }
 
+func (nic *NpmPublishCommand) SetDetailedSummary(detailedSummary bool) *NpmPublishCommand {
+	nic.detailedSummary = detailedSummary
+	return nic
+}
+
 func (gc *NpmPublishCommand) Result() *commandsutils.Result {
 	return gc.result
 }
 
+func (gc *NpmPublishCommand) IsDetailedSummary() bool {
+	return gc.detailedSummary
+}
+
 func (npc *NpmPublishCommand) Run() error {
+	_, _, detailedSummary, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	if err != nil {
+		return err
+	}
 	if npc.configFilePath != "" {
 		// Read config file.
 		log.Debug("Preparing to read the config file", npc.configFilePath)
@@ -82,16 +96,14 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		_, _, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
-		if err != nil {
-			return err
-		}
+
 		rtDetails, err := deployerParams.ServerDetails()
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
+	npc.SetDetailedSummary(detailedSummary)
 	return npc.run()
 }
 
@@ -208,31 +220,43 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	}
 	up := services.UploadParams{}
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
-	if npc.collectBuildInfo {
-		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
-		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+	var totalFailed int
+	if npc.collectBuildInfo || npc.detailedSummary {
+		if npc.collectBuildInfo {
+			utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+			up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+			if err != nil {
+				return err
+			}
+		}
+		summary, err := servicesManager.UploadFilesWithSummary(up)
 		if err != nil {
 			return err
 		}
-	}
-	summary, err := servicesManager.UploadFilesWithSummary(up)
-	if err != nil {
-		return err
-	}
-	totalFailed := summary.TotalFailed
-	if npc.collectBuildInfo {
-		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+		totalFailed = summary.TotalFailed
+		if npc.collectBuildInfo {
+			npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+		} else {
+			defer summary.ArtifactsDetailsReader.Close()
+		}
+		if npc.detailedSummary {
+			npc.result.SetReader(summary.TransferDetailsReader)
+			npc.result.SetFailCount(totalFailed)
+			npc.result.SetSuccessCount(summary.TotalSucceeded)
+		} else {
+			defer summary.TransferDetailsReader.Close()
+		}
 	} else {
-		summary.ArtifactsDetailsReader.Close()
+		_, totalFailed, err = servicesManager.UploadFiles(up)
+		if err != nil {
+			return err
+		}
 	}
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {
 		return errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
 	}
-	npc.result.SetReader(summary.TransferDetailsReader)
-	npc.result.SetFailCount(summary.TotalFailed)
-	npc.result.SetSuccessCount(summary.TotalSucceeded)
 	return nil
 }
 

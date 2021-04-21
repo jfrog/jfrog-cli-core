@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -15,10 +16,11 @@ type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
+	result             *commandsutils.Result
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
-	return &BuildPublishCommand{}
+	return &BuildPublishCommand{result: new(commandsutils.Result)}
 }
 
 func (bpc *BuildPublishCommand) SetConfig(config *buildinfo.Configuration) *BuildPublishCommand {
@@ -42,6 +44,10 @@ func (bpc *BuildPublishCommand) CommandName() string {
 
 func (bpc *BuildPublishCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bpc.serverDetails, nil
+}
+
+func (gc *BuildPublishCommand) Result() *commandsutils.Result {
+	return gc.result
 }
 
 func (bpc *BuildPublishCommand) Run() error {

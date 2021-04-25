@@ -22,7 +22,7 @@ const (
 	buildNameEnvVar       = "JFROG_CLI_BUILD_NAME"
 	buildNumberEnvVar     = "JFROG_CLI_BUILD_NUMBER"
 	buildUrlEnvVar        = "JFROG_CLI_BUILD_URL"
-	buildResultEnvVar     = "JFROG_BUILD_RESULTS"
+	buildStatusEnvVar     = "JFROG_BUILD_STATUS"
 	runNumberEnvVar       = "$run_number"
 	stepUrlEnvVar         = "$step_url"
 	updateCommitStatusCmd = "update_commit_status"
@@ -44,12 +44,12 @@ const (
 	apikeyFlag = "apikey"
 
 	// Replace exe (group 2) with "jfrog rt exe" while maintaining preceding (if any) and succeeding spaces.
-	mvnGradleRegexp = `(^|\s)(mvn|gradle)(\s)`
-	mvnGradleRegexpReplacement = `${1}jfrog rt ${2}${3}`
-	npmInstallRegexp = `(^|\s)(npm i|npm install)(\s|$)`
+	mvnGradleRegexp             = `(^|\s)(mvn|gradle)(\s)`
+	mvnGradleRegexpReplacement  = `${1}jfrog rt ${2}${3}`
+	npmInstallRegexp            = `(^|\s)(npm i|npm install)(\s|$)`
 	npmInstallRegexpReplacement = `${1}jfrog rt npmi${3}`
-	npmCiRegexp = `(^|\s)(npm ci)(\s|$)`
-	npmCiRegexpReplacement = `${1}jfrog rt npmci${3}`
+	npmCiRegexp                 = `(^|\s)(npm ci)(\s|$)`
+	npmCiRegexpReplacement      = `${1}jfrog rt npmci${3}`
 )
 
 type JFrogPipelinesYamlGenerator struct {
@@ -176,7 +176,7 @@ func (yg *JFrogPipelinesYamlGenerator) getExportsCommands(vcsData *CiSetupData) 
 		yg.getExportCmd(buildNameEnvVar, vcsData.BuildName),
 		yg.getExportCmd(buildNumberEnvVar, runNumberEnvVar),
 		yg.getExportCmd(buildUrlEnvVar, stepUrlEnvVar),
-		yg.getExportCmd(buildResultEnvVar, passResult),
+		yg.getExportCmd(buildStatusEnvVar, passResult),
 	}
 }
 
@@ -336,7 +336,7 @@ type StepExecution struct {
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getOnFailureCommands() []string {
-	return []string{yg.getExportCmd(buildResultEnvVar, failResult),
+	return []string{yg.getExportCmd(buildStatusEnvVar, failResult),
 		jfrogCliBce,
 		jfrogCliBp}
 }

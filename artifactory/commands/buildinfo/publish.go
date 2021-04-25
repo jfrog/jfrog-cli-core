@@ -2,9 +2,9 @@ package buildinfo
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"sort"
 
-	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -16,11 +16,12 @@ type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
-	result             *commandsutils.Result
+	detailedSummary	   bool
+	summary            *services.BuildPublishSummary
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
-	return &BuildPublishCommand{result: new(commandsutils.Result)}
+	return &BuildPublishCommand{}
 }
 
 func (bpc *BuildPublishCommand) SetConfig(config *buildinfo.Configuration) *BuildPublishCommand {
@@ -38,16 +39,30 @@ func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.
 	return bpc
 }
 
+func (bpc *BuildPublishCommand) SetSummary(summary *services.BuildPublishSummary) *BuildPublishCommand {
+	bpc.summary = summary
+	return bpc
+}
+
+func (bpc *BuildPublishCommand) GetSummary() *services.BuildPublishSummary {
+	return bpc.summary
+}
+
+func (bpc *BuildPublishCommand) SetDetailedSummary(detailedSummary bool) *BuildPublishCommand {
+	bpc.detailedSummary = detailedSummary
+	return bpc
+}
+
+func (bpc *BuildPublishCommand) IsDetailedSummary() bool {
+	return bpc.detailedSummary
+}
+
 func (bpc *BuildPublishCommand) CommandName() string {
 	return "rt_build_publish"
 }
 
 func (bpc *BuildPublishCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bpc.serverDetails, nil
-}
-
-func (gc *BuildPublishCommand) Result() *commandsutils.Result {
-	return gc.result
 }
 
 func (bpc *BuildPublishCommand) Run() error {
@@ -69,11 +84,16 @@ func (bpc *BuildPublishCommand) Run() error {
 	for _, v := range generatedBuildsInfo {
 		buildInfo.Append(v)
 	}
-
-	if err = servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project); err != nil {
+	var summary *services.BuildPublishSummary
+	if bpc.IsDetailedSummary(){
+		summary, err = servicesManager.PublishBuildInfoWithSummary(buildInfo, bpc.buildConfiguration.Project)
+		bpc.SetSummary(summary)
+	} else {
+		err = servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project)
+	}
+	if  err != nil {
 		return err
 	}
-
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}

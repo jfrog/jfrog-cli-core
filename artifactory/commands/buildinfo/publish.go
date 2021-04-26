@@ -16,7 +16,7 @@ type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
-	detailedSummary	   bool
+	detailedSummary    bool
 	summary            *services.BuildPublishSummary
 }
 
@@ -84,14 +84,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	for _, v := range generatedBuildsInfo {
 		buildInfo.Append(v)
 	}
-	var summary *services.BuildPublishSummary
-	if bpc.IsDetailedSummary(){
-		summary, err = servicesManager.PublishBuildInfoWithSummary(buildInfo, bpc.buildConfiguration.Project)
+	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project)
+	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
-	} else {
-		err = servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project)
 	}
-	if  err != nil {
+	if err != nil {
 		return err
 	}
 	if !bpc.config.DryRun {

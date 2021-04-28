@@ -108,10 +108,9 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	sort.Sort(partials)
 
 	buildInfo := buildinfo.New()
-	buildInfo.SetAgentName(coreutils.GetClientAgent())
-	buildInfo.SetAgentVersion(coreutils.GetVersion())
-	buildInfo.SetBuildAgentVersion(coreutils.GetVersion())
-	buildInfo.SetArtifactoryPluginVersion(coreutils.GetUserAgent())
+	buildInfo.SetAgentName(coreutils.GetCliUserAgentName())
+	buildInfo.SetAgentVersion(coreutils.GetCliUserAgentVersion())
+	buildInfo.SetBuildAgentVersion(coreutils.GetClientAgentVersion())
 	buildInfo.Name = buildName
 	buildInfo.Number = buildNumber
 	buildGeneralDetails, err := utils.ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)

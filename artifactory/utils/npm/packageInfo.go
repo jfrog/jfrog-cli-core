@@ -51,14 +51,6 @@ func (pi *PackageInfo) GetDeployPath() string {
 	return fmt.Sprintf("%s/%s/-/%s", pi.Scope, pi.Name, fileName)
 }
 
-func (pi *PackageInfo) GetExpectedPackedFileName() string {
-	fileNameBase := fmt.Sprintf("%s-%s.tgz", pi.Name, pi.Version)
-	if pi.Scope == "" {
-		return fileNameBase
-	}
-	return fmt.Sprintf("%s-%s", strings.TrimPrefix(pi.Scope, "@"), fileNameBase)
-}
-
 func splitScopeFromName(packageInfo *PackageInfo) {
 	if strings.HasPrefix(packageInfo.Name, "@") && strings.Contains(packageInfo.Name, "/") {
 		splitValues := strings.Split(packageInfo.Name, "/")

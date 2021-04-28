@@ -49,7 +49,7 @@ func reportUsage(command Command, channel chan<- bool) {
 				log.Debug(usage.ReportUsagePrefix + err.Error())
 				return
 			}
-			err = usage.SendReportUsage(coreutils.GetUserAgent(), command.CommandName(), serviceManager)
+			err = usage.SendReportUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager)
 			if err != nil {
 				log.Debug(err.Error())
 				return

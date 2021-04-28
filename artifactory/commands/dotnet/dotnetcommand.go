@@ -267,18 +267,10 @@ func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.Fil
 	log.Debug("Nuget config file created at:", configFile.Name())
 	defer configFile.Close()
 
-	sourceUrl, user, password, err := dc.getSourceDetails()
-	if err != nil {
-		return
-	}
-	// We will prefer to write the NuGet configuration using the `nuget add source` command if we can.
-	// The command isn't available in all toolchain's versions.
-	// Therefore if the useNugetAddSource flag is set we'll use the command, otherwise we will write the configuration using a formatted string.
-	if dc.useNugetAddSource {
-		err = dc.AddNugetAuthToConfig(dc.toolchainType, configFile, sourceUrl, user, password)
-	} else {
-		_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, user, password)
-	}
+	// We will prefer to write the NuGet configuration using the `nuget add source` command (addSourceToNugetConfig)
+	// Currently the NuGet configuration utility doesn't allow setting protocolVersion.
+	// Until that is supported, the templated method must be used.
+	err = dc.addSourceToNugetTemplate(configFile)
 	return
 }
 
@@ -308,6 +300,24 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
 	output, err := io.RunCmdOutput(cmd)
 	log.Debug("Running command: Add sources. Output:", output)
+	return err
+}
+
+// Adds a source to the nuget config template
+func (dc *DotnetCommand) addSourceToNugetTemplate(configFile *os.File) error {
+	sourceUrl, user, password, err := dc.getSourceDetails()
+	if err != nil {
+		return err
+	}
+
+	// Specify the protocolVersion
+	protoVer := "3"
+	if dc.useNugetV2 {
+		protoVer = "2"
+	}
+
+	// Format the templates
+	_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, protoVer, user, password)
 	return err
 }
 

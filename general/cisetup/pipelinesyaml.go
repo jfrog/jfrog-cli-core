@@ -22,7 +22,7 @@ const (
 	buildNameEnvVar       = "JFROG_CLI_BUILD_NAME"
 	buildNumberEnvVar     = "JFROG_CLI_BUILD_NUMBER"
 	buildUrlEnvVar        = "JFROG_CLI_BUILD_URL"
-	buildResultEnvVar     = "JFROG_BUILD_RESULTS"
+	buildStatusEnvVar     = "JFROG_BUILD_STATUS"
 	runNumberEnvVar       = "$run_number"
 	stepUrlEnvVar         = "$step_url"
 	updateCommitStatusCmd = "update_commit_status"
@@ -42,6 +42,14 @@ const (
 	rtUrlFlag  = "artifactory-url"
 	userFlag   = "user"
 	apikeyFlag = "apikey"
+
+	// Replace exe (group 2) with "jfrog rt exe" while maintaining preceding (if any) and succeeding spaces.
+	mvnGradleRegexp             = `(^|\s)(mvn|gradle)(\s)`
+	mvnGradleRegexpReplacement  = `${1}jfrog rt ${2}${3}`
+	npmInstallRegexp            = `(^|\s)(npm i|npm install)(\s|$)`
+	npmInstallRegexpReplacement = `${1}jfrog rt npmi${3}`
+	npmCiRegexp                 = `(^|\s)(npm ci)(\s|$)`
+	npmCiRegexpReplacement      = `${1}jfrog rt npmci${3}`
 )
 
 type JFrogPipelinesYamlGenerator struct {
@@ -84,26 +92,28 @@ func (yg *JFrogPipelinesYamlGenerator) getPipelineCommands(serverId, gitResource
 	return commandsArray
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createBuildCmdRegexp() string {
-	// Beginning of line or with a preceding space.
-	regexp := "(^|\\s)("
-	// One of the supported executables names.
-	regexp += strings.Join(techExecutablesNames, "|")
-	// Has a succeeding space.
-	regexp += ")(\\s)"
-	return regexp
-}
-
 // Converts build tools commands to run via JFrog CLI.
 func (yg *JFrogPipelinesYamlGenerator) convertBuildCmd() (string, error) {
-	regexpStr := yg.createBuildCmdRegexp()
-	regexp, err := utils.GetRegExp(regexpStr)
+	// Replace mvn, gradle.
+	converted, err := replaceCmdWithRegexp(yg.SetupData.BuildCommand, mvnGradleRegexp, mvnGradleRegexpReplacement)
 	if err != nil {
 		return "", err
 	}
-	// Replace exe (group 2) with "jfrog rt exe" while maintaining preceding (if any) and succeeding spaces.
-	replacement := fmt.Sprintf("${1}%s ${2}${3}", jfrogCliRtPrefix)
-	return regexp.ReplaceAllString(yg.SetupData.BuildCommand, replacement), nil
+	// Replace npm-i.
+	converted, err = replaceCmdWithRegexp(converted, npmInstallRegexp, npmInstallRegexpReplacement)
+	if err != nil {
+		return "", err
+	}
+	// Replace npm-ci.
+	return replaceCmdWithRegexp(converted, npmCiRegexp, npmCiRegexpReplacement)
+}
+
+func replaceCmdWithRegexp(buildCmd, cmdRegexp, replacement string) (string, error) {
+	regexp, err := utils.GetRegExp(cmdRegexp)
+	if err != nil {
+		return "", err
+	}
+	return regexp.ReplaceAllString(buildCmd, replacement), nil
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getCdToResourceCmd(gitResourceName string) string {
@@ -166,7 +176,7 @@ func (yg *JFrogPipelinesYamlGenerator) getExportsCommands(vcsData *CiSetupData) 
 		yg.getExportCmd(buildNameEnvVar, vcsData.BuildName),
 		yg.getExportCmd(buildNumberEnvVar, runNumberEnvVar),
 		yg.getExportCmd(buildUrlEnvVar, stepUrlEnvVar),
-		yg.getExportCmd(buildResultEnvVar, passResult),
+		yg.getExportCmd(buildStatusEnvVar, passResult),
 	}
 }
 
@@ -326,7 +336,7 @@ type StepExecution struct {
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getOnFailureCommands() []string {
-	return []string{yg.getExportCmd(buildResultEnvVar, failResult),
+	return []string{yg.getExportCmd(buildStatusEnvVar, failResult),
 		jfrogCliBce,
 		jfrogCliBp}
 }

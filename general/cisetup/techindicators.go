@@ -19,7 +19,7 @@ type MavenIndicator struct {
 }
 
 func (mi MavenIndicator) GetTechnology() Technology {
-	return Technology(Maven)
+	return Maven
 }
 
 func (mi MavenIndicator) Indicates(file string) bool {
@@ -30,7 +30,7 @@ type GradleIndicator struct {
 }
 
 func (gi GradleIndicator) GetTechnology() Technology {
-	return Technology(Gradle)
+	return Gradle
 }
 
 func (gi GradleIndicator) Indicates(file string) bool {
@@ -41,7 +41,7 @@ type NpmIndicator struct {
 }
 
 func (ni NpmIndicator) GetTechnology() Technology {
-	return Technology(Npm)
+	return Npm
 }
 
 func (ni NpmIndicator) Indicates(file string) bool {
@@ -55,5 +55,3 @@ func GetTechIndicators() []TechnologyIndicator {
 		NpmIndicator{},
 	}
 }
-
-var techExecutablesNames = []string{"mvn", "gradle", "npm"}

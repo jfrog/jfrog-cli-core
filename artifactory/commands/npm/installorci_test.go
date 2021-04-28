@@ -2,6 +2,8 @@ package npm
 
 import (
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,31 +11,39 @@ import (
 )
 
 func TestPrepareConfigData(t *testing.T) {
-	configJson, err := ioutil.ReadFile("../testdata/config.json")
-	if err != nil {
-		t.Error(err)
-	}
+	currentDir, err := os.Getwd()
+	assert.NoError(t, err)
+	testdataPath := filepath.Join(currentDir, "artifactory", "commands", "testdata")
+	testdataPath, err = filepath.Abs(testdataPath)
+	assert.NoError(t, err)
+	configBefore := []byte(
+		"json=true\n" +
+			"user-agent=npm/5.5.1 node/v8.9.1 darwin x64\n" +
+			"metrics-registry=http://somebadregistry\nscope=\n" +
+			"//reg=ddddd\n" +
+			"@jfrog:registry=http://somebadregistry\n" +
+			"registry=http://somebadregistry\n" +
+			"email=ddd@dd.dd\n" +
+			"allow-same-version=false\n" +
+			"cache-lock-retries=10")
 
 	expectedConfig :=
 		[]string{
 			"json = true",
-			"allow-same-version = false",
-			"user-agent = npm/5.5.1 node/v8.9.1 darwin x64",
+			"allow-same-version=false",
+			"user-agent=npm/5.5.1 node/v8.9.1 darwin x64",
 			"@jfrog:registry = http://goodRegistry",
-			"email = ddd@dd.dd",
-			"cache-lock-retries = 10",
+			"email=ddd@dd.dd",
+			"cache-lock-retries=10",
 			"registry = http://goodRegistry",
 			"_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
 
 	npmi := NpmCommandArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
-	actualConfig, err := npmi.prepareConfigData([]byte(configJson))
+	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
 	}
-	actualConfigArray := strings.Split(string(actualConfig), "\n")
-	if len(actualConfigArray) != len(expectedConfig) {
-		t.Errorf("expeted:\n%s\n\ngot:\n%s", expectedConfig, actualConfigArray)
-	}
+	actualConfigArray := strings.Split(string(configAfter), "\n")
 	for _, eConfig := range expectedConfig {
 		found := false
 		for _, aConfig := range actualConfigArray {
@@ -43,28 +53,31 @@ func TestPrepareConfigData(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Error("The expected config:", eConfig, "is missing from the actual configuration list:\n", actualConfigArray)
 			t.Errorf("The expected config: %s is missing from the actual configuration list:\n %s", eConfig, actualConfigArray)
 		}
 	}
 }
 
 func TestPrepareConfigDataTypeRestriction(t *testing.T) {
-	var typeRestrictions = map[string]string{
-		`{"production": true}`:    "production",
-		`{"only": "prod"}`:        "production",
-		`{"only": "production"}`:  "production",
-		`{"only": "development"}`: "development",
-		`{"only": "dev"}`:         "development",
-		`{"only": null}`:          "",
-		`{"only": ""}`:            "",
-		`{"kuku": true}`:          ""}
+	var typeRestrictions = map[string]typeRestriction{
+		"production=\"true\"":          prodOnly,
+		"production=true":              prodOnly,
+		"only = prod":                  prodOnly,
+		"only=production":              prodOnly,
+		"only = development":           devOnly,
+		"only=dev":                     devOnly,
+		"only=":                        defaultRestriction,
+		"omit = [\"dev\"]\ndev = true": prodOnly,
+		"omit = [\"abc\"]\ndev = true": all,
+		"only=dev\nomit = [\"abc\"]":   all,
+		"dev=true\nomit = [\"dev\"]":   prodOnly,
+		"kuku=true":                    defaultRestriction}
 
 	for json, typeRestriction := range typeRestrictions {
 		npmi := NpmCommandArgs{}
 		npmi.prepareConfigData([]byte(json))
 		if npmi.typeRestriction != typeRestriction {
-			t.Errorf("Type restriction was supposed to be %s but set to: %s when using the json:\n%s", typeRestriction, npmi.typeRestriction, json)
+			t.Errorf("Type restriction was supposed to be %d but set to: %d when using the json:\n%s", typeRestriction, npmi.typeRestriction, json)
 		}
 	}
 }

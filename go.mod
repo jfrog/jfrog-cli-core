@@ -21,6 +21,6 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v0.21.2-0.20210416185654-037fa56cbb80
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v0.21.4-0.20210428124835-93843e118224
 
 // replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.1.20-0.20210330134550-459be3fc0ee8

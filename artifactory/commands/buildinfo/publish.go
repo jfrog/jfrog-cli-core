@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"sort"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -15,6 +16,8 @@ type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
+	detailedSummary    bool
+	summary            *services.BuildPublishSummary
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
@@ -34,6 +37,24 @@ func (bpc *BuildPublishCommand) SetServerDetails(serverDetails *config.ServerDet
 func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildPublishCommand {
 	bpc.buildConfiguration = buildConfiguration
 	return bpc
+}
+
+func (bpc *BuildPublishCommand) SetSummary(summary *services.BuildPublishSummary) *BuildPublishCommand {
+	bpc.summary = summary
+	return bpc
+}
+
+func (bpc *BuildPublishCommand) GetSummary() *services.BuildPublishSummary {
+	return bpc.summary
+}
+
+func (bpc *BuildPublishCommand) SetDetailedSummary(detailedSummary bool) *BuildPublishCommand {
+	bpc.detailedSummary = detailedSummary
+	return bpc
+}
+
+func (bpc *BuildPublishCommand) IsDetailedSummary() bool {
+	return bpc.detailedSummary
 }
 
 func (bpc *BuildPublishCommand) CommandName() string {
@@ -63,11 +84,13 @@ func (bpc *BuildPublishCommand) Run() error {
 	for _, v := range generatedBuildsInfo {
 		buildInfo.Append(v)
 	}
-
-	if err = servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project); err != nil {
+	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project)
+	if bpc.IsDetailedSummary() {
+		bpc.SetSummary(summary)
+	}
+	if err != nil {
 		return err
 	}
-
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}

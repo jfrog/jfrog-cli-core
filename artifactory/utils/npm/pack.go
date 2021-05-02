@@ -3,16 +3,19 @@ package npm
 import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"strings"
 )
 
-func Pack(npmFlags []string, executablePath string) error {
+func Pack(npmFlags []string, executablePath string) (string, error) {
 
 	configListCmdConfig := createPackCmdConfig(executablePath, npmFlags)
-	if err := gofrogcmd.RunCmd(configListCmdConfig); err != nil {
-		return errorutils.CheckError(err)
+	output, err := gofrogcmd.RunCmdOutput(configListCmdConfig)
+	if err != nil {
+		return "", errorutils.CheckError(err)
 	}
+	packageFileName := strings.TrimSpace(output)
 
-	return nil
+	return packageFileName, nil
 }
 
 func createPackCmdConfig(executablePath string, splitFlags []string) *NpmConfig {

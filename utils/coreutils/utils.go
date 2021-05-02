@@ -22,13 +22,13 @@ type OnError string
 
 var cliTempDir string
 
-// Name of the user agent, i.e 'jfrog-cli-go/1.38.2'.
-var cliUserAgent string
+// User agent - the user of the program that uses this library (usually another program, or the same as the client agent), i.e 'jfrog-pipelines'
+var cliUserAgentName string
+var cliUserAgentVersion string
 
-var version string
-
-// Name of the agent, i.e 'jfrog-cli-go'.
-var clientAgent string
+// Client agent - the program that uses this library, i.e 'jfrog-cli-go'
+var clientAgentName string
+var clientAgentVersion string
 
 func init() {
 	// Initialize error handling.
@@ -175,10 +175,6 @@ func GetCliPersistentTempDirPath() string {
 	return cliTempDir
 }
 
-func GetUserAgent() string {
-	return cliUserAgent
-}
-
 type Credentials interface {
 	SetUser(string)
 	SetPassword(string)
@@ -309,26 +305,41 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 	return false, false
 }
 
-func SetCliUserAgent(cliUserAgentToSet string) {
-	cliUserAgent = cliUserAgentToSet
-}
-
 func GetCliUserAgent() string {
-	return cliUserAgent
+	if cliUserAgentVersion == "" {
+		return cliUserAgentName
+	}
+	return fmt.Sprintf("%s/%s", cliUserAgentName, cliUserAgentVersion)
 }
 
-func SetVersion(versionToSet string) {
-	version = versionToSet
+func SetCliUserAgentName(cliUserAgentNameToSet string) {
+	cliUserAgentName = cliUserAgentNameToSet
 }
 
-func GetVersion() string {
-	return version
+func GetCliUserAgentName() string {
+	return cliUserAgentName
 }
 
-func SetClientAgent(clientAgentToSet string) {
-	clientAgent = clientAgentToSet
+func SetCliUserAgentVersion(versionToSet string) {
+	cliUserAgentVersion = versionToSet
 }
 
-func GetClientAgent() string {
-	return clientAgent
+func GetCliUserAgentVersion() string {
+	return cliUserAgentVersion
+}
+
+func SetClientAgentName(clientAgentToSet string) {
+	clientAgentName = clientAgentToSet
+}
+
+func GetClientAgentName() string {
+	return clientAgentName
+}
+
+func SetClientAgentVersion(versionToSet string) {
+	clientAgentVersion = versionToSet
+}
+
+func GetClientAgentVersion() string {
+	return clientAgentVersion
 }

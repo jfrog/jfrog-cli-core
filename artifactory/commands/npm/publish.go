@@ -194,11 +194,12 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 
 func (npc *NpmPublishCommand) pack() error {
 	log.Debug("Creating npm package.")
-	if err := npm.Pack(npc.npmArgs, npc.executablePath); err != nil {
+	packageFileName, err := npm.Pack(npc.npmArgs, npc.executablePath)
+	if err != nil {
 		return err
 	}
 
-	npc.packedFilePath = filepath.Join(npc.workingDirectory, npc.packageInfo.GetExpectedPackedFileName())
+	npc.packedFilePath = filepath.Join(npc.workingDirectory, packageFileName)
 	log.Debug("Created npm package at", npc.packedFilePath)
 	return nil
 }

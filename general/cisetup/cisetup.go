@@ -10,6 +10,7 @@ type CiSetupData struct {
 	GitBranch               string
 	BuildCommand            string
 	BuildName               string
+	CiType                  CiType
 	ArtifactoryVirtualRepos map[Technology]string
 	// A collection of technologies that was found with a list of theirs indications
 	DetectedTechnologies map[Technology]bool
@@ -36,4 +37,12 @@ const (
 	Bitbucket        = "Bitbucket"
 	BitbucketServer  = "Bitbucket Server"
 	Gitlab           = "GitLab"
+)
+
+type CiType string
+
+const (
+	Jenkins       = "Jenkins"
+	GithubActions = "GitHub Actions"
+	Pipelines     = "Pipelines"
 )

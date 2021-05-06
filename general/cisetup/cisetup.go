@@ -8,14 +8,19 @@ type CiSetupData struct {
 	VcsBaseUrl              string
 	LocalDirPath            string
 	GitBranch               string
-	BuildCommand            string
 	BuildName               string
 	CiType                  CiType
-	ArtifactoryVirtualRepos map[Technology]string
-	// A collection of technologies that was found with a list of theirs indications
+	// A collection of the technologies that were detected in the project.
 	DetectedTechnologies map[Technology]bool
+	// A collection of the technologies actually built, and the needed information to build them.
+	BuiltTechnologies map[Technology]*TechnologyInfo
 	VcsCredentials       VcsServerDetails
 	GitProvider          GitProvider
+}
+
+type TechnologyInfo struct {
+	VirtualRepo string
+	BuildCmd    string
 }
 
 func (sd *CiSetupData) GetRepoFullName() string {

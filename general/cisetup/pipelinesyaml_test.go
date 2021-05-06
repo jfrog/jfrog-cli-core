@@ -1,10 +1,6 @@
 package cisetup
 
-import (
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
+/*
 func TestConvertBuildCmd(t *testing.T) {
 	tests := []buildCmd{
 		{"simpleMvn", "mvn clean install", "jfrog rt mvn clean install"},
@@ -38,3 +34,4 @@ type buildCmd struct {
 	original string
 	expected string
 }
+*/ // todo am i still needed?

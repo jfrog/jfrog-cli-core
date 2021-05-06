@@ -54,7 +54,7 @@ func (yg *JFrogPipelinesYamlGenerator) getPipelineCommands(serverId, gitResource
 // Converts build tools commands to run via JFrog CLI.
 func (yg *JFrogPipelinesYamlGenerator) convertBuildCmd() (string, error) {
 	// Replace mvn, gradle.
-	converted, err := replaceCmdWithRegexp(yg.SetupData.BuildCommand, mvnGradleRegexp, mvnGradleRegexpReplacement)
+	converted, err := replaceCmdWithRegexp("FIX ME", mvnGradleRegexp, mvnGradleRegexpReplacement) // todo
 	if err != nil {
 		return "", err
 	}
@@ -98,16 +98,17 @@ func (yg *JFrogPipelinesYamlGenerator) getJfrogCliConfigCmd(rtIntName, serverId 
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getTechConfigsCommands(serverId string, data *CiSetupData) []string {
+	//todo
 	var configs []string
 	if used, ok := data.DetectedTechnologies[Maven]; ok && used {
 		configs = append(configs, m2pathCmd)
-		configs = append(configs, yg.getMavenConfigCmd(serverId, data.ArtifactoryVirtualRepos[Maven]))
+		configs = append(configs, yg.getMavenConfigCmd(serverId, data.BuiltTechnologies[Maven].VirtualRepo))
 	}
 	if used, ok := data.DetectedTechnologies[Gradle]; ok && used {
-		configs = append(configs, yg.getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.ArtifactoryVirtualRepos[Gradle]))
+		configs = append(configs, yg.getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnologies[Gradle].VirtualRepo))
 	}
 	if used, ok := data.DetectedTechnologies[Npm]; ok && used {
-		configs = append(configs, yg.getBuildToolConfigCmd(npmConfigCmdName, serverId, data.ArtifactoryVirtualRepos[Npm]))
+		configs = append(configs, yg.getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnologies[Npm].VirtualRepo))
 	}
 	return configs
 }

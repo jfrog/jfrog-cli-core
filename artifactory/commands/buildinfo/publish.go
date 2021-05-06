@@ -154,11 +154,11 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 		switch {
 		case partial.Artifacts != nil:
 			for _, artifact := range partial.Artifacts {
-				addArtifactToPartialModule(artifact, partial.ModuleId, partialModules)
+				addArtifactToPartialModule(artifact, partial, partialModules)
 			}
 		case partial.Dependencies != nil:
 			for _, dependency := range partial.Dependencies {
-				addDependencyToPartialModule(dependency, partial.ModuleId, partialModules)
+				addDependencyToPartialModule(dependency, partial, partialModules)
 			}
 		case partial.VcsList != nil:
 			for _, partialVcs := range partial.VcsList {
@@ -216,23 +216,29 @@ func issuesMapToArray(issues buildinfo.Issues, issuesMap map[string]*buildinfo.A
 	return issues
 }
 
-func addDependencyToPartialModule(dependency buildinfo.Dependency, moduleId string, partialModules map[string]partialModule) {
+func addDependencyToPartialModule(dependency buildinfo.Dependency, partial *buildinfo.Partial, partialModules map[string]partialModule) {
 	// init map if needed
+	moduleId := partial.ModuleId
 	if partialModules[moduleId].dependencies == nil {
-		partialModules[moduleId] =
-			partialModule{artifacts: partialModules[moduleId].artifacts,
-				dependencies: make(map[string]buildinfo.Dependency)}
+		partialModules[moduleId] = partialModule{
+			artifacts:    partialModules[moduleId].artifacts,
+			dependencies: make(map[string]buildinfo.Dependency),
+			moduleType:   partial.ModuleType,
+		}
 	}
 	key := fmt.Sprintf("%s-%s-%s-%s", dependency.Id, dependency.Sha1, dependency.Md5, dependency.Scopes)
 	partialModules[moduleId].dependencies[key] = dependency
 }
 
-func addArtifactToPartialModule(artifact buildinfo.Artifact, moduleId string, partialModules map[string]partialModule) {
+func addArtifactToPartialModule(artifact buildinfo.Artifact, partial *buildinfo.Partial, partialModules map[string]partialModule) {
 	// init map if needed
+	moduleId := partial.ModuleId
 	if partialModules[moduleId].artifacts == nil {
-		partialModules[moduleId] =
-			partialModule{artifacts: make(map[string]buildinfo.Artifact),
-				dependencies: partialModules[moduleId].dependencies}
+		partialModules[moduleId] = partialModule{
+			artifacts:    make(map[string]buildinfo.Artifact),
+			dependencies: partialModules[moduleId].dependencies,
+			moduleType:   partial.ModuleType,
+		}
 	}
 	key := fmt.Sprintf("%s-%s-%s", artifact.Name, artifact.Sha1, artifact.Md5)
 	partialModules[moduleId].artifacts[key] = artifact

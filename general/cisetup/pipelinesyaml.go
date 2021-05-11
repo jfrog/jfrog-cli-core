@@ -1,11 +1,6 @@
 package cisetup
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"gopkg.in/yaml.v2"
@@ -40,10 +35,10 @@ func (yg *JFrogPipelinesYamlGenerator) Generate() (pipelineBytes []byte, pipelin
 
 func (yg *JFrogPipelinesYamlGenerator) getPipelineCommands(serverId, gitResourceName, convertedBuildCmd string) []string {
 	var commandsArray []string
-	commandsArray = append(commandsArray, yg.getCdToResourceCmd(gitResourceName))
-	commandsArray = append(commandsArray, yg.getExportsCommands(yg.SetupData)...)
-	commandsArray = append(commandsArray, yg.getJfrogCliConfigCmd(yg.RtIntName, serverId))
-	commandsArray = append(commandsArray, yg.getTechConfigsCommands(serverId, yg.SetupData)...)
+	commandsArray = append(commandsArray, getCdToResourceCmd(gitResourceName))
+	commandsArray = append(commandsArray, getExportsCommands(yg.SetupData)...)
+	commandsArray = append(commandsArray, getJfrogCliConfigCmd(yg.RtIntName, serverId))
+	commandsArray = append(commandsArray, getTechConfigsCommands(serverId, yg.SetupData)...)
 	commandsArray = append(commandsArray, convertedBuildCmd)
 	commandsArray = append(commandsArray, jfrogCliBag)
 	commandsArray = append(commandsArray, jfrogCliBce)
@@ -73,75 +68,6 @@ func replaceCmdWithRegexp(buildCmd, cmdRegexp, replacement string) (string, erro
 		return "", err
 	}
 	return regexp.ReplaceAllString(buildCmd, replacement), nil
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getCdToResourceCmd(gitResourceName string) string {
-	return fmt.Sprintf("cd $res_%s_resourcePath", gitResourceName)
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getIntDetailForCmd(intName, detail string) string {
-	return fmt.Sprintf("$int_%s_%s", intName, detail)
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getFlagSyntax(flagName string) string {
-	return fmt.Sprintf("--%s", flagName)
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getJfrogCliConfigCmd(rtIntName, serverId string) string {
-	return strings.Join([]string{
-		jfrogCliConfig, serverId,
-		yg.getFlagSyntax(rtUrlFlag), yg.getIntDetailForCmd(rtIntName, urlFlag),
-		yg.getFlagSyntax(userFlag), yg.getIntDetailForCmd(rtIntName, userFlag),
-		yg.getFlagSyntax(apikeyFlag), yg.getIntDetailForCmd(rtIntName, apikeyFlag),
-		"--enc-password=false",
-	}, " ")
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getTechConfigsCommands(serverId string, data *CiSetupData) []string {
-	//todo
-	var configs []string
-	if used, ok := data.DetectedTechnologies[Maven]; ok && used {
-		configs = append(configs, m2pathCmd)
-		configs = append(configs, yg.getMavenConfigCmd(serverId, data.BuiltTechnologies[Maven].VirtualRepo))
-	}
-	if used, ok := data.DetectedTechnologies[Gradle]; ok && used {
-		configs = append(configs, yg.getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnologies[Gradle].VirtualRepo))
-	}
-	if used, ok := data.DetectedTechnologies[Npm]; ok && used {
-		configs = append(configs, yg.getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnologies[Npm].VirtualRepo))
-	}
-	return configs
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getMavenConfigCmd(serverId, repo string) string {
-	return strings.Join([]string{
-		jfrogCliRtPrefix, mvnConfigCmdName,
-		yg.getFlagSyntax(serverIdResolve), serverId,
-		yg.getFlagSyntax(repoResolveReleases), repo,
-		yg.getFlagSyntax(repoResolveSnapshots), repo,
-	}, " ")
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getBuildToolConfigCmd(configCmd, serverId, repo string) string {
-	return strings.Join([]string{
-		jfrogCliRtPrefix, configCmd,
-		yg.getFlagSyntax(serverIdResolve), serverId,
-		yg.getFlagSyntax(repoResolve), repo,
-	}, " ")
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getExportsCommands(vcsData *CiSetupData) []string {
-	return []string{
-		yg.getExportCmd(coreutils.CI, strconv.FormatBool(true)),
-		yg.getExportCmd(buildNameEnvVar, vcsData.BuildName),
-		yg.getExportCmd(buildNumberEnvVar, runNumberEnvVar),
-		yg.getExportCmd(buildUrlEnvVar, stepUrlEnvVar),
-		yg.getExportCmd(buildStatusEnvVar, passResult),
-	}
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getExportCmd(key, value string) string {
-	return fmt.Sprintf("export %s=%s", key, value)
 }
 
 func (yg *JFrogPipelinesYamlGenerator) createGitResource(gitResourceName string) Resource {
@@ -296,7 +222,7 @@ type StepExecution struct {
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getOnFailureCommands() []string {
-	return []string{yg.getExportCmd(buildStatusEnvVar, failResult),
+	return []string{getExportCmd(buildStatusEnvVar, failResult),
 		jfrogCliBce,
 		jfrogCliBp}
 }

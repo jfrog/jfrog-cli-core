@@ -1,5 +1,13 @@
 package cisetup
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+)
+
 const (
 	jfrogCliFullImgName   = "releases-docker.jfrog.io/jfrog/jfrog-cli-full"
 	jfrogCliFullImgTag    = "latest"
@@ -40,4 +48,101 @@ const (
 	npmInstallRegexpReplacement = `${1}jfrog rt npmi${3}`
 	npmCiRegexp                 = `(^|\s)(npm ci)(\s|$)`
 	npmCiRegexpReplacement      = `${1}jfrog rt npmci${3}`
+
+	cmdAndOperator = " &&\n"
 )
+
+func getFlagSyntax(flagName string) string {
+	return fmt.Sprintf("--%s", flagName)
+}
+
+func getCdToResourceCmd(gitResourceName string) string {
+	return fmt.Sprintf("cd $res_%s_resourcePath", gitResourceName)
+}
+
+func getIntDetailForCmd(intName, detail string) string {
+	return fmt.Sprintf("$int_%s_%s", intName, detail)
+}
+
+func getJfrogCliConfigCmd(rtIntName, serverId string) string {
+	return strings.Join([]string{
+		jfrogCliConfig, serverId,
+		getFlagSyntax(rtUrlFlag), getIntDetailForCmd(rtIntName, urlFlag),
+		getFlagSyntax(userFlag), getIntDetailForCmd(rtIntName, userFlag),
+		getFlagSyntax(apikeyFlag), getIntDetailForCmd(rtIntName, apikeyFlag),
+		"--enc-password=false",
+	}, " ")
+}
+
+func getTechConfigsCommands(serverId string, data *CiSetupData) []string {
+	// TODO - replace DetectedTechnologies with BuiltTechnologies
+	// Consider remove DetectedTechnologies for CiSetupData.
+	var configs []string
+	if used, ok := data.DetectedTechnologies[Maven]; ok && used {
+		configs = append(configs, m2pathCmd)
+		configs = append(configs, getMavenConfigCmd(serverId, data.BuiltTechnologies[Maven].VirtualRepo))
+	}
+	if used, ok := data.DetectedTechnologies[Gradle]; ok && used {
+		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnologies[Gradle].VirtualRepo))
+	}
+	if used, ok := data.DetectedTechnologies[Npm]; ok && used {
+		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnologies[Npm].VirtualRepo))
+	}
+	return configs
+}
+
+// Converts build tools commands to run via JFrog CLI.
+func convertBuildCmd(data *CiSetupData) (string, error) {
+	commandsArray := []string{}
+	for tech, info := range data.BuiltTechnologies {
+		var cmdRegexp, replacement string
+		switch tech {
+		case Npm:
+			cmdRegexp = npmInstallRegexp
+			replacement = npmInstallRegexpReplacement
+		case Maven:
+		case Gradle:
+			cmdRegexp = mvnGradleRegexp
+			replacement = mvnGradleRegexpReplacement
+
+		}
+		buildCmd, err := replaceCmdWithRegexp(info.BuildCmd, cmdRegexp, replacement)
+		if err != nil {
+			return "", err
+		}
+		commandsArray = append(commandsArray, buildCmd)
+
+	}
+	return strings.Join(commandsArray, cmdAndOperator), nil
+}
+
+func getMavenConfigCmd(serverId, repo string) string {
+	return strings.Join([]string{
+		jfrogCliRtPrefix, mvnConfigCmdName,
+		getFlagSyntax(serverIdResolve), serverId,
+		getFlagSyntax(repoResolveReleases), repo,
+		getFlagSyntax(repoResolveSnapshots), repo,
+	}, " ")
+}
+
+func getBuildToolConfigCmd(configCmd, serverId, repo string) string {
+	return strings.Join([]string{
+		jfrogCliRtPrefix, configCmd,
+		getFlagSyntax(serverIdResolve), serverId,
+		getFlagSyntax(repoResolve), repo,
+	}, " ")
+}
+
+func getExportsCommands(vcsData *CiSetupData) []string {
+	return []string{
+		getExportCmd(coreutils.CI, strconv.FormatBool(true)),
+		getExportCmd(buildNameEnvVar, vcsData.BuildName),
+		getExportCmd(buildNumberEnvVar, runNumberEnvVar),
+		getExportCmd(buildUrlEnvVar, stepUrlEnvVar),
+		getExportCmd(buildStatusEnvVar, passResult),
+	}
+}
+
+func getExportCmd(key, value string) string {
+	return fmt.Sprintf("export %s=%s", key, value)
+}

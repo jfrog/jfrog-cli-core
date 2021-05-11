@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet/dependencies"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet/solution/project"
 	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
@@ -12,11 +18,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 type Solution interface {
@@ -133,13 +134,14 @@ func (solution *solution) loadSingleProjectFromDir() error {
 
 func (solution *solution) loadSingleProject(projectName, projFilePath string) {
 	// First we wil find the project's dependencies source.
-	// It can be located in the project's root directory or in a directory with the project name under the solution root.
+	// It can be located directly in the project's root directory or in a directory with the project name under the solution root
+	// or under obj directory (in case of assets.json file)
 	projectRootPath := filepath.Dir(projFilePath)
-	projectPathPattern := projectRootPath + string(filepath.Separator)
+	projectPathPattern := filepath.Join(projectRootPath, dependencies.AssetDirName) + string(filepath.Separator)
 	projectNamePattern := string(filepath.Separator) + projectName + string(filepath.Separator)
 	var dependenciesSource string
 	for _, source := range solution.dependenciesSources {
-		if strings.Contains(source, projectPathPattern) || strings.Contains(source, projectNamePattern) {
+		if projectRootPath == filepath.Dir(source) || strings.Contains(source, projectPathPattern) || strings.Contains(source, projectNamePattern) {
 			dependenciesSource = source
 			break
 		}

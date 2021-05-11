@@ -4,18 +4,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
 )
 
-var assetsFilePath = filepath.Join("obj", "project.assets.json")
+var assetsFilePath = filepath.Join(AssetDirName, AssetFileName)
 
-const AssetFileName = "project.assets.json"
+const (
+	AssetFileName = "project.assets.json"
+	AssetDirName  = "obj"
+)
 
 // Register project.assets.json extractor
 func init() {

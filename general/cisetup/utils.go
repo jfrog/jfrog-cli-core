@@ -101,6 +101,7 @@ func convertBuildCmd(data *CiSetupData) (string, error) {
 			cmdRegexp = npmInstallRegexp
 			replacement = npmInstallRegexpReplacement
 		case Maven:
+			fallthrough
 		case Gradle:
 			cmdRegexp = mvnGradleRegexp
 			replacement = mvnGradleRegexpReplacement

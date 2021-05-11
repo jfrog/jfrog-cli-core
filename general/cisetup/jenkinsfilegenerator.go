@@ -71,9 +71,9 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 		return nil, "", err
 	}
 	buildToolsconfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, jg.SetupData), cmdAndOperator)
-	buildCommand, err := convertBuildCmd()
+	buildCommand, err := convertBuildCmd(jg.SetupData)
 	if err != nil {
 		return nil, "", err
 	}
-	return []byte(fmt.Sprintf(jenkinsfileTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsBaseUrl, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand)), JenkinsfileName, nil
+	return []byte(fmt.Sprintf(jenkinsfileTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand)), JenkinsfileName, nil
 }

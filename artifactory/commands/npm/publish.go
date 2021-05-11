@@ -76,7 +76,7 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		_, _, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+		_, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 		if err != nil {
 			return err
 		}

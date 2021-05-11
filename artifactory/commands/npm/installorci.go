@@ -112,8 +112,8 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, jsonOutput, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
-	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetJsonOutput(jsonOutput).SetBuildConfiguration(buildConfiguration)
+	threads, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetBuildConfiguration(buildConfiguration)
 	if err != nil {
 		return err
 	}
@@ -122,11 +122,6 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 
 func (nca *NpmCommandArgs) SetThreads(threads int) *NpmCommandArgs {
 	nca.threads = threads
-	return nca
-}
-
-func (nca *NpmCommandArgs) SetJsonOutput(jsonOutput bool) *NpmCommandArgs {
-	nca.jsonOutput = jsonOutput
 	return nca
 }
 
@@ -183,6 +178,10 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	}
 
 	if err := nca.validateNpmVersion(); err != nil {
+		return err
+	}
+
+	if err := nca.setJsonOutput(); err != nil {
 		return err
 	}
 
@@ -246,6 +245,17 @@ func (nca *NpmCommandArgs) setWorkingDirectory() error {
 	if err = nca.setArtifactoryAuth(); err != nil {
 		return errorutils.CheckError(err)
 	}
+	return nil
+}
+
+func (nca *NpmCommandArgs) setJsonOutput() error {
+	jsonOutput, err := npm.ConfigGet(nca.npmArgs, "json", nca.executablePath)
+	if err != nil {
+		return err
+	}
+
+	// In case of --json=<not boolean>, the value of json is set to 'true', but the result from the command is not 'true'
+	nca.jsonOutput = jsonOutput != "false"
 	return nil
 }
 

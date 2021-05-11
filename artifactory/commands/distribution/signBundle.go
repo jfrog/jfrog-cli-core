@@ -4,11 +4,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/distribution/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 )
 
 type SignBundleCommand struct {
 	serverDetails     *config.ServerDetails
 	signBundlesParams services.SignBundleParams
+	detailedSummary   bool
+	summary           *clientutils.Sha256Summary
 }
 
 func NewReleaseBundleSignCommand() *SignBundleCommand {
@@ -31,7 +34,11 @@ func (sb *SignBundleCommand) Run() error {
 		return err
 	}
 
-	return servicesManager.SignReleaseBundle(sb.signBundlesParams)
+	summary, err := servicesManager.SignReleaseBundle(sb.signBundlesParams)
+	if sb.detailedSummary {
+		sb.summary = summary
+	}
+	return err
 }
 
 func (sb *SignBundleCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -40,4 +47,22 @@ func (sb *SignBundleCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (sb *SignBundleCommand) CommandName() string {
 	return "rt_sign_bundle"
+}
+
+func (sb *SignBundleCommand) SetSummary(summary *clientutils.Sha256Summary) *SignBundleCommand {
+	sb.summary = summary
+	return sb
+}
+
+func (sb *SignBundleCommand) GetSummary() *clientutils.Sha256Summary {
+	return sb.summary
+}
+
+func (sb *SignBundleCommand) SetDetailedSummary(detailedSummary bool) *SignBundleCommand {
+	sb.detailedSummary = detailedSummary
+	return sb
+}
+
+func (sb *SignBundleCommand) IsDetailedSummary() bool {
+	return sb.detailedSummary
 }

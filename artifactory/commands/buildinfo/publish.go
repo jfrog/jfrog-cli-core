@@ -2,7 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"sort"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -17,7 +17,7 @@ type BuildPublishCommand struct {
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
 	detailedSummary    bool
-	summary            *services.BuildPublishSummary
+	summary            *clientutils.Sha256Summary
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
@@ -39,12 +39,12 @@ func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) SetSummary(summary *services.BuildPublishSummary) *BuildPublishCommand {
+func (bpc *BuildPublishCommand) SetSummary(summary *clientutils.Sha256Summary) *BuildPublishCommand {
 	bpc.summary = summary
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) GetSummary() *services.BuildPublishSummary {
+func (bpc *BuildPublishCommand) GetSummary() *clientutils.Sha256Summary {
 	return bpc.summary
 }
 

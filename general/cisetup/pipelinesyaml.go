@@ -1,10 +1,17 @@
 package cisetup
 
 import (
+	"encoding/json"
+	"strconv"
+	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"gopkg.in/yaml.v2"
 )
+
+const addRunFilesCmd = "add_run_files /tmp/jfrog/. jfrog"
 
 type JFrogPipelinesYamlGenerator struct {
 	VcsIntName string
@@ -15,46 +22,36 @@ type JFrogPipelinesYamlGenerator struct {
 func (yg *JFrogPipelinesYamlGenerator) Generate() (pipelineBytes []byte, pipelineName string, err error) {
 	pipelineName = yg.createPipelineName()
 	gitResourceName := yg.createGitResourceName()
-	serverId := yg.createServerIdName()
-
-	converted, err := yg.convertBuildCmd()
+	biResourceName := yg.createBuildInfoResourceName()
+	gitResource := yg.createGitResource(gitResourceName)
+	biResource := yg.createBuildInfoResource(biResourceName)
+	pipeline, err := yg.createPipeline(pipelineName, gitResourceName, biResourceName)
 	if err != nil {
 		return nil, "", err
 	}
-
-	pipelinesCommands := yg.getPipelineCommands(serverId, gitResourceName, converted)
-	gitResource := yg.createGitResource(gitResourceName)
-	pipeline := yg.createPipeline(pipelineName, gitResourceName, pipelinesCommands)
 	pipelineYaml := PipelineYml{
-		Resources: []Resource{gitResource},
+		Resources: []Resource{gitResource, biResource},
 		Pipelines: []Pipeline{pipeline},
 	}
 	pipelineBytes, err = yaml.Marshal(&pipelineYaml)
 	return pipelineBytes, pipelineName, errorutils.CheckError(err)
 }
 
-func (yg *JFrogPipelinesYamlGenerator) getPipelineCommands(serverId, gitResourceName, convertedBuildCmd string) []string {
+func (yg *JFrogPipelinesYamlGenerator) getNpmBashCommands(serverId, gitResourceName, convertedBuildCmd string) []string {
 	var commandsArray []string
 	commandsArray = append(commandsArray, getCdToResourceCmd(gitResourceName))
-	commandsArray = append(commandsArray, getExportsCommands(yg.SetupData)...)
-	commandsArray = append(commandsArray, getJfrogCliConfigCmd(yg.RtIntName, serverId))
-	commandsArray = append(commandsArray, getTechConfigsCommands(serverId, yg.SetupData)...)
+	commandsArray = append(commandsArray, getJfrogCliConfigCmd(yg.RtIntName, serverId, true))
+	commandsArray = append(commandsArray, getBuildToolConfigCmd(npmConfigCmdName, serverId, yg.SetupData.BuiltTechnologies[Npm].VirtualRepo))
 	commandsArray = append(commandsArray, convertedBuildCmd)
 	commandsArray = append(commandsArray, jfrogCliBag)
 	commandsArray = append(commandsArray, jfrogCliBce)
-	commandsArray = append(commandsArray, jfrogCliBp)
 	return commandsArray
 }
 
 // Converts build tools commands to run via JFrog CLI.
-func (yg *JFrogPipelinesYamlGenerator) convertBuildCmd() (string, error) {
-	// Replace mvn, gradle.
-	converted, err := replaceCmdWithRegexp("FIX ME", mvnGradleRegexp, mvnGradleRegexpReplacement) // todo
-	if err != nil {
-		return "", err
-	}
+func (yg *JFrogPipelinesYamlGenerator) convertNpmBuildCmd() (string, error) {
 	// Replace npm-i.
-	converted, err = replaceCmdWithRegexp(converted, npmInstallRegexp, npmInstallRegexpReplacement)
+	converted, err := replaceCmdWithRegexp(yg.SetupData.BuiltTechnologies[Npm].BuildCmd, npmInstallRegexp, npmInstallRegexpReplacement)
 	if err != nil {
 		return "", err
 	}
@@ -70,11 +67,21 @@ func replaceCmdWithRegexp(buildCmd, cmdRegexp, replacement string) (string, erro
 	return regexp.ReplaceAllString(buildCmd, replacement), nil
 }
 
+func (yg *JFrogPipelinesYamlGenerator) getPipelineEnvVars() map[string]string {
+	return map[string]string{
+		coreutils.CI:       strconv.FormatBool(true),
+		buildNameEnvVar:    yg.SetupData.BuildName,
+		buildNumberEnvVar:  runNumberEnvVar,
+		buildProjectEnvVar: projectKeyEnvVar,
+		buildUrlEnvVar:     stepUrlEnvVar,
+	}
+}
+
 func (yg *JFrogPipelinesYamlGenerator) createGitResource(gitResourceName string) Resource {
 	return Resource{
 		Name:         gitResourceName,
 		ResourceType: GitRepo,
-		ResourceConfiguration: ResourceConfiguration{
+		ResourceConfiguration: GitRepoResourceConfiguration{
 			Path:        yg.SetupData.GetRepoFullName(),
 			GitProvider: yg.VcsIntName,
 			BuildOn: BuildOn{
@@ -85,42 +92,196 @@ func (yg *JFrogPipelinesYamlGenerator) createGitResource(gitResourceName string)
 	}
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createPipeline(pipelineName, gitResourceName string, commands []string) Pipeline {
+func (yg *JFrogPipelinesYamlGenerator) createBuildInfoResource(buildInfoResourceName string) Resource {
+	return Resource{
+		Name:         buildInfoResourceName,
+		ResourceType: BuildInfo,
+		ResourceConfiguration: BuildInfoResourceConfiguration{
+			SourceArtifactoryIntegration: yg.RtIntName,
+			BuildName:                    yg.SetupData.BuildName,
+			BuildNumber:                  runNumberEnvVar,
+		},
+	}
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createPipeline(pipelineName, gitResourceName, buildInfoResourceName string) (Pipeline, error) {
+	steps, err := yg.createSteps(gitResourceName, buildInfoResourceName)
+	if err != nil {
+		return Pipeline{}, err
+	}
 	return Pipeline{
-		Name: pipelineName,
+		Name:  pipelineName,
+		Steps: steps,
 		Configuration: PipelineConfiguration{
-			Runtime{
-				RuntimeType: Image,
-				Image: RuntimeImage{
-					Custom: CustomImage{
-						Name: jfrogCliFullImgName,
-						Tag:  jfrogCliFullImgTag,
-					},
+			PipelineEnvVars: PipelineEnvVars{
+				ReadOnlyEnvVars: yg.getPipelineEnvVars(),
+			},
+		},
+	}, nil
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoResourceName string) ([]PipelineStep, error) {
+	var steps []PipelineStep
+	previousStepName := ""
+	for tech := range yg.SetupData.BuiltTechnologies {
+		switch tech {
+		case Maven:
+			curStep := yg.createMavenStep(gitResourceName, previousStepName)
+			steps = append(steps, curStep)
+			previousStepName = curStep.Name
+		case Gradle:
+			curStep := yg.createGradleStep(gitResourceName, previousStepName)
+			steps = append(steps, curStep)
+			previousStepName = curStep.Name
+		case Npm:
+			curStep, err := yg.createNpmStep(gitResourceName, previousStepName)
+			if err != nil {
+				return nil, err
+			}
+			steps = append(steps, curStep)
+			previousStepName = curStep.Name
+		}
+	}
+	return append(steps, yg.createBuildInfoStep(gitResourceName, previousStepName, buildInfoResourceName)), nil
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName, previousStepName string) PipelineStep {
+	return PipelineStep{
+		Name:     createTechStepName(MvnBuild),
+		StepType: MvnBuild,
+		Configuration: &MavenStepConfiguration{
+			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName, previousStepName),
+			MvnCommand:              yg.getBuildCmdForNativeStep(Maven),
+			ResolverSnapshotRepo:    yg.SetupData.BuiltTechnologies[Maven].VirtualRepo,
+			ResolverReleaseRepo:     yg.SetupData.BuiltTechnologies[Maven].VirtualRepo,
+		},
+		Execution: StepExecution{
+			OnFailure: yg.getOnFailureCommands(),
+		},
+	}
+}
+
+func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech Technology) string {
+	cmd := yg.SetupData.BuiltTechnologies[tech].BuildCmd
+	// Remove exec name.
+	return strings.TrimPrefix(strings.TrimSpace(cmd), execNames[tech]+" ")
+}
+
+func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitResourceName, previousStepName string) NativeStepConfiguration {
+	step := NativeStepConfiguration{
+		BaseStepConfiguration: BaseStepConfiguration{
+			EnvironmentVariables: map[string]string{
+				buildStatusEnvVar: passResult,
+			},
+			Integrations: []StepIntegration{
+				{
+					Name: yg.RtIntName,
+				},
+			},
+			InputResources: []StepResource{
+				{
+					Name: gitResourceName,
 				},
 			},
 		},
-		Steps: []PipelineStep{
+		AutoPublishBuildInfo: false,
+		ForceXrayScan:        false,
+	}
+	if previousStepName != "" {
+		step.BaseStepConfiguration.appendInputSteps([]InputStep{
 			{
-				Name:     "Build",
-				StepType: "Bash",
-				Configuration: StepConfiguration{
-					InputResources: []StepResource{
-						{
-							Name: gitResourceName,
-						},
-					},
-					Integrations: []StepIntegration{
-						{
-							Name: yg.RtIntName,
-						},
-					},
-				},
-				Execution: StepExecution{
-					OnExecute:  commands,
-					OnComplete: []string{yg.getUpdateCommitStatusCmd(gitResourceName)},
-					OnFailure:  yg.getOnFailureCommands(),
+				Name: previousStepName,
+			},
+		})
+	}
+	return step
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName, previousStepName string) PipelineStep {
+	return PipelineStep{
+		Name:     createTechStepName(GradleBuild),
+		StepType: GradleBuild,
+		Configuration: &GradleStepConfiguration{
+			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName, previousStepName),
+			GradleCommand:           yg.getBuildCmdForNativeStep(Gradle),
+			ResolverRepo:            yg.SetupData.BuiltTechnologies[Gradle].VirtualRepo,
+		},
+		Execution: StepExecution{
+			OnFailure: yg.getOnFailureCommands(),
+		},
+	}
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createNpmStep(gitResourceName, previousStepName string) (PipelineStep, error) {
+	serverId := yg.createServerIdName()
+
+	converted, err := yg.convertNpmBuildCmd()
+	if err != nil {
+		return PipelineStep{}, err
+	}
+
+	commands := yg.getNpmBashCommands(serverId, gitResourceName, converted)
+
+	step := PipelineStep{
+		Name:     createTechStepName(NpmBuild),
+		StepType: Bash,
+		Configuration: &BaseStepConfiguration{
+			EnvironmentVariables: map[string]string{
+				buildStatusEnvVar: passResult,
+			},
+			InputResources: []StepResource{
+				{
+					Name: gitResourceName,
 				},
 			},
+			Integrations: []StepIntegration{
+				{
+					Name: yg.RtIntName,
+				},
+			},
+		},
+		Execution: StepExecution{
+			OnExecute:  commands,
+			OnComplete: []string{addRunFilesCmd},
+			OnFailure:  yg.getOnFailureCommands(),
+		},
+	}
+	if previousStepName != "" {
+		step.Configuration.appendInputSteps([]InputStep{
+			{
+				Name: previousStepName,
+			},
+		})
+	}
+	return step, nil
+}
+
+func (yg *JFrogPipelinesYamlGenerator) createBuildInfoStep(gitResourceName, previousStepName, buildInfoResourceName string) PipelineStep {
+	return PipelineStep{
+		Name:     createTechStepName(PublishBuildInfo),
+		StepType: PublishBuildInfo,
+		Configuration: &NativeStepConfiguration{
+			BaseStepConfiguration: BaseStepConfiguration{
+				InputSteps: []InputStep{
+					{
+						Name: previousStepName,
+					},
+				},
+				InputResources: []StepResource{
+					{
+						Name: gitResourceName,
+					},
+				},
+				OutputResources: []StepResource{
+					{
+						Name: buildInfoResourceName,
+					},
+				},
+			},
+			ForceXrayScan: true,
+		},
+		Execution: StepExecution{
+			OnComplete: []string{yg.getUpdateCommitStatusCmd(gitResourceName)},
 		},
 	}
 }
@@ -130,24 +291,39 @@ type PipelineYml struct {
 	Pipelines []Pipeline `yaml:"pipelines,omitempty"`
 }
 
+type ResourceType string
+
+const (
+	GitRepo   ResourceType = "GitRepo"
+	BuildInfo ResourceType = "BuildInfo"
+)
+
 type Resource struct {
 	Name                  string `yaml:"name,omitempty"`
 	ResourceType          `yaml:"type,omitempty"`
 	ResourceConfiguration `yaml:"configuration,omitempty"`
 }
 
-type ResourceType string
+type ResourceConfiguration interface {
+	ResourceConfigurationMarkerFunction()
+}
 
-const (
-	GitRepo ResourceType = "GitRepo"
-)
-
-type ResourceConfiguration struct {
+type GitRepoResourceConfiguration struct {
 	Path        string `yaml:"path,omitempty"`
 	GitProvider string `yaml:"gitProvider,omitempty"`
 	BuildOn     `yaml:"buildOn,omitempty"`
 	Branches    IncludeExclude `yaml:"branches,omitempty"`
 }
+
+func (g GitRepoResourceConfiguration) ResourceConfigurationMarkerFunction() {}
+
+type BuildInfoResourceConfiguration struct {
+	SourceArtifactoryIntegration string      `yaml:"sourceArtifactory,omitempty"`
+	BuildName                    string      `yaml:"buildName,omitempty"`
+	BuildNumber                  json.Number `yaml:"buildNumber,omitempty"`
+}
+
+func (b BuildInfoResourceConfiguration) ResourceConfigurationMarkerFunction() {}
 
 type IncludeExclude struct {
 	Include string `yaml:"include,omitempty"`
@@ -166,7 +342,12 @@ type Pipeline struct {
 }
 
 type PipelineConfiguration struct {
-	Runtime `yaml:"runtime,omitempty"`
+	Runtime         `yaml:"runtime,omitempty"`
+	PipelineEnvVars `yaml:"environmentVariables,omitempty"`
+}
+
+type PipelineEnvVars struct {
+	ReadOnlyEnvVars map[string]string `yaml:"readOnly,omitempty"`
 }
 
 type RuntimeType string
@@ -193,23 +374,72 @@ type CustomImage struct {
 	Region           string `yaml:"region,omitempty"`
 }
 
+type StepType string
+
+const (
+	MvnBuild         StepType = "MvnBuild"
+	GradleBuild               = "GradleBuild"
+	NpmBuild                  = "NpmBuild"
+	Bash                      = "Bash"
+	PublishBuildInfo          = "PublishBuildInfo"
+)
+
 type PipelineStep struct {
-	Name          string            `yaml:"name,omitempty"`
-	StepType      string            `yaml:"type,omitempty"`
+	Name          string `yaml:"name,omitempty"`
+	StepType      `yaml:"type,omitempty"`
 	Configuration StepConfiguration `yaml:"configuration,omitempty"`
 	Execution     StepExecution     `yaml:"execution,omitempty"`
 }
 
-type StepConfiguration struct {
-	InputResources []StepResource    `yaml:"inputResources,omitempty"`
-	Integrations   []StepIntegration `yaml:"integrations,omitempty"`
+type StepConfiguration interface {
+	appendInputSteps([]InputStep)
+}
+
+type BaseStepConfiguration struct {
+	EnvironmentVariables map[string]string `yaml:"environmentVariables,omitempty"`
+	Integrations         []StepIntegration `yaml:"integrations,omitempty"`
+	InputResources       []StepResource    `yaml:"inputResources,omitempty"`
+	OutputResources      []StepResource    `yaml:"outputResources,omitempty"`
+	InputSteps           []InputStep       `yaml:"inputSteps,omitempty"`
+}
+
+func (b *BaseStepConfiguration) appendInputSteps(steps []InputStep) {
+	b.InputSteps = append(b.InputSteps, steps...)
+}
+
+type NativeStepConfiguration struct {
+	BaseStepConfiguration `yaml:",inline"`
+	ForceXrayScan         bool `yaml:"forceXrayScan,omitempty"`
+	FailOnScan            bool `yaml:"failOnScan,omitempty"`
+	AutoPublishBuildInfo  bool `yaml:"autoPublishBuildInfo,omitempty"`
+}
+
+type MavenStepConfiguration struct {
+	NativeStepConfiguration `yaml:",inline"`
+	MvnCommand              string `yaml:"mvnCommand,omitempty"`
+	ResolverSnapshotRepo    string `yaml:"resolverSnapshotRepo,omitempty"`
+	ResolverReleaseRepo     string `yaml:"resolverReleaseRepo,omitempty"`
+	DeployerSnapshotRepo    string `yaml:"deployerSnapshotRepo,omitempty"`
+	DeployerReleaseRepo     string `yaml:"deployerReleaseRepo,omitempty"`
+}
+
+type GradleStepConfiguration struct {
+	NativeStepConfiguration `yaml:",inline"`
+	GradleCommand           string `yaml:"gradleCommand,omitempty"`
+	ResolverRepo            string `yaml:"resolverRepo,omitempty"`
+	UsesPlugin              bool   `yaml:"usesPlugin,omitempty"`
+	UseWrapper              bool   `yaml:"useWrapper,omitempty"`
+}
+
+type StepIntegration struct {
+	Name string `yaml:"name,omitempty"`
 }
 
 type StepResource struct {
 	Name string `yaml:"name,omitempty"`
 }
 
-type StepIntegration struct {
+type InputStep struct {
 	Name string `yaml:"name,omitempty"`
 }
 
@@ -235,10 +465,18 @@ func (yg *JFrogPipelinesYamlGenerator) createGitResourceName() string {
 	return createPipelinesSuitableName(yg.SetupData, "gitResource")
 }
 
+func (yg *JFrogPipelinesYamlGenerator) createBuildInfoResourceName() string {
+	return createPipelinesSuitableName(yg.SetupData, "buildInfoResource")
+}
+
 func (yg *JFrogPipelinesYamlGenerator) createPipelineName() string {
 	return createPipelinesSuitableName(yg.SetupData, "pipeline")
 }
 
 func (yg *JFrogPipelinesYamlGenerator) createServerIdName() string {
 	return createPipelinesSuitableName(yg.SetupData, "serverId")
+}
+
+func createTechStepName(stepType StepType) string {
+	return string(stepType) + "Step"
 }

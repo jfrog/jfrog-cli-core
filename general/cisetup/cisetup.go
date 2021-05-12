@@ -3,19 +3,19 @@ package cisetup
 const ConfigServerId = "ci-setup-cmd"
 
 type CiSetupData struct {
-	RepositoryName          string
-	ProjectDomain           string
-	VcsBaseUrl              string
-	LocalDirPath            string
-	GitBranch               string
-	BuildName               string
-	CiType                  CiType
+	RepositoryName string
+	ProjectDomain  string
+	VcsBaseUrl     string
+	LocalDirPath   string
+	GitBranch      string
+	BuildName      string
+	CiType         CiType
 	// A collection of the technologies that were detected in the project.
 	DetectedTechnologies map[Technology]bool
 	// A collection of the technologies actually built, and the needed information to build them.
 	BuiltTechnologies map[Technology]*TechnologyInfo
-	VcsCredentials       VcsServerDetails
-	GitProvider          GitProvider
+	VcsCredentials    VcsServerDetails
+	GitProvider       GitProvider
 }
 
 type TechnologyInfo struct {
@@ -51,3 +51,9 @@ const (
 	GithubActions = "GitHub Actions"
 	Pipelines     = "Pipelines"
 )
+
+var execNames = map[Technology]string{
+	Maven:  "mvn",
+	Gradle: "gradle",
+	Npm:    "npm",
+}

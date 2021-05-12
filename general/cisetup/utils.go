@@ -14,14 +14,17 @@ const (
 	m2pathCmd             = "MVN_PATH=`which mvn` && export M2_HOME=`readlink -f $MVN_PATH | xargs dirname | xargs dirname`"
 	jfrogCliRtPrefix      = "jfrog rt"
 	jfrogCliConfig        = "jfrog c add"
+	jfrogCliOldConfig     = "jfrog rt c"
 	jfrogCliBce           = "jfrog rt bce"
 	jfrogCliBag           = "jfrog rt bag"
 	jfrogCliBp            = "jfrog rt bp"
 	buildNameEnvVar       = "JFROG_CLI_BUILD_NAME"
 	buildNumberEnvVar     = "JFROG_CLI_BUILD_NUMBER"
+	buildProjectEnvVar    = "JFROG_CLI_BUILD_PROJECT"
 	buildUrlEnvVar        = "JFROG_CLI_BUILD_URL"
 	buildStatusEnvVar     = "JFROG_BUILD_STATUS"
 	runNumberEnvVar       = "$run_number"
+	projectKeyEnvVar      = "$project_key"
 	stepUrlEnvVar         = "$step_url"
 	updateCommitStatusCmd = "update_commit_status"
 
@@ -64,10 +67,16 @@ func getIntDetailForCmd(intName, detail string) string {
 	return fmt.Sprintf("$int_%s_%s", intName, detail)
 }
 
-func getJfrogCliConfigCmd(rtIntName, serverId string) string {
+func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
+	usedConfigCmd := jfrogCliConfig
+	usedUrlFlag := rtUrlFlag
+	if useOld {
+		usedConfigCmd = jfrogCliOldConfig
+		usedUrlFlag = urlFlag
+	}
 	return strings.Join([]string{
-		jfrogCliConfig, serverId,
-		getFlagSyntax(rtUrlFlag), getIntDetailForCmd(rtIntName, urlFlag),
+		usedConfigCmd, serverId,
+		getFlagSyntax(usedUrlFlag), getIntDetailForCmd(rtIntName, urlFlag),
 		getFlagSyntax(userFlag), getIntDetailForCmd(rtIntName, userFlag),
 		getFlagSyntax(apikeyFlag), getIntDetailForCmd(rtIntName, apikeyFlag),
 		"--enc-password=false",

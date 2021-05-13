@@ -26,15 +26,19 @@ const jenkinsfileTemplate = `pipeline {
 		stage ('Config') {
 			steps {
 				sh 'curl -fL https://getcli.jfrog.io | sh && chmod +x jfrog'
-				sh './jfrog c add %s --url %s --user ${RT_USERNAME} --password ${RT_PASSWORD}'
-				sh '%s'
+				// General JFrog CLI config
+				withCredentials([string(credentialsId: 'rt-password', variable: 'RT_PASSWORD')]) {
+					sh './jfrog c add %s --url %s --user ${RT_USERNAME} --password ${RT_PASSWORD}'
+				}
+				// Specific build tools config
+				sh '''%s'''
 			}
 		}
    
 		stage ('Build') {
 			steps {
 				dir('%s') {
-					sh '%s'
+					sh '''%s'''
 				}
 			}
 		}
@@ -57,6 +61,7 @@ const jenkinsfileTemplate = `pipeline {
 			sh './jfrog rt bce'
 			sh './jfrog rt bag'
 			sh './jfrog rt bp'
+			sh './jfrog c remove %s --quiet'
 		}
 	}
   }`
@@ -75,5 +80,5 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 	if err != nil {
 		return nil, "", err
 	}
-	return []byte(fmt.Sprintf(jenkinsfileTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand)), JenkinsfileName, nil
+	return []byte(fmt.Sprintf(jenkinsfileTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil
 }

@@ -88,7 +88,8 @@ func getTechConfigsCommands(serverId string, data *CiSetupData) []string {
 	// Consider remove DetectedTechnologies for CiSetupData.
 	var configs []string
 	if used, ok := data.DetectedTechnologies[Maven]; ok && used {
-		configs = append(configs, m2pathCmd)
+
+		configs = append(configs, m2pathCmd) // TODO - discuss m2pathCmd
 		configs = append(configs, getMavenConfigCmd(serverId, data.BuiltTechnologies[Maven].VirtualRepo))
 	}
 	if used, ok := data.DetectedTechnologies[Gradle]; ok && used {

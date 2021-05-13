@@ -1,11 +1,5 @@
 package cisetup
 
-import (
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
 /*
 func TestConvertBuildCmd(t *testing.T) { // TODO convert once used
 	tests := []buildCmd{
@@ -41,43 +35,3 @@ type buildCmd struct {
 	expected string
 }
 */
-
-func TestGenerated(t *testing.T) { // TODO remove, dev only
-	generator := JFrogPipelinesYamlGenerator{SetupData: &CiSetupData{
-		RepositoryName: "mvn-gradle-npm-pipelines",
-		ProjectDomain:  "RobiNino",
-		VcsBaseUrl:     "",
-		LocalDirPath:   "",
-		GitBranch:      "main",
-		BuildName:      "build_name_aggregated",
-		CiType:         "Pipelines",
-		DetectedTechnologies: map[Technology]bool{
-			Maven: true,
-			Npm:   true,
-		},
-		BuiltTechnologies: map[Technology]*TechnologyInfo{
-			Maven: {
-				VirtualRepo: "maven-virtual",
-				BuildCmd:    "mvn clean install",
-			},
-			Npm: {
-				VirtualRepo: "global-npm",
-				BuildCmd:    "npm i",
-			},
-			Gradle: {
-				VirtualRepo: "gradle-virtual",
-				BuildCmd:    "clean aP",
-			},
-		},
-		VcsCredentials: VcsServerDetails{},
-		GitProvider:    Github,
-	},
-		VcsIntName: "github_robi",
-		RtIntName:  "robindev"}
-	pipelineBytes, pipelineName, err := generator.Generate()
-	if err != nil {
-		assert.NoError(t, err)
-	}
-	log.Info(pipelineName)
-	log.Info(string(pipelineBytes))
-}

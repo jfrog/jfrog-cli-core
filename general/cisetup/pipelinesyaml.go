@@ -69,11 +69,10 @@ func replaceCmdWithRegexp(buildCmd, cmdRegexp, replacement string) (string, erro
 
 func (yg *JFrogPipelinesYamlGenerator) getPipelineEnvVars() map[string]string {
 	return map[string]string{
-		coreutils.CI:       strconv.FormatBool(true),
-		buildNameEnvVar:    yg.SetupData.BuildName,
-		buildNumberEnvVar:  runNumberEnvVar,
-		buildProjectEnvVar: projectKeyEnvVar,
-		buildUrlEnvVar:     stepUrlEnvVar,
+		coreutils.CI:      strconv.FormatBool(true),
+		buildNameEnvVar:   yg.SetupData.BuildName,
+		buildNumberEnvVar: runNumberEnvVar,
+		buildUrlEnvVar:    stepUrlEnvVar,
 	}
 }
 

@@ -8,6 +8,9 @@ import (
 )
 
 const JenkinsfileName = "Jenkinsfile"
+const m2HomeSet = `
+	  // The M2_HOME environment variable should be set to the local maven installation path.
+	  M2_HOME = ""`
 const jenkinsfileTemplate = `pipeline {
 	agent any
 	environment {
@@ -15,6 +18,7 @@ const jenkinsfileTemplate = `pipeline {
 	  JFROG_CLI_BUILD_NUMBER = "${BUILD_NUMBER}"
 	  // Sets the CI server build URL in the build-info.
 	  JFROG_CLI_BUILD_URL = "https://<my-jenkins-domain>/<my-job-uri>/${BUILD_NUMBER}/console"
+	  %s
 	}
 	stages {
 		stage ('Clone') {
@@ -80,5 +84,9 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 	if err != nil {
 		return nil, "", err
 	}
-	return []byte(fmt.Sprintf(jenkinsfileTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil
+	var envSet string
+	if jg.SetupData.DetectedTechnologies[Maven] {
+		envSet = m2HomeSet
+	}
+	return []byte(fmt.Sprintf(jenkinsfileTemplate, envSet, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil
 }

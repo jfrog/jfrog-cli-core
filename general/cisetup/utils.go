@@ -83,20 +83,19 @@ func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 	}, " ")
 }
 
-func getTechConfigsCommands(serverId string, data *CiSetupData) []string {
-	// TODO - replace DetectedTechnologies with BuiltTechnologies
-	// Consider remove DetectedTechnologies for CiSetupData.
+func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupData) []string {
 	var configs []string
-	if used, ok := data.DetectedTechnologies[Maven]; ok && used {
-
-		configs = append(configs, m2pathCmd) // TODO - discuss m2pathCmd
-		configs = append(configs, getMavenConfigCmd(serverId, data.BuiltTechnologies[Maven].VirtualRepo))
+	if info, used := data.BuiltTechnologies[Maven]; used {
+		if setM2ForMaven {
+			configs = append(configs, m2pathCmd)
+		}
+		configs = append(configs, getMavenConfigCmd(serverId, info.VirtualRepo))
 	}
-	if used, ok := data.DetectedTechnologies[Gradle]; ok && used {
-		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnologies[Gradle].VirtualRepo))
+	if info, used := data.BuiltTechnologies[Gradle]; used {
+		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, info.VirtualRepo))
 	}
-	if used, ok := data.DetectedTechnologies[Npm]; ok && used {
-		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnologies[Npm].VirtualRepo))
+	if info, used := data.BuiltTechnologies[Npm]; used {
+		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, info.VirtualRepo))
 	}
 	return configs
 }

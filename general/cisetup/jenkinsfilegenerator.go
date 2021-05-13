@@ -79,13 +79,13 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 	if err != nil {
 		return nil, "", err
 	}
-	buildToolsconfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, jg.SetupData), cmdAndOperator)
+	buildToolsconfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, false, jg.SetupData), cmdAndOperator)
 	buildCommand, err := convertBuildCmd(jg.SetupData)
 	if err != nil {
 		return nil, "", err
 	}
 	var envSet string
-	if jg.SetupData.DetectedTechnologies[Maven] {
+	if _, used := jg.SetupData.BuiltTechnologies[Maven]; used {
 		envSet = m2HomeSet
 	}
 	return []byte(fmt.Sprintf(jenkinsfileTemplate, envSet, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil

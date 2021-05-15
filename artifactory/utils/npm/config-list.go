@@ -14,6 +14,7 @@ func GetConfigList(npmFlags []string, executablePath string) ([]byte, error) {
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
 
+	npmFlags = append(npmFlags, "--json=false")
 	configListCmdConfig := createConfigListCmdConfig(executablePath, npmFlags, pipeWriter)
 	var npmError error
 	go func() {

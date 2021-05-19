@@ -16,9 +16,9 @@ func RunCustomCmd(args []string, executablePath string) error {
 
 func createCustomCmdConfig(executablePath string, args []string) *YarnConfig {
 	return &YarnConfig{
-		Executable:   executablePath,
-		Command:      args,
-		StrWriter:    nil,
-		ErrWriter:    nil,
+		Executable: executablePath,
+		Command:    args,
+		StrWriter:  nil,
+		ErrWriter:  nil,
 	}
 }

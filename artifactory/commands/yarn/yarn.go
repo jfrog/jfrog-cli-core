@@ -124,11 +124,11 @@ func (yc *YarnCommand) CommandName() string {
 func (yc *YarnCommand) validateSupportedCommand() error {
 	for index, arg := range yc.yarnArgs {
 		// The command 'yarn npm publish' is not supported
-		if arg == "npm" && len(yc.yarnArgs) > index && yc.yarnArgs[index + 1] == "publish" {
+		if arg == "npm" && len(yc.yarnArgs) > index && yc.yarnArgs[index+1] == "publish" {
 			return errorutils.CheckError(errors.New("The command 'jfrog rt yarn npm publish' is not supported. Use 'jfrog rt upload' instead."))
 		}
 	}
-	return nil;
+	return nil
 }
 
 func (yc *YarnCommand) readConfigFile() error {
@@ -385,7 +385,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 		}
 		dependenciesMap[currDependency.Value] = &currDependency
 
-		if strings.HasPrefix(currDependency.Value, yc.packageInfo.Name + "@") {
+		if strings.HasPrefix(currDependency.Value, yc.packageInfo.Name+"@") {
 			root = &currDependency
 		}
 	}
@@ -460,14 +460,14 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 	}
 
 	buildinfoDependency.RequestedBy = append(buildinfoDependency.RequestedBy, pathToRoot)
-	return nil;
+	return nil
 }
 
 func (yc *YarnCommand) saveDependenciesData() error {
 	log.Debug("Saving data...")
 
 	// Convert map to slice
-	var dependenciesSlice, missingDependencies []buildinfo.Dependency;
+	var dependenciesSlice, missingDependencies []buildinfo.Dependency
 	for _, dependency := range yc.dependencies {
 		if dependency.Checksum != nil {
 			dependenciesSlice = append(dependenciesSlice, *dependency)

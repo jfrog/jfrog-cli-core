@@ -106,26 +106,16 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	threads, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	if err != nil {
 		return err
 	}
-	var jsonOutput bool
-	jsonOutput, filteredNpmArgs, err = extractJsonOptionFromArgs(filteredNpmArgs)
-	if err != nil {
-		return err
-	}
-	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetJsonOutput(jsonOutput).SetBuildConfiguration(buildConfiguration)
+	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetBuildConfiguration(buildConfiguration)
 	return nic.run()
 }
 
 func (nca *NpmCommandArgs) SetThreads(threads int) *NpmCommandArgs {
 	nca.threads = threads
-	return nca
-}
-
-func (nca *NpmCommandArgs) SetJsonOutput(jsonOutput bool) *NpmCommandArgs {
-	nca.jsonOutput = jsonOutput
 	return nca
 }
 
@@ -186,6 +176,10 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 
+	if err := nca.setJsonOutput(); err != nil {
+		return err
+	}
+
 	nca.workingDirectory, err = commandUtils.GetWorkingDirectory()
 	if err != nil {
 		return err
@@ -207,6 +201,17 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	}
 
 	return nca.backupProjectNpmrc()
+}
+
+func (nca *NpmCommandArgs) setJsonOutput() error {
+	jsonOutput, err := npm.ConfigGet(nca.npmArgs, "json", nca.executablePath)
+	if err != nil {
+		return err
+	}
+
+	// In case of --json=<not boolean>, the value of json is set to 'true', but the result from the command is not 'true'
+	nca.jsonOutput = jsonOutput != "false"
+	return nil
 }
 
 // In order to make sure the install/ci downloads the dependencies from Artifactory, we are creating a.npmrc file in the project's root directory.
@@ -436,20 +441,6 @@ func addArrayConfigs(conf []string, key, arrayValue string) []string {
 	}
 
 	return conf
-}
-
-func extractJsonOptionFromArgs(args []string) (jsonOutput bool, cleanArgs []string, err error) {
-	// Since we use --json flag for retrieving the npm config for writing the temp .npmrc, json=true is written to the config list.
-	// We don't want to force the json output for all users, so we check whether the json output was explicitly required.
-	flagIndex, jsonOutput, err := coreutils.FindBooleanFlag("--json", args)
-	if err != nil {
-		return
-	}
-
-	cleanArgs = append([]string(nil), args...)
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
-	return
 }
 
 func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {

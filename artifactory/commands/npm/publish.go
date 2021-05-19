@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"io"
 	"io/ioutil"
@@ -30,7 +31,7 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *npm.PackageInfo
+	packageInfo            *commandUtils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
@@ -76,7 +77,7 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		_, _, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+		_, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 		if err != nil {
 			return err
 		}
@@ -277,7 +278,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = npm.ReadPackageInfoFromPackageJson(npc.publishPath)
+		npc.packageInfo, err = commandUtils.ReadPackageInfoFromPackageJson(npc.publishPath)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -314,7 +315,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = npm.ReadPackageInfo(packageJson)
+			npc.packageInfo, err = commandUtils.ReadPackageInfo(packageJson)
 			return err
 		}
 	}

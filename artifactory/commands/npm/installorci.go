@@ -2,13 +2,11 @@ package npm
 
 import (
 	"bufio"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,10 +22,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
-	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -36,7 +31,6 @@ import (
 
 const npmrcFileName = ".npmrc"
 const npmrcBackupFileName = "jfrog.npmrc.backup"
-const minSupportedArtifactoryVersion = "5.5.2"
 const minSupportedNpmVersion = "5.4.0"
 
 type NpmCommandArgs struct {
@@ -52,7 +46,7 @@ type NpmCommandArgs struct {
 	dependencies     map[string]*dependency
 	typeRestriction  typeRestriction
 	authArtDetails   auth.ServiceDetails
-	packageInfo      *npm.PackageInfo
+	packageInfo      *commandUtils.PackageInfo
 	NpmCommand
 }
 
@@ -112,11 +106,16 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, jsonOutput, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
-	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetJsonOutput(jsonOutput).SetBuildConfiguration(buildConfiguration)
+	threads, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	if err != nil {
 		return err
 	}
+	var jsonOutput bool
+	jsonOutput, filteredNpmArgs, err = extractJsonOptionFromArgs(filteredNpmArgs)
+	if err != nil {
+		return err
+	}
+	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetJsonOutput(jsonOutput).SetBuildConfiguration(buildConfiguration)
 	return nic.run()
 }
 
@@ -178,75 +177,36 @@ func (nca *NpmCommandArgs) run() error {
 
 func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites.")
-	if err := nca.setNpmExecutable(); err != nil {
+	var err error
+	if err = nca.setNpmExecutable(); err != nil {
 		return err
 	}
 
-	if err := nca.validateNpmVersion(); err != nil {
+	if err = nca.validateNpmVersion(); err != nil {
 		return err
 	}
 
-	if err := nca.setWorkingDirectory(); err != nil {
+	nca.workingDirectory, err = commandUtils.GetWorkingDirectory()
+	if err != nil {
+		return err
+	}
+	log.Debug("Working directory set to:", nca.workingDirectory)
+
+	if err = nca.setArtifactoryAuth(); err != nil {
 		return err
 	}
 
-	if err := nca.prepareArtifactoryPrerequisites(repo); err != nil {
+	nca.npmAuth, nca.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, &nca.authArtDetails)
+	if err != nil {
 		return err
 	}
 
-	if err := nca.prepareBuildInfo(); err != nil {
+	nca.collectBuildInfo, nca.packageInfo, err = commandUtils.PrepareBuildInfo(nca.workingDirectory, nca.buildConfiguration)
+	if err != nil {
 		return err
 	}
 
 	return nca.backupProjectNpmrc()
-}
-
-func (nca *NpmCommandArgs) prepareArtifactoryPrerequisites(repo string) (err error) {
-	npmAuth, err := getArtifactoryDetails(nca.authArtDetails)
-	if err != nil {
-		return err
-	}
-	nca.npmAuth = npmAuth
-
-	if err = utils.CheckIfRepoExists(repo, nca.authArtDetails); err != nil {
-		return err
-	}
-
-	nca.registry = getNpmRepositoryUrl(repo, nca.authArtDetails.GetUrl())
-	return nil
-}
-
-func (nca *NpmCommandArgs) prepareBuildInfo() error {
-	var err error
-	if len(nca.buildConfiguration.BuildName) > 0 && len(nca.buildConfiguration.BuildNumber) > 0 {
-		nca.collectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, nca.buildConfiguration.Project); err != nil {
-			return err
-		}
-
-		if nca.packageInfo, err = npm.ReadPackageInfoFromPackageJson(nca.workingDirectory); err != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func (nca *NpmCommandArgs) setWorkingDirectory() error {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	if currentDir, err = filepath.Abs(currentDir); err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	nca.workingDirectory = currentDir
-	log.Debug("Working directory set to:", nca.workingDirectory)
-	if err = nca.setArtifactoryAuth(); err != nil {
-		return errorutils.CheckError(err)
-	}
-	return nil
 }
 
 // In order to make sure the install/ci downloads the dependencies from Artifactory, we are creating a.npmrc file in the project's root directory.
@@ -345,7 +305,7 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 		return err
 	}
 
-	previousBuildDependencies, err := getDependenciesFromLatestBuild(servicesManager, nca.buildConfiguration.BuildName)
+	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, nca.buildConfiguration.BuildName)
 	if err != nil {
 		return err
 	}
@@ -360,21 +320,6 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 	}()
 	producerConsumer.Run()
 	return errorsQueue.GetError()
-}
-
-func getDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
-	buildDependencies := make(map[string]*buildinfo.Dependency)
-	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: "LATEST"})
-	if err != nil || !found {
-		return buildDependencies, err
-	}
-	for _, module := range previousBuild.BuildInfo.Modules {
-		for _, dependency := range module.Dependencies {
-			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id,
-				Checksum: &buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
-		}
-	}
-	return buildDependencies, nil
 }
 
 func (nca *NpmCommandArgs) saveDependenciesData() error {
@@ -493,6 +438,20 @@ func addArrayConfigs(conf []string, key, arrayValue string) []string {
 	return conf
 }
 
+func extractJsonOptionFromArgs(args []string) (jsonOutput bool, cleanArgs []string, err error) {
+	// Since we use --json flag for retrieving the npm config for writing the temp .npmrc, json=true is written to the config list.
+	// We don't want to force the json output for all users, so we check whether the json output was explicitly required.
+	flagIndex, jsonOutput, err := coreutils.FindBooleanFlag("--json", args)
+	if err != nil {
+		return
+	}
+
+	cleanArgs = append([]string(nil), args...)
+	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
+	coreutils.RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
+}
+
 func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {
 	// From npm 7, type restriction is determined by 'omit' and 'include' (both appear in 'npm config ls').
 	// Other options (like 'dev', 'production' and 'only') are deprecated, but if they're used anyway - 'omit' and 'include' are automatically calculated.
@@ -587,7 +546,7 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 			ver := nca.dependencies[dependencyIndex].version
 
 			// Get dependency info.
-			checksum, fileType, err := getDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
+			checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
 			if err != nil || checksum == nil {
 				return err
 			}
@@ -598,49 +557,6 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 			return nil
 		}
 	}
-}
-
-// Get dependency's checksum and type.
-func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
-	servicesManager artifactory.ArtifactoryServicesManager, threadId int) (checksum *buildinfo.Checksum, fileType string, err error) {
-	id := name + ":" + ver
-	if dep, ok := previousBuildDependencies[id]; ok {
-		// Get checksum from previous build.
-		checksum = dep.Checksum
-		fileType = dep.Type
-		return
-	}
-
-	// Get info from Artifactory.
-	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Fetching checksums for", name, ":", ver)
-	var stream io.ReadCloser
-	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
-	if err != nil {
-		return
-	}
-	defer stream.Close()
-	var result []byte
-	result, err = ioutil.ReadAll(stream)
-	if err != nil {
-		return
-	}
-	parsedResult := new(aqlResult)
-	if err = json.Unmarshal(result, parsedResult); err != nil {
-		return nil, "", errorutils.CheckError(err)
-	}
-	if len(parsedResult.Results) == 0 {
-		log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, ":", ver, "could not be found in Artifactory.")
-		return
-	}
-	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
-		fileType = parsedResult.Results[0].Name[i+1:]
-	}
-	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Found", parsedResult.Results[0].Name,
-		"sha1:", parsedResult.Results[0].Actual_sha1,
-		"md5", parsedResult.Results[0].Actual_md5)
-
-	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
-	return
 }
 
 // Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.
@@ -702,78 +618,6 @@ func (nca *NpmCommandArgs) setNpmExecutable() error {
 	return nil
 }
 
-func getArtifactoryDetails(authArtDetails auth.ServiceDetails) (npmAuth string, err error) {
-	// Check Artifactory version.
-	err = validateArtifactoryVersion(authArtDetails)
-	if err != nil {
-		return "", err
-	}
-
-	// Get npm token from Artifactory.
-	if authArtDetails.GetAccessToken() == "" {
-		return getDetailsUsingBasicAuth(authArtDetails)
-	}
-	return getDetailsUsingAccessToken(authArtDetails)
-}
-
-func validateArtifactoryVersion(artDetails auth.ServiceDetails) error {
-	// Get Artifactory version.
-	versionStr, err := artDetails.GetVersion()
-	if err != nil {
-		return err
-	}
-
-	// Validate version.
-	rtVersion := version.NewVersion(versionStr)
-	if !rtVersion.AtLeast(minSupportedArtifactoryVersion) {
-		return errorutils.CheckError(errors.New("this operation requires Artifactory version " + minSupportedArtifactoryVersion + " or higher"))
-	}
-
-	return nil
-}
-
-func getDetailsUsingAccessToken(artDetails auth.ServiceDetails) (npmAuth string, err error) {
-	npmAuthString := "_auth = %s\nalways-auth = true"
-	// Build npm token, consists of <username:password> encoded.
-	// Use Artifactory's access-token as username and password to create npm token.
-	username, err := auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
-	if err != nil {
-		return "", err
-	}
-	encodedNpmToken := base64.StdEncoding.EncodeToString([]byte(username + ":" + artDetails.GetAccessToken()))
-	npmAuth = fmt.Sprintf(npmAuthString, encodedNpmToken)
-
-	return npmAuth, err
-}
-
-func getDetailsUsingBasicAuth(artDetails auth.ServiceDetails) (npmAuth string, err error) {
-	authApiUrl := artDetails.GetUrl() + "api/npm/auth"
-	log.Debug("Sending npm auth request")
-
-	// Get npm token from Artifactory.
-	client, err := httpclient.ClientBuilder().Build()
-	if err != nil {
-		return "", err
-	}
-	resp, body, _, err := client.SendGet(authApiUrl, true, artDetails.CreateHttpClientDetails())
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body)))
-	}
-
-	return string(body), nil
-}
-
-func getNpmRepositoryUrl(repo, url string) string {
-	if !strings.HasSuffix(url, "/") {
-		url += "/"
-	}
-	url += "api/npm/" + repo
-	return url
-}
-
 func scopeAlreadyExists(scope string, existingScopes []string) bool {
 	for _, existingScope := range existingScopes {
 		if existingScope == scope {
@@ -812,14 +656,4 @@ type dependency struct {
 	fileType   string
 	checksum   *buildinfo.Checksum
 	pathToRoot [][]string
-}
-
-type aqlResult struct {
-	Results []*results `json:"results,omitempty"`
-}
-
-type results struct {
-	Name        string `json:"name,omitempty"`
-	Actual_md5  string `json:"actual_md5,omitempty"`
-	Actual_sha1 string `json:"actual_sha1,omitempty"`
 }

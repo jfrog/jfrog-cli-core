@@ -2,7 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"sort"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -17,7 +17,7 @@ type BuildPublishCommand struct {
 	serverDetails      *config.ServerDetails
 	config             *buildinfo.Configuration
 	detailedSummary    bool
-	summary            *services.BuildPublishSummary
+	summary            *clientutils.Sha256Summary
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
@@ -39,12 +39,12 @@ func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) SetSummary(summary *services.BuildPublishSummary) *BuildPublishCommand {
+func (bpc *BuildPublishCommand) SetSummary(summary *clientutils.Sha256Summary) *BuildPublishCommand {
 	bpc.summary = summary
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) GetSummary() *services.BuildPublishSummary {
+func (bpc *BuildPublishCommand) GetSummary() *clientutils.Sha256Summary {
 	return bpc.summary
 }
 
@@ -148,17 +148,21 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 	var vcs []buildinfo.Vcs
 	var issues buildinfo.Issues
 	env := make(map[string]string)
-	partialModules := make(map[string]partialModule)
+	partialModules := make(map[string]*partialModule)
 	issuesMap := make(map[string]*buildinfo.AffectedIssue)
 	for _, partial := range partials {
+		moduleId := partial.ModuleId
+		if partialModules[moduleId] == nil {
+			partialModules[moduleId] = &partialModule{moduleType: partial.ModuleType}
+		}
 		switch {
 		case partial.Artifacts != nil:
 			for _, artifact := range partial.Artifacts {
-				addArtifactToPartialModule(artifact, partial.ModuleId, partialModules)
+				addArtifactToPartialModule(artifact, moduleId, partialModules)
 			}
 		case partial.Dependencies != nil:
 			for _, dependency := range partial.Dependencies {
-				addDependencyToPartialModule(dependency, partial.ModuleId, partialModules)
+				addDependencyToPartialModule(dependency, moduleId, partialModules)
 			}
 		case partial.VcsList != nil:
 			for _, partialVcs := range partial.VcsList {
@@ -190,16 +194,13 @@ func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFil
 				env[k] = v
 			}
 		case partial.ModuleType == buildinfo.Build:
-			partialModules[partial.ModuleId] = partialModule{
-				moduleType: partial.ModuleType,
-				checksum:   partial.Checksum,
-			}
+			partialModules[moduleId].checksum = partial.Checksum
 		}
 	}
 	return partialModulesToModules(partialModules), env, vcs, issuesMapToArray(issues, issuesMap), nil
 }
 
-func partialModulesToModules(partialModules map[string]partialModule) []buildinfo.Module {
+func partialModulesToModules(partialModules map[string]*partialModule) []buildinfo.Module {
 	var modules []buildinfo.Module
 	for moduleId, singlePartialModule := range partialModules {
 		moduleArtifacts := artifactsMapToList(singlePartialModule.artifacts)
@@ -216,23 +217,19 @@ func issuesMapToArray(issues buildinfo.Issues, issuesMap map[string]*buildinfo.A
 	return issues
 }
 
-func addDependencyToPartialModule(dependency buildinfo.Dependency, moduleId string, partialModules map[string]partialModule) {
+func addDependencyToPartialModule(dependency buildinfo.Dependency, moduleId string, partialModules map[string]*partialModule) {
 	// init map if needed
 	if partialModules[moduleId].dependencies == nil {
-		partialModules[moduleId] =
-			partialModule{artifacts: partialModules[moduleId].artifacts,
-				dependencies: make(map[string]buildinfo.Dependency)}
+		partialModules[moduleId].dependencies = make(map[string]buildinfo.Dependency)
 	}
 	key := fmt.Sprintf("%s-%s-%s-%s", dependency.Id, dependency.Sha1, dependency.Md5, dependency.Scopes)
 	partialModules[moduleId].dependencies[key] = dependency
 }
 
-func addArtifactToPartialModule(artifact buildinfo.Artifact, moduleId string, partialModules map[string]partialModule) {
+func addArtifactToPartialModule(artifact buildinfo.Artifact, moduleId string, partialModules map[string]*partialModule) {
 	// init map if needed
 	if partialModules[moduleId].artifacts == nil {
-		partialModules[moduleId] =
-			partialModule{artifacts: make(map[string]buildinfo.Artifact),
-				dependencies: partialModules[moduleId].dependencies}
+		partialModules[moduleId].artifacts = make(map[string]buildinfo.Artifact)
 	}
 	key := fmt.Sprintf("%s-%s-%s", artifact.Name, artifact.Sha1, artifact.Md5)
 	partialModules[moduleId].artifacts[key] = artifact

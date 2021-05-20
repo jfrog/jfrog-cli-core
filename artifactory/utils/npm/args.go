@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput, detailedSummary bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -23,15 +23,6 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, jsonOutput, detailed
 			return
 		}
 	}
-
-	// Since we use --json flag for retrieving the npm config for writing the temp .npmrc, json=true is written to the config list.
-	// We don't want to force the json output for all users, so we check whether the json output was explicitly required.
-	flagIndex, jsonOutput, err = coreutils.FindBooleanFlag("--json", args)
-	if err != nil {
-		return
-	}
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
 	flagIndex, detailedSummary, err = coreutils.FindBooleanFlag("--detailed-summary", args)
 	if err != nil {

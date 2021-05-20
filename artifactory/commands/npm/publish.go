@@ -81,7 +81,7 @@ func (gc *NpmPublishCommand) IsDetailedSummary() bool {
 }
 
 func (npc *NpmPublishCommand) Run() error {
-	_, _, detailedSummary, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,6 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-
 		rtDetails, err := deployerParams.ServerDetails()
 		if err != nil {
 			return errorutils.CheckError(err)

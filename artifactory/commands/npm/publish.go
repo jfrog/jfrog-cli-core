@@ -62,22 +62,22 @@ func (npc *NpmPublishCommand) SetConfigFilePath(configFilePath string) *NpmPubli
 	return npc
 }
 
-func (nic *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
-	nic.NpmPublishCommandArgs.npmArgs = args
-	return nic
+func (npc *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
+	npc.NpmPublishCommandArgs.npmArgs = args
+	return npc
 }
 
-func (nic *NpmPublishCommand) SetDetailedSummary(detailedSummary bool) *NpmPublishCommand {
-	nic.detailedSummary = detailedSummary
-	return nic
+func (npc *NpmPublishCommand) SetDetailedSummary(detailedSummary bool) *NpmPublishCommand {
+	npc.detailedSummary = detailedSummary
+	return npc
 }
 
-func (gc *NpmPublishCommand) Result() *commandsutils.Result {
-	return gc.result
+func (npc *NpmPublishCommand) Result() *commandsutils.Result {
+	return npc.result
 }
 
-func (gc *NpmPublishCommand) IsDetailedSummary() bool {
-	return gc.detailedSummary
+func (npc *NpmPublishCommand) IsDetailedSummary() bool {
+	return npc.detailedSummary
 }
 
 func (npc *NpmPublishCommand) Run() error {

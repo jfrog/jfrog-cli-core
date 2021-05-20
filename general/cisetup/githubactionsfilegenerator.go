@@ -9,7 +9,7 @@ import (
 var GithubActionsDir = filepath.Join(".github", "workflows")
 var GithubActionsFilePath = filepath.Join(GithubActionsDir, GithubActionsFileName)
 
-const GithubActionsFileName = "JFrog_CI_Integration.yml"
+const GithubActionsFileName = "build.yml"
 const githubActionsTemplate = `
 name: 'JFrog CI Integration'
 on: [push]

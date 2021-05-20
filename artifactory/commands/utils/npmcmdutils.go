@@ -230,3 +230,28 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, cleanArgs []string, 
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 	return
 }
+
+func SaveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguration *utils.BuildConfiguration) error {
+	populateFunc := func(partial *buildinfo.Partial) {
+		partial.Dependencies = dependencies
+		partial.ModuleId = buildConfiguration.Module
+		partial.ModuleType = buildinfo.Npm
+	}
+
+	return utils.SavePartialBuildInfo(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project, populateFunc)
+}
+
+func PrintMissingDependencies(missingDependencies []buildinfo.Dependency) {
+	if len(missingDependencies) == 0 {
+		return
+	}
+
+	var missingDependenciesText []string
+	for _, dependency := range missingDependencies {
+		missingDependenciesText = append(missingDependenciesText, dependency.Id)
+	}
+	log.Warn(strings.Join(missingDependenciesText, "\n"))
+	log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
+		"Make sure the dependencies are available in Artifactory for this build.\n" +
+		"Deleting the local cache will force populating Artifactory with these dependencies.")
+}

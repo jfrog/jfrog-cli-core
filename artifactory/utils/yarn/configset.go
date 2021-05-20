@@ -12,11 +12,7 @@ func ConfigSet(key, value, executablePath string, jsonInput bool) error {
 	}
 	configGetCmdConfig := createConfigSetCmdConfig(executablePath, key, value, flags)
 	_, err := gofrogcmd.RunCmdOutput(configGetCmdConfig)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	return nil
+	return errorutils.CheckError(err)
 }
 
 func createConfigSetCmdConfig(executablePath, key, value string, flags []string) *YarnConfig {

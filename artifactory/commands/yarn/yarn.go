@@ -87,7 +87,7 @@ func (yc *YarnCommand) Run() error {
 		return yc.restoreConfigurationsAndError(err)
 	}
 
-	if err = yc.modifyYarnConfiguraions(); err != nil {
+	if err = yc.modifyYarnConfigurations(); err != nil {
 		return yc.restoreConfigurationsAndError(err)
 	}
 
@@ -123,9 +123,16 @@ func (yc *YarnCommand) CommandName() string {
 
 func (yc *YarnCommand) validateSupportedCommand() error {
 	for index, arg := range yc.yarnArgs {
-		// The command 'yarn npm publish' is not supported
-		if arg == "npm" && len(yc.yarnArgs) > index && yc.yarnArgs[index+1] == "publish" {
-			return errorutils.CheckError(errors.New("The command 'jfrog rt yarn npm publish' is not supported. Use 'jfrog rt upload' instead."))
+		if arg == "npm" && len(yc.yarnArgs) > index {
+			npmCommand := yc.yarnArgs[index+1]
+			// The command 'yarn npm publish' is not supported
+			if npmCommand == "publish" {
+				return errorutils.CheckError(errors.New("The command 'jfrog rt yarn npm publish' is not supported. Use 'jfrog rt upload' instead."))
+			}
+			// 'yarn npm *' commands other than 'info' and 'whoami' are not supported
+			if npmCommand != "info" && npmCommand != "whoami" {
+				return errorutils.CheckError(errors.New(fmt.Sprintf("The command 'jfrog rt yarn npm %s' is not supported.", npmCommand)))
+			}
 		}
 	}
 	return nil
@@ -203,7 +210,7 @@ func (yc *YarnCommand) validateYarnVersion() error {
 	if err != nil {
 		return err
 	}
-	yarnVersion := version.NewVersion(string(yarnVersionStr))
+	yarnVersion := version.NewVersion(yarnVersionStr)
 	if yarnVersion.Compare(minSupportedYarnVersion) > 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(
 			"JFrog CLI yarn command requires Yarn version " + minSupportedYarnVersion + " or higher")))
@@ -227,7 +234,6 @@ func (yc *YarnCommand) backupProjectYarnrc() error {
 	fileInfo, err := os.Stat(filepath.Join(yc.workingDirectory, yarnrcFileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			yc.yarnrcFileMode = 0644
 			return nil
 		}
 		return errorutils.CheckError(err)
@@ -247,7 +253,6 @@ func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
 	if err := yc.restoreEnvironmentVariables(); err != nil {
 		return err
 	}
-
 	return yc.restoreYarnrcFromBackup()
 }
 
@@ -302,7 +307,7 @@ func (yc *YarnCommand) restoreEnvironmentVariables() error {
 	return nil
 }
 
-func (yc *YarnCommand) modifyYarnConfiguraions() error {
+func (yc *YarnCommand) modifyYarnConfigurations() error {
 	yc.envVarsBackup = make(map[string]*string)
 
 	if err := yc.backupAndSetEnvironmentVariable("YARN_NPM_REGISTRY_SERVER", yc.registry); err != nil {
@@ -322,12 +327,12 @@ func (yc *YarnCommand) modifyYarnConfiguraions() error {
 	if err != nil {
 		return err
 	}
-	npmScopesMap := make(map[string]YarnNpmScope)
+	npmScopesMap := make(map[string]yarnNpmScope)
 	err = json.Unmarshal([]byte(npmScopesStr), &npmScopesMap)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	artifactoryScope := YarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: yc.npmAuthIdent, NpmRegistryServer: yc.registry}
+	artifactoryScope := yarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: yc.npmAuthIdent, NpmRegistryServer: yc.registry}
 	for scopeName := range npmScopesMap {
 		npmScopesMap[scopeName] = artifactoryScope
 	}
@@ -336,14 +341,10 @@ func (yc *YarnCommand) modifyYarnConfiguraions() error {
 		return errorutils.CheckError(err)
 	}
 	err = yarn.ConfigSet(npmScopesConfigName, string(updatedNpmScopesStr), yc.executablePath, true)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	return nil
+	return errorutils.CheckError(err)
 }
 
-type YarnNpmScope struct {
+type yarnNpmScope struct {
 	NpmAlwaysAuth     bool   `json:"npmAlwaysAuth,omitempty"`
 	NpmAuthIdent      string `json:"npmAuthIdent,omitempty"`
 	NpmRegistryServer string `json:"npmRegistryServer,omitempty"`
@@ -438,7 +439,7 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 			previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
 	}
 
-	// The root project should not be added to the dependecies list
+	// The root project should not be added to the dependencies list
 	if len(pathToRoot) == 0 {
 		return nil
 	}
@@ -476,29 +477,15 @@ func (yc *YarnCommand) saveDependenciesData() error {
 		}
 	}
 
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Dependencies = dependenciesSlice
-		if yc.buildConfiguration.Module == "" {
-			yc.buildConfiguration.Module = yc.packageInfo.BuildInfoModuleId()
-		}
-		partial.ModuleId = yc.buildConfiguration.Module
-		partial.ModuleType = buildinfo.Npm
+	if yc.buildConfiguration.Module == "" {
+		yc.buildConfiguration.Module = yc.packageInfo.BuildInfoModuleId()
 	}
 
-	if err := utils.SavePartialBuildInfo(yc.buildConfiguration.BuildName, yc.buildConfiguration.BuildNumber, yc.buildConfiguration.Project, populateFunc); err != nil {
+	if err := commandUtils.SaveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {
 		return err
 	}
 
-	if len(missingDependencies) > 0 {
-		var missingDependenciesText []string
-		for _, dependency := range missingDependencies {
-			missingDependenciesText = append(missingDependenciesText, dependency.Id)
-		}
-		log.Warn(strings.Join(missingDependenciesText, "\n"))
-		log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
-			"Make sure the dependencies are available in Artifactory for this build.\n" +
-			"Deleting the local cache will force populating Artifactory with these dependencies.")
-	}
+	commandUtils.PrintMissingDependencies(missingDependencies)
 	return nil
 }
 
@@ -545,12 +532,12 @@ func extractAuthIdentFromNpmAuth(npmAuth string) (string, error) {
 
 		lineParts := strings.SplitN(currLine, "=", 2)
 		if len(lineParts) < 2 {
-			return "", errorutils.CheckError(errors.New("Failed while retrieving npm auth details from Artifactory."))
+			return "", errorutils.CheckError(errors.New("failed while retrieving npm auth details from Artifactory"))
 		}
 		return strings.TrimSpace(lineParts[1]), nil
 	}
 
-	return "", errorutils.CheckError(errors.New("Failed while retrieving npm auth details from Artifactory."))
+	return "", errorutils.CheckError(errors.New("failed while retrieving npm auth details from Artifactory"))
 }
 
 // Yarn dependency locator usually looks like this: package-name@npm:1.2.3, which is used as the key in the dependencies map.

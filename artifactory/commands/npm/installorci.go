@@ -328,30 +328,16 @@ func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 
 func (nca *NpmCommandArgs) saveDependenciesData() error {
 	log.Debug("Saving data.")
-	dependencies, missingDependencies := nca.transformDependencies()
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Dependencies = dependencies
-		if nca.buildConfiguration.Module == "" {
-			nca.buildConfiguration.Module = nca.packageInfo.BuildInfoModuleId()
-		}
-		partial.ModuleId = nca.buildConfiguration.Module
-		partial.ModuleType = buildinfo.Npm
+	if nca.buildConfiguration.Module == "" {
+		nca.buildConfiguration.Module = nca.packageInfo.BuildInfoModuleId()
 	}
 
-	if err := utils.SavePartialBuildInfo(nca.buildConfiguration.BuildName, nca.buildConfiguration.BuildNumber, nca.buildConfiguration.Project, populateFunc); err != nil {
+	dependencies, missingDependencies := nca.transformDependencies()
+	if err := commandUtils.SaveDependenciesData(dependencies, nca.buildConfiguration); err != nil {
 		return err
 	}
 
-	if len(missingDependencies) > 0 {
-		var missingDependenciesText []string
-		for _, dependency := range missingDependencies {
-			missingDependenciesText = append(missingDependenciesText, dependency.name+":"+dependency.version)
-		}
-		log.Warn(strings.Join(missingDependenciesText, "\n"))
-		log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
-			"Make sure the dependencies are available in Artifactory for this build.\n" +
-			"Deleting the local cache will force populating Artifactory with these dependencies.")
-	}
+	commandUtils.PrintMissingDependencies(missingDependencies)
 	return nil
 }
 
@@ -550,14 +536,15 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 }
 
 // Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.
-func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dependency, missingDependencies []dependency) {
+func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dependency, missingDependencies []buildinfo.Dependency) {
 	for _, dependency := range nca.dependencies {
+		biDependency := buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
+			Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot}
 		if dependency.checksum != nil {
 			dependencies = append(dependencies,
-				buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
-					Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot})
+				biDependency)
 		} else {
-			missingDependencies = append(missingDependencies, *dependency)
+			missingDependencies = append(missingDependencies, biDependency)
 		}
 	}
 	return

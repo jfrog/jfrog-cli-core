@@ -14,35 +14,43 @@ const m2HomeSet = `
 const jenkinsfileTemplate = `pipeline {
 	agent any
 	environment {
+		%s
+
 	  JFROG_CLI_BUILD_NAME = "${JOB_NAME}"
 	  JFROG_CLI_BUILD_NUMBER = "${BUILD_NUMBER}"
+
 	  // Sets the CI server build URL in the build-info.
 	  JFROG_CLI_BUILD_URL = "https://<my-jenkins-domain>/<my-job-uri>/${BUILD_NUMBER}/console"
-	  %s
+	  
 	}
 	stages {
 		stage ('Clone') {
 			steps {
-				git branch: %q, url: %q
+				// If cloning the code requires credentials. Follow these steps:
+				// 1. Comment out the rest of the below 'git' step.
+				// 2. Create the 'git_cred_id' credentials as described here - https://www.jenkins.io/doc/book/using/using-credentials/
+				git branch: %q, url: %q //, credentialsId: 'git_cred_id'
 			}
 		}
    
 		stage ('Config') {
 			steps {
+				// Download JFrog CLI.
 				sh 'curl -fL https://getcli.jfrog.io | sh && chmod +x jfrog'
-				// General JFrog CLI config
+
+				// Configure JFrog CLI 
 				withCredentials([string(credentialsId: 'rt-password', variable: 'RT_PASSWORD')]) {
-					sh './jfrog c add %s --url %s --user ${RT_USERNAME} --password ${RT_PASSWORD}'
+					sh '''./jfrog c add %s --url %s --user ${RT_USERNAME} --password ${RT_PASSWORD}
+					./%s
+					'''
 				}
-				// Specific build tools config
-				sh '''%s'''
 			}
 		}
    
 		stage ('Build') {
 			steps {
 				dir('%s') {
-					sh '''%s'''
+					sh '''./%s'''
 				}
 			}
 		}

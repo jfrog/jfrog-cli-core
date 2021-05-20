@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/distribution/services"
 	distributionServicesUtils "github.com/jfrog/jfrog-client-go/distribution/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 )
 
 type CreateBundleCommand struct {
@@ -13,6 +14,8 @@ type CreateBundleCommand struct {
 	releaseBundlesParams distributionServicesUtils.ReleaseBundleParams
 	spec                 *spec.SpecFiles
 	dryRun               bool
+	detailedSummary      bool
+	summary              *clientutils.Sha256Summary
 }
 
 func NewReleaseBundleCreateCommand() *CreateBundleCommand {
@@ -54,7 +57,11 @@ func (cb *CreateBundleCommand) Run() error {
 	}
 
 	params := services.CreateReleaseBundleParams{ReleaseBundleParams: cb.releaseBundlesParams}
-	return servicesManager.CreateReleaseBundle(params)
+	summary, err := servicesManager.CreateReleaseBundle(params)
+	if cb.detailedSummary {
+		cb.summary = summary
+	}
+	return err
 }
 
 func (cb *CreateBundleCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -63,4 +70,26 @@ func (cb *CreateBundleCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (cb *CreateBundleCommand) CommandName() string {
 	return "rt_bundle_create"
+}
+
+func (cb *CreateBundleCommand) SetSummary(summary *clientutils.Sha256Summary) *CreateBundleCommand {
+	cb.summary = summary
+	return cb
+}
+
+func (cb *CreateBundleCommand) GetSummary() *clientutils.Sha256Summary {
+	return cb.summary
+}
+
+func (cb *CreateBundleCommand) SetDetailedSummary(detailedSummary bool) *CreateBundleCommand {
+	cb.detailedSummary = detailedSummary
+	return cb
+}
+
+func (cb *CreateBundleCommand) IsDetailedSummary() bool {
+	return cb.detailedSummary
+}
+
+func (cb *CreateBundleCommand) IsSignImmediately() bool {
+	return cb.releaseBundlesParams.SignImmediately
 }

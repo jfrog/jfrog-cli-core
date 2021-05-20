@@ -31,7 +31,7 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *commandUtils.PackageInfo
+	packageInfo            *commandsutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
@@ -81,7 +81,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 }
 
 func (npc *NpmPublishCommand) Run() error {
-	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = commandUtils.ReadPackageInfoFromPackageJson(npc.publishPath)
+		npc.packageInfo, err = commandsutils.ReadPackageInfoFromPackageJson(npc.publishPath)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -341,7 +341,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = commandUtils.ReadPackageInfo(packageJson)
+			npc.packageInfo, err = commandsutils.ReadPackageInfo(packageJson)
 			return err
 		}
 	}

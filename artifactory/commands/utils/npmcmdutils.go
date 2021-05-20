@@ -211,7 +211,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -226,6 +226,13 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, cleanArgs []string, 
 			return
 		}
 	}
+
+	flagIndex, detailedSummary, err = coreutils.FindBooleanFlag("--detailed-summary", args)
+	if err != nil {
+		return
+	}
+	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 	return

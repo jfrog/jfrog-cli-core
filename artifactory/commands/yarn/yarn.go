@@ -74,7 +74,7 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return err
 	}

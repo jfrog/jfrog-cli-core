@@ -112,7 +112,7 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	threads, _, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetBuildConfiguration(buildConfiguration)
 	if err != nil {
 		return err

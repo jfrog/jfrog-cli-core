@@ -105,7 +105,7 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	threads, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	if err != nil {
 		return err
 	}

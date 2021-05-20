@@ -5,8 +5,8 @@ import "strings"
 type Technology string
 
 const (
-	Maven  = "maven"
-	Gradle = "gradle"
+	Maven  = "Maven"
+	Gradle = "Gradle"
 	Npm    = "npm"
 )
 

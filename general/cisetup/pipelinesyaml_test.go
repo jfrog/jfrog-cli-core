@@ -1,11 +1,7 @@
 package cisetup
 
-import (
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
-func TestConvertBuildCmd(t *testing.T) {
+/*
+func TestConvertBuildCmd(t *testing.T) { // TODO convert once used
 	tests := []buildCmd{
 		{"simpleMvn", "mvn clean install", "jfrog rt mvn clean install"},
 		{"simpleGradle", "gradle clean build", "jfrog rt gradle clean build"},
@@ -38,3 +34,4 @@ type buildCmd struct {
 	original string
 	expected string
 }
+*/

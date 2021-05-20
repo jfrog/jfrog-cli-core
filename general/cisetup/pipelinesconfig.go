@@ -2,6 +2,8 @@ package cisetup
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -11,11 +13,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strings"
 )
 
 const (
-	PipelinesYamlPath = "pipelines.yml"
+	PipelinesYamlName = "pipelines.yml"
 )
 
 type JFrogPipelinesConfigurator struct {
@@ -53,7 +54,7 @@ func (pc *JFrogPipelinesConfigurator) Config() (vcsIntName, rtIntName string, er
 }
 
 func (pc *JFrogPipelinesConfigurator) doAddPipelineSource(psm *pipelines.PipelinesServicesManager, projectIntegrationId int) (err error) {
-	_, err = psm.AddPipelineSource(projectIntegrationId, pc.SetupData.GetRepoFullName(), pc.SetupData.GitBranch, PipelinesYamlPath)
+	_, err = psm.AddPipelineSource(projectIntegrationId, pc.SetupData.GetRepoFullName(), pc.SetupData.GitBranch, PipelinesYamlName)
 	if err != nil {
 		// If source already exists, ignore error.
 		if _, ok := err.(*services.SourceAlreadyExistsError); ok {

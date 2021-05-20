@@ -49,7 +49,7 @@ type CiType string
 const (
 	Jenkins       = "Jenkins"
 	GithubActions = "GitHub Actions"
-	Pipelines     = "Pipelines"
+	Pipelines     = "JFrog Pipelines"
 )
 
 var execNames = map[Technology]string{

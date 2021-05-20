@@ -9,8 +9,6 @@ import (
 )
 
 const (
-	jfrogCliFullImgName   = "releases-docker.jfrog.io/jfrog/jfrog-cli-full"
-	jfrogCliFullImgTag    = "latest"
 	m2pathCmd             = "MVN_PATH=`which mvn` && export M2_HOME=`readlink -f $MVN_PATH | xargs dirname | xargs dirname`"
 	jfrogCliRtPrefix      = "jfrog rt"
 	jfrogCliConfig        = "jfrog c add"
@@ -20,11 +18,9 @@ const (
 	jfrogCliBp            = "jfrog rt bp"
 	buildNameEnvVar       = "JFROG_CLI_BUILD_NAME"
 	buildNumberEnvVar     = "JFROG_CLI_BUILD_NUMBER"
-	buildProjectEnvVar    = "JFROG_CLI_BUILD_PROJECT"
 	buildUrlEnvVar        = "JFROG_CLI_BUILD_URL"
 	buildStatusEnvVar     = "JFROG_BUILD_STATUS"
 	runNumberEnvVar       = "$run_number"
-	projectKeyEnvVar      = "$project_key"
 	stepUrlEnvVar         = "$step_url"
 	updateCommitStatusCmd = "update_commit_status"
 

@@ -26,8 +26,8 @@ const jenkinsfileTemplate = `pipeline {
 	stages {
 		stage ('Clone') {
 			steps {
-				// If cloning the code requires credentials. Follow these steps:
-				// 1. Comment out the rest of the below 'git' step.
+				// If cloning the code requires credentials, follow these steps:
+				// 1. Uncomment the ending of the below 'git' step.
 				// 2. Create the 'git_cred_id' credentials as described here - https://www.jenkins.io/doc/book/using/using-credentials/
 				git branch: %q, url: %q //, credentialsId: 'git_cred_id'
 			}
@@ -70,8 +70,11 @@ const jenkinsfileTemplate = `pipeline {
 		}
 		 
 		cleanup {
+			// Collect and store environment variables in the build-info
 			sh './jfrog rt bce'
+			// Collect and store VCS details in the build-info
 			sh './jfrog rt bag'
+			// Publish the build-info to Artifactory
 			sh './jfrog rt bp'
 			sh './jfrog c remove %s --quiet'
 		}

@@ -31,7 +31,7 @@ jobs:
          distribution: 'adopt'
      - name: Build
        run: |
-         # Init JFrog CLI build tools config
+         # Configure the project
          %s
          # Build the project using JFrog CLI
          %s
@@ -41,13 +41,13 @@ jobs:
        if: failure()
      - name: Publish build
        run: |
-         # Collect environment variables for the build
+         # Collect and store environment variables in the build-info
          jfrog rt bce
-         # Collect VCS details from git and add them to the build
+         # Collect and store VCS details in the build-info
          jfrog rt bag
-         # Publish build info
+         # Publish the build-info to Artifactory
          jfrog rt bp
-         # Scan build
+         # Scan the published build-info with Xray
          jfrog rt bs
        if: always()`
 

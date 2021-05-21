@@ -312,7 +312,7 @@ func (nca *NpmCommandArgs) createTempNpmrc() error {
 		return err
 	}
 
-	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(nca.workingDirectory, npmrcFileName), configData, nca.npmrcFileMode))
+	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(nca.workingDirectory, npmrcFileName), configData, 0600))
 }
 
 func (nca *NpmCommandArgs) runInstallOrCi() error {

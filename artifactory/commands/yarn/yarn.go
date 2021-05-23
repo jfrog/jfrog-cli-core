@@ -376,6 +376,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 
 	dependenciesMap := make(map[string]*YarnDependency)
 	scanner := bufio.NewScanner(strings.NewReader(responseStr))
+	packageName := yc.packageInfo.FullName()
 	var root *YarnDependency
 
 	for scanner.Scan() {
@@ -387,7 +388,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 		}
 		dependenciesMap[currDependency.Value] = &currDependency
 
-		if strings.HasPrefix(currDependency.Value, yc.packageInfo.Name+"@") {
+		if strings.HasPrefix(currDependency.Value, packageName+"@") {
 			root = &currDependency
 		}
 	}
@@ -404,7 +405,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 	}
 	yc.dependencies = make(map[string]*buildinfo.Dependency)
 
-	log.Info("Collecting dependencies information... This may take a few minutes...")
+	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
 	producerConsumer := parallel.NewBounedRunner(yc.threads, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 

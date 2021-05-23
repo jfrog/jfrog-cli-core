@@ -429,6 +429,11 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 	}
 	id := name + ":" + version
 
+	// To avoid infinite loops in case of circular dependencies, the dependency won't be added if it's already in pathToRoot
+	if coreutils.StringsSliceContains(pathToRoot, id) {
+		return nil
+	}
+
 	for _, dependencyPtr := range yarnDependency.Details.Dependencies {
 		innerDepKey := getYarnDependencyKeyFromLocator(dependencyPtr.Locator)
 		innerYarnDep, exist := dependenciesMap[innerDepKey]

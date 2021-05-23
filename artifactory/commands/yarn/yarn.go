@@ -388,6 +388,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 		}
 		dependenciesMap[currDependency.Value] = &currDependency
 
+		// Check whether this dependency's name starts with the package name (which means this is the root)
 		if strings.HasPrefix(currDependency.Value, packageName+"@") {
 			root = &currDependency
 		}
@@ -497,6 +498,7 @@ func (yc *YarnCommand) saveDependenciesData() error {
 }
 
 type YarnDependency struct {
+	// The value is usually in this structure: @scope/package-name@npm:1.0.0
 	Value   string         `json:"value,omitempty"`
 	Details YarnDepDetails `json:"children,omitempty"`
 }

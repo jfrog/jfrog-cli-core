@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -428,6 +429,11 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 		version = yarnDependency.Details.Version
 	}
 	id := name + ":" + version
+
+	// To avoid infinite loops in case of circular dependencies, the dependency won't be added if it's already in pathToRoot
+	if coreutils.StringsSliceContains(pathToRoot, id) {
+		return nil
+	}
 
 	for _, dependencyPtr := range yarnDependency.Details.Dependencies {
 		innerDepKey := getYarnDependencyKeyFromLocator(dependencyPtr.Locator)

@@ -51,6 +51,13 @@ func (pi *PackageInfo) GetDeployPath() string {
 	return fmt.Sprintf("%s/%s/-/%s", pi.Scope, pi.Name, fileName)
 }
 
+func (pi *PackageInfo) FullName() string {
+	if pi.Scope == "" {
+		return pi.Name
+	}
+	return fmt.Sprintf("%s/%s", pi.Scope, pi.Name)
+}
+
 func splitScopeFromName(packageInfo *PackageInfo) {
 	if strings.HasPrefix(packageInfo.Name, "@") && strings.Contains(packageInfo.Name, "/") {
 		splitValues := strings.Split(packageInfo.Name, "/")

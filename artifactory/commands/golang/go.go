@@ -3,6 +3,7 @@ package golang
 import (
 	"errors"
 	"fmt"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"path"
 	"path/filepath"
 	"strings"
@@ -214,8 +215,36 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 			return
 		}
 	}
-	return filepath.Join(packageCachePath, name+"@"+version), nil
+	path, err := getFileSystemPackagePath(packageCachePath, name, version)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 
+}
+
+// getFileSystemPackagePath returns a string that represents the package files cache path.
+// In some cases when the path isn't represented by the package name, instead the name represents a specific project's directory's path.
+// In this case we will scan the path until we find the package directory.
+// Example : When running 'go get github.com/golang/mock/mockgen@v1.4.1'
+//			* "mockgen" is a directory inside "mock" package ("mockgen" doesn't contain "go.mod").
+//			* go download and save the whole "mock" package in cache under 'github.com/golang/mock@v1.4.1'.
+func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
+	separator := clientutils.GetFileSeparator()
+	for name != "" {
+		packagePath := filepath.Join(packageCachePath, name+"@"+version)
+		exists, err := fileutils.IsDirExists(packagePath, false)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return packagePath, nil
+		}
+		// Remove path's last element and check again
+		name, _ = filepath.Split(name)
+		name = strings.TrimSuffix(name, separator)
+	}
+	return "", errors.New("Could not find package:" + name + " in:" + packageCachePath)
 }
 
 // buildPackageVersionRequest returns a string representing the version request to Artifactory.

@@ -3,18 +3,24 @@ package cisetup
 const ConfigServerId = "ci-setup-cmd"
 
 type CiSetupData struct {
-	RepositoryName          string
-	ProjectDomain           string
-	VcsBaseUrl              string
-	LocalDirPath            string
-	GitBranch               string
-	BuildCommand            string
-	BuildName               string
-	ArtifactoryVirtualRepos map[Technology]string
-	// A collection of technologies that was found with a list of theirs indications
+	RepositoryName string
+	ProjectDomain  string
+	VcsBaseUrl     string
+	LocalDirPath   string
+	GitBranch      string
+	BuildName      string
+	CiType         CiType
+	// A collection of the technologies that were detected in the project.
 	DetectedTechnologies map[Technology]bool
-	VcsCredentials       VcsServerDetails
-	GitProvider          GitProvider
+	// A collection of the technologies actually built, and the needed information to build them.
+	BuiltTechnologies map[Technology]*TechnologyInfo
+	VcsCredentials    VcsServerDetails
+	GitProvider       GitProvider
+}
+
+type TechnologyInfo struct {
+	VirtualRepo string
+	BuildCmd    string
 }
 
 func (sd *CiSetupData) GetRepoFullName() string {
@@ -37,3 +43,17 @@ const (
 	BitbucketServer  = "Bitbucket Server"
 	Gitlab           = "GitLab"
 )
+
+type CiType string
+
+const (
+	Jenkins       = "Jenkins"
+	GithubActions = "GitHub Actions"
+	Pipelines     = "JFrog Pipelines"
+)
+
+var execNames = map[Technology]string{
+	Maven:  "mvn",
+	Gradle: "gradle",
+	Npm:    "npm",
+}

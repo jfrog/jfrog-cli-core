@@ -1,4 +1,4 @@
-package npm
+package utils
 
 import (
 	"encoding/json"
@@ -49,6 +49,13 @@ func (pi *PackageInfo) GetDeployPath() string {
 		return fmt.Sprintf("%s/-/%s", pi.Name, fileName)
 	}
 	return fmt.Sprintf("%s/%s/-/%s", pi.Scope, pi.Name, fileName)
+}
+
+func (pi *PackageInfo) FullName() string {
+	if pi.Scope == "" {
+		return pi.Name
+	}
+	return fmt.Sprintf("%s/%s", pi.Scope, pi.Name)
 }
 
 func splitScopeFromName(packageInfo *PackageInfo) {

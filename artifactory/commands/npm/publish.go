@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -30,20 +31,22 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *npm.PackageInfo
+	packageInfo            *commandsutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 }
 
 type NpmPublishCommand struct {
-	configFilePath string
-	commandName    string
+	configFilePath  string
+	commandName     string
+	result          *commandsutils.Result
+	detailedSummary bool
 	*NpmPublishCommandArgs
 }
 
 func NewNpmPublishCommand() *NpmPublishCommand {
-	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish"}
+	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", result: new(commandsutils.Result)}
 }
 
 func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
@@ -59,12 +62,29 @@ func (npc *NpmPublishCommand) SetConfigFilePath(configFilePath string) *NpmPubli
 	return npc
 }
 
-func (nic *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
-	nic.NpmPublishCommandArgs.npmArgs = args
-	return nic
+func (npc *NpmPublishCommand) SetArgs(args []string) *NpmPublishCommand {
+	npc.NpmPublishCommandArgs.npmArgs = args
+	return npc
+}
+
+func (npc *NpmPublishCommand) SetDetailedSummary(detailedSummary bool) *NpmPublishCommand {
+	npc.detailedSummary = detailedSummary
+	return npc
+}
+
+func (npc *NpmPublishCommand) Result() *commandsutils.Result {
+	return npc.result
+}
+
+func (npc *NpmPublishCommand) IsDetailedSummary() bool {
+	return npc.detailedSummary
 }
 
 func (npc *NpmPublishCommand) Run() error {
+	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	if err != nil {
+		return err
+	}
 	if npc.configFilePath != "" {
 		// Read config file.
 		log.Debug("Preparing to read the config file", npc.configFilePath)
@@ -76,16 +96,13 @@ func (npc *NpmPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		_, filteredNpmArgs, buildConfiguration, err := npm.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
-		if err != nil {
-			return err
-		}
 		rtDetails, err := deployerParams.ServerDetails()
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
+	npc.SetDetailedSummary(detailedSummary)
 	return npc.run()
 }
 
@@ -203,22 +220,32 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	}
 	up := services.UploadParams{}
 	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
-	if npc.collectBuildInfo {
-		utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
-		up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
-		if err != nil {
-			return err
-		}
-	}
 	var totalFailed int
-	if npc.collectBuildInfo {
+	if npc.collectBuildInfo || npc.detailedSummary {
+		if npc.collectBuildInfo {
+			utils.SaveBuildGeneralDetails(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+			up.BuildProps, err = utils.CreateBuildProperties(npc.buildConfiguration.BuildName, npc.buildConfiguration.BuildNumber, npc.buildConfiguration.Project)
+			if err != nil {
+				return err
+			}
+		}
 		summary, err := servicesManager.UploadFilesWithSummary(up)
 		if err != nil {
 			return err
 		}
-		summary.TransferDetailsReader.Close()
-		npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
 		totalFailed = summary.TotalFailed
+		if npc.collectBuildInfo {
+			npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
+		} else {
+			summary.ArtifactsDetailsReader.Close()
+		}
+		if npc.detailedSummary {
+			npc.result.SetReader(summary.TransferDetailsReader)
+			npc.result.SetFailCount(totalFailed)
+			npc.result.SetSuccessCount(summary.TotalSucceeded)
+		} else {
+			summary.TransferDetailsReader.Close()
+		}
 	} else {
 		_, totalFailed, err = servicesManager.UploadFiles(up)
 		if err != nil {
@@ -277,7 +304,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = npm.ReadPackageInfoFromPackageJson(npc.publishPath)
+		npc.packageInfo, err = commandsutils.ReadPackageInfoFromPackageJson(npc.publishPath)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -314,7 +341,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = npm.ReadPackageInfo(packageJson)
+			npc.packageInfo, err = commandsutils.ReadPackageInfo(packageJson)
 			return err
 		}
 	}

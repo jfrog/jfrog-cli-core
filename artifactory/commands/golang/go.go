@@ -231,7 +231,9 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 //			  "go get" downloads and saves the whole "mock" package in the local cache under 'github.com/golang/mock@v1.4.1'
 func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
 	separator := string(filepath.Separator)
-	for name != "" {
+	// For Windows OS
+	path := filepath.Join(name)
+	for path != "" {
 		packagePath := filepath.Join(packageCachePath, name+"@"+version)
 		exists, err := fileutils.IsDirExists(packagePath, false)
 		if err != nil {
@@ -241,8 +243,8 @@ func getFileSystemPackagePath(packageCachePath, name, version string) (string, e
 			return packagePath, nil
 		}
 		// Remove path's last element and check again
-		name, _ = filepath.Split(name)
-		name = strings.TrimSuffix(name, separator)
+		path, _ = filepath.Split(path)
+		path = strings.TrimSuffix(path, separator)
 	}
 	return "", errors.New("Could not find package:" + name + " in:" + packageCachePath)
 }

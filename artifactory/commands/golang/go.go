@@ -227,7 +227,8 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 // In this case we will scan the path until we find the package directory.
 // Example : When running 'go get github.com/golang/mock/mockgen@v1.4.1'
 //			* "mockgen" is a directory inside "mock" package ("mockgen" doesn't contain "go.mod").
-//			* go download and save the whole "mock" package in cache under 'github.com/golang/mock@v1.4.1'.
+//			* go download and save the whole "mock" package in local cache under 'github.com/golang/mock@v1.4.1' -- >
+//			  "go get" downloads and saves the whole "mock" package in the local cache under 'github.com/golang/mock@v1.4.1'
 func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
 	separator := string(filepath.Separator)
 	for name != "" {

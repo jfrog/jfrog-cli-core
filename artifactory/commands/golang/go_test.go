@@ -38,5 +38,5 @@ func TestGetPackageFilesPath(t *testing.T) {
 	defer os.RemoveAll(expectedPackagePath)
 	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
 	assert.NoError(t, err)
-	assert.Equal(t, actualPackagePath, expectedPackagePath)
+	assert.Equal(t, expectedPackagePath, actualPackagePath)
 }

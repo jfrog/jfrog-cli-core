@@ -234,7 +234,7 @@ func getFileSystemPackagePath(packageCachePath, name, version string) (string, e
 	// For Windows OS
 	path := filepath.Join(name)
 	for path != "" {
-		packagePath := filepath.Join(packageCachePath, name+"@"+version)
+		packagePath := filepath.Join(packageCachePath, path+"@"+version)
 		exists, err := fileutils.IsDirExists(packagePath, false)
 		if err != nil {
 			return "", err

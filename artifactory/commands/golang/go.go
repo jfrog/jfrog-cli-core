@@ -3,7 +3,6 @@ package golang
 import (
 	"errors"
 	"fmt"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"path"
 	"path/filepath"
 	"strings"
@@ -230,7 +229,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 //			* "mockgen" is a directory inside "mock" package ("mockgen" doesn't contain "go.mod").
 //			* go download and save the whole "mock" package in cache under 'github.com/golang/mock@v1.4.1'.
 func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
-	separator := clientutils.GetFileSeparator()
+	separator := string(filepath.Separator)
 	for name != "" {
 		packagePath := filepath.Join(packageCachePath, name+"@"+version)
 		exists, err := fileutils.IsDirExists(packagePath, false)

@@ -3,7 +3,7 @@ package golang
 import (
 	executersutils "github.com/jfrog/gocmd/executers/utils"
 	"github.com/stretchr/testify/assert"
-	"os/exec"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -34,10 +34,8 @@ func TestGetPackageFilesPath(t *testing.T) {
 	packageName := "github.com/golang/mock/mockgen"
 	version := "v1.4.1"
 	expectedPackagePath := filepath.Join(packageCachePath, "github.com/golang/mock@"+version)
-	// "mockgen" is a dir inside "mock" project.
-	// "mock" package is saved under 'github.com/golang/mock@v1.4.1'
-	cmd := exec.Command("go", "get", packageName)
-	err = cmd.Run()
+	err = os.MkdirAll(expectedPackagePath, os.ModePerm)
+	defer os.RemoveAll(expectedPackagePath)
 	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
 	assert.NoError(t, err)
 	assert.Equal(t, actualPackagePath, expectedPackagePath)

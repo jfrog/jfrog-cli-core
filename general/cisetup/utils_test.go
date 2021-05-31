@@ -20,7 +20,7 @@ func TestConvertBuildCmd(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			data := &CiSetupData{}
-			data.BuiltTechnology = &TechnologyInfo{TechnologyType: test.tech, BuildCmd: test.original}
+			data.BuiltTechnology = &TechnologyInfo{Type: test.tech, BuildCmd: test.original}
 			converted, err := convertBuildCmd(data)
 			if err != nil {
 				assert.NoError(t, err)

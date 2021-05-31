@@ -19,9 +19,9 @@ type CiSetupData struct {
 }
 
 type TechnologyInfo struct {
-	TechnologyType Technology
-	VirtualRepo    string
-	BuildCmd       string
+	Type        Technology
+	VirtualRepo string
+	BuildCmd    string
 }
 
 func (sd *CiSetupData) GetRepoFullName() string {

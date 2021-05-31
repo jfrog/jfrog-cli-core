@@ -96,8 +96,8 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 		return nil, "", err
 	}
 	var envSet string
-	// set M2_HOME env variable if maven is used.
-	if jg.SetupData.BuiltTechnology.TechnologyType == Maven {
+	// Set the M2_HOME env variable if maven is used.
+	if jg.SetupData.BuiltTechnology.Type == Maven {
 		envSet = m2HomeSet
 	}
 	return []byte(fmt.Sprintf(jenkinsfileTemplate, envSet, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsconfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil

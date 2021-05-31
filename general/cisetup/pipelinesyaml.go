@@ -123,7 +123,7 @@ func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoRes
 	var steps []PipelineStep
 	previousStepName := ""
 
-	switch yg.SetupData.BuiltTechnology.TechnologyType {
+	switch yg.SetupData.BuiltTechnology.Type {
 	case Maven:
 		curStep := yg.createMavenStep(gitResourceName, previousStepName)
 		steps = append(steps, curStep)

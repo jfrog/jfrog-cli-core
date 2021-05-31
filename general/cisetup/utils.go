@@ -60,7 +60,7 @@ func getIntDetailForCmd(intName, detail string) string {
 	return fmt.Sprintf("$int_%s_%s", intName, detail)
 }
 
-// Returns the JFrog CLI config command according to given server details.
+// Returns the JFrog CLI config command according to the given server details.
 func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 	usedConfigCmd := jfrogCliConfig
 	usedUrlFlag := rtUrlFlag
@@ -80,7 +80,7 @@ func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 // Returns an array of JFrog CLI config commands according to the given CiSetupData.
 func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupData) []string {
 	var configs []string
-	switch data.BuiltTechnology.TechnologyType {
+	switch data.BuiltTechnology.Type {
 	case Maven:
 		if setM2ForMaven {
 			configs = append(configs, m2pathCmd)
@@ -100,7 +100,7 @@ func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupDa
 // Converts build tools commands to run via JFrog CLI.
 func convertBuildCmd(data *CiSetupData) (buildCmd string, err error) {
 	commandsArray := []string{}
-	switch data.BuiltTechnology.TechnologyType {
+	switch data.BuiltTechnology.Type {
 	case Npm:
 		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, npmInstallRegexp, npmInstallRegexpReplacement)
 		if err != nil {
@@ -141,7 +141,7 @@ func getBuildToolConfigCmd(configCmd, serverId, repo string) string {
 	}, " ")
 }
 
-// Returns a string of variable export command.
+// Returns a string of environment variable export command.
 // key - The variable name.
 // value - the value to be set.
 func getExportCmd(key, value string) string {

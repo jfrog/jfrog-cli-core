@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.25.1"
+const mavenExtractorDependencyVersion = "2.26.3"
 
 // Deprecated. This version is the latest published in JCenter.
 const mavenExtractorDependencyJCenterVersion = "2.23.0"
@@ -223,6 +223,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		artifactoryResolutionEnabled: vConfig.IsSet("resolver"),
 		generatedBuildInfoPath:       vConfig.GetString(utils.GENERATED_BUILD_INFO),
 		mavenOpts:                    mavenOpts,
+		deployableArtifactsFilePath:  vConfig.GetString(utils.DEPLOYABLE_ARTIFACTS),
 	}, nil
 }
 
@@ -278,4 +279,5 @@ type mvnRunConfig struct {
 	artifactoryResolutionEnabled bool
 	generatedBuildInfoPath       string
 	mavenOpts                    string
+	deployableArtifactsFilePath  string
 }

@@ -48,6 +48,7 @@ const INSECURE_TLS = "insecureTls"
 
 const RESOLVER_PREFIX = "resolver."
 const DEPLOYER_PREFIX = "deployer."
+const DEPLOYABLE_ARTIFACTS = "deployable.artifacts.map"
 
 const REPO = "repo"
 const SNAPSHOT_REPO = "snapshotRepo"
@@ -110,6 +111,7 @@ var commonConfigMapping = map[string]string{
 	"artifactory.deploy.build.project":       BUILD_PROJECT,
 	"artifactory.deploy.build.timestamp":     BUILD_TIMESTAMP,
 	"buildInfo.generated.build.info":         GENERATED_BUILD_INFO,
+	"buildInfo.deployable.artifacts.map":     DEPLOYABLE_ARTIFACTS,
 	"artifactory.proxy.host":                 PROXY + HOST,
 	"artifactory.proxy.port":                 PROXY + PORT,
 	"artifactory.publish.forkCount":          FORK_COUNT,
@@ -306,6 +308,7 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
 	config.Set(GENERATED_BUILD_INFO, path)
+	config.Set(DEPLOYABLE_ARTIFACTS, "/Users/gail/dev/new/output.json")
 	return nil
 }
 

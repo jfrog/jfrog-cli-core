@@ -12,9 +12,9 @@ func TestTechIndicator(t *testing.T) {
 		filePath string
 		expected Technology
 	}{
-		{"simpleMavenTest", "pom.xml", "maven"},
-		{"npmTest", "../package.json", "npm"},
-		{"windowsGradleTest", "c://users/test/package/build.gradle", "gradle"},
+		{"simpleMavenTest", "pom.xml", Maven},
+		{"npmTest", "../package.json", Npm},
+		{"windowsGradleTest", "c://users/test/package/build.gradle", Gradle},
 		{"noTechTest", "pomxml", ""},
 	}
 	indicators := GetTechIndicators()

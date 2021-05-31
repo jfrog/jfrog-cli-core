@@ -92,6 +92,8 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 			err = configFile.configGo()
 		case utils.Pip:
 			err = configFile.configPip()
+		case utils.Yarn:
+			err = configFile.configYarn()
 		case utils.Npm:
 			err = configFile.configNpm()
 		case utils.Dotnet:
@@ -204,6 +206,10 @@ func (configFile *ConfigFile) configGo() error {
 }
 
 func (configFile *ConfigFile) configPip() error {
+	return configFile.setResolver()
+}
+
+func (configFile *ConfigFile) configYarn() error {
 	return configFile.setResolver()
 }
 

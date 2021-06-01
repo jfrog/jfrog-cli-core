@@ -132,7 +132,7 @@ func getMavenConfigCmd(serverId, repo string) string {
 	}, " ")
 }
 
-// Returns build tool's (excpet Maven) config command according to given server and repo information.
+// Returns build tool's (except Maven) config command according to given server and repo information.
 func getBuildToolConfigCmd(configCmd, serverId, repo string) string {
 	return strings.Join([]string{
 		jfrogCliRtPrefix, configCmd,

@@ -58,10 +58,10 @@ type GithubActionsGenerator struct {
 func (gg *GithubActionsGenerator) Generate() (githubActionsBytes []byte, githubActionsName string, err error) {
 	// setM2 env variable if maven is used.
 	setM2 := gg.SetupData.BuiltTechnology.Type == Maven
-	buildToolsconfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, setM2, gg.SetupData), "\n          ")
+	buildToolsConfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, setM2, gg.SetupData), "\n          ")
 	buildCommand, err := convertBuildCmd(gg.SetupData)
 	if err != nil {
 		return nil, "", err
 	}
-	return []byte(fmt.Sprintf(githubActionsTemplate, buildToolsconfigCommands, buildCommand)), GithubActionsFileName, nil
+	return []byte(fmt.Sprintf(githubActionsTemplate, buildToolsConfigCommands, buildCommand)), GithubActionsFileName, nil
 }

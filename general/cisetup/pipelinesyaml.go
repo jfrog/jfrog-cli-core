@@ -119,29 +119,22 @@ func (yg *JFrogPipelinesYamlGenerator) createPipeline(pipelineName, gitResourceN
 	}, nil
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoResourceName string) ([]PipelineStep, error) {
-	var steps []PipelineStep
-	previousStepName := ""
+func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoResourceName string) (steps []PipelineStep, err error) {
+	var step PipelineStep
 
 	switch yg.SetupData.BuiltTechnology.Type {
 	case Maven:
-		curStep := yg.createMavenStep(gitResourceName, previousStepName)
-		steps = append(steps, curStep)
-		previousStepName = curStep.Name
+		step = yg.createMavenStep(gitResourceName, "")
 	case Gradle:
-		curStep := yg.createGradleStep(gitResourceName, previousStepName)
-		steps = append(steps, curStep)
-		previousStepName = curStep.Name
+		step = yg.createGradleStep(gitResourceName, "")
 	case Npm:
-		curStep, err := yg.createNpmStep(gitResourceName, previousStepName)
+		step, err = yg.createNpmStep(gitResourceName, "")
 		if err != nil {
 			return nil, err
 		}
-		steps = append(steps, curStep)
-		previousStepName = curStep.Name
 	}
 
-	return append(steps, yg.createBuildInfoStep(gitResourceName, previousStepName, buildInfoResourceName)), nil
+	return []PipelineStep{step, yg.createBuildInfoStep(gitResourceName, step.Name, buildInfoResourceName)}, nil
 }
 
 func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName, previousStepName string) PipelineStep {

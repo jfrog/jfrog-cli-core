@@ -124,11 +124,11 @@ func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoRes
 
 	switch yg.SetupData.BuiltTechnology.Type {
 	case Maven:
-		step = yg.createMavenStep(gitResourceName, "")
+		step = yg.createMavenStep(gitResourceName)
 	case Gradle:
-		step = yg.createGradleStep(gitResourceName, "")
+		step = yg.createGradleStep(gitResourceName)
 	case Npm:
-		step, err = yg.createNpmStep(gitResourceName, "")
+		step, err = yg.createNpmStep(gitResourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -137,12 +137,12 @@ func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoRes
 	return []PipelineStep{step, yg.createBuildInfoStep(gitResourceName, step.Name, buildInfoResourceName)}, nil
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName, previousStepName string) PipelineStep {
+func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) PipelineStep {
 	return PipelineStep{
 		Name:     createTechStepName(MvnBuild),
 		StepType: MvnBuild,
 		Configuration: &MavenStepConfiguration{
-			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName, previousStepName),
+			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
 			MvnCommand:              yg.getBuildCmdForNativeStep(Maven),
 			ResolverSnapshotRepo:    yg.SetupData.BuiltTechnology.VirtualRepo,
 			ResolverReleaseRepo:     yg.SetupData.BuiltTechnology.VirtualRepo,
@@ -159,7 +159,7 @@ func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech Technology)
 	return strings.TrimPrefix(strings.TrimSpace(cmd), execNames[tech]+" ")
 }
 
-func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitResourceName, previousStepName string) NativeStepConfiguration {
+func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitResourceName string) NativeStepConfiguration {
 	step := NativeStepConfiguration{
 		BaseStepConfiguration: BaseStepConfiguration{
 			EnvironmentVariables: map[string]string{
@@ -179,22 +179,15 @@ func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitReso
 		AutoPublishBuildInfo: false,
 		ForceXrayScan:        false,
 	}
-	if previousStepName != "" {
-		step.BaseStepConfiguration.appendInputSteps([]InputStep{
-			{
-				Name: previousStepName,
-			},
-		})
-	}
 	return step
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName, previousStepName string) PipelineStep {
+func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName string) PipelineStep {
 	return PipelineStep{
 		Name:     createTechStepName(GradleBuild),
 		StepType: GradleBuild,
 		Configuration: &GradleStepConfiguration{
-			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName, previousStepName),
+			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
 			GradleCommand:           yg.getBuildCmdForNativeStep(Gradle),
 			ResolverRepo:            yg.SetupData.BuiltTechnology.VirtualRepo,
 		},
@@ -204,7 +197,7 @@ func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName, previou
 	}
 }
 
-func (yg *JFrogPipelinesYamlGenerator) createNpmStep(gitResourceName, previousStepName string) (PipelineStep, error) {
+func (yg *JFrogPipelinesYamlGenerator) createNpmStep(gitResourceName string) (PipelineStep, error) {
 	serverId := yg.createServerIdName()
 
 	converted, err := yg.convertNpmBuildCmd()
@@ -237,13 +230,6 @@ func (yg *JFrogPipelinesYamlGenerator) createNpmStep(gitResourceName, previousSt
 			OnComplete: []string{addRunFilesCmd},
 			OnFailure:  yg.getOnFailureCommands(),
 		},
-	}
-	if previousStepName != "" {
-		step.Configuration.appendInputSteps([]InputStep{
-			{
-				Name: previousStepName,
-			},
-		})
 	}
 	return step, nil
 }

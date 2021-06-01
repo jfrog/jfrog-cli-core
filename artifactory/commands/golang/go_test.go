@@ -1,6 +1,12 @@
 package golang
 
-import "testing"
+import (
+	executersutils "github.com/jfrog/gocmd/executers/utils"
+	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestBuildPackageVersionRequest(t *testing.T) {
 	tests := []struct {
@@ -20,4 +26,17 @@ func TestBuildPackageVersionRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetPackageFilesPath(t *testing.T) {
+	packageCachePath, err := executersutils.GetGoModCachePath()
+	assert.NoError(t, err)
+	packageName := "github.com/golang/mock/mockgen"
+	version := "v1.4.1"
+	expectedPackagePath := filepath.Join(packageCachePath, "github.com/golang/mock@"+version)
+	err = os.MkdirAll(expectedPackagePath, os.ModePerm)
+	defer os.RemoveAll(expectedPackagePath)
+	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedPackagePath, actualPackagePath)
 }

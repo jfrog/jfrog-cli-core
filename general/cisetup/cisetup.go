@@ -12,13 +12,14 @@ type CiSetupData struct {
 	CiType         CiType
 	// A collection of the technologies that were detected in the project.
 	DetectedTechnologies map[Technology]bool
-	// A collection of the technologies actually built, and the needed information to build them.
-	BuiltTechnologies map[Technology]*TechnologyInfo
-	VcsCredentials    VcsServerDetails
-	GitProvider       GitProvider
+	// The chosen build technology stored with all the necessary information.
+	BuiltTechnology *TechnologyInfo
+	VcsCredentials  VcsServerDetails
+	GitProvider     GitProvider
 }
 
 type TechnologyInfo struct {
+	Type        Technology
 	VirtualRepo string
 	BuildCmd    string
 }

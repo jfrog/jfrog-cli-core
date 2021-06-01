@@ -2,10 +2,7 @@ package cisetup
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 )
 
 const (
@@ -63,6 +60,7 @@ func getIntDetailForCmd(intName, detail string) string {
 	return fmt.Sprintf("$int_%s_%s", intName, detail)
 }
 
+// Returns the JFrog CLI config command according to the given server details.
 func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 	usedConfigCmd := jfrogCliConfig
 	usedUrlFlag := rtUrlFlag
@@ -79,49 +77,52 @@ func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 	}, " ")
 }
 
+// Returns an array of JFrog CLI config commands according to the given CiSetupData.
 func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupData) []string {
 	var configs []string
-	if info, used := data.BuiltTechnologies[Maven]; used {
+	switch data.BuiltTechnology.Type {
+	case Maven:
 		if setM2ForMaven {
 			configs = append(configs, m2pathCmd)
 		}
-		configs = append(configs, getMavenConfigCmd(serverId, info.VirtualRepo))
-	}
-	if info, used := data.BuiltTechnologies[Gradle]; used {
-		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, info.VirtualRepo))
-	}
-	if info, used := data.BuiltTechnologies[Npm]; used {
-		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, info.VirtualRepo))
+		configs = append(configs, getMavenConfigCmd(serverId, data.BuiltTechnology.VirtualRepo))
+
+	case Gradle:
+		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnology.VirtualRepo))
+
+	case Npm:
+		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnology.VirtualRepo))
+
 	}
 	return configs
 }
 
 // Converts build tools commands to run via JFrog CLI.
-func convertBuildCmd(data *CiSetupData) (string, error) {
+func convertBuildCmd(data *CiSetupData) (buildCmd string, err error) {
 	commandsArray := []string{}
-	for tech, info := range data.BuiltTechnologies {
-		var cmdRegexp, replacement string
-		switch tech {
-		case Npm:
-			cmdRegexp = npmInstallRegexp
-			replacement = npmInstallRegexpReplacement
-		case Maven:
-			fallthrough
-		case Gradle:
-			cmdRegexp = mvnGradleRegexp
-			replacement = mvnGradleRegexpReplacement
-
-		}
-		buildCmd, err := replaceCmdWithRegexp(info.BuildCmd, cmdRegexp, replacement)
+	switch data.BuiltTechnology.Type {
+	case Npm:
+		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, npmInstallRegexp, npmInstallRegexpReplacement)
 		if err != nil {
 			return "", err
 		}
-		commandsArray = append(commandsArray, buildCmd)
-
+		buildCmd, err = replaceCmdWithRegexp(buildCmd, npmCiRegexp, npmCiRegexpReplacement)
+		if err != nil {
+			return "", err
+		}
+	case Maven:
+		fallthrough
+	case Gradle:
+		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, mvnGradleRegexp, mvnGradleRegexpReplacement)
+		if err != nil {
+			return "", err
+		}
 	}
+	commandsArray = append(commandsArray, buildCmd)
 	return strings.Join(commandsArray, cmdAndOperator), nil
 }
 
+// Returns Maven's config command according to given server and repo information.
 func getMavenConfigCmd(serverId, repo string) string {
 	return strings.Join([]string{
 		jfrogCliRtPrefix, mvnConfigCmdName,
@@ -131,6 +132,7 @@ func getMavenConfigCmd(serverId, repo string) string {
 	}, " ")
 }
 
+// Returns build tool's (except Maven) config command according to given server and repo information.
 func getBuildToolConfigCmd(configCmd, serverId, repo string) string {
 	return strings.Join([]string{
 		jfrogCliRtPrefix, configCmd,
@@ -139,16 +141,9 @@ func getBuildToolConfigCmd(configCmd, serverId, repo string) string {
 	}, " ")
 }
 
-func getExportsCommands(vcsData *CiSetupData) []string {
-	return []string{
-		getExportCmd(coreutils.CI, strconv.FormatBool(true)),
-		getExportCmd(buildNameEnvVar, vcsData.BuildName),
-		getExportCmd(buildNumberEnvVar, runNumberEnvVar),
-		getExportCmd(buildUrlEnvVar, stepUrlEnvVar),
-		getExportCmd(buildStatusEnvVar, passResult),
-	}
-}
-
+// Returns a string of environment variable export command.
+// key - The variable name.
+// value - the value to be set.
 func getExportCmd(key, value string) string {
 	return fmt.Sprintf("export %s=%s", key, value)
 }

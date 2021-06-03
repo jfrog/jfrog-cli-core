@@ -30,11 +30,12 @@ const useWrapper = "usewrapper"
 const gradleBuildInfoProperties = "BUILDINFO_PROPFILE"
 
 type GradleCommand struct {
-	tasks         string
-	configPath    string
-	configuration *utils.BuildConfiguration
-	serverDetails *config.ServerDetails
-	threads       int
+	tasks           string
+	configPath      string
+	configuration   *utils.BuildConfiguration
+	serverDetails   *config.ServerDetails
+	threads         int
+	detailedSummary bool
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -65,7 +66,7 @@ func (gc *GradleCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename)
+	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename, gc.detailedSummary)
 	if err != nil {
 		return err
 	}
@@ -100,6 +101,15 @@ func (gc *GradleCommand) SetThreads(threads int) *GradleCommand {
 	return gc
 }
 
+func (gc *GradleCommand) SetDetailedSummary(detailedSummary bool) *GradleCommand {
+	gc.detailedSummary = detailedSummary
+	return gc
+}
+
+func (gc *GradleCommand) IsDetailedSummary() bool {
+	return gc.detailedSummary
+}
+
 func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename string, err error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
@@ -117,7 +127,7 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 	return
 }
 
-func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string) (*gradleRunConfig, error) {
+func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, detailedSummary bool) (*gradleRunConfig, error) {
 	runConfig := &gradleRunConfig{env: map[string]string{}}
 	runConfig.tasks = tasks
 
@@ -135,7 +145,7 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 		vConfig.Set(utils.FORK_COUNT, threads)
 	}
 
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, vConfig, utils.Gradle)
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}

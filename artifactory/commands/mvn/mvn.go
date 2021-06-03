@@ -1,6 +1,7 @@
 package mvn
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,9 +13,12 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
@@ -28,12 +32,14 @@ const classworldsConfFileName = "classworlds.conf"
 const MavenHome = "M2_HOME"
 
 type MvnCommand struct {
-	goals         []string
-	configPath    string
-	insecureTls   bool
-	configuration *utils.BuildConfiguration
-	serverDetails *config.ServerDetails
-	threads       int
+	goals           []string
+	configPath      string
+	insecureTls     bool
+	configuration   *utils.BuildConfiguration
+	serverDetails   *config.ServerDetails
+	threads         int
+	detailedSummary bool
+	result          *commandsutils.Result
 }
 
 func NewMvnCommand() *MvnCommand {
@@ -70,6 +76,19 @@ func (mc *MvnCommand) SetInsecureTls(insecureTls bool) *MvnCommand {
 	return mc
 }
 
+func (mc *MvnCommand) SetDetailedSummary(detailedSummary bool) *MvnCommand {
+	mc.detailedSummary = detailedSummary
+	return mc
+}
+
+func (mc *MvnCommand) IsDetailedSummary() bool {
+	return mc.detailedSummary
+}
+
+func (mc *MvnCommand) Result() *commandsutils.Result {
+	return mc.result
+}
+
 func (mc *MvnCommand) Run() error {
 	log.Info("Running Mvn...")
 	err := validateMavenInstallation()
@@ -89,7 +108,14 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	return gofrogcmd.RunCmd(mvnRunConfig)
+	err = gofrogcmd.RunCmd(mvnRunConfig)
+	if err != nil {
+		return err
+	}
+	if mc.IsDetailedSummary() {
+		mc.UnmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
+	}
+	return nil
 }
 
 // Returns the ServerDetails. The information returns from the config file provided.
@@ -206,7 +232,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		setEmptyDeployer(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, mc.IsDetailedSummary(), vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +251,55 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		mavenOpts:                    mavenOpts,
 		deployableArtifactsFilePath:  vConfig.GetString(utils.DEPLOYABLE_ARTIFACTS),
 	}, nil
+}
+
+func (mc *MvnCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+	jsonFile, err := os.Open(filesPath)
+	defer jsonFile.Close()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	byteValue, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	var modulesMap map[string][]serviceutils.DeployableArtifactDetails
+	err = json.Unmarshal([]byte(byteValue), &modulesMap)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	succeeded, failed := 0, 0
+	var filesArray []serviceutils.FileTransferDetails
+	for _, module := range modulesMap {
+		for _, artifact := range module {
+			if artifact.DeploySucceeded {
+				succeeded++
+				f := artifact.CreateFileTransferDetails()
+				filesArray = append(filesArray, f)
+			} else {
+				failed++
+			}
+
+		}
+	}
+
+	result := struct {
+		Files []serviceutils.FileTransferDetails `json:"files"`
+	}{}
+	result.Files = filesArray
+	files, err := json.Marshal(result)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	err = ioutil.WriteFile(filesPath, files, 0700)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	mc.result = new(commandsutils.Result)
+	mc.result.SetSuccessCount(succeeded)
+	mc.result.SetFailCount(failed)
+	mc.result.SetReader(content.NewContentReader(filesPath, "files"))
+	return nil
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {

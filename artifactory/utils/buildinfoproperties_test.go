@@ -28,7 +28,7 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
 
-	propsFile, err := CreateBuildInfoPropertiesFile("", "", "", providedConfig, projectType)
+	propsFile, err := CreateBuildInfoPropertiesFile("", "", "", false, providedConfig, projectType)
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,7 +90,7 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 	for k, v := range yamlConfig {
 		vConfig.Set(k, v)
 	}
-	propsFilePath, err := CreateBuildInfoPropertiesFile("", "", "", vConfig, Maven)
+	propsFilePath, err := CreateBuildInfoPropertiesFile("", "", "", false, vConfig, Maven)
 	if err != nil {
 		t.Error(err)
 	}
@@ -128,7 +128,7 @@ func TestGeneratedBuildInfoFile(t *testing.T) {
 	for k, v := range yamlConfig {
 		vConfig.Set(k, v)
 	}
-	propsFilePath, err := CreateBuildInfoPropertiesFile("buildName", "buildNumber", "projectKey", vConfig, Maven)
+	propsFilePath, err := CreateBuildInfoPropertiesFile("buildName", "buildNumber", "projectKey", false, vConfig, Maven)
 	if err != nil {
 		t.Error(err)
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
@@ -44,11 +45,11 @@ const BUILD_NUMBER = "build.number"
 const BUILD_PROJECT = "build.project"
 const BUILD_TIMESTAMP = "build.timestamp"
 const GENERATED_BUILD_INFO = "buildInfo.generated"
+const DEPLOYABLE_ARTIFACTS = "deployable.artifacts.map"
 const INSECURE_TLS = "insecureTls"
 
 const RESOLVER_PREFIX = "resolver."
 const DEPLOYER_PREFIX = "deployer."
-const DEPLOYABLE_ARTIFACTS = "deployable.artifacts.map"
 
 const REPO = "repo"
 const SNAPSHOT_REPO = "snapshotRepo"
@@ -172,7 +173,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, detailedSummary bool, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -212,6 +213,12 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, co
 	err = setProxyIfDefined(config)
 	if err != nil {
 		return "", err
+	}
+	if detailedSummary {
+		err = createDeployableArtifactsFile(config)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Iterate over all the required properties keys according to the buildType and create properties file.
@@ -308,10 +315,18 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
 	config.Set(GENERATED_BUILD_INFO, path)
-	config.Set(DEPLOYABLE_ARTIFACTS, "/Users/gail/dev/new/output.json")
 	return nil
 }
 
+func createDeployableArtifactsFile(config *viper.Viper) error {
+	tempFile, err := fileutils.CreateTempFile()
+	defer tempFile.Close()
+	if err != nil {
+		return err
+	}
+	config.Set(DEPLOYABLE_ARTIFACTS, tempFile.Name())
+	return nil
+}
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {

@@ -1,7 +1,6 @@
 package mvn
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,9 +15,7 @@ import (
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
@@ -89,6 +86,11 @@ func (mc *MvnCommand) Result() *commandsutils.Result {
 	return mc.result
 }
 
+func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
+	mc.result = result
+	return mc
+}
+
 func (mc *MvnCommand) Run() error {
 	log.Info("Running Mvn...")
 	err := validateMavenInstallation()
@@ -108,12 +110,13 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
+	defer os.Remove(mvnRunConfig.generatedBuildInfoPath)
 	err = gofrogcmd.RunCmd(mvnRunConfig)
 	if err != nil {
 		return err
 	}
 	if mc.IsDetailedSummary() {
-		mc.UnmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
+		return mc.UnmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
 	}
 	return nil
 }
@@ -254,51 +257,11 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 }
 
 func (mc *MvnCommand) UnmarshalDeployableArtifacts(filesPath string) error {
-	jsonFile, err := os.Open(filesPath)
-	defer jsonFile.Close()
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	var modulesMap map[string][]serviceutils.DeployableArtifactDetails
-	err = json.Unmarshal([]byte(byteValue), &modulesMap)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	succeeded, failed := 0, 0
-	var filesArray []serviceutils.FileTransferDetails
-	for _, module := range modulesMap {
-		for _, artifact := range module {
-			if artifact.DeploySucceeded {
-				succeeded++
-				f := artifact.CreateFileTransferDetails()
-				filesArray = append(filesArray, f)
-			} else {
-				failed++
-			}
-
-		}
-	}
-
-	result := struct {
-		Files []serviceutils.FileTransferDetails `json:"files"`
-	}{}
-	result.Files = filesArray
-	files, err := json.Marshal(result)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	err = ioutil.WriteFile(filesPath, files, 0700)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	mc.result = new(commandsutils.Result)
-	mc.result.SetSuccessCount(succeeded)
-	mc.result.SetFailCount(failed)
-	mc.result.SetReader(content.NewContentReader(filesPath, "files"))
+	mc.SetResult(result)
 	return nil
 }
 

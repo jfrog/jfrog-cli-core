@@ -59,7 +59,7 @@ func TestPrepareConfigData(t *testing.T) {
 }
 
 func TestPrepareConfigDataTypeRestriction(t *testing.T) {
-	var typeRestrictions = map[string]typeRestriction{
+	var typeRestrictions = map[string]TypeRestriction{
 		"production=\"true\"":          prodOnly,
 		"production=true":              prodOnly,
 		"only = prod":                  prodOnly,
@@ -109,7 +109,7 @@ func TestParseDependencies(t *testing.T) {
 		{"shopify-liquid:1.d7.9", [][]string{{"xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
 	}
 	npmi := NpmCommandArgs{}
-	npmi.dependencies = make(map[string]*dependency)
+	npmi.dependencies = make(map[string]*Dependency)
 	err = npmi.parseDependencies([]byte(dependenciesJsonList), "myScope", []string{"root"})
 	if err != nil {
 		t.Error(err)

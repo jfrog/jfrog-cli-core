@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 
 	"github.com/buger/jsonparser"
 	gofrogcmd "github.com/jfrog/gofrog/io"
@@ -42,17 +43,17 @@ type NpmCommandArgs struct {
 	registry         string
 	npmAuth          string
 	collectBuildInfo bool
-	dependencies     map[string]*dependency
-	typeRestriction  typeRestriction
+	dependencies     map[string]*Dependency
+	typeRestriction  TypeRestriction
 	authArtDetails   auth.ServiceDetails
 	packageInfo      *commandUtils.PackageInfo
 	NpmCommand
 }
 
-type typeRestriction int
+type TypeRestriction int
 
 const (
-	defaultRestriction typeRestriction = iota
+	defaultRestriction TypeRestriction = iota
 	all
 	devOnly
 	prodOnly
@@ -118,6 +119,10 @@ func (nca *NpmCommandArgs) SetThreads(threads int) *NpmCommandArgs {
 	return nca
 }
 
+func (nca *NpmCommandArgs) SetTypeRestriction(typeRestriction TypeRestriction) {
+	nca.typeRestriction = typeRestriction
+}
+
 func NewNpmCommandArgs(npmCommand string) *NpmCommandArgs {
 	return &NpmCommandArgs{command: npmCommand}
 }
@@ -148,7 +153,7 @@ func (nca *NpmCommandArgs) run() error {
 		return nil
 	}
 
-	if err := nca.setDependenciesList(); err != nil {
+	if err := nca.SetDependenciesList(); err != nil {
 		return err
 	}
 
@@ -167,7 +172,7 @@ func (nca *NpmCommandArgs) run() error {
 func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites.")
 	var err error
-	if err = nca.setNpmExecutable(); err != nil {
+	if err = nca.SetNpmExecutable(); err != nil {
 		return err
 	}
 
@@ -288,8 +293,8 @@ func (nca *NpmCommandArgs) runInstallOrCi() error {
 	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))
 }
 
-func (nca *NpmCommandArgs) setDependenciesList() (err error) {
-	nca.dependencies = make(map[string]*dependency)
+func (nca *NpmCommandArgs) SetDependenciesList() (err error) {
+	nca.dependencies = make(map[string]*Dependency)
 	// nca.typeRestriction default is 'all'
 	if nca.typeRestriction != prodOnly {
 		if err = nca.prepareDependencies("dev"); err != nil {
@@ -300,6 +305,10 @@ func (nca *NpmCommandArgs) setDependenciesList() (err error) {
 		err = nca.prepareDependencies("prod")
 	}
 	return
+}
+
+func (nca *NpmCommandArgs) GetDependenciesList() map[string]*Dependency {
+	return nca.dependencies
 }
 
 func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
@@ -503,7 +512,7 @@ func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string, pathToRo
 
 func (nca *NpmCommandArgs) appendDependency(depKey, depName, depVersion, scope string, pathToRoot []string) {
 	if nca.dependencies[depKey] == nil {
-		nca.dependencies[depKey] = &dependency{name: depName, version: depVersion, scopes: []string{scope}}
+		nca.dependencies[depKey] = &Dependency{name: depName, version: depVersion, scopes: []string{scope}}
 	} else if !scopeAlreadyExists(scope, nca.dependencies[depKey].scopes) {
 		nca.dependencies[depKey].scopes = append(nca.dependencies[depKey].scopes, scope)
 	}
@@ -581,7 +590,7 @@ func removeNpmrcIfExists(workingDirectory string) error {
 	return errorutils.CheckError(os.Remove(filepath.Join(workingDirectory, npmrcFileName)))
 }
 
-func (nca *NpmCommandArgs) setNpmExecutable() error {
+func (nca *NpmCommandArgs) SetNpmExecutable() error {
 	npmExecPath, err := exec.LookPath("npm")
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -626,11 +635,15 @@ func filterFlags(splitArgs []string) []string {
 
 type getDependencyInfoFunc func(string) parallel.TaskFunc
 
-type dependency struct {
+type Dependency struct {
 	name       string
 	version    string
 	scopes     []string
 	fileType   string
 	checksum   *buildinfo.Checksum
 	pathToRoot [][]string
+}
+
+func (dep *Dependency) GetPathToRoot() [][]string {
+	return dep.pathToRoot
 }

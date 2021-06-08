@@ -119,10 +119,15 @@ func (nca *NpmCommandArgs) SetThreads(threads int) *NpmCommandArgs {
 	return nca
 }
 
-func (nca *NpmCommandArgs) SetTypeRestriction(typeRestriction TypeRestriction) {
+func (nca *NpmCommandArgs) SetTypeRestriction(typeRestriction TypeRestriction) *NpmCommandArgs {
 	nca.typeRestriction = typeRestriction
+	return nca
 }
 
+func (nca *NpmCommandArgs) SetPackageInfo(packageInfo *commandUtils.PackageInfo) *NpmCommandArgs {
+	nca.packageInfo = packageInfo
+	return nca
+}
 func NewNpmCommandArgs(npmCommand string) *NpmCommandArgs {
 	return &NpmCommandArgs{command: npmCommand}
 }

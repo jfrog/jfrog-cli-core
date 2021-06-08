@@ -8,6 +8,9 @@ import (
 
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
 	xrayDetails, err := serviceDetails.CreateXrayAuthConfig()
+	if err != nil {
+		return nil, err
+	}
 	serviceConfig, err := clientconfig.NewConfigBuilder().
 		SetServiceDetails(xrayDetails).
 		Build()

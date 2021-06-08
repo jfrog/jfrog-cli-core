@@ -1,6 +1,8 @@
 package scan
 
 import (
+	"encoding/json"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/commands/npm"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -19,42 +21,76 @@ type XrAuditNpmCommand struct {
 	typeRestriction npm.TypeRestriction
 }
 
-func NewXrNpmScanCommand() *XrAuditNpmCommand {
+func (auditCmd *XrAuditNpmCommand) SetArguments(args []string) *XrAuditNpmCommand {
+	auditCmd.arguments = args
+	return auditCmd
+}
+
+func (auditCmd *XrAuditNpmCommand) SetNpmTypeRestriction(typeRestriction npm.TypeRestriction) *XrAuditNpmCommand {
+	auditCmd.typeRestriction = typeRestriction
+	return auditCmd
+}
+
+func (auditCmd *XrAuditNpmCommand) SetServerDetails(server *config.ServerDetails) *XrAuditNpmCommand {
+	auditCmd.serverDetails = server
+	return auditCmd
+}
+
+func (auditCmd *XrAuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
+	return auditCmd.serverDetails, nil
+}
+
+func NewXrAuditNpmCommand() *XrAuditNpmCommand {
 	return &XrAuditNpmCommand{}
 }
 
-func (na XrAuditNpmCommand) Run() (*services.ScanResponse, error) {
+func (na XrAuditNpmCommand) Run() error {
 	nca := npm.NewNpmCommandArgs("")
 	nca.SetTypeRestriction(na.typeRestriction)
-	err := nca.SetNpmExecutable()
+	workingDirectory, err := commandsutils.GetWorkingDirectory()
 	if err != nil {
-		return nil, err
+		return err
+	}
+	log.Debug("Working directory set to:", workingDirectory)
+	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(workingDirectory)
+	if err != nil {
+		return err
+	}
+	nca.SetPackageInfo(packageInfo)
+	err = nca.SetNpmExecutable()
+	if err != nil {
+		return err
 	}
 	// Calculate npm dependencies
 	err = nca.SetDependenciesList()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	workingDirectory, err := commandsutils.GetWorkingDirectory()
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("Working directory set to:", workingDirectory)
-	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(workingDirectory)
 	// Parse the dependencies into an Xray dependency tree format
 	npmGraph := parseNpmDependenciesList(nca.GetDependenciesList(), packageInfo)
 	xrayManager, err := commands.CreateXrayServiceManager(na.serverDetails)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	params := services.NewXrayGraphScanParams()
 	params.Graph = npmGraph
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return xrayManager.GetScanGraphResults(scanId)
 
+	scanResults, err := xrayManager.GetScanGraphResults(scanId)
+	if err != nil {
+		return err
+	}
+	return printTable(scanResults)
+
+}
+
+func printTable(res *services.ScanResponse) error {
+	jsonOut, err := json.Marshal(res)
+	print(string(jsonOut))
+	return err
 }
 
 func parseNpmDependenciesList(dependencies map[string]*npm.Dependency, packageInfo *commandsutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
@@ -69,7 +105,7 @@ func parseNpmDependenciesList(dependencies map[string]*npm.Dependency, packageIn
 			treeMap[father] = []string{dependencyId}
 		}
 	}
-	return buildXrayDependencyTree(treeMap, packageInfo.BuildInfoModuleId())
+	return buildXrayDependencyTree(treeMap, NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
 func buildXrayDependencyTree(treeHelper map[string][]string, node string) *services.GraphNode {

@@ -110,7 +110,6 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	defer os.Remove(mvnRunConfig.generatedBuildInfoPath)
 	err = gofrogcmd.RunCmd(mvnRunConfig)
 	if err != nil {
 		return err

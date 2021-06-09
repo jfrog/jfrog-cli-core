@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -36,6 +37,7 @@ type GradleCommand struct {
 	serverDetails   *config.ServerDetails
 	threads         int
 	detailedSummary bool
+	result          *commandsutils.Result
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -74,6 +76,18 @@ func (gc *GradleCommand) Run() error {
 	if err := gofrogcmd.RunCmd(gradleRunConfig); err != nil {
 		return err
 	}
+	if gc.IsDetailedSummary() {
+		return gc.UnmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
+	}
+	return nil
+}
+
+func (gc *GradleCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	if err != nil {
+		return err
+	}
+	gc.SetResult(result)
 	return nil
 }
 
@@ -108,6 +122,15 @@ func (gc *GradleCommand) SetDetailedSummary(detailedSummary bool) *GradleCommand
 
 func (gc *GradleCommand) IsDetailedSummary() bool {
 	return gc.detailedSummary
+}
+
+func (gc *GradleCommand) Result() *commandsutils.Result {
+	return gc.result
+}
+
+func (gc *GradleCommand) SetResult(result *commandsutils.Result) *GradleCommand {
+	gc.result = result
+	return gc
 }
 
 func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename string, err error) {
@@ -148,6 +171,10 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
+	}
+	// Set path to the temp file where deployable artifacts detailed will be written.
+	if detailedSummary {
+		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
 	}
 
 	if !vConfig.GetBool(usePlugin) {

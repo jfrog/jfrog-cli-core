@@ -2,6 +2,7 @@ package scan
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/commands/npm"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
@@ -16,9 +17,15 @@ const (
 )
 
 type XrAuditNpmCommand struct {
-	serverDetails   *config.ServerDetails
-	arguments       []string
-	typeRestriction npm.TypeRestriction
+	serverDetails    *config.ServerDetails
+	workingDirectory string
+	arguments        []string
+	typeRestriction  npm.TypeRestriction
+}
+
+func (auditCmd *XrAuditNpmCommand) SetWorkingDirectory(dir string) *XrAuditNpmCommand {
+	auditCmd.workingDirectory = dir
+	return auditCmd
 }
 
 func (auditCmd *XrAuditNpmCommand) SetArguments(args []string) *XrAuditNpmCommand {
@@ -44,15 +51,28 @@ func NewXrAuditNpmCommand() *XrAuditNpmCommand {
 	return &XrAuditNpmCommand{}
 }
 
-func (na XrAuditNpmCommand) Run() error {
+func (na XrAuditNpmCommand) Run() (err error) {
 	nca := npm.NewNpmCommandArgs("")
 	nca.SetTypeRestriction(na.typeRestriction)
-	workingDirectory, err := commandsutils.GetWorkingDirectory()
+
+	currentDir, err := commandsutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
-	log.Debug("Working directory set to:", workingDirectory)
-	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(workingDirectory)
+	if na.workingDirectory == "" {
+		na.workingDirectory = currentDir
+	} else {
+		err = os.Chdir(na.workingDirectory)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err = os.Chdir(currentDir)
+		}()
+	}
+	log.Debug("Working directory set to:", na.workingDirectory)
+
+	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(na.workingDirectory)
 	if err != nil {
 		return err
 	}

@@ -29,6 +29,8 @@ const (
 // Docker image build info builder.
 type Builder interface {
 	Build(module string) (*buildinfo.BuildInfo, error)
+	UpdateArtifactsAndDependencies() error
+	GetLayers() *[]utils.ResultItem
 }
 
 // Create instance of docker build info builder.
@@ -91,9 +93,13 @@ type RepositoryDetails struct {
 	isRemote bool
 }
 
+func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
+	return &builder.layers
+}
+
 // Create build info for a docker image.
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
-	if err := builder.updateArtifactsAndDependencies(); err != nil {
+	if err := builder.UpdateArtifactsAndDependencies(); err != nil {
 		log.Warn(`Failed to collect build-info, couldn't find image "` + builder.image.tag + `" in Artifactory`)
 		// Don't generate an empty build-info for build-docker-create if the image manifest was not found in Artifactory.
 		if builder.containerManager.GetContainerManagerType() == Kaniko {
@@ -119,7 +125,7 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 }
 
 // Search, validate and create image's artifacts and dependencies.
-func (builder *buildInfoBuilder) updateArtifactsAndDependencies() error {
+func (builder *buildInfoBuilder) UpdateArtifactsAndDependencies() error {
 	// Search for image's manifest and layers.
 	manifestLayers, manifestContent, err := builder.getManifestAndLayersDetails()
 	if err != nil {

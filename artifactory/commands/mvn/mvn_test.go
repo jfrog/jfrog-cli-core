@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	//"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +17,7 @@ func TestDownloadExtractorsFromOjo(t *testing.T) {
 	tempDirPath, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	defer fileutils.RemoveTempDir(tempDirPath)
-	err = os.Setenv(coreutils.DependenciesDir, tempDirPath)
+	//err = os.Setenv(coreutils.DependenciesDir, tempDirPath)
 	assert.NoError(t, err)
 
 	// Make sure the JAR will be downloaded from ojo

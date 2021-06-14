@@ -20,6 +20,7 @@ type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
 	dependencies       string
 	version            string
+	detailedSummary    bool
 	result             *commandutils.Result
 	utils.RepositoryConfig
 }
@@ -98,12 +99,13 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	// Publish the package to Artifactory
-	err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+	summary, err := goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 	if err != nil {
 		return err
 	}
 
 	result := gpc.Result()
+	succeeded, failed := 0, 0
 	if gpc.dependencies != "" {
 		// Publish the package dependencies to Artifactory
 		depsList := strings.Split(gpc.dependencies, ",")
@@ -111,15 +113,19 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		succeeded, failed, err := goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
+		succeeded, failed, err = goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
 		result.SetSuccessCount(succeeded)
 		result.SetFailCount(failed)
 		if err != nil {
 			return err
 		}
 	}
-	result.SetSuccessCount(result.SuccessCount() + 1)
-
+	// maybe need to sum up
+	result.SetSuccessCount(summary.TotalSucceeded + succeeded)
+	result.SetFailCount(summary.TotalFailed + failed)
+	if gpc.detailedSummary {
+		result.SetReader(summary.TransferDetailsReader)
+	}
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
 		if len(goProject.Dependencies()) == 0 {
@@ -153,6 +159,15 @@ func (gpca *GoPublishCommandArgs) SetDependencies(dependencies string) *GoPublis
 func (gpca *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
 	gpca.buildConfiguration = buildConfiguration
 	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) SetDetailedSummary(detailedSummary bool) *GoPublishCommandArgs {
+	gpca.detailedSummary = detailedSummary
+	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) IsDetailedSummary() bool {
+	return gpca.detailedSummary
 }
 
 func validatePrerequisites() error {

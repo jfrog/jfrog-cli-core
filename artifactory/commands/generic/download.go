@@ -12,7 +12,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -92,7 +93,7 @@ func (dc *DownloadCommand) download() error {
 	// In case of build-info collection/sync-deletes operation/a detailed summary is required, we use the download service which provides results file reader,
 	// otherwise we use the download service which provides only general counters.
 	var totalDownloaded, totalFailed int
-	var summary *clientutils.OperationSummary
+	var summary *serviceutils.OperationSummary
 	if isCollectBuildInfo || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
 		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
 		if err != nil {
@@ -154,7 +155,7 @@ func (dc *DownloadCommand) download() error {
 	// Build Info
 	if isCollectBuildInfo {
 		var buildDependencies []buildinfo.Dependency
-		buildDependencies, err = clientutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
+		buildDependencies, err = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		if err != nil {
 			return err
 		}

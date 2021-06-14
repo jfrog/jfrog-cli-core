@@ -79,7 +79,7 @@ func (glpc *GoLegacyPublishCommand) Run() error {
 
 	// Publish the package to Artifactory
 	if glpc.publishPackage {
-		err = goProject.PublishPackage(glpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+		_, err = goProject.PublishPackage(glpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 		if err != nil {
 			return err
 		}

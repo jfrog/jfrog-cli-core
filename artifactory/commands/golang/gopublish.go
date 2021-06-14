@@ -105,7 +105,6 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	result := gpc.Result()
-	succeeded, failed := 0, 0
 	if gpc.dependencies != "" {
 		// Publish the package dependencies to Artifactory
 		depsList := strings.Split(gpc.dependencies, ",")
@@ -113,16 +112,14 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		succeeded, failed, err = goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
-		result.SetSuccessCount(succeeded)
-		result.SetFailCount(failed)
+		_, _, err := goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
 		if err != nil {
 			return err
 		}
 	}
 	// maybe need to sum up
-	result.SetSuccessCount(summary.TotalSucceeded + succeeded)
-	result.SetFailCount(summary.TotalFailed + failed)
+	result.SetSuccessCount(summary.TotalSucceeded)
+	result.SetFailCount(summary.TotalFailed)
 	if gpc.detailedSummary {
 		result.SetReader(summary.TransferDetailsReader)
 	}

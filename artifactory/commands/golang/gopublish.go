@@ -117,12 +117,19 @@ func (gpc *GoPublishCommand) Run() error {
 			return err
 		}
 	}
-	// maybe need to sum up
-	result.SetSuccessCount(summary.TotalSucceeded)
-	result.SetFailCount(summary.TotalFailed)
-	if gpc.detailedSummary {
-		result.SetReader(summary.TransferDetailsReader)
+
+	// From Artifactory's version 6.6.1 PublishPackage() will upload 3 files (zip, mod and info) and return summary.
+	// Otherwise summary will be nil and only 1 file will be uploaded.
+	if summary != nil {
+		result.SetSuccessCount(summary.TotalSucceeded)
+		result.SetFailCount(summary.TotalFailed)
+		if gpc.detailedSummary {
+			result.SetReader(summary.TransferDetailsReader)
+		}
+	} else {
+		result.SetSuccessCount(1)
 	}
+
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
 		if len(goProject.Dependencies()) == 0 {

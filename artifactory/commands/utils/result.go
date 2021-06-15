@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -59,7 +58,7 @@ func UnmarshalDeployableArtifacts(filePath string) (*Result, error) {
 			}
 		}
 	}
-	err = clientutils.SaveResultInFile(filePath, &artifactsArray)
+	err = clientutils.SaveFileTransferDetailsInFile(filePath, &artifactsArray)
 	// Return result
 	result := new(Result)
 	result.SetSuccessCount(succeeded)
@@ -68,19 +67,19 @@ func UnmarshalDeployableArtifacts(filePath string) (*Result, error) {
 	return result, nil
 }
 
-func jsonFileToModulesMap(filesPath string) (*map[string][]serviceutils.DeployableArtifactDetails, error) {
+func jsonFileToModulesMap(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
 	jsonFile, err := os.Open(filesPath)
 	defer jsonFile.Close()
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	// Read and pahrs json file to a modules map
+	// Read and convert json file to a modules map
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	var modulesMap map[string][]serviceutils.DeployableArtifactDetails
+	var modulesMap map[string][]clientutils.DeployableArtifactDetails
 	err = json.Unmarshal([]byte(byteValue), &modulesMap)
 	if err != nil {
 		return nil, errorutils.CheckError(err)

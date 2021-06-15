@@ -172,7 +172,7 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 	if err != nil {
 		return nil, err
 	}
-	// Set path to the temp file where deployable artifacts detailed will be written.
+	// Save path to temp file, where deployable artifacts details will be written by Buildinfo project.
 	if detailedSummary {
 		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
 	}

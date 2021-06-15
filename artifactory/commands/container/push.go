@@ -9,7 +9,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 type PushCommand struct {
@@ -75,7 +74,7 @@ func (pc *PushCommand) Run() error {
 		return err
 	}
 	// Return if no build name and number was provided
-	saveBuildInfo := pc.buildConfiguration.BuildName != "" || pc.buildConfiguration.BuildNumber != ""
+	saveBuildInfo := pc.buildConfiguration.BuildName != "" && pc.buildConfiguration.BuildNumber != ""
 	if !saveBuildInfo && !pc.IsDetailedSummary() {
 		return nil
 	}
@@ -104,20 +103,19 @@ func (pc *PushCommand) Run() error {
 	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
 		if !saveBuildInfo {
-			// If we saved buildinfo this update already happand.
+			// If we saved buildinfo earlier this update already happened.
 			err = builder.UpdateArtifactsAndDependencies()
 			if err != nil {
 				return err
 			}
 		}
 		artifactsDetails := layersMapToFileTransferDetails(serverDetails.ArtifactoryUrl, builder.GetLayers())
-		tempFile, err := fileutils.CreateTempFile()
+		tempFile, err := clientutils.SaveFileTransferDetailsInTempFile(artifactsDetails)
 		if err != nil {
 			return err
 		}
-		err = clientutils.SaveResultInFile(tempFile.Name(), artifactsDetails)
 		result := new(commandsutils.Result)
-		result.SetReader(content.NewContentReader(tempFile.Name(), "files"))
+		result.SetReader(content.NewContentReader(tempFile, "files"))
 		result.SetSuccessCount(len(*artifactsDetails))
 		pc.SetResult(result)
 	}

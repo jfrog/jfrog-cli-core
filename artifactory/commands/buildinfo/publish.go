@@ -2,14 +2,16 @@ package buildinfo
 
 import (
 	"fmt"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"sort"
-
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"sort"
+	"strconv"
+	"time"
 )
 
 type BuildPublishCommand struct {
@@ -91,6 +93,35 @@ func (bpc *BuildPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
+
+	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.Started)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	// Convert from nanoseconds to milliseconds
+	timestamp := buildTime.UnixNano() / 1000000
+	artVersioin, _ := servicesManager.GetVersion()
+
+	if artVersioin[0:1] == "6" &&  {
+		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+			bpc.serverDetails.GetUrl() +
+			"artifactory/webapp/builds/" +
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber)
+	} else if bpc.buildConfiguration.Project != "" {
+		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+			bpc.serverDetails.GetUrl() +
+			"ui/builds/" +
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp,10) +
+			"/published/" + bpc.buildConfiguration.BuildName +"?buildRepo="+ bpc.buildConfiguration.Project + "-build-info&projectKey=" +bpc.buildConfiguration.Project)
+	} else {
+		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+			bpc.serverDetails.GetUrl() +
+			"ui/builds/" +
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp,10) +
+			"/published?buildRepo="+ bpc.buildConfiguration.Project + "artifactory-build-info")
+	}
+	
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}

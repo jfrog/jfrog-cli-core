@@ -20,6 +20,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
+	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	cliutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -32,7 +33,7 @@ import (
 type Go interface {
 	Dependencies() []executers.Package
 	CreateBuildInfoDependencies(includeInfoFiles bool) error
-	PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) error
+	PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.OperationSummary, error)
 	PublishDependencies(targetRepo string, servicesManager artifactory.ArtifactoryServicesManager, includeDepSlice []string) (succeeded, failed int, err error)
 	BuildInfo(includeArtifacts bool, module, targetRepository string) *buildinfo.BuildInfo
 	LoadDependencies() error
@@ -94,19 +95,19 @@ func (project *goProject) loadDependencies() ([]executers.Package, error) {
 }
 
 // Publish go project to Artifactory.
-func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) error {
+func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.OperationSummary, error) {
 	log.Info("Publishing", project.getId(), "to", targetRepo)
 
 	props, err := utils.CreateBuildProperties(buildName, buildNumber, projectKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Temp directory for the project archive.
 	// The directory will be deleted at the end.
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer fileutils.RemoveTempDir(tempDirPath)
 
@@ -119,24 +120,24 @@ func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber, pro
 	params.ModPath = filepath.Join(project.projectPath, "go.mod")
 	params.ZipPath, err = project.archiveProject(project.version, tempDirPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Create the info file if Artifactory version is 6.10.0 and above.
 	artifactoryVersion, err := servicesManager.GetConfig().GetServiceDetails().GetVersion()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	version := version.NewVersion(artifactoryVersion)
 	if version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile) {
 		pathToInfo, err := project.createInfoFile()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer os.Remove(pathToInfo)
 		if len(buildName) > 0 && len(buildNumber) > 0 {
 			err = project.addInfoFileToBuildInfo(pathToInfo)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 		params.InfoPath = pathToInfo

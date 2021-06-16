@@ -20,6 +20,7 @@ type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
 	dependencies       string
 	version            string
+	detailedSummary    bool
 	result             *commandutils.Result
 	utils.RepositoryConfig
 }
@@ -98,7 +99,7 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	// Publish the package to Artifactory
-	err = goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+	summary, err := goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 	if err != nil {
 		return err
 	}
@@ -111,14 +112,23 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		succeeded, failed, err := goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
-		result.SetSuccessCount(succeeded)
-		result.SetFailCount(failed)
+		_, _, err := goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
 		if err != nil {
 			return err
 		}
 	}
-	result.SetSuccessCount(result.SuccessCount() + 1)
+
+	// From Artifactory's version 6.6.1 PublishPackage() will upload 3 files (zip, mod and info) and return summary.
+	// Otherwise summary will be nil and only 1 file will be uploaded.
+	if summary != nil {
+		result.SetSuccessCount(summary.TotalSucceeded)
+		result.SetFailCount(summary.TotalFailed)
+		if gpc.detailedSummary {
+			result.SetReader(summary.TransferDetailsReader)
+		}
+	} else {
+		result.SetSuccessCount(1)
+	}
 
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
@@ -153,6 +163,15 @@ func (gpca *GoPublishCommandArgs) SetDependencies(dependencies string) *GoPublis
 func (gpca *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
 	gpca.buildConfiguration = buildConfiguration
 	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) SetDetailedSummary(detailedSummary bool) *GoPublishCommandArgs {
+	gpca.detailedSummary = detailedSummary
+	return gpca
+}
+
+func (gpca *GoPublishCommandArgs) IsDetailedSummary() bool {
+	return gpca.detailedSummary
 }
 
 func validatePrerequisites() error {

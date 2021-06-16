@@ -17,6 +17,7 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
@@ -44,6 +45,7 @@ const BUILD_NUMBER = "build.number"
 const BUILD_PROJECT = "build.project"
 const BUILD_TIMESTAMP = "build.timestamp"
 const GENERATED_BUILD_INFO = "buildInfo.generated"
+const DEPLOYABLE_ARTIFACTS = "deployable.artifacts.map"
 const INSECURE_TLS = "insecureTls"
 
 const RESOLVER_PREFIX = "resolver."
@@ -110,6 +112,7 @@ var commonConfigMapping = map[string]string{
 	"artifactory.deploy.build.project":       BUILD_PROJECT,
 	"artifactory.deploy.build.timestamp":     BUILD_TIMESTAMP,
 	"buildInfo.generated.build.info":         GENERATED_BUILD_INFO,
+	"buildInfo.deployable.artifacts.map":     DEPLOYABLE_ARTIFACTS,
 	"artifactory.proxy.host":                 PROXY + HOST,
 	"artifactory.proxy.port":                 PROXY + PORT,
 	"artifactory.publish.forkCount":          FORK_COUNT,
@@ -170,7 +173,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, detailedSummary bool, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -210,6 +213,12 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, co
 	err = setProxyIfDefined(config)
 	if err != nil {
 		return "", err
+	}
+	if detailedSummary {
+		err = createDeployableArtifactsFile(config)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Iterate over all the required properties keys according to the buildType and create properties file.
@@ -309,6 +318,15 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	return nil
 }
 
+func createDeployableArtifactsFile(config *viper.Viper) error {
+	tempFile, err := fileutils.CreateTempFile()
+	defer tempFile.Close()
+	if err != nil {
+		return err
+	}
+	config.Set(DEPLOYABLE_ARTIFACTS, tempFile.Name())
+	return nil
+}
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {

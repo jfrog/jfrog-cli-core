@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -19,7 +20,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const gradleExtractorDependencyVersion = "4.24.3"
+const gradleExtractorDependencyVersion = "4.24.5"
 
 // Deprecated. This version is the latest published in JCenter.
 const gradleExtractorDependencyJCenterVersion = "4.21.0"
@@ -30,11 +31,13 @@ const useWrapper = "usewrapper"
 const gradleBuildInfoProperties = "BUILDINFO_PROPFILE"
 
 type GradleCommand struct {
-	tasks         string
-	configPath    string
-	configuration *utils.BuildConfiguration
-	serverDetails *config.ServerDetails
-	threads       int
+	tasks           string
+	configPath      string
+	configuration   *utils.BuildConfiguration
+	serverDetails   *config.ServerDetails
+	threads         int
+	detailedSummary bool
+	result          *commandsutils.Result
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -65,7 +68,7 @@ func (gc *GradleCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename)
+	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename, gc.detailedSummary)
 	if err != nil {
 		return err
 	}
@@ -73,6 +76,18 @@ func (gc *GradleCommand) Run() error {
 	if err := gofrogcmd.RunCmd(gradleRunConfig); err != nil {
 		return err
 	}
+	if gc.IsDetailedSummary() {
+		return gc.UnmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
+	}
+	return nil
+}
+
+func (gc *GradleCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	if err != nil {
+		return err
+	}
+	gc.SetResult(result)
 	return nil
 }
 
@@ -100,6 +115,24 @@ func (gc *GradleCommand) SetThreads(threads int) *GradleCommand {
 	return gc
 }
 
+func (gc *GradleCommand) SetDetailedSummary(detailedSummary bool) *GradleCommand {
+	gc.detailedSummary = detailedSummary
+	return gc
+}
+
+func (gc *GradleCommand) IsDetailedSummary() bool {
+	return gc.detailedSummary
+}
+
+func (gc *GradleCommand) Result() *commandsutils.Result {
+	return gc.result
+}
+
+func (gc *GradleCommand) SetResult(result *commandsutils.Result) *GradleCommand {
+	gc.result = result
+	return gc
+}
+
 func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename string, err error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
@@ -117,7 +150,7 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 	return
 }
 
-func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string) (*gradleRunConfig, error) {
+func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, detailedSummary bool) (*gradleRunConfig, error) {
 	runConfig := &gradleRunConfig{env: map[string]string{}}
 	runConfig.tasks = tasks
 
@@ -135,9 +168,13 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 		vConfig.Set(utils.FORK_COUNT, threads)
 	}
 
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, vConfig, utils.Gradle)
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
+	}
+	// Save path to temp file, where deployable artifacts details will be written by Buildinfo project.
+	if detailedSummary {
+		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
 	}
 
 	if !vConfig.GetBool(usePlugin) {

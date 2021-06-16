@@ -147,6 +147,17 @@ func ExtractInsecureTlsFromArgs(args []string) (cleanArgs []string, insecureTls 
 	return
 }
 
+func ExtractDetailedSummaryFromArgs(args []string) (cleanArgs []string, detailedSummary bool, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, detailedSummary, err := FindBooleanFlag("--detailed-summary", args)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
+}
+
 // Iterate over each argument, if env variable is found (e.g $HOME) replace it with env value.
 func ParseArgs(args []string) ([]string, error) {
 	// Escape backslash & space

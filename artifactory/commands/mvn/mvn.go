@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -20,7 +21,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.26.3"
+const mavenExtractorDependencyVersion = "2.27.0"
 
 // Deprecated. This version is the latest published in JCenter.
 const mavenExtractorDependencyJCenterVersion = "2.23.0"
@@ -28,12 +29,14 @@ const classworldsConfFileName = "classworlds.conf"
 const MavenHome = "M2_HOME"
 
 type MvnCommand struct {
-	goals         []string
-	configPath    string
-	insecureTls   bool
-	configuration *utils.BuildConfiguration
-	serverDetails *config.ServerDetails
-	threads       int
+	goals           []string
+	configPath      string
+	insecureTls     bool
+	configuration   *utils.BuildConfiguration
+	serverDetails   *config.ServerDetails
+	threads         int
+	detailedSummary bool
+	result          *commandsutils.Result
 }
 
 func NewMvnCommand() *MvnCommand {
@@ -70,6 +73,24 @@ func (mc *MvnCommand) SetInsecureTls(insecureTls bool) *MvnCommand {
 	return mc
 }
 
+func (mc *MvnCommand) SetDetailedSummary(detailedSummary bool) *MvnCommand {
+	mc.detailedSummary = detailedSummary
+	return mc
+}
+
+func (mc *MvnCommand) IsDetailedSummary() bool {
+	return mc.detailedSummary
+}
+
+func (mc *MvnCommand) Result() *commandsutils.Result {
+	return mc.result
+}
+
+func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
+	mc.result = result
+	return mc
+}
+
 func (mc *MvnCommand) Run() error {
 	log.Info("Running Mvn...")
 	err := validateMavenInstallation()
@@ -89,7 +110,14 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	return gofrogcmd.RunCmd(mvnRunConfig)
+	err = gofrogcmd.RunCmd(mvnRunConfig)
+	if err != nil {
+		return err
+	}
+	if mc.IsDetailedSummary() {
+		return mc.UnmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
+	}
+	return nil
 }
 
 // Returns the ServerDetails. The information returns from the config file provided.
@@ -206,7 +234,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		setEmptyDeployer(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, mc.IsDetailedSummary(), vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +251,17 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		artifactoryResolutionEnabled: vConfig.IsSet("resolver"),
 		generatedBuildInfoPath:       vConfig.GetString(utils.GENERATED_BUILD_INFO),
 		mavenOpts:                    mavenOpts,
+		deployableArtifactsFilePath:  vConfig.GetString(utils.DEPLOYABLE_ARTIFACTS),
 	}, nil
+}
+
+func (mc *MvnCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	if err != nil {
+		return err
+	}
+	mc.SetResult(result)
+	return nil
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
@@ -278,4 +316,5 @@ type mvnRunConfig struct {
 	artifactoryResolutionEnabled bool
 	generatedBuildInfoPath       string
 	mavenOpts                    string
+	deployableArtifactsFilePath  string
 }

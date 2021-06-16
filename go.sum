@@ -129,8 +129,8 @@ github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/J
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
-github.com/jfrog/gocmd v0.2.0 h1:nw4Jy8lg8q54thJ88cU8QQDZk83NFgxMXwMadl78II4=
-github.com/jfrog/gocmd v0.2.0/go.mod h1:TeZBKJw38D3aKpkIH6tCCztECdhNLIkwHbnCZG8umKE=
+github.com/jfrog/gocmd v0.2.1-0.20210616181221-7159cf844cc3 h1:aBSJVLX1UcUKdCgA+iZ8qBG++Kv163pugcKkMLgL76E=
+github.com/jfrog/gocmd v0.2.1-0.20210616181221-7159cf844cc3/go.mod h1:TeZBKJw38D3aKpkIH6tCCztECdhNLIkwHbnCZG8umKE=
 github.com/jfrog/gofrog v1.0.6 h1:yUDxSCw8gTK6vC4PvtG0HTnEOQJSZ+O4lWGCgkev1nU=
 github.com/jfrog/gofrog v1.0.6/go.mod h1:HkDzg+tMNw23UryoOv0+LB94BzYcl6MCIoz8Tmlb+s8=
 github.com/jfrog/jfrog-client-go v0.23.2-0.20210616180824-7e7eb3eace21 h1:xIQYhaugt8Ka6LHZmYibx2Ee9l5jN0UuwcXcldYs3JQ=

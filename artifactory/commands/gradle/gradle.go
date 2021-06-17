@@ -77,12 +77,12 @@ func (gc *GradleCommand) Run() error {
 		return err
 	}
 	if gc.IsDetailedSummary() {
-		return gc.UnmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
+		return gc.unmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
 	}
 	return nil
 }
 
-func (gc *GradleCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
 	if err != nil {
 		return err
@@ -172,8 +172,8 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 	if err != nil {
 		return nil, err
 	}
-	// Save path to temp file, where deployable artifacts details will be written by Buildinfo project.
 	if detailedSummary {
+		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
 		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
 	}
 

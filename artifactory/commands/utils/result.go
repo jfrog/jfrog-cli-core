@@ -40,12 +40,14 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 	r.reader = reader
 }
 
+// Reads and pars Deployed artifacts details from a given file.
+// The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 func UnmarshalDeployableArtifacts(filePath string) (*Result, error) {
-	modulesMap, err := jsonFileToModulesMap(filePath)
+	modulesMap, err := unmarshalDeployableArtifactsJson(filePath)
 	if err != nil {
 		return nil, err
 	}
-	// Iterate map for : counting seccesses/failures & save artifact's SourcePath, TargetPath and Sha256.
+	// Iterate over the modules map , counting seccesses/failures & save artifact's SourcePath, TargetPath and Sha256.
 	succeeded, failed := 0, 0
 	var artifactsArray []clientutils.FileTransferDetails
 	for _, module := range *modulesMap {
@@ -67,7 +69,7 @@ func UnmarshalDeployableArtifacts(filePath string) (*Result, error) {
 	return result, nil
 }
 
-func jsonFileToModulesMap(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
+func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
 	jsonFile, err := os.Open(filesPath)
 	defer jsonFile.Close()

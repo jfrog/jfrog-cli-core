@@ -73,7 +73,7 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	// Return if no build name and number was provided
+	// Return if build-info and detailed summary were not requested.
 	saveBuildInfo := pc.buildConfiguration.BuildName != "" && pc.buildConfiguration.BuildNumber != ""
 	if !saveBuildInfo && !pc.IsDetailedSummary() {
 		return nil
@@ -103,7 +103,7 @@ func (pc *PushCommand) Run() error {
 	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
 		if !saveBuildInfo {
-			// If we saved buildinfo earlier this update already happened.
+			// If we saved buildinfo earlier, this update already happened.
 			err = builder.UpdateArtifactsAndDependencies()
 			if err != nil {
 				return err

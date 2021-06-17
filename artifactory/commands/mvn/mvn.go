@@ -115,7 +115,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 	if mc.IsDetailedSummary() {
-		return mc.UnmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
+		return mc.unmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
 	}
 	return nil
 }
@@ -255,7 +255,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 	}, nil
 }
 
-func (mc *MvnCommand) UnmarshalDeployableArtifacts(filesPath string) error {
+func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
 	if err != nil {
 		return err

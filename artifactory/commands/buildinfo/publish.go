@@ -103,7 +103,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	timestamp := buildTime.UnixNano() / 1000000
 	artVersioin, _ := servicesManager.GetVersion()
 
-	if artVersioin[0:1] == "6" &&  {
+	if artVersioin[0:1] == "6" {
 		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
 			"artifactory/webapp/builds/" +
@@ -112,16 +112,16 @@ func (bpc *BuildPublishCommand) Run() error {
 		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
 			"ui/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp,10) +
-			"/published/" + bpc.buildConfiguration.BuildName +"?buildRepo="+ bpc.buildConfiguration.Project + "-build-info&projectKey=" +bpc.buildConfiguration.Project)
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
+			"/published/" + bpc.buildConfiguration.BuildName + "?buildRepo=" + bpc.buildConfiguration.Project + "-build-info&projectKey=" + bpc.buildConfiguration.Project)
 	} else {
 		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
 			"ui/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp,10) +
-			"/published?buildRepo="+ bpc.buildConfiguration.Project + "artifactory-build-info")
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
+			"/published?buildRepo=" + bpc.buildConfiguration.Project + "artifactory-build-info")
 	}
-	
+
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	}

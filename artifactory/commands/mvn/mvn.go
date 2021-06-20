@@ -37,6 +37,7 @@ type MvnCommand struct {
 	threads         int
 	detailedSummary bool
 	result          *commandsutils.Result
+	disableDeploy   bool
 }
 
 func NewMvnCommand() *MvnCommand {
@@ -88,6 +89,11 @@ func (mc *MvnCommand) Result() *commandsutils.Result {
 
 func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
 	mc.result = result
+	return mc
+}
+
+func (mc *MvnCommand) SetDisableDeploy(disableDeploy bool) *MvnCommand {
+	mc.disableDeploy = disableDeploy
 	return mc
 }
 
@@ -230,7 +236,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		vConfig.Set(utils.FORK_COUNT, mc.threads)
 	}
 
-	if !vConfig.IsSet("deployer") {
+	if !vConfig.IsSet("deployer") || mc.disableDeploy {
 		setEmptyDeployer(vConfig)
 	}
 

@@ -1,4 +1,4 @@
-package scan
+package audit
 
 import (
 	"encoding/json"
@@ -51,7 +51,7 @@ func NewXrAuditNpmCommand() *XrAuditNpmCommand {
 	return &XrAuditNpmCommand{}
 }
 
-func (na XrAuditNpmCommand) Run() (err error) {
+func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 	nca := npm.NewNpmCommandArgs("")
 	nca.SetTypeRestriction(na.typeRestriction)
 
@@ -117,30 +117,29 @@ func parseNpmDependenciesList(dependencies map[string]*npm.Dependency, packageIn
 	treeMap := make(map[string][]string)
 	for dependencyId, dependency := range dependencies {
 		dependencyId = NpmPackageTypeIdentifier + dependencyId
-		// Because we are dealing with a
-		father := NpmPackageTypeIdentifier + dependency.GetPathToRoot()[0][0]
-		if sons, ok := treeMap[father]; ok {
-			treeMap[father] = append(sons, dependencyId)
+		parent := NpmPackageTypeIdentifier + dependency.GetPathToRoot()[0][0]
+		if children, ok := treeMap[parent]; ok {
+			treeMap[parent] = append(children, dependencyId)
 		} else {
-			treeMap[father] = []string{dependencyId}
+			treeMap[parent] = []string{dependencyId}
 		}
 	}
 	return buildXrayDependencyTree(treeMap, NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, node string) *services.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
 	// Initialize the new node
 	xrDependencyTree := &services.GraphNode{}
-	xrDependencyTree.Id = node
+	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*services.GraphNode{}
 	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[node] {
+	for _, dependency := range treeHelper[nodeId] {
 		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, dependency))
 
 	}
 	return xrDependencyTree
 }
 
-func (na *XrAuditNpmCommand) CommandName() string {
+func (auditCmd *XrAuditNpmCommand) CommandName() string {
 	return "xr_audit_npm"
 }

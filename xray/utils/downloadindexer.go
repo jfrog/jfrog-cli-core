@@ -33,7 +33,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	if err != nil {
 		return "", err
 	}
-	downloadDirPath := filepath.Join(dependenciesPath, "xray", xrayVersionStr)
+	downloadDirPath := filepath.Join(dependenciesPath, "xray-indexer", xrayVersionStr)
 	indexerPath := filepath.Join(downloadDirPath, indexerFileName)
 	exists, err := fileutils.IsFileExists(indexerPath, false)
 	if err != nil {
@@ -62,7 +62,10 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, downloadDirPath stri
 
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, 3, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return errorutils.CheckError(errors.New(fmt.Sprintf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())))
+		}
 		resp.Body.Close()
 		err = errorutils.CheckError(errors.New(fmt.Sprintf("%s received when attempting to download %s\n%s", resp.Status, url, body)))
 	}

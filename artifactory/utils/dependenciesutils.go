@@ -21,21 +21,12 @@ const (
 	// This env var should be used for downloading the extractor jars through an Artifactory remote
 	// repository, instead of downloading directly from ojo. The remote repository should be
 	// configured to proxy ojo.
-
-	// Deprecated. This env var should store a server ID configured by JFrog CLI.
-	JCenterRemoteServerEnv = "JFROG_CLI_JCENTER_REMOTE_SERVER"
-	// Deprecated. If the JCenterRemoteServerEnv env var is used, a maven remote repository named jcenter is assumed.
-	// This env var can be used to use a different remote repository name.
-	JCenterRemoteRepoEnv = "JFROG_CLI_JCENTER_REMOTE_REPO"
-
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 )
 
 // Download the relevant build-info-extractor jar, if it does not already exist locally.
-// By default, the jar is downloaded directly from jcenter.
-// If the JCenterRemoteServerEnv environment variable is configured, the jar will be
-// downloaded from a remote Artifactory repository which proxies jcenter.
+// By default, the jar is downloaded directly from jfrog releases.
 //
 // downloadPath: Artifactory download path.
 // filename: The local file name.
@@ -56,11 +47,6 @@ func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
 }
 
 func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
-	// Download through a remote repository in Artifactory, if configured to do so.
-	jCenterRemoteServer := os.Getenv(JCenterRemoteServerEnv)
-	if jCenterRemoteServer != "" {
-		return getJcenterRemoteDetails(jCenterRemoteServer, downloadPath)
-	}
 	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
 	if extractorsRemote != "" {
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
@@ -69,29 +55,6 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from oss.jfrog.org.")
 	// If not configured to download through a remote repository in Artifactory, download from ojo.
 	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
-}
-
-// Deprecated. Return the version of the build-info extractor to download.
-// If 'JFROG_CLI_JCENTER_REMOTE_SERVER' is used, choose the latest published JCenter version.
-func GetExtractorVersion(ojoVersion, jCenterVersion string) string {
-	if os.Getenv(JCenterRemoteServerEnv) != "" {
-		return jCenterVersion
-	}
-	return ojoVersion
-}
-
-// Deprecated. Get Artifactory server details and a repository proxying JCenter/oss.jfrog.org according to 'JFROG_CLI_JCENTER_REMOTE_SERVER' and 'JFROG_CLI_JCENTER_REMOTE_REPO' env vars.
-func getJcenterRemoteDetails(serverId, downloadPath string) (*config.ServerDetails, string, error) {
-	log.Warn(`It looks like the 'JFROG_CLI_JCENTER_REMOTE_SERVER' or 'JFROG_CLI_JCENTER_REMOTE_REPO' environment variables are set.
-	These environment variables were used by the JFrog CLI to download the build-info extractors JARs for Maven and Gradle builds. 
-	These environment variables are now deprecated. 
-	For more information, please refer to the documentation at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs.`)
-	serverDetails, err := config.GetSpecificConfig(serverId, false, true)
-	repoName := os.Getenv(JCenterRemoteRepoEnv)
-	if repoName == "" {
-		repoName = "jcenter"
-	}
-	return serverDetails, path.Join(repoName, downloadPath), err
 }
 
 // Get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.

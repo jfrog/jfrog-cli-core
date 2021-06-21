@@ -37,7 +37,7 @@ const (
 // If the JCenterRemoteServerEnv environment variable is configured, the jar will be
 // downloaded from a remote Artifactory repository which proxies jcenter.
 //
-// downloadPath: The Bintray or Artifactory download path.
+// downloadPath: Artifactory download path.
 // filename: The local file name.
 // targetPath: The local download path (without the file name).
 func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {

@@ -17,7 +17,6 @@ import (
 
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
@@ -173,7 +172,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, detailedSummary bool, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -214,11 +213,8 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, de
 	if err != nil {
 		return "", err
 	}
-	if detailedSummary {
-		err = createDeployableArtifactsFile(config)
-		if err != nil {
-			return "", err
-		}
+	if deployableArtifactsFile != "" {
+		config.Set(DEPLOYABLE_ARTIFACTS, deployableArtifactsFile)
 	}
 
 	// Iterate over all the required properties keys according to the buildType and create properties file.
@@ -318,15 +314,6 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	return nil
 }
 
-func createDeployableArtifactsFile(config *viper.Viper) error {
-	tempFile, err := fileutils.CreateTempFile()
-	defer tempFile.Close()
-	if err != nil {
-		return err
-	}
-	config.Set(DEPLOYABLE_ARTIFACTS, tempFile.Name())
-	return nil
-}
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {

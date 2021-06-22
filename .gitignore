@@ -12,9 +12,6 @@ out
 # Pipdeptree
 artifactory/utils/pip/dependencies/deptreescript.go
 
-# JFrog executable
-jfrog
-
 # Vim
 *~
 *.swp

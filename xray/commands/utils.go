@@ -19,3 +19,10 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayS
 	}
 	return xray.New(serviceConfig)
 }
+
+type AuditError struct {
+}
+
+func (e *AuditError) Error() string {
+	return "Violations detected during audit command."
+}

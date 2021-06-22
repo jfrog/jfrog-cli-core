@@ -2,18 +2,19 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/buildinfo"
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/mvn"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/commands/mvn"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/xray/commands"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type XrAuditMavenCommand struct {
-	serverDetails    *config.ServerDetails
-	excludeTestDeps  bool
+	serverDetails   *config.ServerDetails
+	excludeTestDeps bool
+	insecureTls     bool
 }
 
 func (auditCmd *XrAuditMavenCommand) SetServerDetails(server *config.ServerDetails) *XrAuditMavenCommand {
@@ -26,6 +27,11 @@ func (auditCmd *XrAuditMavenCommand) SetExcludeTestDeps(excludeTestDeps bool) *X
 	return auditCmd
 }
 
+func (auditCmd *XrAuditMavenCommand) SetInsecureTls(insecureTls bool) *XrAuditMavenCommand {
+	auditCmd.insecureTls = insecureTls
+	return auditCmd
+}
+
 func (auditCmd *XrAuditMavenCommand) ServerDetails() (*config.ServerDetails, error) {
 	return auditCmd.serverDetails, nil
 }
@@ -35,74 +41,51 @@ func NewXrAuditMvnCommand() *XrAuditMavenCommand {
 }
 
 func (auditCmd *XrAuditMavenCommand) Run() (err error) {
-	buildConfiguration := &utils.BuildConfiguration{
-		BuildName:   "audit-mvn",
-		BuildNumber: "1",
-	}
-
-	if err = deleteOldBuild(buildConfiguration); err != nil {
-		return
-	}
-
-	mvnCommand, err := auditCmd.createMvnCommand(buildConfiguration)
-	if err != nil {
-		return
-	}
-
-	err = mvnCommand.Run()
-	if err != nil {
-		return err
-	}
-
 	// Parse the dependencies into an Xray dependency tree format
-	// npmGraph := parseNpmDependenciesList(nca.GetDependenciesList(), packageInfo)
-	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
+	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	if err != nil {
-		return err
-	}
-	params := services.NewXrayGraphScanParams()
-	// params.Graph = npmGraph
-	scanId, err := xrayManager.ScanGraph(params)
-	if err != nil {
-		return err
+		return
 	}
 
-	scanResults, err := xrayManager.GetScanGraphResults(scanId)
-	if err != nil {
-		return err
-	}
-	return printTable(scanResults)
-
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails)
 }
 
-func (auditCmd *XrAuditMavenCommand) createMvnCommand(buildConfiguration *utils.BuildConfiguration) (mvnCommand *mvn.MvnCommand, err error) {
-	mvnCommand = mvn.NewMvnCommand()
-	goals := []string{"compile"}
+func (auditCmd *XrAuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
+	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
+	defer cleanBuild(err)
+
+	err = auditCmd.runMvn(buildConfiguration)
+	if err != nil {
+		return
+	}
+
+	return createGavDependencyTree(buildConfiguration)
+}
+
+func (auditCmd *XrAuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
+	goals := []string{"-B", "compile"}
 	if !auditCmd.excludeTestDeps {
 		goals = append(goals, "test-compile")
 	}
-	mvnCommand.SetDisableDeploy(true)
-	mvnCommand.SetGoals(goals)
-	mvnCommand.SetConfiguration(buildConfiguration)
+	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Maven)
-	if exists {
-		mvnCommand.SetConfigPath(configFilePath)
+	if err != nil {
+		return err
 	}
-	return
-}
-
-func deleteOldBuild(buildConfiguration *utils.BuildConfiguration) error {
-	buildClean := buildinfo.NewBuildCleanCommand()
-	buildClean.SetBuildConfiguration(buildConfiguration)
-	return buildClean.Run()
-}
-
-func printTable(res *services.ScanResponse) error {
-	jsonOut, err := json.Marshal(res)
-	print(string(jsonOut))
-	return err
+	if exists {
+		log.Debug("Using resolver config from " + configFilePath)
+	} else {
+		configFilePath = ""
+	}
+	return mvn.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
 }
 
 func (na *XrAuditMavenCommand) CommandName() string {
 	return "xr_audit_mvn"
+}
+
+func printTable(res *services.ScanResponse) error {
+	jsonOut, err := json.Marshal(res)
+	fmt.Println(string(jsonOut))
+	return err
 }

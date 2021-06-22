@@ -53,16 +53,16 @@ func NewXrAuditNpmCommand() *XrAuditNpmCommand {
 
 func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 	nca := npm.NewNpmCommandArgs("")
-	nca.SetTypeRestriction(na.typeRestriction)
+	nca.SetTypeRestriction(auditCmd.typeRestriction)
 
 	currentDir, err := commandsutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
-	if na.workingDirectory == "" {
-		na.workingDirectory = currentDir
+	if auditCmd.workingDirectory == "" {
+		auditCmd.workingDirectory = currentDir
 	} else {
-		err = os.Chdir(na.workingDirectory)
+		err = os.Chdir(auditCmd.workingDirectory)
 		if err != nil {
 			return err
 		}
@@ -70,9 +70,9 @@ func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 			err = os.Chdir(currentDir)
 		}()
 	}
-	log.Debug("Working directory set to:", na.workingDirectory)
+	log.Debug("Working directory set to:", auditCmd.workingDirectory)
 
-	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(na.workingDirectory)
+	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(auditCmd.workingDirectory)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 	}
 	// Parse the dependencies into an Xray dependency tree format
 	npmGraph := parseNpmDependenciesList(nca.GetDependenciesList(), packageInfo)
-	xrayManager, err := commands.CreateXrayServiceManager(na.serverDetails)
+	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
 	if err != nil {
 		return err
 	}

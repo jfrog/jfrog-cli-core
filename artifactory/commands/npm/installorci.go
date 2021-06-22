@@ -54,9 +54,9 @@ type TypeRestriction int
 
 const (
 	defaultRestriction TypeRestriction = iota
-	all
-	devOnly
-	prodOnly
+	All
+	DevOnly
+	ProdOnly
 )
 
 type NpmInstallOrCiCommand struct {
@@ -301,12 +301,12 @@ func (nca *NpmCommandArgs) runInstallOrCi() error {
 func (nca *NpmCommandArgs) SetDependenciesList() (err error) {
 	nca.dependencies = make(map[string]*Dependency)
 	// nca.typeRestriction default is 'all'
-	if nca.typeRestriction != prodOnly {
+	if nca.typeRestriction != ProdOnly {
 		if err = nca.prepareDependencies("dev"); err != nil {
 			return
 		}
 	}
-	if nca.typeRestriction != devOnly {
+	if nca.typeRestriction != DevOnly {
 		err = nca.prepareDependencies("prod")
 	}
 	return
@@ -448,19 +448,19 @@ func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {
 	// So 'omit' is always preferred, if it exists.
 	if key == "omit" {
 		if strings.Contains(value, "dev") {
-			nca.typeRestriction = prodOnly
+			nca.typeRestriction = ProdOnly
 		} else {
-			nca.typeRestriction = all
+			nca.typeRestriction = All
 		}
 	} else if nca.typeRestriction == defaultRestriction { // Until npm 6, configurations in 'npm config ls' are sorted by priority in descending order, so typeRestriction should be set only if it was not set before
 		if key == "only" {
 			if strings.Contains(value, "prod") {
-				nca.typeRestriction = prodOnly
+				nca.typeRestriction = ProdOnly
 			} else if strings.Contains(value, "dev") {
-				nca.typeRestriction = devOnly
+				nca.typeRestriction = DevOnly
 			}
 		} else if key == "production" && strings.Contains(value, "true") {
-			nca.typeRestriction = prodOnly
+			nca.typeRestriction = ProdOnly
 		}
 	}
 }

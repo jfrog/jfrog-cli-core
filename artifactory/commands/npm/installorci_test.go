@@ -60,17 +60,17 @@ func TestPrepareConfigData(t *testing.T) {
 
 func TestPrepareConfigDataTypeRestriction(t *testing.T) {
 	var typeRestrictions = map[string]TypeRestriction{
-		"production=\"true\"":          prodOnly,
-		"production=true":              prodOnly,
-		"only = prod":                  prodOnly,
-		"only=production":              prodOnly,
-		"only = development":           devOnly,
-		"only=dev":                     devOnly,
+		"production=\"true\"":          ProdOnly,
+		"production=true":              ProdOnly,
+		"only = prod":                  ProdOnly,
+		"only=production":              ProdOnly,
+		"only = development":           DevOnly,
+		"only=dev":                     DevOnly,
 		"only=":                        defaultRestriction,
-		"omit = [\"dev\"]\ndev = true": prodOnly,
-		"omit = [\"abc\"]\ndev = true": all,
-		"only=dev\nomit = [\"abc\"]":   all,
-		"dev=true\nomit = [\"dev\"]":   prodOnly,
+		"omit = [\"dev\"]\ndev = true": ProdOnly,
+		"omit = [\"abc\"]\ndev = true": All,
+		"only=dev\nomit = [\"abc\"]":   All,
+		"dev=true\nomit = [\"dev\"]":   ProdOnly,
 		"kuku=true":                    defaultRestriction}
 
 	for json, typeRestriction := range typeRestrictions {

@@ -61,7 +61,7 @@ func (ucc *UsersCreateCommand) CommandName() string {
 }
 
 func (ucc *UsersCreateCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(ucc.serverDetails, false)
+	servicesManager, err := utils.CreateServiceManager(ucc.serverDetails,-1, false)
 	if err != nil {
 		return err
 	}

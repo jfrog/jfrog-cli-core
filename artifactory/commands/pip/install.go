@@ -69,7 +69,7 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 	}
 
 	// Populate dependencies information - checksums and file-name.
-	servicesManager, err := utils.CreateServiceManager(pic.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(pic.rtDetails,-1, false)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,7 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

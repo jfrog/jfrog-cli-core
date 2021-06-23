@@ -133,7 +133,7 @@ func (badc *BuildAddDependenciesCommand) collectLocalDependencies() (success, fa
 }
 
 func (badc *BuildAddDependenciesCommand) collectRemoteDependencies() (success, fail int, err error) {
-	servicesManager, err := utils.CreateServiceManager(badc.serverDetails, false)
+	servicesManager, err := utils.CreateServiceManager(badc.serverDetails, -1, false)
 	if err != nil {
 		return
 	}

@@ -56,7 +56,7 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 	if err != nil {
 		return repos, err
 	}
-	resp, body, _, err := client.SendGet(apiUrl, true, httpClientsDetails)
+	resp, body, _, err := client.SendGet(apiUrl, true, httpClientsDetails, "")
 	if err != nil {
 		return repos, err
 	}

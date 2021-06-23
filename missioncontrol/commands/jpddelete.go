@@ -17,7 +17,7 @@ func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendDelete(missionControlUrl, nil, httpClientDetails)
+	resp, body, err := client.SendDelete(missionControlUrl, nil, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

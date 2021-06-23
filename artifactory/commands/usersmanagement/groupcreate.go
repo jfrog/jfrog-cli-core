@@ -48,7 +48,7 @@ func (gcc *GroupCreateCommand) CommandName() string {
 }
 
 func (gcc *GroupCreateCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(gcc.rtDetails, false)
+	servicesManager, err := utils.CreateServiceManager(gcc.rtDetails,-1, false)
 	if err != nil {
 		return err
 	}

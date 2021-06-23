@@ -25,7 +25,7 @@ func LicenseRelease(bucketId, jpdId string, mcDetails *config.ServerDetails) err
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

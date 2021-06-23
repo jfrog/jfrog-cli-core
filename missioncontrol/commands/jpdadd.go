@@ -19,7 +19,7 @@ func JpdAdd(flags *JpdAddFlags) error {
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, flags.JpdConfig, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, flags.JpdConfig, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

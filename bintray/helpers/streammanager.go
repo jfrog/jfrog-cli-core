@@ -91,7 +91,7 @@ func (sm *StreamManager) Connect() (bool, *http.Response, error) {
 	if err != nil {
 		return false, nil, nil
 	}
-	resp, _, _, e := client.Stream(sm.Url, sm.HttpClientDetails)
+	resp, _, _, e := client.Stream(sm.Url, sm.HttpClientDetails, "")
 	if e != nil {
 		return false, resp, nil
 	}

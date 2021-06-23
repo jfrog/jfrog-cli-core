@@ -93,7 +93,7 @@ func (bac *BuildAppendCommand) SetBuildNumberToAppend(buildNumber string) *Build
 // For example, start time of: 2020-11-27T14:33:38.538+0200 should be converted to 1606480418538.
 func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(bac.serverDetails, false)
+	sm, err := utils.CreateServiceManager(bac.serverDetails, -1, false)
 	if err != nil {
 		return 0, err
 	}

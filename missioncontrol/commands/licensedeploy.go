@@ -28,7 +28,7 @@ func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

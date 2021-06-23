@@ -109,7 +109,7 @@ func getNpmAuthUsingBasicAuth(artDetails *auth.ServiceDetails) (npmAuth string, 
 	if err != nil {
 		return "", err
 	}
-	resp, body, _, err := client.SendGet(authApiUrl, true, (*artDetails).CreateHttpClientDetails())
+	resp, body, _, err := client.SendGet(authApiUrl, true, (*artDetails).CreateHttpClientDetails(), "")
 	if err != nil {
 		return "", err
 	}

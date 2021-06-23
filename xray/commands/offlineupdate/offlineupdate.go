@@ -154,7 +154,7 @@ func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []
 			DownloadPath:  url,
 			LocalPath:     dataDir,
 			LocalFileName: fileName}
-		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, 3, false)
+		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
 		if err != nil {
 			return err
 		}
@@ -200,7 +200,7 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 	if err != nil {
 		return
 	}
-	resp, body, _, err := client.SendGet(updatesUrl, false, httpClientDetails)
+	resp, body, _, err := client.SendGet(updatesUrl, false, httpClientDetails, "")
 	if errorutils.CheckError(err) != nil {
 		return
 	}

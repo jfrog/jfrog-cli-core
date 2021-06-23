@@ -21,11 +21,11 @@ func LicenseRelease(bucketId, jpdId string, mcDetails *config.ServerDetails) err
 	}
 	missionControlUrl := mcDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/release"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(mcDetails)
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

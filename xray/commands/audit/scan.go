@@ -3,7 +3,6 @@ package audit
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"regexp"
 
 	"github.com/jfrog/gofrog/io"
@@ -12,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/xray/commands"
+	xrutils "github.com/jfrog/jfrog-cli-core/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -89,12 +89,14 @@ func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.Grap
 
 func (scanCmd *XrBinariesScanCommand) Run() (err error) {
 	// First download Xray Indexer if needed
-	indexerVersion := "0.0.0"
-	jfrogDir, err := coreutils.GetJfrogHomeDir()
+	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
-	scanCmd.indexerPath = filepath.Join(jfrogDir, indexerVersion, IndexerExecutionName)
+	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager)
+	if err != nil {
+		return err
+	}
 	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
 	producerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)

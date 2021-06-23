@@ -152,7 +152,7 @@ func (scanCmd *XrBinariesScanCommand) createIndexerHandlerFunc(file *spec.File, 
 			if errorutils.CheckError(e) != nil {
 				return
 			}
-			log.Info(logMsgPrefix+"Indexing file:", fileInfo)
+			log.Info(logMsgPrefix+"Indexing file:", fileInfo.Name())
 			graph, err := scanCmd.IndexFile(filePath)
 			if err != nil {
 				return err

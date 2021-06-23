@@ -13,7 +13,7 @@ import (
 func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
 	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/jpds/" + jpdId
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return err
 	}

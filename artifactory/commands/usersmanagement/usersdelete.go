@@ -40,7 +40,7 @@ func (udc *UsersDeleteCommand) CommandName() string {
 }
 
 func (udc *UsersDeleteCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(udc.serverDetails,-1, false)
+	servicesManager, err := utils.CreateServiceManager(udc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 func JpdAdd(flags *JpdAddFlags) error {
 	missionControlUrl := flags.ServerDetails.MissionControlUrl + "api/v1/jpds"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.ServerDetails)
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return err
 	}

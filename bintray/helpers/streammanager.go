@@ -87,7 +87,7 @@ func (sm *StreamManager) Connect() (bool, *http.Response, error) {
 		sm.setReconnectHeader()
 	}
 	log.Debug("Connecting...")
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return false, nil, nil
 	}

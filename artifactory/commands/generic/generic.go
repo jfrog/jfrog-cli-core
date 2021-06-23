@@ -14,7 +14,7 @@ type GenericCommand struct {
 	detailedSummary bool
 	syncDeletesPath string
 	quiet           bool
-	retries			int
+	retries         int
 }
 
 func NewGenericCommand() *GenericCommand {

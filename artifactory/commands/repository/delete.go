@@ -44,7 +44,7 @@ func (rdc *RepoDeleteCommand) CommandName() string {
 }
 
 func (rdc *RepoDeleteCommand) Run() (err error) {
-	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, -1,false)
+	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

@@ -105,7 +105,7 @@ func getNpmAuthUsingBasicAuth(artDetails *auth.ServiceDetails) (npmAuth string, 
 	log.Debug("Sending npm auth request")
 
 	// Get npm token from Artifactory.
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return "", err
 	}

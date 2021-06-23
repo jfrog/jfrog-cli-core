@@ -161,7 +161,7 @@ func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun
 
 func isRepoExists(repository string, artDetails auth.ServiceDetails) (bool, error) {
 	artHttpDetails := artDetails.CreateHttpClientDetails()
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return false, err
 	}

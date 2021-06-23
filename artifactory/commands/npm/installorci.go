@@ -304,7 +304,7 @@ func (nca *NpmCommandArgs) setDependenciesList() (err error) {
 
 func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
 	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
-	servicesManager, err := utils.CreateServiceManager(nca.serverDetails,-1, false)
+	servicesManager, err := utils.CreateServiceManager(nca.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

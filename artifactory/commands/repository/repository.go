@@ -44,7 +44,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	// Write a JSON with the correct values
 	content, err := json.Marshal(repoConfigMap)
 
-	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails,-1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

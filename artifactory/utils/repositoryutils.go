@@ -52,11 +52,11 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 	apiUrl := artDetails.GetUrl() + "api/repositories?type=" + repoType.String()
 
 	httpClientsDetails := artDetails.CreateHttpClientDetails()
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return repos, err
 	}
-	resp, body, _, err := client.SendGet(apiUrl, true, httpClientsDetails)
+	resp, body, _, err := client.SendGet(apiUrl, true, httpClientsDetails, "")
 	if err != nil {
 		return repos, err
 	}

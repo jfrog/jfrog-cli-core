@@ -43,7 +43,7 @@ func (pc *PropsCommand) SetProps(props string) *PropsCommand {
 	return pc
 }
 
-func createPropsServiceManager(threads int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createPropsServiceManager(threads, httpRetries int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -57,6 +57,7 @@ func createPropsServiceManager(threads int, serverDetails *config.ServerDetails)
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
+		SetHttpRetries(httpRetries).
 		Build()
 
 	return artifactory.New(serviceConfig)

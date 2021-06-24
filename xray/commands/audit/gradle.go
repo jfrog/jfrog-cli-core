@@ -11,9 +11,9 @@ import (
 )
 
 type XrAuditGradleCommand struct {
-	serverDetails *config.ServerDetails
+	serverDetails   *config.ServerDetails
 	excludeTestDeps bool
-	useWrapper    bool
+	useWrapper      bool
 }
 
 func (auditCmd *XrAuditGradleCommand) SetServerDetails(server *config.ServerDetails) *XrAuditGradleCommand {
@@ -62,7 +62,7 @@ func (auditCmd *XrAuditGradleCommand) getModulesDependencyTrees() (modules []*se
 }
 
 func (auditCmd *XrAuditGradleCommand) runGradle(buildConfiguration *utils.BuildConfiguration) error {
-	tasks := "clean "
+	tasks := "clean compileJava "
 	if !auditCmd.excludeTestDeps {
 		tasks += "compileTestJava "
 	}
@@ -77,7 +77,7 @@ func (auditCmd *XrAuditGradleCommand) runGradle(buildConfiguration *utils.BuildC
 	} else {
 		configFilePath = ""
 	}
-	return gradle.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, false, true)
+	return gradle.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
 }
 
 func (na *XrAuditGradleCommand) CommandName() string {

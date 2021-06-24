@@ -141,14 +141,17 @@ var gradleConfigMapping = map[string]string{
 	"buildInfo.build.number":                            BUILD_NUMBER,
 }
 
-func ReadConfigFile(configPath string, configType ConfigType) (*viper.Viper, error) {
-	config := viper.New()
+func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Viper, err error) {
+	config = viper.New()
 	config.SetConfigType(string(configType))
 
 	f, err := os.Open(configPath)
 	if err != nil {
 		return config, errorutils.CheckError(err)
 	}
+	defer func() {
+		err = errorutils.CheckError(f.Close())
+	}()
 	err = config.ReadConfig(f)
 	if err != nil {
 		return config, errorutils.CheckError(err)

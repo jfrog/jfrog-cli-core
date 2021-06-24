@@ -98,13 +98,19 @@ func (scanCmd *XrBinariesScanCommand) Run() (err error) {
 		return err
 	}
 	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
-	producerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
-	errorsQueue := clientutils.NewErrorsQueue(1)
+	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
+	fileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
+	indexedFileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
+	indexedFileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	// Start walk on the Filesystem "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
-	scanCmd.prepareScanTasks(producerConsumer, producerConsumer, resultsArr, errorsQueue)
-	scanCmd.performScanTasks(producerConsumer, resultsArr)
-	err = errorsQueue.GetError()
+	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
+	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	err = fileProducerErrorsQueue.GetError()
+	if err != nil {
+		return err
+	}
+	err = indexedFileProducerErrorsQueue.GetError()
 	if err != nil {
 		return err
 	}
@@ -124,20 +130,20 @@ func (scanCmd *XrBinariesScanCommand) CommandName() string {
 	return "xr_scan"
 }
 
-func (scanCmd *XrBinariesScanCommand) prepareScanTasks(fileProducer parallel.Runner, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) {
+func (scanCmd *XrBinariesScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrorsQueue, indexedFileErrorsQueue *clientutils.ErrorsQueue) {
 	go func() {
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
 		for _, fileGroup := range scanCmd.spec.Files {
 
-			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, errorsQueue)
-			taskHandler := getAddTaskToProducerFunc(fileProducer, errorsQueue, artifactHandlerFunc)
+			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue)
+			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
 			err := collectFilesForIndexing(fileGroup, taskHandler)
 			if err != nil {
 				log.Error(err)
-				errorsQueue.AddError(err)
+				fileErrorsQueue.AddError(err)
 			}
 		}
 	}()
@@ -157,12 +163,18 @@ func (scanCmd *XrBinariesScanCommand) createIndexerHandlerFunc(file *spec.File, 
 			if err != nil {
 				return err
 			}
-			// Should be refactored to Different producer/consumer for more efficient flow
-			scanResults, err := scanCmd.GetXrScanGraphResults(graph)
-			if err != nil {
-				return err
+			// Add a new task to the seconde prodicer/consumer
+			// which will send the indexed binary to Xray and then will store the given result.
+			taskFunc := func(threadId int) (err error) {
+				scanResults, err := scanCmd.GetXrScanGraphResults(graph)
+				if err != nil {
+					return err
+				}
+				resultsArr[threadId] = append(resultsArr[threadId], scanResults)
+				return
 			}
-			resultsArr[threadId] = append(resultsArr[threadId], scanResults)
+
+			indexedFileProducer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 			return
 		}
 	}
@@ -175,9 +187,17 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 	}
 }
 
-func (scanCmd *XrBinariesScanCommand) performScanTasks(consumer parallel.Runner, resultsArr [][]*services.ScanResponse) {
+func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) {
+
+	go func() {
+		// Blocking until consuming is finished.
+		fileConsumer.Run()
+		// After all files has been indexed, The seconde producer notifies that no more tasks will be produced.
+		indexedFileConsumer.Done()
+	}()
 	// Blocking until consuming is finished.
-	consumer.Run()
+	indexedFileConsumer.Run()
+	// Prints the results
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			printTable(res)

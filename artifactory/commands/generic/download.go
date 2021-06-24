@@ -64,7 +64,7 @@ func (dc *DownloadCommand) Run() error {
 
 func (dc *DownloadCommand) download() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.DryRun(), dc.progress)
+	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.DryRun(), dc.progress)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,6 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 	downParams.Symlink = configuration.Symlink
 	downParams.MinSplitSize = configuration.MinSplitSize
 	downParams.SplitCount = configuration.SplitCount
-	downParams.Retries = configuration.Retries
 
 	downParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {

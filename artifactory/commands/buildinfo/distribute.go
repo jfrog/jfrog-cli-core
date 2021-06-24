@@ -32,7 +32,7 @@ func (bdc *BuildDistributeCommnad) SetBuildDistributionParams(buildDistributePar
 }
 
 func (bdc *BuildDistributeCommnad) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bdc.serverDetails, bdc.dryRun)
+	servicesManager, err := utils.CreateServiceManager(bdc.serverDetails, -1, bdc.dryRun)
 	if err != nil {
 		return err
 	}

@@ -6,8 +6,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io"
 )
 
-func CreateDownloadServiceManager(artDetails *config.ServerDetails, threads int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithProgressBar(artDetails, threads, dryRun, progressBar)
+func CreateDownloadServiceManager(artDetails *config.ServerDetails, threads, httpRetries int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithProgressBar(artDetails, threads, httpRetries, dryRun, progressBar)
 }
 
 type DownloadConfiguration struct {
@@ -16,5 +16,4 @@ type DownloadConfiguration struct {
 	MinSplitSize    int64
 	Symlink         bool
 	ValidateSymlink bool
-	Retries         int
 }

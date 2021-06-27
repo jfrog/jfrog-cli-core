@@ -79,7 +79,7 @@ func (gpc *GoPublishCommand) Run() error {
 
 	version := version.NewVersion(artifactoryVersion)
 	if !version.AtLeast(minSupportedArtifactoryVersion) {
-		return errorutils.CheckError(errors.New("This operation requires Artifactory version 6.2.0 or higher."))
+		return errorutils.CheckError(errors.New("This operation requires Artifactory version 6.2.0 or higher. "))
 	}
 
 	buildName := gpc.buildConfiguration.BuildName

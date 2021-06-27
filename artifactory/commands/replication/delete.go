@@ -43,7 +43,7 @@ func (rdc *ReplicationDeleteCommand) Run() (err error) {
 	if !rdc.quiet && !coreutils.AskYesNo("Are you sure you want to delete the replication for  "+rdc.repoKey+" ?", false) {
 		return nil
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rdc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

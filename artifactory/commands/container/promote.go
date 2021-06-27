@@ -17,7 +17,7 @@ func NewDockerPromoteCommand() *DockerPromoteCommand {
 
 func (dp *DockerPromoteCommand) Run() error {
 	// Create Service Manager
-	servicesManager, err := utils.CreateServiceManager(dp.serverDetails, false)
+	servicesManager, err := utils.CreateServiceManager(dp.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}

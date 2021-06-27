@@ -81,7 +81,7 @@ func (pc *PushCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads)
+	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads, -1)
 	if err != nil {
 		return err
 	}

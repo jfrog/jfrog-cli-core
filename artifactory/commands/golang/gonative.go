@@ -3,9 +3,12 @@ package golang
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/gocmd"
+	executersutils "github.com/jfrog/gocmd/executers/utils"
+	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -130,7 +133,7 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	resolverServiceManager, err := utils.CreateServiceManager(resolverDetails, false)
+	resolverServiceManager, err := utils.CreateServiceManager(resolverDetails, -1, false)
 	if err != nil {
 		return err
 	}
@@ -145,7 +148,7 @@ func (gc *GoCommand) run() error {
 		if err != nil {
 			return err
 		}
-		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, false)
+		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, -1, false)
 		if err != nil {
 			return err
 		}
@@ -310,26 +313,4 @@ func shouldIncludeInfoFiles(deployerServiceManager artifactory.ArtifactoryServic
 	version := version.NewVersion(artifactoryVersion)
 	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile)
 	return includeInfoFiles, nil
-}
-
-func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {
-	// If deployer Artifactory details exists, returs it.
-	if gc.deployerParams != nil && !gc.deployerParams.IsServerDetailsEmpty() {
-		return gc.deployerParams.ServerDetails()
-	}
-
-	// If resolver Artifactory details exists, returs it.
-	if gc.resolverParams != nil && !gc.resolverParams.IsServerDetailsEmpty() {
-		return gc.resolverParams.ServerDetails()
-	}
-
-	// If conf file exists, return the server configured in the conf file.
-	if gc.configFilePath != "" {
-		vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
-		if err != nil {
-			return nil, err
-		}
-		return utils.GetServerDetails(vConfig)
-	}
-	return nil, nil
 }

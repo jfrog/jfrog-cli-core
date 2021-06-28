@@ -1,8 +1,8 @@
 package generic
 
 import (
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -59,7 +59,7 @@ func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	servicesManager, err := utils.CreateServiceManager(serverDetails, dc.DryRun())
+	servicesManager, err := utils.CreateServiceManager(serverDetails, dc.retries, dc.DryRun())
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCoun
 	if errorutils.CheckError(err) != nil {
 		return 0, 0, err
 	}
-	servicesManager, err := utils.CreateDeleteServiceManager(serverDetails, dc.Threads(), dc.DryRun())
+	servicesManager, err := utils.CreateDeleteServiceManager(serverDetails, dc.Threads(), dc.retries, dc.DryRun())
 	if err != nil {
 		return 0, 0, err
 	}

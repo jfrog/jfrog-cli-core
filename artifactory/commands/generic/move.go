@@ -3,8 +3,8 @@ package generic
 import (
 	"errors"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -30,7 +30,7 @@ func (mc *MoveCommand) SetThreads(threads int) *MoveCommand {
 // Moves the artifacts using the specified move pattern.
 func (mc *MoveCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManagerWithThreads(mc.serverDetails, mc.DryRun(), mc.threads)
+	servicesManager, err := utils.CreateServiceManagerWithThreads(mc.serverDetails, mc.DryRun(), mc.threads, mc.retries)
 	if err != nil {
 		return err
 	}

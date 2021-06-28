@@ -3,8 +3,8 @@ package generic
 import (
 	"errors"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -43,7 +43,7 @@ func (pc *PropsCommand) SetProps(props string) *PropsCommand {
 	return pc
 }
 
-func createPropsServiceManager(threads int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createPropsServiceManager(threads, httpRetries int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -57,6 +57,7 @@ func createPropsServiceManager(threads int, serverDetails *config.ServerDetails)
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
+		SetHttpRetries(httpRetries).
 		Build()
 
 	return artifactory.New(serviceConfig)

@@ -24,11 +24,11 @@ func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {
 	}
 	missionControlUrl := flags.ServerDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/deploy"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.ServerDetails)
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

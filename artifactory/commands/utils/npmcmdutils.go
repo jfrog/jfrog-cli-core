@@ -4,6 +4,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -17,13 +25,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"github.com/pkg/errors"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 const minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
@@ -211,7 +212,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -228,6 +229,13 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary bool
 	}
 
 	flagIndex, detailedSummary, err = coreutils.FindBooleanFlag("--detailed-summary", args)
+	if err != nil {
+		return
+	}
+	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
+
+	flagIndex, xrayScan, err = coreutils.FindBooleanFlag("--scan", args)
 	if err != nil {
 		return
 	}

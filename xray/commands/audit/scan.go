@@ -32,7 +32,12 @@ type XrBinariesScanCommand struct {
 	serverDetails *config.ServerDetails
 	spec          *spec.SpecFiles
 	threads       int
-	indexerPath   string
+	// The location on the local file system of the downloaded Xray's indexer.
+	indexerPath string
+	// A path in Artifactory that the Artifacts are intended to be deployed to.
+	// This will provide a way to Xray to extract the watches that should be applied on this scan request.
+	deployedRepoPath string
+	printResults     bool
 }
 
 func (scanCmd *XrBinariesScanCommand) SetThreads(threads int) *XrBinariesScanCommand {
@@ -52,6 +57,11 @@ func (scanCmd *XrBinariesScanCommand) SetSpec(spec *spec.SpecFiles) *XrBinariesS
 
 func (scanCmd *XrBinariesScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return scanCmd.serverDetails, nil
+}
+
+func (scanCmd *XrBinariesScanCommand) SetDeployedRepoPath(deployedRepoPath string) *XrBinariesScanCommand {
+	scanCmd.deployedRepoPath = deployedRepoPath
+	return scanCmd
 }
 
 func (scanCmd *XrBinariesScanCommand) IndexFile(filePath string) (*services.GraphNode, error) {
@@ -75,6 +85,7 @@ func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.Grap
 		return nil, err
 	}
 	params := services.NewXrayGraphScanParams()
+	params.RepoPath = scanCmd.deployedRepoPath
 	params.Graph = graph
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
@@ -88,14 +99,20 @@ func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.Grap
 }
 
 func (scanCmd *XrBinariesScanCommand) Run() (err error) {
+	scanCmd.printResults = true
+	_, err = scanCmd.DoScan()
+	return
+}
+
+func (scanCmd *XrBinariesScanCommand) DoScan() (pass bool, err error) {
 	// First download Xray Indexer if needed
 	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
-		return err
+		return false, err
 	}
 	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager)
 	if err != nil {
-		return err
+		return false, err
 	}
 	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -105,21 +122,17 @@ func (scanCmd *XrBinariesScanCommand) Run() (err error) {
 	// Start walk on the Filesystem "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
-	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	scanOk := scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {
-		return err
+		return false, err
 	}
 	err = indexedFileProducerErrorsQueue.GetError()
 	if err != nil {
-		return err
+		return false, err
 	}
-	// Start "consume" the files that was indexed by sending graph scan request to Xray and
-	// waits for results.
 
-	// Handel saved scan results.
-
-	return nil
+	return scanOk, nil
 }
 
 func NewXrBinariesScanCommand() *XrBinariesScanCommand {
@@ -187,7 +200,7 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 	}
 }
 
-func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) {
+func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) bool {
 
 	go func() {
 		// Blocking until consuming is finished.
@@ -197,13 +210,21 @@ func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Run
 	}()
 	// Blocking until consuming is finished.
 	indexedFileConsumer.Run()
-	// Prints the results
+	// Handle results
 	for _, arr := range resultsArr {
 		for _, res := range arr {
-			printTable(res)
+			if scanCmd.printResults {
+				printTable(res)
+			}
+			if len(res.Violations) > 0 {
+				// A violation found, return scan failed.
+				return false
+			}
 		}
 	}
-	return
+	// No violations found, return scan OK.
+	return true
+
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {
@@ -267,4 +288,10 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		}
 	}
 	return nil
+}
+
+func printTable(res *services.ScanResponse) error {
+	jsonOut, err := json.Marshal(res)
+	print(string(jsonOut))
+	return err
 }

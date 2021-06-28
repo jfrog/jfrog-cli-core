@@ -56,6 +56,23 @@ func PrintViolationsTable(violations []services.Violation) error {
 	return nil
 }
 
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability) {
+	fmt.Println("Note: no context was provided (--watches, --target-path or --project), so no policy could be determined to scan against. Below are all vulnerabilities detected.")
+	vulnerabilitiesTable := createTableWriter()
+	vulnerabilitiesTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions"})
+
+	for _, vulnerability := range vulnerabilities {
+		compNames, compVersions, compFixedVersions := splitComponents(vulnerability.Components)
+		cve, cvssV2, cvssV3 := splitCves(vulnerability.Cves)
+		for compIndex := 0; compIndex < len(compNames); compIndex++ {
+			vulnerabilitiesTable.AppendRow(table.Row{vulnerability.IssueId, cve, cvssV2, cvssV3, vulnerability.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex]})
+		}
+	}
+
+	fmt.Println("VULNERABILITIES")
+	vulnerabilitiesTable.Render()
+}
+
 func splitCves(cves []services.Cve) (string, string, string) {
 	var cve, cvssV2, cvssV3 string
 	if len(cves) == 0 {

@@ -165,8 +165,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
 			{
-				Pattern: b.pattern,
-				// Deprecated, use Exclusions instead
+				Pattern:          b.pattern,
 				Exclusions:       b.exclusions,
 				Target:           b.target,
 				Props:            b.props,

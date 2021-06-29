@@ -41,14 +41,6 @@ func IsServerConfExists() (bool, error) {
 	return conf.Servers != nil && len(conf.Servers) > 0, nil
 }
 
-func IsBintrayConfExists() (bool, error) {
-	conf, err := readConf()
-	if err != nil {
-		return false, err
-	}
-	return conf.Bintray != nil, nil
-}
-
 // Returns the configured server or error if the server id was not found.
 // If defaultOrEmpty: return empty details if no configurations found, or default conf for empty serverId.
 // Exclude refreshable tokens when working with external tools (build tools, curl, etc) or when sending requests not via ArtifactoryHttpClient.
@@ -153,18 +145,6 @@ func GetAllServersConfigs() ([]*ServerDetails, error) {
 	return details, nil
 }
 
-func ReadBintrayConf() (*BintrayDetails, error) {
-	conf, err := readConf()
-	if err != nil {
-		return nil, err
-	}
-	details := conf.Bintray
-	if details == nil {
-		return new(BintrayDetails), nil
-	}
-	return details, nil
-}
-
 func SaveServersConf(details []*ServerDetails) error {
 	conf, err := readConf()
 	if err != nil {
@@ -172,15 +152,6 @@ func SaveServersConf(details []*ServerDetails) error {
 	}
 	conf.Servers = details
 	return saveConfig(conf)
-}
-
-func SaveBintrayConf(details *BintrayDetails) error {
-	config, err := readConf()
-	if err != nil {
-		return err
-	}
-	config.Bintray = details
-	return saveConfig(config)
 }
 
 func saveConfig(config *ConfigV5) error {
@@ -484,7 +455,6 @@ func getLegacyConfigFilePath(version int) (string, error) {
 
 type ConfigV5 struct {
 	Servers []*ServerDetails `json:"servers"`
-	Bintray *BintrayDetails  `json:"bintray,omitempty"`
 	Version string           `json:"version,omitempty"`
 	Enc     bool             `json:"enc,omitempty"`
 }
@@ -492,7 +462,6 @@ type ConfigV5 struct {
 // This struct is suitable for versions 1, 2, 3 and 4.
 type ConfigV4 struct {
 	Artifactory    []*ServerDetails       `json:"artifactory"`
-	Bintray        *BintrayDetails        `json:"bintray,omitempty"`
 	MissionControl *MissionControlDetails `json:"missionControl,omitempty"`
 	Version        string                 `json:"version,omitempty"`
 	Enc            bool                   `json:"enc,omitempty"`
@@ -514,13 +483,11 @@ func (o *ConfigV4) Convert() *ConfigV5 {
 // This struct was created before the version property was added to the config.
 type ConfigV0 struct {
 	Artifactory    *ServerDetails         `json:"artifactory,omitempty"`
-	Bintray        *BintrayDetails        `json:"bintray,omitempty"`
 	MissionControl *MissionControlDetails `json:"MissionControl,omitempty"`
 }
 
 func (o *ConfigV0) Convert() *ConfigV4 {
 	config := new(ConfigV4)
-	config.Bintray = o.Bintray
 	config.MissionControl = o.MissionControl
 	if o.Artifactory != nil {
 		o.Artifactory.IsDefault = true
@@ -552,14 +519,6 @@ type ServerDetails struct {
 	InsecureTls          bool   `json:"-"`
 	// Deprecated, use password option instead.
 	ApiKey string `json:"apiKey,omitempty"`
-}
-
-type BintrayDetails struct {
-	ApiUrl            string `json:"-"`
-	DownloadServerUrl string `json:"-"`
-	User              string `json:"user,omitempty"`
-	Key               string `json:"key,omitempty"`
-	DefPackageLicense string `json:"defPackageLicense,omitempty"`
 }
 
 // Deprecated

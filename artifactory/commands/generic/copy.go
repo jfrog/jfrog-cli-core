@@ -3,8 +3,8 @@ package generic
 import (
 	"errors"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -34,7 +34,7 @@ func (cc *CopyCommand) CommandName() string {
 // Copies the artifacts using the specified move pattern.
 func (cc *CopyCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManagerWithThreads(cc.serverDetails, cc.dryRun, cc.threads)
+	servicesManager, err := utils.CreateServiceManagerWithThreads(cc.serverDetails, cc.dryRun, cc.threads, cc.retries)
 	if err != nil {
 		return err
 	}

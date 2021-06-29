@@ -30,11 +30,6 @@ func TestCovertConfigV0ToV1(t *testing.T) {
 			  "url": "http://localhost:8080/artifactory/",
 			  "user": "user",
 			  "password": "password"
-		  },
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
 		  }
 		}
 	`
@@ -45,22 +40,6 @@ func TestCovertConfigV0ToV1(t *testing.T) {
 	assertionV4Helper(t, configV1, 1, false)
 }
 
-func TestCovertConfigV0ToV1EmptyArtifactory(t *testing.T) {
-	configV0 := `
-		{
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
-		  }
-		}
-	`
-	content, err := convertConfigV0toV1([]byte(configV0))
-	assert.NoError(t, err)
-	configV1 := new(ConfigV4)
-	assert.NoError(t, json.Unmarshal(content, &configV1))
-}
-
 func TestConvertConfigV0ToV5(t *testing.T) {
 	configV0 := `
 		{
@@ -68,11 +47,6 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 			  "url": "http://localhost:8080/artifactory/",
 			  "user": "user",
 			  "password": "password"
-		  },
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
 		  },
 		  "missioncontrol": {
 			  "url": "http://localhost:8080/mc/"
@@ -107,11 +81,6 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 			  "isDefault": true
 			}
 		  ],
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
-		  },
 		  "missioncontrol": {
 			"url": "http://localhost:8080/mc/"
 		  },
@@ -154,11 +123,6 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 				"isDefault": true
 			  }
 		  ],
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
-		  },
 		  "missioncontrol": {
 			"url": "http://localhost:8080/mc/"
 		  },
@@ -244,11 +208,6 @@ func TestGetArtifactoriesFromConfig(t *testing.T) {
 			  "serverId": "notDefault"
 			}
 		  ],
-		  "bintray": {
-			"user": "user",
-			"key": "api-key",
-			"defPackageLicense": "Apache-2.0"
-		  },
 		  "version": "2"
 		}
 	`
@@ -329,7 +288,6 @@ func TestHandleSecrets(t *testing.T) {
 	original := new(ConfigV5)
 	original.Servers = []*ServerDetails{{User: "user", Password: "password", Url: "http://localhost:8080/artifactory/", AccessToken: "accessToken",
 		RefreshToken: "refreshToken", ApiKey: "apiKEY", SshPassphrase: "sshPass"}}
-	original.Bintray = &BintrayDetails{ApiUrl: "APIurl", Key: "bintrayKey"}
 
 	newConf := copyConfig(t, original)
 
@@ -366,9 +324,6 @@ func verifyEncryptionStatus(t *testing.T, original, actual *ConfigV5, encryption
 		if original.Servers[i].ApiKey != "" {
 			equals = append(equals, original.Servers[i].ApiKey == actual.Servers[i].ApiKey)
 		}
-	}
-	if actual.Bintray != nil {
-		equals = append(equals, original.Bintray.Key == actual.Bintray.Key)
 	}
 
 	if encryptionExpected {

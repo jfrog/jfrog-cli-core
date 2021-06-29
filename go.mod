@@ -7,6 +7,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/codegangsta/cli v1.20.0
+	github.com/jedib0t/go-pretty/v6 v6.2.2
 	github.com/jfrog/gocmd v0.3.1
 	github.com/jfrog/gofrog v1.0.6
 	github.com/jfrog/jfrog-client-go v0.25.0
@@ -20,6 +21,7 @@ require (
 	golang.org/x/mod v0.3.0
 	gopkg.in/yaml.v2 v2.3.0
 )
+
 
 replace github.com/jfrog/jfrog-client-go => github.com/gailazar300/jfrog-client-go v0.18.1-0.20210629142512-47eaacc7f8f8
 

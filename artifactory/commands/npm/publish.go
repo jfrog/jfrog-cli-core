@@ -283,7 +283,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 	filSpec := spec.NewBuilder().
 		Pattern(file).
 		BuildSpec()
-	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
+	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetDeployedRepoPath(target)
 	return xrScanCmd.DoScan()
 }
 

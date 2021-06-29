@@ -98,7 +98,7 @@ func (gc *GoCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	resolverServiceManager, err := utils.CreateServiceManager(resolverDetails, false)
+	resolverServiceManager, err := utils.CreateServiceManager(resolverDetails, -1, false)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (gc *GoCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, false)
+		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, -1, false)
 		if err != nil {
 			return err
 		}

@@ -12,32 +12,32 @@ func NewDeletePropsCommand() *DeletePropsCommand {
 	return &DeletePropsCommand{}
 }
 
-func (deleteProps *DeletePropsCommand) DeletePropsCommand(command PropsCommand) *DeletePropsCommand {
-	deleteProps.PropsCommand = command
-	return deleteProps
+func (dp *DeletePropsCommand) DeletePropsCommand(command PropsCommand) *DeletePropsCommand {
+	dp.PropsCommand = command
+	return dp
 }
 
-func (deleteProps *DeletePropsCommand) CommandName() string {
+func (dp *DeletePropsCommand) CommandName() string {
 	return "rt_delete_properties"
 }
 
-func (deleteProps *DeletePropsCommand) Run() error {
-	serverDetails, err := deleteProps.ServerDetails()
+func (dp *DeletePropsCommand) Run() error {
+	serverDetails, err := dp.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := createPropsServiceManager(deleteProps.threads, serverDetails)
+	servicesManager, err := createPropsServiceManager(dp.threads, dp.retries, serverDetails)
 	if err != nil {
 		return err
 	}
-	reader, err := searchItems(deleteProps.Spec(), servicesManager)
+	reader, err := searchItems(dp.Spec(), servicesManager)
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
-	propsParams := GetPropsParams(reader, deleteProps.props)
+	propsParams := GetPropsParams(reader, dp.props)
 	success, err := servicesManager.DeleteProps(propsParams)
-	result := deleteProps.Result()
+	result := dp.Result()
 	result.SetSuccessCount(success)
 	totalLength, totalLengthErr := reader.Length()
 	result.SetFailCount(totalLength - success)

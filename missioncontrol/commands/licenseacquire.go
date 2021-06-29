@@ -23,11 +23,11 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 	}
 	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/acquire"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
-	client, err := httpclient.ClientBuilder().Build()
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return err
 	}
-	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails)
+	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
 		return err
 	}

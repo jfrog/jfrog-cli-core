@@ -44,7 +44,7 @@ func reportUsage(command Command, channel chan<- bool) {
 		}
 		if serverDetails != nil {
 			log.Debug(usage.ReportUsagePrefix + "Sending info...")
-			serviceManager, err := utils.CreateServiceManager(serverDetails, false)
+			serviceManager, err := utils.CreateServiceManager(serverDetails, -1, false)
 			if err != nil {
 				log.Debug(usage.ReportUsagePrefix + err.Error())
 				return

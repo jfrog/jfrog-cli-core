@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -133,7 +133,7 @@ func (badc *BuildAddDependenciesCommand) collectLocalDependencies() (success, fa
 }
 
 func (badc *BuildAddDependenciesCommand) collectRemoteDependencies() (success, fail int, err error) {
-	servicesManager, err := utils.CreateServiceManager(badc.serverDetails, false)
+	servicesManager, err := utils.CreateServiceManager(badc.serverDetails, -1, false)
 	if err != nil {
 		return
 	}

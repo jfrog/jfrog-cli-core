@@ -1,4 +1,4 @@
-package scan
+package utils
 
 import (
 	"errors"
@@ -60,7 +60,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, downloadDirPath stri
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 
-	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, 3, false)
+	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

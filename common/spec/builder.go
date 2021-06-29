@@ -5,9 +5,7 @@ import (
 )
 
 type builder struct {
-	pattern string
-	// Deprecated, use Exclusions instead
-	excludePatterns  []string
+	pattern          string
 	exclusions       []string
 	target           string
 	explode          string
@@ -45,11 +43,6 @@ func (b *builder) Pattern(pattern string) *builder {
 
 func (b *builder) ArchiveEntries(archiveEntries string) *builder {
 	b.archiveEntries = archiveEntries
-	return b
-}
-
-func (b *builder) ExcludePatterns(excludePatterns []string) *builder {
-	b.excludePatterns = excludePatterns
 	return b
 }
 
@@ -172,9 +165,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
 			{
-				Pattern: b.pattern,
-				// Deprecated, use Exclusions instead
-				ExcludePatterns:  b.excludePatterns,
+				Pattern:          b.pattern,
 				Exclusions:       b.exclusions,
 				Target:           b.target,
 				Props:            b.props,

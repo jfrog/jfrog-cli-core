@@ -23,8 +23,6 @@ import (
 )
 
 type GoCommand struct {
-	noRegistry         bool
-	publishDeps        bool
 	goArg              []string
 	buildConfiguration *utils.BuildConfiguration
 	deployerParams     *utils.RepositoryConfig
@@ -38,11 +36,6 @@ func NewGoCommand() *GoCommand {
 
 func (gc *GoCommand) SetConfigFilePath(configFilePath string) *GoCommand {
 	gc.configFilePath = configFilePath
-	return gc
-}
-
-func (gc *GoCommand) SetArgs(args []string) *GoCommand {
-	gc.goArg = args
 	return gc
 }
 
@@ -63,16 +56,6 @@ func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfig
 	return gc
 }
 
-func (gc *GoCommand) SetNoRegistry(noRegistry bool) *GoCommand {
-	gc.noRegistry = noRegistry
-	return gc
-}
-
-func (gc *GoCommand) SetPublishDeps(publishDeps bool) *GoCommand {
-	gc.publishDeps = publishDeps
-	return gc
-}
-
 func (gc *GoCommand) SetGoArg(goArg []string) *GoCommand {
 	gc.goArg = goArg
 	return gc
@@ -83,25 +66,21 @@ func (gc *GoCommand) CommandName() string {
 }
 
 func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {
-	// If deployer Artifactory details exists, returs it.
+	// If deployer Artifactory details exists, returns it.
 	if gc.deployerParams != nil && !gc.deployerParams.IsServerDetailsEmpty() {
 		return gc.deployerParams.ServerDetails()
 	}
 
-	// If resolver Artifactory details exists, returs it.
+	// If resolver Artifactory details exists, returns it.
 	if gc.resolverParams != nil && !gc.resolverParams.IsServerDetailsEmpty() {
 		return gc.resolverParams.ServerDetails()
 	}
 
-	// If conf file exists, return the server configured in the conf file.
-	if gc.configFilePath != "" {
-		vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
-		if err != nil {
-			return nil, err
-		}
-		return utils.GetServerDetails(vConfig)
+	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return utils.GetServerDetails(vConfig)
 }
 
 func (gc *GoCommand) Run() error {
@@ -124,8 +103,6 @@ func (gc *GoCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		// Set to true for publishing dependencies.
-		gc.SetPublishDeps(true)
 	}
 
 	// Extract build info information from the args.
@@ -166,22 +143,8 @@ func (gc *GoCommand) run() error {
 	goInfo.SetResolver(resolverParams)
 	var targetRepo string
 	var deployerServiceManager artifactory.ArtifactoryServicesManager
-	if gc.publishDeps {
-		deployerDetails, err := gc.deployerParams.ServerDetails()
-		if err != nil {
-			return err
-		}
-		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, -1, false)
-		if err != nil {
-			return err
-		}
-		targetRepo = gc.deployerParams.TargetRepo()
-		deployerParams := &params.Params{}
-		deployerParams.SetRepo(targetRepo).SetServiceManager(deployerServiceManager)
-		goInfo.SetDeployer(deployerParams)
-	}
 
-	err = gocmd.RunWithFallbacksAndPublish(gc.goArg, gc.noRegistry, gc.publishDeps, goInfo)
+	err = gocmd.RunWithFallbacksAndPublish(gc.goArg, goInfo)
 	if err != nil {
 		return err
 	}

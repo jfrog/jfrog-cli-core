@@ -296,9 +296,6 @@ func TestServerDetailsFromConfigFile(t *testing.T) {
 	expectedUser := "admin"
 
 	homeEnv := os.Getenv(coreutils.HomeDir)
-	if homeEnv == "" {
-		homeEnv = os.Getenv(coreutils.JfrogHomeEnv)
-	}
 	defer os.Setenv(coreutils.HomeDir, homeEnv)
 	baseDir, err := os.Getwd()
 	if err != nil {
@@ -330,9 +327,6 @@ func TestServerDetailsWithoutConfigFile(t *testing.T) {
 	expectedUser := "admin2"
 
 	homeEnv := os.Getenv(coreutils.HomeDir)
-	if homeEnv == "" {
-		homeEnv = os.Getenv(coreutils.JfrogHomeEnv)
-	}
 	defer os.Setenv(coreutils.HomeDir, homeEnv)
 
 	baseDir, err := os.Getwd()

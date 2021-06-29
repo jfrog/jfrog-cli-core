@@ -211,19 +211,29 @@ func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Run
 	// Blocking until consuming is finished.
 	indexedFileConsumer.Run()
 	// Handle results
+	passScan := true
+	violations := []services.Violation{}
+	vulnerabilities := []services.Vulnerability{}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			if scanCmd.printResults {
-				printTable(res)
+				violations = append(violations, res.Violations...)
+				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
 			}
 			if len(res.Violations) > 0 {
-				// A violation found, return scan failed.
-				return false
+				// A violation was found, the scan failed.
+				passScan = false
 			}
 		}
 	}
+	if len(violations) > 0 {
+		xrutils.PrintViolationsTable(violations)
+	}
+	if len(vulnerabilities) > 0 {
+		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
+	}
 	// No violations found, return scan OK.
-	return true
+	return passScan
 
 }
 

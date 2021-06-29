@@ -103,13 +103,12 @@ func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	return printTable(scanResults)
-
-}
-
-func printTable(res *services.ScanResponse) error {
-	jsonOut, err := json.Marshal(res)
-	print(string(jsonOut))
+	if len(scanResults.Violations) > 0 {
+		err = xrutils.PrintViolationsTable(scanResults.Violations)
+	}
+	if len(scanResults.Vulnerabilities) > 0 {
+		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities)
+	}
 	return err
 }
 

@@ -1,13 +1,13 @@
 package audit
 
 import (
-	"encoding/json"
 	"os"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/npm"
-	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/xray/commands"
+	xrutils "github.com/jfrog/jfrog-cli-core/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -20,7 +20,7 @@ type XrAuditNpmCommand struct {
 	serverDetails    *config.ServerDetails
 	workingDirectory string
 	arguments        []string
-	typeRestriction  npm.TypeRestriction
+	typeRestriction  npmutils.TypeRestriction
 }
 
 func (auditCmd *XrAuditNpmCommand) SetWorkingDirectory(dir string) *XrAuditNpmCommand {
@@ -33,7 +33,7 @@ func (auditCmd *XrAuditNpmCommand) SetArguments(args []string) *XrAuditNpmComman
 	return auditCmd
 }
 
-func (auditCmd *XrAuditNpmCommand) SetNpmTypeRestriction(typeRestriction npm.TypeRestriction) *XrAuditNpmCommand {
+func (auditCmd *XrAuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *XrAuditNpmCommand {
 	auditCmd.typeRestriction = typeRestriction
 	return auditCmd
 }
@@ -52,10 +52,9 @@ func NewXrAuditNpmCommand() *XrAuditNpmCommand {
 }
 
 func (auditCmd *XrAuditNpmCommand) Run() (err error) {
-	nca := npm.NewNpmCommandArgs("")
-	nca.SetTypeRestriction(auditCmd.typeRestriction)
+	typeRestriction := auditCmd.typeRestriction
 
-	currentDir, err := commandsutils.GetWorkingDirectory()
+	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
@@ -72,22 +71,21 @@ func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 	}
 	log.Debug("Working directory set to:", auditCmd.workingDirectory)
 
-	packageInfo, err := commandsutils.ReadPackageInfoFromPackageJson(auditCmd.workingDirectory)
+	packageInfo, err := coreutils.ReadPackageInfoFromPackageJson(auditCmd.workingDirectory)
 	if err != nil {
 		return err
 	}
-	nca.SetPackageInfo(packageInfo)
-	err = nca.SetNpmExecutable()
+	npmExecutablePath, err := npmutils.FindNpmExecutable()
 	if err != nil {
 		return err
 	}
 	// Calculate npm dependencies
-	err = nca.SetDependenciesList()
+	dependenciesList, err := npmutils.CalculateDependenciesList(typeRestriction, []string{}, npmExecutablePath, packageInfo.BuildInfoModuleId())
 	if err != nil {
 		return err
 	}
 	// Parse the dependencies into an Xray dependency tree format
-	npmGraph := parseNpmDependenciesList(nca.GetDependenciesList(), packageInfo)
+	npmGraph := parseNpmDependenciesList(dependenciesList, packageInfo)
 	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
 	if err != nil {
 		return err
@@ -110,9 +108,10 @@ func (auditCmd *XrAuditNpmCommand) Run() (err error) {
 		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities)
 	}
 	return err
+
 }
 
-func parseNpmDependenciesList(dependencies map[string]*npm.Dependency, packageInfo *commandsutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *coreutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for dependencyId, dependency := range dependencies {
 		dependencyId = NpmPackageTypeIdentifier + dependencyId

@@ -5,7 +5,7 @@ import (
 	"os/exec"
 )
 
-// Command used to execute plugin commands.
+// Command used to execute general commands.
 type GeneralExecCmd struct {
 	ExecPath string
 	Command  []string

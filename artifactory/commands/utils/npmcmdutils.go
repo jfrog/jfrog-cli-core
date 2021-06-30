@@ -7,8 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -28,19 +26,6 @@ import (
 )
 
 const minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
-
-func GetWorkingDirectory() (string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	if currentDir, err = filepath.Abs(currentDir); err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	return currentDir, nil
-}
 
 func GetArtifactoryNpmRepoDetails(repo string, authArtDetails *auth.ServiceDetails) (npmAuth, registry string, err error) {
 	npmAuth, err = getNpmAuth(authArtDetails)
@@ -129,14 +114,14 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
-func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration) (collectBuildInfo bool, packageInfo *PackageInfo, err error) {
+func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration) (collectBuildInfo bool, packageInfo *coreutils.PackageInfo, err error) {
 	if len(buildConfiguration.BuildName) > 0 && len(buildConfiguration.BuildNumber) > 0 {
 		collectBuildInfo = true
 		if err = utils.SaveBuildGeneralDetails(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project); err != nil {
 			return false, nil, err
 		}
 
-		if packageInfo, err = ReadPackageInfoFromPackageJson(workingDirectory); err != nil {
+		if packageInfo, err = coreutils.ReadPackageInfoFromPackageJson(workingDirectory); err != nil {
 			return false, nil, err
 		}
 	}

@@ -42,7 +42,7 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	yarnrcFileMode     os.FileMode
-	packageInfo        *commandUtils.PackageInfo
+	packageInfo        *coreutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
@@ -168,7 +168,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	yc.workingDirectory, err = commandUtils.GetWorkingDirectory()
+	yc.workingDirectory, err = coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}

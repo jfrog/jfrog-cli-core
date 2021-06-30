@@ -39,8 +39,6 @@ func (gc *GoCommand) SetConfigFilePath(configFilePath string) *GoCommand {
 	return gc
 }
 
-const GoCommandName = "rt_go"
-
 func (gc *GoCommand) SetResolverParams(resolverParams *utils.RepositoryConfig) *GoCommand {
 	gc.resolverParams = resolverParams
 	return gc
@@ -62,7 +60,7 @@ func (gc *GoCommand) SetGoArg(goArg []string) *GoCommand {
 }
 
 func (gc *GoCommand) CommandName() string {
-	return GoCommandName
+	return "rt_go"
 }
 
 func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {

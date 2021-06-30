@@ -225,7 +225,7 @@ func TestGetArtifactoriesFromConfig(t *testing.T) {
 }
 
 func TestGetJfrogDependenciesPath(t *testing.T) {
-	// Check default value of dependencies path, should be JFROG_CLI_HOME/dependencies
+	// Check default value of dependencies path, should be JFROG_CLI_HOME_DIR/dependencies
 	dependenciesPath, err := GetJfrogDependenciesPath()
 	assert.NoError(t, err)
 	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()

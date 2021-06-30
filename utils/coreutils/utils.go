@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -197,8 +196,6 @@ func GetJfrogHomeDir() (string, error) {
 	// The JfrogHomeEnv environment variable has been deprecated and replaced with HomeDir
 	if os.Getenv(HomeDir) != "" {
 		return os.Getenv(HomeDir), nil
-	} else if os.Getenv(JfrogHomeEnv) != "" {
-		return path.Join(os.Getenv(JfrogHomeEnv), ".jfrog"), nil
 	}
 
 	userHomeDir := fileutils.GetHomeDir()

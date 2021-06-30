@@ -10,36 +10,36 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-type XrAuditGradleCommand struct {
+type AuditGradleCommand struct {
 	serverDetails   *config.ServerDetails
 	excludeTestDeps bool
 	useWrapper      bool
 }
 
-func (auditCmd *XrAuditGradleCommand) SetServerDetails(server *config.ServerDetails) *XrAuditGradleCommand {
+func (auditCmd *AuditGradleCommand) SetServerDetails(server *config.ServerDetails) *AuditGradleCommand {
 	auditCmd.serverDetails = server
 	return auditCmd
 }
 
-func (auditCmd *XrAuditGradleCommand) SetExcludeTestDeps(excludeTestDeps bool) *XrAuditGradleCommand {
+func (auditCmd *AuditGradleCommand) SetExcludeTestDeps(excludeTestDeps bool) *AuditGradleCommand {
 	auditCmd.excludeTestDeps = excludeTestDeps
 	return auditCmd
 }
 
-func (auditCmd *XrAuditGradleCommand) SetUseWrapper(useWrapper bool) *XrAuditGradleCommand {
+func (auditCmd *AuditGradleCommand) SetUseWrapper(useWrapper bool) *AuditGradleCommand {
 	auditCmd.useWrapper = useWrapper
 	return auditCmd
 }
 
-func (auditCmd *XrAuditGradleCommand) ServerDetails() (*config.ServerDetails, error) {
+func (auditCmd *AuditGradleCommand) ServerDetails() (*config.ServerDetails, error) {
 	return auditCmd.serverDetails, nil
 }
 
-func NewXrAuditGradleCommand() *XrAuditGradleCommand {
-	return &XrAuditGradleCommand{}
+func NewAuditGradleCommand() *AuditGradleCommand {
+	return &AuditGradleCommand{}
 }
 
-func (auditCmd *XrAuditGradleCommand) Run() (err error) {
+func (auditCmd *AuditGradleCommand) Run() (err error) {
 	// Parse the dependencies into an Xray dependency tree format
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	if err != nil {
@@ -49,7 +49,7 @@ func (auditCmd *XrAuditGradleCommand) Run() (err error) {
 	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails)
 }
 
-func (auditCmd *XrAuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
+func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 
@@ -61,7 +61,7 @@ func (auditCmd *XrAuditGradleCommand) getModulesDependencyTrees() (modules []*se
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func (auditCmd *XrAuditGradleCommand) runGradle(buildConfiguration *utils.BuildConfiguration) error {
+func (auditCmd *AuditGradleCommand) runGradle(buildConfiguration *utils.BuildConfiguration) error {
 	tasks := "clean compileJava "
 	if !auditCmd.excludeTestDeps {
 		tasks += "compileTestJava "
@@ -80,6 +80,6 @@ func (auditCmd *XrAuditGradleCommand) runGradle(buildConfiguration *utils.BuildC
 	return gradle.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
 }
 
-func (na *XrAuditGradleCommand) CommandName() string {
+func (na *AuditGradleCommand) CommandName() string {
 	return "xr_audit_gradle"
 }

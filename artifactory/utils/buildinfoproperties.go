@@ -153,11 +153,7 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 		err = errorutils.CheckError(f.Close())
 	}()
 	err = config.ReadConfig(f)
-	if err != nil {
-		return config, errorutils.CheckError(err)
-	}
-
-	return config, nil
+	return config, errorutils.CheckError(err)
 }
 
 // Returns the Artifactory details

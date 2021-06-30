@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	artifactoryUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/xray/commands"
+	"github.com/jfrog/jfrog-cli-core/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -19,20 +20,20 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func createBuildConfiguration(buildName string) (*utils.BuildConfiguration, func(err error)) {
-	buildConfiguration := &utils.BuildConfiguration{
+func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
+	buildConfiguration := &artifactoryUtils.BuildConfiguration{
 		BuildName:   buildName,
 		BuildNumber: strconv.FormatInt(time.Now().Unix(), 10),
 	}
 	return buildConfiguration, func(err error) {
-		err = utils.RemoveBuildDir(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project)
+		err = artifactoryUtils.RemoveBuildDir(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project)
 	}
 }
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
-func createGavDependencyTree(buildConfig *utils.BuildConfiguration) ([]*services.GraphNode, error) {
-	generatedBuildsInfos, err := utils.GetGeneratedBuildsInfo(buildConfig.BuildName, buildConfig.BuildNumber, buildConfig.Project)
+func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*services.GraphNode, error) {
+	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildConfig.BuildName, buildConfig.BuildNumber, buildConfig.Project)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +74,9 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 			return err
 		}
 
-		if auditError == nil {
-			auditError = produceAuditErrorIfNeeded(scanResults)
-		}
-
 		// Print results
-		if err = printTable(scanResults); err != nil {
-			return err
+		if err = utils.PrintViolationsTable(scanResults.Violations); err != nil {
+			auditError = err
 		}
 	}
 	return auditError

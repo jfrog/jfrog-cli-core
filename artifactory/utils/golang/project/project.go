@@ -128,7 +128,7 @@ func (project *goProject) PublishPackage(targetRepo, buildName, buildNumber, pro
 		return nil, err
 	}
 	version := version.NewVersion(artifactoryVersion)
-	if version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile) {
+	if version.AtLeast(_go.ArtifactoryMinSupportedVersion) {
 		pathToInfo, err := project.createInfoFile()
 		if err != nil {
 			return nil, err

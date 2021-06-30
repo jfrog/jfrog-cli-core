@@ -2,9 +2,6 @@ package golang
 
 import (
 	"errors"
-	"os/exec"
-	"strings"
-
 	commandutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
@@ -12,13 +9,13 @@ import (
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
+	"os/exec"
 )
 
 const minSupportedArtifactoryVersion = "6.2.0"
 
 type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
-	dependencies       string
 	version            string
 	detailedSummary    bool
 	result             *commandutils.Result
@@ -79,7 +76,7 @@ func (gpc *GoPublishCommand) Run() error {
 
 	version := version.NewVersion(artifactoryVersion)
 	if !version.AtLeast(minSupportedArtifactoryVersion) {
-		return errorutils.CheckError(errors.New("This operation requires Artifactory version 6.2.0 or higher."))
+		return errorutils.CheckError(errors.New("This operation requires Artifactory version 6.2.0 or higher. "))
 	}
 
 	buildName := gpc.buildConfiguration.BuildName
@@ -103,40 +100,19 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
 	result := gpc.Result()
-	if gpc.dependencies != "" {
-		// Publish the package dependencies to Artifactory
-		depsList := strings.Split(gpc.dependencies, ",")
-		err = goProject.LoadDependencies()
-		if err != nil {
-			return err
-		}
-		_, _, err := goProject.PublishDependencies(gpc.TargetRepo(), serviceManager, depsList)
-		if err != nil {
-			return err
-		}
+	result.SetSuccessCount(summary.TotalSucceeded)
+	result.SetFailCount(summary.TotalFailed)
+	if gpc.detailedSummary {
+		result.SetReader(summary.TransferDetailsReader)
 	}
-
-	// From Artifactory's version 6.6.1 PublishPackage() will upload 3 files (zip, mod and info) and return summary.
-	// Otherwise summary will be nil and only 1 file will be uploaded.
-	if summary != nil {
-		result.SetSuccessCount(summary.TotalSucceeded)
-		result.SetFailCount(summary.TotalFailed)
-		if gpc.detailedSummary {
-			result.SetReader(summary.TransferDetailsReader)
-		}
-	} else {
-		result.SetSuccessCount(1)
-	}
-
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
 		if len(goProject.Dependencies()) == 0 {
 			// No dependencies were published but those dependencies need to be loaded for the build info.
 			goProject.LoadDependencies()
 		}
-		err = goProject.CreateBuildInfoDependencies(version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile))
+		err = goProject.CreateBuildInfoDependencies(version.AtLeast(_go.ArtifactoryMinSupportedVersion))
 		if err != nil {
 			return err
 		}
@@ -146,32 +122,27 @@ func (gpc *GoPublishCommand) Run() error {
 	return err
 }
 
-func (gpca *GoPublishCommandArgs) Result() *commandutils.Result {
-	return gpca.result
+func (gpc *GoPublishCommandArgs) Result() *commandutils.Result {
+	return gpc.result
 }
 
-func (gpca *GoPublishCommandArgs) SetVersion(version string) *GoPublishCommandArgs {
-	gpca.version = version
-	return gpca
+func (gpc *GoPublishCommandArgs) SetVersion(version string) *GoPublishCommandArgs {
+	gpc.version = version
+	return gpc
 }
 
-func (gpca *GoPublishCommandArgs) SetDependencies(dependencies string) *GoPublishCommandArgs {
-	gpca.dependencies = dependencies
-	return gpca
+func (gpc *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
+	gpc.buildConfiguration = buildConfiguration
+	return gpc
 }
 
-func (gpca *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
-	gpca.buildConfiguration = buildConfiguration
-	return gpca
+func (gpc *GoPublishCommandArgs) SetDetailedSummary(detailedSummary bool) *GoPublishCommandArgs {
+	gpc.detailedSummary = detailedSummary
+	return gpc
 }
 
-func (gpca *GoPublishCommandArgs) SetDetailedSummary(detailedSummary bool) *GoPublishCommandArgs {
-	gpca.detailedSummary = detailedSummary
-	return gpca
-}
-
-func (gpca *GoPublishCommandArgs) IsDetailedSummary() bool {
-	return gpca.detailedSummary
+func (gpc *GoPublishCommandArgs) IsDetailedSummary() bool {
+	return gpc.detailedSummary
 }
 
 func validatePrerequisites() error {

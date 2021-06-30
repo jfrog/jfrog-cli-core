@@ -3,10 +3,6 @@ package golang
 import (
 	"errors"
 	"fmt"
-	"path"
-	"path/filepath"
-	"strings"
-
 	"github.com/jfrog/gocmd"
 	executersutils "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
@@ -19,22 +15,28 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
-const GoCommandName = "rt_go"
-
 type GoCommand struct {
-	noRegistry         bool
-	publishDeps        bool
 	goArg              []string
 	buildConfiguration *utils.BuildConfiguration
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
+	configFilePath     string
 }
 
 func NewGoCommand() *GoCommand {
 	return &GoCommand{}
+}
+
+func (gc *GoCommand) SetConfigFilePath(configFilePath string) *GoCommand {
+	gc.configFilePath = configFilePath
+	return gc
 }
 
 func (gc *GoCommand) SetResolverParams(resolverParams *utils.RepositoryConfig) *GoCommand {
@@ -52,33 +54,64 @@ func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfig
 	return gc
 }
 
-func (gc *GoCommand) SetNoRegistry(noRegistry bool) *GoCommand {
-	gc.noRegistry = noRegistry
-	return gc
-}
-
-func (gc *GoCommand) SetPublishDeps(publishDeps bool) *GoCommand {
-	gc.publishDeps = publishDeps
-	return gc
-}
-
 func (gc *GoCommand) SetGoArg(goArg []string) *GoCommand {
 	gc.goArg = goArg
 	return gc
 }
 
+func (gc *GoCommand) CommandName() string {
+	return "rt_go"
+}
+
 func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {
+	// If deployer Artifactory details exists, returns it.
 	if gc.deployerParams != nil && !gc.deployerParams.IsServerDetailsEmpty() {
 		return gc.deployerParams.ServerDetails()
 	}
-	return gc.resolverParams.ServerDetails()
-}
 
-func (gc *GoCommand) CommandName() string {
-	return GoCommandName
+	// If resolver Artifactory details exists, returns it.
+	if gc.resolverParams != nil && !gc.resolverParams.IsServerDetailsEmpty() {
+		return gc.resolverParams.ServerDetails()
+	}
+
+	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
+	if err != nil {
+		return nil, err
+	}
+	return utils.GetServerDetails(vConfig)
 }
 
 func (gc *GoCommand) Run() error {
+	// Read config file.
+	log.Debug("Preparing to read the config file", gc.configFilePath)
+	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
+	if err != nil {
+		return err
+	}
+
+	// Extract resolution params.
+	gc.resolverParams, err = utils.GetRepoConfigByPrefix(gc.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
+	if err != nil {
+		return err
+	}
+
+	if vConfig.IsSet(utils.ProjectConfigDeployerPrefix) {
+		// Extract deployer params.
+		gc.deployerParams, err = utils.GetRepoConfigByPrefix(gc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Extract build info information from the args.
+	gc.goArg, gc.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(gc.goArg)
+	if err != nil {
+		return err
+	}
+	return gc.run()
+}
+
+func (gc *GoCommand) run() error {
 	err := golang.LogGoVersion()
 	if err != nil {
 		return err
@@ -108,22 +141,8 @@ func (gc *GoCommand) Run() error {
 	goInfo.SetResolver(resolverParams)
 	var targetRepo string
 	var deployerServiceManager artifactory.ArtifactoryServicesManager
-	if gc.publishDeps {
-		deployerDetails, err := gc.deployerParams.ServerDetails()
-		if err != nil {
-			return err
-		}
-		deployerServiceManager, err = utils.CreateServiceManager(deployerDetails, -1, false)
-		if err != nil {
-			return err
-		}
-		targetRepo = gc.deployerParams.TargetRepo()
-		deployerParams := &params.Params{}
-		deployerParams.SetRepo(targetRepo).SetServiceManager(deployerServiceManager)
-		goInfo.SetDeployer(deployerParams)
-	}
 
-	err = gocmd.RunWithFallbacksAndPublish(gc.goArg, gc.noRegistry, gc.publishDeps, goInfo)
+	err = gocmd.RunWithFallback(gc.goArg)
 	if err != nil {
 		return err
 	}
@@ -276,6 +295,6 @@ func shouldIncludeInfoFiles(deployerServiceManager artifactory.ArtifactoryServic
 		return false, err
 	}
 	version := version.NewVersion(artifactoryVersion)
-	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile)
+	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersion)
 	return includeInfoFiles, nil
 }

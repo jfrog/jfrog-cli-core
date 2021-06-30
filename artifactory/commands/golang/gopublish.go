@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
-	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"os/exec"
@@ -112,7 +111,7 @@ func (gpc *GoPublishCommand) Run() error {
 			// No dependencies were published but those dependencies need to be loaded for the build info.
 			goProject.LoadDependencies()
 		}
-		err = goProject.CreateBuildInfoDependencies(version.AtLeast(_go.ArtifactoryMinSupportedVersion))
+		err = goProject.CreateBuildInfoDependencies()
 		if err != nil {
 			return err
 		}

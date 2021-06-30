@@ -32,7 +32,7 @@ import (
 // Represent go project
 type Go interface {
 	Dependencies() []executers.Package
-	CreateBuildInfoDependencies(includeInfoFiles bool) error
+	CreateBuildInfoDependencies() error
 	PublishPackage(targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.OperationSummary, error)
 	PublishDependencies(targetRepo string, servicesManager artifactory.ArtifactoryServicesManager, includeDepSlice []string) (succeeded, failed int, err error)
 	BuildInfo(includeArtifacts bool, module, targetRepository string) *buildinfo.BuildInfo
@@ -61,9 +61,9 @@ func (project *goProject) Dependencies() []executers.Package {
 }
 
 // Get the go project dependencies.
-func (project *goProject) CreateBuildInfoDependencies(includeInfoFiles bool) error {
+func (project *goProject) CreateBuildInfoDependencies() error {
 	for i, dep := range project.dependencies {
-		err := dep.CreateBuildInfoDependencies(includeInfoFiles)
+		err := dep.CreateBuildInfoDependencies()
 		if err != nil {
 			return err
 		}

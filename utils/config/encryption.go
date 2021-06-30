@@ -112,12 +112,6 @@ func handleSecrets(config *ConfigV5, handler secretHandler, key string) error {
 			return err
 		}
 	}
-	if config.Bintray != nil {
-		config.Bintray.Key, err = handler(config.Bintray.Key, key)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

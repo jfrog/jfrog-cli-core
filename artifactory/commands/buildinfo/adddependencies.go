@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -236,7 +236,7 @@ func getLocalDependencies(addDepsParams *specutils.ArtifactoryCommonParams) ([]s
 	}
 
 	if !isDir || fileutils.IsPathSymlink(addDepsParams.GetPattern()) {
-		artifact, err := fspatterns.GetSingleFileToUpload(rootPath, "", false, false)
+		artifact, err := fspatterns.GetSingleFileToUpload(rootPath, "", false)
 		if err != nil {
 			return nil, err
 		}

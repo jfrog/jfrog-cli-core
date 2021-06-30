@@ -20,12 +20,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.27.0"
-
-// Deprecated. This version is the latest published in JCenter.
-const mavenExtractorDependencyJCenterVersion = "2.23.0"
-const classworldsConfFileName = "classworlds.conf"
-const MavenHome = "M2_HOME"
+const (
+	mavenExtractorDependencyVersion = "2.27.0"
+	classworldsConfFileName         = "classworlds.conf"
+	MavenHome                       = "M2_HOME"
+)
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	log.Info("Running Mvn...")
@@ -63,11 +62,10 @@ func downloadDependencies() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	extractorVersion := utils.GetExtractorVersion(mavenExtractorDependencyVersion, mavenExtractorDependencyJCenterVersion)
-	dependenciesPath = filepath.Join(dependenciesPath, "maven", extractorVersion)
+	dependenciesPath = filepath.Join(dependenciesPath, "maven", mavenExtractorDependencyVersion)
 
-	filename := fmt.Sprintf("build-info-extractor-maven3-%s-uber.jar", extractorVersion)
-	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-maven3/%s", extractorVersion)
+	filename := fmt.Sprintf("build-info-extractor-maven3-%s-uber.jar", mavenExtractorDependencyVersion)
+	filePath := fmt.Sprintf("org/jfrog/buildinfo/build-info-extractor-maven3/%s", mavenExtractorDependencyVersion)
 	downloadPath := path.Join(filePath, filename)
 
 	err = utils.DownloadExtractorIfNeeded(downloadPath, filepath.Join(dependenciesPath, filename))

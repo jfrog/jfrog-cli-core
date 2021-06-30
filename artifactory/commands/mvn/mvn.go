@@ -8,12 +8,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
-const mavenExtractorDependencyVersion = "2.27.0"
-
-// Deprecated. This version is the latest published in JCenter.
-const mavenExtractorDependencyJCenterVersion = "2.23.0"
-const classworldsConfFileName = "classworlds.conf"
-const MavenHome = "M2_HOME"
+const (
+	mavenExtractorDependencyVersion = "2.27.0"
+	classworldsConfFileName         = "classworlds.conf"
+	MavenHome                       = "M2_HOME"
+)
 
 type MvnCommand struct {
 	goals           []string

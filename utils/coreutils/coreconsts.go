@@ -32,6 +32,4 @@ const (
 	Project            = "JFROG_CLI_BUILD_PROJECT"
 	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 	CI                 = "CI"
-	// Deprecated:
-	JfrogHomeEnv = "JFROG_CLI_HOME"
 )

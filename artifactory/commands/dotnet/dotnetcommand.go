@@ -14,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/dotnet/solution"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	coreutils "github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -33,8 +32,6 @@ type DotnetCommand struct {
 	useNugetV2         bool
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
-	// Indicates the command is run through the legacy syntax, before the 'native' syntax introduction.
-	legacy bool
 }
 
 func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *DotnetCommand {
@@ -357,9 +354,6 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	if dc.legacy {
-		return dc.createLegacyCmd(c)
-	}
 	if dc.subCommand != "" {
 		c.Command = append(c.Command, strings.Split(dc.subCommand, " ")...)
 	}
@@ -367,18 +361,3 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 	return c, nil
 }
 
-// In the legacy syntax, parsing args is required since they might include environment variables, or need escaping.
-func (dc *DotnetCommand) createLegacyCmd(c *dotnet.Cmd) (*dotnet.Cmd, error) {
-	if dc.subCommand != "" {
-		subCommand, err := coreutils.ParseArgs(strings.Split(dc.subCommand, " "))
-		if err != nil {
-			return nil, errorutils.CheckError(err)
-		}
-		c.Command = append(c.Command, subCommand...)
-	}
-	var err error
-	if len(dc.argAndFlags) > 0 {
-		c.CommandFlags, err = coreutils.ParseArgs(dc.argAndFlags)
-	}
-	return c, errorutils.CheckError(err)
-}

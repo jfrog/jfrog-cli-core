@@ -21,8 +21,6 @@ func TestDownloadExtractorsFromOjo(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Make sure the JAR will be downloaded from ojo
-	err = os.Unsetenv(utils.JCenterRemoteServerEnv)
-	assert.NoError(t, err)
 	err = os.Unsetenv(utils.ExtractorsRemoteEnv)
 	assert.NoError(t, err)
 

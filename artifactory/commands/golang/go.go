@@ -142,7 +142,7 @@ func (gc *GoCommand) run() error {
 	var targetRepo string
 	var deployerServiceManager artifactory.ArtifactoryServicesManager
 
-	err = gocmd.RunWithFallbacksAndPublish(gc.goArg, goInfo)
+	err = gocmd.RunWithFallback(gc.goArg)
 	if err != nil {
 		return err
 	}
@@ -295,6 +295,6 @@ func shouldIncludeInfoFiles(deployerServiceManager artifactory.ArtifactoryServic
 		return false, err
 	}
 	version := version.NewVersion(artifactoryVersion)
-	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile)
+	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersion)
 	return includeInfoFiles, nil
 }

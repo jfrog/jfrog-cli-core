@@ -112,7 +112,7 @@ func (gpc *GoPublishCommand) Run() error {
 			// No dependencies were published but those dependencies need to be loaded for the build info.
 			goProject.LoadDependencies()
 		}
-		err = goProject.CreateBuildInfoDependencies(version.AtLeast(_go.ArtifactoryMinSupportedVersionForInfoFile))
+		err = goProject.CreateBuildInfoDependencies(version.AtLeast(_go.ArtifactoryMinSupportedVersion))
 		if err != nil {
 			return err
 		}

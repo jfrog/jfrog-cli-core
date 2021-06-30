@@ -71,7 +71,6 @@ func (pc *JFrogPipelinesConfigurator) createPipelinesServiceManager(details *con
 	pipelinesDetails.AccessToken = pc.PipelinesToken
 	pipelinesDetails.User = ""
 	pipelinesDetails.Password = ""
-	pipelinesDetails.ApiKey = ""
 
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
@@ -137,18 +136,15 @@ func (pc *JFrogPipelinesConfigurator) createVcsIntegration(psm *pipelines.Pipeli
 
 func (pc *JFrogPipelinesConfigurator) createArtifactoryIntegration(psm *pipelines.PipelinesServicesManager, details *config.ServerDetails) (string, error) {
 	integrationName := pc.createIntegrationName("rt")
-	apiKey, err := pc.getApiKey(details)
-	if err != nil {
-		return "", err
-	}
 	user := details.User
+	var err error
 	if user == "" {
 		user, err = auth.ExtractUsernameFromAccessToken(details.AccessToken)
 		if err != nil {
 			return "", err
 		}
 	}
-	_, err = psm.CreateArtifactoryIntegration(integrationName, details.ArtifactoryUrl, user, apiKey)
+	_, err = psm.CreateArtifactoryIntegration(integrationName, details.ArtifactoryUrl, user)
 	if err != nil {
 		// If integration already exists, ignore error.
 		if _, ok := err.(*services.IntegrationAlreadyExistsError); ok {
@@ -157,26 +153,6 @@ func (pc *JFrogPipelinesConfigurator) createArtifactoryIntegration(psm *pipeline
 		}
 	}
 	return integrationName, err
-}
-
-// Get API Key if exists, generate one if needed.
-func (pc *JFrogPipelinesConfigurator) getApiKey(details *config.ServerDetails) (string, error) {
-	if details.ApiKey != "" {
-		return details.ApiKey, nil
-	}
-
-	// Try getting API Key for the user if exists.
-	asm, err := pc.createRtServiceManager(details)
-	if err != nil {
-		return "", err
-	}
-	apiKey, err := asm.GetAPIKey()
-	if err != nil || apiKey != "" {
-		return apiKey, err
-	}
-
-	// Generate API Key for the user.
-	return asm.CreateAPIKey()
 }
 
 func (pc *JFrogPipelinesConfigurator) createIntegrationName(intType string) string {

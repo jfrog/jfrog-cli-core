@@ -33,18 +33,6 @@ func TestUsernameSavedLowercase(t *testing.T) {
 	assert.Equal(t, outputConfig.User, "admin", "The config command is supposed to save username as lowercase")
 }
 
-func TestApiKey(t *testing.T) {
-	// API key is no longer allowed to be configured without providing a username.
-	// This test is here to make sure that old configurations (with API key and no username) are still accepted.
-	inputDetails := createTestServerDetails()
-	inputDetails.ApiKey = "apiKey"
-	configAndTest(t, inputDetails, false)
-
-	inputDetails.User = "admin"
-	configAndTest(t, inputDetails, false)
-	configAndTest(t, inputDetails, true)
-}
-
 func TestArtifactorySshKey(t *testing.T) {
 	inputDetails := createTestServerDetails()
 	inputDetails.User = "admin"

@@ -273,10 +273,6 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 	}
 	vConfig.Set(contextPrefix+URL, artDetails.GetArtifactoryUrl())
 
-	if artDetails.GetApiKey() != "" {
-		return errorutils.CheckError(errors.New("Server ID " + serverId + ": Configuring an API key without a username is not supported."))
-	}
-
 	if artDetails.GetAccessToken() != "" {
 		username, err := auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
 		if err != nil {

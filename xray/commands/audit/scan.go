@@ -7,7 +7,7 @@ import (
 
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/xray/commands"
@@ -33,15 +33,18 @@ type XrBinariesScanCommand struct {
 	spec          *spec.SpecFiles
 	threads       int
 	// The location on the local file system of the downloaded Xray's indexer.
-	indexerPath string
-	// A path in Artifactory that the Artifacts are intended to be deployed to.
-	// This will provide a way to Xray to extract the watches that should be applied on this scan request.
-	deployedRepoPath string
-	printResults     bool
+	indexerPath  string
+	printResults bool
+	scanPassed   bool
 }
 
 func (scanCmd *XrBinariesScanCommand) SetThreads(threads int) *XrBinariesScanCommand {
 	scanCmd.threads = threads
+	return scanCmd
+}
+
+func (scanCmd *XrBinariesScanCommand) SetPrintResults(print bool) *XrBinariesScanCommand {
+	scanCmd.printResults = print
 	return scanCmd
 }
 
@@ -59,9 +62,8 @@ func (scanCmd *XrBinariesScanCommand) ServerDetails() (*config.ServerDetails, er
 	return scanCmd.serverDetails, nil
 }
 
-func (scanCmd *XrBinariesScanCommand) SetDeployedRepoPath(deployedRepoPath string) *XrBinariesScanCommand {
-	scanCmd.deployedRepoPath = deployedRepoPath
-	return scanCmd
+func (scanCmd *XrBinariesScanCommand) IsScanPassed() bool {
+	return scanCmd.scanPassed
 }
 
 func (scanCmd *XrBinariesScanCommand) IndexFile(filePath string) (*services.GraphNode, error) {
@@ -79,13 +81,13 @@ func (scanCmd *XrBinariesScanCommand) IndexFile(filePath string) (*services.Grap
 
 }
 
-func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.GraphNode) (*services.ScanResponse, error) {
+func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.GraphNode, file *spec.File) (*services.ScanResponse, error) {
 	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return nil, err
 	}
 	params := services.NewXrayGraphScanParams()
-	params.RepoPath = scanCmd.deployedRepoPath
+	params.RepoPath = file.Target
 	params.Graph = graph
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
@@ -99,20 +101,14 @@ func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.Grap
 }
 
 func (scanCmd *XrBinariesScanCommand) Run() (err error) {
-	scanCmd.printResults = true
-	_, err = scanCmd.DoScan()
-	return
-}
-
-func (scanCmd *XrBinariesScanCommand) DoScan() (pass bool, err error) {
 	// First download Xray Indexer if needed
 	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
-		return false, err
+		return err
 	}
 	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager)
 	if err != nil {
-		return false, err
+		return err
 	}
 	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -122,17 +118,12 @@ func (scanCmd *XrBinariesScanCommand) DoScan() (pass bool, err error) {
 	// Start walk on the Filesystem "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
-	scanOk := scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	scanCmd.scanPassed = scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {
-		return false, err
+		return err
 	}
-	err = indexedFileProducerErrorsQueue.GetError()
-	if err != nil {
-		return false, err
-	}
-
-	return scanOk, nil
+	return indexedFileProducerErrorsQueue.GetError()
 }
 
 func NewXrBinariesScanCommand() *XrBinariesScanCommand {
@@ -179,7 +170,7 @@ func (scanCmd *XrBinariesScanCommand) createIndexerHandlerFunc(file *spec.File, 
 			// Add a new task to the seconde prodicer/consumer
 			// which will send the indexed binary to Xray and then will store the given result.
 			taskFunc := func(threadId int) (err error) {
-				scanResults, err := scanCmd.GetXrScanGraphResults(graph)
+				scanResults, err := scanCmd.GetXrScanGraphResults(graph, file)
 				if err != nil {
 					return err
 				}
@@ -298,10 +289,4 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		}
 	}
 	return nil
-}
-
-func printTable(res *services.ScanResponse) error {
-	jsonOut, err := json.Marshal(res)
-	print(string(jsonOut))
-	return err
 }

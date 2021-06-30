@@ -78,6 +78,8 @@ const PROXY = "proxy."
 const HOST = "host"
 const PORT = "port"
 
+const DEPLOY = "artifactory.publish.artifacts"
+
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
@@ -173,7 +175,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, detailedSummary bool, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, shouldCreateArtifactsFile, xrayScan bool, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -214,11 +216,15 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, de
 	if err != nil {
 		return "", err
 	}
-	if detailedSummary {
+	if shouldCreateArtifactsFile {
 		err = createDeployableArtifactsFile(config)
 		if err != nil {
 			return "", err
 		}
+	}
+
+	if xrayScan {
+		config.Set(DEPLOY, false)
 	}
 
 	// Iterate over all the required properties keys according to the buildType and create properties file.

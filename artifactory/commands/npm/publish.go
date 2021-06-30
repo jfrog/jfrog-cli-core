@@ -15,9 +15,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/spec"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/npm"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -282,9 +282,12 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.ServerDetails) (bool, error) {
 	filSpec := spec.NewBuilder().
 		Pattern(file).
+		Target(target).
 		BuildSpec()
-	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetDeployedRepoPath(target)
-	return xrScanCmd.DoScan()
+	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
+	err := xrScanCmd.Run()
+
+	return xrScanCmd.IsScanPassed(), err
 }
 
 func (npc *NpmPublishCommand) saveArtifactData() error {

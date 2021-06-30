@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -34,6 +35,7 @@ type MvnCommand struct {
 	serverDetails   *config.ServerDetails
 	threads         int
 	detailedSummary bool
+	xrayScan        bool
 	result          *commandsutils.Result
 }
 
@@ -80,6 +82,15 @@ func (mc *MvnCommand) IsDetailedSummary() bool {
 	return mc.detailedSummary
 }
 
+func (mc *MvnCommand) SetXrayScan(xrayScan bool) *MvnCommand {
+	mc.xrayScan = xrayScan
+	return mc
+}
+
+func (mc *MvnCommand) IsXrayScan() bool {
+	return mc.xrayScan
+}
+
 func (mc *MvnCommand) Result() *commandsutils.Result {
 	return mc.result
 }
@@ -115,6 +126,9 @@ func (mc *MvnCommand) Run() error {
 	if mc.IsDetailedSummary() {
 		return mc.unmarshalDeployableArtifacts(mvnRunConfig.deployableArtifactsFilePath)
 	}
+	if mc.IsXrayScan() {
+		return mc.conditionalUpload()
+	}
 	return nil
 }
 
@@ -134,6 +148,21 @@ func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (mc *MvnCommand) CommandName() string {
 	return "rt_maven"
+}
+
+func (mc *MvnCommand) conditionalUpload() error {
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails)
+	// First upload binaries
+	uploadCmd := generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(binariesSpecFile).SetServerDetails(mc.serverDetails)
+	err = uploadCmd.Run()
+	if err != nil {
+		return err
+	}
+	// Then Upload pom.xml's
+	uploadCmd = generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(pomSpecFile).SetServerDetails(mc.serverDetails)
+	return uploadCmd.Run()
 }
 
 func validateMavenInstallation() error {
@@ -231,7 +260,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		setEmptyDeployer(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, mc.IsDetailedSummary(), vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project, mc.IsDetailedSummary() || mc.IsXrayScan(), mc.IsXrayScan(), vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

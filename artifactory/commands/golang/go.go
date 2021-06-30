@@ -10,13 +10,10 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 	"path"
 	"path/filepath"
 	"strings"
@@ -140,7 +137,6 @@ func (gc *GoCommand) run() error {
 	goInfo := &params.ResolverDeployer{}
 	goInfo.SetResolver(resolverParams)
 	var targetRepo string
-	var deployerServiceManager artifactory.ArtifactoryServicesManager
 
 	err = gocmd.RunWithFallback(gc.goArg)
 	if err != nil {
@@ -173,15 +169,11 @@ func (gc *GoCommand) run() error {
 		if err != nil {
 			return err
 		}
-		includeInfoFiles, err := shouldIncludeInfoFiles(deployerServiceManager, resolverServiceManager)
-		if err != nil {
-			return err
-		}
 		err = goProject.LoadDependencies()
 		if err != nil {
 			return err
 		}
-		err = goProject.CreateBuildInfoDependencies(includeInfoFiles)
+		err = goProject.CreateBuildInfoDependencies()
 		if err != nil {
 			return err
 		}
@@ -280,21 +272,4 @@ func buildPackageVersionRequest(name, branchName string) string {
 	}
 	// No version was given to "go get" command, so the latest version should be requested
 	return path.Join(packageVersionRequest, "latest.info")
-}
-
-// Returns true/false if info files should be included in the build info.
-func shouldIncludeInfoFiles(deployerServiceManager artifactory.ArtifactoryServicesManager, resolverServiceManager artifactory.ArtifactoryServicesManager) (bool, error) {
-	var artifactoryVersion string
-	var err error
-	if deployerServiceManager != nil {
-		artifactoryVersion, err = deployerServiceManager.GetConfig().GetServiceDetails().GetVersion()
-	} else {
-		artifactoryVersion, err = resolverServiceManager.GetConfig().GetServiceDetails().GetVersion()
-	}
-	if err != nil {
-		return false, err
-	}
-	version := version.NewVersion(artifactoryVersion)
-	includeInfoFiles := version.AtLeast(_go.ArtifactoryMinSupportedVersion)
-	return includeInfoFiles, nil
 }

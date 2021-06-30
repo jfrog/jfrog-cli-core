@@ -12,7 +12,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewXrAuditMvnCommand()
+	auditCmd := NewAuditMvnCommand()
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, modulesDependencyTrees)
@@ -40,7 +40,7 @@ func TestMavenTreesExcludeTestDeps(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewXrAuditMvnCommand()
+	auditCmd := NewAuditMvnCommand()
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, modulesDependencyTrees)

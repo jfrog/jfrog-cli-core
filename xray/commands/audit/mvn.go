@@ -11,36 +11,36 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-type XrAuditMavenCommand struct {
+type AuditMavenCommand struct {
 	serverDetails   *config.ServerDetails
 	excludeTestDeps bool
 	insecureTls     bool
 }
 
-func (auditCmd *XrAuditMavenCommand) SetServerDetails(server *config.ServerDetails) *XrAuditMavenCommand {
+func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails) *AuditMavenCommand {
 	auditCmd.serverDetails = server
 	return auditCmd
 }
 
-func (auditCmd *XrAuditMavenCommand) SetExcludeTestDeps(excludeTestDeps bool) *XrAuditMavenCommand {
+func (auditCmd *AuditMavenCommand) SetExcludeTestDeps(excludeTestDeps bool) *AuditMavenCommand {
 	auditCmd.excludeTestDeps = excludeTestDeps
 	return auditCmd
 }
 
-func (auditCmd *XrAuditMavenCommand) SetInsecureTls(insecureTls bool) *XrAuditMavenCommand {
+func (auditCmd *AuditMavenCommand) SetInsecureTls(insecureTls bool) *AuditMavenCommand {
 	auditCmd.insecureTls = insecureTls
 	return auditCmd
 }
 
-func (auditCmd *XrAuditMavenCommand) ServerDetails() (*config.ServerDetails, error) {
+func (auditCmd *AuditMavenCommand) ServerDetails() (*config.ServerDetails, error) {
 	return auditCmd.serverDetails, nil
 }
 
-func NewXrAuditMvnCommand() *XrAuditMavenCommand {
-	return &XrAuditMavenCommand{}
+func NewAuditMvnCommand() *AuditMavenCommand {
+	return &AuditMavenCommand{}
 }
 
-func (auditCmd *XrAuditMavenCommand) Run() (err error) {
+func (auditCmd *AuditMavenCommand) Run() (err error) {
 	// Parse the dependencies into an Xray dependency tree format
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	if err != nil {
@@ -50,7 +50,7 @@ func (auditCmd *XrAuditMavenCommand) Run() (err error) {
 	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails)
 }
 
-func (auditCmd *XrAuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
+func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
@@ -62,7 +62,7 @@ func (auditCmd *XrAuditMavenCommand) getModulesDependencyTrees() (modules []*ser
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func (auditCmd *XrAuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
+func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
 	goals := []string{"-B", "compile"}
 	if !auditCmd.excludeTestDeps {
 		goals = append(goals, "test-compile")
@@ -80,7 +80,7 @@ func (auditCmd *XrAuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfi
 	return mvn.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
 }
 
-func (na *XrAuditMavenCommand) CommandName() string {
+func (na *AuditMavenCommand) CommandName() string {
 	return "xr_audit_mvn"
 }
 

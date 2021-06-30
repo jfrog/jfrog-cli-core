@@ -26,7 +26,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 	}
 	// Only non pom.xml should be scanned
 
-	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err

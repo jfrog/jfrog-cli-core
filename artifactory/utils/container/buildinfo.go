@@ -454,7 +454,7 @@ func searchHandler(imagePathPattern string, builder *buildInfoBuilder) (resultMa
 // return a map of: layer-digest -> layer-search-result
 func performSearch(imagePathPattern string, serviceManager artifactory.ArtifactoryServicesManager) (resultMap map[string]*utils.ResultItem, err error) {
 	searchParams := services.NewSearchParams()
-	searchParams.ArtifactoryCommonParams = &utils.ArtifactoryCommonParams{}
+	searchParams.CommonParams = &utils.CommonParams{}
 	searchParams.Pattern = imagePathPattern
 	reader, err := serviceManager.SearchFiles(searchParams)
 	if err != nil {

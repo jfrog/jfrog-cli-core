@@ -114,7 +114,7 @@ func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCoun
 
 func getDeleteParams(f *spec.File) (deleteParams services.DeleteParams, err error) {
 	deleteParams = services.NewDeleteParams()
-	deleteParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	deleteParams.CommonParams, err = f.ToCommonParams()
 	if err != nil {
 		return
 	}

@@ -28,7 +28,7 @@ const (
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
 
-type XrBinariesScanCommand struct {
+type ScanCommand struct {
 	serverDetails *config.ServerDetails
 	spec          *spec.SpecFiles
 	threads       int
@@ -38,35 +38,35 @@ type XrBinariesScanCommand struct {
 	scanPassed   bool
 }
 
-func (scanCmd *XrBinariesScanCommand) SetThreads(threads int) *XrBinariesScanCommand {
+func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	scanCmd.threads = threads
 	return scanCmd
 }
 
-func (scanCmd *XrBinariesScanCommand) SetPrintResults(print bool) *XrBinariesScanCommand {
+func (scanCmd *ScanCommand) SetPrintResults(print bool) *ScanCommand {
 	scanCmd.printResults = print
 	return scanCmd
 }
 
-func (scanCmd *XrBinariesScanCommand) SetServerDetails(server *config.ServerDetails) *XrBinariesScanCommand {
+func (scanCmd *ScanCommand) SetServerDetails(server *config.ServerDetails) *ScanCommand {
 	scanCmd.serverDetails = server
 	return scanCmd
 }
 
-func (scanCmd *XrBinariesScanCommand) SetSpec(spec *spec.SpecFiles) *XrBinariesScanCommand {
+func (scanCmd *ScanCommand) SetSpec(spec *spec.SpecFiles) *ScanCommand {
 	scanCmd.spec = spec
 	return scanCmd
 }
 
-func (scanCmd *XrBinariesScanCommand) ServerDetails() (*config.ServerDetails, error) {
+func (scanCmd *ScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return scanCmd.serverDetails, nil
 }
 
-func (scanCmd *XrBinariesScanCommand) IsScanPassed() bool {
+func (scanCmd *ScanCommand) IsScanPassed() bool {
 	return scanCmd.scanPassed
 }
 
-func (scanCmd *XrBinariesScanCommand) IndexFile(filePath string) (*services.GraphNode, error) {
+func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
 	var indexerResults services.GraphNode
 	indexCmd := &coreutils.GeneralExecCmd{
 		ExecPath: scanCmd.indexerPath,
@@ -74,14 +74,13 @@ func (scanCmd *XrBinariesScanCommand) IndexFile(filePath string) (*services.Grap
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
-		return nil, err
+		return nil, errorutils.CheckError(err)
 	}
 	err = json.Unmarshal([]byte(output), &indexerResults)
-	return &indexerResults, err
-
+	return &indexerResults, errorutils.CheckError(err)
 }
 
-func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.GraphNode, file *spec.File) (*services.ScanResponse, error) {
+func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, file *spec.File) (*services.ScanResponse, error) {
 	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return nil, err
@@ -100,7 +99,7 @@ func (scanCmd *XrBinariesScanCommand) GetXrScanGraphResults(graph *services.Grap
 	return scanResults, nil
 }
 
-func (scanCmd *XrBinariesScanCommand) Run() (err error) {
+func (scanCmd *ScanCommand) Run() (err error) {
 	// First download Xray Indexer if needed
 	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
@@ -115,7 +114,7 @@ func (scanCmd *XrBinariesScanCommand) Run() (err error) {
 	fileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	indexedFileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
 	indexedFileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
-	// Start walk on the Filesystem "produce" files that match the given pattern
+	// Start walking on the filesystem to "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
 	scanCmd.scanPassed = scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
@@ -126,15 +125,15 @@ func (scanCmd *XrBinariesScanCommand) Run() (err error) {
 	return indexedFileProducerErrorsQueue.GetError()
 }
 
-func NewXrBinariesScanCommand() *XrBinariesScanCommand {
-	return &XrBinariesScanCommand{}
+func NewScanCommand() *ScanCommand {
+	return &ScanCommand{}
 }
 
-func (scanCmd *XrBinariesScanCommand) CommandName() string {
+func (scanCmd *ScanCommand) CommandName() string {
 	return "xr_scan"
 }
 
-func (scanCmd *XrBinariesScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrorsQueue, indexedFileErrorsQueue *clientutils.ErrorsQueue) {
+func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrorsQueue, indexedFileErrorsQueue *clientutils.ErrorsQueue) {
 	go func() {
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
@@ -153,24 +152,24 @@ func (scanCmd *XrBinariesScanCommand) prepareScanTasks(fileProducer, indexedFile
 	}()
 }
 
-func (scanCmd *XrBinariesScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) FileContext {
+func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) FileContext {
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
 
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
 			fileInfo, e := os.Lstat(filePath)
 			if errorutils.CheckError(e) != nil {
-				return
+				return e
 			}
 			log.Info(logMsgPrefix+"Indexing file:", fileInfo.Name())
-			graph, err := scanCmd.IndexFile(filePath)
+			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err
 			}
 			// Add a new task to the seconde prodicer/consumer
-			// which will send the indexed binary to Xray and then will store the given result.
+			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
-				scanResults, err := scanCmd.GetXrScanGraphResults(graph, file)
+				scanResults, err := scanCmd.getXrScanGraphResults(graph, file)
 				if err != nil {
 					return err
 				}
@@ -191,7 +190,7 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 	}
 }
 
-func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) bool {
+func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) bool {
 
 	go func() {
 		// Blocking until consuming is finished.
@@ -225,21 +224,12 @@ func (scanCmd *XrBinariesScanCommand) performScanTasks(fileConsumer parallel.Run
 	}
 	// No violations found, return scan OK.
 	return passScan
-
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {
 
 	fileData.Pattern = (clientutils.ReplaceTildeWithUserHome(fileData.Pattern))
-	// Save parentheses index in pattern, witch have corresponding placeholder.
-	patternType := clientutils.WildCardPattern
-	if regex, _ := fileData.IsRegexp(false); regex {
-		patternType = clientutils.RegExp
-	}
-	if ant, _ := fileData.IsAnt(false); ant {
-		patternType = clientutils.AntPattern
-	}
-
+	patternType := fileData.GetPatternType()
 	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, patternType, false)
 	if err != nil {
 		return err
@@ -255,13 +245,12 @@ func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandle
 		dataHandlerFunc(rootPath)
 		return nil
 	}
-	fileData.Pattern = clientutils.PrepareLocalPathForUpload(fileData.Pattern, patternType)
-	err = collectPatternMatchingFiles(fileData, rootPath, dataHandlerFunc)
-	return err
+	fileData.Pattern = clientutils.ConvertLocalPatternToRegexp(fileData.Pattern, patternType)
+	return collectPatternMatchingFiles(fileData, rootPath, dataHandlerFunc)
 }
 
 func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandlerFunc indexFileHandlerFunc) error {
-	fileParams, err := fileData.ToArtifactoryCommonParams()
+	fileParams, err := fileData.ToCommonParams()
 	if err != nil {
 		return err
 	}

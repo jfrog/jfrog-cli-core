@@ -239,7 +239,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return err
 	}
 	up := services.UploadParams{}
-	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
+	up.CommonParams = &specutils.CommonParams{Pattern: npc.packedFilePath, Target: target}
 	var totalFailed int
 	if npc.collectBuildInfo || npc.detailedSummary {
 		if npc.collectBuildInfo {
@@ -285,7 +285,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := audit.NewXrBinariesScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err

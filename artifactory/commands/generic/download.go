@@ -2,11 +2,12 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/common/spec"
@@ -172,7 +173,7 @@ func (dc *DownloadCommand) download() error {
 
 func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration) (downParams services.DownloadParams, err error) {
 	downParams = services.NewDownloadParams()
-	downParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	downParams.CommonParams, err = f.ToCommonParams()
 	if err != nil {
 		return
 	}

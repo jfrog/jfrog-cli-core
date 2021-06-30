@@ -54,10 +54,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	}
 	// Add execution premissions to the indexer
 	err = os.Chmod(indexerPath, 0777)
-	if err != nil {
-		return "", err
-	}
-	return indexerPath, nil
+	return indexerPath, err
 }
 
 func downloadIndexer(xrayManager *xray.XrayServicesManager, downloadDirPath string) error {

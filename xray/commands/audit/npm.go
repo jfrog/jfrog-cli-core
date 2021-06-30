@@ -16,42 +16,42 @@ const (
 	NpmPackageTypeIdentifier = "npm://"
 )
 
-type XrAuditNpmCommand struct {
+type AuditNpmCommand struct {
 	serverDetails    *config.ServerDetails
 	workingDirectory string
 	arguments        []string
 	typeRestriction  npmutils.TypeRestriction
 }
 
-func (auditCmd *XrAuditNpmCommand) SetWorkingDirectory(dir string) *XrAuditNpmCommand {
+func (auditCmd *AuditNpmCommand) SetWorkingDirectory(dir string) *AuditNpmCommand {
 	auditCmd.workingDirectory = dir
 	return auditCmd
 }
 
-func (auditCmd *XrAuditNpmCommand) SetArguments(args []string) *XrAuditNpmCommand {
+func (auditCmd *AuditNpmCommand) SetArguments(args []string) *AuditNpmCommand {
 	auditCmd.arguments = args
 	return auditCmd
 }
 
-func (auditCmd *XrAuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *XrAuditNpmCommand {
+func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *AuditNpmCommand {
 	auditCmd.typeRestriction = typeRestriction
 	return auditCmd
 }
 
-func (auditCmd *XrAuditNpmCommand) SetServerDetails(server *config.ServerDetails) *XrAuditNpmCommand {
+func (auditCmd *AuditNpmCommand) SetServerDetails(server *config.ServerDetails) *AuditNpmCommand {
 	auditCmd.serverDetails = server
 	return auditCmd
 }
 
-func (auditCmd *XrAuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
+func (auditCmd *AuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
 	return auditCmd.serverDetails, nil
 }
 
-func NewXrAuditNpmCommand() *XrAuditNpmCommand {
-	return &XrAuditNpmCommand{}
+func NewAuditNpmCommand() *AuditNpmCommand {
+	return &AuditNpmCommand{}
 }
 
-func (auditCmd *XrAuditNpmCommand) Run() (err error) {
+func (auditCmd *AuditNpmCommand) Run() (err error) {
 	typeRestriction := auditCmd.typeRestriction
 
 	currentDir, err := coreutils.GetWorkingDirectory()
@@ -138,6 +138,6 @@ func buildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *ser
 	return xrDependencyTree
 }
 
-func (auditCmd *XrAuditNpmCommand) CommandName() string {
+func (auditCmd *AuditNpmCommand) CommandName() string {
 	return "xr_audit_npm"
 }

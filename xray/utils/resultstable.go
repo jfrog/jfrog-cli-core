@@ -99,10 +99,30 @@ func splitComponents(components map[string]services.Component) ([]string, []stri
 }
 
 func splitComponentId(componentId string) (string, string) {
-	prefixSepIndex := strings.Index(componentId, "://") + 3
-	trimmedComponentId := componentId[prefixSepIndex:]
+	prefixSepIndex := strings.Index(componentId, "://")
+	packageType := componentId[:prefixSepIndex]
+
+	lastSlashIndex := strings.LastIndex(componentId, "/")
+	trimmedComponentId := componentId[lastSlashIndex+1:]
 	splitComponentId := strings.Split(trimmedComponentId, ":")
-	return splitComponentId[len(splitComponentId)-2], splitComponentId[len(splitComponentId)-1]
+
+	var compName, compVersion string
+	switch packageType {
+	case "rpm":
+		// RPM identifier structure: rpm://os-version:package:epoch-version:version
+		compName = splitComponentId[1]
+		compVersion = splitComponentId[3]
+	case "generic":
+		// Generic identifier structure: generic://sha256:<Checksum>/name
+		compName = splitComponentId[0]
+	default:
+		// All other identifiers look like this: package-type://package-name:version.
+		// Sometimes there's a namespace or a group before the package name, separated by a '/' or a ':'.
+		compName = splitComponentId[len(splitComponentId)-2]
+		compVersion = splitComponentId[len(splitComponentId)-1]
+	}
+
+	return compName, compVersion
 }
 
 // Gets a string of the direct dependencies of the scanned component, that depends on the vulnerable component

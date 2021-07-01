@@ -174,6 +174,19 @@ func GetCliPersistentTempDirPath() string {
 	return cliTempDir
 }
 
+func GetWorkingDirectory() (string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	if currentDir, err = filepath.Abs(currentDir); err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	return currentDir, nil
+}
+
 type Credentials interface {
 	SetUser(string)
 	SetPassword(string)

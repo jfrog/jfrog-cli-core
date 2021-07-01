@@ -4,21 +4,22 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/buger/jsonparser"
+	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -42,21 +43,12 @@ type NpmCommandArgs struct {
 	registry         string
 	npmAuth          string
 	collectBuildInfo bool
-	dependencies     map[string]*dependency
-	typeRestriction  typeRestriction
+	dependencies     map[string]*npmutils.Dependency
+	typeRestriction  npmutils.TypeRestriction
 	authArtDetails   auth.ServiceDetails
-	packageInfo      *commandUtils.PackageInfo
+	packageInfo      *coreutils.PackageInfo
 	NpmCommand
 }
-
-type typeRestriction int
-
-const (
-	defaultRestriction typeRestriction = iota
-	all
-	devOnly
-	prodOnly
-)
 
 type NpmInstallOrCiCommand struct {
 	configFilePath      string
@@ -105,7 +97,7 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	threads, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	threads, _, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	if err != nil {
 		return err
 	}
@@ -118,6 +110,15 @@ func (nca *NpmCommandArgs) SetThreads(threads int) *NpmCommandArgs {
 	return nca
 }
 
+func (nca *NpmCommandArgs) SetTypeRestriction(typeRestriction npmutils.TypeRestriction) *NpmCommandArgs {
+	nca.typeRestriction = typeRestriction
+	return nca
+}
+
+func (nca *NpmCommandArgs) SetPackageInfo(packageInfo *coreutils.PackageInfo) *NpmCommandArgs {
+	nca.packageInfo = packageInfo
+	return nca
+}
 func NewNpmCommandArgs(npmCommand string) *NpmCommandArgs {
 	return &NpmCommandArgs{command: npmCommand}
 }
@@ -166,10 +167,11 @@ func (nca *NpmCommandArgs) run() error {
 
 func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites.")
-	var err error
-	if err = nca.setNpmExecutable(); err != nil {
+	path, err := npmutils.FindNpmExecutable()
+	if err != nil {
 		return err
 	}
+	nca.executablePath = path
 
 	if err = nca.validateNpmVersion(); err != nil {
 		return err
@@ -179,7 +181,7 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 
-	nca.workingDirectory, err = commandUtils.GetWorkingDirectory()
+	nca.workingDirectory, err = coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
@@ -288,18 +290,8 @@ func (nca *NpmCommandArgs) runInstallOrCi() error {
 	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))
 }
 
-func (nca *NpmCommandArgs) setDependenciesList() (err error) {
-	nca.dependencies = make(map[string]*dependency)
-	// nca.typeRestriction default is 'all'
-	if nca.typeRestriction != prodOnly {
-		if err = nca.prepareDependencies("dev"); err != nil {
-			return
-		}
-	}
-	if nca.typeRestriction != devOnly {
-		err = nca.prepareDependencies("prod")
-	}
-	return
+func (nca *NpmCommandArgs) GetDependenciesList() map[string]*npmutils.Dependency {
+	return nca.dependencies
 }
 
 func (nca *NpmCommandArgs) collectDependenciesChecksums() error {
@@ -434,80 +426,26 @@ func (nca *NpmCommandArgs) setTypeRestriction(key string, value string) {
 	// So 'omit' is always preferred, if it exists.
 	if key == "omit" {
 		if strings.Contains(value, "dev") {
-			nca.typeRestriction = prodOnly
+			nca.typeRestriction = npmutils.ProdOnly
 		} else {
-			nca.typeRestriction = all
+			nca.typeRestriction = npmutils.All
 		}
-	} else if nca.typeRestriction == defaultRestriction { // Until npm 6, configurations in 'npm config ls' are sorted by priority in descending order, so typeRestriction should be set only if it was not set before
+	} else if nca.typeRestriction == npmutils.DefaultRestriction { // Until npm 6, configurations in 'npm config ls' are sorted by priority in descending order, so typeRestriction should be set only if it was not set before
 		if key == "only" {
 			if strings.Contains(value, "prod") {
-				nca.typeRestriction = prodOnly
+				nca.typeRestriction = npmutils.ProdOnly
 			} else if strings.Contains(value, "dev") {
-				nca.typeRestriction = devOnly
+				nca.typeRestriction = npmutils.DevOnly
 			}
 		} else if key == "production" && strings.Contains(value, "true") {
-			nca.typeRestriction = prodOnly
+			nca.typeRestriction = npmutils.ProdOnly
 		}
 	}
 }
 
-// Run npm list and parse the returned JSON.
-// typeRestriction must be one of: 'dev' or 'prod'!
-func (nca *NpmCommandArgs) prepareDependencies(typeRestriction string) error {
-	// Run npm list
-	// Although this command can get --development as a flag (according to npm docs), it's not working on npm 6.
-	// Although this command can get --only=development as a flag (according to npm docs), it's not working on npm 7.
-	data, errData, err := npm.RunList(strings.Join(append(nca.npmArgs, "--all", "--"+typeRestriction), " "), nca.executablePath)
-	if err != nil {
-		log.Warn("npm list command failed with error:", err.Error())
-	}
-	if len(errData) > 0 {
-		log.Warn("Some errors occurred while collecting dependencies info:\n" + string(errData))
-	}
-
-	// Parse the dependencies json object
-	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) (err error) {
-		if string(key) == "dependencies" {
-			err = nca.parseDependencies(value, typeRestriction, []string{nca.packageInfo.BuildInfoModuleId()})
-		}
-		return err
-	})
-}
-
-// Parses npm dependencies recursively and adds the collected dependencies to nca.dependencies
-func (nca *NpmCommandArgs) parseDependencies(data []byte, scope string, pathToRoot []string) error {
-	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-		depName := string(key)
-		ver, _, _, err := jsonparser.Get(data, depName, "version")
-		depVersion := string(ver)
-		depKey := depName + ":" + depVersion
-		if err != nil && err != jsonparser.KeyPathNotFoundError {
-			return errorutils.CheckError(err)
-		} else if err == jsonparser.KeyPathNotFoundError {
-			log.Debug(fmt.Sprintf("%s dependency will not be included in the build-info, because the 'npm ls' command did not return its version.\nThe reason why the version wasn't returned may be because the package is a 'peerdependency', which was not manually installed.\n'npm install' does not download 'peerdependencies' automatically. It is therefore okay to skip this dependency.", depName))
-		} else {
-			nca.appendDependency(depKey, depName, depVersion, scope, pathToRoot)
-		}
-		transitive, _, _, err := jsonparser.Get(data, depName, "dependencies")
-		if err != nil && err.Error() != "Key path not found" {
-			return errorutils.CheckError(err)
-		}
-		if len(transitive) > 0 {
-			if err := nca.parseDependencies(transitive, scope, append([]string{depKey}, pathToRoot...)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func (nca *NpmCommandArgs) appendDependency(depKey, depName, depVersion, scope string, pathToRoot []string) {
-	if nca.dependencies[depKey] == nil {
-		nca.dependencies[depKey] = &dependency{name: depName, version: depVersion, scopes: []string{scope}}
-	} else if !scopeAlreadyExists(scope, nca.dependencies[depKey].scopes) {
-		nca.dependencies[depKey].scopes = append(nca.dependencies[depKey].scopes, scope)
-	}
-	nca.dependencies[depKey].pathToRoot = append(nca.dependencies[depKey].pathToRoot, pathToRoot)
+func (nca *NpmCommandArgs) setDependenciesList() (err error) {
+	nca.dependencies, err = npmutils.CalculateDependenciesList(nca.typeRestriction, nca.npmArgs, nca.executablePath, nca.packageInfo.BuildInfoModuleId())
+	return
 }
 
 // Creates a function that fetches dependency data.
@@ -518,8 +456,8 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 	previousBuildDependencies map[string]*buildinfo.Dependency) getDependencyInfoFunc {
 	return func(dependencyIndex string) parallel.TaskFunc {
 		return func(threadId int) error {
-			name := nca.dependencies[dependencyIndex].name
-			ver := nca.dependencies[dependencyIndex].version
+			name := nca.dependencies[dependencyIndex].Name
+			ver := nca.dependencies[dependencyIndex].Version
 
 			// Get dependency info.
 			checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
@@ -528,8 +466,8 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 			}
 
 			// Update dependency.
-			nca.dependencies[dependencyIndex].fileType = fileType
-			nca.dependencies[dependencyIndex].checksum = checksum
+			nca.dependencies[dependencyIndex].FileType = fileType
+			nca.dependencies[dependencyIndex].Checksum = checksum
 			return nil
 		}
 	}
@@ -538,9 +476,9 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 // Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.
 func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dependency, missingDependencies []buildinfo.Dependency) {
 	for _, dependency := range nca.dependencies {
-		biDependency := buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
-			Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot}
-		if dependency.checksum != nil {
+		biDependency := buildinfo.Dependency{Id: dependency.Name + ":" + dependency.Version, Type: dependency.FileType,
+			Scopes: dependency.Scopes, Checksum: dependency.Checksum, RequestedBy: dependency.PathToRoot}
+		if dependency.Checksum != nil {
 			dependencies = append(dependencies,
 				biDependency)
 		} else {
@@ -581,29 +519,6 @@ func removeNpmrcIfExists(workingDirectory string) error {
 	return errorutils.CheckError(os.Remove(filepath.Join(workingDirectory, npmrcFileName)))
 }
 
-func (nca *NpmCommandArgs) setNpmExecutable() error {
-	npmExecPath, err := exec.LookPath("npm")
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	if npmExecPath == "" {
-		return errorutils.CheckError(errors.New("could not find 'npm' executable"))
-	}
-	nca.executablePath = npmExecPath
-	log.Debug("Found npm executable at:", nca.executablePath)
-	return nil
-}
-
-func scopeAlreadyExists(scope string, existingScopes []string) bool {
-	for _, existingScope := range existingScopes {
-		if existingScope == scope {
-			return true
-		}
-	}
-	return false
-}
-
 // To avoid writing configurations that are used by us
 func isValidKey(key string) bool {
 	return !strings.HasPrefix(key, "//") &&
@@ -625,12 +540,3 @@ func filterFlags(splitArgs []string) []string {
 }
 
 type getDependencyInfoFunc func(string) parallel.TaskFunc
-
-type dependency struct {
-	name       string
-	version    string
-	scopes     []string
-	fileType   string
-	checksum   *buildinfo.Checksum
-	pathToRoot [][]string
-}

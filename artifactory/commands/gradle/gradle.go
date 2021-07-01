@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -35,6 +36,7 @@ type GradleCommand struct {
 	serverDetails   *config.ServerDetails
 	threads         int
 	detailedSummary bool
+	xrayScan        bool
 	result          *commandsutils.Result
 }
 
@@ -66,7 +68,7 @@ func (gc *GradleCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename, gc.detailedSummary)
+	gradleRunConfig, err := createGradleRunConfig(gc.tasks, gc.configPath, gc.configuration, gc.threads, gradleDependenciesDir, gradlePluginFilename, gc.detailedSummary, gc.xrayScan)
 	if err != nil {
 		return err
 	}
@@ -74,8 +76,11 @@ func (gc *GradleCommand) Run() error {
 	if err := gofrogcmd.RunCmd(gradleRunConfig); err != nil {
 		return err
 	}
-	if gc.IsDetailedSummary() {
+	if gc.IsDetailedSummary() || gc.IsXrayScan() {
 		return gc.unmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
+	}
+	if gc.IsXrayScan() {
+		return gc.conditionalUpload()
 	}
 	return nil
 }
@@ -87,6 +92,21 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	}
 	gc.SetResult(result)
 	return nil
+}
+
+func (gc *GradleCommand) conditionalUpload() error {
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
+	// First upload binaries
+	uploadCmd := generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
+	err = uploadCmd.Run()
+	if err != nil {
+		return err
+	}
+	// Then Upload pom.xml's
+	uploadCmd = generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(pomSpecFile).SetServerDetails(gc.serverDetails)
+	return uploadCmd.Run()
 }
 
 func (gc *GradleCommand) CommandName() string {
@@ -122,6 +142,15 @@ func (gc *GradleCommand) IsDetailedSummary() bool {
 	return gc.detailedSummary
 }
 
+func (gc *GradleCommand) SetXrayScan(xrayScan bool) *GradleCommand {
+	gc.xrayScan = xrayScan
+	return gc
+}
+
+func (gc *GradleCommand) IsXrayScan() bool {
+	return gc.xrayScan
+}
+
 func (gc *GradleCommand) Result() *commandsutils.Result {
 	return gc.result
 }
@@ -147,7 +176,7 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 	return
 }
 
-func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, detailedSummary bool) (*gradleRunConfig, error) {
+func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, detailedSummary, xrayScan bool) (*gradleRunConfig, error) {
 	runConfig := &gradleRunConfig{env: map[string]string{}}
 	runConfig.tasks = tasks
 
@@ -165,11 +194,11 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 		vConfig.Set(utils.FORK_COUNT, threads)
 	}
 
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary, vConfig, utils.Gradle)
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary || xrayScan, xrayScan, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}
-	if detailedSummary {
+	if detailedSummary || xrayScan {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
 		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
 	}

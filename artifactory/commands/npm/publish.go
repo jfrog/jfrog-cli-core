@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"io"
 	"io/ioutil"
 	"os"
@@ -13,10 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
+
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/npm"
+	"github.com/jfrog/jfrog-cli-core/common/spec"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -31,10 +35,11 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *commandsutils.PackageInfo
+	packageInfo            *coreutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
+	xrayScan               bool
 }
 
 type NpmPublishCommand struct {
@@ -72,6 +77,11 @@ func (npc *NpmPublishCommand) SetDetailedSummary(detailedSummary bool) *NpmPubli
 	return npc
 }
 
+func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
+	npc.xrayScan = xrayScan
+	return npc
+}
+
 func (npc *NpmPublishCommand) Result() *commandsutils.Result {
 	return npc.result
 }
@@ -81,7 +91,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 }
 
 func (npc *NpmPublishCommand) Run() error {
-	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	_, detailedSummary, xrayScan, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil {
 		return err
 	}
@@ -103,6 +113,7 @@ func (npc *NpmPublishCommand) Run() error {
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
 	npc.SetDetailedSummary(detailedSummary)
+	npc.SetXrayScan(xrayScan)
 	return npc.run()
 }
 
@@ -208,8 +219,17 @@ func (npc *NpmPublishCommand) deploy() error {
 	if err := npc.readPackageInfoFromTarball(); err != nil {
 		return err
 	}
-
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
+	// If requested, preforme an Xray binary scan before deployment.
+	if npc.xrayScan {
+		pass, err := npc.scan(npc.packedFilePath, target, npc.serverDetails)
+		if err != nil {
+			return err
+		}
+		if !pass {
+			return errorutils.CheckError(errors.New("Xray scan failed. No artifacts will be published."))
+		}
+	}
 	return npc.doDeploy(target, npc.serverDetails)
 }
 
@@ -219,7 +239,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return err
 	}
 	up := services.UploadParams{}
-	up.ArtifactoryCommonParams = &specutils.ArtifactoryCommonParams{Pattern: npc.packedFilePath, Target: target}
+	up.CommonParams = &specutils.CommonParams{Pattern: npc.packedFilePath, Target: target}
 	var totalFailed int
 	if npc.collectBuildInfo || npc.detailedSummary {
 		if npc.collectBuildInfo {
@@ -258,6 +278,17 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
 	}
 	return nil
+}
+
+func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.ServerDetails) (bool, error) {
+	filSpec := spec.NewBuilder().
+		Pattern(file).
+		Target(target).
+		BuildSpec()
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
+	err := xrScanCmd.Run()
+
+	return xrScanCmd.IsScanPassed(), err
 }
 
 func (npc *NpmPublishCommand) saveArtifactData() error {
@@ -304,7 +335,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = commandsutils.ReadPackageInfoFromPackageJson(npc.publishPath)
+		npc.packageInfo, err = coreutils.ReadPackageInfoFromPackageJson(npc.publishPath)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -341,7 +372,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = commandsutils.ReadPackageInfo(packageJson)
+			npc.packageInfo, err = coreutils.ReadPackageInfo(packageJson)
 			return err
 		}
 	}

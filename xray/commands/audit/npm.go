@@ -8,6 +8,7 @@ import (
 	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -132,6 +133,14 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	}
 	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
 	if err != nil {
+		return err
+	}
+	tempDirPath, err := fileutils.CreateTempDir()
+	if err != nil {
+		return err
+	}
+	log.Info("The full scan results are available here: " + tempDirPath)
+	if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
 		return err
 	}
 	if len(scanResults.Violations) > 0 {

@@ -142,7 +142,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	// Start walking on the filesystem to "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
-	scanCmd.scanPassed = scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	scanCmd.scanPassed, err = scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	if err != nil {
+		return err
+	}
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {
 		return err
@@ -215,7 +218,7 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 	}
 }
 
-func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) bool {
+func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) (bool, error) {
 
 	go func() {
 		// Blocking until consuming is finished.
@@ -229,8 +232,16 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	passScan := true
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
+	tempDirPath, err := fileutils.CreateTempDir()
+	if err != nil {
+		return false, err
+	}
+	log.Info("The full scan results are available here: " + tempDirPath)
 	for _, arr := range resultsArr {
 		for _, res := range arr {
+			if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
+				return false, err
+			}
 			if scanCmd.printResults {
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
@@ -242,13 +253,13 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 		}
 	}
 	if len(violations) > 0 {
-		xrutils.PrintViolationsTable(violations)
+		err = xrutils.PrintViolationsTable(violations)
 	}
 	if len(vulnerabilities) > 0 {
 		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
 	}
 	// No violations found, return scan OK.
-	return passScan
+	return passScan, err
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {

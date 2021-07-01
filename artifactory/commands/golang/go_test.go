@@ -1,7 +1,7 @@
 package golang
 
 import (
-	executersutils "github.com/jfrog/gocmd/executers/utils"
+	"github.com/jfrog/gocmd/cmd"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -29,7 +29,7 @@ func TestBuildPackageVersionRequest(t *testing.T) {
 }
 
 func TestGetPackageFilesPath(t *testing.T) {
-	packageCachePath, err := executersutils.GetGoModCachePath()
+	packageCachePath, err := cmd.GetGoModCachePath()
 	assert.NoError(t, err)
 	packageName := "github.com/golang/mock/mockgen"
 	version := "v1.4.1"

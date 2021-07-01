@@ -287,7 +287,7 @@ func TestHandleSecrets(t *testing.T) {
 
 	original := new(ConfigV5)
 	original.Servers = []*ServerDetails{{User: "user", Password: "password", Url: "http://localhost:8080/artifactory/", AccessToken: "accessToken",
-		RefreshToken: "refreshToken", ApiKey: "apiKEY", SshPassphrase: "sshPass"}}
+		RefreshToken: "refreshToken", SshPassphrase: "sshPass"}}
 
 	newConf := copyConfig(t, original)
 
@@ -320,9 +320,6 @@ func verifyEncryptionStatus(t *testing.T, original, actual *ConfigV5, encryption
 		}
 		if original.Servers[i].RefreshToken != "" {
 			equals = append(equals, original.Servers[i].RefreshToken == actual.Servers[i].RefreshToken)
-		}
-		if original.Servers[i].ApiKey != "" {
-			equals = append(equals, original.Servers[i].ApiKey == actual.Servers[i].ApiKey)
 		}
 	}
 

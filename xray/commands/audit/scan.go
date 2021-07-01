@@ -33,9 +33,13 @@ type ScanCommand struct {
 	spec          *spec.SpecFiles
 	threads       int
 	// The location on the local file system of the downloaded Xray's indexer.
-	indexerPath  string
-	printResults bool
-	scanPassed   bool
+	indexerPath            string
+	printResults           bool
+	projectKey             string
+	watches                []string
+	includeVulnerabilities bool
+	includeLincenses       bool
+	scanPassed             bool
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
@@ -55,6 +59,26 @@ func (scanCmd *ScanCommand) SetServerDetails(server *config.ServerDetails) *Scan
 
 func (scanCmd *ScanCommand) SetSpec(spec *spec.SpecFiles) *ScanCommand {
 	scanCmd.spec = spec
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetProject(project string) *ScanCommand {
+	scanCmd.projectKey = project
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetWatches(watches []string) *ScanCommand {
+	scanCmd.watches = watches
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetIncludeVulnerabilities(include bool) *ScanCommand {
+	scanCmd.includeVulnerabilities = include
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetIncludeLincenses(include bool) *ScanCommand {
+	scanCmd.includeLincenses = include
 	return scanCmd
 }
 
@@ -87,12 +111,13 @@ func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, fil
 	}
 	params := services.NewXrayGraphScanParams()
 	params.RepoPath = file.Target
+	params.Watches = scanCmd.watches
 	params.Graph = graph
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
 		return nil, err
 	}
-	scanResults, err := xrayManager.GetScanGraphResults(scanId)
+	scanResults, err := xrayManager.GetScanGraphResults(scanId, scanCmd.includeVulnerabilities, scanCmd.includeLincenses)
 	if err != nil {
 		return nil, err
 	}

@@ -17,10 +17,15 @@ const (
 )
 
 type AuditNpmCommand struct {
-	serverDetails    *config.ServerDetails
-	workingDirectory string
-	arguments        []string
-	typeRestriction  npmutils.TypeRestriction
+	serverDetails          *config.ServerDetails
+	workingDirectory       string
+	arguments              []string
+	typeRestriction        npmutils.TypeRestriction
+	watches                []string
+	projectKey             string
+	targetRepoPath         string
+	includeVulnerabilities bool
+	includeLincenses       bool
 }
 
 func (auditCmd *AuditNpmCommand) SetWorkingDirectory(dir string) *AuditNpmCommand {
@@ -45,6 +50,31 @@ func (auditCmd *AuditNpmCommand) SetServerDetails(server *config.ServerDetails) 
 
 func (auditCmd *AuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
 	return auditCmd.serverDetails, nil
+}
+
+func (auditCmd *AuditNpmCommand) SetWatches(watches []string) *AuditNpmCommand {
+	auditCmd.watches = watches
+	return auditCmd
+}
+
+func (auditCmd *AuditNpmCommand) SetProject(project string) *AuditNpmCommand {
+	auditCmd.projectKey = project
+	return auditCmd
+}
+
+func (auditCmd *AuditNpmCommand) SetTargetRepoPath(repoPath string) *AuditNpmCommand {
+	auditCmd.projectKey = repoPath
+	return auditCmd
+}
+
+func (auditCmd *AuditNpmCommand) SetIncludeVulnerabilities(include bool) *AuditNpmCommand {
+	auditCmd.includeVulnerabilities = include
+	return auditCmd
+}
+
+func (auditCmd *AuditNpmCommand) SetIncludeLincenses(include bool) *AuditNpmCommand {
+	auditCmd.includeLincenses = include
+	return auditCmd
 }
 
 func NewAuditNpmCommand() *AuditNpmCommand {
@@ -92,12 +122,15 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	}
 	params := services.NewXrayGraphScanParams()
 	params.Graph = npmGraph
+	params.RepoPath = auditCmd.targetRepoPath
+	params.Watches = auditCmd.watches
+	params.ProjectKey = auditCmd.projectKey
+
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
 		return err
 	}
-
-	scanResults, err := xrayManager.GetScanGraphResults(scanId)
+	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
 	if err != nil {
 		return err
 	}

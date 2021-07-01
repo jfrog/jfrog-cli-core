@@ -360,4 +360,3 @@ func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
 	c.CommandFlags = dc.argAndFlags
 	return c, nil
 }
-

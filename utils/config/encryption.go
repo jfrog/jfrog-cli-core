@@ -99,10 +99,6 @@ func handleSecrets(config *ConfigV5, handler secretHandler, key string) error {
 		if err != nil {
 			return err
 		}
-		serverDetails.ApiKey, err = handler(serverDetails.ApiKey, key)
-		if err != nil {
-			return err
-		}
 		serverDetails.SshPassphrase, err = handler(serverDetails.SshPassphrase, key)
 		if err != nil {
 			return err

@@ -203,7 +203,7 @@ func getMinChecksumDeploySize() (int64, error) {
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bulidProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
 	uploadParams = services.NewUploadParams()
-	uploadParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	uploadParams.CommonParams, err = f.ToCommonParams()
 	if err != nil {
 		return
 	}

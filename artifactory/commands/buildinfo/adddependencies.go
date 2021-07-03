@@ -201,8 +201,8 @@ func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.
 	return
 }
 
-func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonParams, error) {
-	params, err := specFile.ToArtifactoryCommonParams()
+func prepareArtifactoryParams(specFile spec.File) (*specutils.CommonParams, error) {
+	params, err := specFile.ToCommonParams()
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.ArtifactoryCommonP
 	return params, nil
 }
 
-func getLocalDependencies(addDepsParams *specutils.ArtifactoryCommonParams) ([]string, error) {
+func getLocalDependencies(addDepsParams *specutils.CommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
 	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
@@ -245,8 +245,8 @@ func getLocalDependencies(addDepsParams *specutils.ArtifactoryCommonParams) ([]s
 	return collectPatternMatchingFiles(addDepsParams, rootPath)
 }
 
-func collectPatternMatchingFiles(addDepsParams *specutils.ArtifactoryCommonParams, rootPath string) ([]string, error) {
-	addDepsParams.SetPattern(clientutils.PrepareLocalPathForUpload(addDepsParams.Pattern, addDepsParams.GetPatternType()))
+func collectPatternMatchingFiles(addDepsParams *specutils.CommonParams, rootPath string) ([]string, error) {
+	addDepsParams.SetPattern(clientutils.ConvertLocalPatternToRegexp(addDepsParams.Pattern, addDepsParams.GetPatternType()))
 	excludePathPattern := fspatterns.PrepareExcludePathPattern(addDepsParams)
 	patternRegex, err := regxp.Compile(addDepsParams.Pattern)
 	if errorutils.CheckError(err) != nil {

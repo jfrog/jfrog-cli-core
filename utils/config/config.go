@@ -517,8 +517,6 @@ type ServerDetails struct {
 	ServerId             string `json:"serverId,omitempty"`
 	IsDefault            bool   `json:"isDefault,omitempty"`
 	InsecureTls          bool   `json:"-"`
-	// Deprecated, use password option instead.
-	ApiKey string `json:"apiKey,omitempty"`
 }
 
 // Deprecated
@@ -529,10 +527,6 @@ type MissionControlDetails struct {
 
 func (serverDetails *ServerDetails) IsEmpty() bool {
 	return len(serverDetails.ServerId) == 0
-}
-
-func (serverDetails *ServerDetails) SetApiKey(apiKey string) {
-	serverDetails.ApiKey = apiKey
 }
 
 func (serverDetails *ServerDetails) SetUser(username string) {
@@ -557,10 +551,6 @@ func (serverDetails *ServerDetails) SetClientCertPath(certificatePath string) {
 
 func (serverDetails *ServerDetails) SetClientCertKeyPath(certificatePath string) {
 	serverDetails.ClientCertKeyPath = certificatePath
-}
-
-func (serverDetails *ServerDetails) GetApiKey() string {
-	return serverDetails.ApiKey
 }
 
 func (serverDetails *ServerDetails) GetUrl() string {
@@ -644,7 +634,6 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)
 	} else {
-		details.SetApiKey(serverDetails.ApiKey)
 		details.SetUser(serverDetails.User)
 		details.SetPassword(serverDetails.Password)
 	}

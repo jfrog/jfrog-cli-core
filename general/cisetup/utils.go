@@ -35,7 +35,6 @@ const (
 	urlFlag    = "url"
 	rtUrlFlag  = "artifactory-url"
 	userFlag   = "user"
-	apikeyFlag = "apikey"
 
 	// Replace exe (group 2) with "jfrog rt exe" while maintaining preceding (if any) and succeeding spaces.
 	mvnGradleRegexp             = `(^|\s)(mvn|gradle)(\s)`
@@ -72,7 +71,6 @@ func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 		usedConfigCmd, serverId,
 		getFlagSyntax(usedUrlFlag), getIntDetailForCmd(rtIntName, urlFlag),
 		getFlagSyntax(userFlag), getIntDetailForCmd(rtIntName, userFlag),
-		getFlagSyntax(apikeyFlag), getIntDetailForCmd(rtIntName, apikeyFlag),
 		"--enc-password=false",
 	}, " ")
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -114,9 +115,19 @@ func (f File) IsTransitive(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Transitive, defaultValue)
 }
 
-func (f *File) ToArtifactoryCommonParams() (*utils.ArtifactoryCommonParams, error) {
+func (f File) GetPatternType() (patternType clientutils.PatternType) {
+	if regex, _ := f.IsRegexp(false); regex {
+		return clientutils.RegExp
+	}
+	if ant, _ := f.IsAnt(false); ant {
+		return clientutils.AntPattern
+	}
+	return clientutils.WildCardPattern
+}
+
+func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	var err error
-	params := new(utils.ArtifactoryCommonParams)
+	params := new(utils.CommonParams)
 	params.TargetProps, err = utils.ParseProperties(f.TargetProps)
 	if err != nil {
 		return nil, err

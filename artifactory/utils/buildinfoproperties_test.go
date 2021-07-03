@@ -1,11 +1,12 @@
 package utils
 
 import (
+	"os"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
-	"os"
-	"testing"
 )
 
 const (
@@ -28,7 +29,7 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
 
-	propsFile, err := CreateBuildInfoPropertiesFile("", "", "", false, providedConfig, projectType)
+	propsFile, err := CreateBuildInfoPropertiesFile("", "", "", false, false, providedConfig, projectType)
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,7 +91,7 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 	for k, v := range yamlConfig {
 		vConfig.Set(k, v)
 	}
-	propsFilePath, err := CreateBuildInfoPropertiesFile("", "", "", false, vConfig, Maven)
+	propsFilePath, err := CreateBuildInfoPropertiesFile("", "", "", false, false, vConfig, Maven)
 	if err != nil {
 		t.Error(err)
 	}
@@ -128,7 +129,7 @@ func TestGeneratedBuildInfoFile(t *testing.T) {
 	for k, v := range yamlConfig {
 		vConfig.Set(k, v)
 	}
-	propsFilePath, err := CreateBuildInfoPropertiesFile("buildName", "buildNumber", "projectKey", false, vConfig, Maven)
+	propsFilePath, err := CreateBuildInfoPropertiesFile("buildName", "buildNumber", "projectKey", false, false, vConfig, Maven)
 	if err != nil {
 		t.Error(err)
 	}

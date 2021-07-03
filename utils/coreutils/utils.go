@@ -206,7 +206,6 @@ func ReplaceVars(content []byte, specVars map[string]string) []byte {
 }
 
 func GetJfrogHomeDir() (string, error) {
-	// The JfrogHomeEnv environment variable has been deprecated and replaced with HomeDir
 	if os.Getenv(HomeDir) != "" {
 		return os.Getenv(HomeDir), nil
 	}

@@ -156,7 +156,7 @@ func (cc *ConfigCommand) Config() error {
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
-	if (cc.details.User == "" || cc.details.Password == "") {
+	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.

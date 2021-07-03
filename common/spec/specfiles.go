@@ -10,7 +10,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type SpecFiles struct {
@@ -153,7 +152,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 	if len(files) == 0 {
 		return errors.New("Spec must include at least one file group")
 	}
-	propsUsedInUpload := false
+
 	for _, file := range files {
 		isAql := len(file.Aql.ItemsFind) > 0
 		isPattern := len(file.Pattern) > 0
@@ -168,7 +167,6 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isOffset := file.Offset > 0
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
-		propsUsedInUpload = propsUsedInUpload || (isUpload && len(file.Props) > 0)
 		isExcludeProps := len(file.ExcludeProps) > 0
 		isArchive := len(file.Archive) > 0
 		isValidArchive := file.Archive == "zip"
@@ -234,17 +232,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 			return errors.New("The value of 'archive' (if provided) must be 'zip'.")
 		}
 	}
-	if propsUsedInUpload {
-		showDeprecationOnProps()
-	}
 	return nil
 }
 
 func fileSpecValidationError(fieldA, fieldB string) error {
 	return errors.New(fmt.Sprintf("Spec cannot include both '%s' and '%s.'", fieldA, fieldB))
-}
-
-func showDeprecationOnProps() {
-	log.Warn(`The --props command option and the 'Props' File Spec property are deprecated in Upload.
-	Please use the --target-props command option or the 'targetProps' File Spec property instead.`)
 }

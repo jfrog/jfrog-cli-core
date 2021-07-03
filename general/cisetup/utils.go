@@ -32,9 +32,9 @@ const (
 	passResult = "PASS"
 	failResult = "FAIL"
 
-	urlFlag    = "url"
-	rtUrlFlag  = "artifactory-url"
-	userFlag   = "user"
+	urlFlag   = "url"
+	rtUrlFlag = "artifactory-url"
+	userFlag  = "user"
 
 	// Replace exe (group 2) with "jfrog rt exe" while maintaining preceding (if any) and succeeding spaces.
 	mvnGradleRegexp             = `(^|\s)(mvn|gradle)(\s)`

@@ -11,9 +11,14 @@ import (
 )
 
 type AuditGradleCommand struct {
-	serverDetails   *config.ServerDetails
-	excludeTestDeps bool
-	useWrapper      bool
+	serverDetails          *config.ServerDetails
+	excludeTestDeps        bool
+	useWrapper             bool
+	watches                []string
+	projectKey             string
+	targetRepoPath         string
+	includeVulnerabilities bool
+	includeLincenses       bool
 }
 
 func (auditCmd *AuditGradleCommand) SetServerDetails(server *config.ServerDetails) *AuditGradleCommand {
@@ -35,6 +40,31 @@ func (auditCmd *AuditGradleCommand) ServerDetails() (*config.ServerDetails, erro
 	return auditCmd.serverDetails, nil
 }
 
+func (auditCmd *AuditGradleCommand) SetWatches(watches []string) *AuditGradleCommand {
+	auditCmd.watches = watches
+	return auditCmd
+}
+
+func (auditCmd *AuditGradleCommand) SetProject(project string) *AuditGradleCommand {
+	auditCmd.projectKey = project
+	return auditCmd
+}
+
+func (auditCmd *AuditGradleCommand) SetTargetRepoPath(repoPath string) *AuditGradleCommand {
+	auditCmd.projectKey = repoPath
+	return auditCmd
+}
+
+func (auditCmd *AuditGradleCommand) SetIncludeVulnerabilities(include bool) *AuditGradleCommand {
+	auditCmd.includeVulnerabilities = include
+	return auditCmd
+}
+
+func (auditCmd *AuditGradleCommand) SetIncludeLincenses(include bool) *AuditGradleCommand {
+	auditCmd.includeLincenses = include
+	return auditCmd
+}
+
 func NewAuditGradleCommand() *AuditGradleCommand {
 	return &AuditGradleCommand{}
 }
@@ -46,7 +76,7 @@ func (auditCmd *AuditGradleCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails)
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
 }
 
 func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

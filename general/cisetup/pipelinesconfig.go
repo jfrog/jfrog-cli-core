@@ -71,7 +71,6 @@ func (pc *JFrogPipelinesConfigurator) createPipelinesServiceManager(details *con
 	pipelinesDetails.AccessToken = pc.PipelinesToken
 	pipelinesDetails.User = ""
 	pipelinesDetails.Password = ""
-	pipelinesDetails.ApiKey = ""
 
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
@@ -161,10 +160,6 @@ func (pc *JFrogPipelinesConfigurator) createArtifactoryIntegration(psm *pipeline
 
 // Get API Key if exists, generate one if needed.
 func (pc *JFrogPipelinesConfigurator) getApiKey(details *config.ServerDetails) (string, error) {
-	if details.ApiKey != "" {
-		return details.ApiKey, nil
-	}
-
 	// Try getting API Key for the user if exists.
 	asm, err := pc.createRtServiceManager(details)
 	if err != nil {

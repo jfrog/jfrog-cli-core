@@ -1,6 +1,7 @@
 package gradle
 
 import (
+	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/common/commands/gradle"
@@ -15,6 +16,7 @@ type GradleCommand struct {
 	serverDetails   *config.ServerDetails
 	threads         int
 	detailedSummary bool
+	xrayScan        bool
 	result          *commandsutils.Result
 }
 
@@ -52,13 +54,16 @@ func (gc *GradleCommand) Run() error {
 		tempFile.Close()
 	}
 
-	err := gradle.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, false)
+	err := gradle.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}
 
-	if gc.IsDetailedSummary() {
+	if gc.IsDetailedSummary() || gc.IsXrayScan() {
 		return gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+	}
+	if gc.IsXrayScan() {
+		return gc.conditionalUpload()
 	}
 	return nil
 }
@@ -70,6 +75,21 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	}
 	gc.SetResult(result)
 	return nil
+}
+
+func (gc *GradleCommand) conditionalUpload() error {
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
+	// First upload binaries
+	uploadCmd := generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
+	err = uploadCmd.Run()
+	if err != nil {
+		return err
+	}
+	// Then Upload pom.xml's
+	uploadCmd = generic.NewUploadCommand()
+	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(pomSpecFile).SetServerDetails(gc.serverDetails)
+	return uploadCmd.Run()
 }
 
 func (gc *GradleCommand) CommandName() string {
@@ -103,6 +123,15 @@ func (gc *GradleCommand) SetDetailedSummary(detailedSummary bool) *GradleCommand
 
 func (gc *GradleCommand) IsDetailedSummary() bool {
 	return gc.detailedSummary
+}
+
+func (gc *GradleCommand) SetXrayScan(xrayScan bool) *GradleCommand {
+	gc.xrayScan = xrayScan
+	return gc
+}
+
+func (gc *GradleCommand) IsXrayScan() bool {
+	return gc.xrayScan
 }
 
 func (gc *GradleCommand) Result() *commandsutils.Result {

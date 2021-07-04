@@ -13,25 +13,25 @@ import (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 func PrintViolationsTable(violations []services.Violation) error {
 	securityViolationsTable := createTableWriter()
-	securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Ignore Rule URL #"})
+	securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Direct Components", "Ignore Rule URL #"})
 	licenseViolationsTable := createTableWriter()
-	licenseViolationsTable.AppendHeader(table.Row{"License Key", "Severity", "Component", "Version", "Ignore Rule URL #"})
+	licenseViolationsTable.AppendHeader(table.Row{"License Key", "Severity", "Component", "Version", "Direct Components", "Ignore Rule URL #"})
 	ignoreUrlsTable := createTableWriter()
 	ignoreUrlsTable.AppendHeader(table.Row{"#", "URL"})
 	ignoreUrlCounter := 1 // Used to give a number to each ignore rule URL
 	failBuild := false
 
 	for _, violation := range violations {
-		compNames, compVersions, compFixedVersions := splitComponents(violation.Components)
+		compNames, compVersions, compFixedVersions, directComponents := splitComponents(violation.Components)
 		if violation.ViolationType == "security" {
 			cve, cvssV2, cvssV3 := splitCves(violation.Cves)
 			for compIndex := 0; compIndex < len(compNames); compIndex++ {
-				securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, violation.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], ignoreUrlCounter})
+				securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, violation.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
 			}
 		} else {
 			// License compliance violation
 			for compIndex := 0; compIndex < len(compNames); compIndex++ {
-				licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, violation.Severity, compNames[compIndex], compVersions[compIndex], ignoreUrlCounter})
+				licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, violation.Severity, compNames[compIndex], compVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
 			}
 		}
 		ignoreUrlsTable.AppendRow(table.Row{ignoreUrlCounter, violation.IgnoreUrl})
@@ -59,13 +59,13 @@ func PrintViolationsTable(violations []services.Violation) error {
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability) {
 	fmt.Println("Note: no context was provided (--watches, --target-path or --project), so no policy could be determined to scan against. Below are all vulnerabilities detected.")
 	vulnerabilitiesTable := createTableWriter()
-	vulnerabilitiesTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions"})
+	vulnerabilitiesTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Direct Components"})
 
 	for _, vulnerability := range vulnerabilities {
-		compNames, compVersions, compFixedVersions := splitComponents(vulnerability.Components)
+		compNames, compVersions, compFixedVersions, directComponents := splitComponents(vulnerability.Components)
 		cve, cvssV2, cvssV3 := splitCves(vulnerability.Cves)
 		for compIndex := 0; compIndex < len(compNames); compIndex++ {
-			vulnerabilitiesTable.AppendRow(table.Row{vulnerability.IssueId, cve, cvssV2, cvssV3, vulnerability.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex]})
+			vulnerabilitiesTable.AppendRow(table.Row{vulnerability.IssueId, cve, cvssV2, cvssV3, vulnerability.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], directComponents[compIndex]})
 		}
 	}
 
@@ -86,22 +86,54 @@ func splitCves(cves []services.Cve) (string, string, string) {
 	return cve[:len(cve)-1], cvssV2[:len(cvssV2)-1], cvssV3[:len(cvssV3)-1]
 }
 
-func splitComponents(components map[string]services.Component) ([]string, []string, []string) {
-	var compNames, compVersions, compFixedVersions []string
+func splitComponents(components map[string]services.Component) ([]string, []string, []string, []string) {
+	var compNames, compVersions, compFixedVersions, directComponents []string
 	for currCompId, currComp := range components {
 		currCompName, currCompVersion := splitComponentId(currCompId)
 		compNames = append(compNames, currCompName)
 		compVersions = append(compVersions, currCompVersion)
 		compFixedVersions = append(compFixedVersions, strings.Join(currComp.FixedVersions, "\n"))
+		directComponents = append(directComponents, getDirectComponents(currComp.ImpactPaths))
 	}
-	return compNames, compVersions, compFixedVersions
+	return compNames, compVersions, compFixedVersions, directComponents
 }
 
 func splitComponentId(componentId string) (string, string) {
-	prefixSepIndex := strings.Index(componentId, "://") + 3
-	trimmedComponentId := componentId[prefixSepIndex:]
+	prefixSepIndex := strings.Index(componentId, "://")
+	packageType := componentId[:prefixSepIndex]
+
+	lastSlashIndex := strings.LastIndex(componentId, "/")
+	trimmedComponentId := componentId[lastSlashIndex+1:]
 	splitComponentId := strings.Split(trimmedComponentId, ":")
-	return splitComponentId[len(splitComponentId)-2], splitComponentId[len(splitComponentId)-1]
+
+	var compName, compVersion string
+	switch packageType {
+	case "rpm":
+		// RPM identifier structure: rpm://os-version:package:epoch-version:version
+		compName = splitComponentId[1]
+		compVersion = splitComponentId[3]
+	case "generic":
+		// Generic identifier structure: generic://sha256:<Checksum>/name
+		compName = splitComponentId[0]
+	default:
+		// All other identifiers look like this: package-type://package-name:version.
+		// Sometimes there's a namespace or a group before the package name, separated by a '/' or a ':'.
+		compName = splitComponentId[len(splitComponentId)-2]
+		compVersion = splitComponentId[len(splitComponentId)-1]
+	}
+
+	return compName, compVersion
+}
+
+// Gets a string of the direct dependencies of the scanned component, that depends on the vulnerable component
+func getDirectComponents(impactPaths [][]services.ImpactPathNode) string {
+	var directComponentsStr string
+	for _, impactPath := range impactPaths {
+		// The first node in the impact path is the scanned component itself, so the second one is the direct dependency
+		compName, _ := splitComponentId(impactPath[1].ComponentId)
+		directComponentsStr = fmt.Sprintf("%s%s\n", directComponentsStr, compName)
+	}
+	return directComponentsStr[:len(directComponentsStr)-1]
 }
 
 func createTableWriter() table.Writer {

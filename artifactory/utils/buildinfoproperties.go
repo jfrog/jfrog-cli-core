@@ -77,6 +77,8 @@ const PROXY = "proxy."
 const HOST = "host"
 const PORT = "port"
 
+const DEPLOY = "artifactory.publish.artifacts"
+
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
@@ -267,10 +269,6 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 		return errorutils.CheckError(errors.New("Server ID " + serverId + ": URL is required."))
 	}
 	vConfig.Set(contextPrefix+URL, artDetails.GetArtifactoryUrl())
-
-	if artDetails.GetApiKey() != "" {
-		return errorutils.CheckError(errors.New("Server ID " + serverId + ": Configuring an API key without a username is not supported."))
-	}
 
 	if artDetails.GetAccessToken() != "" {
 		username, err := auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())

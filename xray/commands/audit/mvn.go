@@ -12,9 +12,14 @@ import (
 )
 
 type AuditMavenCommand struct {
-	serverDetails   *config.ServerDetails
-	excludeTestDeps bool
-	insecureTls     bool
+	serverDetails          *config.ServerDetails
+	excludeTestDeps        bool
+	insecureTls            bool
+	watches                []string
+	projectKey             string
+	targetRepoPath         string
+	includeVulnerabilities bool
+	includeLincenses       bool
 }
 
 func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails) *AuditMavenCommand {
@@ -36,6 +41,31 @@ func (auditCmd *AuditMavenCommand) ServerDetails() (*config.ServerDetails, error
 	return auditCmd.serverDetails, nil
 }
 
+func (auditCmd *AuditMavenCommand) SetWatches(watches []string) *AuditMavenCommand {
+	auditCmd.watches = watches
+	return auditCmd
+}
+
+func (auditCmd *AuditMavenCommand) SetProject(project string) *AuditMavenCommand {
+	auditCmd.projectKey = project
+	return auditCmd
+}
+
+func (auditCmd *AuditMavenCommand) SetTargetRepoPath(repoPath string) *AuditMavenCommand {
+	auditCmd.projectKey = repoPath
+	return auditCmd
+}
+
+func (auditCmd *AuditMavenCommand) SetIncludeVulnerabilities(include bool) *AuditMavenCommand {
+	auditCmd.includeVulnerabilities = include
+	return auditCmd
+}
+
+func (auditCmd *AuditMavenCommand) SetIncludeLincenses(include bool) *AuditMavenCommand {
+	auditCmd.includeLincenses = include
+	return auditCmd
+}
+
 func NewAuditMvnCommand() *AuditMavenCommand {
 	return &AuditMavenCommand{}
 }
@@ -47,7 +77,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails)
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

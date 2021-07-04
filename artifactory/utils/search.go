@@ -93,7 +93,7 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (*content.Content
 
 func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err error) {
 	searchParams = services.NewSearchParams()
-	searchParams.ArtifactoryCommonParams, err = f.ToArtifactoryCommonParams()
+	searchParams.CommonParams, err = f.ToCommonParams()
 	if err != nil {
 		return
 	}

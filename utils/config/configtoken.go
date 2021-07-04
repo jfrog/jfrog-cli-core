@@ -27,7 +27,6 @@ type configToken struct {
 	ClientCertPath       string `json:"clientCertPath,omitempty"`
 	ClientCertKeyPath    string `json:"clientCertKeyPath,omitempty"`
 	ServerId             string `json:"serverId,omitempty"`
-	ApiKey               string `json:"apiKey,omitempty"`
 }
 
 func (token *configToken) convertToV2() {
@@ -56,7 +55,6 @@ func fromServerDetails(details *ServerDetails) *configToken {
 		ClientCertPath:       details.ClientCertPath,
 		ClientCertKeyPath:    details.ClientCertKeyPath,
 		ServerId:             details.ServerId,
-		ApiKey:               details.ApiKey,
 	}
 }
 
@@ -78,7 +76,6 @@ func toServerDetails(detailsSerialization *configToken) *ServerDetails {
 		ClientCertPath:       detailsSerialization.ClientCertPath,
 		ClientCertKeyPath:    detailsSerialization.ClientCertKeyPath,
 		ServerId:             detailsSerialization.ServerId,
-		ApiKey:               detailsSerialization.ApiKey,
 	}
 }
 

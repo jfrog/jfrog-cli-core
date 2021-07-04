@@ -156,7 +156,7 @@ func (cc *ConfigCommand) Config() error {
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
-	if (cc.details.User == "" || cc.details.Password == "") && cc.details.ApiKey == "" {
+	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.
@@ -252,8 +252,8 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		}
 	}
 
-	// Api-Key/Password/Access-Token
-	if cc.details.ApiKey == "" && cc.details.Password == "" && cc.details.AccessToken == "" {
+	// Password/Access-Token
+	if cc.details.Password == "" && cc.details.AccessToken == "" {
 		err := readAccessTokenFromConsole(cc.details)
 		if err != nil {
 			return err
@@ -299,7 +299,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 }
 
 func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
-	if !cc.useBasicAuthOnly && ((cc.details.ApiKey != "" || cc.details.Password != "") && cc.details.AccessToken == "") {
+	if !cc.useBasicAuthOnly && (cc.details.Password != "" && cc.details.AccessToken == "") {
 		useRefreshableToken := coreutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
 			"JFrog CLI supports replacing the configured username and password/API key with automatically created access token that's refreshed hourly. "+
 			"Enable this setting?", true)
@@ -418,7 +418,6 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false)
 		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false)
 		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false)
-		logIfNotEmpty(details.ApiKey, "API key:\t\t\t", true)
 		logIfNotEmpty(details.User, "User:\t\t\t\t", false)
 		logIfNotEmpty(details.Password, "Password:\t\t\t", true)
 		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true)
@@ -533,7 +532,6 @@ func (cc *ConfigCommand) encryptPassword() error {
 func checkSingleAuthMethod(details *config.ServerDetails) error {
 	authMethods := []bool{
 		details.User != "" && details.Password != "",
-		details.ApiKey != "",
 		details.AccessToken != "" && details.RefreshToken == ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
 		return errorutils.CheckError(errors.New("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token"))

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/codegangsta/cli"
-	"github.com/jfrog/jfrog-cli-core/docs/common"
+	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
 	"strings"
 )
 

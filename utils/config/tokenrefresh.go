@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/utils/lock"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/auth"

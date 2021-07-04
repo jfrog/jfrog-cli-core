@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"

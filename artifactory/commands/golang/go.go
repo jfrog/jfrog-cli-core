@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gocmd"
-	executersutils "github.com/jfrog/gocmd/executers/utils"
+	"github.com/jfrog/gocmd/cmd"
+	executors "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -134,11 +135,15 @@ func (gc *GoCommand) run() error {
 	}
 	resolverParams := &params.Params{}
 	resolverParams.SetRepo(gc.resolverParams.TargetRepo()).SetServiceManager(resolverServiceManager)
-	goInfo := &params.ResolverDeployer{}
-	goInfo.SetResolver(resolverParams)
+
+	serverDetails, err := resolverDetails.CreateArtAuthConfig()
+	if err != nil {
+		return err
+	}
+
 	var targetRepo string
 
-	err = gocmd.RunWithFallback(gc.goArg)
+	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo())
 	if err != nil {
 		return err
 	}
@@ -155,11 +160,6 @@ func (gc *GoCommand) run() error {
 			}
 			// Cleanup the temp working directory at the end.
 			defer fileutils.RemoveTempDir(tempDirPath)
-			// Get Artifactory config in order to extract the package version.
-			serverDetails, err := resolverDetails.CreateArtAuthConfig()
-			if err != nil {
-				return err
-			}
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
@@ -203,7 +203,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 // However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
-	packageCachePath, err := executersutils.GetGoModCachePath()
+	packageCachePath, err := cmd.GetGoModCachePath()
 	if err != nil {
 		return
 	}
@@ -220,7 +220,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 		}
 		packageVersionRequest := buildPackageVersionRequest(name, branchName)
 		// Retrive the package version using Artifactory
-		version, err = executersutils.GetPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
+		version, err = executors.GetPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
 		if err != nil {
 			return
 		}

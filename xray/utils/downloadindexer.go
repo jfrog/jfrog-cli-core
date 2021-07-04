@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"

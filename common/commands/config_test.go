@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 )
 

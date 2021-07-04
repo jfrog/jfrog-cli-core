@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/jfrog/gocmd/cmd"
+	gocmd "github.com/jfrog/gocmd/cmd"
 	"github.com/jfrog/gocmd/executers"
-	executersutils "github.com/jfrog/gocmd/executers/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
@@ -80,7 +80,7 @@ func (project *goProject) LoadDependencies() error {
 }
 
 func (project *goProject) loadDependencies() ([]executers.Package, error) {
-	cachePath, err := executersutils.GetCachePath()
+	cachePath, err := gocmd.GetCachePath()
 	if err != nil {
 		return nil, err
 	}

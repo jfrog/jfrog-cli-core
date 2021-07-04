@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 
-	"github.com/jfrog/jfrog-cli-core/common/spec"
+	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"

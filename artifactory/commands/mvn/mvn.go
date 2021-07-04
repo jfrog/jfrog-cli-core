@@ -1,11 +1,11 @@
 package mvn
 
 import (
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/generic"
-	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/common/commands/mvn"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands/mvn"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	cliLog "github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"

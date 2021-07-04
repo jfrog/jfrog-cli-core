@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"

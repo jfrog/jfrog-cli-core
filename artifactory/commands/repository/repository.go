@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	rtUtils "github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

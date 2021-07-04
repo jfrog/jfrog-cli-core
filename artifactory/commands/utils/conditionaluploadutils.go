@@ -3,9 +3,9 @@ package utils
 import (
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/common/spec"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )

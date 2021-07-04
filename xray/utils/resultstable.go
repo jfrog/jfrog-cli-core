@@ -13,12 +13,17 @@ import (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 func PrintViolationsTable(violations []services.Violation) error {
 	securityViolationsTable := createTableWriter()
-	securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Direct Components", "Ignore Rule URL #"})
+	// Temporarily removed ignore rule URL column
+	//securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Direct Components", "Ignore Rule URL #"})
+	securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Component", "Version", "Fixed Versions", "Direct Components"})
 	licenseViolationsTable := createTableWriter()
-	licenseViolationsTable.AppendHeader(table.Row{"License Key", "Severity", "Component", "Version", "Direct Components", "Ignore Rule URL #"})
-	ignoreUrlsTable := createTableWriter()
-	ignoreUrlsTable.AppendHeader(table.Row{"#", "URL"})
-	ignoreUrlCounter := 1 // Used to give a number to each ignore rule URL
+	// Temporarily removed ignore rule URL column
+	//licenseViolationsTable.AppendHeader(table.Row{"License Key", "Severity", "Component", "Version", "Direct Components", "Ignore Rule URL #"})
+	licenseViolationsTable.AppendHeader(table.Row{"License Key", "Severity", "Component", "Version", "Direct Components"})
+	// Temporarily removed
+	//ignoreUrlsTable := createTableWriter()
+	//ignoreUrlsTable.AppendHeader(table.Row{"#", "URL"})
+	//ignoreUrlCounter := 1 // Used to give a number to each ignore rule URL
 	failBuild := false
 
 	for _, violation := range violations {
@@ -26,16 +31,21 @@ func PrintViolationsTable(violations []services.Violation) error {
 		if violation.ViolationType == "security" {
 			cve, cvssV2, cvssV3 := splitCves(violation.Cves)
 			for compIndex := 0; compIndex < len(compNames); compIndex++ {
-				securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, violation.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
+				// Temporarily removed ignore rule URL column
+				//securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, violation.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
+				securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, violation.Severity, compNames[compIndex], compVersions[compIndex], compFixedVersions[compIndex], directComponents[compIndex]})
 			}
 		} else {
 			// License compliance violation
 			for compIndex := 0; compIndex < len(compNames); compIndex++ {
-				licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, violation.Severity, compNames[compIndex], compVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
+				// Temporarily removed ignore rule URL column
+				//licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, violation.Severity, compNames[compIndex], compVersions[compIndex], directComponents[compIndex], ignoreUrlCounter})
+				licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, violation.Severity, compNames[compIndex], compVersions[compIndex], directComponents[compIndex]})
 			}
 		}
-		ignoreUrlsTable.AppendRow(table.Row{ignoreUrlCounter, violation.IgnoreUrl})
-		ignoreUrlCounter++
+		// Temporarily removed
+		//ignoreUrlsTable.AppendRow(table.Row{ignoreUrlCounter, violation.IgnoreUrl})
+		//ignoreUrlCounter++
 		if !failBuild && violation.FailBuild {
 			failBuild = true
 		}
@@ -46,8 +56,9 @@ func PrintViolationsTable(violations []services.Violation) error {
 	securityViolationsTable.Render()
 	fmt.Println("LICENSE COMPLIANCE VIOLATIONS")
 	licenseViolationsTable.Render()
-	fmt.Println("IGNORE RULES URLS")
-	ignoreUrlsTable.Render()
+	// Temporarily removed
+	//fmt.Println("IGNORE RULES URLS")
+	//ignoreUrlsTable.Render()
 
 	if failBuild {
 		return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}

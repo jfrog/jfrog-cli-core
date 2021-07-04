@@ -96,7 +96,7 @@ func (mc *MvnCommand) SetDisableDeploy(disableDeploy bool) *MvnCommand {
 
 func (mc *MvnCommand) Run() error {
 	deployableArtifactsFile := ""
-	if mc.IsDetailedSummary() {
+	if mc.IsDetailedSummary() || mc.IsXrayScan() {
 		tempFile, err := fileutils.CreateTempFile()
 		if err != nil {
 			return err

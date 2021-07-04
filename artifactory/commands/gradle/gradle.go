@@ -45,7 +45,7 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (gc *GradleCommand) Run() error {
 	deployableArtifactsFile := ""
-	if gc.IsDetailedSummary() {
+	if gc.IsDetailedSummary() || gc.IsXrayScan() {
 		tempFile, err := fileutils.CreateTempFile()
 		if err != nil {
 			return err

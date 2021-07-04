@@ -236,11 +236,11 @@ func (config *gradleRunConfig) GetEnv() map[string]string {
 }
 
 func (config *gradleRunConfig) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (config *gradleRunConfig) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func getGradleExecPath(useWrapper bool) (string, error) {

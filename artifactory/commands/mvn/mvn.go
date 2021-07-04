@@ -322,11 +322,11 @@ func (config *mvnRunConfig) GetEnv() map[string]string {
 }
 
 func (config *mvnRunConfig) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (config *mvnRunConfig) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 type mvnRunConfig struct {

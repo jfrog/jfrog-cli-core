@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -120,10 +121,11 @@ func (pushCmd *pushCmd) GetEnv() map[string]string {
 }
 
 func (pushCmd *pushCmd) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
+
 func (pushCmd *pushCmd) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 // Image get image id command
@@ -146,11 +148,11 @@ func (getImageId *getImageIdCmd) GetEnv() map[string]string {
 }
 
 func (getImageId *getImageIdCmd) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (getImageId *getImageIdCmd) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 type FatManifest struct {
@@ -188,11 +190,11 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetEnv() m
 }
 
 func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 // Get registry from tag
@@ -233,11 +235,11 @@ func (loginCmd *LoginCmd) GetEnv() map[string]string {
 }
 
 func (loginCmd *LoginCmd) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (loginCmd *LoginCmd) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 // Image pull command
@@ -323,11 +325,11 @@ func (versionCmd *VersionCmd) GetEnv() map[string]string {
 }
 
 func (versionCmd *VersionCmd) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (versionCmd *VersionCmd) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func ValidateClientApiVersion() error {

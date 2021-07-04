@@ -68,7 +68,7 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		}
 
 		// Print the module ID
-		log.Info("Scanning module ID" + moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:])
+		log.Info("Scanning module " + moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:] + "...")
 
 		// Scan and wait for results
 		scanId, err := xrayManager.ScanGraph(*params)

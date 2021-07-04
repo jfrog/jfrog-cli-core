@@ -3,11 +3,11 @@ package audit
 import (
 	"os"
 
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
-	"github.com/jfrog/jfrog-cli-core/xray/commands"
-	xrutils "github.com/jfrog/jfrog-cli-core/xray/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"

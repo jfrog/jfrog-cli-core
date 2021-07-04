@@ -1,4 +1,4 @@
-module github.com/jfrog/jfrog-cli-core
+module github.com/jfrog/jfrog-cli-core/v2
 
 go 1.14
 

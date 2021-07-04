@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/utils/log"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 
-	"github.com/jfrog/jfrog-cli-core/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 
 	clientTests "github.com/jfrog/jfrog-client-go/utils/tests"
 )
 
 const (
-	CoreIntegrationTests = "github.com/jfrog/jfrog-cli-core/tests"
+	CoreIntegrationTests = "github.com/jfrog/jfrog-cli-core/v2/tests"
 )
 
 func init() {

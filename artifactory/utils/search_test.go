@@ -2,7 +2,7 @@ package utils
 
 import (
 	"bytes"
-	corelog "github.com/jfrog/jfrog-cli-core/utils/log"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"os"
 	"path/filepath"
 	"testing"

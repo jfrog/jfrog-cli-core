@@ -2,6 +2,7 @@ package audit
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -86,7 +87,7 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		violations = append(violations, scanResults.Violations...)
 		vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
 	}
-	log.Info("The full scan results are available here: " + tempDirPath)
+	fmt.Println("The full scan results are available here: " + tempDirPath)
 
 	if len(violations) > 0 {
 		if err = xrutils.PrintViolationsTable(violations, false); err != nil {

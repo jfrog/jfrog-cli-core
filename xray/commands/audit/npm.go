@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	NpmPackageTypeIdentifier = "npm://"
+	npmPackageTypeIdentifier = "npm://"
 )
 
 type AuditNpmCommand struct {
@@ -64,7 +65,7 @@ func (auditCmd *AuditNpmCommand) SetProject(project string) *AuditNpmCommand {
 }
 
 func (auditCmd *AuditNpmCommand) SetTargetRepoPath(repoPath string) *AuditNpmCommand {
-	auditCmd.projectKey = repoPath
+	auditCmd.targetRepoPath = repoPath
 	return auditCmd
 }
 
@@ -131,6 +132,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+
 	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
 	if err != nil {
 		return err
@@ -139,10 +141,10 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	log.Info("The full scan results are available here: " + tempDirPath)
 	if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
 		return err
 	}
+	fmt.Println("The full scan results are available here: " + tempDirPath)
 	if len(scanResults.Violations) > 0 {
 		err = xrutils.PrintViolationsTable(scanResults.Violations, false)
 	}
@@ -150,21 +152,21 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
 	}
 	return err
-
 }
 
+// Parse the dependencies into an Xray dependency tree format
 func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *coreutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for dependencyId, dependency := range dependencies {
-		dependencyId = NpmPackageTypeIdentifier + dependencyId
-		parent := NpmPackageTypeIdentifier + dependency.GetPathToRoot()[0][0]
+		dependencyId = npmPackageTypeIdentifier + dependencyId
+		parent := npmPackageTypeIdentifier + dependency.GetPathToRoot()[0][0]
 		if children, ok := treeMap[parent]; ok {
 			treeMap[parent] = append(children, dependencyId)
 		} else {
 			treeMap[parent] = []string{dependencyId}
 		}
 	}
-	return buildXrayDependencyTree(treeMap, NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
+	return buildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
 func buildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {

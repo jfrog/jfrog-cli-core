@@ -119,6 +119,7 @@ func (nca *NpmCommandArgs) SetPackageInfo(packageInfo *coreutils.PackageInfo) *N
 	nca.packageInfo = packageInfo
 	return nca
 }
+
 func NewNpmCommandArgs(npmCommand string) *NpmCommandArgs {
 	return &NpmCommandArgs{command: npmCommand}
 }

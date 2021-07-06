@@ -4,8 +4,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -54,7 +54,7 @@ func (gc *GradleCommand) Run() error {
 		tempFile.Close()
 	}
 
-	err := gradle.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
+	err := gradleutils.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}

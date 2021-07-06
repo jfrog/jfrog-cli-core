@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -107,7 +107,7 @@ func (auditCmd *AuditGradleCommand) runGradle(buildConfiguration *utils.BuildCon
 	} else {
 		configFilePath = ""
 	}
-	return gradle.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
+	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
 }
 
 func (na *AuditGradleCommand) CommandName() string {

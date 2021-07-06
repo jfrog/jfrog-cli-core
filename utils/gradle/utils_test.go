@@ -1,4 +1,4 @@
-package gradle
+package gradleutils
 
 import (
 	"os"

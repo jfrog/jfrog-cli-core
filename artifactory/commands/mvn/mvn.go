@@ -4,15 +4,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/mvn"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-)
-
-const (
-	mavenExtractorDependencyVersion = "2.27.0"
-	classworldsConfFileName         = "classworlds.conf"
-	MavenHome                       = "M2_HOME"
 )
 
 type MvnCommand struct {
@@ -105,7 +99,7 @@ func (mc *MvnCommand) Run() error {
 		tempFile.Close()
 	}
 
-	err := mvn.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
+	err := mvnutils.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
 	if err != nil {
 		return err
 	}

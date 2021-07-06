@@ -1,4 +1,4 @@
-package gradle
+package gradleutils
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.5"
+	gradleExtractorDependencyVersion = "4.24.10"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"

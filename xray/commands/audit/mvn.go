@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/mvn"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -107,7 +107,7 @@ func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfigu
 	} else {
 		configFilePath = ""
 	}
-	return mvn.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
+	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
 }
 
 func (na *AuditMavenCommand) CommandName() string {

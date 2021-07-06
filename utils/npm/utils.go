@@ -84,7 +84,7 @@ func prepareDependencies(typeRestriction, executablePath, buildInfoModuleId stri
 	})
 }
 
-// Parses npm dependencies recursively and adds the collected dependencies to nca.dependencies
+// Parses npm dependencies recursively and adds the collected dependencies to the given dependencies map.
 func parseDependencies(data []byte, scope string, pathToRoot []string, dependencies *map[string]*Dependency) error {
 	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
 		depName := string(key)

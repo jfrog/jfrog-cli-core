@@ -8,7 +8,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"golang.org/x/crypto/ssh/terminal"
 )

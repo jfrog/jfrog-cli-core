@@ -10,14 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
@@ -144,20 +143,19 @@ var gradleConfigMapping = map[string]string{
 	"buildInfo.build.number":                            BUILD_NUMBER,
 }
 
-func ReadConfigFile(configPath string, configType ConfigType) (*viper.Viper, error) {
-	config := viper.New()
+func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Viper, err error) {
+	config = viper.New()
 	config.SetConfigType(string(configType))
 
 	f, err := os.Open(configPath)
 	if err != nil {
 		return config, errorutils.CheckError(err)
 	}
+	defer func() {
+		err = errorutils.CheckError(f.Close())
+	}()
 	err = config.ReadConfig(f)
-	if err != nil {
-		return config, errorutils.CheckError(err)
-	}
-
-	return config, nil
+	return config, errorutils.CheckError(err)
 }
 
 // Returns the Artifactory details
@@ -175,7 +173,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, shouldCreateArtifactsFile, xrayScan bool, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
@@ -216,15 +214,8 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, sh
 	if err != nil {
 		return "", err
 	}
-	if shouldCreateArtifactsFile {
-		err = createDeployableArtifactsFile(config)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	if xrayScan {
-		config.Set(DEPLOY, false)
+	if deployableArtifactsFile != "" {
+		config.Set(DEPLOYABLE_ARTIFACTS, deployableArtifactsFile)
 	}
 
 	// Iterate over all the required properties keys according to the buildType and create properties file.
@@ -320,15 +311,6 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	return nil
 }
 
-func createDeployableArtifactsFile(config *viper.Viper) error {
-	tempFile, err := fileutils.CreateTempFile()
-	defer tempFile.Close()
-	if err != nil {
-		return err
-	}
-	config.Set(DEPLOYABLE_ARTIFACTS, tempFile.Name())
-	return nil
-}
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
 	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
 	if err != nil {

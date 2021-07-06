@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/stretchr/testify/assert"
 )
 

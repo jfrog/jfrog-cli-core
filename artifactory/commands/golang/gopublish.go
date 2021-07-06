@@ -2,10 +2,10 @@ package golang
 
 import (
 	"errors"
-	commandutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils/golang/project"
+	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"os/exec"

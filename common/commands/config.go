@@ -10,14 +10,14 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"github.com/jfrog/jfrog-cli-core/utils/lock"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -156,7 +156,7 @@ func (cc *ConfigCommand) Config() error {
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
-	if (cc.details.User == "" || cc.details.Password == "") {
+	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.

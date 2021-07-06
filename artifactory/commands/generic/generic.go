@@ -1,9 +1,9 @@
 package generic
 
 import (
-	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/common/spec"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
 type GenericCommand struct {

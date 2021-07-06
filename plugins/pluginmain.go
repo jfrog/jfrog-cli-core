@@ -2,10 +2,10 @@ package plugins
 
 import (
 	"github.com/codegangsta/cli"
-	jfrogclicore "github.com/jfrog/jfrog-cli-core"
-	"github.com/jfrog/jfrog-cli-core/plugins/components"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/utils/log"
+	jfrogclicore "github.com/jfrog/jfrog-cli-core/v2"
+	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"

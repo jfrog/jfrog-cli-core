@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
 )

@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"strings"

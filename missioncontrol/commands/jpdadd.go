@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jfrog/jfrog-cli-core/missioncontrol/utils"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

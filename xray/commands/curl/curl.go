@@ -1,7 +1,7 @@
 package curl
 
 import (
-	"github.com/jfrog/jfrog-cli-core/common/commands"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 )
 
 type XrCurlCommand struct {

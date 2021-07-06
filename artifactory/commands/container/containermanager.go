@@ -3,9 +3,9 @@ package container
 import (
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/artifactory/utils/container"
-	"github.com/jfrog/jfrog-cli-core/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
 type ContainerManagerCommand struct {

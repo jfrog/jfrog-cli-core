@@ -144,10 +144,10 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	if len(scanResults.Violations) > 0 {
-		err = xrutils.PrintViolationsTable(scanResults.Violations)
+		err = xrutils.PrintViolationsTable(scanResults.Violations, false)
 	}
 	if len(scanResults.Vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities)
+		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
 	}
 	return err
 

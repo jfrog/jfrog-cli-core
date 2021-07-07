@@ -253,10 +253,10 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 		}
 	}
 	if len(violations) > 0 {
-		err = xrutils.PrintViolationsTable(violations)
+		err = xrutils.PrintViolationsTable(violations, true)
 	}
 	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
+		xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
 	}
 	// No violations found, return scan OK.
 	return passScan, err

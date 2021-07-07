@@ -50,7 +50,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool) error {
+func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool, targetRepoPath, projectKey string, watches []string) error {
 	xrayManager, err := commands.CreateXrayServiceManager(serverDetails)
 	if err != nil {
 		return err
@@ -66,7 +66,10 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 	var licenses []services.License
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params := &services.XrayGraphScanParams{
-			Graph: moduleDependencyTree,
+			Graph:      moduleDependencyTree,
+			RepoPath:   targetRepoPath,
+			Watches:    watches,
+			ProjectKey: projectKey,
 		}
 
 		// Print the module ID

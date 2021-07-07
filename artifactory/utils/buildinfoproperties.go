@@ -324,7 +324,9 @@ func createDeployableArtifactsFile(config *viper.Viper) error {
 	if err != nil {
 		return err
 	}
-	config.Set(DEPLOYABLE_ARTIFACTS, tempFile.Name())
+	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
+	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
+	config.Set(DEPLOYABLE_ARTIFACTS, path)
 	return nil
 }
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {

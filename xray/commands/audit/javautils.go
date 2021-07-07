@@ -89,12 +89,12 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 	log.Info("The full scan results are available here: " + tempDirPath)
 
 	if len(violations) > 0 {
-		if err = xrutils.PrintViolationsTable(violations); err != nil {
+		if err = xrutils.PrintViolationsTable(violations, false); err != nil {
 			return err
 		}
 	}
 	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
+		xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
 	}
 	return nil
 }

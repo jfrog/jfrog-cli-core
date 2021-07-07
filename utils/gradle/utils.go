@@ -1,4 +1,4 @@
-package gradle
+package gradleutils
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.5"
+	gradleExtractorDependencyVersion = "4.24.10"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"
@@ -161,11 +161,11 @@ func (config *gradleRunConfig) GetEnv() map[string]string {
 }
 
 func (config *gradleRunConfig) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (config *gradleRunConfig) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func getGradleExecPath(useWrapper bool) (string, error) {

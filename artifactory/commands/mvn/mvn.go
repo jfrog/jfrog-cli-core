@@ -103,12 +103,16 @@ func (mc *MvnCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
-	if mc.IsDetailedSummary() || mc.IsXrayScan() {
-		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-	}
 	if mc.IsXrayScan() {
+		err = mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+		if err != nil {
+			return err
+		}
 		return mc.conditionalUpload()
+	}
+	if mc.IsDetailedSummary() {
+		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+
 	}
 	return nil
 }
@@ -140,17 +144,41 @@ func (mc *MvnCommand) CommandName() string {
 	return "rt_maven"
 }
 
+// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan pass with no
+// violation.
 func (mc *MvnCommand) conditionalUpload() error {
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails)
-	// First upload binaries
-	uploadCmd := generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(binariesSpecFile).SetServerDetails(mc.serverDetails)
-	err = uploadCmd.Run()
+	// If the detailed summary wasn't requested, the reader should be closed here.
+	// (otherwise it will be closed by the detailed summary print method)
+	if !mc.IsDetailedSummary() {
+		e := mc.result.Reader().Close()
+		if e != nil {
+			return e
+		}
+	} else {
+		mc.result.Reader().Reset()
+	}
 	if err != nil {
 		return err
 	}
-	// Then Upload pom.xml's
-	uploadCmd = generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(pomSpecFile).SetServerDetails(mc.serverDetails)
-	return uploadCmd.Run()
+	// The case scan failed
+	if binariesSpecFile == nil {
+		return nil
+	}
+	// First upload binaries
+	if len(binariesSpecFile.Files) > 0 {
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(binariesSpecFile).SetServerDetails(mc.serverDetails)
+		err = uploadCmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+	if len(pomSpecFile.Files) > 0 {
+		// Then Upload pom.xml's
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(pomSpecFile).SetServerDetails(mc.serverDetails)
+		err = uploadCmd.Run()
+	}
+	return err
 }

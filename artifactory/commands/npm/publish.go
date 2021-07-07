@@ -129,7 +129,7 @@ func (npc *NpmPublishCommand) run() error {
 		}
 	}
 
-	if err := npc.deploy(); err != nil {
+	if err := npc.publish(); err != nil {
 		if npc.tarballProvided {
 			return err
 		}
@@ -214,7 +214,7 @@ func (npc *NpmPublishCommand) pack() error {
 	return nil
 }
 
-func (npc *NpmPublishCommand) deploy() error {
+func (npc *NpmPublishCommand) publish() error {
 	log.Debug("Deploying npm package.")
 	if err := npc.readPackageInfoFromTarball(); err != nil {
 		return err

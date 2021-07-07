@@ -151,6 +151,9 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if len(scanResults.Vulnerabilities) > 0 {
 		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
 	}
+	if len(scanResults.Licenses) > 0 {
+		xrutils.PrintLicensesTable(scanResults.Licenses, false)
+	}
 	return err
 }
 

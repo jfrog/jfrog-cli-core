@@ -232,6 +232,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	passScan := true
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
+	licenses := []services.License{}
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
 		return false, err
@@ -244,6 +245,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			if scanCmd.printResults {
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
+				licenses = append(licenses, res.Licenses...)
 			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
 				// A violation or vulnerability was found, the scan failed.
@@ -257,6 +259,9 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	}
 	if len(vulnerabilities) > 0 {
 		xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
+	}
+	if len(licenses) > 0 {
+		xrutils.PrintLicensesTable(licenses, true)
 	}
 	if passScan {
 		fmt.Println("The scan completed successfully.")

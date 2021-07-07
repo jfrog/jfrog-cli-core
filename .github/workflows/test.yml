@@ -19,11 +19,11 @@ jobs:
       - name: Lint
         run: go vet ./...
       - name: Tests on Linux
-        run: M2_HOME=/usr/share/apache-maven-3.8.1 go test -v github.com/jfrog/jfrog-cli-core/tests -timeout 0
+        run: M2_HOME=/usr/share/apache-maven-3.8.1 go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0
         if: matrix.os == 'ubuntu-latest'
       - name: Tests on Windows
-        run: go test -v github.com/jfrog/jfrog-cli-core/tests -timeout 0
+        run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0
         if: matrix.os == 'windows-latest'
       - name: Tests on MacOS
-        run: M2_HOME=/usr/local/Cellar/maven/3.8.1/libexec go test -v github.com/jfrog/jfrog-cli-core/tests -timeout 0
+        run: M2_HOME=/usr/local/Cellar/maven/3.8.1/libexec go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0
         if: matrix.os == 'macOS-latest'

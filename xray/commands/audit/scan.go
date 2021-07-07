@@ -32,7 +32,7 @@ type ScanCommand struct {
 	serverDetails *config.ServerDetails
 	spec          *spec.SpecFiles
 	threads       int
-	// The location on the local file system of the downloaded Xray indexer binary.
+	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
 	printResults           bool
 	projectKey             string
@@ -229,7 +229,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	// Blocking until consuming is finished.
 	indexedFileConsumer.Run()
 	// Handle results
-	passScan := true
+	scanPassed := true
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
 	licenses := []services.License{}
@@ -249,7 +249,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
 				// A violation or vulnerability was found, the scan failed.
-				passScan = false
+				scanPassed = false
 			}
 		}
 	}
@@ -263,10 +263,10 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	if len(licenses) > 0 {
 		xrutils.PrintLicensesTable(licenses, true)
 	}
-	if passScan {
-		fmt.Println("The scan completed successfully.")
+	if scanPassed {
+		log.Info("Scan completed successfully.")
 	}
-	return passScan, err
+	return scanPassed, err
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {

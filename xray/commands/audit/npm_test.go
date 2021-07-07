@@ -76,7 +76,7 @@ func comapareTree(a, b *services.GraphNode) bool {
 	if a.Id != b.Id {
 		return false
 	}
-	// make sure all children are equals, when order dose not matter
+	// Make sure all children are equal, when order doesn't matter
 	for _, nodeA := range a.Nodes {
 		found := false
 		for _, nodeB := range b.Nodes {
@@ -85,7 +85,7 @@ func comapareTree(a, b *services.GraphNode) bool {
 				break
 			}
 		}
-		// After itrate all B's nodes, non match nodeA so the tree aren't equals.
+		// After iterating over all B's nodes, non match nodeA so the tree aren't equals.
 		if !found {
 			return false
 		}

@@ -77,11 +77,11 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	gc.SetResult(result)
+	gc.setResult(result)
 	return nil
 }
 
-// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan pass with no
+// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
@@ -166,7 +166,7 @@ func (gc *GradleCommand) Result() *commandsutils.Result {
 	return gc.result
 }
 
-func (gc *GradleCommand) SetResult(result *commandsutils.Result) *GradleCommand {
+func (gc *GradleCommand) setResult(result *commandsutils.Result) *GradleCommand {
 	gc.result = result
 	return gc
 }

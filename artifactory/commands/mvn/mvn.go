@@ -78,7 +78,7 @@ func (mc *MvnCommand) Result() *commandsutils.Result {
 	return mc.result
 }
 
-func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
+func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 	mc.result = result
 	return mc
 }
@@ -136,7 +136,7 @@ func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	mc.SetResult(result)
+	mc.setResult(result)
 	return nil
 }
 
@@ -144,7 +144,7 @@ func (mc *MvnCommand) CommandName() string {
 	return "rt_maven"
 }
 
-// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan pass with no
+// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (mc *MvnCommand) conditionalUpload() error {
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails)

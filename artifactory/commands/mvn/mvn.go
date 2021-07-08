@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.28.4"
+const mavenExtractorDependencyVersion = "2.28.5"
 
 // Deprecated. This version is the latest published in JCenter.
 const mavenExtractorDependencyJCenterVersion = "2.23.0"

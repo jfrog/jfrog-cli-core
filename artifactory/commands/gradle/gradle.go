@@ -20,7 +20,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const gradleExtractorDependencyVersion = "4.24.10"
+const gradleExtractorDependencyVersion = "4.24.11"
 
 // Deprecated. This version is the latest published in JCenter.
 const gradleExtractorDependencyJCenterVersion = "4.21.0"

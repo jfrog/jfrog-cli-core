@@ -4,15 +4,10 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/mvn"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-)
-
-const (
-	mavenExtractorDependencyVersion = "2.27.0"
-	classworldsConfFileName         = "classworlds.conf"
-	MavenHome                       = "M2_HOME"
 )
 
 type MvnCommand struct {
@@ -84,7 +79,7 @@ func (mc *MvnCommand) Result() *commandsutils.Result {
 	return mc.result
 }
 
-func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
+func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 	mc.result = result
 	return mc
 }
@@ -101,20 +96,25 @@ func (mc *MvnCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		deployableArtifactsFile = tempFile.Name()
+		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
+		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
 		tempFile.Close()
 	}
 
-	err := mvn.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
+	err := mvnutils.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
 	if err != nil {
 		return err
 	}
-
-	if mc.IsDetailedSummary() || mc.IsXrayScan() {
-		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-	}
 	if mc.IsXrayScan() {
+		err = mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+		if err != nil {
+			return err
+		}
 		return mc.conditionalUpload()
+	}
+	if mc.IsDetailedSummary() {
+		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	mc.SetResult(result)
+	mc.setResult(result)
 	return nil
 }
 
@@ -146,17 +146,41 @@ func (mc *MvnCommand) CommandName() string {
 	return "rt_maven"
 }
 
+// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
+// violation.
 func (mc *MvnCommand) conditionalUpload() error {
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails)
-	// First upload binaries
-	uploadCmd := generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(binariesSpecFile).SetServerDetails(mc.serverDetails)
-	err = uploadCmd.Run()
+	// If the detailed summary wasn't requested, the reader should be closed here.
+	// (otherwise it will be closed by the detailed summary print method)
+	if !mc.IsDetailedSummary() {
+		e := mc.result.Reader().Close()
+		if e != nil {
+			return e
+		}
+	} else {
+		mc.result.Reader().Reset()
+	}
 	if err != nil {
 		return err
 	}
-	// Then Upload pom.xml's
-	uploadCmd = generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(pomSpecFile).SetServerDetails(mc.serverDetails)
-	return uploadCmd.Run()
+	// The case scan failed
+	if binariesSpecFile == nil {
+		return nil
+	}
+	// First upload binaries
+	if len(binariesSpecFile.Files) > 0 {
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(binariesSpecFile).SetServerDetails(mc.serverDetails)
+		err = uploadCmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+	if len(pomSpecFile.Files) > 0 {
+		// Then Upload pom.xml's
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(mc.configuration).SetSpec(pomSpecFile).SetServerDetails(mc.serverDetails)
+		err = uploadCmd.Run()
+	}
+	return err
 }

@@ -1,4 +1,4 @@
-package mvn
+package mvnutils
 
 import (
 	"fmt"

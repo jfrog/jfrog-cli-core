@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"regexp"
 
@@ -21,8 +22,7 @@ import (
 )
 
 const (
-	IndexerExecutionName = "indexer-app"
-	IndexingCommand      = "graph"
+	indexingCommand = "graph"
 )
 
 type FileContext func(string) parallel.TaskFunc
@@ -32,7 +32,7 @@ type ScanCommand struct {
 	serverDetails *config.ServerDetails
 	spec          *spec.SpecFiles
 	threads       int
-	// The location on the local file system of the downloaded Xray's indexer.
+	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
 	printResults           bool
 	projectKey             string
@@ -94,7 +94,7 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 	var indexerResults services.GraphNode
 	indexCmd := &coreutils.GeneralExecCmd{
 		ExecPath: scanCmd.indexerPath,
-		Command:  []string{IndexingCommand, filePath},
+		Command:  []string{indexingCommand, filePath},
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
@@ -229,14 +229,14 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	// Blocking until consuming is finished.
 	indexedFileConsumer.Run()
 	// Handle results
-	passScan := true
+	scanPassed := true
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
+	licenses := []services.License{}
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
 		return false, err
 	}
-	log.Info("The full scan results are available here: " + tempDirPath)
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
@@ -245,21 +245,28 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			if scanCmd.printResults {
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
+				licenses = append(licenses, res.Licenses...)
 			}
-			if len(res.Violations) > 0 {
-				// A violation was found, the scan failed.
-				passScan = false
+			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
+				// A violation or vulnerability was found, the scan failed.
+				scanPassed = false
 			}
 		}
 	}
+	fmt.Println("The full scan results are available here: " + tempDirPath)
 	if len(violations) > 0 {
-		err = xrutils.PrintViolationsTable(violations)
+		err = xrutils.PrintViolationsTable(violations, true)
 	}
 	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
+		xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
 	}
-	// No violations found, return scan OK.
-	return passScan, err
+	if len(licenses) > 0 {
+		xrutils.PrintLicensesTable(licenses, true)
+	}
+	if scanPassed {
+		log.Info("Scan completed successfully.")
+	}
+	return scanPassed, err
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {

@@ -2,6 +2,7 @@ package audit
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLincenses bool) error {
+func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool) error {
 	xrayManager, err := commands.CreateXrayServiceManager(serverDetails)
 	if err != nil {
 		return err
@@ -62,6 +63,7 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
+	var licenses []services.License
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params := &services.XrayGraphScanParams{
 			Graph: moduleDependencyTree,
@@ -75,7 +77,7 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		if err != nil {
 			return err
 		}
-		scanResults, err := xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLincenses)
+		scanResults, err := xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
 		if err != nil {
 			return err
 		}
@@ -85,16 +87,20 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		}
 		violations = append(violations, scanResults.Violations...)
 		vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
+		licenses = append(licenses, scanResults.Licenses...)
 	}
-	log.Info("The full scan results are available here: " + tempDirPath)
+	fmt.Println("The full scan results are available here: " + tempDirPath)
 
 	if len(violations) > 0 {
-		if err = xrutils.PrintViolationsTable(violations); err != nil {
+		if err = xrutils.PrintViolationsTable(violations, false); err != nil {
 			return err
 		}
 	}
 	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities)
+		xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
+	}
+	if len(licenses) > 0 {
+		xrutils.PrintLicensesTable(licenses, false)
 	}
 	return nil
 }

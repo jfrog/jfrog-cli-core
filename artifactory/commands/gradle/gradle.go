@@ -4,8 +4,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -50,20 +51,25 @@ func (gc *GradleCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		deployableArtifactsFile = tempFile.Name()
+		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
+		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
 		tempFile.Close()
 	}
 
-	err := gradle.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
+	err := gradleutils.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}
-
-	if gc.IsDetailedSummary() || gc.IsXrayScan() {
-		return gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-	}
 	if gc.IsXrayScan() {
+		err = gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+		if err != nil {
+			return err
+		}
 		return gc.conditionalUpload()
+	}
+	if gc.IsDetailedSummary() {
+		return gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+
 	}
 	return nil
 }
@@ -73,23 +79,47 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	gc.SetResult(result)
+	gc.setResult(result)
 	return nil
 }
 
+// ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
+// violation.
 func (gc *GradleCommand) conditionalUpload() error {
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
-	// First upload binaries
-	uploadCmd := generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
-	err = uploadCmd.Run()
+	// If the detailed summary wasn't requested, the reader should be closed here.
+	// (otherwise it will be closed by the detailed summary print method)
+	if !gc.detailedSummary {
+		e := gc.result.Reader().Close()
+		if e != nil {
+			return e
+		}
+	} else {
+		gc.result.Reader().Reset()
+	}
 	if err != nil {
 		return err
 	}
-	// Then Upload pom.xml's
-	uploadCmd = generic.NewUploadCommand()
-	uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(pomSpecFile).SetServerDetails(gc.serverDetails)
-	return uploadCmd.Run()
+	// The case scan failed
+	if binariesSpecFile == nil {
+		return nil
+	}
+	// First upload binaries
+	if len(binariesSpecFile.Files) > 0 {
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
+		err = uploadCmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+	if len(pomSpecFile.Files) > 0 {
+		// Then Upload pom.xml's
+		uploadCmd := generic.NewUploadCommand()
+		uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(pomSpecFile).SetServerDetails(gc.serverDetails)
+		err = uploadCmd.Run()
+	}
+	return err
 }
 
 func (gc *GradleCommand) CommandName() string {
@@ -138,7 +168,7 @@ func (gc *GradleCommand) Result() *commandsutils.Result {
 	return gc.result
 }
 
-func (gc *GradleCommand) SetResult(result *commandsutils.Result) *GradleCommand {
+func (gc *GradleCommand) setResult(result *commandsutils.Result) *GradleCommand {
 	gc.result = result
 	return gc
 }

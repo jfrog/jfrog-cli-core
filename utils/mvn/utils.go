@@ -1,4 +1,4 @@
-package mvn
+package mvnutils
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	mavenExtractorDependencyVersion = "2.27.0"
+	mavenExtractorDependencyVersion = "2.28.4"
 	classworldsConfFileName         = "classworlds.conf"
 	MavenHome                       = "M2_HOME"
 )
@@ -202,11 +202,11 @@ func (config *mvnRunConfig) GetEnv() map[string]string {
 }
 
 func (config *mvnRunConfig) GetStdWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 func (config *mvnRunConfig) GetErrWriter() io.WriteCloser {
-	return nil
+	return os.Stderr
 }
 
 type mvnRunConfig struct {

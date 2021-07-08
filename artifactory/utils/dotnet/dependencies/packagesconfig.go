@@ -208,7 +208,7 @@ func createNugetPackage(packagesPath string, nuget xmlPackage, nPackage *nugetPa
 		return nil, nil
 	}
 
-	fileDetails, err := fileutils.GetFileDetails(nupkgPath)
+	fileDetails, err := fileutils.GetFileDetails(nupkgPath, true)
 	if err != nil {
 		return nil, err
 	}

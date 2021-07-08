@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -50,7 +51,8 @@ func (gc *GradleCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		deployableArtifactsFile = tempFile.Name()
+		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
+		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
 		tempFile.Close()
 	}
 

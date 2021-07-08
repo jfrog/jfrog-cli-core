@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-const JfrogTestsHome = ".jfrogTest"
-
 // Prepare the .git environment for the test. Takes an existing folder and making it .git dir.
 // sourceDirPath - Relative path to the source dir to change to .git
 // targetDirPath - Relative path to the target created .git dir, usually 'testdata' under the parent dir.
@@ -48,8 +46,8 @@ func RenamePath(oldPath, newPath string, t *testing.T) {
 
 // Set HomeDir to desired location.
 // Caller is responsible to set the old home location back.
-func SetJfrogHome() (oldHome string, err error) {
-	homePath, err := filepath.Abs(JfrogTestsHome)
+func SetJfrogHome() (err error, cleanUp func()) {
+	homePath, err := fileutils.CreateTempDir()
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -57,24 +55,19 @@ func SetJfrogHome() (oldHome string, err error) {
 
 	homePath, err = filepath.Abs(homePath)
 	if err != nil {
-		return "", err
-	}
-
-	oldHome, err = coreutils.GetJfrogHomeDir()
-	if err != nil {
-		return "", err
+		return err, func() {}
 	}
 
 	err = os.Setenv(coreutils.HomeDir, homePath)
 	if err != nil {
-		return "", err
+		return err, func() {}
 	}
 
-	return oldHome, nil
+	return nil, func() { cleanUpUnitTestsJfrogHome(homePath) }
 }
 
-func CleanUnitTestsJfrogHome() {
-	homePath, err := filepath.Abs(JfrogTestsHome)
+func cleanUpUnitTestsJfrogHome(homeDir string) {
+	homePath, err := filepath.Abs(homeDir)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

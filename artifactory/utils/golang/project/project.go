@@ -316,7 +316,7 @@ func (project *goProject) archiveProject(version, tempDir string) (string, error
 	if err := tempFile.Close(); err != nil {
 		return "", err
 	}
-	fileDetails, err := fileutils.GetFileDetails(tempFile.Name())
+	fileDetails, err := fileutils.GetFileDetails(tempFile.Name(), true)
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +329,7 @@ func (project *goProject) archiveProject(version, tempDir string) (string, error
 
 // Add the info file also as an artifact to be part of the build info.
 func (project *goProject) addInfoFileToBuildInfo(infoFilePath string) error {
-	fileDetails, err := fileutils.GetFileDetails(infoFilePath)
+	fileDetails, err := fileutils.GetFileDetails(infoFilePath, true)
 	if err != nil {
 		return err
 	}

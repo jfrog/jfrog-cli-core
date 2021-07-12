@@ -1,0 +1,239 @@
+{
+  "@ilg/cli-start-options:0.1.19": {
+    "Name": "@ilg/cli-start-options",
+    "Version": "0.1.19",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "xpm:0.1.1",
+        "@jfrog/npm_scoped:1.0.0",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "@ilg/es6-promisifier:0.1.9": {
+    "Name": "@ilg/es6-promisifier",
+    "Version": "0.1.9",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "@ilg/cli-start-options:0.1.19",
+        "xpm:0.1.1",
+        "@jfrog/npm_scoped:1.0.0",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "@jfrog/npm_scoped:1.0.0": {
+    "Name": "@jfrog/npm_scoped",
+    "Version": "1.0.0",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "async:0.2.10": {
+    "Name": "async",
+    "Version": "0.2.10",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "nedb:1.0.2",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "binary-search-tree:0.2.4": {
+    "Name": "binary-search-tree",
+    "Version": "0.2.4",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "nedb:1.0.2",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "find:0.2.7": {
+    "Name": "find",
+    "Version": "0.2.7",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "jquery:3.2.0": {
+    "Name": "jquery",
+    "Version": "3.2.0",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "nedb:1.0.2": {
+    "Name": "nedb",
+    "Version": "1.0.2",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "nub:1.0.0": {
+    "Name": "nub",
+    "Version": "1.0.0",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "find:0.2.7",
+        "root:0.0.0"
+      ],
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "shopify-liquid:1.d7.9": {
+    "Name": "shopify-liquid",
+    "Version": "1.d7.9",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "xpm:0.1.1",
+        "@jfrog/npm_scoped:1.0.0",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "underscore:1.4.4": {
+    "Name": "underscore",
+    "Version": "1.4.4",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "binary-search-tree:0.2.4",
+        "nedb:1.0.2",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "wscript-avoider:3.0.2": {
+    "Name": "wscript-avoider",
+    "Version": "3.0.2",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "@ilg/cli-start-options:0.1.19",
+        "xpm:0.1.1",
+        "@jfrog/npm_scoped:1.0.0",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "xml:1.0.1": {
+    "Name": "xml",
+    "Version": "1.0.1",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "xpm:0.1.1": {
+    "Name": "xpm",
+    "Version": "0.1.1",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "@jfrog/npm_scoped:1.0.0",
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "yaml:0.2.3": {
+    "Name": "yaml",
+    "Version": "0.2.3",
+    "Scopes": [
+      "myScope"
+    ],
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [
+      [
+        "root:0.0.0"
+      ]
+    ]
+  },
+  "root": {
+    "Name": "root",
+    "Version": "0.0.0",
+    "FileType": "",
+    "Checksum": null,
+    "PathToRoot": [[""]]
+  }
+
+}

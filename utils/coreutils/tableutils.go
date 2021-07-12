@@ -192,7 +192,7 @@ func appendEmbeddedTableStrings(rowValues []interface{}, fieldValue reflect.Valu
 		// Add newlines to cells with less lines than maxNumberOfLines
 		for colIndex, currCell := range currRowCells {
 			cellContent := currCell.content
-			for i := 0; i < maxNumberOfLines - currCell.numberOfLines; i++ {
+			for i := 0; i < maxNumberOfLines-currCell.numberOfLines; i++ {
 				cellContent = fmt.Sprintf("%s\n", cellContent)
 			}
 			tableStrings[colIndex] = fmt.Sprintf("%s%s\n", tableStrings[colIndex], cellContent)
@@ -213,7 +213,7 @@ func countLinesInCell(content string, maxWidth int) int {
 	numberOfLines := 0
 	for _, line := range lines {
 		numberOfLines += len(line) / maxWidth
-		if len(line) % maxWidth > 0 {
+		if len(line)%maxWidth > 0 {
 			numberOfLines++
 		}
 	}

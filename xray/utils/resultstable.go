@@ -149,11 +149,11 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				licenseRow{
-					licenseKey: license.Key,
-					impactedPackageName: impactedPackagesNames[compIndex],
+					licenseKey:             license.Key,
+					impactedPackageName:    impactedPackagesNames[compIndex],
 					impactedPackageVersion: impactedPackagesVersions[compIndex],
-					impactedPackageType: impactedPackagesTypes[compIndex],
-					components: components[compIndex],
+					impactedPackageType:    impactedPackagesTypes[compIndex],
+					components:             components[compIndex],
 				},
 			)
 		}

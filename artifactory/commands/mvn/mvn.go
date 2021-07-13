@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const mavenExtractorDependencyVersion = "2.28.5"
+const mavenExtractorDependencyVersion = "2.28.6"
 
 // Deprecated. This version is the latest published in JCenter.
 const mavenExtractorDependencyJCenterVersion = "2.23.0"
@@ -256,7 +256,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 }
 
 func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, mc.serverDetails.ArtifactoryUrl)
 	if err != nil {
 		return err
 	}

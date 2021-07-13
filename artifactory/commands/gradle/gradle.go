@@ -20,7 +20,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const gradleExtractorDependencyVersion = "4.24.11"
+const gradleExtractorDependencyVersion = "4.24.12"
 
 // Deprecated. This version is the latest published in JCenter.
 const gradleExtractorDependencyJCenterVersion = "4.21.0"
@@ -83,7 +83,7 @@ func (gc *GradleCommand) Run() error {
 }
 
 func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.serverDetails.ArtifactoryUrl)
 	if err != nil {
 		return err
 	}

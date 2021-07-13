@@ -3,7 +3,6 @@ package audit
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/jfrog/gofrog/io"
@@ -183,13 +182,8 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) FileContext {
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
-
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
-			fileInfo, e := os.Lstat(filePath)
-			if errorutils.CheckError(e) != nil {
-				return e
-			}
-			log.Info(logMsgPrefix+"Indexing file:", fileInfo.Name())
+			log.Info(logMsgPrefix+"Indexing file:", filePath)
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err

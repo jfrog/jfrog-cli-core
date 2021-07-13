@@ -238,7 +238,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	if err != nil {
 		return err
 	}
-	up := services.UploadParams{}
+	up := services.NewUploadParams()
 	up.CommonParams = &specutils.CommonParams{Pattern: npc.packedFilePath, Target: target}
 	var totalFailed int
 	if npc.collectBuildInfo || npc.detailedSummary {

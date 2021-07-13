@@ -40,7 +40,7 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 	r.reader = reader
 }
 
-// Reads and pars Deployed artifacts details from a given file.
+// UnmarshalDeployableArtifacts Reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 func UnmarshalDeployableArtifacts(filePath, rtUrl string) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(filePath)

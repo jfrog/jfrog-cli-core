@@ -302,8 +302,12 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
+	recursive, err := fileData.IsRecursive(true)
+	if err != nil {
+		return err
+	}
 
-	paths, err := fspatterns.GetPaths(rootPath, true, false, false)
+	paths, err := fspatterns.GetPaths(rootPath, recursive, false, false)
 	if err != nil {
 		return err
 	}

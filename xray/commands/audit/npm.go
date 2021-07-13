@@ -145,13 +145,12 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if len(scanResults.Violations) > 0 {
+	if auditCmd.includeVulnerabilities {
+		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
+	} else {
 		err = xrutils.PrintViolationsTable(scanResults.Violations, false)
 	}
-	if len(scanResults.Vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
-	}
-	if len(scanResults.Licenses) > 0 {
+	if auditCmd.includeLincenses {
 		xrutils.PrintLicensesTable(scanResults.Licenses, false)
 	}
 	return err

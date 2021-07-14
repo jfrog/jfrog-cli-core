@@ -3,7 +3,6 @@ package mvn
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -110,7 +108,7 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	err = gofrogcmd.RunCmd(mvnRunConfig)
+	err = mvnRunConfig.runCmd()
 	if err != nil {
 		return err
 	}
@@ -291,16 +289,11 @@ func (config *mvnRunConfig) GetCmd() *exec.Cmd {
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
-func (config *mvnRunConfig) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (config *mvnRunConfig) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (config *mvnRunConfig) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (config *mvnRunConfig) runCmd() error {
+	command := config.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return command.Run()
 }
 
 type mvnRunConfig struct {

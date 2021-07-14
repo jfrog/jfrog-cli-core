@@ -3,7 +3,6 @@ package mvnutils
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -21,7 +19,7 @@ import (
 )
 
 const (
-	mavenExtractorDependencyVersion = "2.28.4"
+	mavenExtractorDependencyVersion = "2.28.6"
 	classworldsConfFileName         = "classworlds.conf"
 	MavenHome                       = "M2_HOME"
 )
@@ -45,7 +43,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	}
 
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	return gofrogcmd.RunCmd(mvnRunConfig)
+	return mvnRunConfig.runCmd()
 }
 
 func validateMavenInstallation() error {
@@ -197,18 +195,6 @@ func (config *mvnRunConfig) GetCmd() *exec.Cmd {
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
-func (config *mvnRunConfig) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (config *mvnRunConfig) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (config *mvnRunConfig) GetErrWriter() io.WriteCloser {
-	return os.Stderr
-}
-
 type mvnRunConfig struct {
 	java                         string
 	plexusClassworlds            string
@@ -223,4 +209,11 @@ type mvnRunConfig struct {
 	generatedBuildInfoPath       string
 	mavenOpts                    string
 	deployableArtifactsFilePath  string
+}
+
+func (config *mvnRunConfig) runCmd() error {
+	command := config.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return command.Run()
 }

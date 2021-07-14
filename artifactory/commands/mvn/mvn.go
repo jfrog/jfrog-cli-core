@@ -134,7 +134,7 @@ func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, mc.serverDetails.ArtifactoryUrl)
 	if err != nil {
 		return err
 	}

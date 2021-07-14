@@ -2,7 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
@@ -73,7 +71,7 @@ func (gc *GradleCommand) Run() error {
 		return err
 	}
 	defer os.Remove(gradleRunConfig.env[gradleBuildInfoProperties])
-	if err := gofrogcmd.RunCmd(gradleRunConfig); err != nil {
+	if err := gradleRunConfig.runCmd(); err != nil {
 		return err
 	}
 	if gc.IsDetailedSummary() {
@@ -151,8 +149,10 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 }
 
 func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, detailedSummary bool) (*gradleRunConfig, error) {
-	runConfig := &gradleRunConfig{env: map[string]string{}}
-	runConfig.tasks = tasks
+	runConfig := &gradleRunConfig{
+		env:   map[string]string{},
+		tasks: tasks,
+	}
 
 	vConfig, err := utils.ReadConfigFile(configPath, utils.YAML)
 	if err != nil {
@@ -231,16 +231,15 @@ func (config *gradleRunConfig) GetCmd() *exec.Cmd {
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
-func (config *gradleRunConfig) GetEnv() map[string]string {
-	return config.env
-}
-
-func (config *gradleRunConfig) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (config *gradleRunConfig) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (config *gradleRunConfig) runCmd() error {
+	command := config.GetCmd()
+	command.Env = os.Environ()
+	for k, v := range config.env {
+		command.Env = append(command.Env, k+"="+v)
+	}
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return command.Run()
 }
 
 func getGradleExecPath(useWrapper bool) (string, error) {

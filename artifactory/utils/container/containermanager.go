@@ -1,15 +1,14 @@
 package container
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -63,27 +62,27 @@ type ContainerManagerLoginConfig struct {
 // Push image
 func (containerManager *containerManager) Push(image *Image) error {
 	cmd := &pushCmd{imageTag: image, containerManager: containerManager.Type}
-	return gofrogcmd.RunCmd(cmd)
+	return cmd.RunCmd()
 }
 
 // Get image ID
 func (containerManager *containerManager) Id(image *Image) (string, error) {
 	cmd := &getImageIdCmd{image: image, containerManager: containerManager.Type}
-	content, err := gofrogcmd.RunCmdOutput(cmd)
+	content, err := cmd.RunCmd()
 	return content[:strings.Index(content, "\n")], err
 }
 
 // Pull image
 func (containerManager *containerManager) Pull(image *Image) error {
 	cmd := &pullCmd{image: image, containerManager: containerManager.Type}
-	return gofrogcmd.RunCmd(cmd)
+	return cmd.RunCmd()
 }
 
 // Return the OS and architecture on which the image runs e.g. (linux, amd64, nil).
 func (containerManager *containerManager) OsCompatibility(image *Image) (string, string, error) {
 	cmd := &getImageSystemCompatibilityCmd{image: image, containerManager: containerManager.Type}
 	log.Debug("Running image inspect...")
-	content, err := gofrogcmd.RunCmdOutput(cmd)
+	content, err := cmd.RunCmd()
 	if err != nil {
 		return "", "", err
 	}
@@ -116,16 +115,11 @@ func (pushCmd *pushCmd) GetCmd() *exec.Cmd {
 	return exec.Command(pushCmd.containerManager.String(), cmd[:]...)
 }
 
-func (pushCmd *pushCmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (pushCmd *pushCmd) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (pushCmd *pushCmd) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (pushCmd *pushCmd) RunCmd() error {
+	command := pushCmd.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return command.Run()
 }
 
 // Image get image id command
@@ -143,16 +137,13 @@ func (getImageId *getImageIdCmd) GetCmd() *exec.Cmd {
 	return exec.Command(getImageId.containerManager.String(), cmd[:]...)
 }
 
-func (getImageId *getImageIdCmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (getImageId *getImageIdCmd) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (getImageId *getImageIdCmd) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (getImageId *getImageIdCmd) RunCmd() (string, error) {
+	command := getImageId.GetCmd()
+	buffer := bytes.NewBuffer([]byte{})
+	command.Stderr = buffer
+	command.Stdout = buffer
+	err := command.Run()
+	return buffer.String(), err
 }
 
 type FatManifest struct {
@@ -185,16 +176,13 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetCmd() *
 	return exec.Command(getImageSystemCompatibilityCmd.containerManager.String(), cmd[:]...)
 }
 
-func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) RunCmd() (string, error) {
+	command := getImageSystemCompatibilityCmd.GetCmd()
+	buffer := bytes.NewBuffer([]byte{})
+	command.Stderr = buffer
+	command.Stdout = buffer
+	err := command.Run()
+	return buffer.String(), err
 }
 
 // Get registry from tag
@@ -230,16 +218,12 @@ func (loginCmd *LoginCmd) GetCmd() *exec.Cmd {
 	return exec.Command("sh", "-c", cmd)
 }
 
-func (loginCmd *LoginCmd) GetEnv() map[string]string {
-	return map[string]string{"CONTAINER_MANAGER_PASS": loginCmd.Password}
-}
-
-func (loginCmd *LoginCmd) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (loginCmd *LoginCmd) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (loginCmd *LoginCmd) RunCmd() error {
+	command := loginCmd.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	command.Env = []string{"CONTAINER_MANAGER_PASS=" + loginCmd.Password}
+	return command.Run()
 }
 
 // Image pull command
@@ -255,16 +239,11 @@ func (pullCmd *pullCmd) GetCmd() *exec.Cmd {
 	return exec.Command(pullCmd.containerManager.String(), cmd[:]...)
 }
 
-func (pullCmd *pullCmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (pullCmd *pullCmd) GetStdWriter() io.WriteCloser {
-	return nil
-}
-
-func (pullCmd *pullCmd) GetErrWriter() io.WriteCloser {
-	return nil
+func (pullCmd *pullCmd) RunCmd() error {
+	command := pullCmd.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return command.Run()
 }
 
 // First we'll try to login assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
@@ -287,7 +266,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	}
 	// Perform login.
 	cmd := &LoginCmd{DockerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
-	err = gofrogcmd.RunCmd(cmd)
+	err = cmd.RunCmd()
 	if exitCode := coreutils.GetExitCode(err, 0, 0, false); exitCode == coreutils.ExitCodeNoError {
 		// Login succeeded
 		return nil
@@ -298,7 +277,7 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())))
 	}
 	cmd = &LoginCmd{DockerRegistry: imageRegistry[:indexOfSlash], Username: config.ServerDetails.User, Password: config.ServerDetails.Password}
-	err = gofrogcmd.RunCmd(cmd)
+	err = cmd.RunCmd()
 	if err != nil {
 		// Login failed for both attempts
 		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage,
@@ -320,22 +299,19 @@ func (versionCmd *VersionCmd) GetCmd() *exec.Cmd {
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
-func (versionCmd *VersionCmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (versionCmd *VersionCmd) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (versionCmd *VersionCmd) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (versionCmd *VersionCmd) RunCmd() (string, error) {
+	command := versionCmd.GetCmd()
+	buffer := bytes.NewBuffer([]byte{})
+	command.Stderr = buffer
+	command.Stdout = buffer
+	err := command.Run()
+	return buffer.String(), err
 }
 
 func ValidateClientApiVersion() error {
 	cmd := &VersionCmd{}
 	// 'docker version' may return 1 in case of errors from daemon. We should ignore this kind of errors.
-	content, err := gofrogcmd.RunCmdOutput(cmd)
+	content, err := cmd.RunCmd()
 	content = strings.TrimSpace(content)
 	if !ApiVersionRegex.Match([]byte(content)) {
 		// The Api version is expected to be 'major.minor'. Anything else should return an error.

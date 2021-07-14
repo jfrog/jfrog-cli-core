@@ -222,7 +222,8 @@ func (loginCmd *LoginCmd) RunCmd() error {
 	command := loginCmd.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
-	command.Env = []string{"CONTAINER_MANAGER_PASS=" + loginCmd.Password}
+	command.Env = os.Environ()
+	command.Env = append(command.Env, "CONTAINER_MANAGER_PASS="+loginCmd.Password)
 	return command.Run()
 }
 

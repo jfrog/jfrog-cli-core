@@ -93,19 +93,15 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		licenses = append(licenses, scanResults.Licenses...)
 	}
 	fmt.Println("The full scan results are available here: " + tempDirPath)
-
-	if len(violations) > 0 {
-		if err = xrutils.PrintViolationsTable(violations, false); err != nil {
-			return err
-		}
-	}
-	if len(vulnerabilities) > 0 {
+	if includeVulnerabilities {
 		xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
+	} else {
+		err = xrutils.PrintViolationsTable(violations, false)
 	}
-	if len(licenses) > 0 {
+	if includeLicenses {
 		xrutils.PrintLicensesTable(licenses, false)
 	}
-	return nil
+	return err
 }
 
 func addModuleTree(module buildinfo.Module) *services.GraphNode {

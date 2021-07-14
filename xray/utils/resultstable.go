@@ -242,8 +242,8 @@ var packageTypes = map[string]string{
 	"alpine":   "Alpine",
 }
 
-// splitComponentId splits an Xray component ID to the component's name, version and package type.
-// In case the component doesn't contain a version, the returned version will be an empty string.
+// splitComponentId splits an Xray component ID to the component name, version and package type.
+// In case componentId doesn't contain a version, the returned version will be an empty string.
 // In case componentId's format is invalid, it will be returned as the component name
 // and empty strings will be returned instead of the version and the package type.
 // Examples:

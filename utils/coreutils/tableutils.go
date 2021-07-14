@@ -15,7 +15,7 @@ import (
 // How to use this method (with an example):
 // The fields of the struct must have one of the tags: 'col-name' or 'embed-table' in order to be printed.
 // Fields without any of these tags will be skipped.
-// The tag 'col-name' can be set on string fields only. The table column name is the 'col-name' tag value.
+// The tag 'col-name' can be set on string fields only. The column name is the 'col-name' tag value.
 // If the cell content exceeds the defined col-max-width, the content will be broken into two (or more) lines.
 // If you would like to limit the width of the column, you can use the 'col-max-width' tag.
 // In case the struct you want to print contains a field that is a slice of other structs,

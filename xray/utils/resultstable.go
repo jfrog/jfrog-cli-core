@@ -17,80 +17,74 @@ import (
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 func PrintViolationsTable(violations []services.Violation, multipleRoots bool) error {
-	securityViolationsTable := createTableWriter()
-	licenseViolationsTable := createTableWriter()
-	// Temporarily removed ignore rule URL column
-	//securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Impacted Package", "Impacted Package\nVersion", "Fixed Versions", "Component", "Component\nVersion", "Ignore Rule URL #"})
-	//licenseViolationsTable.AppendHeader(table.Row{"License", "Severity", "Impacted Package", "Impacted Package\nVersion", "Component", "Component\nVersion", "Ignore Rule URL #"})
-	if multipleRoots {
-		securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Impacted Package", "Impacted Package\nVersion", "Type", "Fixed Versions", "Component", "Component\nVersion"})
-		licenseViolationsTable.AppendHeader(table.Row{"License", "Severity", "Impacted Package", "Impacted Package\nVersion", "Type", "Component", "Component\nVersion"})
-	} else {
-		securityViolationsTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Impacted Package", "Impacted Package\nVersion", "Fixed Versions", "Component", "Component\nVersion"})
-		licenseViolationsTable.AppendHeader(table.Row{"License", "Severity", "Impacted Package", "Impacted Package\nVersion", "Component", "Component\nVersion"})
-	}
-	securityViolationsTable.SetColumnConfigs([]table.ColumnConfig{
-		{
-			Name:     "Impacted Package",
-			WidthMax: 25,
-		},
-		{
-			Name:     "Component",
-			WidthMax: 25,
-		},
-	})
-
-	// Temporarily removed
-	//ignoreUrlsTable := createTableWriter()
-	//ignoreUrlsTable.AppendHeader(table.Row{"#", "URL"})
-	//ignoreUrlCounter := 1 // Used to give a number to each ignore rule URL
-
+	var securityViolationsRows []vulnerabilityRow
+	var licenseViolationsRows []licenseViolationRow
 	failBuild := false
-
-	sort.Slice(violations, func(i, j int) bool {
-		return compareSeverity(violations[i].Severity, violations[j].Severity)
-	})
 
 	isTerminal := terminal.IsTerminal(int(os.Stderr.Fd()))
 
 	for _, violation := range violations {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, compNames, compVersions := splitComponents(violation.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(violation.Components, multipleRoots)
+		currSeverity := getSeverity(violation.Severity)
 		if violation.ViolationType == "security" {
-			cve, cvssV2, cvssV3 := splitCves(violation.Cves)
+			cves := convertCves(violation.Cves)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-				// Temporarily removed ignore rule URL column
-				//securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], fixedVersions[compIndex], compNames[compIndex], compVersions[compIndex], ignoreUrlCounter})
-				if multipleRoots {
-					securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], impactedPackagesTypes[compIndex], fixedVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-				} else {
-					securityViolationsTable.AppendRow(table.Row{violation.IssueId, cve, cvssV2, cvssV3, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], fixedVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-				}
+				securityViolationsRows = append(securityViolationsRows,
+					vulnerabilityRow{
+						severity:               currSeverity.printableTitle(isTerminal),
+						severityNumValue:       currSeverity.numValue,
+						impactedPackageName:    impactedPackagesNames[compIndex],
+						impactedPackageVersion: impactedPackagesVersions[compIndex],
+						impactedPackageType:    impactedPackagesTypes[compIndex],
+						fixedVersions:          fixedVersions[compIndex],
+						components:             components[compIndex],
+						cves:                   cves,
+						issueId:                violation.IssueId,
+					},
+				)
 			}
 		} else {
 			// License compliance violation
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-				// Temporarily removed ignore rule URL column
-				//licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], compNames[compIndex], compVersions[compIndex], ignoreUrlCounter})
-				if multipleRoots {
-					licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], impactedPackagesTypes[compIndex], compNames[compIndex], compVersions[compIndex]})
-				} else {
-					licenseViolationsTable.AppendRow(table.Row{violation.LicenseKey, getSeverity(violation.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-				}
+				licenseViolationsRows = append(licenseViolationsRows,
+					licenseViolationRow{
+						licenseKey:             violation.LicenseKey,
+						severity:               currSeverity.printableTitle(isTerminal),
+						severityNumValue:       currSeverity.numValue,
+						impactedPackageName:    impactedPackagesNames[compIndex],
+						impactedPackageVersion: impactedPackagesVersions[compIndex],
+						impactedPackageType:    impactedPackagesTypes[compIndex],
+						components:             components[compIndex],
+					},
+				)
 			}
 		}
-		// Temporarily removed
-		//ignoreUrlsTable.AppendRow(table.Row{ignoreUrlCounter, violation.IgnoreUrl})
-		//ignoreUrlCounter++
+
 		if !failBuild && violation.FailBuild {
 			failBuild = true
 		}
 	}
 
+	// Sort the rows by severity and whether the row contains fixed versions
+	sort.Slice(securityViolationsRows, func(i, j int) bool {
+		if securityViolationsRows[i].severityNumValue != securityViolationsRows[j].severityNumValue {
+			return securityViolationsRows[i].severityNumValue > securityViolationsRows[j].severityNumValue
+		}
+		return securityViolationsRows[i].fixedVersions != "" && securityViolationsRows[j].fixedVersions == ""
+	})
+	sort.Slice(licenseViolationsRows, func(i, j int) bool {
+		return licenseViolationsRows[i].severityNumValue > licenseViolationsRows[j].severityNumValue
+	})
+
 	// Print tables
-	printTable("Security Violations", securityViolationsTable, true)
-	printTable("License Compliance Violations", licenseViolationsTable, true)
-	// Temporarily removed
-	//printTable("Ignore Rules URLs", ignoreUrlsTable, false)
+	err := coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found")
+	if err != nil {
+		return err
+	}
+	err = coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
+	if err != nil {
+		return err
+	}
 
 	if failBuild {
 		return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}
@@ -102,100 +96,136 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
 // Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) error {
 	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
 		"You can get a list of custom violations by providing one of the command options: --watches, --target-path or --project.\n" +
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
-	vulnerabilitiesTable := createTableWriter()
-	if multipleRoots {
-		vulnerabilitiesTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Impacted Package", "Impacted Package\nVersion", "Type", "Fixed Versions", "Component", "Component\nVersion"})
-	} else {
-		vulnerabilitiesTable.AppendHeader(table.Row{"Issue ID", "CVE", "CVSS v2", "CVSS v3", "Severity", "Impacted Package", "Impacted Package\nVersion", "Fixed Versions", "Component", "Component\nVersion"})
-	}
-	vulnerabilitiesTable.SetColumnConfigs([]table.ColumnConfig{
-		{
-			Name:     "Impacted Package",
-			WidthMax: 25,
-		},
-		{
-			Name:     "Component",
-			WidthMax: 25,
-		},
-	})
-
-	sort.Slice(vulnerabilities, func(i, j int) bool {
-		return compareSeverity(vulnerabilities[i].Severity, vulnerabilities[j].Severity)
-	})
 
 	isTerminal := terminal.IsTerminal(int(os.Stderr.Fd()))
 
+	var vulnerabilitiesRows []vulnerabilityRow
+
 	for _, vulnerability := range vulnerabilities {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, compNames, compVersions := splitComponents(vulnerability.Components, multipleRoots)
-		cve, cvssV2, cvssV3 := splitCves(vulnerability.Cves)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(vulnerability.Components, multipleRoots)
+		cves := convertCves(vulnerability.Cves)
+		currSeverity := getSeverity(vulnerability.Severity)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-			if multipleRoots {
-				vulnerabilitiesTable.AppendRow(table.Row{vulnerability.IssueId, cve, cvssV2, cvssV3, getSeverity(vulnerability.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], impactedPackagesTypes[compIndex], fixedVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-			} else {
-				vulnerabilitiesTable.AppendRow(table.Row{vulnerability.IssueId, cve, cvssV2, cvssV3, getSeverity(vulnerability.Severity).printableTitle(isTerminal), impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], fixedVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-			}
+			vulnerabilitiesRows = append(vulnerabilitiesRows,
+				vulnerabilityRow{
+					severity:               currSeverity.printableTitle(isTerminal),
+					severityNumValue:       currSeverity.numValue,
+					impactedPackageName:    impactedPackagesNames[compIndex],
+					impactedPackageVersion: impactedPackagesVersions[compIndex],
+					impactedPackageType:    impactedPackagesTypes[compIndex],
+					fixedVersions:          fixedVersions[compIndex],
+					components:             components[compIndex],
+					cves:                   cves,
+					issueId:                vulnerability.IssueId,
+				},
+			)
 		}
 	}
 
-	printTable("Vulnerabilities", vulnerabilitiesTable, true)
+	sort.Slice(vulnerabilitiesRows, func(i, j int) bool {
+		if vulnerabilitiesRows[i].severityNumValue != vulnerabilitiesRows[j].severityNumValue {
+			return vulnerabilitiesRows[i].severityNumValue > vulnerabilitiesRows[j].severityNumValue
+		}
+		return vulnerabilitiesRows[i].fixedVersions != "" && vulnerabilitiesRows[j].fixedVersions == ""
+	})
+
+	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found")
+	return err
 }
 
 // PrintLicensesTable prints the licenses in a table.
 // Set multipleRoots to true in case the given licenses array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
-func PrintLicensesTable(licenses []services.License, multipleRoots bool) {
-	licensesTable := createTableWriter()
-	if multipleRoots {
-		licensesTable.AppendHeader(table.Row{"License", "Impacted Package", "Impacted Package\nVersion", "Type", "Component", "Component\nVersion"})
-	} else {
-		licensesTable.AppendHeader(table.Row{"License", "Impacted Package", "Impacted Package\nVersion", "Component", "Component\nVersion"})
-	}
+func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
+	var licensesRows []licenseRow
 
 	for _, license := range licenses {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, compNames, compVersions := splitComponents(license.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components := splitComponents(license.Components, multipleRoots)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-			if multipleRoots {
-				licensesTable.AppendRow(table.Row{license.Key, impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], impactedPackagesTypes[compIndex], compNames[compIndex], compVersions[compIndex]})
-			} else {
-				licensesTable.AppendRow(table.Row{license.Key, impactedPackagesNames[compIndex], impactedPackagesVersions[compIndex], compNames[compIndex], compVersions[compIndex]})
-			}
+			licensesRows = append(licensesRows,
+				licenseRow{
+					licenseKey:             license.Key,
+					impactedPackageName:    impactedPackagesNames[compIndex],
+					impactedPackageVersion: impactedPackagesVersions[compIndex],
+					impactedPackageType:    impactedPackagesTypes[compIndex],
+					components:             components[compIndex],
+				},
+			)
 		}
 	}
 
-	printTable("Licenses", licensesTable, true)
+	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found")
+	return err
 }
 
-func splitCves(cves []services.Cve) (string, string, string) {
-	var cve, cvssV2, cvssV3 string
-	if len(cves) == 0 {
-		return "", "", ""
-	}
+// Used for vulnerabilities and security violations
+type vulnerabilityRow struct {
+	severity               string         `col-name:"Severity"`
+	severityNumValue       int            // For sorting
+	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
+	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageType    string         `col-name:"Type"`
+	fixedVersions          string         `col-name:"Fixed Versions"`
+	components             []componentRow `embed-table:"true"`
+	cves                   []cveRow       `embed-table:"true"`
+	issueId                string         `col-name:"Issue ID"`
+}
+
+type licenseRow struct {
+	licenseKey             string         `col-name:"License"`
+	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
+	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageType    string         `col-name:"Type"`
+	components             []componentRow `embed-table:"true"`
+}
+
+type licenseViolationRow struct {
+	licenseKey             string         `col-name:"License"`
+	severity               string         `col-name:"Severity"`
+	severityNumValue       int            // For sorting
+	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
+	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageType    string         `col-name:"Type"`
+	components             []componentRow `embed-table:"true"`
+}
+
+type componentRow struct {
+	name    string `col-name:"Component" col-max-width:"25"`
+	version string `col-name:"Component\nVersion"`
+}
+
+type cveRow struct {
+	id     string `col-name:"CVE"`
+	cvssV2 string `col-name:"CVSS v2"`
+	cvssV3 string `col-name:"CVSS v3"`
+}
+
+func convertCves(cves []services.Cve) []cveRow {
+	var cveRows []cveRow
 	for _, cveObj := range cves {
-		cve = fmt.Sprintf("%s%s\n", cve, cveObj.Id)
-		cvssV2 = fmt.Sprintf("%s%s\n", cvssV2, cveObj.CvssV2Score)
-		cvssV3 = fmt.Sprintf("%s%s\n", cvssV3, cveObj.CvssV3Score)
+		cveRows = append(cveRows, cveRow{id: cveObj.Id, cvssV2: cveObj.CvssV2Score, cvssV3: cveObj.CvssV3Score})
 	}
-	return cve[:len(cve)-1], cvssV2[:len(cvssV2)-1], cvssV3[:len(cvssV3)-1]
+	return cveRows
 }
 
-func splitComponents(components map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, []string, []string) {
-	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, compNames, compVersions []string
-	for currCompId, currComp := range components {
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow) {
+	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
+	var directComponents [][]componentRow
+	for currCompId, currComp := range impactedPackages {
 		currCompName, currCompVersion, currCompType := splitComponentId(currCompId)
 		impactedPackagesNames = append(impactedPackagesNames, currCompName)
 		impactedPackagesVersions = append(impactedPackagesVersions, currCompVersion)
 		impactedPackagesTypes = append(impactedPackagesTypes, currCompType)
 		fixedVersions = append(fixedVersions, strings.Join(currComp.FixedVersions, "\n"))
-		currCompNames, currCompVersions := getDirectComponents(currComp.ImpactPaths, multipleRoots)
-		compNames = append(compNames, currCompNames)
-		compVersions = append(compVersions, currCompVersions)
+		currComponents := getDirectComponents(currComp.ImpactPaths, multipleRoots)
+		directComponents = append(directComponents, currComponents)
 	}
-	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, compNames, compVersions
+	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents
 }
 
 var packageTypes = map[string]string{
@@ -212,6 +242,26 @@ var packageTypes = map[string]string{
 	"alpine":   "Alpine",
 }
 
+// splitComponentId splits an Xray component ID to the component name, version and package type.
+// In case componentId doesn't contain a version, the returned version will be an empty string.
+// In case componentId's format is invalid, it will be returned as the component name
+// and empty strings will be returned instead of the version and the package type.
+// Examples:
+// 1. componentId: "gav://antparent:ant:1.6.5"
+//    Returned values:
+//      Component name: "antparent:ant"
+//      Component version: "1.6.5"
+//      Package type: "Maven"
+// 2. componentId: "generic://sha256:244fd47e07d1004f0aed9c156aa09083c82bf8944eceb67c946ff7430510a77b/foo.jar"
+//    Returned values:
+//      Component name: "foo.jar"
+//      Component version: ""
+//      Package type: "Generic"
+// 3. componentId: "invalid-comp-id"
+//    Returned values:
+//      Component name: "invalid-comp-id"
+//      Component version: ""
+//      Package type: ""
 func splitComponentId(componentId string) (string, string, string) {
 	compIdParts := strings.Split(componentId, "://")
 	// Invalid component ID
@@ -258,8 +308,8 @@ func splitComponentId(componentId string) (string, string, string) {
 }
 
 // Gets a string of the direct dependencies or packages of the scanned component, that depends on the vulnerable package
-func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) (string, string) {
-	var compNames, compVersions string
+func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []componentRow {
+	var components []componentRow
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
 	impactPathLevel := 1
@@ -272,11 +322,10 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		if len(impactPath) <= impactPathLevel {
 			impactPathIndex = len(impactPath) - 1
 		}
-		compName, compVersion, _ := splitComponentId(impactPath[impactPathIndex].ComponentId) //////////////make sure we want type only for impacted package
-		compNames = fmt.Sprintf("%s%s\n", compNames, compName)
-		compVersions = fmt.Sprintf("%s%s\n", compVersions, compVersion)
+		compName, compVersion, _ := splitComponentId(impactPath[impactPathIndex].ComponentId)
+		components = append(components, componentRow{name: compName, version: compVersion})
 	}
-	return compNames[:len(compNames)-1], compVersions[:len(compVersions)-1]
+	return components
 }
 
 func createTableWriter() table.Writer {
@@ -285,27 +334,6 @@ func createTableWriter() table.Writer {
 	tableWriter.SetStyle(table.StyleLight)
 	tableWriter.Style().Options.SeparateRows = true
 	return tableWriter
-}
-
-func printTable(pluralEntityName string, tableWriter table.Writer, printMessageIfEmpty bool) {
-	if tableWriter.Length() == 0 {
-		if printMessageIfEmpty {
-			fmt.Println(strings.Title(pluralEntityName))
-			printMessage(fmt.Sprintf("No %s found", strings.ToLower(pluralEntityName)))
-		}
-		return
-	}
-
-	fmt.Println(pluralEntityName)
-	tableWriter.Render()
-}
-
-func printMessage(message string) {
-	tableWriter := table.NewWriter()
-	tableWriter.SetOutputMirror(os.Stdout)
-	tableWriter.SetStyle(table.StyleLight)
-	tableWriter.AppendRow(table.Row{message})
-	tableWriter.Render()
 }
 
 type severity struct {
@@ -333,10 +361,4 @@ func getSeverity(severityTitle string) *severity {
 		return &severity{title: severityTitle}
 	}
 	return severities[severityTitle]
-}
-
-func compareSeverity(severityA, severityB string) bool {
-	valueA := getSeverity(severityA)
-	valueB := getSeverity(severityB)
-	return valueA.numValue > valueB.numValue
 }

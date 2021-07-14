@@ -10,12 +10,13 @@ import (
 	"strings"
 )
 
-// PrintTable prints the slice of rows in a table.
+// PrintTable prints a slice of rows in a table.
 // The parameter rows MUST be a slice, otherwise the method panics.
 // How to use this method (with an example):
-// The fields of the structs of rows, must have one of the tags: 'col-name' or 'embed-table' in order to be printed.
-// Fields without any of these, will be skipped.
-// The tag 'col-name' can be set on string fields only, and contain the name of the column as its value.
+// The fields of the struct must have one of the tags: 'col-name' or 'embed-table' in order to be printed.
+// Fields without any of these tags will be skipped.
+// The tag 'col-name' can be set on string fields only. The table column name is the 'col-name' tag value.
+// If the cell content exceeds the defined col-max-width, the content will be broken into two (or more) lines.
 // If you would like to limit the width of the column, you can use the 'col-max-width' tag.
 // In case the struct you want to print contains a field that is a slice of other structs,
 // you can print it in the table too with the 'embed-table' tag which can be set on slices of structs only.

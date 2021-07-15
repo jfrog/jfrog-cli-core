@@ -13,7 +13,6 @@ import (
 
 type AuditMavenCommand struct {
 	serverDetails          *config.ServerDetails
-	excludeTestDeps        bool
 	insecureTls            bool
 	watches                []string
 	projectKey             string
@@ -24,11 +23,6 @@ type AuditMavenCommand struct {
 
 func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails) *AuditMavenCommand {
 	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetExcludeTestDeps(excludeTestDeps bool) *AuditMavenCommand {
-	auditCmd.excludeTestDeps = excludeTestDeps
 	return auditCmd
 }
 
@@ -93,10 +87,7 @@ func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*servi
 }
 
 func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
-	goals := []string{"-B", "compile"}
-	if !auditCmd.excludeTestDeps {
-		goals = append(goals, "test-compile")
-	}
+	goals := []string{"-B", "dependency:resolve"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Maven)
 	if err != nil {

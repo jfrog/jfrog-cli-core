@@ -1,15 +1,14 @@
 package container
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -121,6 +120,7 @@ func (pushCmd *pushCmd) RunCmd() error {
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
 	return command.Run()
+}
 
 // Image get image id command
 type getImageIdCmd struct {

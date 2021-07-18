@@ -310,6 +310,7 @@ func splitComponentId(componentId string) (string, string, string) {
 // Gets a string of the direct dependencies or packages of the scanned component, that depends on the vulnerable package
 func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []componentRow {
 	var components []componentRow
+	componentsMap := make(map[string]componentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
 	impactPathLevel := 1
@@ -322,8 +323,15 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		if len(impactPath) <= impactPathLevel {
 			impactPathIndex = len(impactPath) - 1
 		}
-		compName, compVersion, _ := splitComponentId(impactPath[impactPathIndex].ComponentId)
-		components = append(components, componentRow{name: compName, version: compVersion})
+		componentId := impactPath[impactPathIndex].ComponentId
+		if _, exist := componentsMap[componentId]; !exist {
+			compName, compVersion, _ := splitComponentId(componentId)
+			componentsMap[componentId] = componentRow{name: compName, version: compVersion}
+		}
+	}
+
+	for _, row := range componentsMap {
+		components = append(components, row)
 	}
 	return components
 }

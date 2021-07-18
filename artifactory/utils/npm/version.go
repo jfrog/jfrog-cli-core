@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -32,8 +33,8 @@ func Version(executablePath string) ([]byte, error) {
 	return data, nil
 }
 
-func createVersionCmdConfig(executablePath string, pipeWriter *io.PipeWriter) *NpmConfig {
-	return &NpmConfig{
+func createVersionCmdConfig(executablePath string, pipeWriter *io.PipeWriter) *npmutils.NpmConfig {
+	return &npmutils.NpmConfig{
 		Npm:       executablePath,
 		Command:   []string{"-version"},
 		StrWriter: pipeWriter,

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -67,7 +66,7 @@ func prepareDependencies(typeRestriction, executablePath, buildInfoModuleId stri
 	// Run npm list
 	// Although this command can get --development as a flag (according to npm docs), it's not working on npm 6.
 	// Although this command can get --only=development as a flag (according to npm docs), it's not working on npm 7.
-	data, errData, err := npm.RunList(strings.Join(append(npmArgs, "--all", "--"+typeRestriction), " "), executablePath)
+	data, errData, err := RunList(strings.Join(append(npmArgs, "--all", "--"+typeRestriction), " "), executablePath)
 	if err != nil {
 		log.Warn("npm list command failed with error:", err.Error())
 	}

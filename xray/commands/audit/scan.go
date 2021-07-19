@@ -20,17 +20,16 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-const (
-	indexingCommand = "graph"
-)
-
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
-type PrintFormat string
+type OutputFormat string
 
 const (
-	Table = "table"
-	Json  = "json"
+	// OutputFormat values
+	Table OutputFormat = "table"
+	Json  OutputFormat = "json"
+
+	indexingCommand = "graph"
 )
 
 type ScanCommand struct {
@@ -39,7 +38,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
-	printFormat            PrintFormat
+	outputFormat           OutputFormat
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
@@ -52,8 +51,8 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetPrintFormat(format PrintFormat) *ScanCommand {
-	scanCmd.printFormat = format
+func (scanCmd *ScanCommand) SetOutputFormat(format OutputFormat) *ScanCommand {
+	scanCmd.outputFormat = format
 	return scanCmd
 }
 
@@ -240,14 +239,14 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
-			if scanCmd.printFormat == Table {
+			if scanCmd.outputFormat == Table {
 				if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
 					return false, err
 				}
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
 				licenses = append(licenses, res.Licenses...)
-			} else if scanCmd.printFormat == Json {
+			} else {
 				flatResults = append(flatResults, *res)
 			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
@@ -256,21 +255,19 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 		}
 	}
-	if scanCmd.printFormat == Table {
+	if scanCmd.outputFormat == Table {
 		fmt.Println("The full scan results are available here: " + tempDirPath)
-		if len(violations) > 0 {
+		if scanCmd.includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
+		} else {
 			err = xrutils.PrintViolationsTable(violations, true)
 		}
-		if len(vulnerabilities) > 0 {
-			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
-		}
-		if len(licenses) > 0 {
+		if scanCmd.includeLincenses {
 			xrutils.PrintLicensesTable(licenses, true)
 		}
-	} else if scanCmd.printFormat == Json {
-		if len(flatResults) > 0 {
-			err = xrutils.PrintJson(flatResults)
-		}
+	} else {
+		err = xrutils.PrintJson(flatResults)
+
 	}
 	if scanPassed {
 		log.Info("Scan completed successfully.")

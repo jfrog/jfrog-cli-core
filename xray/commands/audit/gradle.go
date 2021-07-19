@@ -12,7 +12,7 @@ import (
 
 type AuditGradleCommand struct {
 	serverDetails          *config.ServerDetails
-	printFormat            PrintFormat
+	outputFormat           OutputFormat
 	excludeTestDeps        bool
 	useWrapper             bool
 	watches                []string
@@ -27,8 +27,8 @@ func (auditCmd *AuditGradleCommand) SetServerDetails(server *config.ServerDetail
 	return auditCmd
 }
 
-func (auditCmd *AuditGradleCommand) SetPrintFormat(format PrintFormat) *AuditGradleCommand {
-	auditCmd.printFormat = format
+func (auditCmd *AuditGradleCommand) SetOutputFormat(format OutputFormat) *AuditGradleCommand {
+	auditCmd.outputFormat = format
 	return auditCmd
 }
 
@@ -82,7 +82,7 @@ func (auditCmd *AuditGradleCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.printFormat)
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
 }
 
 func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

@@ -18,7 +18,7 @@ const (
 
 type AuditNpmCommand struct {
 	serverDetails          *config.ServerDetails
-	printFormat            PrintFormat
+	outputFormat           OutputFormat
 	arguments              []string
 	typeRestriction        npmutils.TypeRestriction
 	watches                []string
@@ -28,8 +28,8 @@ type AuditNpmCommand struct {
 	includeLincenses       bool
 }
 
-func (auditCmd *AuditNpmCommand) SetPrintFormat(format PrintFormat) *AuditNpmCommand {
-	auditCmd.printFormat = format
+func (auditCmd *AuditNpmCommand) SetOutputFormat(format OutputFormat) *AuditNpmCommand {
+	auditCmd.outputFormat = format
 	return auditCmd
 }
 
@@ -123,7 +123,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if auditCmd.printFormat == Table {
+	if auditCmd.outputFormat == Table {
 		tempDirPath, err := fileutils.CreateTempDir()
 		if err != nil {
 			return err
@@ -141,7 +141,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		if auditCmd.includeLincenses {
 			xrutils.PrintLicensesTable(scanResults.Licenses, false)
 		}
-	} else if auditCmd.printFormat == Json {
+	} else {
 		err = xrutils.PrintJson([]services.ScanResponse{*scanResults})
 	}
 	return err

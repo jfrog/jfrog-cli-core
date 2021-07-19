@@ -2,8 +2,12 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -42,8 +46,12 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 
 // UnmarshalDeployableArtifacts Reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
-func UnmarshalDeployableArtifacts(filePath, rtUrl string) (*Result, error) {
+func UnmarshalDeployableArtifacts(filePath, configPath string) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(filePath)
+	if err != nil {
+		return nil, err
+	}
+	url, repo, err := GetDeployerUrlAndRepo(modulesMap, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +62,7 @@ func UnmarshalDeployableArtifacts(filePath, rtUrl string) (*Result, error) {
 		for _, artifact := range module {
 			if artifact.DeploySucceeded {
 				succeeded++
-				artifactsArray = append(artifactsArray, artifact.CreateFileTransferDetails(rtUrl))
+				artifactsArray = append(artifactsArray, artifact.CreateFileTransferDetails(url, repo))
 			} else {
 				failed++
 			}
@@ -67,6 +75,44 @@ func UnmarshalDeployableArtifacts(filePath, rtUrl string) (*Result, error) {
 	result.SetFailCount(failed)
 	result.SetReader(content.NewContentReader(filePath, "files"))
 	return result, nil
+}
+
+func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error){
+	repo := getTargetRepoFromMap(modulesMap)
+	vConfig, err := utils.ReadConfigFile(configPath, utils.YAML)
+	if err != nil {
+		return "", "", err
+	}
+	if repo == "" {
+		repo = getTargetRepoFromConfigFile(vConfig, configPath)
+	}
+	artDetails, err := config.GetSpecificConfig(vConfig.GetString("deployer.serverId"), true, true)
+	if err != nil {
+		return "","", err
+	}
+	url := artDetails.ArtifactoryUrl
+	return url, repo, nil
+}
+
+func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifactDetails) (string){
+	for _, module := range *modulesMap {
+		for _, artifact := range module {
+			return artifact.TargetRepository
+		}
+	}
+	return ""
+}
+
+func getTargetRepoFromConfigFile(vConfig *viper.Viper, configPath string) (string){
+	// Gradle
+	if strings.HasSuffix(configPath, "gradle.yaml"){
+		return vConfig.GetString("deployer.repo")
+	}
+	// Maven
+	if strings.Contains(configPath, "-SNAPSHOT"){
+		return vConfig.GetString("deployer.snapshotRepo")
+	}
+	return vConfig.GetString("deployer.releaseRepo")
 }
 
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {

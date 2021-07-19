@@ -75,7 +75,7 @@ func (gc *GradleCommand) Run() error {
 }
 
 func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.serverDetails.ArtifactoryUrl)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath)
 	if err != nil {
 		return err
 	}

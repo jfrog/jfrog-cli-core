@@ -2,7 +2,6 @@ package audit
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -10,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -20,7 +18,7 @@ const (
 
 type AuditNpmCommand struct {
 	serverDetails          *config.ServerDetails
-	workingDirectory       string
+	printFormat            PrintFormat
 	arguments              []string
 	typeRestriction        npmutils.TypeRestriction
 	watches                []string
@@ -30,8 +28,8 @@ type AuditNpmCommand struct {
 	includeLincenses       bool
 }
 
-func (auditCmd *AuditNpmCommand) SetWorkingDirectory(dir string) *AuditNpmCommand {
-	auditCmd.workingDirectory = dir
+func (auditCmd *AuditNpmCommand) SetPrintFormat(format PrintFormat) *AuditNpmCommand {
+	auditCmd.printFormat = format
 	return auditCmd
 }
 
@@ -90,20 +88,8 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if auditCmd.workingDirectory == "" {
-		auditCmd.workingDirectory = currentDir
-	} else {
-		err = os.Chdir(auditCmd.workingDirectory)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err = os.Chdir(currentDir)
-		}()
-	}
-	log.Debug("Working directory set to:", auditCmd.workingDirectory)
 
-	packageInfo, err := coreutils.ReadPackageInfoFromPackageJson(auditCmd.workingDirectory)
+	packageInfo, err := coreutils.ReadPackageInfoFromPackageJson(currentDir)
 	if err != nil {
 		return err
 	}
@@ -137,21 +123,26 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return err
-	}
-	if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-		return err
-	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if auditCmd.includeVulnerabilities {
-		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
-	} else {
-		err = xrutils.PrintViolationsTable(scanResults.Violations, false)
-	}
-	if auditCmd.includeLincenses {
-		xrutils.PrintLicensesTable(scanResults.Licenses, false)
+	if auditCmd.printFormat == Table {
+		tempDirPath, err := fileutils.CreateTempDir()
+		if err != nil {
+			return err
+		}
+		if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
+			return err
+		}
+		fmt.Println("The full scan results are available here: " + tempDirPath)
+
+		if auditCmd.includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
+		} else {
+			err = xrutils.PrintViolationsTable(scanResults.Violations, false)
+		}
+		if auditCmd.includeLincenses {
+			xrutils.PrintLicensesTable(scanResults.Licenses, false)
+		}
+	} else if auditCmd.printFormat == Json {
+		err = xrutils.PrintJson([]services.ScanResponse{*scanResults})
 	}
 	return err
 }

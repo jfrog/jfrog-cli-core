@@ -13,6 +13,7 @@ import (
 
 type AuditMavenCommand struct {
 	serverDetails          *config.ServerDetails
+	printFormat            PrintFormat
 	excludeTestDeps        bool
 	insecureTls            bool
 	watches                []string
@@ -24,6 +25,11 @@ type AuditMavenCommand struct {
 
 func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails) *AuditMavenCommand {
 	auditCmd.serverDetails = server
+	return auditCmd
+}
+
+func (auditCmd *AuditMavenCommand) SetPrintFormat(format PrintFormat) *AuditMavenCommand {
+	auditCmd.printFormat = format
 	return auditCmd
 }
 
@@ -77,7 +83,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches)
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.printFormat)
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

@@ -1,15 +1,18 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/gookit/color"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/gookit/color"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/xray/services"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // PrintViolationsTable prints the violations in 3 tables: security violations, license compliance violations and ignore rule URLs.
@@ -161,6 +164,15 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 
 	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found")
 	return err
+}
+
+func PrintJson(jsonRes []services.ScanResponse) error {
+	results, err := json.Marshal(&jsonRes)
+	if err != nil {
+		return err
+	}
+	fmt.Println(clientutils.IndentJson(results))
+	return nil
 }
 
 // Used for vulnerabilities and security violations

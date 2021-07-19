@@ -18,10 +18,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray"
 )
 
-const indexerFileName = "indexer-app"
-
-// TODO: Should be changed back to 3.28.0 before merge
-const graphScanMinVersion = "3.0.0"
+const (
+	indexerFileName     = "indexer-app"
+	GraphScanMinVersion = "3.0.0"
+)
 
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {
 	xrayVersionStr, err := xrayManager.GetVersion()
@@ -29,8 +29,8 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 		return "", err
 	}
 	xrayVersion := version.NewVersion(xrayVersionStr)
-	if !xrayVersion.AtLeast(graphScanMinVersion) {
-		return "", errorutils.CheckError(errors.New("this operation requires Xray version " + graphScanMinVersion + " or higher"))
+	if !xrayVersion.AtLeast(GraphScanMinVersion) {
+		return "", errorutils.CheckError(errors.New("You are using Xray version " + string(xrayVersion.GetVersion()) + " while this operation requires Xray version " + GraphScanMinVersion + " or higher."))
 	}
 
 	dependenciesPath, err := config.GetJfrogDependenciesPath()

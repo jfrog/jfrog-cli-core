@@ -50,7 +50,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool, targetRepoPath, projectKey string, watches []string) error {
+func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool, targetRepoPath, projectKey string, watches []string, printFormat PrintFormat) error {
 	xrayManager, err := commands.CreateXrayServiceManager(serverDetails)
 	if err != nil {
 		return err
@@ -64,6 +64,7 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License
+	var results []services.ScanResponse
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params := &services.XrayGraphScanParams{
 			Graph:      moduleDependencyTree,
@@ -84,22 +85,28 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		if err != nil {
 			return err
 		}
-
-		if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-			return err
+		if printFormat == Table {
+			if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
+				return err
+			}
 		}
 		violations = append(violations, scanResults.Violations...)
 		vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
 		licenses = append(licenses, scanResults.Licenses...)
+		results = append(results, *scanResults)
 	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if includeVulnerabilities {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
-	} else {
-		err = xrutils.PrintViolationsTable(violations, false)
-	}
-	if includeLicenses {
-		xrutils.PrintLicensesTable(licenses, false)
+	if printFormat == Table {
+		fmt.Println("The full scan results are available here: " + tempDirPath)
+		if includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
+		} else {
+			err = xrutils.PrintViolationsTable(violations, false)
+		}
+		if includeLicenses {
+			xrutils.PrintLicensesTable(licenses, false)
+		}
+	} else if printFormat == Json {
+		err = xrutils.PrintJson(results)
 	}
 	return err
 }

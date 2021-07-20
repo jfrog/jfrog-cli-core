@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/spf13/viper"
-	"io/ioutil"
-	"os"
-	"strings"
-
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
+	"io/ioutil"
+	"os"
+)
+
+const (
+	ConfigDeployerPrefix = "deployer"
+	GradleConfigRepo     = "repo"
+	ConfigServerId       = "serverId"
 )
 
 type Result struct {
@@ -83,10 +86,13 @@ func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifa
 	if err != nil {
 		return "", "", err
 	}
+	// Relevant deploy repository will be written by the buildinfo project in diplyableArtifacts file from gradle extractor v2.24.12.
+	// In case of a gradle project with a configuration of 'usePugin=true' its possible that an old buildinfo version is being used.
+	// Deploy repository will be read from the configuration file.
 	if repo == "" {
-		repo = getTargetRepoFromConfigFile(vConfig, configPath)
+		repo = vConfig.GetString(ConfigDeployerPrefix + "." + GradleConfigRepo)
 	}
-	artDetails, err := config.GetSpecificConfig(vConfig.GetString("deployer.serverId"), true, true)
+	artDetails, err := config.GetSpecificConfig(vConfig.GetString(ConfigDeployerPrefix + "." + ConfigServerId), true, true)
 	if err != nil {
 		return "","", err
 	}
@@ -101,18 +107,6 @@ func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifac
 		}
 	}
 	return ""
-}
-
-func getTargetRepoFromConfigFile(vConfig *viper.Viper, configPath string) (string){
-	// Gradle
-	if strings.HasSuffix(configPath, "gradle.yaml"){
-		return vConfig.GetString("deployer.repo")
-	}
-	// Maven
-	if strings.Contains(configPath, "-SNAPSHOT"){
-		return vConfig.GetString("deployer.snapshotRepo")
-	}
-	return vConfig.GetString("deployer.releaseRepo")
 }
 
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {

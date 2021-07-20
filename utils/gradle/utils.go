@@ -163,7 +163,7 @@ func (config *gradleRunConfig) runCmd() error {
 	}
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
-	return command.Run()
+	return coreutils.ConvertExitCodeError(command.Run())
 }
 
 func getGradleExecPath(useWrapper bool) (string, error) {

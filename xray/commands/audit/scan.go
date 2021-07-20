@@ -20,12 +20,17 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-const (
-	indexingCommand = "graph"
-)
-
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
+type OutputFormat string
+
+const (
+	// OutputFormat values
+	Table OutputFormat = "table"
+	Json  OutputFormat = "json"
+
+	indexingCommand = "graph"
+)
 
 type ScanCommand struct {
 	serverDetails *config.ServerDetails
@@ -33,7 +38,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
-	printResults           bool
+	outputFormat           OutputFormat
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
@@ -46,8 +51,8 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetPrintResults(print bool) *ScanCommand {
-	scanCmd.printResults = print
+func (scanCmd *ScanCommand) SetOutputFormat(format OutputFormat) *ScanCommand {
+	scanCmd.outputFormat = format
 	return scanCmd
 }
 
@@ -227,19 +232,22 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
 	licenses := []services.License{}
+	flatResults := []services.ScanResponse{}
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
 		return false, err
 	}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
-			if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
-				return false, err
-			}
-			if scanCmd.printResults {
+			if scanCmd.outputFormat == Table {
+				if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
+					return false, err
+				}
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
 				licenses = append(licenses, res.Licenses...)
+			} else {
+				flatResults = append(flatResults, *res)
 			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
 				// A violation or vulnerability was found, the scan failed.
@@ -247,15 +255,19 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 		}
 	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if len(violations) > 0 {
-		err = xrutils.PrintViolationsTable(violations, true)
-	}
-	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
-	}
-	if len(licenses) > 0 {
-		xrutils.PrintLicensesTable(licenses, true)
+	if scanCmd.outputFormat == Table {
+		fmt.Println("The full scan results are available here: " + tempDirPath)
+		if scanCmd.includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
+		} else {
+			err = xrutils.PrintViolationsTable(violations, true)
+		}
+		if scanCmd.includeLincenses {
+			xrutils.PrintLicensesTable(licenses, true)
+		}
+	} else {
+		err = xrutils.PrintJson(flatResults)
+
 	}
 	if scanPassed {
 		log.Info("Scan completed successfully.")

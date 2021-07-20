@@ -188,7 +188,7 @@ func readConf() (*ConfigV5, error) {
 		// No config file was found, returns a new empty config.
 		return config, nil
 	}
-	content, err = convertIfNeeded(content)
+	content, err = ConvertIfNeeded(content)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func convertCertsDir() error {
 }
 
 // The configuration schema can change between versions, therefore we need to convert old versions to the new schema.
-func convertIfNeeded(content []byte) ([]byte, error) {
+func ConvertIfNeeded(content []byte) ([]byte, error) {
 	version, err := getVersion(content)
 	if err != nil {
 		return nil, err

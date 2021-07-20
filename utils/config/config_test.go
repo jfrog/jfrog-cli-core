@@ -56,7 +56,7 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 
 	cleanUpTempEnv := createTempEnv(t, false)
 	defer cleanUpTempEnv()
-	content, err := convertIfNeeded([]byte(configV0))
+	content, err := ConvertIfNeeded([]byte(configV0))
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
@@ -87,7 +87,7 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 
 	cleanUpTempEnv := createTempEnv(t, false)
 	defer cleanUpTempEnv()
-	content, err := convertIfNeeded([]byte(config))
+	content, err := ConvertIfNeeded([]byte(config))
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
@@ -126,7 +126,7 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 
 	cleanUpTempEnv := createTempEnv(t, false)
 	defer cleanUpTempEnv()
-	content, err := convertIfNeeded([]byte(configV4))
+	content, err := ConvertIfNeeded([]byte(configV4))
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
@@ -211,7 +211,7 @@ func TestGetArtifactoriesFromConfig(t *testing.T) {
 		  "version": "2"
 		}
 	`
-	content, err := convertIfNeeded([]byte(config))
+	content, err := ConvertIfNeeded([]byte(config))
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))

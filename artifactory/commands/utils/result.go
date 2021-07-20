@@ -14,7 +14,7 @@ import (
 const (
 	ConfigDeployerPrefix = "deployer"
 	GradleConfigRepo     = "repo"
-	ConfigServerId       = "serverId"
+	ConfigServerId       = "serverid"
 )
 
 type Result struct {
@@ -49,12 +49,14 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 
 // UnmarshalDeployableArtifacts Reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
-func UnmarshalDeployableArtifacts(filePath, configPath string) (*Result, error) {
-	modulesMap, err := unmarshalDeployableArtifactsJson(filePath)
+// deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
+// ProjectConfigPath - path to gradle/maven config yaml path.
+func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath string) (*Result, error) {
+	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	url, repo, err := GetDeployerUrlAndRepo(modulesMap, configPath)
+	url, repo, err := GetDeployerUrlAndRepo(modulesMap, ProjectConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -71,16 +73,16 @@ func UnmarshalDeployableArtifacts(filePath, configPath string) (*Result, error) 
 			}
 		}
 	}
-	err = clientutils.SaveFileTransferDetailsInFile(filePath, &artifactsArray)
+	err = clientutils.SaveFileTransferDetailsInFile(deployableArtifactsFilePath, &artifactsArray)
 	// Return result
 	result := new(Result)
 	result.SetSuccessCount(succeeded)
 	result.SetFailCount(failed)
-	result.SetReader(content.NewContentReader(filePath, "files"))
+	result.SetReader(content.NewContentReader(deployableArtifactsFilePath, "files"))
 	return result, nil
 }
 
-func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error){
+func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error) {
 	repo := getTargetRepoFromMap(modulesMap)
 	vConfig, err := utils.ReadConfigFile(configPath, utils.YAML)
 	if err != nil {
@@ -92,15 +94,15 @@ func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifa
 	if repo == "" {
 		repo = vConfig.GetString(ConfigDeployerPrefix + "." + GradleConfigRepo)
 	}
-	artDetails, err := config.GetSpecificConfig(vConfig.GetString(ConfigDeployerPrefix + "." + ConfigServerId), true, true)
+	artDetails, err := config.GetSpecificConfig(vConfig.GetString(ConfigDeployerPrefix+"."+ConfigServerId), true, true)
 	if err != nil {
-		return "","", err
+		return "", "", err
 	}
 	url := artDetails.ArtifactoryUrl
 	return url, repo, nil
 }
 
-func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifactDetails) (string){
+func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifactDetails) string {
 	for _, module := range *modulesMap {
 		for _, artifact := range module {
 			return artifact.TargetRepository

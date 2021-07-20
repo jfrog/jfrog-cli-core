@@ -1,11 +1,13 @@
 package tests
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -84,4 +86,51 @@ func cleanUpUnitTestsJfrogHome(homeDir string) {
 	if errorOccurred {
 		os.Exit(1)
 	}
+}
+
+func CreateTempJfrogConfig() (err error, cleanUp func()) {
+	err, cleanUp = SetJfrogHome()
+	if err != nil {
+		return err, nil
+	}
+	homedir := os.Getenv(coreutils.HomeDir)
+
+	configuration := `
+		{
+		  "artifactory": [
+			{
+			  "url": "http://localhost:8080/artifactory/",
+			  "user": "user",
+			  "password": "password",
+			  "serverId": "name",
+			  "isDefault": true
+			},
+			{
+			  "url": "http://localhost:8080/artifactory/",
+			  "user": "user",
+			  "password": "password",
+			  "serverId": "notDefault"
+			}
+		  ],
+		  "version": "2"
+		}
+	`
+	content, err := config.ConvertIfNeeded([]byte(configuration))
+	if err != nil {
+		return
+	}
+
+	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
+	configFile, err := os.Create(filepath.Join(homedir, coreutils.JfrogConfigFile+versionString))
+
+	//configFile, err := os.Create(homedir)
+	if err != nil {
+		return
+	}
+	defer configFile.Close()
+	_, err = configFile.Write(content)
+	if err != nil {
+		return
+	}
+	return
 }

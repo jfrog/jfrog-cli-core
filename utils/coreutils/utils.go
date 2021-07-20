@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -114,6 +115,16 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 	}
 	// Otherwise - Return 0
 	return ExitCodeNoError
+}
+
+// When running a command in an external process, if the command fails to run or doesn't complete successfully ExitError is returned.
+// We would like to return a regular error instead of ExitError,
+// because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
+func ConvertExitCodeError(err error) error {
+	if _, ok := err.(*exec.ExitError); ok {
+		err = errors.New(err.Error())
+	}
+	return err
 }
 
 func GetConfigVersion() int {

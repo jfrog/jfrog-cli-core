@@ -216,5 +216,5 @@ func (config *mvnRunConfig) runCmd() error {
 	command := config.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
-	return coreutils.ConvertExitCodeError(command.Run())
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
 }

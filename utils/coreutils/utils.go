@@ -3,6 +3,7 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,6 +197,27 @@ func GetWorkingDirectory() (string, error) {
 	}
 
 	return currentDir, nil
+}
+
+// IsTerminal checks whether stdout is a terminal.
+func IsTerminal() bool {
+	return terminal.IsTerminal(int(os.Stdout.Fd()))
+}
+
+var coloredOutput *bool
+
+// IsColoredOutput returns whether the output can be colored.
+func IsColoredOutput() bool {
+	if coloredOutput == nil {
+		coloredOutputVal := true
+		if os.Getenv(ColoredOutput) == "false" {
+			coloredOutputVal = false
+		} else {
+			coloredOutputVal = IsTerminal()
+		}
+		coloredOutput = &coloredOutputVal
+	}
+	return *coloredOutput
 }
 
 type Credentials interface {

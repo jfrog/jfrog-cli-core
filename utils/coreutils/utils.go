@@ -206,7 +206,7 @@ func IsTerminal() bool {
 
 var coloredOutput *bool
 
-// IsColoredOutput returns whether the output can be colored.
+// IsColoredOutput returns true if the output can be colored.
 func IsColoredOutput() bool {
 	if coloredOutput == nil {
 		coloredOutputVal := true

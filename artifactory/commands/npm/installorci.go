@@ -275,7 +275,7 @@ func (nca *NpmCommandArgs) createTempNpmrc() error {
 func (nca *NpmCommandArgs) runInstallOrCi() error {
 	log.Debug(fmt.Sprintf("Running npm %s command.", nca.command))
 	filteredArgs := filterFlags(nca.npmArgs)
-	npmCmdConfig := &npm.NpmConfig{
+	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nca.executablePath,
 		Command:      append([]string{nca.command}, filteredArgs...),
 		CommandFlags: nil,

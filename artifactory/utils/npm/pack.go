@@ -1,9 +1,11 @@
 package npm
 
 import (
-	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"strings"
+
+	gofrogcmd "github.com/jfrog/gofrog/io"
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 func Pack(npmFlags []string, executablePath string) (string, error) {
@@ -18,8 +20,8 @@ func Pack(npmFlags []string, executablePath string) (string, error) {
 	return packageFileName, nil
 }
 
-func createPackCmdConfig(executablePath string, splitFlags []string) *NpmConfig {
-	return &NpmConfig{
+func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.NpmConfig {
+	return &npmutils.NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"pack"},
 		CommandFlags: append(splitFlags),

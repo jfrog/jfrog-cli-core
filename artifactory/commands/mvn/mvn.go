@@ -114,7 +114,6 @@ func (mc *MvnCommand) Run() error {
 	}
 	if mc.IsDetailedSummary() {
 		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-
 	}
 	return nil
 }

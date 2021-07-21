@@ -3,6 +3,7 @@ package mvnutils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -215,5 +216,5 @@ func (config *mvnRunConfig) runCmd() error {
 	command := config.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
-	return command.Run()
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
 }

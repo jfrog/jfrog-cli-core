@@ -71,7 +71,11 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string) error 
 
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
-	tableWriter.SetStyle(table.StyleLight)
+
+	if IsTerminal() {
+		tableWriter.SetStyle(table.StyleLight)
+	}
+
 	tableWriter.Style().Options.SeparateRows = true
 
 	rowsSliceValue := reflect.ValueOf(rows)

@@ -31,5 +31,6 @@ const (
 	BuildNumber        = "JFROG_CLI_BUILD_NUMBER"
 	Project            = "JFROG_CLI_BUILD_PROJECT"
 	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
+	ColoredOutput      = "JFROG_CLI_OUTPUT_COLORS"
 	CI                 = "CI"
 )

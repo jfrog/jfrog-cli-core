@@ -24,7 +24,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	var licenseViolationsRows []licenseViolationRow
 	failBuild := false
 
-	coloredOutput := coreutils.IsColoredOutput()
+	coloredOutput := coreutils.IsTerminal()
 
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(violation.Components, multipleRoots)
@@ -105,7 +105,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
 
-	coloredOutput := coreutils.IsColoredOutput()
+	coloredOutput := coreutils.IsTerminal()
 
 	var vulnerabilitiesRows []vulnerabilityRow
 

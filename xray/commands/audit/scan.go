@@ -232,7 +232,6 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	vulnerabilities := []services.Vulnerability{}
 	licenses := []services.License{}
 	flatResults := []services.ScanResponse{}
-	var err error
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			flatResults = append(flatResults, *res)
@@ -248,6 +247,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 		}
 	}
+	var err error
 	if scanCmd.outputFormat == Table {
 		if len(flatResults) > 0 {
 			resultsPath, err := xrutils.WriteJsonResults(flatResults)

@@ -13,7 +13,6 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -56,11 +55,6 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		return err
 	}
 
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return err
-	}
-
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License
@@ -85,20 +79,22 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		if err != nil {
 			return err
 		}
-		if outputFormat == Table {
-			if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-				return err
-			}
+		results = append(results, *scanResults)
 
+		if outputFormat == Table {
 			violations = append(violations, scanResults.Violations...)
 			vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
 			licenses = append(licenses, scanResults.Licenses...)
-		} else {
-			results = append(results, *scanResults)
 		}
 	}
 	if outputFormat == Table {
-		fmt.Println("The full scan results are available here: " + tempDirPath)
+		if len(results) > 0 {
+			resultsPath, err := xrutils.WriteJsonResults(results)
+			if err != nil {
+				return err
+			}
+			fmt.Println("The full scan results are available here: " + resultsPath)
+		}
 		if includeVulnerabilities {
 			xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
 		} else {

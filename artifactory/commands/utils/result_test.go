@@ -1,80 +1,80 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 // Check a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
 func TestUnmarshalDeployableArtifacts(t *testing.T) {
-	err, cleanUpJfrogHome := CreateDummyJfrogConfig()
-	defer cleanUpJfrogHome()
+	err, cleanUpJfrogHome := createDefaultJfrogConfig()
 	assert.NoError(t, err)
-	a := os.Getenv(coreutils.HomeDir)
-	fmt.Println(a)
-
+	defer cleanUpJfrogHome()
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
-	defer os.Remove(tempDeployableArtifacts)
-	r, err := UnmarshalDeployableArtifacts(path.Join(tempDeployableArtifacts), path.Join(getTestsDataGradlePath(), "config", "gradle.yaml"))
+	// delete DeployableArtifacts tempDir
+	defer os.Remove(filepath.Dir(tempDeployableArtifacts))
+	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")
+	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile)
 	assert.NoError(t, err)
-	for transferDetails := new(clientutils.FileTransferDetails); r.reader.NextRecord(transferDetails) == nil; transferDetails = new(clientutils.FileTransferDetails) {
+	for transferDetails := new(clientutils.FileTransferDetails); result.reader.NextRecord(transferDetails) == nil; transferDetails = new(clientutils.FileTransferDetails) {
 		assert.True(t, strings.HasPrefix(transferDetails.TargetPath, "http://localhost:8080/artifactory/"))
 		assert.True(t, strings.Contains(transferDetails.TargetPath, "gradle-local-repo"))
 	}
 }
 
+// createTempDeployableArtifactFile copy a deployableArtifacts file from gradle testdata directory to a tempDir
 func createTempDeployableArtifactFile() (string, error) {
 	testsDataGradlePath := getTestsDataGradlePath()
-	summary, err := os.Open(path.Join(testsDataGradlePath, "deployableArtifacts", "summary"))
-	tmpSummary, err := os.Create(path.Join(testsDataGradlePath, "deployableArtifacts", "tmpSummary"))
-	buffer := []byte{}
-	summary.Read(buffer)
-	tmpSummary.Write(buffer)
-	_, err = io.Copy(tmpSummary, summary)
+	summary, err := os.Open(path.Join(testsDataGradlePath, "deployableArtifacts", "artifacts"))
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	tmpDir, err := fileutils.CreateTempDir()
 	if err != nil {
 		return "", err
 	}
-	return tmpSummary.Name(), nil
+	fileutils.CopyFile(tmpDir, summary.Name())
+	return filepath.Join(tmpDir, "artifacts"), nil
 }
 
 func getTestsDataGradlePath() string {
 	return path.Join("..", "testdata", "gradle")
 }
 
-func CreateDummyJfrogConfig() (err error, cleanUp func()) {
+func createDefaultJfrogConfig() (err error, cleanUp func()) {
 	err, cleanUp = tests.SetJfrogHome()
 	if err != nil {
 		return
 	}
 	configuration := `
 		{
-		  "artifactory": [
-			{
-			  "url": "http://localhost:8080/artifactory/",
-			  "user": "user",
-			  "password": "password",
-			  "serverId": "name",
-			  "isDefault": true
-			},
-			{
-			  "url": "http://localhost:8080/artifactory/",
-			  "user": "user",
-			  "password": "password",
-			  "serverId": "notDefault"
-			}
-		  ],
-		  "version": "2"
-		}
+  "servers": [
+    {
+      "artifactoryUrl": "http://localhost:8080/artifactory/",
+      "user": "user",
+      "password": "password",
+      "serverId": "name",
+      "isDefault": true
+    },
+    {
+      "artifactoryUrl": "http://localhost:8080/artifactory/",
+      "user": "user",
+      "password": "password",
+      "serverId": "notDefault"
+    }
+  ],
+  "version": "5"
+}
 	`
 	content, err := config.ConvertIfNeeded([]byte(configuration))
 	if err != nil {

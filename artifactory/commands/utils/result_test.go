@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -16,7 +15,7 @@ import (
 
 // Check a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
 func TestUnmarshalDeployableArtifacts(t *testing.T) {
-	err, cleanUpJfrogHome := createDefaultJfrogConfig()
+	err, cleanUpJfrogHome := config.CreateDefaultJfrogConfig()
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
@@ -49,43 +48,4 @@ func createTempDeployableArtifactFile() (string, error) {
 
 func getTestsDataGradlePath() string {
 	return path.Join("..", "testdata", "gradle")
-}
-
-func createDefaultJfrogConfig() (err error, cleanUp func()) {
-	err, cleanUp = tests.SetJfrogHome()
-	if err != nil {
-		return
-	}
-	configuration := `
-		{
-  "servers": [
-    {
-      "artifactoryUrl": "http://localhost:8080/artifactory/",
-      "user": "user",
-      "password": "password",
-      "serverId": "name",
-      "isDefault": true
-    },
-    {
-      "artifactoryUrl": "http://localhost:8080/artifactory/",
-      "user": "user",
-      "password": "password",
-      "serverId": "notDefault"
-    }
-  ],
-  "version": "5"
-}
-	`
-	content, err := config.ConvertIfNeeded([]byte(configuration))
-	if err != nil {
-		return
-	}
-	configFilePath, err := config.GetConfFilePath()
-	configFile, err := os.Create(configFilePath)
-	defer configFile.Close()
-	_, err = configFile.Write(content)
-	if err != nil {
-		return
-	}
-	return
 }

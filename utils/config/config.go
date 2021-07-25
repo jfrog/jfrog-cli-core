@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
 	"os"
@@ -650,4 +651,43 @@ func (missionControlDetails *MissionControlDetails) GetAccessToken() string {
 
 func (missionControlDetails *MissionControlDetails) SetAccessToken(accessToken string) {
 	missionControlDetails.AccessToken = accessToken
+}
+
+func CreateDefaultJfrogConfig() (err error, cleanUp func()) {
+	err, cleanUp = tests.SetJfrogHome()
+	if err != nil {
+		return
+	}
+	configuration := `
+		{
+  "servers": [
+    {
+      "artifactoryUrl": "http://localhost:8080/artifactory/",
+      "user": "user",
+      "password": "password",
+      "serverId": "name",
+      "isDefault": true
+    },
+    {
+      "artifactoryUrl": "http://localhost:8080/artifactory/",
+      "user": "user",
+      "password": "password",
+      "serverId": "notDefault"
+    }
+  ],
+  "version": "5"
+}
+	`
+	content, err := ConvertIfNeeded([]byte(configuration))
+	if err != nil {
+		return
+	}
+	configFilePath, err := GetConfFilePath()
+	configFile, err := os.Create(configFilePath)
+	defer configFile.Close()
+	_, err = configFile.Write(content)
+	if err != nil {
+		return
+	}
+	return
 }

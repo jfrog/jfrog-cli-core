@@ -166,7 +166,7 @@ func saveConfig(config *ConfigV5) error {
 		return err
 	}
 
-	path, err := getConfFilePath()
+	path, err := GetConfFilePath()
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func readConf() (*ConfigV5, error) {
 }
 
 func getConfigFile() (content []byte, err error) {
-	confFilePath, err := getConfFilePath()
+	confFilePath, err := GetConfFilePath()
 	if err != nil {
 		return
 	}
@@ -427,7 +427,7 @@ func GetJfrogDependenciesPath() (string, error) {
 	return filepath.Join(jfrogHome, coreutils.JfrogDependenciesDirName), nil
 }
 
-func getConfFilePath() (string, error) {
+func GetConfFilePath() (string, error) {
 	confPath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err

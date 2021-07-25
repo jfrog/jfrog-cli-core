@@ -160,7 +160,7 @@ func TestConfigEncryption(t *testing.T) {
 }
 
 func readConfFromFile(t *testing.T) *ConfigV5 {
-	confFilePath, err := getConfFilePath()
+	confFilePath, err := GetConfFilePath()
 	assert.NoError(t, err)
 	config := new(ConfigV5)
 	assert.FileExists(t, confFilePath)

@@ -47,7 +47,7 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 	r.reader = reader
 }
 
-// UnmarshalDeployableArtifacts Reads and parses the deployed artifacts details from the provided file.
+// UnmarshalDeployableArtifacts reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 // deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
 // ProjectConfigPath - path to gradle/maven config yaml path.
@@ -56,7 +56,7 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath
 	if err != nil {
 		return nil, err
 	}
-	url, repo, err := GetDeployerUrlAndRepo(modulesMap, ProjectConfigPath)
+	url, repo, err := getDeployerUrlAndRepo(modulesMap, ProjectConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +82,20 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath
 	return result, nil
 }
 
-func GetDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error) {
+// getDeployerUrlAndRepo returns the deployer url and the target repository for maven and gradle.
+// Url is being read from the project's local configuration file.
+// Repository is being read from the modulesMap.
+// modulesMap - map of the DeployableArtifactDetails.
+// configPath -  path to the project's local configuration file.
+func getDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error) {
 	repo := getTargetRepoFromMap(modulesMap)
 	vConfig, err := utils.ReadConfigFile(configPath, utils.YAML)
 	if err != nil {
 		return "", "", err
 	}
-	// Relevant deploy repository will be written by the buildinfo project in diplyableArtifacts file from gradle extractor v2.24.12.
-	// In case of a gradle project with a configuration of 'usePugin=true' its possible that an old buildinfo version is being used.
-	// Deploy repository will be read from the configuration file.
+	// The relevant deployment repository will be written by the buildinfo project to the diplyableArtifacts file starting from version 2.24.12 of build-info-extractor-gradle.
+	// In case of a gradle project with a configuration of 'usePlugin=true' it's possible that an old build-info-extractor-gradle version is being used.
+	// In this case, the value of "repo" will be empty, and the deployment repository will be therefore read from the local project configuration file.
 	if repo == "" {
 		repo = vConfig.GetString(ConfigDeployerPrefix + "." + GradleConfigRepo)
 	}

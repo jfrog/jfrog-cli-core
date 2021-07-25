@@ -167,7 +167,7 @@ func saveConfig(config *ConfigV5) error {
 		return err
 	}
 
-	path, err := GetConfFilePath()
+	path, err := getConfFilePath()
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func readConf() (*ConfigV5, error) {
 		// No config file was found, returns a new empty config.
 		return config, nil
 	}
-	content, err = ConvertIfNeeded(content)
+	content, err = convertIfNeeded(content)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func readConf() (*ConfigV5, error) {
 }
 
 func getConfigFile() (content []byte, err error) {
-	confFilePath, err := GetConfFilePath()
+	confFilePath, err := getConfFilePath()
 	if err != nil {
 		return
 	}
@@ -295,7 +295,7 @@ func convertCertsDir() error {
 }
 
 // The configuration schema can change between versions, therefore we need to convert old versions to the new schema.
-func ConvertIfNeeded(content []byte) ([]byte, error) {
+func convertIfNeeded(content []byte) ([]byte, error) {
 	version, err := getVersion(content)
 	if err != nil {
 		return nil, err
@@ -428,7 +428,7 @@ func GetJfrogDependenciesPath() (string, error) {
 	return filepath.Join(jfrogHome, coreutils.JfrogDependenciesDirName), nil
 }
 
-func GetConfFilePath() (string, error) {
+func getConfFilePath() (string, error) {
 	confPath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err
@@ -678,11 +678,11 @@ func CreateDefaultJfrogConfig() (err error, cleanUp func()) {
   "version": "5"
 }
 	`
-	content, err := ConvertIfNeeded([]byte(configuration))
+	content, err := convertIfNeeded([]byte(configuration))
 	if err != nil {
 		return
 	}
-	configFilePath, err := GetConfFilePath()
+	configFilePath, err := getConfFilePath()
 	configFile, err := os.Create(configFilePath)
 	defer configFile.Close()
 	_, err = configFile.Write(content)

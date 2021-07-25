@@ -13,7 +13,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // PrintViolationsTable prints the violations in 3 tables: security violations, license compliance violations and ignore rule URLs.
@@ -25,7 +24,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	var licenseViolationsRows []licenseViolationRow
 	failBuild := false
 
-	isTerminal := terminal.IsTerminal(int(os.Stderr.Fd()))
+	coloredOutput := coreutils.IsTerminal()
 
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(violation.Components, multipleRoots)
@@ -35,7 +34,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					vulnerabilityRow{
-						severity:               currSeverity.printableTitle(isTerminal),
+						severity:               currSeverity.printableTitle(coloredOutput),
 						severityNumValue:       currSeverity.numValue,
 						impactedPackageName:    impactedPackagesNames[compIndex],
 						impactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -53,7 +52,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 				licenseViolationsRows = append(licenseViolationsRows,
 					licenseViolationRow{
 						licenseKey:             violation.LicenseKey,
-						severity:               currSeverity.printableTitle(isTerminal),
+						severity:               currSeverity.printableTitle(coloredOutput),
 						severityNumValue:       currSeverity.numValue,
 						impactedPackageName:    impactedPackagesNames[compIndex],
 						impactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -106,7 +105,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
 
-	isTerminal := terminal.IsTerminal(int(os.Stderr.Fd()))
+	coloredOutput := coreutils.IsTerminal()
 
 	var vulnerabilitiesRows []vulnerabilityRow
 
@@ -117,7 +116,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				vulnerabilityRow{
-					severity:               currSeverity.printableTitle(isTerminal),
+					severity:               currSeverity.printableTitle(coloredOutput),
 					severityNumValue:       currSeverity.numValue,
 					impactedPackageName:    impactedPackagesNames[compIndex],
 					impactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -181,7 +180,7 @@ type vulnerabilityRow struct {
 	severity               string         `col-name:"Severity"`
 	severityNumValue       int            // For sorting
 	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
-	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
 	fixedVersions          string         `col-name:"Fixed Versions"`
 	components             []componentRow `embed-table:"true"`
@@ -214,8 +213,8 @@ type componentRow struct {
 
 type cveRow struct {
 	id     string `col-name:"CVE"`
-	cvssV2 string `col-name:"CVSS v2"`
-	cvssV3 string `col-name:"CVSS v3"`
+	cvssV2 string `col-name:"CVSS\nv2"`
+	cvssV3 string `col-name:"CVSS\nv3"`
 }
 
 func convertCves(cves []services.Cve) []cveRow {
@@ -363,8 +362,8 @@ type severity struct {
 	style    color.Style
 }
 
-func (s *severity) printableTitle(colorful bool) string {
-	if !colorful || len(s.style) == 0 {
+func (s *severity) printableTitle(colored bool) string {
+	if !colored || len(s.style) == 0 {
 		return s.title
 	}
 	return s.style.Render(s.title)

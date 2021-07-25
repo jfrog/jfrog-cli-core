@@ -20,7 +20,7 @@ import (
 
 const (
 	indexerFileName     = "indexer-app"
-	graphScanMinVersion = "3.28.0"
+	graphScanMinVersion = "3.29.0"
 )
 
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {

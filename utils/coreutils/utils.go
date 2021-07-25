@@ -3,6 +3,7 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,6 +197,11 @@ func GetWorkingDirectory() (string, error) {
 	}
 
 	return currentDir, nil
+}
+
+// IsTerminal checks whether stdout is a terminal.
+func IsTerminal() bool {
+	return terminal.IsTerminal(int(os.Stdout.Fd()))
 }
 
 type Credentials interface {

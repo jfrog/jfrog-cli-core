@@ -9,9 +9,9 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
-	github.com/jfrog/gocmd v0.4.1
+	github.com/jfrog/gocmd v0.4.2
 	github.com/jfrog/gofrog v1.0.7
-	github.com/jfrog/jfrog-client-go v1.0.1
+	github.com/jfrog/jfrog-client-go v1.1.0
 	github.com/magiconair/properties v1.8.1
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3
@@ -23,8 +23,7 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-//replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.0.2-0.20210713102912-da5577f569c7
-//replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
 replace github.com/jfrog/jfrog-client-go => github.com/gailazar300/jfrog-client-go v0.18.1-0.20210719111947-936027fe5eeb
 
-replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.4.2-0.20210711151504-537a5ef5b8e1
+
+// replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.4.2-0.20210711151504-537a5ef5b8e1

@@ -218,7 +218,6 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 }
 
 func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) (bool, error) {
-
 	go func() {
 		// Blocking until consuming is finished.
 		fileConsumer.Run()
@@ -233,21 +232,14 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	vulnerabilities := []services.Vulnerability{}
 	licenses := []services.License{}
 	flatResults := []services.ScanResponse{}
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return false, err
-	}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
+			flatResults = append(flatResults, *res)
+
 			if scanCmd.outputFormat == Table {
-				if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
-					return false, err
-				}
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
 				licenses = append(licenses, res.Licenses...)
-			} else {
-				flatResults = append(flatResults, *res)
 			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
 				// A violation or vulnerability was found, the scan failed.
@@ -255,8 +247,15 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 		}
 	}
+	var err error
 	if scanCmd.outputFormat == Table {
-		fmt.Println("The full scan results are available here: " + tempDirPath)
+		if len(flatResults) > 0 {
+			resultsPath, err := xrutils.WriteJsonResults(flatResults)
+			if err != nil {
+				return false, err
+			}
+			fmt.Println("The full scan results are available here: " + resultsPath)
+		}
 		if scanCmd.includeVulnerabilities {
 			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
 		} else {
@@ -267,7 +266,6 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 		}
 	} else {
 		err = xrutils.PrintJson(flatResults)
-
 	}
 	if scanPassed {
 		log.Info("Scan completed successfully.")

@@ -8,7 +8,6 @@ import (
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -124,14 +123,11 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	if auditCmd.outputFormat == Table {
-		tempDirPath, err := fileutils.CreateTempDir()
+		resultsPath, err := xrutils.WriteJsonResults([]services.ScanResponse{*scanResults})
 		if err != nil {
 			return err
 		}
-		if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-			return err
-		}
-		fmt.Println("The full scan results are available here: " + tempDirPath)
+		fmt.Println("The full scan results are available here: " + resultsPath)
 
 		if auditCmd.includeVulnerabilities {
 			xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)

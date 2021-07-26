@@ -204,22 +204,6 @@ func IsTerminal() bool {
 	return terminal.IsTerminal(int(os.Stdout.Fd()))
 }
 
-var coloredOutput *bool
-
-// IsColoredOutput returns true if the output can be colored.
-func IsColoredOutput() bool {
-	if coloredOutput == nil {
-		coloredOutputVal := true
-		if os.Getenv(ColoredOutput) == "false" {
-			coloredOutputVal = false
-		} else {
-			coloredOutputVal = IsTerminal()
-		}
-		coloredOutput = &coloredOutputVal
-	}
-	return *coloredOutput
-}
-
 type Credentials interface {
 	SetUser(string)
 	SetPassword(string)

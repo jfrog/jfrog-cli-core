@@ -138,6 +138,14 @@ func getIndexerVersion(indexerPath string) (string, error) {
 }
 
 func deleteOldIndexers(indexerDirPath string) error {
+	indexerDirExists, err := fileutils.IsDirExists(indexerDirPath, false)
+	if err != nil {
+		return err
+	}
+	if !indexerDirExists {
+		return nil
+	}
+
 	filesList, err := ioutil.ReadDir(indexerDirPath)
 	if err != nil {
 		return errorutils.CheckError(err)

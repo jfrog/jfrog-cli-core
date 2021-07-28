@@ -279,7 +279,7 @@ func createRestoreFileFunc(filePath, backupPath string) func() error {
 	return func() error {
 		if _, err := os.Stat(backupPath); err != nil {
 			if os.IsNotExist(err) {
-				err = os.Remove(filePath);
+				err = os.Remove(filePath)
 				return errorutils.CheckError(err)
 			}
 			return errorutils.CheckError(errors.New(createRestoreErrorPrefix(filePath, backupPath) + err.Error()))
@@ -296,7 +296,7 @@ func createRestoreFileFunc(filePath, backupPath string) func() error {
 
 func createRestoreErrorPrefix(filePath, backupPath string) string {
 	return fmt.Sprintf("An error occurred while restoring the file: %s\n"+
-		"To restore the file manually: delete %s and rename the backup file at %s (if exists) to '%s'.\n" +
+		"To restore the file manually: delete %s and rename the backup file at %s (if exists) to '%s'.\n"+
 		"Failure cause: ",
 		filePath, filePath, backupPath, filePath)
 }

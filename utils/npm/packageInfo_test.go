@@ -1,11 +1,18 @@
-package coreutils
+package npmutils
 
 import (
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
 
 func TestReadPackageInfoFromPackageJson(t *testing.T) {
+	npmVersion, _, err := GetNpmVersionAndExecPath()
+	if err != nil {
+		assert.NoError(t, err)
+		return
+	}
+
 	tests := []struct {
 		json string
 		pi   *PackageInfo
@@ -17,7 +24,7 @@ func TestReadPackageInfoFromPackageJson(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.json, func(t *testing.T) {
-			packInfo, err := ReadPackageInfo([]byte(test.json))
+			packInfo, err := ReadPackageInfo([]byte(test.json), npmVersion)
 			if err != nil {
 				t.Error("No error was expected in this test", err)
 			}

@@ -1,0 +1,50 @@
+> npm-example@ver0.0.3 prepack
+> echo pre-helloworld
+
+pre-helloworld
+
+> npm-example@ver0.0.3 postpack
+> echo post-helloworld
+
+post-helloworld
+[
+  {
+    "id": "npm-example@ver0.0.3",
+    "name": "npm-example",
+    "version": "ver0.0.3",
+    "size": 3496,
+    "unpackedSize": 4946,
+    "shasum": "eff19f4d6c48bd7b9115dbb70d03aa582423e335",
+    "integrity": "sha512-fy13Dm0KIP/ToVWDE3+RyjJe1Jzfti8ZfVESPuXzIiobDJ1FXEvkFJVoq4ODmE4JJMANbuz1dulcxVWTD/7ENA==",
+    "filename": "npm-example-ver0.0.3.tgz",
+    "files": [
+      {
+        "path": ".jfrog/projects/npm.yaml",
+        "size": 97,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 2781,
+        "mode": 420
+      },
+      {
+        "path": "helloworld.js",
+        "size": 181,
+        "mode": 420
+      },
+      {
+        "path": "npm-example-ver0.0.3.tgz",
+        "size": 1608,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 279,
+        "mode": 420
+      }
+    ],
+    "entryCount": 5,
+    "bundled": []
+  }
+]

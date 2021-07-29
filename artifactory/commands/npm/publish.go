@@ -202,7 +202,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 
 func (npc *NpmPublishCommand) pack() error {
 	log.Debug("Creating npm package.")
-	packageFileName, err := npm.Pack(npc.npmArgs, npc.executablePath, npc.npmVersion)
+	packageFileName, err := npm.Pack(npc.npmArgs, npc.executablePath)
 	if err != nil {
 		return err
 	}

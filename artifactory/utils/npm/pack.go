@@ -1,7 +1,6 @@
 package npm
 
 import (
-	"github.com/jfrog/jfrog-client-go/utils/version"
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
@@ -9,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-func Pack(npmFlags []string, executablePath string, npmVersion *version.Version) (string, error) {
+func Pack(npmFlags []string, executablePath string) (string, error) {
 	configListCmdConfig := createPackCmdConfig(executablePath, npmFlags)
 	output, err := gofrogcmd.RunCmdOutput(configListCmdConfig)
 	if err != nil {

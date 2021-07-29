@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -45,7 +46,8 @@ type NpmCommandArgs struct {
 	dependencies     map[string]*dependency
 	typeRestriction  typeRestriction
 	authArtDetails   auth.ServiceDetails
-	packageInfo      *commandUtils.PackageInfo
+	packageInfo      *npmutils.PackageInfo
+	npmVersion       *version.Version
 	NpmCommand
 }
 
@@ -194,7 +196,7 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 
-	nca.collectBuildInfo, nca.packageInfo, err = commandUtils.PrepareBuildInfo(nca.workingDirectory, nca.buildConfiguration)
+	nca.collectBuildInfo, nca.packageInfo, err = commandUtils.PrepareBuildInfo(nca.workingDirectory, nca.buildConfiguration, nca.npmVersion)
 	if err != nil {
 		return err
 	}
@@ -342,15 +344,15 @@ func (nca *NpmCommandArgs) saveDependenciesData() error {
 }
 
 func (nca *NpmCommandArgs) validateNpmVersion() error {
-	npmVersion, err := npm.Version(nca.executablePath)
+	npmVersion, err := npmutils.Version(nca.executablePath)
 	if err != nil {
 		return err
 	}
-	rtVersion := version.NewVersion(string(npmVersion))
-	if rtVersion.Compare(minSupportedNpmVersion) > 0 {
+	if npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(
 			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher", nca.command)))
 	}
+	nca.npmVersion = npmVersion
 	return nil
 }
 

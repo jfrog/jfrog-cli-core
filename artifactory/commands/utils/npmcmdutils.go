@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -128,14 +129,14 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
-func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration) (collectBuildInfo bool, packageInfo *PackageInfo, err error) {
+func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration, npmVersion *version.Version) (collectBuildInfo bool, packageInfo *npmutils.PackageInfo, err error) {
 	if len(buildConfiguration.BuildName) > 0 && len(buildConfiguration.BuildNumber) > 0 {
 		collectBuildInfo = true
 		if err = utils.SaveBuildGeneralDetails(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project); err != nil {
 			return false, nil, err
 		}
 
-		if packageInfo, err = ReadPackageInfoFromPackageJson(workingDirectory); err != nil {
+		if packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(workingDirectory, npmVersion); err != nil {
 			return false, nil, err
 		}
 	}

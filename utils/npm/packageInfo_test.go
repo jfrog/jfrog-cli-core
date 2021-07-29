@@ -1,10 +1,15 @@
 package npmutils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
+
+func init() {
+	log.SetDefaultLogger()
+}
 
 func TestReadPackageInfoFromPackageJson(t *testing.T) {
 	npmVersion, _, err := GetNpmVersionAndExecPath()

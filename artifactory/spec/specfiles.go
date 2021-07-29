@@ -170,6 +170,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isSymlinks, _ := file.IsSymlinks(false)
 		isRegexp := file.Regexp == "true"
 		isAnt := file.Ant == "true"
+		isExplode, _ := file.IsExplode(false)
 
 		if isTargetMandatory && !isTarget {
 			return errors.New("Spec must include target.")
@@ -228,8 +229,8 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		if isRegexp && isAnt {
 			return errors.New("Can not use the option of regexp and ant together.")
 		}
-		if isArchive && isSymlinks {
-			return errors.New("Symlinks cannot be stored in an archive.")
+		if isArchive && isSymlinks && isExplode {
+			return errors.New("When uploading symlink to artifactory a file in size 0 with properties describing the symlink is being saved.\nThis procces is not yet supported by artifactory when exploding symlinks from a zip.")
 		}
 		if isArchive && !isValidArchive {
 			return errors.New("The value of 'archive' (if provided) must be 'zip'.")

@@ -61,6 +61,6 @@ func GetNpmVersionAndExecPath() (*version.Version, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	log.Debug("Using npm version:", npmVersion)
+	log.Debug("Using npm version:", npmVersion.GetVersion())
 	return npmVersion, npmExecPath, nil
 }

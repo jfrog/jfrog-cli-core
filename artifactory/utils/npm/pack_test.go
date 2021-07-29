@@ -13,12 +13,10 @@ func TestGetPackageFileNameFromOutput(t *testing.T) {
 	tests := []struct {
 		testName                string
 		outputTestDataFile      string
-		isJsonSupported         bool
 		expectedPackageFilename string
 	}{
-		{"Get package filename for npm 6", "npmPackOutputV6", false, "npm-example-0.0.3.tgz"},
-		{"Get package filename for npm 7", "npmPackOutputV7", false, "npm-example-ver0.0.3.tgz"},
-		{"Get package filename for npm 7 with json output support", "npmPackOutputV7Json", true, "npm-example-ver0.0.3.tgz"},
+		{"Get package filename for npm 6", "npmPackOutputV6", "npm-example-0.0.3.tgz"},
+		{"Get package filename for npm 7", "npmPackOutputV7", "npm-example-ver0.0.3.tgz"},
 	}
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -27,7 +25,7 @@ func TestGetPackageFileNameFromOutput(t *testing.T) {
 				assert.NoError(t, err)
 				return
 			}
-			actualFilename, err := getPackageFileNameFromOutput(string(output), test.isJsonSupported)
+			actualFilename, err := getPackageFileNameFromOutput(string(output))
 			if err != nil {
 				assert.NoError(t, err)
 				return

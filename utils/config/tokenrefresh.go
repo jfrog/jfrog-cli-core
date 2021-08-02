@@ -1,7 +1,7 @@
 package config
 
 import (
-	"path"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -56,7 +56,7 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 	if err != nil {
 		return "", err
 	}
-	lockFile, err := lock.CreateLock(path.Join(locksDirPath, ConfigLockDirName))
+	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, ConfigLockDirName))
 	defer lockFile.Unlock()
 	if err != nil {
 		return "", err
@@ -164,7 +164,7 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	if err != nil {
 		return err
 	}
-	lockFile, err := lock.CreateLock(path.Join(locksDirPath, ConfigLockDirName))
+	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, ConfigLockDirName))
 	defer lockFile.Unlock()
 	if err != nil {
 		return err

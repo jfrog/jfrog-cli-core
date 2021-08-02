@@ -4,7 +4,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -14,11 +14,11 @@ func TestDeleteOldIndexers(t *testing.T) {
 	defer func() {
 		assert.NoError(t, fileutils.RemoveTempDir(testsDir))
 	}()
-	indexersDir := path.Join(testsDir, "xray-indexer")
+	indexersDir := filepath.Join(testsDir, "xray-indexer")
 	indexersDirsPaths := []string{
-		path.Join(indexersDir, "1.0.0"),
-		path.Join(indexersDir, "1.2.0"),
-		path.Join(indexersDir, "1.3.x-SNAPSHOT"),
+		filepath.Join(indexersDir, "1.0.0"),
+		filepath.Join(indexersDir, "1.2.0"),
+		filepath.Join(indexersDir, "1.3.x-SNAPSHOT"),
 	}
 
 	// Test no indexers directory at all
@@ -42,7 +42,7 @@ func TestDeleteOldIndexers(t *testing.T) {
 func createDummyIndexer(t *testing.T, dirPath string) {
 	err := os.MkdirAll(dirPath, 0777)
 	assert.NoError(t, err)
-	fullPath := path.Join(dirPath, indexerFileName)
+	fullPath := filepath.Join(dirPath, indexerFileName)
 	file, err := os.Create(fullPath)
 	assert.NoError(t, err)
 	defer func() {
@@ -53,7 +53,7 @@ func createDummyIndexer(t *testing.T, dirPath string) {
 }
 
 func checkIndexerExists(t *testing.T, dirPath string) bool {
-	indexerPath := path.Join(dirPath, indexerFileName)
+	indexerPath := filepath.Join(dirPath, indexerFileName)
 	exists, err := fileutils.IsFileExists(indexerPath, true)
 	assert.NoError(t, err)
 	return exists

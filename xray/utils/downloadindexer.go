@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -53,7 +52,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	if err != nil {
 		return "", err
 	}
-	lockFile, err := lock.CreateLock(path.Join(locksDirPath, "xray-indexer"))
+	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
 	defer lockFile.Unlock()
 
 	exists, err := fileutils.IsFileExists(indexerPath, false)

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -21,7 +21,7 @@ func init() {
 	if err != nil {
 		return
 	}
-	testLockDirPath = path.Join(locksDirPath, "test")
+	testLockDirPath = filepath.Join(locksDirPath, "test")
 }
 
 /*

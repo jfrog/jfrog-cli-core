@@ -185,8 +185,6 @@ func getLock(pid int, t *testing.T) (Lock, string) {
 		pid:         pid,
 		currentTime: currentTime,
 	}
-	///////////////////////// testLockDirPath doesn't always exist at this point, anf if it doesn't - an error is thrown );
-	///////////////////////// Look at the old implementation and decide what to do. There's a good chance it's not the best place yo create this directory.
 	assert.NotZero(t, testLockDirPath, "An error occurred while initializing testLockDirPath")
 	assert.NoError(t, fileutils.CreateDirIfNotExist(testLockDirPath))
 	err := lock.createFile(testLockDirPath, pid)

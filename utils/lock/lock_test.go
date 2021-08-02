@@ -2,16 +2,26 @@ package lock
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
+	"path"
 	"testing"
 	"time"
 )
 
+var testLockDirPath string
+
 func init() {
 	log.SetDefaultLogger()
+	locksDirPath, err := coreutils.GetJfrogLocksDir()
+	if err != nil {
+		return
+	}
+	testLockDirPath = path.Join(locksDirPath, "test")
 }
 
 /*
@@ -34,8 +44,8 @@ func TestLockSmallerPid(t *testing.T) {
 		t.Error("Expected 2 files but got ", len(files))
 	}
 
-	// Performing lock. This should work since the first lock PID is not running. The Lock() will remove it.
-	err = secondLock.Lock()
+	// Performing lock. This should work since the first lock PID is not running. The lock() will remove it.
+	err = secondLock.lock()
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,7 +55,7 @@ func TestLockSmallerPid(t *testing.T) {
 		t.Error(err)
 	}
 
-	// If timestamp equals, secondLock.Lock() is not expected to delete first lock's file, since os.Getpid() < math.MaxInt32.
+	// If timestamp equals, secondLock.lock() is not expected to delete first lock's file, since os.Getpid() < math.MaxInt32.
 	if firstLock.currentTime == secondLock.currentTime {
 		err = firstLock.Unlock()
 		if err != nil {
@@ -83,8 +93,8 @@ func TestLockBiggerPid(t *testing.T) {
 		t.Error("Expected 2 files but got ", len(files), files)
 	}
 
-	// Performing lock. This should work since the first lock PID is not running. The Lock() will remove it.
-	err = secondLock.Lock()
+	// Performing lock. This should work since the first lock PID is not running. The lock() will remove it.
+	err = secondLock.lock()
 	if err != nil {
 		t.Error(err)
 	}
@@ -106,7 +116,8 @@ func TestLockBiggerPid(t *testing.T) {
 
 func TestUnlock(t *testing.T) {
 	lock := new(Lock)
-	err := lock.CreateNewLockFile()
+	assert.NotZero(t, testLockDirPath, "An error occurred while initializing testLockDirPath")
+	err := lock.createNewLockFile(testLockDirPath)
 	if err != nil {
 		t.Error(err)
 	}
@@ -174,16 +185,15 @@ func getLock(pid int, t *testing.T) (Lock, string) {
 		pid:         pid,
 		currentTime: currentTime,
 	}
-	folderName, err := CreateLockDir()
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-	err = lock.CreateFile(folderName, pid)
+	///////////////////////// testLockDirPath doesn't always exist at this point, anf if it doesn't - an error is thrown );
+	///////////////////////// Look at the old implementation and decide what to do. There's a good chance it's not the best place yo create this directory.
+	assert.NotZero(t, testLockDirPath, "An error occurred while initializing testLockDirPath")
+	assert.NoError(t, fileutils.CreateDirIfNotExist(testLockDirPath))
+	err := lock.createFile(testLockDirPath, pid)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	return lock, folderName
+	return lock, testLockDirPath
 }

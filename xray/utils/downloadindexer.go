@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -46,12 +48,17 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
 	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerFileName)
-	exists, err := fileutils.IsFileExists(indexerPath, false)
+
+	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
 		return "", err
 	}
-	if exists {
-		return indexerPath, nil
+	lockFile, err := lock.CreateLock(path.Join(locksDirPath, "xray-indexer"))
+	defer lockFile.Unlock()
+
+	exists, err := fileutils.IsFileExists(indexerPath, false)
+	if exists || err != nil {
+		return indexerPath, err
 	}
 
 	log.Info("JFrog Xray Indexer is not cached locally. Downloading it now...")
@@ -107,7 +114,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	}
 	newDirPath := filepath.Join(indexerDirPath, indexerVersion)
 
-	// In case of a hot upgrade of Xray in progress, the version of the downloaded indexer might be different of the Xray version we got above,
+	// In case of a hot upgrade of Xray in progress, the version of the downloaded indexer might be different from the Xray version we got above,
 	// so the indexer we just downloaded may already exist.
 	newDirExists, err := fileutils.IsDirExists(newDirPath, false)
 	if err != nil {
@@ -116,7 +123,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	if newDirExists {
 		err = os.RemoveAll(tempDirPath)
 	} else {
-		err = os.Rename(tempDirPath, newDirPath)
+		err = fileutils.MoveFile(tempDirPath, newDirPath)
 	}
 
 	return filepath.Join(newDirPath, indexerFileName), errorutils.CheckError(err)
@@ -139,11 +146,8 @@ func getIndexerVersion(indexerPath string) (string, error) {
 
 func deleteOldIndexers(indexerDirPath string) error {
 	indexerDirExists, err := fileutils.IsDirExists(indexerDirPath, false)
-	if err != nil {
+	if !indexerDirExists || err != nil {
 		return err
-	}
-	if !indexerDirExists {
-		return nil
 	}
 
 	filesList, err := ioutil.ReadDir(indexerDirPath)

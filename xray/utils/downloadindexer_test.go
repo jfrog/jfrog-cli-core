@@ -11,7 +11,9 @@ import (
 func TestDeleteOldIndexers(t *testing.T) {
 	testsDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	defer fileutils.RemoveTempDir(testsDir)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(testsDir))
+	}()
 	indexersDir := path.Join(testsDir, "xray-indexer")
 	indexersDirsPaths := []string{
 		path.Join(indexersDir, "1.0.0"),
@@ -43,7 +45,9 @@ func createDummyIndexer(t *testing.T, dirPath string) {
 	fullPath := path.Join(dirPath, indexerFileName)
 	file, err := os.Create(fullPath)
 	assert.NoError(t, err)
-	defer file.Close()
+	defer func() {
+		assert.NoError(t, file.Close())
+	}()
 	_, err = file.Write([]byte(fullPath))
 	assert.NoError(t, err)
 }

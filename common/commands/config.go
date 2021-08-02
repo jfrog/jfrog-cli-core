@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -95,8 +96,12 @@ func (cc *ConfigCommand) CommandName() string {
 
 func (cc *ConfigCommand) Config() error {
 	mutex.Lock()
-	lockFile, err := lock.CreateLock()
 	defer mutex.Unlock()
+	locksDirPath, err := coreutils.GetJfrogLocksDir()
+	if err != nil {
+		return err
+	}
+	lockFile, err := lock.CreateLock(path.Join(locksDirPath, config.ConfigLockDirName))
 	defer lockFile.Unlock()
 
 	if err != nil {

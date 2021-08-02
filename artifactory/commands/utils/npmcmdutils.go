@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"github.com/pkg/errors"
@@ -264,6 +265,9 @@ func PrintMissingDependencies(missingDependencies []buildinfo.Dependency) {
 		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
+// BackupFile creates a backup of the file in filePath. The backup will be found at backupPath.
+// The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
+// If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
 func BackupFile(filePath, backupPath string) (restore func() error, err error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -281,6 +285,9 @@ func BackupFile(filePath, backupPath string) (restore func() error, err error) {
 	return createRestoreFileFunc(filePath, backupPath), nil
 }
 
+// createRestoreFileFunc creates a function for restoring a file from its backup.
+// The returned function replaces the file in filePath with the backup in backupPath.
+// If there is no file at backupPath (which means there was no file at filePath when BackupFile() was called), then the function deletes the file at filePath.
 func createRestoreFileFunc(filePath, backupPath string) func() error {
 	return func() error {
 		if _, err := os.Stat(backupPath); err != nil {
@@ -291,7 +298,7 @@ func createRestoreFileFunc(filePath, backupPath string) func() error {
 			return errorutils.CheckError(errors.New(createRestoreErrorPrefix(filePath, backupPath) + err.Error()))
 		}
 
-		if err := os.Rename(backupPath, filePath); err != nil {
+		if err := fileutils.MoveFile(backupPath, filePath); err != nil {
 			return errorutils.CheckError(err)
 		}
 		log.Debug("Restored the file", filePath, "successfully")

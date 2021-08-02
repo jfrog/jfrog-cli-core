@@ -499,7 +499,7 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 
 func (nca *NpmCommandArgs) restoreNpmrcAndError(err error) error {
 	if restoreErr := nca.restoreNpmrcFunc(); restoreErr != nil {
-		return errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error()))
+		return errorutils.CheckError(errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())))
 	}
 	return err
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -32,6 +33,8 @@ const (
 	ResolutionSnapshotsRepo = "repo-resolve-snapshots"
 	DeploymentReleasesRepo  = "repo-deploy-releases"
 	DeploymentSnapshotsRepo = "repo-deploy-snapshots"
+	IncludePatterns         = "include-patterns"
+	ExcludePatterns         = "exclude-patterns"
 
 	// Gradle flags
 	UsesPlugin          = "uses-plugin"
@@ -154,7 +157,10 @@ func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 	configFile.Resolver.ReleaseRepo = c.String(ResolutionReleasesRepo)
 	configFile.Deployer.SnapshotRepo = c.String(DeploymentSnapshotsRepo)
 	configFile.Deployer.ReleaseRepo = c.String(DeploymentReleasesRepo)
-	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, ResolutionSnapshotsRepo, ResolutionReleasesRepo, DeploymentSnapshotsRepo, DeploymentReleasesRepo)
+	configFile.Deployer.IncludePatterns = c.String(IncludePatterns)
+	configFile.Deployer.ExcludePatterns = c.String(ExcludePatterns)
+	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, ResolutionSnapshotsRepo, ResolutionReleasesRepo,
+		DeploymentSnapshotsRepo, DeploymentReleasesRepo, IncludePatterns, ExcludePatterns)
 }
 
 // Populate Gradle related configuration from cli flags
@@ -248,9 +254,38 @@ func (configFile *ConfigFile) configMaven() error {
 		if err := configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
 			return err
 		}
-		return configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL)
+		if err := configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
+			return err
+		}
+		configFile.setIncludeExcludePatterns()
 	}
 	return nil
+}
+
+func (configFile *ConfigFile) setIncludeExcludePatterns() {
+	if !coreutils.AskYesNo("Would you like to filter the deployed artifacts?", false) {
+		return
+	}
+	fmt.Println("You may set multiple wildcard patterns, on after another. Set an empty pattern anytime to continue.")
+	includePatterns := getIncludeExcludePatterns("include")
+	if includePatterns != "" {
+		configFile.Deployer.IncludePatterns = includePatterns
+	}
+	excludePatterns := getIncludeExcludePatterns("exclude")
+	if excludePatterns != "" {
+		configFile.Deployer.ExcludePatterns = excludePatterns
+	}
+}
+
+func getIncludeExcludePatterns(patternType string) string {
+	var patterns []string
+	for {
+		newPattern := AskString("", "Add a wildcard "+strings.ToUpper(patternType)+" pattern <leave empty to continue>:", true, false)
+		if newPattern == "" {
+			return strings.Join(patterns, ";")
+		}
+		patterns = append(patterns, newPattern)
+	}
 }
 
 func (configFile *ConfigFile) configGradle() error {
@@ -365,7 +400,7 @@ func (configFile *ConfigFile) validateConfig() error {
 			return errorutils.CheckError(errors.New("Deployment snapshot and release repositories must be set."))
 		}
 	} else {
-		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" || deployer.IncludePatterns != "" || deployer.ExcludePatterns != "" {
 			return errorutils.CheckError(errors.New("Deployer server ID must be set."))
 		}
 	}

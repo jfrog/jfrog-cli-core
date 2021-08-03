@@ -98,7 +98,8 @@ func TestMavenConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(ResolutionServerId+"=relServer", ResolutionReleasesRepo+"=release-repo", ResolutionSnapshotsRepo+"=snapshot-repo",
-		DeploymentServerId+"=depServer", DeploymentReleasesRepo+"=release-repo-local", DeploymentSnapshotsRepo+"=snapshot-repo-local")
+		DeploymentServerId+"=depServer", DeploymentReleasesRepo+"=release-repo-local", DeploymentSnapshotsRepo+"=snapshot-repo-local",
+		IncludePatterns+"=*pattern*;second", ExcludePatterns+"=excluding;*pattern")
 	err := CreateBuildConfig(context, utils.Maven)
 	assert.NoError(t, err)
 
@@ -110,6 +111,8 @@ func TestMavenConfigFile(t *testing.T) {
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
 	assert.Equal(t, "snapshot-repo-local", config.GetString("deployer.snapshotRepo"))
 	assert.Equal(t, "release-repo-local", config.GetString("deployer.releaseRepo"))
+	assert.Equal(t, "*pattern*;second", config.GetString("deployer.includePatterns"))
+	assert.Equal(t, "excluding;*pattern", config.GetString("deployer.excludePatterns"))
 }
 
 func TestGradleConfigFile(t *testing.T) {

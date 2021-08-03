@@ -147,6 +147,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile st
 	if !vConfig.IsSet("deployer") || disableDeploy {
 		setEmptyDeployer(vConfig)
 	}
+	handleIncludeExcludePatterns(vConfig)
 
 	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project, deployableArtifactsFile, vConfig, utils.Maven)
 	if err != nil {
@@ -174,6 +175,20 @@ func setEmptyDeployer(vConfig *viper.Viper) {
 	vConfig.Set(utils.DEPLOYER_PREFIX+utils.URL, "http://empty_url")
 	vConfig.Set(utils.DEPLOYER_PREFIX+utils.RELEASE_REPO, "empty_repo")
 	vConfig.Set(utils.DEPLOYER_PREFIX+utils.SNAPSHOT_REPO, "empty_repo")
+}
+
+func handleIncludeExcludePatterns(vConfig *viper.Viper) {
+	fixPatternsSeparator(vConfig, utils.INCLUDE_PATTERNS)
+	fixPatternsSeparator(vConfig, utils.EXCLUDE_PATTERNS)
+}
+
+// The extractor expects the separator to be ", " while the cli uses ";".
+func fixPatternsSeparator(vConfig *viper.Viper, patternType string) {
+	key := utils.DEPLOYER_PREFIX + patternType
+	if vConfig.IsSet(key) {
+		curPattern := vConfig.GetString(key)
+		vConfig.Set(key, strings.ReplaceAll(curPattern, ";", ", "))
+	}
 }
 
 func (config *mvnRunConfig) GetCmd() *exec.Cmd {

@@ -68,6 +68,10 @@ const USE_GRADLE_PLUGIN = "usePlugin"
 const USE_GRADLE_WRAPPER = "useWrapper"
 const FORK_COUNT = "forkCount"
 
+const INCLUDE_PATTERNS = "includePatterns"
+const EXCLUDE_PATTERNS = "excludePatterns"
+const FILTER_EXCLUDED_ARTIFACTS_FROM_BUILD = "filterExcludedArtifactsFromBuild"
+
 // For path and temp files
 const PROPERTIES_TEMP_PREFIX = "buildInfoProperties"
 const PROPERTIES_TEMP_PATH = "jfrog/properties/"
@@ -82,17 +86,18 @@ const DEPLOY = "artifactory.publish.artifacts"
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
-	"artifactory.publish.artifacts":                     "true",
-	"artifactory.publish.buildInfo":                     "false",
-	"artifactory.publish.unstable":                      "false",
-	"artifactory.publish.maven":                         "false",
-	"artifactory.publish.ivy":                           "false",
-	"buildInfoConfig.includeEnvVars":                    "false",
-	"buildInfoConfig.envVarsExcludePatterns":            "*password*,*psw*,*secret*,*key*,*token*",
-	"buildInfo.agent.name":                              coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
-	"org.jfrog.build.extractor.maven.recorder.activate": "true",
-	"buildInfo.env.extractor.used":                      "true",
-	"artifactory.publish.forkCount":                     "3",
+	"artifactory.publish.artifacts":                        "true",
+	"artifactory.publish.buildInfo":                        "false",
+	"artifactory.publish.unstable":                         "false",
+	"artifactory.publish.maven":                            "false",
+	"artifactory.publish.ivy":                              "false",
+	"buildInfoConfig.includeEnvVars":                       "false",
+	"buildInfoConfig.envVarsExcludePatterns":               "*password*,*psw*,*secret*,*key*,*token*",
+	"buildInfo.agent.name":                                 coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
+	"org.jfrog.build.extractor.maven.recorder.activate":    "true",
+	"buildInfo.env.extractor.used":                         "true",
+	"artifactory.publish.forkCount":                        "3",
+	"artifactory.publish.filterExcludedArtifactsFromBuild": "true",
 }
 
 var commonConfigMapping = map[string]string{
@@ -121,11 +126,14 @@ var commonConfigMapping = map[string]string{
 }
 
 var mavenConfigMapping = map[string]string{
-	"org.jfrog.build.extractor.maven.recorder.activate": "",
-	"artifactory.resolve.repoKey":                       RESOLVER_PREFIX + RELEASE_REPO,
-	"artifactory.resolve.downSnapshotRepoKey":           RESOLVER_PREFIX + SNAPSHOT_REPO,
-	"artifactory.publish.repoKey":                       DEPLOYER_PREFIX + RELEASE_REPO,
-	"artifactory.publish.snapshot.repoKey":              DEPLOYER_PREFIX + SNAPSHOT_REPO,
+	"org.jfrog.build.extractor.maven.recorder.activate":    "",
+	"artifactory.resolve.repoKey":                          RESOLVER_PREFIX + RELEASE_REPO,
+	"artifactory.resolve.downSnapshotRepoKey":              RESOLVER_PREFIX + SNAPSHOT_REPO,
+	"artifactory.publish.repoKey":                          DEPLOYER_PREFIX + RELEASE_REPO,
+	"artifactory.publish.snapshot.repoKey":                 DEPLOYER_PREFIX + SNAPSHOT_REPO,
+	"artifactory.publish.includePatterns":                  DEPLOYER_PREFIX + INCLUDE_PATTERNS,
+	"artifactory.publish.excludePatterns":                  DEPLOYER_PREFIX + EXCLUDE_PATTERNS,
+	"artifactory.publish.filterExcludedArtifactsFromBuild": DEPLOYER_PREFIX + FILTER_EXCLUDED_ARTIFACTS_FROM_BUILD,
 }
 
 var gradleConfigMapping = map[string]string{

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -13,14 +13,14 @@ import (
 	"testing"
 )
 
-// Check a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
+// Checks a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
 func TestUnmarshalDeployableArtifacts(t *testing.T) {
-	err, cleanUpJfrogHome := config.CreateDefaultJfrogConfig()
+	err, cleanUpJfrogHome := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
-	// delete DeployableArtifacts tempDir
+	// Delete DeployableArtifacts tempDir
 	defer os.Remove(filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")
 	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile)
@@ -31,19 +31,28 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	}
 }
 
-// createTempDeployableArtifactFile copy a deployableArtifacts file from gradle testdata directory to a tempDir
-func createTempDeployableArtifactFile() (string, error) {
+// createTempDeployableArtifactFile copies a deployableArtifacts file from gradle testdata directory to a tempDir
+func createTempDeployableArtifactFile() (filePath string, err error) {
+	filePath = ""
 	testsDataGradlePath := getTestsDataGradlePath()
 	summary, err := os.Open(path.Join(testsDataGradlePath, "deployableArtifacts", "artifacts"))
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
+		return
 	}
+	defer func() {
+		e := summary.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	tmpDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return "", err
+		return
 	}
 	fileutils.CopyFile(tmpDir, summary.Name())
-	return filepath.Join(tmpDir, "artifacts"), nil
+	filePath = filepath.Join(tmpDir, "artifacts")
+	return
 }
 
 func getTestsDataGradlePath() string {

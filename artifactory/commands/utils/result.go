@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	ConfigDeployerPrefix = "deployer"
-	GradleConfigRepo     = "repo"
-	ConfigServerId       = "serverid"
+	configDeployerPrefix = "deployer"
+	gradleConfigRepo     = "repo"
+	configServerId       = "serverid"
 )
 
 type Result struct {
@@ -97,9 +97,9 @@ func getDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifa
 	// In case of a gradle project with a configuration of 'usePlugin=true' it's possible that an old build-info-extractor-gradle version is being used.
 	// In this case, the value of "repo" will be empty, and the deployment repository will be therefore read from the local project configuration file.
 	if repo == "" {
-		repo = vConfig.GetString(ConfigDeployerPrefix + "." + GradleConfigRepo)
+		repo = vConfig.GetString(configDeployerPrefix + "." + gradleConfigRepo)
 	}
-	artDetails, err := config.GetSpecificConfig(vConfig.GetString(ConfigDeployerPrefix+"."+ConfigServerId), true, true)
+	artDetails, err := config.GetSpecificConfig(vConfig.GetString(configDeployerPrefix+"."+configServerId), true, true)
 	if err != nil {
 		return "", "", err
 	}

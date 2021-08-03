@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
 	"os"

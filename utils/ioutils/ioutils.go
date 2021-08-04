@@ -23,20 +23,27 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
-		print("JFrog password or API key: ")
-		bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-		err = errorutils.CheckError(err)
+		password, err := ScanPasswordFromConsole("JFrog password or API key: ")
 		if err != nil {
 			return err
 		}
-		details.SetPassword(string(bytePassword))
+		details.SetPassword(password)
 		if details.GetPassword() == "" && !disallowUsingSavedPassword {
 			details.SetPassword(savedDetails.GetPassword())
 		}
-		// New-line required after the password input:
-		fmt.Println()
 	}
 	return nil
+}
+
+func ScanPasswordFromConsole(message string) (string, error) {
+	print(message)
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	// New-line required after the password input:
+	fmt.Println()
+	return string(bytePassword), nil
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {

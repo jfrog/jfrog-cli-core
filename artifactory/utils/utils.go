@@ -14,6 +14,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
@@ -157,6 +158,27 @@ func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun
 		return nil, err
 	}
 	return distribution.New(serviceConfig)
+}
+
+func CreateAccessServiceManager(artDetails *config.ServerDetails, isDryRun bool) (*access.AccessServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	accessAuth, err := artDetails.CreateAccessAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(accessAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(artDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return access.New(serviceConfig)
 }
 
 func isRepoExists(repository string, artDetails auth.ServiceDetails) (bool, error) {

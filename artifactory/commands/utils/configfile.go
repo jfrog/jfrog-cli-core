@@ -55,12 +55,15 @@ type ConfigFile struct {
 	UseWrapper  bool             `yaml:"useWrapper,omitempty"`
 }
 
-func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
+func NewConfigFile(confType utils.ProjectType, c *cli.Context) (*ConfigFile, error) {
 	configFile := &ConfigFile{
 		Version:    BUILD_CONF_VERSION,
 		ConfigType: confType.String(),
 	}
-	configFile.populateConfigFromFlags(c)
+	err := configFile.populateConfigFromFlags(c)
+	if err != nil {
+		return nil, err
+	}
 	switch confType {
 	case utils.Maven:
 		configFile.populateMavenConfigFromFlags(c)
@@ -69,7 +72,7 @@ func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 	case utils.Nuget, utils.Dotnet:
 		configFile.populateNugetConfigFromFlags(c)
 	}
-	return configFile
+	return configFile, nil
 }
 
 func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
@@ -82,7 +85,10 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 		return err
 	}
 	configFilePath := filepath.Join(projectDir, confType.String()+".yaml")
-	configFile := NewConfigFile(confType, c)
+	configFile, err := NewConfigFile(confType, c)
+	if err != nil {
+		return err
+	}
 	if err := configFile.VerifyConfigFile(configFilePath); err != nil {
 		return err
 	}
@@ -140,12 +146,38 @@ func isAnyFlagSet(c *cli.Context, flagNames ...string) bool {
 }
 
 // Populate configuration from cli flags
-func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) {
-	configFile.Resolver.ServerId = c.String(ResolutionServerId)
+func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) (err error) {
+	resolverServerId, deployerServerId, err := getServerId(c)
+	if err != nil {
+		return
+	}
+	configFile.Resolver.ServerId = resolverServerId
 	configFile.Resolver.Repo = c.String(ResolutionRepo)
-	configFile.Deployer.ServerId = c.String(DeploymentServerId)
+	configFile.Deployer.ServerId = deployerServerId
 	configFile.Deployer.Repo = c.String(DeploymentRepo)
 	configFile.Interactive = isInteractive(c)
+	return
+}
+
+// For package managers' config commands flags resolver/deployer server-id are optional.
+// In case no server-id was provided the default configured server id will be used.
+func getServerId(c *cli.Context) (resolverServerId, deployerServerId string, err error) {
+	resolverServerId = c.String(ResolutionServerId)
+	deployerServerId = c.String(DeploymentServerId)
+	if resolverServerId != "" && deployerServerId != "" {
+		return
+	}
+	serverDetails, err := config.GetDefaultServerConf()
+	if err != nil {
+		return "", "", err
+	}
+	if resolverServerId == "" {
+		resolverServerId = serverDetails.ServerId
+	}
+	if deployerServerId == "" {
+		deployerServerId = serverDetails.ServerId
+	}
+	return
 }
 
 // Populate Maven related configuration from cli flags
@@ -351,7 +383,7 @@ func (configFile *ConfigFile) validateConfig() error {
 		}
 	} else {
 		if resolver.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Resolver server ID must be set."))
+			return errorutils.CheckError(errors.New("Resolver server ID must be set. use --server-id-resolve flag to set a resolver or choose a global configured default server-id with \"jfrog c use\" command. "))
 		}
 	}
 	deployer := configFile.Deployer
@@ -366,7 +398,7 @@ func (configFile *ConfigFile) validateConfig() error {
 		}
 	} else {
 		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Deployer server ID must be set."))
+			return errorutils.CheckError(errors.New("Deployer server ID must be set. use --server-id-resolve flag to set a deployer or choose a global configured default server-id with \"jfrog c use\" command. "))
 		}
 	}
 	return nil

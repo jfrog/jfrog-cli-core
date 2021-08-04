@@ -20,7 +20,7 @@ import (
 
 const (
 	indexerFileName     = "indexer-app"
-	graphScanMinVersion = "3.29.0"
+	GraphScanMinVersion = "3.29.0"
 )
 
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {
@@ -29,9 +29,9 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 		return "", err
 	}
 	xrayVersion := version.NewVersion(xrayVersionStr)
-	if !xrayVersion.AtLeast(graphScanMinVersion) {
+	if !xrayVersion.AtLeast(GraphScanMinVersion) {
 		return "", errorutils.CheckError(errors.New("You are using Xray version " +
-			string(xrayVersion.GetVersion()) + ", while this operation requires Xray version " + graphScanMinVersion + " or higher."))
+			string(xrayVersion.GetVersion()) + ", while this operation requires Xray version " + GraphScanMinVersion + " or higher."))
 	}
 
 	dependenciesPath, err := config.GetJfrogDependenciesPath()

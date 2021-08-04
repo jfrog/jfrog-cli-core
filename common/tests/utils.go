@@ -6,21 +6,10 @@ import (
 	"testing"
 )
 
-func configServer(inputDetails *config.ServerDetails) (err error) {
-	//configCmd := commands.NewConfigCommand().SetDetails(inputDetails).SetServerId(serverId).SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
-	//configCmd.disablePromptUrls = true
-	//err = configCmd.Config()
-
-	return config.SaveServersConf([]*config.ServerDetails{inputDetails})
-}
-
 func ConfigTestServer(t *testing.T) (err error, cleanUp func()) {
 	cleanUp = testsutils.CreateTempEnv(t, false)
 	serverDetails := CreateTestServerDetails()
-	err = configServer(serverDetails)
-	if err != nil {
-		return
-	}
+	err = config.SaveServersConf([]*config.ServerDetails{serverDetails})
 	return
 }
 

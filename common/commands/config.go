@@ -93,8 +93,12 @@ func (cc *ConfigCommand) CommandName() string {
 
 func (cc *ConfigCommand) Config() error {
 	mutex.Lock()
-	lockFile, err := lock.CreateLock()
 	defer mutex.Unlock()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
+	if err != nil {
+		return err
+	}
+	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
 
 	if err != nil {

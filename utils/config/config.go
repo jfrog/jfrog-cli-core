@@ -362,7 +362,7 @@ func createHomeDirBackup() error {
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
-	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLockDirName, coreutils.JfrogLogsDirName}
+	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
 	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 

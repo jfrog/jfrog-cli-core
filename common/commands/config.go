@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -22,7 +21,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Internal golang locking for the same process.
@@ -117,13 +115,17 @@ func (cc *ConfigCommand) Config() error {
 			return err
 		}
 	} else if cc.details.Url != "" {
-		cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-		// Derive JFrog services URLs from platform URL
-		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
-		coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
-		coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-		coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
-		coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+		if fileutils.IsSshUrl(cc.details.Url) {
+			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+		} else {
+			cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
+			// Derive JFrog services URLs from platform URL
+			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
+			coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
+			coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
+			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
+			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+		}
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
 	cc.details.DistributionUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
@@ -236,17 +238,15 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 	}
 
 	if cc.details.Url != "" {
-		cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
-	}
-
-	if !cc.disablePromptUrls {
-		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-			return err
+		if fileutils.IsSshUrl(cc.details.Url) {
+			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+		} else {
+			cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
+			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
+			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
+			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
+			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
+			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 		}
 	}
 
@@ -254,18 +254,23 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		if err := getSshKeyPath(cc.details); err != nil {
 			return err
 		}
-	}
-
-	// Password/Access-Token
-	if cc.details.Password == "" && cc.details.AccessToken == "" {
-		err := readAccessTokenFromConsole(cc.details)
-		if err != nil {
-			return err
+	} else {
+		if !cc.disablePromptUrls {
+			if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+				return err
+			}
 		}
-		if len(cc.details.GetAccessToken()) == 0 {
-			err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+		// Password/Access-Token
+		if cc.details.Password == "" && cc.details.AccessToken == "" {
+			err := readAccessTokenFromConsole(cc.details)
 			if err != nil {
 				return err
+			}
+			if len(cc.details.GetAccessToken()) == 0 {
+				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -313,17 +318,11 @@ func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
-	print("JFrog access token (Leave blank for username and password/API key): ")
-	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return errorutils.CheckError(err)
+	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
+	if err == nil {
+		details.SetAccessToken(token)
 	}
-	// New-line required after the access token input:
-	fmt.Println()
-	if len(byteToken) > 0 {
-		details.SetAccessToken(string(byteToken))
-	}
-	return nil
+	return err
 }
 
 func getSshKeyPath(details *config.ServerDetails) error {
@@ -345,7 +344,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		return err
 	}
 
-	optionalPrefix := ""
+	messageSuffix := ": "
 	if exists {
 		sshKeyBytes, err := ioutil.ReadFile(details.SshKeyPath)
 		if err != nil {
@@ -359,12 +358,15 @@ func getSshKeyPath(details *config.ServerDetails) error {
 		log.Info("The key file at the specified path is encrypted.")
 	} else {
 		log.Info("Could not find key in provided path. You may place the key file there later.")
-		optionalPrefix = "(optional)"
+		messageSuffix = " (optional): "
 	}
 	if details.SshPassphrase == "" {
-		ioutils.ScanFromConsole("SSH key passphrase "+optionalPrefix, &details.SshPassphrase, "")
+		token, err := ioutils.ScanPasswordFromConsole("SSH key passphrase" + messageSuffix)
+		if err != nil {
+			return err
+		}
+		details.SetSshPassphrase(token)
 	}
-
 	return err
 }
 
@@ -427,6 +429,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true)
 		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true)
 		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false)
+		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true)
 		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false)
 		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false)
 		log.Output("Default:\t\t\t" + strconv.FormatBool(details.IsDefault))
@@ -536,7 +539,8 @@ func (cc *ConfigCommand) encryptPassword() error {
 func checkSingleAuthMethod(details *config.ServerDetails) error {
 	authMethods := []bool{
 		details.User != "" && details.Password != "",
-		details.AccessToken != "" && details.RefreshToken == ""}
+		details.AccessToken != "" && details.RefreshToken == "",
+		details.SshKeyPath != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
 		return errorutils.CheckError(errors.New("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token"))
 	}

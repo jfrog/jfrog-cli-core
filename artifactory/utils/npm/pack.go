@@ -7,15 +7,12 @@ import (
 )
 
 func Pack(npmFlags []string, executablePath string) (string, error) {
-
-	configListCmdConfig := createPackCmdConfig(executablePath, npmFlags)
-	output, err := gofrogcmd.RunCmdOutput(configListCmdConfig)
+	packCmd := createPackCmdConfig(executablePath, npmFlags)
+	output, err := gofrogcmd.RunCmdOutput(packCmd)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	packageFileName := strings.TrimSpace(output)
-
-	return packageFileName, nil
+	return getPackageFileNameFromOutput(output)
 }
 
 func createPackCmdConfig(executablePath string, splitFlags []string) *NpmConfig {
@@ -26,4 +23,10 @@ func createPackCmdConfig(executablePath string, splitFlags []string) *NpmConfig 
 		StrWriter:    nil,
 		ErrWriter:    nil,
 	}
+}
+
+func getPackageFileNameFromOutput(output string) (string, error) {
+	output = strings.TrimSpace(output)
+	lines := strings.Split(output, "\n")
+	return strings.TrimSpace(lines[len(lines)-1]), nil
 }

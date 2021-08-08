@@ -27,6 +27,7 @@ func CreateTempEnv(t *testing.T, copyEncryptionKey bool) (cleanUp func()) {
 		os.Setenv(coreutils.HomeDir, oldHome)
 	}
 }
+
 func copyResources(t *testing.T, sourcePath string, destPath string) {
 	assert.NoError(t, fileutils.CopyDir(sourcePath, destPath, true, nil))
 }

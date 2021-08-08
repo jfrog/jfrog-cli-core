@@ -363,7 +363,7 @@ func createHomeDirBackup() error {
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
-	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLockDirName, coreutils.JfrogLogsDirName}
+	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
 	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
@@ -510,7 +510,7 @@ type ServerDetails struct {
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
-	SshPassphrase        string `json:"SshPassphrase,omitempty"`
+	SshPassphrase        string `json:"sshPassphrase,omitempty"`
 	AccessToken          string `json:"accessToken,omitempty"`
 	RefreshToken         string `json:"refreshToken,omitempty"`
 	TokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
@@ -545,6 +545,10 @@ func (serverDetails *ServerDetails) SetAccessToken(accessToken string) {
 
 func (serverDetails *ServerDetails) SetRefreshToken(refreshToken string) {
 	serverDetails.RefreshToken = refreshToken
+}
+
+func (serverDetails *ServerDetails) SetSshPassphrase(sshPassphrase string) {
+	serverDetails.SshPassphrase = sshPassphrase
 }
 
 func (serverDetails *ServerDetails) SetClientCertPath(certificatePath string) {

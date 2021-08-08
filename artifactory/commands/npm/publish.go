@@ -27,6 +27,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// The --pack-destination argument of npm pack was introduced in npm version 7.18.0.
 const packDestinationNpmMinVersion = "7.18.0"
 
 type NpmPublishCommandArgs struct {
@@ -212,7 +213,7 @@ func (npc *NpmPublishCommand) getTarballDir() (string, error) {
 		return npc.workingDirectory, nil
 	}
 
-	// Extract threads information from the args.
+	// Extract pack destination argument from the args.
 	flagIndex, _, dest, err := coreutils.FindFlag("--pack-destination", npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil || flagIndex == -1 {
 		return npc.workingDirectory, err

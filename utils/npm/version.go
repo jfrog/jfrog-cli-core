@@ -1,47 +1,31 @@
 package npmutils
 
 import (
+	"bytes"
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
-	"io"
-	"io/ioutil"
 	"os/exec"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 func Version(executablePath string) (*version.Version, error) {
-	pipeReader, pipeWriter := io.Pipe()
-	defer pipeReader.Close()
-	defer pipeWriter.Close()
-	var npmError error
-
-	configListCmdConfig := createVersionCmdConfig(executablePath, pipeWriter)
-	go func() {
-		npmError = gofrogcmd.RunCmd(configListCmdConfig)
-	}()
-
-	data, err := ioutil.ReadAll(pipeReader)
+	data, err := getVersion(executablePath)
 	if err != nil {
-		return nil, errorutils.CheckError(err)
+		return nil, err
 	}
-
-	if npmError != nil {
-		return nil, errorutils.CheckError(npmError)
-	}
-
-	return version.NewVersion(string(data)), nil
+	return version.NewVersion(data), nil
 }
 
-func createVersionCmdConfig(executablePath string, pipeWriter *io.PipeWriter) *NpmConfig {
-	return &NpmConfig{
-		Npm:       executablePath,
-		Command:   []string{"-version"},
-		StrWriter: pipeWriter,
-		ErrWriter: nil,
-	}
+func getVersion(executablePath string) (string, error) {
+	command := exec.Command(executablePath, "-version")
+	buffer := bytes.NewBuffer([]byte{})
+	command.Stderr = buffer
+	command.Stdout = buffer
+	err := command.Run()
+	return buffer.String(), coreutils.ConvertExitCodeError(errorutils.CheckError(err))
 }
 
 func GetNpmVersionAndExecPath() (*version.Version, string, error) {
@@ -52,7 +36,7 @@ func GetNpmVersionAndExecPath() (*version.Version, string, error) {
 	}
 
 	if npmExecPath == "" {
-		return nil, "", errorutils.CheckError(errors.New("could not find 'npm' executable"))
+		return nil, "", errorutils.CheckError(errors.New("could not find 'npm' executable in PATH"))
 	}
 
 	log.Debug("Using npm executable:", npmExecPath)

@@ -40,58 +40,61 @@ const (
 )
 
 // For key/value binding
-const BUILD_NAME = "build.name"
-const BUILD_NUMBER = "build.number"
-const BUILD_PROJECT = "build.project"
-const BUILD_TIMESTAMP = "build.timestamp"
-const GENERATED_BUILD_INFO = "buildInfo.generated"
-const DEPLOYABLE_ARTIFACTS = "deployable.artifacts.map"
-const INSECURE_TLS = "insecureTls"
+const BuildName = "build.name"
+const BuildNumber = "build.number"
+const BuildProject = "build.project"
+const BuildTimestamp = "build.timestamp"
+const GeneratedBuildInfo = "buildInfo.generated"
+const DeployableArtifacts = "deployable.artifacts.map"
+const InsecureTls = "insecureTls"
 
-const RESOLVER_PREFIX = "resolver."
-const DEPLOYER_PREFIX = "deployer."
+const ResolverPrefix = "resolver."
+const DeployerPrefix = "deployer."
 
-const REPO = "repo"
-const SNAPSHOT_REPO = "snapshotRepo"
-const RELEASE_REPO = "releaseRepo"
+const Repo = "repo"
+const SnapshotRepo = "snapshotRepo"
+const ReleaseRepo = "releaseRepo"
 
-const SERVER_ID = "serverId"
-const URL = "url"
-const USERNAME = "username"
-const PASSWORD = "password"
-const DEPLOY_ARTIFACTS = "artifacts"
+const ServerId = "serverId"
+const Url = "url"
+const Username = "username"
+const Password = "password"
+const DeployArtifacts = "artifacts"
 
-const MAVEN_DESCRIPTOR = "deployMavenDescriptors"
-const IVY_DESCRIPTOR = "deployIvyDescriptors"
-const IVY_PATTERN = "ivyPattern"
-const ARTIFACT_PATTERN = "artifactPattern"
-const USE_GRADLE_PLUGIN = "usePlugin"
-const USE_GRADLE_WRAPPER = "useWrapper"
-const FORK_COUNT = "forkCount"
+const MavenDescriptor = "deployMavenDescriptors"
+const IvyDescriptor = "deployIvyDescriptors"
+const IvyPattern = "ivyPattern"
+const ArtifactPattern = "artifactPattern"
+const ForkCount = "forkCount"
+
+const IncludePatterns = "includePatterns"
+const ExcludePatterns = "excludePatterns"
+const FilterExcludedArtifactsFromBuild = "filterExcludedArtifactsFromBuild"
 
 // For path and temp files
-const PROPERTIES_TEMP_PREFIX = "buildInfoProperties"
-const PROPERTIES_TEMP_PATH = "jfrog/properties/"
-const GENERATED_BUILD_INFO_TEMP_PREFIX = "generatedBuildInfo"
+const PropertiesTempPrefix = "buildInfoProperties"
+const PropertiesTempPath = "jfrog/properties/"
+const GeneratedBuildInfoTempPrefix = "generatedBuildInfo"
 
-const PROXY = "proxy."
-const HOST = "host"
-const PORT = "port"
+const Proxy = "proxy."
+const Host = "host"
+const Port = "port"
 
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
-	"artifactory.publish.artifacts":                     "true",
-	"artifactory.publish.buildInfo":                     "false",
-	"artifactory.publish.unstable":                      "false",
-	"artifactory.publish.maven":                         "false",
-	"artifactory.publish.ivy":                           "false",
-	"buildInfoConfig.includeEnvVars":                    "false",
-	"buildInfoConfig.envVarsExcludePatterns":            "*password*,*psw*,*secret*,*key*,*token*",
-	"buildInfo.agent.name":                              coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
-	"org.jfrog.build.extractor.maven.recorder.activate": "true",
-	"buildInfo.env.extractor.used":                      "true",
-	"artifactory.publish.forkCount":                     "3",
+	"artifactory.publish.artifacts":                        "true",
+	"artifactory.publish.buildInfo":                        "false",
+	"artifactory.publish.unstable":                         "false",
+	"artifactory.publish.maven":                            "false",
+	"artifactory.publish.ivy":                              "false",
+	"buildInfoConfig.includeEnvVars":                       "false",
+	"buildInfoConfig.envVarsExcludePatterns":               "*password*,*psw*,*secret*,*key*,*token*",
+	"buildInfo.agent.name":                                 coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
+	"org.jfrog.build.extractor.maven.recorder.activate":    "true",
+	"buildInfo.env.extractor.used":                         "true",
+	"artifactory.publish.forkCount":                        "3",
+	"artifactory.publish.filterExcludedArtifactsFromBuild": "true",
 }
 
 var commonConfigMapping = map[string]string{
@@ -100,46 +103,49 @@ var commonConfigMapping = map[string]string{
 	"buildInfoConfig.includeEnvVars":         "",
 	"buildInfoConfig.envVarsExcludePatterns": "",
 	"buildInfo.agent.name":                   "",
-	"artifactory.resolve.contextUrl":         RESOLVER_PREFIX + URL,
-	"artifactory.resolve.username":           RESOLVER_PREFIX + USERNAME,
-	"artifactory.resolve.password":           RESOLVER_PREFIX + PASSWORD,
-	"artifactory.publish.contextUrl":         DEPLOYER_PREFIX + URL,
-	"artifactory.publish.username":           DEPLOYER_PREFIX + USERNAME,
-	"artifactory.publish.password":           DEPLOYER_PREFIX + PASSWORD,
-	"artifactory.publish.artifacts":          DEPLOYER_PREFIX + DEPLOY_ARTIFACTS,
-	"artifactory.deploy.build.name":          BUILD_NAME,
-	"artifactory.deploy.build.number":        BUILD_NUMBER,
-	"artifactory.deploy.build.project":       BUILD_PROJECT,
-	"artifactory.deploy.build.timestamp":     BUILD_TIMESTAMP,
-	"buildInfo.generated.build.info":         GENERATED_BUILD_INFO,
-	"buildInfo.deployable.artifacts.map":     DEPLOYABLE_ARTIFACTS,
-	"artifactory.proxy.host":                 PROXY + HOST,
-	"artifactory.proxy.port":                 PROXY + PORT,
-	"artifactory.publish.forkCount":          FORK_COUNT,
-	"artifactory.insecureTls":                INSECURE_TLS,
+	"artifactory.resolve.contextUrl":         ResolverPrefix + Url,
+	"artifactory.resolve.username":           ResolverPrefix + Username,
+	"artifactory.resolve.password":           ResolverPrefix + Password,
+	"artifactory.publish.contextUrl":         DeployerPrefix + Url,
+	"artifactory.publish.username":           DeployerPrefix + Username,
+	"artifactory.publish.password":           DeployerPrefix + Password,
+	"artifactory.publish.artifacts":          DeployerPrefix + DeployArtifacts,
+	"artifactory.deploy.build.name":          BuildName,
+	"artifactory.deploy.build.number":        BuildNumber,
+	"artifactory.deploy.build.project":       BuildProject,
+	"artifactory.deploy.build.timestamp":     BuildTimestamp,
+	"buildInfo.generated.build.info":         GeneratedBuildInfo,
+	"buildInfo.deployable.artifacts.map":     DeployableArtifacts,
+	"artifactory.proxy.host":                 Proxy + Host,
+	"artifactory.proxy.port":                 Proxy + Port,
+	"artifactory.publish.forkCount":          ForkCount,
+	"artifactory.insecureTls":                InsecureTls,
 }
 
 var mavenConfigMapping = map[string]string{
-	"org.jfrog.build.extractor.maven.recorder.activate": "",
-	"artifactory.resolve.repoKey":                       RESOLVER_PREFIX + RELEASE_REPO,
-	"artifactory.resolve.downSnapshotRepoKey":           RESOLVER_PREFIX + SNAPSHOT_REPO,
-	"artifactory.publish.repoKey":                       DEPLOYER_PREFIX + RELEASE_REPO,
-	"artifactory.publish.snapshot.repoKey":              DEPLOYER_PREFIX + SNAPSHOT_REPO,
+	"org.jfrog.build.extractor.maven.recorder.activate":    "",
+	"artifactory.resolve.repoKey":                          ResolverPrefix + ReleaseRepo,
+	"artifactory.resolve.downSnapshotRepoKey":              ResolverPrefix + SnapshotRepo,
+	"artifactory.publish.repoKey":                          DeployerPrefix + ReleaseRepo,
+	"artifactory.publish.snapshot.repoKey":                 DeployerPrefix + SnapshotRepo,
+	"artifactory.publish.includePatterns":                  DeployerPrefix + IncludePatterns,
+	"artifactory.publish.excludePatterns":                  DeployerPrefix + ExcludePatterns,
+	"artifactory.publish.filterExcludedArtifactsFromBuild": DeployerPrefix + FilterExcludedArtifactsFromBuild,
 }
 
 var gradleConfigMapping = map[string]string{
 	"buildInfo.env.extractor.used":                      "",
 	"org.jfrog.build.extractor.maven.recorder.activate": "",
-	"artifactory.resolve.repoKey":                       RESOLVER_PREFIX + REPO,
-	"artifactory.resolve.downSnapshotRepoKey":           RESOLVER_PREFIX + REPO,
-	"artifactory.publish.repoKey":                       DEPLOYER_PREFIX + REPO,
-	"artifactory.publish.snapshot.repoKey":              DEPLOYER_PREFIX + REPO,
-	"artifactory.publish.maven":                         DEPLOYER_PREFIX + MAVEN_DESCRIPTOR,
-	"artifactory.publish.ivy":                           DEPLOYER_PREFIX + IVY_DESCRIPTOR,
-	"artifactory.publish.ivy.ivyPattern":                DEPLOYER_PREFIX + IVY_PATTERN,
-	"artifactory.publish.ivy.artPattern":                DEPLOYER_PREFIX + ARTIFACT_PATTERN,
-	"buildInfo.build.name":                              BUILD_NAME,
-	"buildInfo.build.number":                            BUILD_NUMBER,
+	"artifactory.resolve.repoKey":                       ResolverPrefix + Repo,
+	"artifactory.resolve.downSnapshotRepoKey":           ResolverPrefix + Repo,
+	"artifactory.publish.repoKey":                       DeployerPrefix + Repo,
+	"artifactory.publish.snapshot.repoKey":              DeployerPrefix + Repo,
+	"artifactory.publish.maven":                         DeployerPrefix + MavenDescriptor,
+	"artifactory.publish.ivy":                           DeployerPrefix + IvyDescriptor,
+	"artifactory.publish.ivy.ivyPattern":                DeployerPrefix + IvyPattern,
+	"artifactory.publish.ivy.artPattern":                DeployerPrefix + ArtifactPattern,
+	"buildInfo.build.name":                              BuildName,
+	"buildInfo.build.number":                            BuildNumber,
 }
 
 func ReadConfigFile(configPath string, configType ConfigType) (*viper.Viper, error) {
@@ -161,13 +167,13 @@ func ReadConfigFile(configPath string, configType ConfigType) (*viper.Viper, err
 // Returns the Artifactory details
 // Checks first for the deployer information if exists and if not, checks for the resolver information.
 func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
-	if vConfig.IsSet(DEPLOYER_PREFIX + SERVER_ID) {
-		serverId := vConfig.GetString(DEPLOYER_PREFIX + SERVER_ID)
+	if vConfig.IsSet(DeployerPrefix + ServerId) {
+		serverId := vConfig.GetString(DeployerPrefix + ServerId)
 		return config.GetSpecificConfig(serverId, true, true)
 	}
 
-	if vConfig.IsSet(RESOLVER_PREFIX + SERVER_ID) {
-		serverId := vConfig.GetString(RESOLVER_PREFIX + SERVER_ID)
+	if vConfig.IsSet(ResolverPrefix + ServerId) {
+		serverId := vConfig.GetString(ResolverPrefix + ServerId)
 		return config.GetSpecificConfig(serverId, true, true)
 	}
 	return nil, nil
@@ -178,21 +184,21 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, de
 		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
 	}
 
-	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PROPERTIES_TEMP_PATH)
+	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PropertiesTempPath)
 	err := os.MkdirAll(propertiesPath, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
-	propertiesFile, err := ioutil.TempFile(propertiesPath, PROPERTIES_TEMP_PREFIX)
+	propertiesFile, err := ioutil.TempFile(propertiesPath, PropertiesTempPrefix)
 	defer propertiesFile.Close()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	err = setServerDetailsToConfig(RESOLVER_PREFIX, config)
+	err = setServerDetailsToConfig(ResolverPrefix, config)
 	if err != nil {
 		return "", err
 	}
-	err = setServerDetailsToConfig(DEPLOYER_PREFIX, config)
+	err = setServerDetailsToConfig(DeployerPrefix, config)
 	if err != nil {
 		return "", err
 	}
@@ -252,18 +258,18 @@ func setProxyIfDefined(config *viper.Viper) error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		config.Set(PROXY+HOST, host)
-		config.Set(PROXY+PORT, port)
+		config.Set(Proxy+Host, host)
+		config.Set(Proxy+Port, port)
 	}
 	return nil
 }
 
 func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error {
-	if !vConfig.IsSet(contextPrefix + SERVER_ID) {
+	if !vConfig.IsSet(contextPrefix + ServerId) {
 		return nil
 	}
 
-	serverId := vConfig.GetString(contextPrefix + SERVER_ID)
+	serverId := vConfig.GetString(contextPrefix + ServerId)
 	artDetails, err := config.GetSpecificConfig(serverId, true, true)
 	if err != nil {
 		return err
@@ -271,7 +277,7 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 	if artDetails.GetArtifactoryUrl() == "" {
 		return errorutils.CheckError(errors.New("Server ID " + serverId + ": URL is required."))
 	}
-	vConfig.Set(contextPrefix+URL, artDetails.GetArtifactoryUrl())
+	vConfig.Set(contextPrefix+Url, artDetails.GetArtifactoryUrl())
 
 	if artDetails.GetApiKey() != "" {
 		return errorutils.CheckError(errors.New("Server ID " + serverId + ": Configuring an API key without a username is not supported."))
@@ -282,14 +288,14 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 		if err != nil {
 			return err
 		}
-		vConfig.Set(contextPrefix+USERNAME, username)
-		vConfig.Set(contextPrefix+PASSWORD, artDetails.GetAccessToken())
+		vConfig.Set(contextPrefix+Username, username)
+		vConfig.Set(contextPrefix+Password, artDetails.GetAccessToken())
 		return nil
 	}
 
 	if artDetails.GetUser() != "" && artDetails.GetPassword() != "" {
-		vConfig.Set(contextPrefix+USERNAME, artDetails.GetUser())
-		vConfig.Set(contextPrefix+PASSWORD, artDetails.GetPassword())
+		vConfig.Set(contextPrefix+Username, artDetails.GetUser())
+		vConfig.Set(contextPrefix+Password, artDetails.GetPassword())
 	}
 	return nil
 }
@@ -298,23 +304,23 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 // Maven or Gradle build.
 // Creating this file only if build name and number is provided.
 func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, config *viper.Viper) error {
-	config.Set(BUILD_NAME, buildName)
-	config.Set(BUILD_NUMBER, buildNumber)
-	config.Set(BUILD_PROJECT, projectKey)
+	config.Set(BuildName, buildName)
+	config.Set(BuildNumber, buildNumber)
+	config.Set(BuildProject, projectKey)
 
 	buildPath, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return err
 	}
 	var tempFile *os.File
-	tempFile, err = ioutil.TempFile(buildPath, GENERATED_BUILD_INFO_TEMP_PREFIX)
+	tempFile, err = ioutil.TempFile(buildPath, GeneratedBuildInfoTempPrefix)
 	defer tempFile.Close()
 	if err != nil {
 		return err
 	}
 	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
-	config.Set(GENERATED_BUILD_INFO, path)
+	config.Set(GeneratedBuildInfo, path)
 	return nil
 }
 
@@ -326,7 +332,7 @@ func createDeployableArtifactsFile(config *viper.Viper) error {
 	}
 	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
-	config.Set(DEPLOYABLE_ARTIFACTS, path)
+	config.Set(DeployableArtifacts, path)
 	return nil
 }
 func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
@@ -334,6 +340,6 @@ func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config
 	if err != nil {
 		return err
 	}
-	config.Set(BUILD_TIMESTAMP, strconv.FormatInt(buildGeneralDetails.Timestamp.UnixNano()/int64(time.Millisecond), 10))
+	config.Set(BuildTimestamp, strconv.FormatInt(buildGeneralDetails.Timestamp.UnixNano()/int64(time.Millisecond), 10))
 	return nil
 }

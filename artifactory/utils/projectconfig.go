@@ -59,6 +59,8 @@ type Repository struct {
 	IvyPattern       string `yaml:"ivyPattern,omitempty"`
 	ArtifactsPattern string `yaml:"artifactPattern,omitempty"`
 	NugetV2          bool   `yaml:"nugetV2,omitempty"`
+	IncludePatterns  string `yaml:"includePatterns,omitempty"`
+	ExcludePatterns  string `yaml:"excludePatterns,omitempty"`
 }
 
 type RepositoryConfig struct {

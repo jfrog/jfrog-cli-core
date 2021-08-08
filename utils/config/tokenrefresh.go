@@ -1,7 +1,6 @@
 package config
 
 import (
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -52,11 +51,11 @@ func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, ht
 func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err error) {
 	log.Debug("Refreshing token...")
 	// Lock config to prevent access from different processes
-	locksDirPath, err := coreutils.GetJfrogLocksDir()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
 		return "", err
 	}
-	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, ConfigLockDirName))
+	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
 	if err != nil {
 		return "", err
@@ -160,11 +159,11 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	}
 	mutex.Lock()
 	defer mutex.Unlock()
-	locksDirPath, err := coreutils.GetJfrogLocksDir()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
 		return err
 	}
-	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, ConfigLockDirName))
+	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
 	if err != nil {
 		return err

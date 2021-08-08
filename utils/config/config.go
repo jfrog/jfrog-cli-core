@@ -26,8 +26,6 @@ import (
 	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
 )
 
-const ConfigLockDirName = "config"
-
 func init() {
 	cliLog.SetDefaultLogger()
 }

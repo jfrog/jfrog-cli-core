@@ -151,10 +151,18 @@ func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) (err error
 	if err != nil {
 		return
 	}
-	configFile.Resolver.ServerId = resolverServerId
-	configFile.Resolver.Repo = c.String(ResolutionRepo)
-	configFile.Deployer.ServerId = deployerServerId
-	configFile.Deployer.Repo = c.String(DeploymentRepo)
+	resolverRepo := c.String(ResolutionRepo)
+	deployerRepo := c.String(DeploymentRepo)
+	// Resolver/deployer server-id flags are optional. if not provided the configured default server will be chosen.
+	// need to check if only deployer esolver is ok?
+	if resolverRepo != "" {
+		configFile.Resolver.ServerId = resolverServerId
+		configFile.Resolver.Repo = resolverRepo
+	}
+	if deployerRepo != "" {
+		configFile.Deployer.ServerId = deployerServerId
+		configFile.Deployer.Repo = deployerRepo
+	}
 	configFile.Interactive = isInteractive(c)
 	return
 }
@@ -168,8 +176,8 @@ func getServerId(c *cli.Context) (resolverServerId, deployerServerId string, err
 		return
 	}
 	serverDetails, err := config.GetDefaultServerConf()
-	if err != nil {
-		return "", "", err
+	if err != nil || serverDetails == nil {
+		return resolverServerId, deployerServerId, err
 	}
 	if resolverServerId == "" {
 		resolverServerId = serverDetails.ServerId
@@ -383,7 +391,7 @@ func (configFile *ConfigFile) validateConfig() error {
 		}
 	} else {
 		if resolver.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Resolver server ID must be set. use --server-id-resolve flag to set a resolver or choose a global configured default server-id with \"jfrog c use\" command. "))
+			return errorutils.CheckError(errors.New("Resolver server ID must be set. use --server-id-resolve flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "))
 		}
 	}
 	deployer := configFile.Deployer
@@ -398,7 +406,7 @@ func (configFile *ConfigFile) validateConfig() error {
 		}
 	} else {
 		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Deployer server ID must be set. use --server-id-resolve flag to set a deployer or choose a global configured default server-id with \"jfrog c use\" command. "))
+			return errorutils.CheckError(errors.New("Deployer server ID must be set. use --server-id-deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "))
 		}
 	}
 	return nil

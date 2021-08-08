@@ -139,19 +139,19 @@ func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, th
 	return artifactory.NewWithProgress(servicesConfig, progressBar)
 }
 
-func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {
+func CreateDistributionServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*distribution.DistributionServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
-	distAuth, err := artDetails.CreateDistAuthConfig()
+	distAuth, err := serviceDetails.CreateDistAuthConfig()
 	if err != nil {
 		return nil, err
 	}
 	serviceConfig, err := clientConfig.NewConfigBuilder().
 		SetServiceDetails(distAuth).
 		SetCertificatesPath(certsPath).
-		SetInsecureTls(artDetails.InsecureTls).
+		SetInsecureTls(serviceDetails.InsecureTls).
 		SetDryRun(isDryRun).
 		Build()
 	if err != nil {
@@ -160,19 +160,19 @@ func CreateDistributionServiceManager(artDetails *config.ServerDetails, isDryRun
 	return distribution.New(serviceConfig)
 }
 
-func CreateAccessServiceManager(artDetails *config.ServerDetails, isDryRun bool) (*access.AccessServicesManager, error) {
+func CreateAccessServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*access.AccessServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
 	}
-	accessAuth, err := artDetails.CreateAccessAuthConfig()
+	accessAuth, err := serviceDetails.CreateAccessAuthConfig()
 	if err != nil {
 		return nil, err
 	}
 	serviceConfig, err := clientConfig.NewConfigBuilder().
 		SetServiceDetails(accessAuth).
 		SetCertificatesPath(certsPath).
-		SetInsecureTls(artDetails.InsecureTls).
+		SetInsecureTls(serviceDetails.InsecureTls).
 		SetDryRun(isDryRun).
 		Build()
 	if err != nil {

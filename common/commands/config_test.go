@@ -94,14 +94,14 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8080/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8080/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8080/access/api", outputConfig.GetAccessUrl())
+	assert.Equal(t, "http://localhost:8080/access/", outputConfig.GetAccessUrl())
 
 	inputDetails.ArtifactoryUrl = "http://localhost:8081/artifactory"
 	inputDetails.DistributionUrl = "http://localhost:8081/distribution"
 	inputDetails.XrayUrl = "http://localhost:8081/xray"
 	inputDetails.MissionControlUrl = "http://localhost:8081/mc"
 	inputDetails.PipelinesUrl = "http://localhost:8081/pipelines"
-	inputDetails.AccessUrl = "http://localhost:8081/access/api"
+	inputDetails.AccessUrl = "http://localhost:8081/access"
 
 	outputConfig, err = configAndGetTestServer(t, &inputDetails, false, interactive)
 	assert.NoError(t, err)
@@ -112,7 +112,7 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8081/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8081/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8081/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8081/access/api", outputConfig.GetAccessUrl())
+	assert.Equal(t, "http://localhost:8081/access", outputConfig.GetAccessUrl())
 }
 
 func TestBasicAuthOnlyOption(t *testing.T) {

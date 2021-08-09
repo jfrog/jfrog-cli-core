@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -109,10 +108,4 @@ func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfigu
 
 func (na *AuditMavenCommand) CommandName() string {
 	return "xr_audit_mvn"
-}
-
-func printTable(res *services.ScanResponse) error {
-	jsonOut, err := json.Marshal(res)
-	fmt.Println(string(jsonOut))
-	return err
 }

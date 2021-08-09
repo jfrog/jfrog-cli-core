@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -40,7 +41,7 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	restoreYarnrcFunc  func() error
-	packageInfo        *commandUtils.PackageInfo
+	packageInfo        *npmutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
@@ -187,7 +188,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	yc.collectBuildInfo, yc.packageInfo, err = commandUtils.PrepareBuildInfo(yc.workingDirectory, yc.buildConfiguration)
+	yc.collectBuildInfo, yc.packageInfo, err = commandUtils.PrepareBuildInfo(yc.workingDirectory, yc.buildConfiguration, nil)
 	if err != nil {
 		return err
 	}

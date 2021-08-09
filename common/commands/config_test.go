@@ -47,9 +47,8 @@ func TestApiKey(t *testing.T) {
 
 func TestArtifactorySshKey(t *testing.T) {
 	inputDetails := createTestServerDetails()
-	inputDetails.User = "admin"
-	inputDetails.Password = "password"
 	inputDetails.SshKeyPath = "/tmp/sshKey"
+	inputDetails.SshPassphrase = "123456"
 	inputDetails.ArtifactoryUrl = "ssh://localhost:1339/"
 
 	configAndTest(t, inputDetails, false)

@@ -1,10 +1,11 @@
-package utils
+package npm
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -16,21 +17,24 @@ type PackageInfo struct {
 	Scope   string
 }
 
-func ReadPackageInfoFromPackageJson(packageJsonDirectory string) (*PackageInfo, error) {
+func ReadPackageInfoFromPackageJson(packageJsonDirectory string, npmVersion *version.Version) (*PackageInfo, error) {
 	log.Debug("Reading info from package.json file:", filepath.Join(packageJsonDirectory, "package.json"))
 	packageJson, err := ioutil.ReadFile(filepath.Join(packageJsonDirectory, "package.json"))
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	return ReadPackageInfo(packageJson)
+	return ReadPackageInfo(packageJson, npmVersion)
 }
 
-func ReadPackageInfo(data []byte) (*PackageInfo, error) {
+func ReadPackageInfo(data []byte, npmVersion *version.Version) (*PackageInfo, error) {
 	parsedResult := new(PackageInfo)
 	if err := json.Unmarshal(data, parsedResult); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	removeVersionPrefixes(parsedResult)
+	// If npm older than v7, remove prefixes.
+	if npmVersion == nil || npmVersion.Compare("7.0.0") > 0 {
+		removeVersionPrefixes(parsedResult)
+	}
 	splitScopeFromName(parsedResult)
 	return parsedResult, nil
 }

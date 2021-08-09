@@ -75,7 +75,7 @@ func (gc *GradleCommand) Run() error {
 		return err
 	}
 	if gc.IsDetailedSummary() {
-		return gc.unmarshalDeployableArtifacts(gradleRunConfig.env[utils.DEPLOYABLE_ARTIFACTS])
+		return gc.unmarshalDeployableArtifacts(gradleRunConfig.env[utils.DeployableArtifacts])
 	}
 	return nil
 }
@@ -169,7 +169,7 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 	}
 
 	if threads > 0 {
-		vConfig.Set(utils.FORK_COUNT, threads)
+		vConfig.Set(utils.ForkCount, threads)
 	}
 
 	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, detailedSummary, vConfig, utils.Gradle)
@@ -178,7 +178,7 @@ func createGradleRunConfig(tasks, configPath string, configuration *utils.BuildC
 	}
 	if detailedSummary {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
-		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
+		runConfig.env[utils.DeployableArtifacts] = vConfig.Get(utils.DeployableArtifacts).(string)
 	}
 
 	if !vConfig.GetBool(usePlugin) {

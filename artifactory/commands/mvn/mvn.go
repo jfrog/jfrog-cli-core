@@ -215,18 +215,18 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 	}
 
 	if len(mc.configuration.BuildName) > 0 && len(mc.configuration.BuildNumber) > 0 {
-		vConfig.Set(utils.BUILD_NAME, mc.configuration.BuildName)
-		vConfig.Set(utils.BUILD_NUMBER, mc.configuration.BuildNumber)
-		vConfig.Set(utils.BUILD_PROJECT, mc.configuration.Project)
+		vConfig.Set(utils.BuildName, mc.configuration.BuildName)
+		vConfig.Set(utils.BuildNumber, mc.configuration.BuildNumber)
+		vConfig.Set(utils.BuildProject, mc.configuration.Project)
 		err = utils.SaveBuildGeneralDetails(mc.configuration.BuildName, mc.configuration.BuildNumber, mc.configuration.Project)
 		if err != nil {
 			return nil, err
 		}
 	}
-	vConfig.Set(utils.INSECURE_TLS, mc.insecureTls)
+	vConfig.Set(utils.InsecureTls, mc.insecureTls)
 
 	if mc.threads > 0 {
-		vConfig.Set(utils.FORK_COUNT, mc.threads)
+		vConfig.Set(utils.ForkCount, mc.threads)
 	}
 
 	if !vConfig.IsSet("deployer") {
@@ -248,9 +248,9 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		goals:                        mc.goals,
 		buildInfoProperties:          buildInfoProperties,
 		artifactoryResolutionEnabled: vConfig.IsSet("resolver"),
-		generatedBuildInfoPath:       vConfig.GetString(utils.GENERATED_BUILD_INFO),
+		generatedBuildInfoPath:       vConfig.GetString(utils.GeneratedBuildInfo),
 		mavenOpts:                    mavenOpts,
-		deployableArtifactsFilePath:  vConfig.GetString(utils.DEPLOYABLE_ARTIFACTS),
+		deployableArtifactsFilePath:  vConfig.GetString(utils.DeployableArtifacts),
 	}, nil
 }
 
@@ -268,10 +268,10 @@ func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.DEPLOY_ARTIFACTS, "false")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.URL, "http://empty_url")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.RELEASE_REPO, "empty_repo")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.SNAPSHOT_REPO, "empty_repo")
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
+	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
 }
 
 func (config *mvnRunConfig) GetCmd() *exec.Cmd {

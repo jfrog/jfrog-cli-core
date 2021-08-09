@@ -5,11 +5,13 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -25,16 +27,20 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// The --pack-destination argument of npm pack was introduced in npm version 7.18.0.
+const packDestinationNpmMinVersion = "7.18.0"
+
 type NpmPublishCommandArgs struct {
 	NpmCommand
 	executablePath         string
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *commandsutils.PackageInfo
+	packageInfo            *npmutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
+	packDestination        string
 }
 
 type NpmPublishCommand struct {
@@ -42,6 +48,7 @@ type NpmPublishCommand struct {
 	commandName     string
 	result          *commandsutils.Result
 	detailedSummary bool
+	npmVersion      *version.Version
 	*NpmPublishCommandArgs
 }
 
@@ -81,6 +88,11 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 }
 
 func (npc *NpmPublishCommand) Run() error {
+	var err error
+	npc.npmVersion, npc.executablePath, err = npmutils.GetNpmVersionAndExecPath()
+	if err != nil {
+		return err
+	}
 	_, detailedSummary, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil {
 		return err
@@ -150,18 +162,6 @@ func (npc *NpmPublishCommand) CommandName() string {
 }
 
 func (npc *NpmPublishCommand) preparePrerequisites() error {
-	log.Debug("Preparing prerequisites.")
-	npmExecPath, err := exec.LookPath("npm")
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	if npmExecPath == "" {
-		return errorutils.CheckError(errors.New("Could not find 'npm' executable"))
-	}
-
-	npc.executablePath = npmExecPath
-	log.Debug("Using npm executable:", npc.executablePath)
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -198,9 +198,27 @@ func (npc *NpmPublishCommand) pack() error {
 		return err
 	}
 
-	npc.packedFilePath = filepath.Join(npc.workingDirectory, packageFileName)
+	tarballDir, err := npc.getTarballDir()
+	if err != nil {
+		return err
+	}
+
+	npc.packedFilePath = filepath.Join(tarballDir, packageFileName)
 	log.Debug("Created npm package at", npc.packedFilePath)
 	return nil
+}
+
+func (npc *NpmPublishCommand) getTarballDir() (string, error) {
+	if npc.npmVersion == nil || npc.npmVersion.Compare(packDestinationNpmMinVersion) > 0 {
+		return npc.workingDirectory, nil
+	}
+
+	// Extract pack destination argument from the args.
+	flagIndex, _, dest, err := coreutils.FindFlag("--pack-destination", npc.NpmPublishCommandArgs.npmArgs)
+	if err != nil || flagIndex == -1 {
+		return npc.workingDirectory, err
+	}
+	return dest, nil
 }
 
 func (npc *NpmPublishCommand) deploy() error {
@@ -304,7 +322,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = commandsutils.ReadPackageInfoFromPackageJson(npc.publishPath)
+		npc.packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -341,7 +359,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = commandsutils.ReadPackageInfo(packageJson)
+			npc.packageInfo, err = npmutils.ReadPackageInfo(packageJson, npc.npmVersion)
 			return err
 		}
 	}

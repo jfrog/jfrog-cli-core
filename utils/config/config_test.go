@@ -78,10 +78,8 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 		}
 	`
 
-	tempDirPath, oldHomeDir := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
-	configtests.CopyResources(t, configtests.CertsConversionResources, tempDirPath)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
 
 	content, err := convertIfNeeded([]byte(configV0))
 	assert.NoError(t, err)
@@ -117,10 +115,8 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 		}
 	`
 
-	tempDirPath, oldHomeDir := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
-	configtests.CopyResources(t, configtests.CertsConversionResources, tempDirPath)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
 
 	content, err := convertIfNeeded([]byte(config))
 	assert.NoError(t, err)
@@ -173,10 +169,8 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 
 func TestConfigEncryption(t *testing.T) {
 	// Config
-	tempDirPath, oldHomeDir := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
-	defer os.Setenv(coreutils.HomeDir, oldHomeDir)
-	configtests.CopyResources(t, configtests.EncryptionResources, tempDirPath)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, true)
+	defer cleanUpTempEnv()
 
 	// Original decrypted config, read directly from file
 	originalConfig := readConfFromFile(t)
@@ -208,15 +202,6 @@ func readConfFromFile(t *testing.T) *ConfigV5 {
 	assert.NoError(t, err)
 	assert.NoError(t, json.Unmarshal(content, &config))
 	return config
-}
-
-// Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory
-func createTempEnv(t *testing.T) (newHomeDir, oldHomeDir string) {
-	tmpDir, err := ioutil.TempDir("", "config_test")
-	assert.NoError(t, err)
-	oldHome := os.Getenv(coreutils.HomeDir)
-	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
-	return tmpDir, oldHome
 }
 
 func TestGetArtifactoriesFromConfig(t *testing.T) {

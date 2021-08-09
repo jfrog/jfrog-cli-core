@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
@@ -117,14 +118,14 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
-func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration) (collectBuildInfo bool, packageInfo *coreutils.PackageInfo, err error) {
+func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration, npmVersion *version.Version) (collectBuildInfo bool, packageInfo *npmutils.PackageInfo, err error) {
 	if len(buildConfiguration.BuildName) > 0 && len(buildConfiguration.BuildNumber) > 0 {
 		collectBuildInfo = true
 		if err = utils.SaveBuildGeneralDetails(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project); err != nil {
 			return false, nil, err
 		}
 
-		if packageInfo, err = coreutils.ReadPackageInfoFromPackageJson(workingDirectory); err != nil {
+		if packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(workingDirectory, npmVersion); err != nil {
 			return false, nil, err
 		}
 	}

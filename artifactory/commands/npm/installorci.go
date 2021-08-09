@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,7 +26,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 const npmrcFileName = ".npmrc"
@@ -45,7 +45,8 @@ type NpmCommandArgs struct {
 	dependencies     map[string]*npmutils.Dependency
 	typeRestriction  npmutils.TypeRestriction
 	authArtDetails   auth.ServiceDetails
-	packageInfo      *coreutils.PackageInfo
+	packageInfo      *npmutils.PackageInfo
+	npmVersion       *version.Version
 	NpmCommand
 }
 
@@ -114,7 +115,7 @@ func (nca *NpmCommandArgs) SetTypeRestriction(typeRestriction npmutils.TypeRestr
 	return nca
 }
 
-func (nca *NpmCommandArgs) SetPackageInfo(packageInfo *coreutils.PackageInfo) *NpmCommandArgs {
+func (nca *NpmCommandArgs) SetPackageInfo(packageInfo *npmutils.PackageInfo) *NpmCommandArgs {
 	nca.packageInfo = packageInfo
 	return nca
 }
@@ -196,7 +197,7 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 
-	nca.collectBuildInfo, nca.packageInfo, err = commandUtils.PrepareBuildInfo(nca.workingDirectory, nca.buildConfiguration)
+	nca.collectBuildInfo, nca.packageInfo, err = commandUtils.PrepareBuildInfo(nca.workingDirectory, nca.buildConfiguration, nca.npmVersion)
 	if err != nil {
 		return err
 	}
@@ -304,15 +305,15 @@ func (nca *NpmCommandArgs) saveDependenciesData() error {
 }
 
 func (nca *NpmCommandArgs) validateNpmVersion() error {
-	npmVersion, err := npm.Version(nca.executablePath)
+	npmVersion, err := npmutils.Version(nca.executablePath)
 	if err != nil {
 		return err
 	}
-	rtVersion := version.NewVersion(string(npmVersion))
-	if rtVersion.Compare(minSupportedNpmVersion) > 0 {
+	if npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(
 			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher", nca.command)))
 	}
+	nca.npmVersion = npmVersion
 	return nil
 }
 

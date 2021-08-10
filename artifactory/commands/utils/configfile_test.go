@@ -306,8 +306,9 @@ func TestValidateConfigResolver(t *testing.T) {
 
 	// Check scenarios of serverId and repo
 	configFile.Resolver.ServerId = "serverId"
+	configFile.Resolver.UseDefaultServer = false
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution repository/ies must be set.")
+	assert.EqualError(t, err, "Resolution repository/ies must be set. ")
 	configFile.Resolver.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
@@ -319,7 +320,7 @@ func TestValidateConfigResolver(t *testing.T) {
 	configFile.Resolver.ServerId = "serverId"
 	configFile.Resolver.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution snapshot and release repositories must be set.")
+	assert.EqualError(t, err, "Resolution snapshot and release repositories must be set. ")
 	configFile.Resolver.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
@@ -339,8 +340,9 @@ func TestValidateConfigDeployer(t *testing.T) {
 
 	// Check scenarios of serverId and repo
 	configFile.Deployer.ServerId = "serverId"
+	configFile.Deployer.UseDefaultServer = false
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment repository/ies must be set.")
+	assert.EqualError(t, err, "Deployment repository/ies must be set. ")
 	configFile.Deployer.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
@@ -352,7 +354,7 @@ func TestValidateConfigDeployer(t *testing.T) {
 	configFile.Deployer.ServerId = "serverId"
 	configFile.Deployer.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment snapshot and release repositories must be set.")
+	assert.EqualError(t, err, "Deployment snapshot and release repositories must be set. ")
 	configFile.Deployer.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)

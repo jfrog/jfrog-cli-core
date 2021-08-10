@@ -2,8 +2,6 @@ package utils
 
 import (
 	"flag"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +9,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
@@ -40,10 +39,10 @@ func TestGoConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -78,10 +77,10 @@ func TestPipConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -116,10 +115,10 @@ func TestNpmConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -153,10 +152,10 @@ func TestNugetConfigFile(t *testing.T) {
 	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -196,10 +195,10 @@ func TestMavenConfigFile(t *testing.T) {
 	assert.Equal(t, "excluding;*pattern", config.GetString("deployer.excludePatterns"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -244,10 +243,10 @@ func TestGradleConfigFile(t *testing.T) {
 	assert.Equal(t, true, config.GetBool("useWrapper"))
 }
 
-// In case resolver/deployer server-id flags are not provided - the default configured global server will be written to config file.
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := ConfigTestServer(t)
+	err, cleanUp := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -408,49 +407,4 @@ func checkCommonAndGetConfiguration(t *testing.T, projectType string, tempDirPat
 	assert.Equal(t, buildConfVersion, config.GetInt("version"))
 	assert.Equal(t, projectType, config.GetString("type"))
 	return config
-}
-
-// Temporary for testing.
-
-func ConfigTestServer(t *testing.T) (err error, cleanUp func()) {
-	cleanUp = createTempEnvfunc(t, false)
-	serverDetails := createTestServerDetails()
-	err = config.SaveServersConf([]*config.ServerDetails{serverDetails})
-	return
-}
-
-func createTempEnvfunc(t *testing.T, copyEncryptionKey bool) (cleanUp func()) {
-	tmpDir, err := ioutil.TempDir("", "config_test")
-	assert.NoError(t, err)
-	oldHome := os.Getenv(coreutils.HomeDir)
-	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
-	copyResources(t, certsConversionResources, tmpDir)
-	if copyEncryptionKey {
-		copyResources(t, encryptionResources, tmpDir)
-	}
-	return func() {
-		os.RemoveAll(tmpDir)
-		os.Setenv(coreutils.HomeDir, oldHome)
-	}
-}
-
-func copyResources(t *testing.T, sourcePath string, destPath string) {
-	assert.NoError(t, fileutils.CopyDir(sourcePath, destPath, true, nil))
-}
-
-const certsConversionResources = "testdata/config/configconversion"
-const encryptionResources = "testdata/config/encryption"
-
-func createTestServerDetails() *config.ServerDetails {
-	return &config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/mc",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		ServerId:          "test",
-		IsDefault:         true,
-		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-	}
 }

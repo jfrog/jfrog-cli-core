@@ -160,13 +160,13 @@ func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) error {
 	return nil
 }
 
-// For package managers' config commands flags resolver/deployer server-id are optional.
-// In case no server-id was provided the default configured server id will be used.
+// For config commands - resolver/deployer server-id flags are optional.
+// In case no server-id was provided we use the default configured server id.
 func (configFile *ConfigFile) populateServersIds(c *cli.Context) error {
 	// Read server-id from context
 	resolverServerId := c.String(resolutionServerId)
 	deployerServerId := c.String(deploymentServerId)
-	// If one of the server-ids is not provided it will be read from global configuration.
+	// If one of the server-ids was not provided - it will be read from the global configuration.
 	if !(resolverServerId != "" && deployerServerId != "") {
 		defaultServerDetails, err := config.GetDefaultServerConf()
 		if err != nil {
@@ -436,7 +436,7 @@ func validateRepositoryConfig(repository utils.Repository, resolver bool) error 
 				return errorutils.CheckError(errors.New("Deployment repository/ies must be set. "))
 			}
 		}
-		// Release/snapshot repositories should be set or not both together.
+		// Release/snapshot repositories should be entangled to each other.
 		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
 			if resolver {
 				return errorutils.CheckError(errors.New("Resolution snapshot and release repositories must be set. "))

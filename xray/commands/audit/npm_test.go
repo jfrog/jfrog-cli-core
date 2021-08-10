@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -20,7 +19,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	packageInfo := &coreutils.PackageInfo{Name: "root", Version: "0.0.0"}
+	packageInfo := &npmutils.PackageInfo{Name: "root", Version: "0.0.0"}
 	expectedTree := &services.GraphNode{
 		Id: "npm://root:0.0.0",
 		Nodes: []*services.GraphNode{

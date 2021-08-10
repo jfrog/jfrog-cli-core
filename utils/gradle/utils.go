@@ -79,7 +79,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 
 	if threads > 0 {
-		vConfig.Set(utils.FORK_COUNT, threads)
+		vConfig.Set(utils.ForkCount, threads)
 	}
 
 	if disableDeploy {
@@ -92,7 +92,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 	if deployableArtifactsFile != "" {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
-		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
+		runConfig.env[utils.DeployableArtifacts] = vConfig.Get(utils.DeployableArtifacts).(string)
 	}
 
 	if !vConfig.GetBool(usePlugin) {
@@ -106,9 +106,9 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.DEPLOY_ARTIFACTS, "false")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.URL, "http://empty_url")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.REPO, "empty_repo")
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
 }
 
 func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, error) {

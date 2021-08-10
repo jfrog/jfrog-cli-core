@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
 	"os"
@@ -362,7 +363,7 @@ func createHomeDirBackup() error {
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
-	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLockDirName, coreutils.JfrogLogsDirName}
+	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
 	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
@@ -505,10 +506,11 @@ type ServerDetails struct {
 	XrayUrl              string `json:"xrayUrl,omitempty"`
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
+	AccessUrl            string `json:"accessUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
-	SshPassphrase        string `json:"SshPassphrase,omitempty"`
+	SshPassphrase        string `json:"sshPassphrase,omitempty"`
 	AccessToken          string `json:"accessToken,omitempty"`
 	RefreshToken         string `json:"refreshToken,omitempty"`
 	TokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
@@ -545,6 +547,10 @@ func (serverDetails *ServerDetails) SetRefreshToken(refreshToken string) {
 	serverDetails.RefreshToken = refreshToken
 }
 
+func (serverDetails *ServerDetails) SetSshPassphrase(sshPassphrase string) {
+	serverDetails.SshPassphrase = sshPassphrase
+}
+
 func (serverDetails *ServerDetails) SetClientCertPath(certificatePath string) {
 	serverDetails.ClientCertPath = certificatePath
 }
@@ -575,6 +581,10 @@ func (serverDetails *ServerDetails) GetMissionControlUrl() string {
 
 func (serverDetails *ServerDetails) GetPipelinesUrl() string {
 	return serverDetails.PipelinesUrl
+}
+
+func (serverDetails *ServerDetails) GetAccessUrl() string {
+	return serverDetails.AccessUrl
 }
 
 func (serverDetails *ServerDetails) GetUser() string {
@@ -622,6 +632,12 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDetails, error) {
 	pAuth := pipelinesAuth.NewPipelinesDetails()
 	pAuth.SetUrl(serverDetails.PipelinesUrl)
+	return serverDetails.createAuthConfig(pAuth)
+}
+
+func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetails, error) {
+	pAuth := accessAuth.NewAccessDetails()
+	pAuth.SetUrl(serverDetails.AccessUrl)
 	return serverDetails.createAuthConfig(pAuth)
 }
 

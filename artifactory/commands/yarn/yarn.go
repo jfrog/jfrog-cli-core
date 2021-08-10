@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +43,7 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	yarnrcFileMode     os.FileMode
-	packageInfo        *coreutils.PackageInfo
+	packageInfo        *npmutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
@@ -188,7 +189,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	yc.collectBuildInfo, yc.packageInfo, err = commandUtils.PrepareBuildInfo(yc.workingDirectory, yc.buildConfiguration)
+	yc.collectBuildInfo, yc.packageInfo, err = commandUtils.PrepareBuildInfo(yc.workingDirectory, yc.buildConfiguration, nil)
 	if err != nil {
 		return err
 	}

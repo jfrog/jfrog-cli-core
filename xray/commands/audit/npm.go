@@ -2,7 +2,6 @@ package audit
 
 import (
 	"fmt"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
@@ -87,12 +86,11 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-
-	packageInfo, err := coreutils.ReadPackageInfoFromPackageJson(currentDir)
+	npmVersion, npmExecutablePath, err := npmutils.GetNpmVersionAndExecPath()
 	if err != nil {
 		return err
 	}
-	npmExecutablePath, err := npmutils.FindNpmExecutable()
+	packageInfo, err := npmutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
 	if err != nil {
 		return err
 	}
@@ -144,7 +142,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 }
 
 // Parse the dependencies into an Xray dependency tree format
-func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *coreutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *npmutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for dependencyId, dependency := range dependencies {
 		dependencyId = npmPackageTypeIdentifier + dependencyId

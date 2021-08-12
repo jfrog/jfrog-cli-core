@@ -1,6 +1,7 @@
 package mvnutils
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -51,7 +52,31 @@ func validateMavenInstallation() error {
 	log.Debug("Checking prerequisites.")
 	mavenHome := os.Getenv(MavenHome)
 	if mavenHome == "" {
-		return errorutils.CheckError(errors.New(MavenHome + " environment variable is not set"))
+		// The M2_HOME environment variable is not defined.
+		// Since Maven installation can be located in different locations,
+		// depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+		// we need to grab the location using the mvn --version command
+		log.Debug(MavenHome, " is not defined. Retrieving Maven home using mvn --version.")
+		cmd := exec.Command("mvn", "--version")
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		err := errorutils.CheckError(cmd.Run())
+		if err != nil {
+			return err
+		}
+		output := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+		// Finding the relevant "Maven home" line in command response.
+		for _, line := range output {
+			if strings.HasPrefix(line, "Maven home:") {
+				mavenHome = strings.Split(line, " ")[2]
+				break
+			}
+		}
+		log.Debug("Maven home location: ", mavenHome)
+		err = os.Setenv(MavenHome, mavenHome)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

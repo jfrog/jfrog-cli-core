@@ -255,11 +255,7 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 }
 
 func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	serverDetails, err := mc.ServerDetails()
-	if err != nil {
-		return err
-	}
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, serverDetails.ArtifactoryUrl)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, mc.configPath)
 	if err != nil {
 		return err
 	}

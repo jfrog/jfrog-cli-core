@@ -25,7 +25,7 @@ import (
 
 const (
 	indexerFileName     = "indexer-app"
-	GraphScanMinVersion = "3.29.0"
+	GraphScanMinVersion = "3.0.0"
 	indexerDirName      = "xray-indexer"
 	tempIndexerDirName  = "temp"
 )
@@ -122,7 +122,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	if newDirExists {
 		err = os.RemoveAll(tempDirPath)
 	} else {
-		err = fileutils.MoveFile(tempDirPath, newDirPath)
+		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}
 
 	return filepath.Join(newDirPath, indexerFileName), errorutils.CheckError(err)

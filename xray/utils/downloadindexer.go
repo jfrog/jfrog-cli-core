@@ -25,7 +25,7 @@ import (
 
 const (
 	indexerFileName     = "indexer-app"
-	GraphScanMinVersion = "3.0.0"
+	GraphScanMinVersion = "3.29.0"
 	indexerDirName      = "xray-indexer"
 	tempIndexerDirName  = "temp"
 )

@@ -1,5 +1,7 @@
 package cisetup
 
+import "strings"
+
 const ConfigServerId = "ci-setup-cmd"
 
 type CiSetupData struct {
@@ -19,13 +21,20 @@ type CiSetupData struct {
 }
 
 type TechnologyInfo struct {
-	Type        Technology
-	VirtualRepo string
-	BuildCmd    string
+	Type               Technology
+	VirtualRepo        string
+	LocalSnapshotsRepo string
+	LocalReleasesRepo  string
+	BuildCmd           string
 }
 
 func (sd *CiSetupData) GetRepoFullName() string {
 	return sd.ProjectDomain + "/" + sd.RepositoryName
+}
+
+func (sd *CiSetupData) GetBuildCmdForNativeStep() string {
+	// Remove exec name.
+	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), execNames[sd.BuiltTechnology.Type]+" ")
 }
 
 type VcsServerDetails struct {

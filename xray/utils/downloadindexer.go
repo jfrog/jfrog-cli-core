@@ -122,7 +122,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	if newDirExists {
 		err = os.RemoveAll(tempDirPath)
 	} else {
-		err = fileutils.MoveFile(tempDirPath, newDirPath)
+		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}
 
 	return filepath.Join(newDirPath, indexerFileName), errorutils.CheckError(err)

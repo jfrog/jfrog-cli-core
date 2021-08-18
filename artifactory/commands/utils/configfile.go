@@ -47,6 +47,13 @@ const (
 
 	// Nuget flags
 	nugetV2 = "nuget-v2"
+
+	// Errors
+	resolutionErrorPrefix      = "[Resolution]: "
+	deploymentErrorPrefix      = "[Deployment]: "
+	setServerIdError           = "server ID must be set. Use the --server-id-resolve/deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "
+	setRepositoryError         = "repository/ies must be set. "
+	setSnapshotAndReleaseError = "snapshot and release repositories must be set. "
 )
 
 type ConfigFile struct {
@@ -59,15 +66,12 @@ type ConfigFile struct {
 	UseWrapper  bool             `yaml:"useWrapper,omitempty"`
 }
 
-func NewConfigFile(confType utils.ProjectType, c *cli.Context) (*ConfigFile, error) {
+func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 	configFile := &ConfigFile{
 		Version:    buildConfVersion,
 		ConfigType: confType.String(),
 	}
-	err := configFile.populateConfigFromFlags(c)
-	if err != nil {
-		return nil, err
-	}
+	configFile.populateConfigFromFlags(c)
 	switch confType {
 	case utils.Maven:
 		configFile.populateMavenConfigFromFlags(c)
@@ -76,7 +80,7 @@ func NewConfigFile(confType utils.ProjectType, c *cli.Context) (*ConfigFile, err
 	case utils.Nuget, utils.Dotnet:
 		configFile.populateNugetConfigFromFlags(c)
 	}
-	return configFile, nil
+	return configFile
 }
 
 func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
@@ -89,10 +93,7 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 		return err
 	}
 	configFilePath := filepath.Join(projectDir, confType.String()+".yaml")
-	configFile, err := NewConfigFile(confType, c)
-	if err != nil {
-		return err
-	}
+	configFile := NewConfigFile(confType, c)
 	if err := configFile.VerifyConfigFile(configFilePath); err != nil {
 		return err
 	}
@@ -150,46 +151,12 @@ func isAnyFlagSet(c *cli.Context, flagNames ...string) bool {
 }
 
 // Populate configuration from cli flags
-func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) error {
-	if err := configFile.populateServersIds(c); err != nil {
-		return err
-	}
+func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) {
+	configFile.Resolver.ServerId = c.String(resolutionServerId)
 	configFile.Resolver.Repo = c.String(resolutionRepo)
+	configFile.Deployer.ServerId = c.String(deploymentServerId)
 	configFile.Deployer.Repo = c.String(deploymentRepo)
 	configFile.Interactive = isInteractive(c)
-	return nil
-}
-
-// For config commands - resolver/deployer server-id flags are optional.
-// In case no server-id was provided we use the default configured server id.
-func (configFile *ConfigFile) populateServersIds(c *cli.Context) error {
-	// Read server-id from context
-	resolverServerId := c.String(resolutionServerId)
-	deployerServerId := c.String(deploymentServerId)
-	// If one of the server-ids was not provided - it will be read from the global configuration.
-	if !(resolverServerId != "" && deployerServerId != "") {
-		defaultServerDetails, err := config.GetDefaultServerConf()
-		if err != nil {
-			return err
-		}
-		defaultServerId := ""
-		if defaultServerDetails != nil {
-			defaultServerId = defaultServerDetails.ServerId
-		}
-		// If no resolver provided
-		if resolverServerId == "" {
-			resolverServerId = defaultServerId
-			configFile.Resolver.UseDefaultServer = true
-		}
-		// If no deployer provided
-		if deployerServerId == "" {
-			deployerServerId = defaultServerId
-			configFile.Deployer.UseDefaultServer = true
-		}
-	}
-	configFile.Resolver.ServerId = resolverServerId
-	configFile.Deployer.ServerId = deployerServerId
-	return nil
 }
 
 // Populate Maven related configuration from cli flags
@@ -415,45 +382,53 @@ func (configFile *ConfigFile) setUseNugetV2() {
 	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
-func validateRepositoryConfig(repository utils.Repository, resolver bool) error {
+func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
 	releaseRepo := repository.ReleaseRepo
 	snapshotRepo := repository.SnapshotRepo
-	// Check if no server-id flag was set / no default global server was configured.
+	// For config commands - resolver/deployer server-id flags are optional.
+	// In case no server-id flag was provided we use the default configured server id.
+	defaultServerDetails, err := config.GetDefaultServerConf()
+	if err != nil {
+		return err
+	}
+	defaultServerId := ""
+	if defaultServerDetails != nil {
+		defaultServerId = defaultServerDetails.ServerId
+	}
+	// Server-id flag was not provided.
 	if repository.ServerId == "" {
-		if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			if resolver {
-				return errorutils.CheckError(errors.New("Resolver server ID must be set. use --server-id-resolve flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "))
+		// No default server was config.
+		if defaultServerId == "" {
+			// Repositories flags were provided.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				return errorutils.CheckError(errors.New(errorPrefix + setServerIdError))
 			}
-			return errorutils.CheckError(errors.New("Deployer server ID must be set. use --server-id-deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "))
+		} else {
+			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				repository.ServerId = defaultServerId
+			}
 		}
 	} else {
-		// If server-id flag was set - repositories flags should also be set.
-		if !repository.UseDefaultServer {
-			if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-				if resolver {
-					return errorutils.CheckError(errors.New("Resolution repository/ies must be set. "))
-				}
-				return errorutils.CheckError(errors.New("Deployment repository/ies must be set. "))
-			}
+		// Server-id flag was provided, but no repositories flags.
+		if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
+			return errorutils.CheckError(errors.New(errorPrefix + setRepositoryError))
 		}
-		// Release/snapshot repositories should be entangled to each other.
-		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-			if resolver {
-				return errorutils.CheckError(errors.New("Resolution snapshot and release repositories must be set. "))
-			}
-			return errorutils.CheckError(errors.New("Deployment snapshot and release repositories must be set. "))
-		}
+	}
+	// Release/snapshot repositories should be entangled to each other.
+	if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
+		return errorutils.CheckError(errors.New(errorPrefix + setSnapshotAndReleaseError))
 	}
 	return nil
 }
 
-// Check correctness of spec file configuration
+// Validate spec file configuration
 func (configFile *ConfigFile) validateConfig() error {
-	err := validateRepositoryConfig(configFile.Resolver, true)
+	err := validateRepositoryConfig(&configFile.Resolver, resolutionErrorPrefix)
 	if err != nil {
 		return err
 	}
-	return validateRepositoryConfig(configFile.Deployer, false)
+	return validateRepositoryConfig(&configFile.Deployer, deploymentErrorPrefix)
 }
 
 // Get Artifactory serverId from the user. If useArtifactoryQuestion is not empty, ask first whether to use artifactory.

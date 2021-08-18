@@ -298,68 +298,64 @@ func TestValidateConfigResolver(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
-	configFile, err := NewConfigFile(utils.Go, createContext())
-	assert.NoError(t, err)
-	err = configFile.validateConfig()
+	configFile := NewConfigFile(utils.Go, createContext())
+	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
 	// Check scenarios of serverId and repo
 	configFile.Resolver.ServerId = "serverId"
-	configFile.Resolver.UseDefaultServer = false
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution repository/ies must be set. ")
+	assert.EqualError(t, err, resolutionErrorPrefix+setRepositoryError)
 	configFile.Resolver.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Resolver.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolver server ID must be set. use --server-id-resolve flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. ")
+	assert.EqualError(t, err, resolutionErrorPrefix+setServerIdError)
 
 	// Check scenarios of serverId and release/snapshot repositories
 	configFile.Resolver.ServerId = "serverId"
 	configFile.Resolver.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution snapshot and release repositories must be set. ")
+	assert.EqualError(t, err, resolutionErrorPrefix+setSnapshotAndReleaseError)
 	configFile.Resolver.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Resolver.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolver server ID must be set. use --server-id-resolve flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. ")
+	assert.EqualError(t, err, resolutionErrorPrefix+setServerIdError)
 }
 
 func TestValidateConfigDeployer(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
 	defer os.RemoveAll(tempDirPath)
-	configFile, err := NewConfigFile(utils.Go, createContext())
-	assert.NoError(t, err)
-	err = configFile.validateConfig()
+	configFile := NewConfigFile(utils.Go, createContext())
+	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
 	// Check scenarios of serverId and repo
 	configFile.Deployer.ServerId = "serverId"
-	configFile.Deployer.UseDefaultServer = false
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment repository/ies must be set. ")
+	assert.EqualError(t, err, deploymentErrorPrefix+setRepositoryError)
 	configFile.Deployer.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Deployer.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployer server ID must be set. use --server-id-deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. ")
+	assert.EqualError(t, err, deploymentErrorPrefix+setServerIdError)
 
 	// Check scenarios of serverId and release/snapshot repositories
 	configFile.Deployer.ServerId = "serverId"
 	configFile.Deployer.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment snapshot and release repositories must be set. ")
+	assert.EqualError(t, err, deploymentErrorPrefix+setSnapshotAndReleaseError)
 	configFile.Deployer.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Deployer.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployer server ID must be set. use --server-id-deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. ")
+	assert.EqualError(t, err, deploymentErrorPrefix+setServerIdError)
 }
 
 // Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory

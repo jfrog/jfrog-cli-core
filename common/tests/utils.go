@@ -22,7 +22,7 @@ func CreateTestServerDetails() *config.ServerDetails {
 		MissionControlUrl: "http://localhost:8080/mc/",
 		PipelinesUrl:      "http://localhost:8080/pipelines/",
 		ServerId:          "test",
-		IsDefault:         false,
+		IsDefault:         true,
 		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
 	}
 }

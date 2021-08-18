@@ -52,7 +52,6 @@ func (projectType ProjectType) String() string {
 type Repository struct {
 	Repo             string `yaml:"repo,omitempty"`
 	ServerId         string `yaml:"serverId,omitempty"`
-	UseDefaultServer bool
 	SnapshotRepo     string `yaml:"snapshotRepo,omitempty"`
 	ReleaseRepo      string `yaml:"releaseRepo,omitempty"`
 	DeployMavenDesc  bool   `yaml:"deployMavenDescriptors,omitempty"`

@@ -3,9 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,6 +10,10 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -30,6 +31,8 @@ const (
 	tempIndexerDirName  = "temp"
 )
 
+var indexerExtension = ""
+
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {
 	xrayVersionStr, err := xrayManager.GetVersion()
 	if err != nil {
@@ -46,7 +49,8 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 		return "", err
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
-	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerFileName)
+	indexerExtension = getIndexerExtension(runtime.GOOS)
+	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerFileName+indexerExtension)
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
@@ -90,7 +94,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	downloadFileDetails := &httpclient.DownloadFileDetails{
 		DownloadPath:  url,
 		LocalPath:     tempDirPath,
-		LocalFileName: indexerFileName,
+		LocalFileName: indexerFileName + indexerExtension,
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
@@ -104,7 +108,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	}
 
 	// Add execution permissions to the indexer
-	indexerPath := filepath.Join(tempDirPath, indexerFileName)
+	indexerPath := filepath.Join(tempDirPath, indexerFileName+indexerExtension)
 	err = os.Chmod(indexerPath, 0777)
 
 	indexerVersion, err := getIndexerVersion(indexerPath)
@@ -125,7 +129,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}
 
-	return filepath.Join(newDirPath, indexerFileName), errorutils.CheckError(err)
+	return filepath.Join(newDirPath, indexerFileName+indexerExtension), errorutils.CheckError(err)
 }
 
 func getIndexerVersion(indexerPath string) (string, error) {
@@ -177,4 +181,13 @@ func deleteOldIndexers(indexerDirPath string) error {
 	}
 
 	return nil
+}
+
+func getIndexerExtension(os string) string {
+	switch os {
+	case "windows":
+		return ".exe"
+	default:
+		return ""
+	}
 }

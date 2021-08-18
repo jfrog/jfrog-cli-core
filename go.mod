@@ -18,11 +18,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	golang.org/x/mod v0.3.0
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/Ohad2Levy/jfrog-client-go v0.22.3-0.20210803154321-0ee40130da26
+replace github.com/jfrog/jfrog-client-go => github.com/Ohad2Levy/jfrog-client-go v0.22.3-0.20210818130609-b19b8e04c5c1
 
 // replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.4.2-0.20210711151504-537a5ef5b8e1

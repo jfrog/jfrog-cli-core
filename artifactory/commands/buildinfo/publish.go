@@ -108,7 +108,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	bpc.printBuildInfoLink(artVersionToStr, buildTime)
+	log.Info(bpc.printBuildInfoLink(artVersionToStr, buildTime))
 
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
@@ -116,28 +116,27 @@ func (bpc *BuildPublishCommand) Run() error {
 	return nil
 }
 
-func (bpc *BuildPublishCommand) printBuildInfoLink(artVersion int, buildTime time.Time) {
+func (bpc *BuildPublishCommand) printBuildInfoLink(artVersion int, buildTime time.Time) string {
 	if artVersion <= 6 {
-		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+		return "Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
-			"artifactory/webapp/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber)
+			"artifactory/webapp/#/builds/" +
+			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber
 	} else if bpc.buildConfiguration.Project != "" {
 		timestamp := buildTime.UnixNano() / 1000000
-		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+		return "Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
 			"ui/builds/" +
 			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
-			"/published/" + bpc.buildConfiguration.BuildName + "?buildRepo=" + bpc.buildConfiguration.Project + "-build-info&projectKey=" + bpc.buildConfiguration.Project)
+			"/published" + "?buildRepo=" + bpc.buildConfiguration.Project + "-build-info&projectKey=" + bpc.buildConfiguration.Project
 	} else {
 		timestamp := buildTime.UnixNano() / 1000000
-		log.Info("Build info successfully deployed. Browse it in Artifactory under " +
+		return "Build info successfully deployed. Browse it in Artifactory under " +
 			bpc.serverDetails.GetUrl() +
 			"ui/builds/" +
 			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
-			"/published?buildRepo=" + bpc.buildConfiguration.Project + "artifactory-build-info")
+			"/published?buildRepo=" + bpc.buildConfiguration.Project + "artifactory-build-info"
 	}
-
 }
 
 func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildInfo, error) {

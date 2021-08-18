@@ -51,7 +51,11 @@ func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, ht
 func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err error) {
 	log.Debug("Refreshing token...")
 	// Lock config to prevent access from different processes
-	lockFile, err := lock.CreateLock()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
+	if err != nil {
+		return "", err
+	}
+	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
 	if err != nil {
 		return "", err
@@ -154,8 +158,12 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return nil
 	}
 	mutex.Lock()
-	lockFile, err := lock.CreateLock()
 	defer mutex.Unlock()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
+	if err != nil {
+		return err
+	}
+	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
 	if err != nil {
 		return err

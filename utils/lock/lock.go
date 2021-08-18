@@ -3,7 +3,6 @@ package lock
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -38,26 +37,18 @@ func (locks Locks) Less(i, j int) bool {
 }
 
 // Creating a new lock object.
-func (lock *Lock) CreateNewLockFile() error {
+func (lock *Lock) createNewLockFile(lockDirPath string) error {
 	lock.currentTime = time.Now().UnixNano()
-	folderName, err := CreateLockDir()
+	err := fileutils.CreateDirIfNotExist(lockDirPath)
 	if err != nil {
 		return err
 	}
 	pid := os.Getpid()
 	lock.pid = pid
-	err = lock.CreateFile(folderName, pid)
-	if err != nil {
-		return err
-	}
-	return nil
+	return lock.createFile(lockDirPath, pid)
 }
 
-func CreateLockDir() (string, error) {
-	return coreutils.CreateDirInJfrogHome(coreutils.JfrogLockDirName)
-}
-
-func (lock *Lock) CreateFile(folderName string, pid int) error {
+func (lock *Lock) createFile(folderName string, pid int) error {
 	// We are creating an empty file with the pid and current time part of the name
 	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
 	log.Debug("Creating lock file: ", lock.fileName)
@@ -73,7 +64,7 @@ func (lock *Lock) CreateFile(folderName string, pid int) error {
 }
 
 // Try to acquire a lock
-func (lock *Lock) Lock() error {
+func (lock *Lock) lock() error {
 	filesList, err := lock.getListOfFiles()
 	if err != nil {
 		return err
@@ -148,10 +139,7 @@ func (lock *Lock) removeOtherLockOrWait(otherLock Lock, filesList *[]string) err
 		err := otherLock.Unlock()
 		// Update list of files
 		*filesList, err = lock.getListOfFiles()
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}
 	// Other process is running. Wait.
 	time.Sleep(100 * time.Millisecond)
@@ -215,16 +203,16 @@ func (lock *Lock) Unlock() error {
 	return nil
 }
 
-func CreateLock() (Lock, error) {
+func CreateLock(lockDirPath string) (Lock, error) {
 	lockFile := new(Lock)
-	err := lockFile.CreateNewLockFile()
+	err := lockFile.createNewLockFile(lockDirPath)
 
 	if err != nil {
 		return *lockFile, err
 	}
 
 	// Trying to acquire a lock for the running process.
-	err = lockFile.Lock()
+	err = lockFile.lock()
 	if err != nil {
 		return *lockFile, errorutils.CheckError(err)
 	}

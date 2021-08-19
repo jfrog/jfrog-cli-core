@@ -3,9 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,6 +10,10 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -24,7 +25,6 @@ import (
 )
 
 const (
-	indexerFileName     = "indexer-app"
 	GraphScanMinVersion = "3.29.0"
 	indexerDirName      = "xray-indexer"
 	tempIndexerDirName  = "temp"
@@ -46,7 +46,8 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 		return "", err
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
-	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerFileName)
+	indexerBinaryName := getIndexerBinaryName()
+	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerBinaryName)
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
@@ -61,10 +62,10 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	}
 
 	log.Info("JFrog Xray Indexer is not cached locally. Downloading it now...")
-	return downloadIndexer(xrayManager, indexerDirPath)
+	return downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
 }
 
-func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath string) (string, error) {
+func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, indexerBinaryName string) (string, error) {
 	tempDirPath := filepath.Join(indexerDirPath, tempIndexerDirName)
 
 	// Delete the temporary directory if it exists
@@ -90,7 +91,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	downloadFileDetails := &httpclient.DownloadFileDetails{
 		DownloadPath:  url,
 		LocalPath:     tempDirPath,
-		LocalFileName: indexerFileName,
+		LocalFileName: indexerBinaryName,
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
@@ -104,7 +105,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	}
 
 	// Add execution permissions to the indexer
-	indexerPath := filepath.Join(tempDirPath, indexerFileName)
+	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
 
 	indexerVersion, err := getIndexerVersion(indexerPath)
@@ -125,7 +126,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}
 
-	return filepath.Join(newDirPath, indexerFileName), errorutils.CheckError(err)
+	return filepath.Join(newDirPath, indexerBinaryName), errorutils.CheckError(err)
 }
 
 func getIndexerVersion(indexerPath string) (string, error) {
@@ -177,4 +178,13 @@ func deleteOldIndexers(indexerDirPath string) error {
 	}
 
 	return nil
+}
+
+func getIndexerBinaryName() string {
+	switch runtime.GOOS {
+	case "windows":
+		return "indexer-app.exe"
+	default:
+		return "indexer-app"
+	}
 }

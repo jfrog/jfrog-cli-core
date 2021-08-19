@@ -62,10 +62,10 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	}
 
 	log.Info("JFrog Xray Indexer is not cached locally. Downloading it now...")
-	return downloadIndexer(xrayManager, indexerDirPath)
+	return downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
 }
 
-func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath string) (string, error) {
+func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, indexerBinaryName string) (string, error) {
 	tempDirPath := filepath.Join(indexerDirPath, tempIndexerDirName)
 
 	// Delete the temporary directory if it exists
@@ -86,7 +86,6 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 		return "", err
 	}
 
-	indexerBinaryName := getIndexerBinaryName()
 	// Download the indexer from Xray to the temporary directory
 	url := fmt.Sprintf("%sapi/v1/indexer-resources/download/%s/%s", xrayManager.Config().GetServiceDetails().GetUrl(), runtime.GOOS, runtime.GOARCH)
 	downloadFileDetails := &httpclient.DownloadFileDetails{

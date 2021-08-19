@@ -25,13 +25,10 @@ import (
 )
 
 const (
-	indexerFileName     = "indexer-app"
 	GraphScanMinVersion = "3.29.0"
 	indexerDirName      = "xray-indexer"
 	tempIndexerDirName  = "temp"
 )
-
-var indexerExtension = ""
 
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {
 	xrayVersionStr, err := xrayManager.GetVersion()
@@ -49,8 +46,8 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 		return "", err
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
-	indexerExtension = getIndexerExtension(runtime.GOOS)
-	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerFileName+indexerExtension)
+	indexerBinaryName := getIndexerBinaryName()
+	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerBinaryName)
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
@@ -89,12 +86,13 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 		return "", err
 	}
 
+	indexerBinaryName := getIndexerBinaryName()
 	// Download the indexer from Xray to the temporary directory
 	url := fmt.Sprintf("%sapi/v1/indexer-resources/download/%s/%s", xrayManager.Config().GetServiceDetails().GetUrl(), runtime.GOOS, runtime.GOARCH)
 	downloadFileDetails := &httpclient.DownloadFileDetails{
 		DownloadPath:  url,
 		LocalPath:     tempDirPath,
-		LocalFileName: indexerFileName + indexerExtension,
+		LocalFileName: indexerBinaryName,
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
@@ -108,7 +106,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 	}
 
 	// Add execution permissions to the indexer
-	indexerPath := filepath.Join(tempDirPath, indexerFileName+indexerExtension)
+	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
 
 	indexerVersion, err := getIndexerVersion(indexerPath)
@@ -129,7 +127,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath strin
 		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}
 
-	return filepath.Join(newDirPath, indexerFileName+indexerExtension), errorutils.CheckError(err)
+	return filepath.Join(newDirPath, indexerBinaryName), errorutils.CheckError(err)
 }
 
 func getIndexerVersion(indexerPath string) (string, error) {
@@ -183,11 +181,11 @@ func deleteOldIndexers(indexerDirPath string) error {
 	return nil
 }
 
-func getIndexerExtension(os string) string {
-	switch os {
+func getIndexerBinaryName() string {
+	switch runtime.GOOS {
 	case "windows":
-		return ".exe"
+		return "indexer-app.exe"
 	default:
-		return ""
+		return "indexer-app"
 	}
 }

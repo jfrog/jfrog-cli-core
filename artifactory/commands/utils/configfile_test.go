@@ -62,7 +62,9 @@ func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 func TestPipConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -100,7 +102,9 @@ func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 func TestNpmConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -138,7 +142,9 @@ func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 func TestNugetConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo")
@@ -174,7 +180,9 @@ func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 func TestMavenConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
@@ -221,7 +229,9 @@ func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 func TestGradleConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local",
@@ -273,7 +283,9 @@ func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -297,7 +309,9 @@ func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 func TestValidateConfigResolver(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 	configFile := NewConfigFile(utils.Go, createContext())
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
@@ -329,7 +343,9 @@ func TestValidateConfigResolver(t *testing.T) {
 func TestValidateConfigDeployer(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 	configFile := NewConfigFile(utils.Go, createContext())
 	err := configFile.validateConfig()
 	assert.NoError(t, err)

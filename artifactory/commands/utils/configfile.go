@@ -397,7 +397,7 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 	}
 	// Server-id flag was not provided.
 	if repository.ServerId == "" {
-		// No default server was config.
+		// No default server was configured.
 		if defaultServerId == "" {
 			// Repositories flags were provided.
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {

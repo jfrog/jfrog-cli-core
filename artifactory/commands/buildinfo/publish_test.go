@@ -74,8 +74,9 @@ func TestExcludePasswordsPattern(t *testing.T) {
 }
 
 func TestPrintBuildInfoLink(t *testing.T) {
+	buildTime := strconv.FormatInt(time.Now().UnixNano()/1000000, 10)
 	var linkTypes = []struct {
-		artVersion    int
+		majorVersion  int
 		buildTime     time.Time
 		buildInfoConf artifactoryUtils.BuildConfiguration
 		serverDetails config.ServerDetails
@@ -86,9 +87,9 @@ func TestPrintBuildInfoLink(t *testing.T) {
 		{6, time.Now(), artifactoryUtils.BuildConfiguration{BuildName: "test", BuildNumber: "1", Module: "6", Project: "cli"},
 			config.ServerDetails{Url: "http://localhost:8081/"}, "http://localhost:8081/artifactory/webapp/#/builds/test/1"},
 		{7, time.Now(), artifactoryUtils.BuildConfiguration{BuildName: "test", BuildNumber: "1", Module: "6", Project: ""},
-			config.ServerDetails{Url: "http://localhost:8082/"}, "http://localhost:8082/ui/builds/test/1/" + strconv.FormatInt(time.Now().UnixNano()/1000000, 10) + "/published?buildRepo=artifactory-build-info"},
+			config.ServerDetails{Url: "http://localhost:8082/"}, "http://localhost:8082/ui/builds/test/1/" + buildTime + "/published?buildRepo=artifactory-build-info"},
 		{7, time.Now(), artifactoryUtils.BuildConfiguration{BuildName: "test", BuildNumber: "1", Module: "6", Project: "cli"},
-			config.ServerDetails{Url: "http://localhost:8082/"}, "http://localhost:8082/ui/builds/test/1/" + strconv.FormatInt(time.Now().UnixNano()/1000000, 10) + "/published?buildRepo=cli-build-info&projectKey=cli"},
+			config.ServerDetails{Url: "http://localhost:8082/"}, "http://localhost:8082/ui/builds/test/1/" + buildTime + "/published?buildRepo=cli-build-info&projectKey=cli"},
 	}
 
 	for _, linkType := range linkTypes {
@@ -99,7 +100,7 @@ func TestPrintBuildInfoLink(t *testing.T) {
 			true,
 			nil,
 		}
-		buildPubComService := buildPubConf.printBuildInfoLink(linkType.artVersion, linkType.buildTime)
-		assert.Equal(t, buildPubComService, "Build info successfully deployed. Browse it in Artifactory under "+linkType.expected)
+		buildPubComService := buildPubConf.getBuildInfoUiUrl(linkType.majorVersion, linkType.buildTime)
+		assert.Equal(t, buildPubComService, linkType.expected)
 	}
 }

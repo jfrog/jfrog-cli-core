@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sort"
@@ -95,20 +96,11 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.Started)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-
-	artVersion, err := servicesManager.GetVersion()
+	buildLink, err := bpc.logBuildInfoUiUrl(servicesManager, buildInfo.Started)
 	if err != nil {
 		return err
 	}
-	artVersionToStr, err := strconv.Atoi(artVersion[0:1])
-	if err != nil {
-		return err
-	}
-	log.Info(bpc.printBuildInfoLink(artVersionToStr, buildTime))
+	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
 
 	if !bpc.config.DryRun {
 		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
@@ -116,26 +108,34 @@ func (bpc *BuildPublishCommand) Run() error {
 	return nil
 }
 
-func (bpc *BuildPublishCommand) printBuildInfoLink(artVersion int, buildTime time.Time) string {
+func (bpc *BuildPublishCommand) logBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {
+	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfoStarted)
+	if errorutils.CheckError(err) != nil {
+		return "", err
+	}
+	artVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return "", err
+	}
+	majorVersion, err := strconv.Atoi(artVersion[0:1])
+	if err != nil {
+		return "", err
+	}
+	return bpc.getBuildInfoUiUrl(majorVersion, buildTime), nil
+}
+
+func (bpc *BuildPublishCommand) getBuildInfoUiUrl(artVersion int, buildTime time.Time) string {
 	if artVersion <= 6 {
-		return "Build info successfully deployed. Browse it in Artifactory under " +
-			bpc.serverDetails.GetUrl() +
-			"artifactory/webapp/#/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber
+		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
+			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
 	} else if bpc.buildConfiguration.Project != "" {
 		timestamp := buildTime.UnixNano() / 1000000
-		return "Build info successfully deployed. Browse it in Artifactory under " +
-			bpc.serverDetails.GetUrl() +
-			"ui/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
-			"/published" + "?buildRepo=" + bpc.buildConfiguration.Project + "-build-info&projectKey=" + bpc.buildConfiguration.Project
+		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
+			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.Project, bpc.buildConfiguration.Project)
 	} else {
 		timestamp := buildTime.UnixNano() / 1000000
-		return "Build info successfully deployed. Browse it in Artifactory under " +
-			bpc.serverDetails.GetUrl() +
-			"ui/builds/" +
-			bpc.buildConfiguration.BuildName + "/" + bpc.buildConfiguration.BuildNumber + "/" + strconv.FormatInt(timestamp, 10) +
-			"/published?buildRepo=" + bpc.buildConfiguration.Project + "artifactory-build-info"
+		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
+			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10))
 	}
 }
 

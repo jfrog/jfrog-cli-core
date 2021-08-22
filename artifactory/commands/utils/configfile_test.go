@@ -9,6 +9,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
@@ -38,10 +39,32 @@ func TestGoConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestGoConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	err = CreateBuildConfig(context, utils.Go)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Go.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
 func TestPipConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -56,10 +79,32 @@ func TestPipConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestPipConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	err = CreateBuildConfig(context, utils.Pip)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Pip.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
 func TestNpmConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -74,10 +119,32 @@ func TestNpmConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	err = CreateBuildConfig(context, utils.Npm)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Npm.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
 func TestNugetConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo")
@@ -91,10 +158,31 @@ func TestNugetConfigFile(t *testing.T) {
 	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo + "=repo")
+	err = CreateBuildConfig(context, utils.Nuget)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Nuget.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
+}
+
 func TestMavenConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
@@ -115,10 +203,35 @@ func TestMavenConfigFile(t *testing.T) {
 	assert.Equal(t, "excluding;*pattern", config.GetString("deployer.excludePatterns"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
+		deploymentReleasesRepo+"=release-repo-local", deploymentSnapshotsRepo+"=snapshot-repo-local")
+	err = CreateBuildConfig(context, utils.Maven)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Maven.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "snapshot-repo", config.GetString("resolver.snapshotRepo"))
+	assert.Equal(t, "release-repo", config.GetString("resolver.releaseRepo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "snapshot-repo-local", config.GetString("deployer.snapshotRepo"))
+	assert.Equal(t, "release-repo-local", config.GetString("deployer.releaseRepo"))
+}
+
 func TestGradleConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local",
@@ -140,10 +253,39 @@ func TestGradleConfigFile(t *testing.T) {
 	assert.Equal(t, true, config.GetBool("useWrapper"))
 }
 
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local",
+		ivyDescPattern+"=[ivy]/[pattern]", ivyArtifactsPattern+"=[artifact]/[pattern]")
+	err = CreateBuildConfig(context, utils.Gradle)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Gradle.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+	assert.Equal(t, true, config.GetBool("deployer.deployMavenDescriptors"))
+	assert.Equal(t, true, config.GetBool("deployer.deployIvyDescriptors"))
+	assert.Equal(t, "[ivy]/[pattern]", config.GetString("deployer.ivyPattern"))
+	assert.Equal(t, "[artifact]/[pattern]", config.GetString("deployer.artifactPattern"))
+	assert.Equal(t, true, config.GetBool("usePlugin"))
+	assert.Equal(t, true, config.GetBool("useWrapper"))
+}
+
 func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer os.RemoveAll(tempDirPath)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 
 	// Create build config
 	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
@@ -166,6 +308,10 @@ func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 
 func TestValidateConfigResolver(t *testing.T) {
 	// Create and check empty config
+	tempDirPath := createTempEnv(t)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 	configFile := NewConfigFile(utils.Go, createContext())
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
@@ -173,29 +319,33 @@ func TestValidateConfigResolver(t *testing.T) {
 	// Check scenarios of serverId and repo
 	configFile.Resolver.ServerId = "serverId"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution repository/ies must be set.")
+	assert.EqualError(t, err, resolutionErrorPrefix+setRepositoryError)
 	configFile.Resolver.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Resolver.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolver server ID must be set.")
+	assert.EqualError(t, err, resolutionErrorPrefix+setServerIdError)
 
 	// Check scenarios of serverId and release/snapshot repositories
 	configFile.Resolver.ServerId = "serverId"
 	configFile.Resolver.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolution snapshot and release repositories must be set.")
+	assert.EqualError(t, err, resolutionErrorPrefix+setSnapshotAndReleaseError)
 	configFile.Resolver.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Resolver.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Resolver server ID must be set.")
+	assert.EqualError(t, err, resolutionErrorPrefix+setServerIdError)
 }
 
 func TestValidateConfigDeployer(t *testing.T) {
 	// Create and check empty config
+	tempDirPath := createTempEnv(t)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
 	configFile := NewConfigFile(utils.Go, createContext())
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
@@ -203,25 +353,25 @@ func TestValidateConfigDeployer(t *testing.T) {
 	// Check scenarios of serverId and repo
 	configFile.Deployer.ServerId = "serverId"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment repository/ies must be set.")
+	assert.EqualError(t, err, deploymentErrorPrefix+setRepositoryError)
 	configFile.Deployer.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Deployer.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployer server ID must be set.")
+	assert.EqualError(t, err, deploymentErrorPrefix+setServerIdError)
 
 	// Check scenarios of serverId and release/snapshot repositories
 	configFile.Deployer.ServerId = "serverId"
 	configFile.Deployer.ReleaseRepo = "releaseRepo"
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployment snapshot and release repositories must be set.")
+	assert.EqualError(t, err, deploymentErrorPrefix+setSnapshotAndReleaseError)
 	configFile.Deployer.SnapshotRepo = "snapshotRepo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
 	configFile.Deployer.ServerId = ""
 	err = configFile.validateConfig()
-	assert.EqualError(t, err, "Deployer server ID must be set.")
+	assert.EqualError(t, err, deploymentErrorPrefix+setServerIdError)
 }
 
 // Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory

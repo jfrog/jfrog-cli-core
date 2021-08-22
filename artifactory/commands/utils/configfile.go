@@ -47,6 +47,13 @@ const (
 
 	// Nuget flags
 	nugetV2 = "nuget-v2"
+
+	// Errors
+	resolutionErrorPrefix      = "[Resolution]: "
+	deploymentErrorPrefix      = "[Deployment]: "
+	setServerIdError           = "server ID must be set. Use the --server-id-resolve/deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "
+	setRepositoryError         = "repository/ies must be set. "
+	setSnapshotAndReleaseError = "snapshot and release repositories must be set. "
 )
 
 type ConfigFile struct {
@@ -375,39 +382,53 @@ func (configFile *ConfigFile) setUseNugetV2() {
 	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
-// Check correctness of spec file configuration
-func (configFile *ConfigFile) validateConfig() error {
-	resolver := configFile.Resolver
-	releaseRepo := resolver.ReleaseRepo
-	snapshotRepo := resolver.SnapshotRepo
-	if resolver.ServerId != "" {
-		if resolver.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckError(errors.New("Resolution repository/ies must be set."))
-		}
-		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-			return errorutils.CheckError(errors.New("Resolution snapshot and release repositories must be set."))
+func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
+	releaseRepo := repository.ReleaseRepo
+	snapshotRepo := repository.SnapshotRepo
+	// For config commands - resolver/deployer server-id flags are optional.
+	// In case no server-id flag was provided we use the default configured server id.
+	defaultServerDetails, err := config.GetDefaultServerConf()
+	if err != nil {
+		return err
+	}
+	defaultServerId := ""
+	if defaultServerDetails != nil {
+		defaultServerId = defaultServerDetails.ServerId
+	}
+	// Server-id flag was not provided.
+	if repository.ServerId == "" {
+		// No default server was configured.
+		if defaultServerId == "" {
+			// Repositories flags were provided.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				return errorutils.CheckError(errors.New(errorPrefix + setServerIdError))
+			}
+		} else {
+			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				repository.ServerId = defaultServerId
+			}
 		}
 	} else {
-		if resolver.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Resolver server ID must be set."))
+		// Server-id flag was provided, but no repositories flags.
+		if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
+			return errorutils.CheckError(errors.New(errorPrefix + setRepositoryError))
 		}
 	}
-	deployer := configFile.Deployer
-	releaseRepo = deployer.ReleaseRepo
-	snapshotRepo = deployer.SnapshotRepo
-	if deployer.ServerId != "" {
-		if deployer.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckError(errors.New("Deployment repository/ies must be set."))
-		}
-		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-			return errorutils.CheckError(errors.New("Deployment snapshot and release repositories must be set."))
-		}
-	} else {
-		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" || deployer.IncludePatterns != "" || deployer.ExcludePatterns != "" {
-			return errorutils.CheckError(errors.New("Deployer server ID must be set."))
-		}
+	// Release/snapshot repositories should be entangled to each other.
+	if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
+		return errorutils.CheckError(errors.New(errorPrefix + setSnapshotAndReleaseError))
 	}
 	return nil
+}
+
+// Validate spec file configuration
+func (configFile *ConfigFile) validateConfig() error {
+	err := validateRepositoryConfig(&configFile.Resolver, resolutionErrorPrefix)
+	if err != nil {
+		return err
+	}
+	return validateRepositoryConfig(&configFile.Deployer, deploymentErrorPrefix)
 }
 
 // Get Artifactory serverId from the user. If useArtifactoryQuestion is not empty, ask first whether to use artifactory.

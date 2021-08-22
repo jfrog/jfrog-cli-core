@@ -54,13 +54,19 @@ func getMavenHome() (string, error) {
 	if mavenHome == "" {
 		// The M2_HOME environment variable is not defined.
 		// Since Maven installation can be located in different locations,
-		// depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-		// we need to grab the location using the mvn --version command
-		log.Debug(MavenHome, " is not defined. Retrieving Maven home using mvn --version.")
+		// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+		// We need to grab the location using the mvn --version command
+
+		// First we will try lo look for 'mvn' in PATH.
+		mvnPath, err := exec.LookPath("mvn")
+		if err != nil || mvnPath == "" {
+			return "", errorutils.CheckError(errors.New("No maven in PATH. "))
+		}
+		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
 		cmd := exec.Command("mvn", "--version")
 		var stdout bytes.Buffer
 		cmd.Stdout = &stdout
-		err := errorutils.CheckError(cmd.Run())
+		err = errorutils.CheckError(cmd.Run())
 		if err != nil {
 			return "", err
 		}
@@ -71,6 +77,9 @@ func getMavenHome() (string, error) {
 				mavenHome = strings.Split(line, " ")[2]
 				break
 			}
+		}
+		if mavenHome == "" {
+			return "", errorutils.CheckError(errors.New("Can't find maven home directory. Set 'M2_HOME' environment variable or install maven on your machine.\n\"mvn --version\" command result:\n" + stdout.String()))
 		}
 	}
 	log.Debug("Maven home location: ", mavenHome)

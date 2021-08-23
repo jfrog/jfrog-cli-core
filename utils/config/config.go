@@ -507,7 +507,6 @@ type ServerDetails struct {
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
 	AccessUrl            string `json:"accessUrl,omitempty"`
-	AccessAccessToken    string `json:"accessAccessToken,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -586,10 +585,6 @@ func (serverDetails *ServerDetails) GetPipelinesUrl() string {
 
 func (serverDetails *ServerDetails) GetAccessUrl() string {
 	return serverDetails.AccessUrl
-}
-
-func (serverDetails *ServerDetails) GetAccessAccessToken() string {
-	return serverDetails.AccessAccessToken
 }
 
 func (serverDetails *ServerDetails) GetUser() string {

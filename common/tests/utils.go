@@ -21,7 +21,6 @@ func CreateTestServerDetails() *config.ServerDetails {
 		XrayUrl:           "http://localhost:8080/xray/",
 		MissionControlUrl: "http://localhost:8080/mc/",
 		PipelinesUrl:      "http://localhost:8080/pipelines/",
-		AccessUrl:         "http://localhost:8080/access/",
 		ServerId:          "test",
 		IsDefault:         true,
 		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",

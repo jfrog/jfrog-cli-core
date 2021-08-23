@@ -93,8 +93,7 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8080/distribution/", outputConfig.GetDistributionUrl())
 	assert.Equal(t, "http://localhost:8080/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8080/mc/", outputConfig.GetMissionControlUrl())
-	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8080/access/", outputConfig.GetAccessUrl())
+	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl()
 
 	inputDetails.ArtifactoryUrl = "http://localhost:8081/artifactory"
 	inputDetails.DistributionUrl = "http://localhost:8081/distribution"

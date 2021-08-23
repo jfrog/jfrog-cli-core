@@ -112,7 +112,6 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8081/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8081/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8081/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8081/access/", outputConfig.GetAccessUrl())
 }
 
 func TestBasicAuthOnlyOption(t *testing.T) {

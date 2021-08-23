@@ -166,8 +166,6 @@ func CreateAccessServiceManager(serviceDetails *config.ServerDetails, isDryRun b
 		return nil, err
 	}
 	accessAuth, err := serviceDetails.CreateAccessAuthConfig()
-	accessAuth.SetUser("")
-	accessAuth.SetPassword("")
 	if err != nil {
 		return nil, err
 	}

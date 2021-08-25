@@ -8,12 +8,11 @@ import (
 
 type BuildDockerCreateCommand struct {
 	ContainerManagerCommand
-	containerManagerType container.ContainerManagerType
-	manifestSha256       string
+	manifestSha256 string
 }
 
 func NewBuildDockerCreateCommand() *BuildDockerCreateCommand {
-	return &BuildDockerCreateCommand{containerManagerType: container.Kaniko}
+	return &BuildDockerCreateCommand{}
 }
 
 // Set tag and manifest sha256 of an image in Artifactory.
@@ -30,7 +29,6 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	cm := container.NewManager(bpc.containerManagerType)
 	image := container.NewImage(bpc.imageTag)
 	buildName := bpc.BuildConfiguration().BuildName
 	buildNumber := bpc.BuildConfiguration().BuildNumber
@@ -42,7 +40,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewKanikoBuildInfoBuilder(image, bpc.Repo(), buildName, buildNumber, project, serviceManager, container.Push, cm, bpc.manifestSha256)
+	builder, err := container.NewBuildInfoBuilderForKanikoOrOpenShift(image, bpc.Repo(), buildName, buildNumber, project, serviceManager, container.Push, bpc.manifestSha256)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package mvnutils
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -27,7 +28,7 @@ const (
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	log.Info("Running Mvn...")
-	err := validateMavenInstallation()
+	mvnHome, err := getMavenHome()
 	if err != nil {
 		return err
 	}
@@ -38,7 +39,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 		return err
 	}
 
-	mvnRunConfig, err := createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, buildConf, goals, threads, insecureTls, disableDeploy)
+	mvnRunConfig, err := createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, mvnHome, buildConf, goals, threads, insecureTls, disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -47,13 +48,42 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	return mvnRunConfig.runCmd()
 }
 
-func validateMavenInstallation() error {
+func getMavenHome() (string, error) {
 	log.Debug("Checking prerequisites.")
 	mavenHome := os.Getenv(MavenHome)
 	if mavenHome == "" {
-		return errorutils.CheckError(errors.New(MavenHome + " environment variable is not set"))
+		// The M2_HOME environment variable is not defined.
+		// Since Maven installation can be located in different locations,
+		// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+		// We need to grab the location using the mvn --version command
+
+		// First we will try lo look for 'mvn' in PATH.
+		mvnPath, err := exec.LookPath("mvn")
+		if err != nil || mvnPath == "" {
+			return "", errorutils.CheckError(errors.New(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+		}
+		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
+		cmd := exec.Command("mvn", "--version")
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		err = errorutils.CheckError(cmd.Run())
+		if err != nil {
+			return "", err
+		}
+		output := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+		// Finding the relevant "Maven home" line in command response.
+		for _, line := range output {
+			if strings.HasPrefix(line, "Maven home:") {
+				mavenHome = strings.Split(line, " ")[2]
+				break
+			}
+		}
+		if mavenHome == "" {
+			return "", errorutils.CheckError(errors.New("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+		}
 	}
-	return nil
+	log.Debug("Maven home location: ", mavenHome)
+	return mavenHome, nil
 }
 
 func downloadDependencies() (string, error) {
@@ -85,7 +115,7 @@ func createClassworldsConfig(dependenciesPath string) error {
 	return errorutils.CheckError(ioutil.WriteFile(classworldsPath, []byte(utils.ClassworldsConf), 0644))
 }
 
-func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (*mvnRunConfig, error) {
+func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, mavenHome string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (*mvnRunConfig, error) {
 	var err error
 	var javaExecPath string
 
@@ -99,7 +129,6 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile st
 		}
 	}
 
-	mavenHome := os.Getenv("M2_HOME")
 	plexusClassworlds, err := filepath.Glob(filepath.Join(mavenHome, "boot", "plexus-classworlds*.jar"))
 	if err != nil {
 		return nil, errorutils.CheckError(err)

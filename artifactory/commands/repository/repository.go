@@ -148,14 +148,33 @@ func writeContentSynchronisation(resultMap *map[string]interface{}, key, value s
 		return errors.New("invalid value for Content Synchronisation")
 	}
 	var cs services.ContentSynchronisation
-	cs.Enabled, _ = strconv.ParseBool(answerArray[0])
-	cs.Statistics.Enabled, _ = strconv.ParseBool(answerArray[1])
-	cs.Properties.Enabled, _ = strconv.ParseBool(answerArray[2])
-	cs.Source.OriginAbsenceDetection, _ = strconv.ParseBool(answerArray[3])
+
+	enabled, err := strconv.ParseBool(answerArray[0])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[1])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Statistics.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[2])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Properties.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[3])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Source.OriginAbsenceDetection = &enabled
 
 	(*resultMap)[key] = cs
 	return nil
-
 }
 
 // repoHandler is a function that gets serviceManager, JSON configuration content and a flag indicates is the operation in an update operation

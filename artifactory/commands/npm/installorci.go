@@ -19,7 +19,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
@@ -38,7 +37,7 @@ type NpmCommandArgs struct {
 	threads          int
 	jsonOutput       bool
 	executablePath   string
-	npmrcFileMode    os.FileMode
+	restoreNpmrcFunc func() error
 	workingDirectory string
 	registry         string
 	npmAuth          string
@@ -142,7 +141,7 @@ func (nca *NpmCommandArgs) run() error {
 		return nca.restoreNpmrcAndError(err)
 	}
 
-	if err := nca.restoreNpmrc(); err != nil {
+	if err := nca.restoreNpmrcFunc(); err != nil {
 		return err
 	}
 
@@ -203,7 +202,8 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 
-	return nca.backupProjectNpmrc()
+	nca.restoreNpmrcFunc, err = commandUtils.BackupFile(filepath.Join(nca.workingDirectory, npmrcFileName), filepath.Join(nca.workingDirectory, npmrcBackupFileName))
+	return err
 }
 
 func (nca *NpmCommandArgs) setJsonOutput() error {
@@ -214,37 +214,6 @@ func (nca *NpmCommandArgs) setJsonOutput() error {
 
 	// In case of --json=<not boolean>, the value of json is set to 'true', but the result from the command is not 'true'
 	nca.jsonOutput = jsonOutput != "false"
-	return nil
-}
-
-// In order to make sure the install/ci downloads the dependencies from Artifactory, we are creating a.npmrc file in the project's root directory.
-// If such a file already exists, we are copying it aside.
-// This method restores the backed up file and deletes the one created by the command.
-func (nca *NpmCommandArgs) restoreNpmrc() (err error) {
-	log.Debug("Restoring project .npmrc file")
-	if err = os.Remove(filepath.Join(nca.workingDirectory, npmrcFileName)); err != nil {
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(nca.workingDirectory) + err.Error()))
-	}
-	log.Debug("Deleted the temporary .npmrc file successfully")
-
-	if _, err = os.Stat(filepath.Join(nca.workingDirectory, npmrcBackupFileName)); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(nca.workingDirectory) + err.Error()))
-	}
-
-	if err = ioutils.CopyFile(
-		filepath.Join(nca.workingDirectory, npmrcBackupFileName),
-		filepath.Join(nca.workingDirectory, npmrcFileName), nca.npmrcFileMode); err != nil {
-		return errorutils.CheckError(err)
-	}
-	log.Debug("Restored project .npmrc file successfully")
-
-	if err = os.Remove(filepath.Join(nca.workingDirectory, npmrcBackupFileName)); err != nil {
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(nca.workingDirectory) + err.Error()))
-	}
-	log.Debug("Deleted project", npmrcBackupFileName, "file successfully")
 	return nil
 }
 
@@ -345,28 +314,6 @@ func (nca *NpmCommandArgs) validateNpmVersion() error {
 			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher", nca.command)))
 	}
 	nca.npmVersion = npmVersion
-	return nil
-}
-
-// To make npm do the resolution from Artifactory we are creating .npmrc file in the project dir.
-// If a .npmrc file already exists we will backup it and override while running the command
-func (nca *NpmCommandArgs) backupProjectNpmrc() error {
-	fileInfo, err := os.Stat(filepath.Join(nca.workingDirectory, npmrcFileName))
-	if err != nil {
-		if os.IsNotExist(err) {
-			nca.npmrcFileMode = 0644
-			return nil
-		}
-		return errorutils.CheckError(err)
-	}
-
-	nca.npmrcFileMode = fileInfo.Mode()
-	src := filepath.Join(nca.workingDirectory, npmrcFileName)
-	dst := filepath.Join(nca.workingDirectory, npmrcBackupFileName)
-	if err = ioutils.CopyFile(src, dst, nca.npmrcFileMode); err != nil {
-		return err
-	}
-	log.Debug("Project .npmrc file backed up successfully to", filepath.Join(nca.workingDirectory, npmrcBackupFileName))
 	return nil
 }
 
@@ -491,8 +438,8 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 }
 
 func (nca *NpmCommandArgs) restoreNpmrcAndError(err error) error {
-	if restoreErr := nca.restoreNpmrc(); restoreErr != nil {
-		return errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error()))
+	if restoreErr := nca.restoreNpmrcFunc(); restoreErr != nil {
+		return errorutils.CheckError(errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())))
 	}
 	return err
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -42,7 +41,7 @@ type YarnCommand struct {
 	configFilePath     string
 	yarnArgs           []string
 	threads            int
-	yarnrcFileMode     os.FileMode
+	restoreYarnrcFunc  func() error
 	packageInfo        *npmutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
@@ -86,7 +85,8 @@ func (yc *YarnCommand) Run() error {
 		return err
 	}
 
-	if err = yc.backupProjectYarnrc(); err != nil {
+	yc.restoreYarnrcFunc, err = commandUtils.BackupFile(filepath.Join(yc.workingDirectory, yarnrcFileName), filepath.Join(yc.workingDirectory, yarnrcBackupFileName))
+	if err != nil {
 		return yc.restoreConfigurationsAndError(err)
 	}
 
@@ -233,58 +233,11 @@ func (yc *YarnCommand) setArtifactoryAuth() error {
 	return nil
 }
 
-func (yc *YarnCommand) backupProjectYarnrc() error {
-	fileInfo, err := os.Stat(filepath.Join(yc.workingDirectory, yarnrcFileName))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return errorutils.CheckError(err)
-	}
-
-	yc.yarnrcFileMode = fileInfo.Mode()
-	src := filepath.Join(yc.workingDirectory, yarnrcFileName)
-	dst := filepath.Join(yc.workingDirectory, yarnrcBackupFileName)
-	if err = ioutils.CopyFile(src, dst, yc.yarnrcFileMode); err != nil {
-		return err
-	}
-	log.Debug("The project's", yarnrcFileName, "file was backed up successfully to", filepath.Join(yc.workingDirectory, yarnrcBackupFileName))
-	return nil
-}
-
 func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
 	if err := yc.restoreEnvironmentVariables(); err != nil {
 		return err
 	}
-	return yc.restoreYarnrcFromBackup()
-}
-
-func (yc *YarnCommand) restoreYarnrcFromBackup() (err error) {
-	log.Debug("Restoring project's", yarnrcFileName, "file")
-	if err = os.Remove(filepath.Join(yc.workingDirectory, yarnrcFileName)); err != nil {
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(yc.workingDirectory) + err.Error()))
-	}
-	log.Debug("Deleted the temporary", yarnrcFileName, "file successfully")
-
-	if _, err = os.Stat(filepath.Join(yc.workingDirectory, yarnrcBackupFileName)); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(yc.workingDirectory) + err.Error()))
-	}
-
-	if err = ioutils.CopyFile(
-		filepath.Join(yc.workingDirectory, yarnrcBackupFileName),
-		filepath.Join(yc.workingDirectory, yarnrcFileName), yc.yarnrcFileMode); err != nil {
-		return errorutils.CheckError(err)
-	}
-	log.Debug("Restored project", yarnrcFileName, "file successfully")
-
-	if err = os.Remove(filepath.Join(yc.workingDirectory, yarnrcBackupFileName)); err != nil {
-		return errorutils.CheckError(errors.New(createRestoreErrorPrefix(yc.workingDirectory) + err.Error()))
-	}
-	log.Debug("Deleted the project's", yarnrcBackupFileName, "file successfully")
-	return nil
+	return yc.restoreYarnrcFunc()
 }
 
 func (yc *YarnCommand) restoreConfigurationsAndError(err error) error {

@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDeleteOldIndexers(t *testing.T) {
@@ -42,7 +43,7 @@ func TestDeleteOldIndexers(t *testing.T) {
 func createDummyIndexer(t *testing.T, dirPath string) {
 	err := os.MkdirAll(dirPath, 0777)
 	assert.NoError(t, err)
-	fullPath := filepath.Join(dirPath, indexerFileName)
+	fullPath := filepath.Join(dirPath, getIndexerBinaryName())
 	file, err := os.Create(fullPath)
 	assert.NoError(t, err)
 	defer func() {
@@ -53,7 +54,7 @@ func createDummyIndexer(t *testing.T, dirPath string) {
 }
 
 func checkIndexerExists(t *testing.T, dirPath string) bool {
-	indexerPath := filepath.Join(dirPath, indexerFileName)
+	indexerPath := filepath.Join(dirPath, getIndexerBinaryName())
 	exists, err := fileutils.IsFileExists(indexerPath, true)
 	assert.NoError(t, err)
 	return exists

@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +13,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,9 +20,6 @@ import (
 func init() {
 	log.SetDefaultLogger()
 }
-
-const certsConversionResources = "testdata/config/configconversion"
-const encryptionResources = "testdata/config/encryption"
 
 func TestCovertConfigV0ToV1(t *testing.T) {
 	configV0 := `
@@ -54,7 +52,7 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 		}
 	`
 
-	cleanUpTempEnv := createTempEnv(t)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(configV0))
 	assert.NoError(t, err)
@@ -85,7 +83,7 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 		}
 	`
 
-	cleanUpTempEnv := createTempEnv(t)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(config))
 	assert.NoError(t, err)
@@ -124,7 +122,7 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 		}
 	`
 
-	cleanUpTempEnv := createTempEnv(t)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(configV4))
 	assert.NoError(t, err)
@@ -135,7 +133,7 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 
 func TestConfigEncryption(t *testing.T) {
 	// Config
-	cleanUpTempEnv := createTempEnv(t)
+	cleanUpTempEnv := configtests.CreateTempEnv(t, true)
 	defer cleanUpTempEnv()
 
 	// Original decrypted config, read directly from file
@@ -168,19 +166,6 @@ func readConfFromFile(t *testing.T) *ConfigV5 {
 	assert.NoError(t, err)
 	assert.NoError(t, json.Unmarshal(content, &config))
 	return config
-}
-
-// Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory
-func createTempEnv(t *testing.T) (cleanUp func()) {
-	tmpDir, err := ioutil.TempDir("", "config_test")
-	assert.NoError(t, err)
-	oldHome := os.Getenv(coreutils.HomeDir)
-	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
-	copyResources(t, certsConversionResources, tmpDir)
-	return func() {
-		os.RemoveAll(tmpDir)
-		os.Setenv(coreutils.HomeDir, oldHome)
-	}
 }
 
 func TestGetArtifactoriesFromConfig(t *testing.T) {
@@ -327,10 +312,6 @@ func verifyEncryptionStatus(t *testing.T, original, actual *ConfigV5, encryption
 		// Verify all match.
 		assert.Equal(t, coreutils.SumTrueValues(equals), len(equals))
 	}
-}
-
-func copyResources(t *testing.T, sourcePath string, destPath string) {
-	assert.NoError(t, fileutils.CopyDir(sourcePath, destPath, true, nil))
 }
 
 func assertCertsMigration(t *testing.T) {

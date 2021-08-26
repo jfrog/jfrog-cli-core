@@ -2,7 +2,6 @@ package gradleutils
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -21,7 +19,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.10"
+	gradleExtractorDependencyVersion = "4.24.12"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"
@@ -38,7 +36,7 @@ func RunGradle(tasks, configPath, deployableArtifactsFile string, configuration 
 		return err
 	}
 	defer os.Remove(gradleRunConfig.env[gradleBuildInfoProperties])
-	return gofrogcmd.RunCmd(gradleRunConfig)
+	return gradleRunConfig.runCmd()
 }
 
 func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename string, err error) {
@@ -57,9 +55,10 @@ func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename s
 }
 
 func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, gradleDependenciesDir, gradlePluginFilename string, useWrapperIfMissingConfig, disableDeploy bool) (*gradleRunConfig, error) {
-	runConfig := &gradleRunConfig{env: map[string]string{}}
-	runConfig.tasks = tasks
-
+	runConfig := &gradleRunConfig{
+		env:   map[string]string{},
+		tasks: tasks,
+	}
 	var vConfig *viper.Viper
 	var err error
 	if configPath == "" {
@@ -80,7 +79,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 
 	if threads > 0 {
-		vConfig.Set(utils.FORK_COUNT, threads)
+		vConfig.Set(utils.ForkCount, threads)
 	}
 
 	if disableDeploy {
@@ -93,7 +92,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 	if deployableArtifactsFile != "" {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
-		runConfig.env[utils.DEPLOYABLE_ARTIFACTS] = vConfig.Get(utils.DEPLOYABLE_ARTIFACTS).(string)
+		runConfig.env[utils.DeployableArtifacts] = vConfig.Get(utils.DeployableArtifacts).(string)
 	}
 
 	if !vConfig.GetBool(usePlugin) {
@@ -107,9 +106,9 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.DEPLOY_ARTIFACTS, "false")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.URL, "http://empty_url")
-	vConfig.Set(utils.DEPLOYER_PREFIX+utils.REPO, "empty_repo")
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
 }
 
 func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, error) {
@@ -156,16 +155,15 @@ func (config *gradleRunConfig) GetCmd() *exec.Cmd {
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 
-func (config *gradleRunConfig) GetEnv() map[string]string {
-	return config.env
-}
-
-func (config *gradleRunConfig) GetStdWriter() io.WriteCloser {
-	return os.Stderr
-}
-
-func (config *gradleRunConfig) GetErrWriter() io.WriteCloser {
-	return os.Stderr
+func (config *gradleRunConfig) runCmd() error {
+	command := config.GetCmd()
+	command.Env = os.Environ()
+	for k, v := range config.env {
+		command.Env = append(command.Env, k+"="+v)
+	}
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
 }
 
 func getGradleExecPath(useWrapper bool) (string, error) {

@@ -114,7 +114,6 @@ func (mc *MvnCommand) Run() error {
 	}
 	if mc.IsDetailedSummary() {
 		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-
 	}
 	return nil
 }
@@ -134,7 +133,7 @@ func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, mc.configPath)
 	if err != nil {
 		return err
 	}

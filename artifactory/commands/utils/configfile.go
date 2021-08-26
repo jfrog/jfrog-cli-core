@@ -2,9 +2,11 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -17,32 +19,41 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const BUILD_CONF_VERSION = 1
+const buildConfVersion = 1
 
 const (
 	// Common flags
-	Global             = "global"
-	ResolutionServerId = "server-id-resolve"
-	DeploymentServerId = "server-id-deploy"
-	ResolutionRepo     = "repo-resolve"
-	DeploymentRepo     = "repo-deploy"
+	global             = "global"
+	resolutionServerId = "server-id-resolve"
+	deploymentServerId = "server-id-deploy"
+	resolutionRepo     = "repo-resolve"
+	deploymentRepo     = "repo-deploy"
 
 	// Maven flags
-	ResolutionReleasesRepo  = "repo-resolve-releases"
-	ResolutionSnapshotsRepo = "repo-resolve-snapshots"
-	DeploymentReleasesRepo  = "repo-deploy-releases"
-	DeploymentSnapshotsRepo = "repo-deploy-snapshots"
+	resolutionReleasesRepo  = "repo-resolve-releases"
+	resolutionSnapshotsRepo = "repo-resolve-snapshots"
+	deploymentReleasesRepo  = "repo-deploy-releases"
+	deploymentSnapshotsRepo = "repo-deploy-snapshots"
+	includePatterns         = "include-patterns"
+	excludePatterns         = "exclude-patterns"
 
 	// Gradle flags
-	UsesPlugin          = "uses-plugin"
-	UseWrapper          = "use-wrapper"
-	DeployMavenDesc     = "deploy-maven-desc"
-	DeployIvyDesc       = "deploy-ivy-desc"
-	IvyDescPattern      = "ivy-desc-pattern"
-	IvyArtifactsPattern = "ivy-artifacts-pattern"
+	usesPlugin          = "uses-plugin"
+	useWrapper          = "use-wrapper"
+	deployMavenDesc     = "deploy-maven-desc"
+	deployIvyDesc       = "deploy-ivy-desc"
+	ivyDescPattern      = "ivy-desc-pattern"
+	ivyArtifactsPattern = "ivy-artifacts-pattern"
 
 	// Nuget flags
-	NugetV2 = "nuget-v2"
+	nugetV2 = "nuget-v2"
+
+	// Errors
+	resolutionErrorPrefix      = "[Resolution]: "
+	deploymentErrorPrefix      = "[Deployment]: "
+	setServerIdError           = "server ID must be set. Use the --server-id-resolve/deploy flag or configure a default server using 'jfrog c add' and 'jfrog c use' commands. "
+	setRepositoryError         = "repository/ies must be set. "
+	setSnapshotAndReleaseError = "snapshot and release repositories must be set. "
 )
 
 type ConfigFile struct {
@@ -57,7 +68,7 @@ type ConfigFile struct {
 
 func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 	configFile := &ConfigFile{
-		Version:    BUILD_CONF_VERSION,
+		Version:    buildConfVersion,
 		ConfigType: confType.String(),
 	}
 	configFile.populateConfigFromFlags(c)
@@ -73,7 +84,7 @@ func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 }
 
 func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
-	global := c.Bool(Global)
+	global := c.Bool(global)
 	projectDir, err := utils.GetProjectDir(global)
 	if err != nil {
 		return err
@@ -127,7 +138,7 @@ func isInteractive(c *cli.Context) bool {
 	if strings.ToLower(os.Getenv(coreutils.CI)) == "true" {
 		return false
 	}
-	return !isAnyFlagSet(c, ResolutionServerId, ResolutionRepo, DeploymentServerId, DeploymentRepo)
+	return !isAnyFlagSet(c, resolutionServerId, resolutionRepo, deploymentServerId, deploymentRepo)
 }
 
 func isAnyFlagSet(c *cli.Context, flagNames ...string) bool {
@@ -141,37 +152,40 @@ func isAnyFlagSet(c *cli.Context, flagNames ...string) bool {
 
 // Populate configuration from cli flags
 func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) {
-	configFile.Resolver.ServerId = c.String(ResolutionServerId)
-	configFile.Resolver.Repo = c.String(ResolutionRepo)
-	configFile.Deployer.ServerId = c.String(DeploymentServerId)
-	configFile.Deployer.Repo = c.String(DeploymentRepo)
+	configFile.Resolver.ServerId = c.String(resolutionServerId)
+	configFile.Resolver.Repo = c.String(resolutionRepo)
+	configFile.Deployer.ServerId = c.String(deploymentServerId)
+	configFile.Deployer.Repo = c.String(deploymentRepo)
 	configFile.Interactive = isInteractive(c)
 }
 
 // Populate Maven related configuration from cli flags
 func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
-	configFile.Resolver.SnapshotRepo = c.String(ResolutionSnapshotsRepo)
-	configFile.Resolver.ReleaseRepo = c.String(ResolutionReleasesRepo)
-	configFile.Deployer.SnapshotRepo = c.String(DeploymentSnapshotsRepo)
-	configFile.Deployer.ReleaseRepo = c.String(DeploymentReleasesRepo)
-	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, ResolutionSnapshotsRepo, ResolutionReleasesRepo, DeploymentSnapshotsRepo, DeploymentReleasesRepo)
+	configFile.Resolver.SnapshotRepo = c.String(resolutionSnapshotsRepo)
+	configFile.Resolver.ReleaseRepo = c.String(resolutionReleasesRepo)
+	configFile.Deployer.SnapshotRepo = c.String(deploymentSnapshotsRepo)
+	configFile.Deployer.ReleaseRepo = c.String(deploymentReleasesRepo)
+	configFile.Deployer.IncludePatterns = c.String(includePatterns)
+	configFile.Deployer.ExcludePatterns = c.String(excludePatterns)
+	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, resolutionSnapshotsRepo, resolutionReleasesRepo,
+		deploymentSnapshotsRepo, deploymentReleasesRepo, includePatterns, excludePatterns)
 }
 
 // Populate Gradle related configuration from cli flags
 func (configFile *ConfigFile) populateGradleConfigFromFlags(c *cli.Context) {
-	configFile.Deployer.DeployMavenDesc = c.BoolT(DeployMavenDesc)
-	configFile.Deployer.DeployIvyDesc = c.BoolT(DeployIvyDesc)
-	configFile.Deployer.IvyPattern = defaultIfNotSet(c, IvyDescPattern, "[organization]/[module]/ivy-[revision].xml")
-	configFile.Deployer.ArtifactsPattern = defaultIfNotSet(c, IvyArtifactsPattern, "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]")
-	configFile.UsePlugin = c.Bool(UsesPlugin)
-	configFile.UseWrapper = c.Bool(UseWrapper)
-	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, DeployMavenDesc, DeployIvyDesc, IvyDescPattern, IvyArtifactsPattern, UsesPlugin, UseWrapper)
+	configFile.Deployer.DeployMavenDesc = c.BoolT(deployMavenDesc)
+	configFile.Deployer.DeployIvyDesc = c.BoolT(deployIvyDesc)
+	configFile.Deployer.IvyPattern = defaultIfNotSet(c, ivyDescPattern, "[organization]/[module]/ivy-[revision].xml")
+	configFile.Deployer.ArtifactsPattern = defaultIfNotSet(c, ivyArtifactsPattern, "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]")
+	configFile.UsePlugin = c.Bool(usesPlugin)
+	configFile.UseWrapper = c.Bool(useWrapper)
+	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, deployMavenDesc, deployIvyDesc, ivyDescPattern, ivyArtifactsPattern, usesPlugin, useWrapper)
 }
 
 // Populate NuGet related configuration from cli flags
 func (configFile *ConfigFile) populateNugetConfigFromFlags(c *cli.Context) {
-	configFile.Resolver.NugetV2 = c.Bool(NugetV2)
-	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, NugetV2)
+	configFile.Resolver.NugetV2 = c.Bool(nugetV2)
+	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, nugetV2)
 }
 
 // Verify config file doesn't exist or prompt to override it
@@ -248,9 +262,40 @@ func (configFile *ConfigFile) configMaven() error {
 		if err := configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
 			return err
 		}
-		return configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL)
+		if err := configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
+			return err
+		}
+		configFile.setIncludeExcludePatterns()
 	}
 	return nil
+}
+
+func (configFile *ConfigFile) setIncludeExcludePatterns() {
+	if !coreutils.AskYesNo("Would you like to filter out some of the deployed artifacts?", false) {
+		return
+	}
+	fmt.Println("You may set multiple wildcard patterns, to match the artifacts' names you'd like to include and/or exclude from being deployed.")
+	includePatterns := getIncludeExcludePatterns("include")
+	if includePatterns != "" {
+		configFile.Deployer.IncludePatterns = includePatterns
+	}
+	excludePatterns := getIncludeExcludePatterns("exclude")
+	if excludePatterns != "" {
+		configFile.Deployer.ExcludePatterns = excludePatterns
+	}
+}
+
+func getIncludeExcludePatterns(patternType string) string {
+	var patterns []string
+	patternNum := 1
+	for {
+		newPattern := AskString("", strings.Title(patternType)+" pattern "+strconv.Itoa(patternNum)+" (leave empty to continue):", true, false)
+		if newPattern == "" {
+			return strings.Join(patterns, ", ")
+		}
+		patterns = append(patterns, newPattern)
+		patternNum++
+	}
 }
 
 func (configFile *ConfigFile) configGradle() error {
@@ -337,39 +382,53 @@ func (configFile *ConfigFile) setUseNugetV2() {
 	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
-// Check correctness of spec file configuration
-func (configFile *ConfigFile) validateConfig() error {
-	resolver := configFile.Resolver
-	releaseRepo := resolver.ReleaseRepo
-	snapshotRepo := resolver.SnapshotRepo
-	if resolver.ServerId != "" {
-		if resolver.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckError(errors.New("Resolution repository/ies must be set."))
-		}
-		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-			return errorutils.CheckError(errors.New("Resolution snapshot and release repositories must be set."))
+func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
+	releaseRepo := repository.ReleaseRepo
+	snapshotRepo := repository.SnapshotRepo
+	// For config commands - resolver/deployer server-id flags are optional.
+	// In case no server-id flag was provided we use the default configured server id.
+	defaultServerDetails, err := config.GetDefaultServerConf()
+	if err != nil {
+		return err
+	}
+	defaultServerId := ""
+	if defaultServerDetails != nil {
+		defaultServerId = defaultServerDetails.ServerId
+	}
+	// Server-id flag was not provided.
+	if repository.ServerId == "" {
+		// No default server was configured.
+		if defaultServerId == "" {
+			// Repositories flags were provided.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				return errorutils.CheckError(errors.New(errorPrefix + setServerIdError))
+			}
+		} else {
+			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
+			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
+				repository.ServerId = defaultServerId
+			}
 		}
 	} else {
-		if resolver.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Resolver server ID must be set."))
+		// Server-id flag was provided, but no repositories flags.
+		if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
+			return errorutils.CheckError(errors.New(errorPrefix + setRepositoryError))
 		}
 	}
-	deployer := configFile.Deployer
-	releaseRepo = deployer.ReleaseRepo
-	snapshotRepo = deployer.SnapshotRepo
-	if deployer.ServerId != "" {
-		if deployer.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckError(errors.New("Deployment repository/ies must be set."))
-		}
-		if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-			return errorutils.CheckError(errors.New("Deployment snapshot and release repositories must be set."))
-		}
-	} else {
-		if deployer.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-			return errorutils.CheckError(errors.New("Deployer server ID must be set."))
-		}
+	// Release/snapshot repositories should be entangled to each other.
+	if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
+		return errorutils.CheckError(errors.New(errorPrefix + setSnapshotAndReleaseError))
 	}
 	return nil
+}
+
+// Validate spec file configuration
+func (configFile *ConfigFile) validateConfig() error {
+	err := validateRepositoryConfig(&configFile.Resolver, resolutionErrorPrefix)
+	if err != nil {
+		return err
+	}
+	return validateRepositoryConfig(&configFile.Deployer, deploymentErrorPrefix)
 }
 
 // Get Artifactory serverId from the user. If useArtifactoryQuestion is not empty, ask first whether to use artifactory.

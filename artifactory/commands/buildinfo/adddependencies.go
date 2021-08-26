@@ -100,7 +100,7 @@ func collectDependenciesChecksums(dependenciesPaths map[string]string) (map[stri
 			details, err = fspatterns.CreateSymlinkFileDetails()
 		} else {
 			log.Info("Adding dependency:", dependencyPath)
-			details, err = fileutils.GetFileDetails(dependencyPath)
+			details, err = fileutils.GetFileDetails(dependencyPath, true)
 		}
 		if err != nil {
 			log.Error(err)

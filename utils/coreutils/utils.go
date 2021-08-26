@@ -3,7 +3,9 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -115,6 +117,16 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 	return ExitCodeNoError
 }
 
+// When running a command in an external process, if the command fails to run or doesn't complete successfully ExitError is returned.
+// We would like to return a regular error instead of ExitError,
+// because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
+func ConvertExitCodeError(err error) error {
+	if _, ok := err.(*exec.ExitError); ok {
+		err = errors.New(err.Error())
+	}
+	return err
+}
+
 func GetConfigVersion() int {
 	return 5
 }
@@ -185,6 +197,11 @@ func GetWorkingDirectory() (string, error) {
 	}
 
 	return currentDir, nil
+}
+
+// IsTerminal checks whether stdout is a terminal.
+func IsTerminal() bool {
+	return terminal.IsTerminal(int(os.Stdout.Fd()))
 }
 
 type Credentials interface {
@@ -268,6 +285,23 @@ func GetJfrogPluginsDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, JfrogPluginsDirName), nil
+}
+
+func GetJfrogLocksDir() (string, error) {
+	homeDir, err := GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, JfrogLocksDirName), nil
+}
+
+func GetJfrogConfigLockDir() (string, error) {
+	configLockDirName := "config"
+	locksDirPath, err := GetJfrogLocksDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(locksDirPath, configLockDirName), nil
 }
 
 // Ask a yes or no question, with a default answer.

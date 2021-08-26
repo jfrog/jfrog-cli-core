@@ -25,7 +25,7 @@ func NewGradleCommand() *GradleCommand {
 	return &GradleCommand{}
 }
 
-// Returns the ArtfiactoryDetails. The information returns from the config file provided.
+// Returns the ServerDetails. The information returns from the config file provided.
 func (gc *GradleCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Get the serverDetails from the config file.
 	var err error
@@ -69,13 +69,12 @@ func (gc *GradleCommand) Run() error {
 	}
 	if gc.IsDetailedSummary() {
 		return gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
-
 	}
 	return nil
 }
 
 func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath)
 	if err != nil {
 		return err
 	}

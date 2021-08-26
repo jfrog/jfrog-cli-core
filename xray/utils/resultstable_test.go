@@ -52,3 +52,23 @@ func TestSplitComponentId(t *testing.T) {
 		assert.Equal(t, test.expectedCompType, actualCompType)
 	}
 }
+
+func TestGetDirectComponents(t *testing.T) {
+	tests := []struct {
+		impactPaths   [][]services.ImpactPathNode
+		multipleRoots bool
+		expectedRows  []componentRow
+	}{
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack2", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack1", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack21", version: "1.2.3"}, {name: "jfrog:pack22", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack1", version: "1.2.3"}}},
+	}
+
+	for _, test := range tests {
+		actualRows := getDirectComponents(test.impactPaths, test.multipleRoots)
+		assert.ElementsMatch(t, test.expectedRows, actualRows)
+	}
+}

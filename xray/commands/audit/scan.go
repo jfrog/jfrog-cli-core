@@ -3,7 +3,6 @@ package audit
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/jfrog/gofrog/io"
@@ -21,12 +20,17 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-const (
-	indexingCommand = "graph"
-)
-
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
+type OutputFormat string
+
+const (
+	// OutputFormat values
+	Table OutputFormat = "table"
+	Json  OutputFormat = "json"
+
+	indexingCommand = "graph"
+)
 
 type ScanCommand struct {
 	serverDetails *config.ServerDetails
@@ -34,7 +38,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
-	printResults           bool
+	outputFormat           OutputFormat
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
@@ -47,8 +51,8 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetPrintResults(print bool) *ScanCommand {
-	scanCmd.printResults = print
+func (scanCmd *ScanCommand) SetOutputFormat(format OutputFormat) *ScanCommand {
+	scanCmd.outputFormat = format
 	return scanCmd
 }
 
@@ -183,13 +187,8 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) FileContext {
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
-
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
-			fileInfo, e := os.Lstat(filePath)
-			if errorutils.CheckError(e) != nil {
-				return e
-			}
-			log.Info(logMsgPrefix+"Indexing file:", fileInfo.Name())
+			log.Info(logMsgPrefix+"Indexing file:", filePath)
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err
@@ -219,7 +218,6 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 }
 
 func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) (bool, error) {
-
 	go func() {
 		// Blocking until consuming is finished.
 		fileConsumer.Run()
@@ -233,16 +231,12 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	violations := []services.Violation{}
 	vulnerabilities := []services.Vulnerability{}
 	licenses := []services.License{}
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return false, err
-	}
+	flatResults := []services.ScanResponse{}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
-			if err = xrutils.WriteJsonResults(res, tempDirPath); err != nil {
-				return false, err
-			}
-			if scanCmd.printResults {
+			flatResults = append(flatResults, *res)
+
+			if scanCmd.outputFormat == Table {
 				violations = append(violations, res.Violations...)
 				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
 				licenses = append(licenses, res.Licenses...)
@@ -253,15 +247,25 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 			}
 		}
 	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if len(violations) > 0 {
-		err = xrutils.PrintViolationsTable(violations, true)
-	}
-	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
-	}
-	if len(licenses) > 0 {
-		xrutils.PrintLicensesTable(licenses, true)
+	var err error
+	if scanCmd.outputFormat == Table {
+		if len(flatResults) > 0 {
+			resultsPath, err := xrutils.WriteJsonResults(flatResults)
+			if err != nil {
+				return false, err
+			}
+			fmt.Println("The full scan results are available here: " + resultsPath)
+		}
+		if scanCmd.includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
+		} else {
+			err = xrutils.PrintViolationsTable(violations, true)
+		}
+		if scanCmd.includeLincenses {
+			xrutils.PrintLicensesTable(licenses, true)
+		}
+	} else {
+		err = xrutils.PrintJson(flatResults)
 	}
 	if scanPassed {
 		log.Info("Scan completed successfully.")
@@ -302,8 +306,12 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
+	recursive, err := fileData.IsRecursive(true)
+	if err != nil {
+		return err
+	}
 
-	paths, err := fspatterns.GetPaths(rootPath, true, false, false)
+	paths, err := fspatterns.GetPaths(rootPath, recursive, false, false)
 	if err != nil {
 		return err
 	}

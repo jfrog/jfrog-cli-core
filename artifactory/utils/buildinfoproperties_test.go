@@ -81,9 +81,9 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 
 func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]string) {
 	var yamlConfig = map[string]string{
-		RESOLVER_PREFIX + URL: "http://some.url.com",
-		DEPLOYER_PREFIX + URL: "http://some.other.url.com",
-		BUILD_NAME:            "buildName",
+		ResolverPrefix + Url: "http://some.url.com",
+		DeployerPrefix + Url: "http://some.other.url.com",
+		BuildName:            "buildName",
 	}
 
 	vConfig := viper.New()
@@ -121,8 +121,8 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 func TestGeneratedBuildInfoFile(t *testing.T) {
 	log.SetDefaultLogger()
 	var yamlConfig = map[string]string{
-		RESOLVER_PREFIX + URL: "http://some.url.com",
-		DEPLOYER_PREFIX + URL: "http://some.other.url.com",
+		ResolverPrefix + Url: "http://some.url.com",
+		DeployerPrefix + Url: "http://some.other.url.com",
 	}
 	vConfig := viper.New()
 	vConfig.Set("type", Maven.String())
@@ -181,8 +181,8 @@ func TestSetProxyIfNeeded(t *testing.T) {
 	}
 
 	expectedConfig := viper.New()
-	expectedConfig.Set(PROXY+HOST, host)
-	expectedConfig.Set(PROXY+PORT, port)
+	expectedConfig.Set(Proxy+Host, host)
+	expectedConfig.Set(Proxy+Port, port)
 	compareViperConfigs(t, vConfig, expectedConfig, Maven)
 
 	setProxy(proxyOrg, t)

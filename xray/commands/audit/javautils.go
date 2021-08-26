@@ -13,7 +13,6 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -50,13 +49,8 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool) error {
+func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool, targetRepoPath, projectKey string, watches []string, outputFormat OutputFormat) error {
 	xrayManager, err := commands.CreateXrayServiceManager(serverDetails)
-	if err != nil {
-		return err
-	}
-
-	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
 		return err
 	}
@@ -64,9 +58,13 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License
+	var results []services.ScanResponse
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params := &services.XrayGraphScanParams{
-			Graph: moduleDependencyTree,
+			Graph:      moduleDependencyTree,
+			RepoPath:   targetRepoPath,
+			Watches:    watches,
+			ProjectKey: projectKey,
 		}
 
 		// Print the module ID
@@ -81,28 +79,34 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 		if err != nil {
 			return err
 		}
+		results = append(results, *scanResults)
 
-		if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-			return err
-		}
-		violations = append(violations, scanResults.Violations...)
-		vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
-		licenses = append(licenses, scanResults.Licenses...)
-	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-
-	if len(violations) > 0 {
-		if err = xrutils.PrintViolationsTable(violations, false); err != nil {
-			return err
+		if outputFormat == Table {
+			violations = append(violations, scanResults.Violations...)
+			vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
+			licenses = append(licenses, scanResults.Licenses...)
 		}
 	}
-	if len(vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
+	if outputFormat == Table {
+		if len(results) > 0 {
+			resultsPath, err := xrutils.WriteJsonResults(results)
+			if err != nil {
+				return err
+			}
+			fmt.Println("The full scan results are available here: " + resultsPath)
+		}
+		if includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
+		} else {
+			err = xrutils.PrintViolationsTable(violations, false)
+		}
+		if includeLicenses {
+			xrutils.PrintLicensesTable(licenses, false)
+		}
+	} else {
+		err = xrutils.PrintJson(results)
 	}
-	if len(licenses) > 0 {
-		xrutils.PrintLicensesTable(licenses, false)
-	}
-	return nil
+	return err
 }
 
 func addModuleTree(module buildinfo.Module) *services.GraphNode {

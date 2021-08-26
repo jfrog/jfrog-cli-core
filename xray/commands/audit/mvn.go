@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -13,7 +12,7 @@ import (
 
 type AuditMavenCommand struct {
 	serverDetails          *config.ServerDetails
-	excludeTestDeps        bool
+	outputFormat           OutputFormat
 	insecureTls            bool
 	watches                []string
 	projectKey             string
@@ -27,8 +26,8 @@ func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails
 	return auditCmd
 }
 
-func (auditCmd *AuditMavenCommand) SetExcludeTestDeps(excludeTestDeps bool) *AuditMavenCommand {
-	auditCmd.excludeTestDeps = excludeTestDeps
+func (auditCmd *AuditMavenCommand) SetOutputFormat(format OutputFormat) *AuditMavenCommand {
+	auditCmd.outputFormat = format
 	return auditCmd
 }
 
@@ -77,7 +76,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
+	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
@@ -93,10 +92,7 @@ func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*servi
 }
 
 func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
-	goals := []string{"-B", "compile"}
-	if !auditCmd.excludeTestDeps {
-		goals = append(goals, "test-compile")
-	}
+	goals := []string{"-B", "compile", "test-compile"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Maven)
 	if err != nil {
@@ -112,10 +108,4 @@ func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfigu
 
 func (na *AuditMavenCommand) CommandName() string {
 	return "xr_audit_mvn"
-}
-
-func printTable(res *services.ScanResponse) error {
-	jsonOut, err := json.Marshal(res)
-	fmt.Println(string(jsonOut))
-	return err
 }

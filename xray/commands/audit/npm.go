@@ -2,15 +2,11 @@ package audit
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -20,7 +16,7 @@ const (
 
 type AuditNpmCommand struct {
 	serverDetails          *config.ServerDetails
-	workingDirectory       string
+	outputFormat           OutputFormat
 	arguments              []string
 	typeRestriction        npmutils.TypeRestriction
 	watches                []string
@@ -30,8 +26,8 @@ type AuditNpmCommand struct {
 	includeLincenses       bool
 }
 
-func (auditCmd *AuditNpmCommand) SetWorkingDirectory(dir string) *AuditNpmCommand {
-	auditCmd.workingDirectory = dir
+func (auditCmd *AuditNpmCommand) SetOutputFormat(format OutputFormat) *AuditNpmCommand {
+	auditCmd.outputFormat = format
 	return auditCmd
 }
 
@@ -90,24 +86,11 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if auditCmd.workingDirectory == "" {
-		auditCmd.workingDirectory = currentDir
-	} else {
-		err = os.Chdir(auditCmd.workingDirectory)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err = os.Chdir(currentDir)
-		}()
-	}
-	log.Debug("Working directory set to:", auditCmd.workingDirectory)
-
-	packageInfo, err := coreutils.ReadPackageInfoFromPackageJson(auditCmd.workingDirectory)
+	npmVersion, npmExecutablePath, err := npmutils.GetNpmVersionAndExecPath()
 	if err != nil {
 		return err
 	}
-	npmExecutablePath, err := npmutils.FindNpmExecutable()
+	packageInfo, err := npmutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
 	if err != nil {
 		return err
 	}
@@ -137,28 +120,29 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return err
-	}
-	if err = xrutils.WriteJsonResults(scanResults, tempDirPath); err != nil {
-		return err
-	}
-	fmt.Println("The full scan results are available here: " + tempDirPath)
-	if len(scanResults.Violations) > 0 {
-		err = xrutils.PrintViolationsTable(scanResults.Violations, false)
-	}
-	if len(scanResults.Vulnerabilities) > 0 {
-		xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
-	}
-	if len(scanResults.Licenses) > 0 {
-		xrutils.PrintLicensesTable(scanResults.Licenses, false)
+	if auditCmd.outputFormat == Table {
+		resultsPath, err := xrutils.WriteJsonResults([]services.ScanResponse{*scanResults})
+		if err != nil {
+			return err
+		}
+		fmt.Println("The full scan results are available here: " + resultsPath)
+
+		if auditCmd.includeVulnerabilities {
+			xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
+		} else {
+			err = xrutils.PrintViolationsTable(scanResults.Violations, false)
+		}
+		if auditCmd.includeLincenses {
+			xrutils.PrintLicensesTable(scanResults.Licenses, false)
+		}
+	} else {
+		err = xrutils.PrintJson([]services.ScanResponse{*scanResults})
 	}
 	return err
 }
 
 // Parse the dependencies into an Xray dependency tree format
-func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *coreutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *npmutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for dependencyId, dependency := range dependencies {
 		dependencyId = npmPackageTypeIdentifier + dependencyId

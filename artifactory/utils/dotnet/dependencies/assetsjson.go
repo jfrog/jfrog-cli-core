@@ -116,7 +116,7 @@ func (assets *assets) getAllDependencies() (map[string]*buildinfo.Dependency, er
 			}
 			return nil, errorutils.CheckError(errors.New("The file " + nupkgFilePath + " doesn't exist in the NuGet cache directory."))
 		}
-		fileDetails, err := fileutils.GetFileDetails(nupkgFilePath)
+		fileDetails, err := fileutils.GetFileDetails(nupkgFilePath, true)
 		if err != nil {
 			return nil, err
 		}

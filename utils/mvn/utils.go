@@ -60,7 +60,7 @@ func getMavenHome() (string, error) {
 		// First we will try lo look for 'mvn' in PATH.
 		mvnPath, err := exec.LookPath("mvn")
 		if err != nil || mvnPath == "" {
-			return "", errorutils.CheckError(errors.New(err.String() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+			return "", errorutils.CheckError(errors.New(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
 		}
 		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
 		cmd := exec.Command("mvn", "--version")

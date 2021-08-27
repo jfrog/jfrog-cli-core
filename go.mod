@@ -23,6 +23,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
+// Exclude vulnerable dependencies
 exclude (
 	github.com/miekg/dns v1.0.14
 	github.com/pkg/sftp v1.10.1

@@ -352,7 +352,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 			}
 			return errorutils.CheckError(err)
 		}
-		if hdr.Name == filepath.Join("package", "package.json") {
+		if hdr.Name == "package/package.json" {
 			packageJson, err := ioutil.ReadAll(tarReader)
 			if err != nil {
 				return errorutils.CheckError(err)

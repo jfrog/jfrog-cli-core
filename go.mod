@@ -9,7 +9,7 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/jfrog/gocmd v0.3.1
 	github.com/jfrog/gofrog v1.0.6
-	github.com/jfrog/jfrog-client-go v0.26.0
+	github.com/jfrog/jfrog-client-go v0.26.1
 	github.com/magiconair/properties v1.8.1
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3
@@ -21,6 +21,6 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.0.1-0.20210815141452-d980d0b5cd25
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.0.1-0.20210815141452-d980d0b5cd25
 
 // replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.3.1-0.20210623152326-422f211f4e7f

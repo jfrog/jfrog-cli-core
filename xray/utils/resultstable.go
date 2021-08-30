@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -27,7 +28,10 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	coloredOutput := coreutils.IsTerminal()
 
 	for _, violation := range violations {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(violation.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		currSeverity := getSeverity(violation.Severity)
 		if violation.ViolationType == "security" {
 			cves := convertCves(violation.Cves)
@@ -110,7 +114,10 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 	var vulnerabilitiesRows []vulnerabilityRow
 
 	for _, vulnerability := range vulnerabilities {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(vulnerability.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		cves := convertCves(vulnerability.Cves)
 		currSeverity := getSeverity(vulnerability.Severity)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -148,7 +155,10 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 	var licensesRows []licenseRow
 
 	for _, license := range licenses {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components := splitComponents(license.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				licenseRow{
@@ -225,7 +235,10 @@ func convertCves(cves []services.Cve) []cveRow {
 	return cveRows
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow) {
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow, error) {
+	if len(impactedPackages) == 0 {
+		return nil, nil, nil, nil, nil, errorutils.CheckError(errors.New("failed while parsing the response from Xray: violation doesn't have any components"))
+	}
 	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
 	var directComponents [][]componentRow
 	for currCompId, currComp := range impactedPackages {
@@ -237,7 +250,7 @@ func splitComponents(impactedPackages map[string]services.Component, multipleRoo
 		currComponents := getDirectComponents(currComp.ImpactPaths, multipleRoots)
 		directComponents = append(directComponents, currComponents)
 	}
-	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents
+	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents, nil
 }
 
 var packageTypes = map[string]string{

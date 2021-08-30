@@ -8,13 +8,14 @@ import (
 
 // The test only checks cases of returning an error in case of a violation with FailBuild == true
 func TestPrintViolationsTable(t *testing.T) {
+	components := map[string]services.Component{"gav://antparent:ant:1.6.5": {}}
 	tests := []struct {
 		violations    []services.Violation
 		expectedError bool
 	}{
-		{[]services.Violation{{FailBuild: false}, {FailBuild: false}, {FailBuild: false}}, false},
-		{[]services.Violation{{FailBuild: false}, {FailBuild: true}, {FailBuild: false}}, true},
-		{[]services.Violation{{FailBuild: true}, {FailBuild: true}, {FailBuild: true}}, true},
+		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: false}, {Components: components, FailBuild: false}}, false},
+		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: true}, {Components: components, FailBuild: false}}, true},
+		{[]services.Violation{{Components: components, FailBuild: true}, {Components: components, FailBuild: true}, {Components: components, FailBuild: true}}, true},
 	}
 
 	for _, test := range tests {

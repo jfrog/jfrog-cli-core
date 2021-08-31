@@ -80,7 +80,7 @@ func (auditCmd *AuditGoCommand) Run() (err error) {
 	}
 
 	// Calculate npm dependencies
-	dependenciesMap, err := goutils.GetDependenciesGraph(currentDir)
+	dependenciesGraph, err := goutils.GetDependenciesGraph(currentDir)
 	if err != nil {
 		return err
 	}
@@ -96,18 +96,18 @@ func (auditCmd *AuditGoCommand) Run() (err error) {
 		return err
 	}
 	// Parse the dependencies into Xray dependency tree format
-	goGraph := &services.GraphNode{
+	rootNode := &services.GraphNode{
 		Id:    goPackageTypeIdentifier + rootModuleName,
 		Nodes: []*services.GraphNode{},
 	}
-	buildGoDependencyTree(goGraph, dependenciesMap, dependenciesList)
+	buildGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
 
 	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
 	if err != nil {
 		return err
 	}
 	params := services.NewXrayGraphScanParams()
-	params.Graph = goGraph
+	params.Graph = rootNode
 	params.RepoPath = auditCmd.targetRepoPath
 	params.Watches = auditCmd.watches
 	params.ProjectKey = auditCmd.projectKey
@@ -124,14 +124,15 @@ func (auditCmd *AuditGoCommand) Run() (err error) {
 	return err
 }
 
-func buildGoDependencyTree(currNode *services.GraphNode, dependenciesMap map[string][]string, dependenciesList map[string]bool) {
+func buildGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
 	if currNode.NodeHasLoop() {
 		return
 	}
-	currDepChildren := dependenciesMap[strings.TrimPrefix(currNode.Id, goPackageTypeIdentifier)]
+	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, goPackageTypeIdentifier)]
 	// Recursively create & append all node's dependencies.
 	for _, childName := range currDepChildren {
-		if dependenciesList[childName] == false {
+		if dependenciesList[strings.ReplaceAll(childName, ":", "@v")] == false {
+			// 'go list all' is more accurate than 'go graph' so we filter out deps that doesn't exist in go list
 			continue
 		}
 		childNode := &services.GraphNode{
@@ -140,7 +141,7 @@ func buildGoDependencyTree(currNode *services.GraphNode, dependenciesMap map[str
 			Parent: currNode,
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
-		buildGoDependencyTree(childNode, dependenciesMap, dependenciesList)
+		buildGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
 	}
 }
 

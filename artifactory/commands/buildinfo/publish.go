@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -96,7 +97,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	buildLink, err := bpc.logBuildInfoUiUrl(servicesManager, buildInfo.Started)
+	buildLink, err := bpc.constructBuildInfoUiUrl(servicesManager, buildInfo.Started)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	return nil
 }
 
-func (bpc *BuildPublishCommand) logBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {
+func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {
 	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfoStarted)
 	if errorutils.CheckError(err) != nil {
 		return "", err
@@ -117,26 +118,26 @@ func (bpc *BuildPublishCommand) logBuildInfoUiUrl(servicesManager artifactory.Ar
 	if err != nil {
 		return "", err
 	}
-	majorVersion, err := strconv.Atoi(artVersion[0:1])
-	if err != nil {
+	artVersionSlice := strings.Split(artVersion, ".")
+	majorVersion, err := strconv.Atoi(artVersionSlice[0])
+	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
 	return bpc.getBuildInfoUiUrl(majorVersion, buildTime), nil
 }
 
-func (bpc *BuildPublishCommand) getBuildInfoUiUrl(artVersion int, buildTime time.Time) string {
-	if artVersion <= 6 {
+func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime time.Time) string {
+	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
 			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
 	} else if bpc.buildConfiguration.Project != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
 			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.Project, bpc.buildConfiguration.Project)
-	} else {
-		timestamp := buildTime.UnixNano() / 1000000
-		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
-			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10))
 	}
+	timestamp := buildTime.UnixNano() / 1000000
+	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
+		bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10))
 }
 
 func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildInfo, error) {

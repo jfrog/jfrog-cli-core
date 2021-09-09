@@ -13,10 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jfrog/gocmd/cmd"
-	gocmd "github.com/jfrog/gocmd/cmd"
 	"github.com/jfrog/gocmd/executers"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
@@ -80,11 +79,11 @@ func (project *goProject) LoadDependencies() error {
 }
 
 func (project *goProject) loadDependencies() ([]executers.Package, error) {
-	cachePath, err := gocmd.GetCachePath()
+	cachePath, err := goutils.GetCachePath()
 	if err != nil {
 		return nil, err
 	}
-	modulesMap, err := cmd.GetDependenciesList(project.projectPath)
+	modulesMap, err := goutils.GetDependenciesList(project.projectPath)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +240,7 @@ func (project *goProject) getId() string {
 func (project *goProject) readModFile() error {
 	var err error
 	if project.projectPath == "" {
-		project.projectPath, err = cmd.GetProjectRoot()
+		project.projectPath, err = goutils.GetProjectRoot()
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
@@ -263,7 +262,7 @@ func (project *goProject) readModFile() error {
 	}
 
 	// Read module name
-	project.moduleName, err = parseModuleName(string(content))
+	project.moduleName, err = goutils.GetModuleName(project.projectPath)
 	if err != nil {
 		return err
 	}

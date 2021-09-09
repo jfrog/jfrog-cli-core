@@ -1,13 +1,13 @@
 package golang
 
 import (
-	"github.com/jfrog/gocmd/cmd"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 func LogGoVersion() error {
-	output, err := cmd.GetGoVersion()
+	output, err := goutils.GetGoVersion()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

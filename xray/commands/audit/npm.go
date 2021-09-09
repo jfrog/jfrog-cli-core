@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
@@ -120,24 +119,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if auditCmd.outputFormat == Table {
-		resultsPath, err := xrutils.WriteJsonResults([]services.ScanResponse{*scanResults})
-		if err != nil {
-			return err
-		}
-		fmt.Println("The full scan results are available here: " + resultsPath)
-
-		if auditCmd.includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
-		} else {
-			err = xrutils.PrintViolationsTable(scanResults.Violations, false)
-		}
-		if auditCmd.includeLincenses {
-			xrutils.PrintLicensesTable(scanResults.Licenses, false)
-		}
-	} else {
-		err = xrutils.PrintJson([]services.ScanResponse{*scanResults})
-	}
+	err = xrutils.PrintScanResults([]services.ScanResponse{*scanResults}, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, false)
 	return err
 }
 

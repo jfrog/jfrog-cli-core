@@ -2,7 +2,6 @@ package audit
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -54,10 +53,6 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 	if err != nil {
 		return err
 	}
-
-	var violations []services.Violation
-	var vulnerabilities []services.Vulnerability
-	var licenses []services.License
 	var results []services.ScanResponse
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params := &services.XrayGraphScanParams{
@@ -80,32 +75,8 @@ func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *c
 			return err
 		}
 		results = append(results, *scanResults)
-
-		if outputFormat == Table {
-			violations = append(violations, scanResults.Violations...)
-			vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
-			licenses = append(licenses, scanResults.Licenses...)
-		}
 	}
-	if outputFormat == Table {
-		if len(results) > 0 {
-			resultsPath, err := xrutils.WriteJsonResults(results)
-			if err != nil {
-				return err
-			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
-		}
-		if includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
-		} else {
-			err = xrutils.PrintViolationsTable(violations, false)
-		}
-		if includeLicenses {
-			xrutils.PrintLicensesTable(licenses, false)
-		}
-	} else {
-		err = xrutils.PrintJson(results)
-	}
+	err = xrutils.PrintScanResults(results, outputFormat == Table, includeVulnerabilities, includeLicenses, false)
 	return err
 }
 

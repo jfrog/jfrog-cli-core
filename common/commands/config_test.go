@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -15,7 +16,7 @@ func init() {
 }
 
 func TestBasicAuth(t *testing.T) {
-	inputDetails := createTestServerDetails()
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "admin"
 	inputDetails.Password = "password"
 
@@ -24,7 +25,7 @@ func TestBasicAuth(t *testing.T) {
 }
 
 func TestUsernameSavedLowercase(t *testing.T) {
-	inputDetails := createTestServerDetails()
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "ADMIN"
 	inputDetails.Password = "password"
 
@@ -34,10 +35,9 @@ func TestUsernameSavedLowercase(t *testing.T) {
 }
 
 func TestArtifactorySshKey(t *testing.T) {
-	inputDetails := createTestServerDetails()
-	inputDetails.User = "admin"
-	inputDetails.Password = "password"
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.SshKeyPath = "/tmp/sshKey"
+	inputDetails.SshPassphrase = "123456"
 	inputDetails.ArtifactoryUrl = "ssh://localhost:1339/"
 
 	configAndTest(t, inputDetails, false)
@@ -45,7 +45,7 @@ func TestArtifactorySshKey(t *testing.T) {
 }
 
 func TestAccessToken(t *testing.T) {
-	inputDetails := createTestServerDetails()
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.AccessToken = "accessToken"
 
 	configAndTest(t, inputDetails, false)
@@ -54,7 +54,7 @@ func TestAccessToken(t *testing.T) {
 
 func TestRefreshToken(t *testing.T) {
 	// Import after tokens were generated.
-	inputDetails := createTestServerDetails()
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "admin"
 	inputDetails.Password = "password"
 	inputDetails.AccessToken = "accessToken"
@@ -71,7 +71,7 @@ func TestRefreshToken(t *testing.T) {
 }
 
 func TestEmptyCredentials(t *testing.T) {
-	configAndTest(t, createTestServerDetails(), false)
+	configAndTest(t, tests.CreateTestServerDetails(), false)
 }
 
 func TestUrls(t *testing.T) {
@@ -94,14 +94,13 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8080/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8080/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8080/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8080/access/api", outputConfig.GetAccessUrl())
 
 	inputDetails.ArtifactoryUrl = "http://localhost:8081/artifactory"
 	inputDetails.DistributionUrl = "http://localhost:8081/distribution"
 	inputDetails.XrayUrl = "http://localhost:8081/xray"
 	inputDetails.MissionControlUrl = "http://localhost:8081/mc"
 	inputDetails.PipelinesUrl = "http://localhost:8081/pipelines"
-	inputDetails.AccessUrl = "http://localhost:8081/access/api"
+	inputDetails.AccessUrl = "http://localhost:8081/access"
 
 	outputConfig, err = configAndGetTestServer(t, &inputDetails, false, interactive)
 	assert.NoError(t, err)
@@ -112,11 +111,10 @@ func testUrls(t *testing.T, interactive bool) {
 	assert.Equal(t, "http://localhost:8081/xray/", outputConfig.GetXrayUrl())
 	assert.Equal(t, "http://localhost:8081/mc/", outputConfig.GetMissionControlUrl())
 	assert.Equal(t, "http://localhost:8081/pipelines/", outputConfig.GetPipelinesUrl())
-	assert.Equal(t, "http://localhost:8081/access/api", outputConfig.GetAccessUrl())
 }
 
 func TestBasicAuthOnlyOption(t *testing.T) {
-	inputDetails := createTestServerDetails()
+	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "admin"
 	inputDetails.Password = "password"
 
@@ -160,19 +158,4 @@ func configStructToString(artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
 	marshaledStruct, _ := json.Marshal(*artConfig)
 	return string(marshaledStruct)
-}
-
-func createTestServerDetails() *config.ServerDetails {
-	return &config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/mc",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		AccessUrl:         "http://localhost:8080/access/api",
-		ServerId:          "test",
-		IsDefault:         false,
-		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-	}
 }

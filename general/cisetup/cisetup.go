@@ -32,6 +32,7 @@ func (sd *CiSetupData) GetRepoFullName() string {
 	return sd.ProjectDomain + "/" + sd.RepositoryName
 }
 
+// GetBuildCmdForNativeStep : Trim technology name from command prefix. (example: mvn clean install >> clean install)
 func (sd *CiSetupData) GetBuildCmdForNativeStep() string {
 	// Remove exec name.
 	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), execNames[sd.BuiltTechnology.Type]+" ")

@@ -6,12 +6,13 @@ import (
 	"strings"
 )
 
-const JenkinsfileName2 = "Jenkinsfile"
-const resolverIdTemplate = "%s_RESOLVER"
-const deployerIdTemplate = "%s_DEPLOYER"
-const homeEnv = "%[1]s_HOME = '/full/path/to/%[1]s' // Set to the local %[1]s installation path."
+const (
+	JenkinsDslFileName = "Jenkinsfile"
+	resolverIdTemplate = "%s_RESOLVER"
+	deployerIdTemplate = "%s_DEPLOYER"
+	homeEnv            = "%[1]s_HOME = '/full/path/to/%[1]s' // Set to the local %[1]s installation path."
 
-const jenkinsfileTemplate2 = `pipeline {
+	jenkinsfileTemplate2 = `pipeline {
 
 	// More info about the Declarative Pipeline Syntax on https://www.jfrog.com/confluence/display/JFROG/Declarative+Pipeline+Syntax
 	// Declarative syntax is available from version 3.0.0 of the Jenkins Artifactory Plugin.
@@ -23,29 +24,29 @@ const jenkinsfileTemplate2 = `pipeline {
 	%s
 }`
 
-const enviromentsTemplate = `
+	environmentsTemplate = `
 	environment {
 		%s
 	}`
 
-const allStagesTemplate = `
+	allStagesTemplate = `
 	stages {
 		%s
 	}`
 
-const stageTemplate = `
+	stageTemplate = `
 		stage (%q) {
 			steps {%s
 			}
 		}
 `
 
-const cloneStepsTemplate = `
+	cloneStepsTemplate = `
 				git branch: %q,
 				url: %q
 				// credentialsId: 'git_cred_id' (If cloning the code requires credentials, set credentials to artifactory server assined in Jenkins > Configure System > credentials > "username with password" > ID: "git-cred-id" )`
 
-const rtConfigServerStepTemplate = `
+	rtConfigServerStepTemplate = `
 				rtServer (
 					id: %[1]q,
 					url: %[2]q,
@@ -68,16 +69,16 @@ const rtConfigServerStepTemplate = `
 					%[7]s
 				)`
 
-const mavenRepoTemplate = `releaseRepo: %q,
+	mavenRepoTemplate = `releaseRepo: %q,
 					snapshotRepo: %q`
 
-const singleRepoTemplate = `repo: %q`
+	singleRepoTemplate = `repo: %q`
 
-const commonBuildInfoFlags = `// buildName: 'my-build-name', (If the build name and build number are not set here, the current job name and number will be used:)
+	commonBuildInfoFlags = `// buildName: 'my-build-name', (If the build name and build number are not set here, the current job name and number will be used:)
 					// buildNumber: '17',
 					// project: 'my-project-key' (Optional - Only if this build is associated with a project in Artifactory, set the project key as follows.)`
 
-const mavenRunStepTemplate = `
+	mavenRunStepTemplate = `
 				rtMavenRun (
 					pom: 'pom.xml', // path to pom.xml file
 					goals: %q,
@@ -90,7 +91,7 @@ const mavenRunStepTemplate = `
 					%s
 				)`
 
-const gradleRunStepTemplate = `
+	gradleRunStepTemplate = `
 				rtGradleRun (
 					buildFile: 'build.gradle',
 					tasks: %q,
@@ -104,7 +105,7 @@ const gradleRunStepTemplate = `
 					%s
 				)`
 
-const npmInstallStepTemplate = `
+	npmInstallStepTemplate = `
 				rtNpmInstall (
 					resolverId: %q,
 
@@ -115,7 +116,7 @@ const npmInstallStepTemplate = `
 					%s
 				)`
 
-const npmPublishStepTemplate = `
+	npmPublishStepTemplate = `
 				rtNpmPublish (
 					deployerId: %q,
 
@@ -125,7 +126,7 @@ const npmPublishStepTemplate = `
 					%s
 				)`
 
-const configBuildInfoStepsTemplate = `
+	configBuildInfoStepsTemplate = `
 				rtBuildInfo (
 					captureEnv: true,
 					includeEnvPatterns: ["*"],
@@ -134,12 +135,13 @@ const configBuildInfoStepsTemplate = `
 					%s
 				)`
 
-const publishBuildInfoStepsTemplate = `
+	publishBuildInfoStepsTemplate = `
 				rtPublishBuildInfo (
 					serverId: %q,
 
 					%s
 				)`
+)
 
 type JenkinsfileDslGenerator struct {
 	SetupData *CiSetupData
@@ -150,8 +152,8 @@ func (jg *JenkinsfileDslGenerator) GenerateDsl() (jenkinsfileBytes []byte, jenki
 	if err != nil {
 		return nil, "", err
 	}
-	// Generate enviroments sections
-	enviroments := generateEnviroments(string(jg.SetupData.BuiltTechnology.Type))
+	// Generate environments sections
+	environments := generateEnvironments(string(jg.SetupData.BuiltTechnology.Type))
 	// Generate Stages Section
 	cloneStage := generateStage("Clone", fmt.Sprintf(cloneStepsTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url))
 	rtConfigStage := generateStage("Artifactory configuration", generateRtConfigSteps(jg.SetupData.BuiltTechnology, serviceDetails.ArtifactoryUrl))
@@ -161,11 +163,11 @@ func (jg *JenkinsfileDslGenerator) GenerateDsl() (jenkinsfileBytes []byte, jenki
 	// Combine all stages together
 	stagesString := generateAllStages(cloneStage, rtConfigStage, execBuildStage, configBuildInfoStage, publishBuildInfoStage)
 
-	return []byte(fmt.Sprintf(jenkinsfileTemplate2, enviroments, stagesString)), JenkinsfileName, nil
+	return []byte(fmt.Sprintf(jenkinsfileTemplate2, environments, stagesString)), JenkinsDslFileName, nil
 }
 
 func generateStage(stageName, steps string) (stageString string) {
-	return (fmt.Sprintf(stageTemplate, stageName, steps))
+	return fmt.Sprintf(stageTemplate, stageName, steps)
 }
 
 func generateAllStages(stages ...string) (allStagesString string) {
@@ -173,10 +175,10 @@ func generateAllStages(stages ...string) (allStagesString string) {
 	for _, stage := range stages {
 		allStagesString += stage
 	}
-	return (fmt.Sprintf(allStagesTemplate, allStagesString))
+	return fmt.Sprintf(allStagesTemplate, allStagesString)
 }
 
-func generateEnviroments(buildType string) string {
+func generateEnvironments(buildType string) string {
 	envs := ""
 	switch buildType {
 	case Maven:
@@ -189,7 +191,7 @@ func generateEnviroments(buildType string) string {
 	if envs == "" {
 		return ""
 	}
-	return fmt.Sprintf(enviromentsTemplate, envs)
+	return fmt.Sprintf(environmentsTemplate, envs)
 }
 
 func generateRtConfigSteps(techInfo *TechnologyInfo, rtUrl string) string {

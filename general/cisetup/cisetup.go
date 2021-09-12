@@ -2,7 +2,7 @@ package cisetup
 
 import "strings"
 
-const ConfigServerId = "ci-setup-cmd"
+const ConfigServerId = "jfrog-instance"
 
 type CiSetupData struct {
 	RepositoryName string

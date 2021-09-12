@@ -44,13 +44,13 @@ const (
 	cloneStepsTemplate = `
 				git branch: %q,
 				url: %q
-				// credentialsId: 'git_cred_id' (If cloning the code requires credentials, set credentials to artifactory server assined in Jenkins > Configure System > credentials > "username with password" > ID: "git-cred-id" )`
+				// credentialsId: 'git_cred_id'. If cloning the code requires credentials, set the credentials to your git in Jenkins > Configure System > credentials > "username with password" > ID: "git-cred-id"`
 
 	rtConfigServerStepTemplate = `
 				rtServer (
 					id: %[1]q,
 					url: %[2]q,
-					credentialsId: 'rt-cred-id', // (Credentials to artifactory server assined in Jenkins > Configure System > credentials > "username with password" > ID: "rt-cred-id" )
+					credentialsId: 'rt-cred-id', // Set the credentials to your JFrog instance in Jenkins > Configure System > credentials > "username with password" > ID: "rt-cred-id"
 
  					// bypassProxy: true, (If Jenkins is configured to use an http proxy, you can bypass the proxy when using this Artifactory server)
 					// timeout: 300 , (Configure the connection timeout (in seconds). The default value (if not configured) is 300 seconds)
@@ -74,10 +74,6 @@ const (
 
 	singleRepoTemplate = `repo: %q`
 
-	commonBuildInfoFlags = `// buildName: 'my-build-name', (If the build name and build number are not set here, the current job name and number will be used:)
-					// buildNumber: '17',
-					// project: 'my-project-key' (Optional - Only if this build is associated with a project in Artifactory, set the project key as follows.)`
-
 	mavenRunStepTemplate = `
 				rtMavenRun (
 					pom: 'pom.xml', // path to pom.xml file
@@ -88,7 +84,6 @@ const (
 					// tool: {build installation name}, (Maven tool installation from jenkins from : Jenkins > Manage jenkins > Global Tool Configuration > Maven installations)
 					// useWrapper: true, (Set to true if you'd like the build to use the Maven Wrapper.)
 					// opts: '-Xms1024m -Xmx4096m', (Optional - Maven options)
-					%s
 				)`
 
 	gradleRunStepTemplate = `
@@ -100,9 +95,6 @@ const (
 					deployerId: %q,
 
 					// tool: {build installation name}, // Jenkins > Gradle jenkins > Global Tool Configuration > Gradle installations
-					// threads: 6, (Optional - Attach custom properties to the published artifacts)
-					// properties: ['key1=value1', 'key2=value2'], (Optional - Attach custom properties to the published artifacts)
-					%s
 				)`
 
 	npmInstallStepTemplate = `
@@ -110,10 +102,6 @@ const (
 					resolverId: %q,
 
 					// tool: {build installation name}, (Npm tool installation from jenkins from : Jenkins > Manage jenkins > Global Tool Configuration > NodeJS installations
-					// path: '',  (Optional path to the project root. If not set, the root of the workspace is assumed as the root project path.)
-					// args: '--verbose',  (Optional npm flags or arguments.)
-					// javaArgs: '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005' , (Jenkins spawns a new java process during this step's execution. You have the option of passing any java args to this new process.)
-					%s
 				)`
 
 	npmPublishStepTemplate = `
@@ -123,23 +111,11 @@ const (
 					// tool: {build installation name}, (Npm tool installation from jenkins from : Jenkins > Manage jenkins > Global Tool Configuration > NodeJS installations
 					// path: '',  (Optional path to the project root. If not set, the root of the workspace is assumed as the root project path.)
 					// javaArgs: '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005' , (Jenkins spawns a new java process during this step's execution. You have the option of passing any java args to this new process.)
-					%s
-				)`
-
-	configBuildInfoStepsTemplate = `
-				rtBuildInfo (
-					captureEnv: true,
-					includeEnvPatterns: ["*"],
-
-  					// excludeEnvPatterns: ['*private*', 'internal-*'],
-					%s
 				)`
 
 	publishBuildInfoStepsTemplate = `
 				rtPublishBuildInfo (
 					serverId: %q,
-
-					%s
 				)`
 )
 
@@ -158,10 +134,9 @@ func (jg *JenkinsfileDslGenerator) GenerateDsl() (jenkinsfileBytes []byte, jenki
 	cloneStage := generateStage("Clone", fmt.Sprintf(cloneStepsTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url))
 	rtConfigStage := generateStage("Artifactory configuration", generateRtConfigSteps(jg.SetupData.BuiltTechnology, serviceDetails.ArtifactoryUrl))
 	execBuildStage := generateBuildStages(jg.SetupData.GetBuildCmdForNativeStep(), string(jg.SetupData.BuiltTechnology.Type))
-	configBuildInfoStage := generateStage("Config build info", fmt.Sprintf(configBuildInfoStepsTemplate, commonBuildInfoFlags))
-	publishBuildInfoStage := generateStage("Publish build info", fmt.Sprintf(publishBuildInfoStepsTemplate, ConfigServerId, commonBuildInfoFlags))
+	publishBuildInfoStage := generateStage("Publish build info", fmt.Sprintf(publishBuildInfoStepsTemplate, ConfigServerId))
 	// Combine all stages together
-	stagesString := generateAllStages(cloneStage, rtConfigStage, execBuildStage, configBuildInfoStage, publishBuildInfoStage)
+	stagesString := generateAllStages(cloneStage, rtConfigStage, execBuildStage, publishBuildInfoStage)
 
 	return []byte(fmt.Sprintf(jenkinsfileTemplate2, environments, stagesString)), JenkinsDslFileName, nil
 }
@@ -222,12 +197,12 @@ func generateBuildStages(buildCmd, buildType string) (buildStages string) {
 	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType))
 	switch buildType {
 	case Maven:
-		buildStages += generateStage("Exec Maven", fmt.Sprintf(mavenRunStepTemplate, buildCmd, resolverId, deployerId, commonBuildInfoFlags))
+		buildStages += generateStage("Exec Maven", fmt.Sprintf(mavenRunStepTemplate, buildCmd, resolverId, deployerId))
 	case Gradle:
-		buildStages += generateStage("Exec Gradle", fmt.Sprintf(gradleRunStepTemplate, buildCmd, resolverId, deployerId, commonBuildInfoFlags))
+		buildStages += generateStage("Exec Gradle", fmt.Sprintf(gradleRunStepTemplate, buildCmd, resolverId, deployerId))
 	case Npm:
-		buildStages += generateStage("Exec Npm install", fmt.Sprintf(npmInstallStepTemplate, resolverId, commonBuildInfoFlags))
-		buildStages += generateStage("Exec Npm publish", fmt.Sprintf(npmPublishStepTemplate, deployerId, commonBuildInfoFlags))
+		buildStages += generateStage("Exec Npm install", fmt.Sprintf(npmInstallStepTemplate, resolverId))
+		buildStages += generateStage("Exec Npm publish", fmt.Sprintf(npmPublishStepTemplate, deployerId))
 	default:
 		buildStages = "//Build type is not supported at the moment"
 	}

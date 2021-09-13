@@ -145,7 +145,7 @@ func (osb *OcStartBuildCommand) validateOcVersion() error {
 	ocVersion := version.NewVersion(trimmedVersion)
 	if ocVersion.Compare(minSupportedOcVersion) > 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI oc-start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")))
+			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")))
 	}
 	return nil
 }

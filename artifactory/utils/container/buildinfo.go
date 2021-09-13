@@ -105,7 +105,7 @@ func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	if err := builder.UpdateArtifactsAndDependencies(); err != nil {
 		log.Warn(`Failed to collect build-info, couldn't find image "` + builder.image.tag + `" in Artifactory`)
-		// Don't generate an empty build-info for build-docker-create and oc-start-build if the image manifest was not found in Artifactory.
+		// Don't generate an empty build-info for build-docker-create and oc start-build if the image manifest was not found in Artifactory.
 		if builder.containerManager == nil {
 			return nil, err
 		} else {
@@ -352,7 +352,7 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 		}
 	} else {
 		if builder.containerManager == nil {
-			err = errorutils.CheckError(errors.New("build info collection for multi-architecture images is not supported in build-docker-create and oc-start-build commands"))
+			err = errorutils.CheckError(errors.New("build info collection for multi-architecture images is not supported in build-docker-create and oc start-build commands"))
 			return
 		}
 		// Check if search results contain multi-architecture images (fat-manifest).

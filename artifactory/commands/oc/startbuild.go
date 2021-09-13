@@ -33,7 +33,7 @@ func NewOcStartBuildCommand() *OcStartBuildCommand {
 }
 
 func (osb *OcStartBuildCommand) Run() error {
-	log.Info("Running OpenShift CLI (oc) start-build...")
+	log.Info("Running oc start-build...")
 	var err error
 	if err = osb.validateAllowedOptions(); err != nil {
 		return err
@@ -68,8 +68,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	buildNumber := osb.buildConfiguration.BuildNumber
 	project := osb.buildConfiguration.Project
 
-	saveBuildInfo := buildName != "" && buildNumber != ""
-	if !saveBuildInfo {
+	if buildNumber == "" {
 		return nil
 	}
 
@@ -97,7 +96,7 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("OpenShift CLI (oc) start-build command finished successfully."))
+	log.Info(fmt.Sprintf("oc start-build finished successfully."))
 	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 

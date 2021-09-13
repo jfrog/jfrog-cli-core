@@ -355,7 +355,7 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 			err = errorutils.CheckError(errors.New("build info collection for multi-architecture images is not supported in build-docker-create and oc-start-build commands"))
 			return
 		}
-		// Check if search results contain fat-manifest.
+		// Check if search results contain multi-architecture images (fat-manifest).
 		if searchResult, ok := resultMap["list.manifest.json"]; ok {
 			// In case of a fat-manifest, Artifactory will create two folders.
 			// One folder named as the image tag, which contains the fat manifest.

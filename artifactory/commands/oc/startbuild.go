@@ -58,7 +58,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	}
 
 	// Run the build on OpenShift
-	ocBuildName, err := oc.StartBuild(osb.executablePath, filteredOcArgs)
+	ocBuildName, err := startBuild(osb.executablePath, filteredOcArgs)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (osb *OcStartBuildCommand) Run() error {
 
 	log.Info("Collecting build info...")
 	// Get the new image details from OpenShift
-	imageTag, manifestSha256, err := oc.GetImageDetails(osb.executablePath, ocBuildName)
+	imageTag, manifestSha256, err := getImageDetails(osb.executablePath, ocBuildName)
 	if err != nil {
 		return err
 	}
@@ -189,4 +189,31 @@ func extractOcOptionsFromArgs(args []string) (repo, serverId string, threads int
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 
 	return
+}
+
+func startBuild(executablePath string, ocFlags []string) (ocBuildName string, err error) {
+	cmdArgs := []string{"start-build", "-w", "--template={{.metadata.name}}"}
+	cmdArgs = append(cmdArgs, ocFlags...)
+
+	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	ocBuildName = strings.TrimSpace(string(outputBytes))
+	return
+}
+
+func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha256 string, err error) {
+	cmdArgs := []string{"get", "build", ocBuildName, "--template={{.status.outputDockerImageReference}}@{{.status.output.to.imageDigest}}"}
+	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
+	if err != nil {
+		return "", "", errorutils.CheckError(err)
+	}
+	output := string(outputBytes)
+	splitOutput := strings.Split(strings.TrimSpace(output), "@")
+	if len(splitOutput) != 2 {
+		return "", "", errorutils.CheckError(errors.New(fmt.Sprintf("Unable to parse image tag and digest of build %s. Output from OpenShift CLI: %s", ocBuildName, output)))
+	}
+
+	return splitOutput[0], splitOutput[1], nil
 }

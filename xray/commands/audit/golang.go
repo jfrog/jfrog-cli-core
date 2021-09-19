@@ -4,8 +4,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"strings"
 )
@@ -74,57 +72,44 @@ func NewAuditGoCommand() *AuditGoCommand {
 }
 
 func (auditCmd *AuditGoCommand) Run() (err error) {
+	rootNode, err := auditCmd.buildGoDependencyTree()
+	if err != nil {
+		return err
+	}
+	err = RunScanGraph([]*services.GraphNode{rootNode}, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
+	return err
+}
+
+func (auditCmd *AuditGoCommand) buildGoDependencyTree() (*services.GraphNode, error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Calculate npm dependencies
+	// Calculate go dependencies graph
 	dependenciesGraph, err := goutils.GetDependenciesGraph(currentDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Calculate npm dependencies
+	// Calculate go dependencies list
 	dependenciesList, err := goutils.GetDependenciesList(currentDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Get Root module name
 	rootModuleName, err := goutils.GetModuleName(currentDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := &services.GraphNode{
 		Id:    goPackageTypeIdentifier + rootModuleName,
 		Nodes: []*services.GraphNode{},
 	}
-	buildGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
-
-	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	params := services.NewXrayGraphScanParams()
-	params.Graph = rootNode
-	params.RepoPath = auditCmd.targetRepoPath
-	params.Watches = auditCmd.watches
-	params.ProjectKey = auditCmd.projectKey
-
-	scanId, err := xrayManager.ScanGraph(params)
-	if err != nil {
-		return err
-	}
-	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
-	if err != nil {
-		return err
-	}
-	err = xrutils.PrintScanResults([]services.ScanResponse{*scanResults}, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, false)
-	return err
+	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
+	return rootNode, err
 }
 
-func buildGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
+func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
 	if currNode.NodeHasLoop() {
 		return
 	}
@@ -141,7 +126,7 @@ func buildGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[s
 			Parent: currNode,
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
-		buildGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
+		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
 	}
 }
 

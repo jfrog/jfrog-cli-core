@@ -4,8 +4,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -98,28 +96,10 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// Parse the dependencies into an Xray dependency tree format
-	npmGraph := parseNpmDependenciesList(dependenciesList, packageInfo)
-	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	params := services.NewXrayGraphScanParams()
-	params.Graph = npmGraph
-	params.RepoPath = auditCmd.targetRepoPath
-	params.Watches = auditCmd.watches
-	params.ProjectKey = auditCmd.projectKey
+	// Parse the dependencies into Xray dependency tree format
+	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
 
-	scanId, err := xrayManager.ScanGraph(params)
-	if err != nil {
-		return err
-	}
-
-	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
-	if err != nil {
-		return err
-	}
-	err = xrutils.PrintScanResults([]services.ScanResponse{*scanResults}, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, false)
+	err = RunScanGraph([]*services.GraphNode{rootNode}, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
 	return err
 }
 

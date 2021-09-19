@@ -1,6 +1,8 @@
 package cisetup
 
-const ConfigServerId = "ci-setup-cmd"
+import "strings"
+
+const ConfigServerId = "jfrog-instance"
 
 type CiSetupData struct {
 	RepositoryName string
@@ -19,13 +21,21 @@ type CiSetupData struct {
 }
 
 type TechnologyInfo struct {
-	Type        Technology
-	VirtualRepo string
-	BuildCmd    string
+	Type               Technology
+	VirtualRepo        string
+	LocalSnapshotsRepo string
+	LocalReleasesRepo  string
+	BuildCmd           string
 }
 
 func (sd *CiSetupData) GetRepoFullName() string {
 	return sd.ProjectDomain + "/" + sd.RepositoryName
+}
+
+// Trim technology name from command prefix. (example: mvn clean install >> clean install)
+func (sd *CiSetupData) GetBuildCmdForNativeStep() string {
+	// Remove exec name.
+	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), execNames[sd.BuiltTechnology.Type]+" ")
 }
 
 type VcsServerDetails struct {

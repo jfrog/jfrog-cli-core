@@ -262,6 +262,7 @@ var packageTypes = map[string]string{
 	"generic":  "Generic",
 	"npm":      "npm",
 	"pip":      "Python",
+	"pypi":     "Python",
 	"composer": "Composer",
 	"go":       "Go",
 	"alpine":   "Alpine",

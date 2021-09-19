@@ -105,7 +105,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) error {
 	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --target-path or --project.\n" +
+		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
 

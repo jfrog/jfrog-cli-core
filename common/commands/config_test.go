@@ -159,21 +159,3 @@ func configStructToString(artConfig *config.ServerDetails) string {
 	marshaledStruct, _ := json.Marshal(*artConfig)
 	return string(marshaledStruct)
 }
-<<<<<<<<< Temporary merge branch 1
-
-func createTestServerDetails() *config.ServerDetails {
-	return &config.ServerDetails{
-		Url:               "http://localhost:8080",
-		ArtifactoryUrl:    "http://localhost:8080/artifactory",
-		DistributionUrl:   "http://localhost:8080/distribution",
-		XrayUrl:           "http://localhost:8080/xray",
-		MissionControlUrl: "http://localhost:8080/mc",
-		PipelinesUrl:      "http://localhost:8080/pipelines",
-		AccessUrl:         "http://localhost:8080/access/api",
-		ServerId:          "test",
-		IsDefault:         false,
-		ClientCertPath:    "ClientCertPath", ClientCertKeyPath: "ClientCertKeyPath",
-	}
-}
-=========
->>>>>>>>> Temporary merge branch 2

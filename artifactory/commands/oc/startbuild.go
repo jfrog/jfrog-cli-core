@@ -1,17 +1,15 @@
 package oc
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/oc"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -21,9 +19,9 @@ const minSupportedOcVersion = "3.0.0"
 
 type OcStartBuildCommand struct {
 	executablePath     string
+	serverId           string
 	repo               string
 	ocArgs             []string
-	threads            int
 	serverDetails      *config.ServerDetails
 	buildConfiguration *utils.BuildConfiguration
 }
@@ -39,13 +37,7 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 
-	var filteredOcArgs []string
-	var serverId string
-	osb.repo, serverId, osb.threads, osb.buildConfiguration, filteredOcArgs, err = extractOcOptionsFromArgs(osb.ocArgs)
-	if err != nil {
-		return err
-	}
-	osb.serverDetails, err = config.GetSpecificConfig(serverId, true, true)
+	osb.serverDetails, err = config.GetSpecificConfig(osb.serverId, true, true)
 	if err != nil {
 		return err
 	}
@@ -58,7 +50,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	}
 
 	// Run the build on OpenShift
-	ocBuildName, err := startBuild(osb.executablePath, filteredOcArgs)
+	ocBuildName, err := startBuild(osb.executablePath, osb.ocArgs)
 	if err != nil {
 		return err
 	}
@@ -82,7 +74,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManagerWithThreads(osb.serverDetails, false, osb.threads, -1)
+	serviceManager, err := utils.CreateServiceManager(osb.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}
@@ -119,8 +111,23 @@ func (osb *OcStartBuildCommand) setOcExecutable() error {
 	return nil
 }
 
-func (osb *OcStartBuildCommand) SetArgs(args []string) *OcStartBuildCommand {
+func (osb *OcStartBuildCommand) SetOcArgs(args []string) *OcStartBuildCommand {
 	osb.ocArgs = args
+	return osb
+}
+
+func (osb *OcStartBuildCommand) SetRepo(repo string) *OcStartBuildCommand {
+	osb.repo = repo
+	return osb
+}
+
+func (osb *OcStartBuildCommand) SetServerId(serverId string) *OcStartBuildCommand {
+	osb.serverId = serverId
+	return osb
+}
+
+func (osb *OcStartBuildCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *OcStartBuildCommand {
+	osb.buildConfiguration = buildConfiguration
 	return osb
 }
 
@@ -137,7 +144,7 @@ func (osb *OcStartBuildCommand) validateAllowedOptions() error {
 }
 
 func (osb *OcStartBuildCommand) validateOcVersion() error {
-	ocVersionStr, err := oc.Version(osb.executablePath)
+	ocVersionStr, err := getOcVersion(osb.executablePath)
 	if err != nil {
 		return err
 	}
@@ -148,47 +155,6 @@ func (osb *OcStartBuildCommand) validateOcVersion() error {
 			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")))
 	}
 	return nil
-}
-
-func extractOcOptionsFromArgs(args []string) (repo, serverId string, threads int, buildConfig *utils.BuildConfiguration, cleanArgs []string, err error) {
-	// Extract repo
-	flagIndex, valueIndex, repo, err := coreutils.FindFlag("--repo", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	if flagIndex == -1 {
-		err = errorutils.CheckError(errors.New("the --repo option is mandatory"))
-		return
-	}
-
-	// Extract server-id
-	flagIndex, valueIndex, serverId, err = coreutils.FindFlag("--server-id", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-
-	// Extract threads
-	threads = 3
-	var numOfThreads string
-	flagIndex, valueIndex, numOfThreads, err = coreutils.FindFlag("--threads", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	if numOfThreads != "" {
-		threads, err = strconv.Atoi(numOfThreads)
-		if err != nil {
-			err = errorutils.CheckError(err)
-			return
-		}
-	}
-
-	// Extract build details
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
-
-	return
 }
 
 func startBuild(executablePath string, ocFlags []string) (ocBuildName string, err error) {
@@ -216,4 +182,27 @@ func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha2
 	}
 
 	return splitOutput[0], splitOutput[1], nil
+}
+
+func getOcVersion(executablePath string) (string, error) {
+	cmdArgs := []string{"version", "-o=json"}
+	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	var versionRes ocVersionResponse
+	err = json.Unmarshal(outputBytes, &versionRes)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	return versionRes.ClientVersion.GitVersion, nil
+}
+
+type ocVersionResponse struct {
+	ClientVersion clientVersion `json:"clientVersion,omitempty"`
+}
+
+type clientVersion struct {
+	GitVersion string `json:"gitVersion,omitempty"`
 }

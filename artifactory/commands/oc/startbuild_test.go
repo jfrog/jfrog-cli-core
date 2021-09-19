@@ -22,7 +22,7 @@ func TestValidateAllowedOptions(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		ocStartBuildCmd = ocStartBuildCmd.SetArgs(testCase.args)
+		ocStartBuildCmd = ocStartBuildCmd.SetOcArgs(testCase.args)
 		err := ocStartBuildCmd.validateAllowedOptions()
 		assert.Equal(t, testCase.valid, err == nil, "Test args:", testCase.args)
 	}

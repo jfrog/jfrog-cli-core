@@ -218,6 +218,8 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 
 	downParams.Transitive = strings.ToLower(os.Getenv(coreutils.TransitiveDownload)) == "true"
 
+	downParams.GpgKey = f.GetGpgKey()
+
 	return
 }
 

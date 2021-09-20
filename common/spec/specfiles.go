@@ -59,6 +59,7 @@ type File struct {
 	ExcludeArtifacts string
 	IncludeDeps      string
 	Bundle           string
+	GPGKey           string
 	Recursive        string
 	Flat             string
 	Regexp           string
@@ -125,6 +126,10 @@ func (f File) GetPatternType() (patternType clientutils.PatternType) {
 	return clientutils.WildCardPattern
 }
 
+func (f File) GetGpgKey() string {
+	return f.GPGKey
+}
+
 func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	var err error
 	params := new(utils.CommonParams)
@@ -166,6 +171,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isExcludeArtifacts, _ := file.IsExcludeArtifacts(false)
 		isIncludeDeps, _ := file.IsIncludeDeps(false)
 		isBundle := len(file.Bundle) > 0
+		isGPGKey := len(file.GPGKey) > 0
 		isOffset := file.Offset > 0
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
@@ -232,6 +238,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 			return errors.New("Symlinks cannot be stored in an archive that will be exploded in artifactory.\\nWhen uploading a symlink to Artifactory, the symlink is represented in Artifactory as 0 size filewith properties describing the symlink.\\nThis symlink representation is not yet supported by Artifactory when exploding symlinks from a zip.")
 		}
 		if isArchive && !isValidArchive {
+			return errors.New("The value of 'archive' (if provided) must be 'zip'.")
+		}
+		if isGPGKey && !isBundle {
 			return errors.New("The value of 'archive' (if provided) must be 'zip'.")
 		}
 	}

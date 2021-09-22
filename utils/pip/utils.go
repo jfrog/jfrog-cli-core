@@ -16,37 +16,6 @@ import (
 	"path/filepath"
 )
 
-type Cmd struct {
-	Go           string
-	Command      []string
-	CommandFlags []string
-	Dir          string
-	StrWriter    io.WriteCloser
-	ErrWriter    io.WriteCloser
-}
-
-func (config *Cmd) GetCmd() (cmd *exec.Cmd) {
-	var cmdStr []string
-	cmdStr = append(cmdStr, config.Go)
-	cmdStr = append(cmdStr, config.Command...)
-	cmdStr = append(cmdStr, config.CommandFlags...)
-	cmd = exec.Command(cmdStr[0], cmdStr[1:]...)
-	cmd.Dir = config.Dir
-	return
-}
-
-func (config *Cmd) GetEnv() map[string]string {
-	return map[string]string{}
-}
-
-func (config *Cmd) GetStdWriter() io.WriteCloser {
-	return config.StrWriter
-}
-
-func (config *Cmd) GetErrWriter() io.WriteCloser {
-	return config.ErrWriter
-}
-
 // Get executable path.
 // If run inside a virtual-env, this should return the path for the correct executable.
 func GetExecutablePath(executableName string) (string, error) {

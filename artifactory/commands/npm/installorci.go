@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -168,11 +169,15 @@ func (nca *NpmCommandArgs) run() error {
 
 func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites.")
-	path, err := npmutils.FindNpmExecutable()
+	npmExecPath, err := exec.LookPath("npm")
 	if err != nil {
-		return err
+		return  errorutils.CheckError(err)
 	}
-	nca.executablePath = path
+
+	if npmExecPath == "" {
+		return errorutils.CheckError(errors.New("could not find 'npm' executable"))
+	}
+	nca.executablePath = npmExecPath
 
 	if err = nca.validateNpmVersion(); err != nil {
 		return err

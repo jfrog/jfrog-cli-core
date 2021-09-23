@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/gocmd/cmd"
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os/exec"
 )
@@ -50,6 +51,15 @@ func (config *Cmd) GetStdWriter() io.WriteCloser {
 
 func (config *Cmd) GetErrWriter() io.WriteCloser {
 	return config.ErrWriter
+}
+
+func LogGoVersion() error {
+	output, err := GetGoVersion()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Info("Using go:", output)
+	return nil
 }
 
 func GetGoVersion() (string, error) {

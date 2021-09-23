@@ -8,10 +8,10 @@ import (
 
 func TestBuildPipDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := createTestWorkspace(t, "pip-example")
+	_, cleanUp := createTestWorkspace(t, "pip-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditPipCommand()
+	auditCmd := NewEmptyAuditPipCommand()
 	parentNodes, err := auditCmd.buildPipDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, parentNodes)

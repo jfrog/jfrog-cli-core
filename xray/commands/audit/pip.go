@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/pip"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -13,62 +12,15 @@ const (
 )
 
 type AuditPipCommand struct {
-	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
-	insecureTls            bool
-	watches                []string
-	projectKey             string
-	targetRepoPath         string
-	includeVulnerabilities bool
-	includeLincenses       bool
+	AuditCommand
 }
 
-func (auditCmd *AuditPipCommand) SetServerDetails(server *config.ServerDetails) *AuditPipCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
+func NewEmptyAuditPipCommand() *AuditPipCommand {
+	return &AuditPipCommand{AuditCommand: *NewAuditCommand()}
 }
 
-func (auditCmd *AuditPipCommand) SetOutputFormat(format OutputFormat) *AuditPipCommand {
-	auditCmd.outputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) SetInsecureTls(insecureTls bool) *AuditPipCommand {
-	auditCmd.insecureTls = insecureTls
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
-}
-
-func (auditCmd *AuditPipCommand) SetWatches(watches []string) *AuditPipCommand {
-	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) SetProject(project string) *AuditPipCommand {
-	auditCmd.projectKey = project
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) SetTargetRepoPath(repoPath string) *AuditPipCommand {
-	auditCmd.projectKey = repoPath
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) SetIncludeVulnerabilities(include bool) *AuditPipCommand {
-	auditCmd.includeVulnerabilities = include
-	return auditCmd
-}
-
-func (auditCmd *AuditPipCommand) SetIncludeLincenses(include bool) *AuditPipCommand {
-	auditCmd.includeLincenses = include
-	return auditCmd
-}
-
-func NewAuditPipCommand() *AuditPipCommand {
-	return &AuditPipCommand{}
+func NewAuditPipCommand(auditCmd AuditCommand) *AuditPipCommand {
+	return &AuditPipCommand{AuditCommand: auditCmd}
 }
 
 func (auditCmd *AuditPipCommand) Run() (err error) {
@@ -76,8 +28,7 @@ func (auditCmd *AuditPipCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = RunScanGraph(rootNodes, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
-	return err
+	return auditCmd.runScanGraph(rootNodes)
 }
 
 func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
@@ -102,8 +53,8 @@ func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode
 		return nil, err
 	}
 
-	// run pipdeptree.py to get dependencies tree
-	dependenciesGraph2, parents, err := piputils.RunPipDepTree(tempDirPath)
+	// Run pipdeptree.py to get dependencies tree
+	dependenciesGraph, parents, err := piputils.RunPipDepTree(tempDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +64,7 @@ func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode
 			Id:    pipPackageTypeIdentifier + parent,
 			Nodes: []*services.GraphNode{},
 		}
-		populatePipDependencyTree(parentNode, dependenciesGraph2)
+		populatePipDependencyTree(parentNode, dependenciesGraph)
 		modulesDependencyTrees = append(modulesDependencyTrees, parentNode)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -135,11 +136,13 @@ func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) e
 func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error) {
 	log.Debug("Preparing prerequisites.")
 
-	pythonExecutablePath, err = piputils.GetExecutablePath("python")
+	pythonExecutablePath, err = exec.LookPath("python")
 	if err != nil {
 		return
 	}
-
+	if pythonExecutablePath == "" {
+		return "",errorutils.CheckError(errors.New("Could not find python executable"))
+	}
 	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {
 		return

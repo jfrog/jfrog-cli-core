@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -21,7 +22,7 @@ func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVul
 		}
 
 		if len(results) > 0 {
-			resultsPath, err := WriteJsonResults(results)
+			resultsPath, err := writeJsonResults(results)
 			if err != nil {
 				return err
 			}
@@ -42,17 +43,22 @@ func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVul
 			return err
 		}
 	} else {
-		err = PrintJson(results)
+		err = printJson(results)
 	}
 	return err
 }
 
-func WriteJsonResults(results []services.ScanResponse) (string, error) {
+func writeJsonResults(results []services.ScanResponse) (string, error) {
 	out, err := fileutils.CreateTempFile()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	defer out.Close()
+	defer func() {
+		e := out.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	bytesRes, err := json.Marshal(&results)
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -64,4 +70,13 @@ func WriteJsonResults(results []services.ScanResponse) (string, error) {
 	}
 	_, err = out.Write([]byte(content.String()))
 	return out.Name(), errorutils.CheckError(err)
+}
+
+func printJson(jsonRes []services.ScanResponse) error {
+	results, err := json.Marshal(&jsonRes)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	fmt.Println(clientutils.IndentJson(results))
+	return nil
 }

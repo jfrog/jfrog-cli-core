@@ -10,30 +10,18 @@ import (
 
 func TestBuildGoDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := createTestWorkspace(t, "go-example")
+	_, cleanUp := createTestWorkspace(t, "go-project")
 	defer cleanUp()
 
 	err := removeTxtSuffix("go.mod.txt")
 	assert.NoError(t, err)
-	defer func() {
-		err := addTxtSuffix("go.mod")
-		assert.NoError(t, err)
-	}()
 	err = removeTxtSuffix("go.sum.txt")
 	assert.NoError(t, err)
-	defer func() {
-		err = addTxtSuffix("go.sum")
-		assert.NoError(t, err)
-	}()
 	err = removeTxtSuffix("test.go.txt")
 	assert.NoError(t, err)
-	defer func() {
-		err := addTxtSuffix("test.go")
-		assert.NoError(t, err)
-	}()
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditGoCommand()
+	auditCmd := NewEmptyAuditGoCommand()
 	rootNode, err := auditCmd.buildGoDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNode)
@@ -50,11 +38,6 @@ func TestBuildGoDependencyList(t *testing.T) {
 	child2 := getAndAssertNode(t, rootNode.Nodes, "rsc.io/quote:1.5.2")
 	assert.Len(t, child2.Nodes, 1)
 	getAndAssertNode(t, child2.Nodes, "rsc.io/sampler:1.3.0")
-}
-
-func addTxtSuffix(goFileName string) error {
-	// go.sum  >> go.sum.txt
-	return fileutils.MoveFile(goFileName, goFileName+".txt")
 }
 
 func removeTxtSuffix(txtFileName string) error {

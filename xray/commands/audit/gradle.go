@@ -4,32 +4,23 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type AuditGradleCommand struct {
-	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
-	excludeTestDeps        bool
-	useWrapper             bool
-	watches                []string
-	projectKey             string
-	targetRepoPath         string
-	includeVulnerabilities bool
-	includeLincenses       bool
+	AuditCommand
+	excludeTestDeps bool
+	useWrapper      bool
 }
 
-func (auditCmd *AuditGradleCommand) SetServerDetails(server *config.ServerDetails) *AuditGradleCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
+func NewEmptyAuditGradleCommand() *AuditGradleCommand {
+	return &AuditGradleCommand{AuditCommand: *NewAuditCommand()}
 }
 
-func (auditCmd *AuditGradleCommand) SetOutputFormat(format OutputFormat) *AuditGradleCommand {
-	auditCmd.outputFormat = format
-	return auditCmd
+func NewAuditGradleCommand(auditCmd AuditCommand) *AuditGradleCommand {
+	return &AuditGradleCommand{AuditCommand: auditCmd}
 }
 
 func (auditCmd *AuditGradleCommand) SetExcludeTestDeps(excludeTestDeps bool) *AuditGradleCommand {
@@ -42,39 +33,6 @@ func (auditCmd *AuditGradleCommand) SetUseWrapper(useWrapper bool) *AuditGradleC
 	return auditCmd
 }
 
-func (auditCmd *AuditGradleCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
-}
-
-func (auditCmd *AuditGradleCommand) SetWatches(watches []string) *AuditGradleCommand {
-	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *AuditGradleCommand) SetProject(project string) *AuditGradleCommand {
-	auditCmd.projectKey = project
-	return auditCmd
-}
-
-func (auditCmd *AuditGradleCommand) SetTargetRepoPath(repoPath string) *AuditGradleCommand {
-	auditCmd.projectKey = repoPath
-	return auditCmd
-}
-
-func (auditCmd *AuditGradleCommand) SetIncludeVulnerabilities(include bool) *AuditGradleCommand {
-	auditCmd.includeVulnerabilities = include
-	return auditCmd
-}
-
-func (auditCmd *AuditGradleCommand) SetIncludeLincenses(include bool) *AuditGradleCommand {
-	auditCmd.includeLincenses = include
-	return auditCmd
-}
-
-func NewAuditGradleCommand() *AuditGradleCommand {
-	return &AuditGradleCommand{}
-}
-
 func (auditCmd *AuditGradleCommand) Run() (err error) {
 	// Parse the dependencies into an Xray dependency tree format
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
@@ -82,7 +40,7 @@ func (auditCmd *AuditGradleCommand) Run() (err error) {
 		return
 	}
 
-	return RunScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
+	return auditCmd.runScanGraph(modulesDependencyTrees)
 }
 
 func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

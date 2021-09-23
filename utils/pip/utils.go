@@ -1,95 +1,70 @@
 package piputils
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	gofrogcmd "github.com/jfrog/gofrog/io"
-	piputils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 )
 
-// Get executable path.
-// If run inside a virtual-env, this should return the path for the correct executable.
-func GetExecutablePath(executableName string) (string, error) {
-	executablePath, err := exec.LookPath(executableName)
+func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error) {
+	cmd := exec.Command(execPath, cmdArgs...)
+	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	err = errorutils.CheckError(cmd.Run())
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return nil, err
 	}
-
-	if executablePath == "" {
-		return "", errorutils.CheckError(errors.New(fmt.Sprintf("Could not find '%s' executable", executableName)))
-	}
-
-	log.Debug(fmt.Sprintf("Found %s executable at: %s", executableName, executablePath))
-	return executablePath, nil
+	return stdout.Bytes(), err
 }
 
-// Execute pip-dependency-map script, return dependency map of all installed pip packages in current environment.
-// pythonExecPath - Execution path python.
-func runPythonCommand(execPath, command string, cmdArgs []string) (data []byte, err error) {
-	pipeReader, pipeWriter := io.Pipe()
-	defer func() {
-		e := pipeReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
-	log.Debug(fmt.Sprintf("Running python command: %s %s %v", execPath, command, cmdArgs))
-	// Execute the python pip-dependency-map script.
-	pipDependencyMapCmd := &piputils.PipCmd{
-		Executable:  execPath,
-		Command:     command,
-		CommandArgs: cmdArgs,
-		StrWriter:   pipeWriter,
-	}
-	var pythonErr error
-	go func() {
-		pythonErr = gofrogcmd.RunCmd(pipDependencyMapCmd)
-	}()
-	data, err = ioutil.ReadAll(pipeReader)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	if pythonErr != nil {
-		return nil, errorutils.CheckError(pythonErr)
-	}
-	return data, err
-}
-
-// Execute virtualenv command. "virtualenv .jfrog"
+// Execute virtualenv command. "virtualenv {venvDirPath}"
 func RunVirtualEnv(venvDirPath string) (err error) {
-	execPath, err := GetExecutablePath("virtualenv")
-	_, err = runPythonCommand(execPath, venvDirPath, []string{})
-	return err
+	execPath, err := exec.LookPath("virtualenv")
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if execPath == "" {
+		return errorutils.CheckError(errors.New("Could not find virtualenv executable"))
+	}
+	_, err = runPythonCommand(execPath, []string{venvDirPath})
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	return nil
 }
 
 // Execute pip install command. "pip install ."
 func RunPipInstall(venvDirPath string) (err error) {
-	_, err = runPythonCommand(filepath.Join(venvDirPath, "bin", "pip"), "install", []string{"."})
+	_, err = runPythonCommand(filepath.Join(venvDirPath, "bin", "pip"), []string{"install", "."})
 	return err
 }
 
-// Execute pip-dependency-map script, return dependency map of all installed pip packages in current environment.
+// Executes the pip-dependency-map script and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
 func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	pipDependencyMapScriptPath, err := GetDepTreeScriptPath()
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, "bin", "python"), pipDependencyMapScriptPath, []string{"--json"})
-
+	data, err := runPythonCommand(filepath.Join(venvDirPath, "bin", "python"), []string{pipDependencyMapScriptPath, "--json"})
+	if err != nil {
+		return nil, nil, err
+	}
 	// Parse the result.
 	return parsePipDependencyMapOutput(data)
 }
 
-// Parse pip-dependency-map raw output to dependencies map.
+// Parse pip-dependency-map raw output to dependencies map (mapping dependency to his child deps) and top level deps list
 func parsePipDependencyMapOutput(data []byte) (map[string][]string, []string, error) {
 	// Parse into array.
 	packages := make([]pipDependencyPackage, 0)
@@ -125,10 +100,33 @@ func GetDepTreeScriptPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pipDependenciesPath = filepath.Join(pipDependenciesPath, "pip", "2")
-	depTreeScriptPath := path.Join(pipDependenciesPath, "pipdeptree.py")
-
+	depTreeScriptName := "pipdeptree.py"
+	pipDependenciesPath = filepath.Join(pipDependenciesPath, "pip", pipDepTreeVersion)
+	depTreeScriptPath := path.Join(pipDependenciesPath, depTreeScriptName)
+	err = writeScriptIfNeeded(pipDependenciesPath, depTreeScriptName)
+	if err != nil {
+		return "", err
+	}
 	return depTreeScriptPath, err
+}
+
+func writeScriptIfNeeded(targetDirPath, scriptName string) error {
+	scriptPath := path.Join(targetDirPath, scriptName)
+	exists, err := fileutils.IsFileExists(scriptPath, false)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if !exists {
+		err = os.MkdirAll(targetDirPath, os.ModeDir|os.ModePerm)
+		if errorutils.CheckError(err) != nil {
+			return err
+		}
+		err = ioutil.WriteFile(scriptPath, pipDepTreeContent, os.ModePerm)
+		if errorutils.CheckError(err) != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Structs for parsing the pip-dependency-map result.

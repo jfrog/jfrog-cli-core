@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"github.com/gookit/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -174,15 +172,6 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 
 	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found")
 	return err
-}
-
-func PrintJson(jsonRes []services.ScanResponse) error {
-	results, err := json.Marshal(&jsonRes)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	fmt.Println(clientutils.IndentJson(results))
-	return nil
 }
 
 // Used for vulnerabilities and security violations

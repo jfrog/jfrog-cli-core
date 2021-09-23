@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -11,69 +10,18 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
+func NewAuditNpmCommand(auditCmd AuditCommand) *AuditNpmCommand {
+	return &AuditNpmCommand{AuditCommand: auditCmd}
+}
+
 type AuditNpmCommand struct {
-	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
-	arguments              []string
-	typeRestriction        npmutils.TypeRestriction
-	watches                []string
-	projectKey             string
-	targetRepoPath         string
-	includeVulnerabilities bool
-	includeLincenses       bool
-}
-
-func (auditCmd *AuditNpmCommand) SetOutputFormat(format OutputFormat) *AuditNpmCommand {
-	auditCmd.outputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetArguments(args []string) *AuditNpmCommand {
-	auditCmd.arguments = args
-	return auditCmd
+	AuditCommand
+	typeRestriction npmutils.TypeRestriction
 }
 
 func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *AuditNpmCommand {
 	auditCmd.typeRestriction = typeRestriction
 	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetServerDetails(server *config.ServerDetails) *AuditNpmCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
-}
-
-func (auditCmd *AuditNpmCommand) SetWatches(watches []string) *AuditNpmCommand {
-	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetProject(project string) *AuditNpmCommand {
-	auditCmd.projectKey = project
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetTargetRepoPath(repoPath string) *AuditNpmCommand {
-	auditCmd.targetRepoPath = repoPath
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetIncludeVulnerabilities(include bool) *AuditNpmCommand {
-	auditCmd.includeVulnerabilities = include
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetIncludeLincenses(include bool) *AuditNpmCommand {
-	auditCmd.includeLincenses = include
-	return auditCmd
-}
-
-func NewAuditNpmCommand() *AuditNpmCommand {
-	return &AuditNpmCommand{}
 }
 
 func (auditCmd *AuditNpmCommand) Run() (err error) {
@@ -99,8 +47,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
 
-	err = RunScanGraph([]*services.GraphNode{rootNode}, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
-	return err
+	return auditCmd.runScanGraph([]*services.GraphNode{rootNode})
 }
 
 // Parse the dependencies into an Xray dependency tree format

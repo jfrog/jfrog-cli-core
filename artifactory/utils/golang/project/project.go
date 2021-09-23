@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -337,23 +336,6 @@ func (project *goProject) addInfoFileToBuildInfo(infoFilePath string) error {
 	artifact.Checksum = &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	project.artifacts = append(project.artifacts, artifact)
 	return nil
-}
-
-// Parse module name from go.mod content.
-func parseModuleName(modContent string) (string, error) {
-	r, err := regexp.Compile(`module "?([\w\.@:%_\+-.~#?&]+/?.+\w)`)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	lines := strings.Split(modContent, "\n")
-	for _, v := range lines {
-		matches := r.FindStringSubmatch(v)
-		if len(matches) == 2 {
-			return matches[1], nil
-		}
-	}
-
-	return "", errorutils.CheckError(errors.New("Module name missing in go.mod file"))
 }
 
 type goInfo struct {

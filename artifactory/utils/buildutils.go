@@ -172,7 +172,10 @@ func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*build
 			return nil, err
 		}
 		buildInfo := new(buildinfo.BuildInfo)
-		json.Unmarshal(content, &buildInfo)
+		err = json.Unmarshal(content, &buildInfo)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
 		generatedBuildsInfo = append(generatedBuildsInfo, buildInfo)
 	}
 	return generatedBuildsInfo, nil
@@ -204,7 +207,10 @@ func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (build
 			return nil, err
 		}
 		partial := new(buildinfo.Partial)
-		json.Unmarshal(content, &partial)
+		err = json.Unmarshal(content, &partial)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
 		partials = append(partials, partial)
 	}
 
@@ -217,12 +223,29 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*bu
 		return nil, err
 	}
 	generalDetailsFilePath := filepath.Join(partialsBuildDir, BuildInfoDetails)
+	fileExists, err := fileutils.IsFileExists(generalDetailsFilePath, false)
+	if err != nil {
+		return nil, err
+	}
+	if fileExists == false {
+		var buildString string
+		if projectKey != "" {
+			buildString = fmt.Sprintf("build-name: <%s>, build-number: <%s> and project: <%s>", buildName, buildNumber, projectKey)
+		} else {
+			buildString = fmt.Sprintf("build-name: <%s> and build-number: <%s>", buildName, buildNumber)
+		}
+		return nil, errors.New("Failed to construct the build-info to be published. " +
+			"This may be because there were no previous commands, which collected build-info for " + buildString)
+	}
 	content, err := fileutils.ReadFile(generalDetailsFilePath)
 	if err != nil {
 		return nil, err
 	}
 	details := new(buildinfo.General)
-	json.Unmarshal(content, &details)
+	err = json.Unmarshal(content, &details)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
 	return details, nil
 }
 

@@ -143,7 +143,7 @@ func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) P
 		StepType: MvnBuild,
 		Configuration: &MavenStepConfiguration{
 			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
-			MvnCommand:              yg.getBuildCmdForNativeStep(Maven),
+			MvnCommand:              yg.SetupData.GetBuildCmdForNativeStep(),
 			ResolverSnapshotRepo:    yg.SetupData.BuiltTechnology.VirtualRepo,
 			ResolverReleaseRepo:     yg.SetupData.BuiltTechnology.VirtualRepo,
 		},
@@ -188,7 +188,7 @@ func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName string) 
 		StepType: GradleBuild,
 		Configuration: &GradleStepConfiguration{
 			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
-			GradleCommand:           yg.getBuildCmdForNativeStep(Gradle),
+			GradleCommand:           yg.SetupData.GetBuildCmdForNativeStep(),
 			ResolverRepo:            yg.SetupData.BuiltTechnology.VirtualRepo,
 		},
 		Execution: StepExecution{

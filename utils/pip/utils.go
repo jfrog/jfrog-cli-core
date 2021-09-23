@@ -110,6 +110,7 @@ func GetDepTreeScriptPath() (string, error) {
 	return depTreeScriptPath, err
 }
 
+// Creates local python script on jfrog dependencies path folder if such not exists
 func writeScriptIfNeeded(targetDirPath, scriptName string) error {
 	scriptPath := path.Join(targetDirPath, scriptName)
 	exists, err := fileutils.IsFileExists(scriptPath, false)

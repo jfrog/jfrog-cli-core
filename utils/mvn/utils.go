@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	mavenExtractorDependencyVersion = "2.28.6"
+	mavenExtractorDependencyVersion = "2.30.2"
 	classworldsConfFileName         = "classworlds.conf"
 	MavenHome                       = "M2_HOME"
 )

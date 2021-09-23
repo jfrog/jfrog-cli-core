@@ -19,8 +19,8 @@ import (
 
 const (
 	// This env var should be used for downloading the extractor jars through an Artifactory remote
-	// repository, instead of downloading directly from ojo. The remote repository should be
-	// configured to proxy ojo.
+	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
+	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 )
@@ -52,9 +52,9 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
 
-	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from oss.jfrog.org.")
-	// If not configured to download through a remote repository in Artifactory, download from ojo.
-	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
+	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
+	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
+	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
 // Get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.

@@ -53,7 +53,7 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
+	builder, err := container.NewBuildInfoBuilderForDockerOrPodman(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err
 	}

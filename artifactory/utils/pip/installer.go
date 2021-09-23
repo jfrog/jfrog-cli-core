@@ -47,13 +47,9 @@ func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err er
 		return
 	}
 	if pipExecutablePath == "" {
-		return "","", errorutils.CheckError(errors.New("Could not find pip executable"))
+		return "", "", errorutils.CheckError(errors.New("Could not find the 'pip' executable in the system PATH"))
 	}
 	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
-	if err != nil {
-		return
-	}
-
 	return
 }
 

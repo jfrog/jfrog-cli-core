@@ -80,7 +80,10 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 	}
 
 	promptMissingDependencies(missingDeps)
-	dependencies.UpdateDependenciesCache(allDependencies)
+	err = dependencies.UpdateDependenciesCache(allDependencies)
+	if err != nil {
+		return err
+	}
 	pic.saveBuildInfo(allDependencies)
 	return nil
 }
@@ -141,7 +144,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 		return
 	}
 	if pythonExecutablePath == "" {
-		return "",errorutils.CheckError(errors.New("Could not find python executable"))
+		return "", errorutils.CheckError(errors.New("Could not find the 'python' executable in the system PATH"))
 	}
 	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {

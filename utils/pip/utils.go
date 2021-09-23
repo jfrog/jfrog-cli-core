@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 )
 
@@ -102,7 +101,7 @@ func GetDepTreeScriptPath() (string, error) {
 	}
 	depTreeScriptName := "pipdeptree.py"
 	pipDependenciesPath = filepath.Join(pipDependenciesPath, "pip", pipDepTreeVersion)
-	depTreeScriptPath := path.Join(pipDependenciesPath, depTreeScriptName)
+	depTreeScriptPath := filepath.Join(pipDependenciesPath, depTreeScriptName)
 	err = writeScriptIfNeeded(pipDependenciesPath, depTreeScriptName)
 	if err != nil {
 		return "", err
@@ -112,7 +111,7 @@ func GetDepTreeScriptPath() (string, error) {
 
 // Creates local python script on jfrog dependencies path folder if such not exists
 func writeScriptIfNeeded(targetDirPath, scriptName string) error {
-	scriptPath := path.Join(targetDirPath, scriptName)
+	scriptPath := filepath.Join(targetDirPath, scriptName)
 	exists, err := fileutils.IsFileExists(scriptPath, false)
 	if errorutils.CheckError(err) != nil {
 		return err

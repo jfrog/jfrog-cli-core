@@ -171,11 +171,11 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites.")
 	npmExecPath, err := exec.LookPath("npm")
 	if err != nil {
-		return  errorutils.CheckError(err)
+		return errorutils.CheckError(err)
 	}
 
 	if npmExecPath == "" {
-		return errorutils.CheckError(errors.New("could not find 'npm' executable"))
+		return errorutils.CheckError(errors.New("could not find the 'npm' executable in the system PATH"))
 	}
 	nca.executablePath = npmExecPath
 

@@ -46,7 +46,7 @@ func (auditCmd *AuditGoCommand) buildGoDependencyTree() (*services.GraphNode, er
 	if err != nil {
 		return nil, err
 	}
-	// Get Root module name
+	// Get root module name
 	rootModuleName, err := goutils.GetModuleName(currentDir)
 	if err != nil {
 		return nil, err

@@ -36,7 +36,7 @@ func GetNpmVersionAndExecPath() (*version.Version, string, error) {
 	}
 
 	if npmExecPath == "" {
-		return nil, "", errorutils.CheckError(errors.New("could not find 'npm' executable in PATH"))
+		return nil, "", errorutils.CheckError(errors.New("could not find the 'npm' executable in the system PATH"))
 	}
 
 	log.Debug("Using npm executable:", npmExecPath)

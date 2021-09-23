@@ -4,69 +4,23 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type AuditMavenCommand struct {
-	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
-	insecureTls            bool
-	watches                []string
-	projectKey             string
-	targetRepoPath         string
-	includeVulnerabilities bool
-	includeLincenses       bool
+	AuditCommand
+	insecureTls bool
 }
 
-func (auditCmd *AuditMavenCommand) SetServerDetails(server *config.ServerDetails) *AuditMavenCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetOutputFormat(format OutputFormat) *AuditMavenCommand {
-	auditCmd.outputFormat = format
-	return auditCmd
+func NewAuditMavenCommand(auditCmd AuditCommand) *AuditMavenCommand {
+	return &AuditMavenCommand{AuditCommand: auditCmd}
 }
 
 func (auditCmd *AuditMavenCommand) SetInsecureTls(insecureTls bool) *AuditMavenCommand {
 	auditCmd.insecureTls = insecureTls
 	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
-}
-
-func (auditCmd *AuditMavenCommand) SetWatches(watches []string) *AuditMavenCommand {
-	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetProject(project string) *AuditMavenCommand {
-	auditCmd.projectKey = project
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetTargetRepoPath(repoPath string) *AuditMavenCommand {
-	auditCmd.projectKey = repoPath
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetIncludeVulnerabilities(include bool) *AuditMavenCommand {
-	auditCmd.includeVulnerabilities = include
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) SetIncludeLincenses(include bool) *AuditMavenCommand {
-	auditCmd.includeLincenses = include
-	return auditCmd
-}
-
-func NewAuditMvnCommand() *AuditMavenCommand {
-	return &AuditMavenCommand{}
 }
 
 func (auditCmd *AuditMavenCommand) Run() (err error) {
@@ -76,7 +30,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 		return
 	}
 
-	return runScanGraph(modulesDependencyTrees, auditCmd.serverDetails, auditCmd.includeVulnerabilities, auditCmd.includeLincenses, auditCmd.targetRepoPath, auditCmd.projectKey, auditCmd.watches, auditCmd.outputFormat)
+	return auditCmd.runScanGraph(modulesDependencyTrees)
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

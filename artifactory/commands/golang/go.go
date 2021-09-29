@@ -8,9 +8,9 @@ import (
 	executors "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -110,7 +110,7 @@ func (gc *GoCommand) Run() error {
 }
 
 func (gc *GoCommand) run() error {
-	err := golang.LogGoVersion()
+	err := goutils.LogGoVersion()
 	if err != nil {
 		return err
 	}

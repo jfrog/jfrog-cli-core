@@ -33,12 +33,55 @@ type Builder interface {
 	GetLayers() *[]utils.ResultItem
 }
 
+type buildInfoBuilder struct {
+	image             *Image
+	repositoryDetails RepositoryDetails
+	buildName         string
+	buildNumber       string
+	project           string
+	serviceManager    artifactory.ArtifactoryServicesManager
+
+	// For Docker and Podman builds
+	containerManager ContainerManager
+
+	// For Kaniko and OpenShift CLI (oc) builds
+	manifestSha256 string
+
+	// internal fields
+	imageId      string
+	layers       []utils.ResultItem
+	artifacts    []buildinfo.Artifact
+	dependencies []buildinfo.Dependency
+	commandType  CommandType
+}
+
+func NewBuildInfoBuilderForDockerOrPodman(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
+	builder, err := newBuildInfoBuilder(image, repository, buildName, buildNumber, project, serviceManager, commandType)
+	if err != nil {
+		return nil, err
+	}
+	builder.containerManager = containerManager
+	builder.imageId, err = builder.containerManager.Id(builder.image)
+	return builder, err
+}
+
+func NewBuildInfoBuilderForKanikoOrOpenShift(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, manifestSha256 string) (Builder, error) {
+	builder, err := newBuildInfoBuilder(image, repository, buildName, buildNumber, project, serviceManager, commandType)
+	if err != nil {
+		return nil, err
+	}
+	builder.manifestSha256 = manifestSha256
+	return builder, err
+}
+
 // Create instance of docker build info builder.
-func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (err error) {
+func newBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType) (*buildInfoBuilder, error) {
+	var err error
+	builder := &buildInfoBuilder{}
 	builder.repositoryDetails.key = repository
 	builder.repositoryDetails.isRemote, err = artutils.IsRemoteRepo(repository, serviceManager)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	builder.image = image
 	builder.buildName = buildName
@@ -46,46 +89,7 @@ func newBuildInfoBuilder(builder *buildInfoBuilder, image *Image, repository, bu
 	builder.project = project
 	builder.serviceManager = serviceManager
 	builder.commandType = commandType
-	builder.containerManager = containerManager
-	return nil
-}
-
-func NewBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (Builder, error) {
-	builder := &buildInfoBuilder{}
-	var err error
-	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, project, serviceManager, commandType, containerManager); err != nil {
-		return nil, err
-	}
-	builder.imageId, err = builder.containerManager.Id(builder.image)
-	return builder, err
-}
-
-func NewKanikoBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager, manifestSha256 string) (Builder, error) {
-	builder := &buildInfoBuilder{}
-	var err error
-	if err = newBuildInfoBuilder(builder, image, repository, buildName, buildNumber, project, serviceManager, commandType, containerManager); err != nil {
-		return nil, err
-	}
-	builder.manifestSha256 = manifestSha256
-	return builder, err
-}
-
-type buildInfoBuilder struct {
-	image             *Image
-	containerManager  ContainerManager
-	repositoryDetails RepositoryDetails
-	buildName         string
-	buildNumber       string
-	project           string
-	serviceManager    artifactory.ArtifactoryServicesManager
-
-	// internal fields
-	imageId        string
-	manifestSha256 string
-	layers         []utils.ResultItem
-	artifacts      []buildinfo.Artifact
-	dependencies   []buildinfo.Dependency
-	commandType    CommandType
+	return builder, nil
 }
 
 type RepositoryDetails struct {
@@ -101,8 +105,8 @@ func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
 func (builder *buildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	if err := builder.UpdateArtifactsAndDependencies(); err != nil {
 		log.Warn(`Failed to collect build-info, couldn't find image "` + builder.image.tag + `" in Artifactory`)
-		// Don't generate an empty build-info for build-docker-create if the image manifest was not found in Artifactory.
-		if builder.containerManager.GetContainerManagerType() == Kaniko {
+		// Don't generate an empty build-info for build-docker-create and oc start-build if the image manifest was not found in Artifactory.
+		if builder.containerManager == nil {
 			return nil, err
 		} else {
 			log.Error("Failed populating the build-info module with docker artifacts and dependencies. Reason: " + err.Error())
@@ -338,16 +342,20 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 		return
 	}
 	// Check if search results contain manifest.json
-	searchesult, ok := resultMap["manifest.json"]
+	searchResult, ok := resultMap["manifest.json"]
 	if ok {
 		// Found a manifest. Verify manifest is the same as the builder image.
-		if builder.containerManager.GetContainerManagerType() == Kaniko {
-			manifestContent, err = verifyManifestBySha256(*searchesult, builder)
+		if builder.containerManager == nil {
+			manifestContent, err = verifyManifestBySha256(*searchResult, builder)
 		} else {
-			manifestContent, err = verifyManifestByDigest(*searchesult, builder)
+			manifestContent, err = verifyManifestByDigest(*searchResult, builder)
 		}
 	} else {
-		// Check if search results contain fat-manifest.
+		if builder.containerManager == nil {
+			err = errorutils.CheckError(errors.New("build info collection for multi-architecture images is not supported in build-docker-create and oc start-build commands"))
+			return
+		}
+		// Check if search results contain multi-architecture images (fat-manifest).
 		if searchResult, ok := resultMap["list.manifest.json"]; ok {
 			// In case of a fat-manifest, Artifactory will create two folders.
 			// One folder named as the image tag, which contains the fat manifest.
@@ -362,7 +370,7 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 				// Retry search.
 				return searchManifestAndLayersDetails(builder, imagePathPattern)
 			}
-			log.Debug("Couldn't find maching digest in list.manifest.json")
+			log.Debug("Couldn't find matching digest in list.manifest.json")
 		}
 	}
 	return

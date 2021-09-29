@@ -4,8 +4,8 @@ import (
 	"errors"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"os/exec"
@@ -46,7 +46,7 @@ func (gpc *GoPublishCommand) Run() error {
 		return err
 	}
 
-	err = golang.LogGoVersion()
+	err = goutils.LogGoVersion()
 	if err != nil {
 		return err
 	}

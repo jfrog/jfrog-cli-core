@@ -35,11 +35,10 @@ type ContainerManagerType int
 const (
 	DockerClient ContainerManagerType = iota
 	Podman
-	Kaniko
 )
 
 func (cmt ContainerManagerType) String() string {
-	return [...]string{"docker", "podman", "kaniko"}[cmt]
+	return [...]string{"docker", "podman"}[cmt]
 }
 
 // Container image

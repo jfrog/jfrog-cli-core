@@ -1,8 +1,10 @@
 package pip
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
+	"os/exec"
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
@@ -40,16 +42,14 @@ func (pi *PipInstaller) Install() error {
 func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err error) {
 	log.Debug("Preparing prerequisites.")
 
-	pipExecutablePath, err = GetExecutablePath("pip")
+	pipExecutablePath, err = exec.LookPath("pip")
 	if err != nil {
 		return
 	}
-
+	if pipExecutablePath == "" {
+		return "", "", errorutils.CheckError(errors.New("Could not find the 'pip' executable in the system PATH"))
+	}
 	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
-	if err != nil {
-		return
-	}
-
 	return
 }
 

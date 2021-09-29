@@ -2,7 +2,6 @@ package audit
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 
 	"github.com/jfrog/gofrog/io"
@@ -228,45 +227,17 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	indexedFileConsumer.Run()
 	// Handle results
 	scanPassed := true
-	violations := []services.Violation{}
-	vulnerabilities := []services.Vulnerability{}
-	licenses := []services.License{}
 	flatResults := []services.ScanResponse{}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			flatResults = append(flatResults, *res)
-
-			if scanCmd.outputFormat == Table {
-				violations = append(violations, res.Violations...)
-				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
-				licenses = append(licenses, res.Licenses...)
-			}
 			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
 				// A violation or vulnerability was found, the scan failed.
 				scanPassed = false
 			}
 		}
 	}
-	var err error
-	if scanCmd.outputFormat == Table {
-		if len(flatResults) > 0 {
-			resultsPath, err := xrutils.WriteJsonResults(flatResults)
-			if err != nil {
-				return false, err
-			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
-		}
-		if scanCmd.includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
-		} else {
-			err = xrutils.PrintViolationsTable(violations, true)
-		}
-		if scanCmd.includeLincenses {
-			xrutils.PrintLicensesTable(licenses, true)
-		}
-	} else {
-		err = xrutils.PrintJson(flatResults)
-	}
+	err := xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == Table, scanCmd.includeVulnerabilities, scanCmd.includeLincenses, true)
 	if scanPassed {
 		log.Info("Scan completed successfully.")
 	}

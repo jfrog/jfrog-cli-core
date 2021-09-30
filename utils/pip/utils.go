@@ -61,9 +61,9 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 func venvBinDirByOS() string {
 	if coreutils.IsWindows() {
 		return "Scripts"
-	} else {
-		return "bin"
 	}
+
+	return "bin"
 }
 
 // Execute pip install command. "pip install ."

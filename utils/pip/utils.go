@@ -18,13 +18,16 @@ import (
 
 func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error) {
 	cmd := exec.Command(execPath, cmdArgs...)
-	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
+	log.Info(fmt.Sprintf("running command: %v", cmd.Args))
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	err = errorutils.CheckError(cmd.Run())
+
 	if err != nil {
+		log.Info(fmt.Sprintf("running command: %v", err.Error()))
 		return nil, err
 	}
+	log.Info(fmt.Sprintf("running command success!!"))
 	return stdout.Bytes(), err
 }
 
@@ -32,13 +35,16 @@ func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error
 func RunVirtualEnv(venvDirPath string) (err error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
+	log.Info("virtualenv:" + execPath)
 	if err != nil || execPath == "" {
 		// If "virtualenv" not found in PATH, trying to find "python3" to run "python3 -m venv {venvDirPath}" instead
 		execPath, err = exec.LookPath("python3")
+		log.Info("python3:" + execPath)
 		if err != nil || execPath == "" {
 			if coreutils.IsWindows() {
 				// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
 				execPath, err = exec.LookPath("py")
+				log.Info("py:" + execPath)
 				cmdArgs = append(cmdArgs, "-3")
 			}
 			if err != nil {
@@ -50,12 +56,10 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 		}
 		cmdArgs = append(cmdArgs, "-m", "venv")
 	}
+	log.Info("runPythonCommand:" + execPath)
 	cmdArgs = append(cmdArgs, venvDirPath)
 	_, err = runPythonCommand(execPath, cmdArgs)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	return nil
+	return errorutils.CheckError(err)
 }
 
 // Getting the name of the directory inside venv dir that contains the bin files ( different name between the OS's)

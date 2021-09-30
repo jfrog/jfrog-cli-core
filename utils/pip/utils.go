@@ -19,6 +19,8 @@ import (
 func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error) {
 	cmd := exec.Command(execPath, cmdArgs...)
 	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
+	log.Info(fmt.Sprintf("running command: %v", cmd.Args))
+
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	err = errorutils.CheckError(cmd.Run())
@@ -39,7 +41,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 			if coreutils.IsWindows() {
 				// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
 				execPath, err = exec.LookPath("py")
-				log.Debug("debug: " + execPath + err.Error())
 				log.Info("info:" + execPath + err.Error())
 				cmdArgs = append(cmdArgs, "-3")
 			}
@@ -52,7 +53,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 		}
 		cmdArgs = append(cmdArgs, "-m", "venv")
 	}
-	log.Debug("debug: " + execPath)
 	log.Info("info:" + execPath)
 	cmdArgs = append(cmdArgs, venvDirPath)
 	_, err = runPythonCommand(execPath, cmdArgs)

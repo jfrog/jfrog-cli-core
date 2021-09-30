@@ -14,8 +14,10 @@ func TestBuildPipDependencyList(t *testing.T) {
 	auditCmd := NewEmptyAuditPipCommand()
 	parentNodes, err := auditCmd.buildPipDependencyTree()
 	if err != nil {
+		t.Log(err)
 		t.Fatal(err)
 	}
+	t.Log("parentNodesparentNodes:", parentNodes)
 	assert.NotEmpty(t, parentNodes)
 
 	// Test root module

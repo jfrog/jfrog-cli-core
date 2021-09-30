@@ -14,6 +14,10 @@ type AuditMavenCommand struct {
 	insecureTls bool
 }
 
+func NewEmptyAuditMavenCommand() *AuditMavenCommand {
+	return &AuditMavenCommand{AuditCommand: *NewAuditCommand()}
+}
+
 func NewAuditMavenCommand(auditCmd AuditCommand) *AuditMavenCommand {
 	return &AuditMavenCommand{AuditCommand: auditCmd}
 }

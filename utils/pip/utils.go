@@ -38,7 +38,8 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 		if err != nil || execPath == "" {
 			if coreutils.IsWindows() {
 				// If Windows try finding python executable
-				execPath, err = exec.LookPath("python")
+				execPath, err = exec.LookPath("py")
+				cmdArgs = append(cmdArgs, "-3")
 			}
 			if err != nil {
 				return errorutils.CheckError(err)
@@ -47,7 +48,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 				return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
 			}
 		}
-
 		cmdArgs = append(cmdArgs, "-m", "venv")
 	}
 	cmdArgs = append(cmdArgs, venvDirPath)

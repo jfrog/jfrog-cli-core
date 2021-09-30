@@ -37,24 +37,18 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 	execPath, err := exec.LookPath("virtualenv")
 	log.Info("virtualenv:" + execPath)
 	if err != nil || execPath == "" {
-		// If "virtualenv" not found in PATH, trying to find "python3" to run "python3 -m venv {venvDirPath}" instead
-		execPath, err = exec.LookPath("python3")
-		log.Info("python3:" + execPath)
-		if err != nil || execPath == "" {
-			if coreutils.IsWindows() {
-				// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
-				execPath, err = exec.LookPath("py")
-				log.Info("py:" + execPath)
-				cmdArgs = append(cmdArgs, "-3")
-			}
-			if err != nil {
-				return errorutils.CheckError(err)
-			}
-			if execPath == "" {
-				return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
-			}
+		if coreutils.IsWindows() {
+			// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
+			execPath, err = exec.LookPath("py")
+			log.Info("py:" + execPath)
+			cmdArgs = append(cmdArgs, "-3", "-m", "venv")
 		}
-		cmdArgs = append(cmdArgs, "-m", "venv")
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
+		if execPath == "" {
+			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
+		}
 	}
 	log.Info("runPythonCommand:" + execPath)
 	cmdArgs = append(cmdArgs, venvDirPath)

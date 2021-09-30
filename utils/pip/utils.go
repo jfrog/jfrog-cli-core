@@ -33,7 +33,6 @@ func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error
 func RunVirtualEnv(venvDirPath string) (err error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
-	log.Info("virtualenv:" + execPath)
 	if err != nil || execPath == "" {
 		// If virtualenv not installed try "venv"
 		if coreutils.IsWindows() {
@@ -57,7 +56,7 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 	return errorutils.CheckError(err)
 }
 
-// Getting the name of the directory inside venv dir that contains the bin files ( different name between the OS's)
+// Getting the name of the directory inside venv dir that contains the bin files (different name in different OS's)
 func venvBinDirByOS() string {
 	if coreutils.IsWindows() {
 		return "Scripts"

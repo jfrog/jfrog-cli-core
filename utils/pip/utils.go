@@ -19,8 +19,6 @@ import (
 func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error) {
 	cmd := exec.Command(execPath, cmdArgs...)
 	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
-	log.Info(fmt.Sprintf("running command: %v", cmd.Args))
-
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	err = errorutils.CheckError(cmd.Run())
@@ -41,7 +39,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 			if coreutils.IsWindows() {
 				// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
 				execPath, err = exec.LookPath("py")
-				log.Info("info:" + execPath + err.Error())
 				cmdArgs = append(cmdArgs, "-3")
 			}
 			if err != nil {
@@ -53,7 +50,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 		}
 		cmdArgs = append(cmdArgs, "-m", "venv")
 	}
-	log.Info("info:" + execPath)
 	cmdArgs = append(cmdArgs, venvDirPath)
 	_, err = runPythonCommand(execPath, cmdArgs)
 	if err != nil {
@@ -62,9 +58,18 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 	return nil
 }
 
+// Getting the name of the directory inside venv dir that contains the bin files ( different name between the OS's)
+func venvBinDirByOS() string {
+	if coreutils.IsWindows() {
+		return "Scripts"
+	} else {
+		return "bin"
+	}
+}
+
 // Execute pip install command. "pip install ."
 func RunPipInstall(venvDirPath string) (err error) {
-	_, err = runPythonCommand(filepath.Join(venvDirPath, "bin", "pip"), []string{"install", "."})
+	_, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", "."})
 	return err
 }
 
@@ -74,7 +79,7 @@ func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, "bin", "python"), []string{pipDependencyMapScriptPath, "--json"})
+	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -57,6 +57,7 @@ type File struct {
 	Offset           int
 	Limit            int
 	Build            string
+	Project          string
 	ExcludeArtifacts string
 	IncludeDeps      string
 	Bundle           string
@@ -132,6 +133,7 @@ func (f *File) ToArtifactoryCommonParams() (*utils.ArtifactoryCommonParams, erro
 	params.Props = f.Props
 	params.ExcludeProps = f.ExcludeProps
 	params.Build = f.Build
+	params.Project = f.Project
 	params.Bundle = f.Bundle
 	params.SortOrder = f.SortOrder
 	params.SortBy = f.SortBy

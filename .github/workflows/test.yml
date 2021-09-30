@@ -14,7 +14,6 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@v2
-      - name: Setup python
       - uses: actions/setup-python@v2
       - name: Setup Go
         uses: actions/setup-go@v2

@@ -59,6 +59,7 @@ type File struct {
 	ExcludeArtifacts string
 	IncludeDeps      string
 	Bundle           string
+	PublicGpgKey     string `json:"gpg-key,omitempty"`
 	Recursive        string
 	Flat             string
 	Regexp           string
@@ -125,6 +126,10 @@ func (f File) GetPatternType() (patternType clientutils.PatternType) {
 	return clientutils.WildCardPattern
 }
 
+func (f File) GetPublicGpgKey() string {
+	return f.PublicGpgKey
+}
+
 func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	var err error
 	params := new(utils.CommonParams)
@@ -166,6 +171,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isExcludeArtifacts, _ := file.IsExcludeArtifacts(false)
 		isIncludeDeps, _ := file.IsIncludeDeps(false)
 		isBundle := len(file.Bundle) > 0
+		isGPGKey := len(file.PublicGpgKey) > 0
 		isOffset := file.Offset > 0
 		isLimit := file.Limit > 0
 		isValidSortOrder := file.SortOrder == "asc" || file.SortOrder == "desc"
@@ -233,6 +239,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if isArchive && !isValidArchive {
 			return errors.New("The value of 'archive' (if provided) must be 'zip'.")
+		}
+		if isGPGKey && !isBundle {
+			return errors.New("Spec cannot include 'gpg-key' if 'bundle' is not included.")
 		}
 	}
 	return nil

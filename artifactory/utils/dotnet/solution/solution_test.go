@@ -3,7 +3,7 @@ package solution
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"os"
 	"path/filepath"
 	"reflect"

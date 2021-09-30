@@ -2,11 +2,11 @@ package audit
 
 import (
 	"errors"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"strconv"
 	"time"
 
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )

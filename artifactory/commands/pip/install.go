@@ -3,6 +3,7 @@ package pip
 import (
 	"errors"
 	"fmt"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"

@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	biconf "github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 )
 
 var envVars = map[string]string{"KeY": "key_val", "INClUdEd_VaR": "included_var", "EXCLUDED_pASSwoRd_var": "excluded_var"}
 
 func TestIncludeAllPattern(t *testing.T) {
-	conf := buildinfo.Configuration{EnvInclude: "*"}
+	conf := biconf.Configuration{EnvInclude: "*"}
 	includeFilter := conf.IncludeFilter()
 	filteredKeys, err := includeFilter(envVars)
 	if err != nil {
@@ -29,7 +29,7 @@ func TestIncludeAllPattern(t *testing.T) {
 }
 
 func TestIncludePartial(t *testing.T) {
-	conf := buildinfo.Configuration{EnvInclude: "*ED_V*;EXC*SwoRd_var"}
+	conf := biconf.Configuration{EnvInclude: "*ED_V*;EXC*SwoRd_var"}
 	includeFilter := conf.IncludeFilter()
 	filteredKeys, err := includeFilter(envVars)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestIncludePartial(t *testing.T) {
 }
 
 func TestIncludePartialIgnoreCase(t *testing.T) {
-	conf := buildinfo.Configuration{EnvInclude: "*Ed_v*"}
+	conf := biconf.Configuration{EnvInclude: "*Ed_v*"}
 	includeFilter := conf.IncludeFilter()
 	filteredKeys, err := includeFilter(envVars)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestIncludePartialIgnoreCase(t *testing.T) {
 }
 
 func TestExcludePasswordsPattern(t *testing.T) {
-	conf := buildinfo.Configuration{EnvExclude: "*paSSword*;*PsW*;*seCrEt*;*kEy*;*token*"}
+	conf := biconf.Configuration{EnvExclude: "*paSSword*;*PsW*;*seCrEt*;*kEy*;*token*"}
 	excludeFilter := conf.ExcludeFilter()
 	filteredKeys, err := excludeFilter(envVars)
 	if err != nil {

@@ -2,13 +2,13 @@ package buildinfo
 
 import (
 	"errors"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

@@ -1,8 +1,8 @@
 package goutils
 
 import (
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"github.com/jfrog/gocmd/cmd"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"

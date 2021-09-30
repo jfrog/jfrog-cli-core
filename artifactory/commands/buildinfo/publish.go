@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -13,14 +14,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	biconf "github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 type BuildPublishCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
-	config             *buildinfo.Configuration
+	config             *biconf.Configuration
 	detailedSummary    bool
 	summary            *clientutils.Sha256Summary
 }
@@ -29,7 +30,7 @@ func NewBuildPublishCommand() *BuildPublishCommand {
 	return &BuildPublishCommand{}
 }
 
-func (bpc *BuildPublishCommand) SetConfig(config *buildinfo.Configuration) *BuildPublishCommand {
+func (bpc *BuildPublishCommand) SetConfig(config *biconf.Configuration) *BuildPublishCommand {
 	bpc.config = config
 	return bpc
 }
@@ -187,7 +188,7 @@ func (bpc *BuildPublishCommand) createBuildInfoFromPartials() (*buildinfo.BuildI
 	return buildInfo, nil
 }
 
-func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter buildinfo.Filter) ([]buildinfo.Module, buildinfo.Env, []buildinfo.Vcs, buildinfo.Issues, error) {
+func extractBuildInfoData(partials buildinfo.Partials, includeFilter, excludeFilter biconf.Filter) ([]buildinfo.Module, buildinfo.Env, []buildinfo.Vcs, buildinfo.Issues, error) {
 	var vcs []buildinfo.Vcs
 	var issues buildinfo.Issues
 	env := make(map[string]string)

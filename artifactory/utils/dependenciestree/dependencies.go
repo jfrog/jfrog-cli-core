@@ -2,7 +2,7 @@ package dependenciestree
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	buildinfo "github.com/asafgabai/build-info-go/entities"
 )
 
 // Dependency tree

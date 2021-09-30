@@ -18,16 +18,14 @@ import (
 
 func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error) {
 	cmd := exec.Command(execPath, cmdArgs...)
-	log.Info(fmt.Sprintf("running command: %v", cmd.Args))
+	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	err = errorutils.CheckError(cmd.Run())
 
 	if err != nil {
-		log.Info(fmt.Sprintf("running command: %v", err.Error()))
 		return nil, err
 	}
-	log.Info(fmt.Sprintf("running command success!!"))
 	return stdout.Bytes(), err
 }
 
@@ -37,11 +35,15 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 	execPath, err := exec.LookPath("virtualenv")
 	log.Info("virtualenv:" + execPath)
 	if err != nil || execPath == "" {
+		// If virtualenv not installed try "venv"
 		if coreutils.IsWindows() {
-			// If the OS is Windows try using Py Launcher to get python3 executable with "py -3"
+			// If the OS is Windows try using Py Launcher: "py -3 -m venv"
 			execPath, err = exec.LookPath("py")
-			log.Info("py:" + execPath)
 			cmdArgs = append(cmdArgs, "-3", "-m", "venv")
+		} else {
+			// If the OS is Linux try using python3 executable: "python3 -m venv"
+			execPath, err = exec.LookPath("python3")
+			cmdArgs = append(cmdArgs, "-m", "venv")
 		}
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -50,7 +52,6 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
 		}
 	}
-	log.Info("runPythonCommand:" + execPath)
 	cmdArgs = append(cmdArgs, venvDirPath)
 	_, err = runPythonCommand(execPath, cmdArgs)
 	return errorutils.CheckError(err)

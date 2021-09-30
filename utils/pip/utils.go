@@ -27,20 +27,20 @@ func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error
 	return stdout.Bytes(), err
 }
 
-// Execute virtualenv command. "virtualenv {venvDirPath}"
+// Execute virtualenv command: "virtualenv {venvDirPath}" / "python3 -m venv {venvDirPath}"
 func RunVirtualEnv(venvDirPath string) (err error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
 	if err != nil || execPath == "" {
-		// If virtualenv not found trying to find python3 to run "python3 -m venv {venvDirPath}" instead
+		// If "virtualenv" not found in PATH, trying to find "python3" to run "python3 -m venv {venvDirPath}" instead
 		execPath, err = exec.LookPath("python3")
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
+		if execPath == "" {
+			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
+		}
 		cmdArgs = append(cmdArgs, "-m", "venv")
-	}
-	if execPath == "" {
-		return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable"))
 	}
 	cmdArgs = append(cmdArgs, venvDirPath)
 	_, err = runPythonCommand(execPath, cmdArgs)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -34,12 +35,19 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 	if err != nil || execPath == "" {
 		// If "virtualenv" not found in PATH, trying to find "python3" to run "python3 -m venv {venvDirPath}" instead
 		execPath, err = exec.LookPath("python3")
-		if err != nil {
-			return errorutils.CheckError(err)
+		if err != nil || execPath == "" {
+			if coreutils.IsWindows() {
+				// If Windows try finding python executable
+				execPath, err = exec.LookPath("python")
+			}
+			if err != nil {
+				return errorutils.CheckError(err)
+			}
+			if execPath == "" {
+				return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
+			}
 		}
-		if execPath == "" {
-			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
-		}
+
 		cmdArgs = append(cmdArgs, "-m", "venv")
 	}
 	cmdArgs = append(cmdArgs, venvDirPath)

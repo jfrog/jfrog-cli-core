@@ -19,6 +19,7 @@ type builder struct {
 	offset           int
 	limit            int
 	build            string
+	project          string
 	excludeArtifacts bool
 	includeDeps      bool
 	bundle           string
@@ -108,6 +109,11 @@ func (b *builder) Build(build string) *builder {
 	return b
 }
 
+func (b *builder) Project(project string) *builder {
+	b.project = project
+	return b
+}
+
 func (b *builder) ExcludeArtifacts(excludeArtifacts bool) *builder {
 	b.excludeArtifacts = excludeArtifacts
 	return b
@@ -185,6 +191,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Offset:           b.offset,
 				Limit:            b.limit,
 				Build:            b.build,
+				Project:          b.project,
 				Bundle:           b.bundle,
 				Explode:          b.explode,
 				ArchiveEntries:   b.archiveEntries,

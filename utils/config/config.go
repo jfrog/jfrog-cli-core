@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
 	"os"
@@ -538,6 +539,7 @@ type ServerDetails struct {
 	XrayUrl              string `json:"xrayUrl,omitempty"`
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
+	AccessUrl            string `json:"accessUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
@@ -632,6 +634,10 @@ func (serverDetails *ServerDetails) GetPipelinesUrl() string {
 	return serverDetails.PipelinesUrl
 }
 
+func (serverDetails *ServerDetails) GetAccessUrl() string {
+	return serverDetails.AccessUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -677,6 +683,12 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDetails, error) {
 	pAuth := pipelinesAuth.NewPipelinesDetails()
 	pAuth.SetUrl(serverDetails.PipelinesUrl)
+	return serverDetails.createAuthConfig(pAuth)
+}
+
+func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetails, error) {
+	pAuth := accessAuth.NewAccessDetails()
+	pAuth.SetUrl(serverDetails.AccessUrl)
 	return serverDetails.createAuthConfig(pAuth)
 }
 

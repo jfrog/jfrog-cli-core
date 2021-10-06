@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -21,31 +22,52 @@ func runPythonCommand(execPath string, cmdArgs []string) (data []byte, err error
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	err = errorutils.CheckError(cmd.Run())
+
 	if err != nil {
 		return nil, err
 	}
 	return stdout.Bytes(), err
 }
 
-// Execute virtualenv command. "virtualenv {venvDirPath}"
+// Execute virtualenv command: "virtualenv {venvDirPath}" / "python3 -m venv {venvDirPath}"
 func RunVirtualEnv(venvDirPath string) (err error) {
+	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
-	if err != nil {
-		return errorutils.CheckError(err)
+	if err != nil || execPath == "" {
+		// If virtualenv not installed try "venv"
+		if coreutils.IsWindows() {
+			// If the OS is Windows try using Py Launcher: "py -3 -m venv"
+			execPath, err = exec.LookPath("py")
+			cmdArgs = append(cmdArgs, "-3", "-m", "venv")
+		} else {
+			// If the OS is Linux try using python3 executable: "python3 -m venv"
+			execPath, err = exec.LookPath("python3")
+			cmdArgs = append(cmdArgs, "-m", "venv")
+		}
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
+		if execPath == "" {
+			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
+		}
 	}
-	if execPath == "" {
-		return errorutils.CheckError(errors.New("Could not find virtualenv executable"))
+	cmdArgs = append(cmdArgs, venvDirPath)
+	_, err = runPythonCommand(execPath, cmdArgs)
+	return errorutils.CheckError(err)
+}
+
+// Getting the name of the directory inside venv dir that contains the bin files (different name in different OS's)
+func venvBinDirByOS() string {
+	if coreutils.IsWindows() {
+		return "Scripts"
 	}
-	_, err = runPythonCommand(execPath, []string{venvDirPath})
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	return nil
+
+	return "bin"
 }
 
 // Execute pip install command. "pip install ."
 func RunPipInstall(venvDirPath string) (err error) {
-	_, err = runPythonCommand(filepath.Join(venvDirPath, "bin", "pip"), []string{"install", "."})
+	_, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", "."})
 	return err
 }
 
@@ -55,7 +77,7 @@ func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, "bin", "python"), []string{pipDependencyMapScriptPath, "--json"})
+	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"})
 	if err != nil {
 		return nil, nil, err
 	}

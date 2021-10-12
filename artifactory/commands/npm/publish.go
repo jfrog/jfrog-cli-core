@@ -5,13 +5,14 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 
@@ -239,7 +240,7 @@ func (npc *NpmPublishCommand) publish() error {
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
 	// If requested, perform an Xray binary scan before deployment.
 	if npc.xrayScan {
-		pass, err := npc.scan(npc.packedFilePath, target, npc.serverDetails)
+		pass, err := npc.scan(npc.packedFilePath, npc.repo+"/", npc.serverDetails)
 		if err != nil {
 			return err
 		}
@@ -302,7 +303,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err

@@ -34,21 +34,26 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 		return err
 	}
 	// All the values in the template are strings
-	// Go over the the confMap and write the values with the correct type using the writersMap
+	// Go over the confMap and write the values with the correct type using the writersMap
 	for key, value := range repoConfigMap {
 		if err = utils.ValidateMapEntry(key, value, writersMap); err != nil {
 			return
 		}
-		writersMap[key](&repoConfigMap, key, value.(string))
+		if err = writersMap[key](&repoConfigMap, key, value.(string)); err != nil {
+			return
+		}
 	}
 	// Write a JSON with the correct values
 	content, err := json.Marshal(repoConfigMap)
+	if err != nil {
+		return err
+	}
 
 	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}
-	// Rclass and packgeType are mandatory keys in our templates
+	// Rclass and packageType are mandatory keys in our templates
 	// Using their values we'll pick the suitable handler from one of the handler maps to create/update a repository
 	switch repoConfigMap[Rclass] {
 	case Local:
@@ -74,6 +79,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	IncludePatterns:                   utils.WriteStringAnswer,
 	ExcludePatterns:                   utils.WriteStringAnswer,
 	RepoLayoutRef:                     utils.WriteStringAnswer,
+	ProjectKey:                        utils.WriteStringAnswer,
 	HandleReleases:                    utils.WriteBoolAnswer,
 	HandleSnapshots:                   utils.WriteBoolAnswer,
 	MaxUniqueSnapshots:                utils.WriteIntAnswer,

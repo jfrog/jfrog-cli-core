@@ -576,7 +576,7 @@ func projectKeyCallback(iq *utils.InteractiveQuestionnaire, projectKey string) (
 
 	if !strings.HasPrefix(currentRepoKey, requiredProjectPrefix) {
 		newRepoKey := requiredProjectPrefix + currentRepoKey
-		log.Info("Repository key should start with the projectKey and a dash. Modifying repo key to: '" + newRepoKey + "'.")
+		log.Info("Repository key should start with the projectKey followed by a dash. Modifying repo key to: '" + newRepoKey + "'.")
 		iq.AnswersMap[Key] = newRepoKey
 	}
 	return "", nil

@@ -83,7 +83,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 
 	if disableDeploy {
-		setEmptyDeployer(vConfig)
+		setDeployFalse(vConfig)
 	}
 
 	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, deployableArtifactsFile, vConfig, utils.Gradle)
@@ -106,9 +106,13 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	setDeployFalse(vConfig)
 	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
 	vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
+}
+
+func setDeployFalse(vConfig *viper.Viper) {
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
 }
 
 func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, error) {

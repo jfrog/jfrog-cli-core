@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -173,8 +174,12 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		vConfig.Set(utils.ForkCount, threads)
 	}
 
-	if !vConfig.IsSet("deployer") || disableDeploy {
+	if !vConfig.IsSet("deployer") {
 		setEmptyDeployer(vConfig)
+	}
+
+	if disableDeploy {
+		setDeployFalse(vConfig)
 	}
 
 	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project, deployableArtifactsFile, vConfig, utils.Maven)
@@ -199,10 +204,14 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	setDeployFalse(vConfig)
 	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
 	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
 	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+}
+
+func setDeployFalse(vConfig *viper.Viper) {
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
 }
 
 func (config *mvnRunConfig) GetCmd() *exec.Cmd {

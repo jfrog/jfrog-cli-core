@@ -2,13 +2,14 @@ package utils
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
-	"io/ioutil"
-	"os"
 )
 
 const (
@@ -51,7 +52,7 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 // deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
 // ProjectConfigPath - path to gradle/maven config yaml path.
-func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath string) (*Result, error) {
+func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath string, lateDeploy bool) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
 		return nil, err
@@ -65,9 +66,13 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath
 	var artifactsArray []clientutils.FileTransferDetails
 	for _, module := range *modulesMap {
 		for _, artifact := range module {
-			if artifact.DeploySucceeded {
+			if lateDeploy || artifact.DeploySucceeded {
+				artifactDetails, err := artifact.CreateFileTransferDetails(url, repo)
+				if err != nil {
+					return nil, err
+				}
+				artifactsArray = append(artifactsArray, artifactDetails)
 				succeeded++
-				artifactsArray = append(artifactsArray, artifact.CreateFileTransferDetails(url, repo))
 			} else {
 				failed++
 			}

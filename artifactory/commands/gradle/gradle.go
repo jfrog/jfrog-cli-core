@@ -74,7 +74,7 @@ func (gc *GradleCommand) Run() error {
 }
 
 func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,8 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 // ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
-	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
+	gc.ServerDetails()
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)
 	if !gc.detailedSummary {
@@ -106,7 +107,9 @@ func (gc *GradleCommand) conditionalUpload() error {
 	// First upload binaries
 	if len(binariesSpecFile.Files) > 0 {
 		uploadCmd := generic.NewUploadCommand()
-		uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
+		uploadConfiguration := new(utils.UploadConfiguration)
+		uploadConfiguration.Threads = gc.threads
+		uploadCmd.SetUploadConfiguration(uploadConfiguration).SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
 		err = uploadCmd.Run()
 		if err != nil {
 			return err

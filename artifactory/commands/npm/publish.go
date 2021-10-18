@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -45,6 +46,7 @@ type NpmPublishCommandArgs struct {
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
+	scanOutputFormat       audit.OutputFormat
 	packDestination        string
 }
 
@@ -89,6 +91,11 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
+func (npc *NpmPublishCommand) SetScanOutputFormat(format audit.OutputFormat) *NpmPublishCommand {
+	npc.scanOutputFormat = format
+	return npc
+}
+
 func (npc *NpmPublishCommand) Result() *commandsutils.Result {
 	return npc.result
 }
@@ -103,7 +110,11 @@ func (npc *NpmPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	_, detailedSummary, xrayScan, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	_, detailedSummary, xrayScan, format, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	if err != nil {
+		return err
+	}
+	scanOutputFormat, err := cliutils.GetXrayOutputFormat(format)
 	if err != nil {
 		return err
 	}
@@ -124,8 +135,7 @@ func (npc *NpmPublishCommand) Run() error {
 		}
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
-	npc.SetDetailedSummary(detailedSummary)
-	npc.SetXrayScan(xrayScan)
+	npc.SetDetailedSummary(detailedSummary).SetXrayScan(xrayScan).SetScanOutputFormat(scanOutputFormat)
 	return npc.run()
 }
 
@@ -303,7 +313,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err

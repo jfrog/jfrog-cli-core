@@ -7,18 +7,20 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 type GradleCommand struct {
-	tasks           string
-	configPath      string
-	configuration   *utils.BuildConfiguration
-	serverDetails   *config.ServerDetails
-	threads         int
-	detailedSummary bool
-	xrayScan        bool
-	result          *commandsutils.Result
+	tasks            string
+	configPath       string
+	configuration    *utils.BuildConfiguration
+	serverDetails    *config.ServerDetails
+	threads          int
+	detailedSummary  bool
+	xrayScan         bool
+	scanOutputFormat audit.OutputFormat
+	result           *commandsutils.Result
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -86,7 +88,7 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
 	gc.ServerDetails()
-	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads)
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads, gc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)
 	if !gc.detailedSummary {
@@ -164,6 +166,11 @@ func (gc *GradleCommand) SetXrayScan(xrayScan bool) *GradleCommand {
 
 func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
+}
+
+func (gc *GradleCommand) SetXrayScanFormat(format audit.OutputFormat) *GradleCommand {
+	gc.scanOutputFormat = format
+	return gc
 }
 
 func (gc *GradleCommand) Result() *commandsutils.Result {

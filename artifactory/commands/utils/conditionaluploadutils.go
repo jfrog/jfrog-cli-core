@@ -14,7 +14,7 @@ import (
 // If the scan passes, the method will return two filespec ready for upload, thee first one contains all the binaries
 // and the seconde all the pom.xml's.
 // If one of the file's scan failed both of the return values will be nil.
-func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int) (*spec.SpecFiles, *spec.SpecFiles, error) {
+func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format audit.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
 	binariesSpecFile := &spec.SpecFiles{}
 	pomSpecFile := &spec.SpecFiles{}
 	deployableArtifacts.Reader().Reset()
@@ -30,13 +30,13 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	// Only non pom.xml should be scanned
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err
 	}
 	if !xrScanCmd.IsScanPassed() {
-		log.Info("Xray scan failed. No Artifact will be deployed")
+		log.Info("Xray scan failed. No Artifacts will be deployed")
 		return nil, nil, nil
 	}
 	return binariesSpecFile, pomSpecFile, nil

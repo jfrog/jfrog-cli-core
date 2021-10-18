@@ -7,20 +7,22 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 type MvnCommand struct {
-	goals           []string
-	configPath      string
-	insecureTls     bool
-	configuration   *utils.BuildConfiguration
-	serverDetails   *config.ServerDetails
-	threads         int
-	detailedSummary bool
-	xrayScan        bool
-	result          *commandsutils.Result
-	disableDeploy   bool
+	goals            []string
+	configPath       string
+	insecureTls      bool
+	configuration    *utils.BuildConfiguration
+	serverDetails    *config.ServerDetails
+	threads          int
+	detailedSummary  bool
+	xrayScan         bool
+	scanOutputFormat audit.OutputFormat
+	result           *commandsutils.Result
+	disableDeploy    bool
 }
 
 func NewMvnCommand() *MvnCommand {
@@ -73,6 +75,11 @@ func (mc *MvnCommand) SetXrayScan(xrayScan bool) *MvnCommand {
 
 func (mc *MvnCommand) IsXrayScan() bool {
 	return mc.xrayScan
+}
+
+func (mc *MvnCommand) SetXrayScanFormat(format audit.OutputFormat) *MvnCommand {
+	mc.scanOutputFormat = format
+	return mc
 }
 
 func (mc *MvnCommand) Result() *commandsutils.Result {
@@ -149,7 +156,7 @@ func (mc *MvnCommand) CommandName() string {
 // violation.
 func (mc *MvnCommand) conditionalUpload() error {
 	mc.ServerDetails()
-	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails, mc.threads)
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails, mc.threads, mc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)
 	if !mc.IsDetailedSummary() {

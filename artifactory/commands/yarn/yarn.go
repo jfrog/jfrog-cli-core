@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 
 	"github.com/jfrog/gofrog/parallel"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -76,7 +77,7 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return err
 	}

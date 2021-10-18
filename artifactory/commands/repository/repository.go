@@ -212,6 +212,7 @@ var localRepoHandlers = map[string]repoHandler{
 	Conan:     localConanHandler,
 	Chef:      localChefHandler,
 	Puppet:    localPuppetHandler,
+	Alpine:    localAlpineHandler,
 	Generic:   localGenericHandler,
 }
 
@@ -551,6 +552,20 @@ func localPuppetHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func localAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Alpine(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -593,6 +608,7 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Conda:     remoteCondaHandler,
 	P2:        remoteP2Handler,
 	Vcs:       remoteVcsHandler,
+	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
 }
 
@@ -918,6 +934,20 @@ func remoteVcsHandler(servicesManager artifactory.ArtifactoryServicesManager, js
 	return err
 }
 
+func remoteAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Alpine(params)
+	}
+	return err
+}
+
 func remoteP2Handler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewP2RemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -997,6 +1027,7 @@ var virtualRepoHandlers = map[string]repoHandler{
 	Puppet:  virtualPuppetHandler,
 	Conda:   virtualCondaHandler,
 	P2:      virtualP2Handler,
+	Alpine:  virtualAlpineHandler,
 	Generic: virtualGenericHandler,
 }
 
@@ -1290,6 +1321,20 @@ func virtualP2Handler(servicesManager artifactory.ArtifactoryServicesManager, js
 		err = servicesManager.UpdateVirtualRepository().P2(params)
 	} else {
 		err = servicesManager.CreateVirtualRepository().P2(params)
+	}
+	return err
+}
+
+func virtualAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineVirtualRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateVirtualRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateVirtualRepository().Alpine(params)
 	}
 	return err
 }

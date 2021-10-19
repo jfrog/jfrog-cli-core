@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -99,13 +100,17 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	}
 
 	// Get published build-info from Artifactory.
-	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend}
+	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend, ProjectKey: bac.buildConfiguration.Project}
 	buildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return 0, err
 	}
+	buildString := fmt.Sprintf("Build %s/%s", bac.buildNameToAppend, bac.buildNumberToAppend)
+	if bac.buildConfiguration.Project != "" {
+		buildString = buildString + " of project: " + bac.buildConfiguration.Project
+	}
 	if !found {
-		return 0, errorutils.CheckError(errors.New("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + " not found in Artifactory."))
+		return 0, errorutils.CheckError(errors.New(buildString + " not found in Artifactory."))
 	}
 
 	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.BuildInfo.Started)
@@ -115,7 +120,7 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 
 	// Convert from nanoseconds to milliseconds
 	timestamp := buildTime.UnixNano() / 1000000
-	log.Debug("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + ". Started: " + buildInfo.BuildInfo.Started + ". Calculated timestamp: " + strconv.FormatInt(timestamp, 10))
+	log.Debug(buildString + ". Started: " + buildInfo.BuildInfo.Started + ". Calculated timestamp: " + strconv.FormatInt(timestamp, 10))
 
 	return timestamp, err
 }

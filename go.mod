@@ -3,6 +3,7 @@ module github.com/jfrog/jfrog-cli-core/v2
 go 1.14
 
 require (
+	github.com/asafgabai/build-info-go v0.0.0-20210930113756-361acbd83bf5
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
@@ -18,7 +19,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/mod v0.4.2
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -29,6 +30,8 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.4.1-0.20211003112919-82fd76deffec
+//replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
 
-// replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.4.3-0.20210922155111-e10fec133871
+//replace github.com/jfrog/gocmd => ../gocmd
+
+//replace github.com/asafgabai/build-info-go => ../build-info-go

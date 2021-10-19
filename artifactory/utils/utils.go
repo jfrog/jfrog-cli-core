@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"github.com/asafgabai/build-info-go/build"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -250,4 +252,11 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 		return errorutils.CheckError(err)
 	}
 	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
+}
+
+func CreateBuildInfoService() *build.BuildInfoService {
+	buildInfoService := build.NewBuildInfoService()
+	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
+	buildInfoService.SetLogger(log.Logger)
+	return buildInfoService
 }

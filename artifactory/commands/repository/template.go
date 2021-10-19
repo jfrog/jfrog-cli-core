@@ -153,7 +153,6 @@ const (
 	Chef      = "chef"
 	Puppet    = "puppet"
 	Vcs       = "vcs"
-	Alpine    = "alpine"
 	Conda     = "conda"
 	P2        = "p2"
 
@@ -416,7 +415,7 @@ var goVirtualRepoConfKeys = []string{
 
 var commonPkgTypes = []string{
 	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Yum, Conan,
-	Chef, Puppet, Alpine, Generic,
+	Chef, Puppet, Generic,
 }
 
 var localRepoAdditionalPkgTypes = []string{
@@ -460,7 +459,6 @@ var pkgTypeSuggestsMap = map[string]prompt.Suggest{
 	Vcs:       {Text: Vcs},
 	Conda:     {Text: Conda},
 	P2:        {Text: P2},
-	Alpine:    {Text: Alpine},
 }
 
 func NewRepoTemplateCommand() *RepoTemplateCommand {

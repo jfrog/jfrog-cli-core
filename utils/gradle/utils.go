@@ -113,6 +113,12 @@ func setEmptyDeployer(vConfig *viper.Viper) {
 
 func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.Repo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
+	}
 }
 
 func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, error) {

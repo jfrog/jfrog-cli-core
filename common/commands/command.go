@@ -26,7 +26,7 @@ func Exec(command Command) error {
 	// Invoke the command interface
 	err := command.Run()
 	if err != nil {
-		log.Error(fmt.Sprintf("Command %s failed with error: %s", command.CommandName(), err.Error()))
+		log.Error(fmt.Sprintf("Failed running %s command" , command.CommandName()))
 	}
 	// Waits for the signal from the report usage to be done.
 	<-channel

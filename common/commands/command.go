@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -24,6 +25,9 @@ func Exec(command Command) error {
 	go reportUsage(command, channel)
 	// Invoke the command interface
 	err := command.Run()
+	if err != nil {
+		log.Error(fmt.Sprintf("Command %s failed with error: " + command.CommandName(), err.Error()))
+	}
 	// Waits for the signal from the report usage to be done.
 	<-channel
 	return err

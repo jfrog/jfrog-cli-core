@@ -13,6 +13,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -202,7 +203,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat string, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat audit.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -232,7 +233,11 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xra
 	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
-	flagIndex, valueIndex, scanOutputFormat, err = coreutils.FindFlag("--format", args)
+	flagIndex, valueIndex, format, err := coreutils.FindFlag("--format", args)
+	if err != nil {
+		return
+	}
+	scanOutputFormat, err = GetXrayOutputFormat(format)
 	if err != nil {
 		return
 	}

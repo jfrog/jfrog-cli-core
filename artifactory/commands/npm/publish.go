@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -110,11 +109,7 @@ func (npc *NpmPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	_, detailedSummary, xrayScan, format, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
-	if err != nil {
-		return err
-	}
-	scanOutputFormat, err := cliutils.GetXrayOutputFormat(format)
+	_, detailedSummary, xrayScan, scanOutputFormat, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
 	if err != nil {
 		return err
 	}

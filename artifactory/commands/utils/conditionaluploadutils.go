@@ -1,12 +1,14 @@
 package utils
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -48,4 +50,20 @@ func parseTargetPath(target, serverUrl string) string {
 		return target[len(serverUrl):]
 	}
 	return target
+}
+
+func GetXrayOutputFormat(formatFlagVal string) (format audit.OutputFormat, err error) {
+	// Default print format is table.
+	format = audit.Table
+	if formatFlagVal != "" {
+		switch strings.ToLower(formatFlagVal) {
+		case string(audit.Table):
+			format = audit.Table
+		case string(audit.Json):
+			format = audit.Json
+		default:
+			err = errorutils.CheckError(errors.New("only the following output formats are supported: table or json"))
+		}
+	}
+	return
 }

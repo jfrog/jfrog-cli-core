@@ -87,6 +87,7 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 // ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
+	// Initialize the server details (from config) if it hasn't been initialized yet.
 	gc.ServerDetails()
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads, gc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.

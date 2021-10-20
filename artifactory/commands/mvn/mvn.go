@@ -155,6 +155,7 @@ func (mc *MvnCommand) CommandName() string {
 // ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (mc *MvnCommand) conditionalUpload() error {
+	// Initialize the server details (from config) if it hasn't been initialized yet.
 	mc.ServerDetails()
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails, mc.threads, mc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.

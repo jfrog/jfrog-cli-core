@@ -77,7 +77,7 @@ func (mc *MvnCommand) IsXrayScan() bool {
 	return mc.xrayScan
 }
 
-func (mc *MvnCommand) SetXrayScanFormat(format audit.OutputFormat) *MvnCommand {
+func (mc *MvnCommand) SetScanOutputFormat(format audit.OutputFormat) *MvnCommand {
 	mc.scanOutputFormat = format
 	return mc
 }

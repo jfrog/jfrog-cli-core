@@ -114,7 +114,7 @@ func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, fil
 		return nil, err
 	}
 	params := services.NewXrayGraphScanParams()
-	params.RepoPath = getXrayRepoPathFromTarget(file.Target, scanCmd.serverDetails.ArtifactoryUrl)
+	params.RepoPath = getXrayRepoPathFromTarget(file.Target)
 	params.Watches = scanCmd.watches
 	params.Graph = graph
 	scanId, err := xrayManager.ScanGraph(params)
@@ -306,7 +306,11 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	return nil
 }
 
-func getXrayRepoPathFromTarget(target, artifactoryUrl string) (repoPath string) {
+// Xray expect a path inside a repo, but not accpet path to a file.
+// Therefore, if the given target path is a path to a file,
+// the path to the parent directory will be return.
+// Otherwise the func will return the path itself.
+func getXrayRepoPathFromTarget(target string) (repoPath string) {
 	if strings.HasSuffix(target, "/") {
 		return target
 	}

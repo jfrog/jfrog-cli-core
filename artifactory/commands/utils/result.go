@@ -51,13 +51,14 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 // UnmarshalDeployableArtifacts reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 // deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
-// ProjectConfigPath - path to gradle/maven config yaml path.
-func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath string, lateDeploy bool) (*Result, error) {
+// projectConfigPath - path to gradle/maven config yaml path.
+// lateDeploy - boolean indicates if the artifcats was expected to be deployed.
+func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath string, lateDeploy bool) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	url, repo, err := getDeployerUrlAndRepo(modulesMap, ProjectConfigPath)
+	url, repo, err := getDeployerUrlAndRepo(modulesMap, projectConfigPath)
 	if err != nil {
 		return nil, err
 	}

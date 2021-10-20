@@ -19,7 +19,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 	pomSpecFile := &spec.SpecFiles{}
 	deployableArtifacts.Reader().Reset()
 	for item := new(clientutils.FileTransferDetails); deployableArtifacts.Reader().NextRecord(item) == nil; item = new(clientutils.FileTransferDetails) {
-		file := spec.File{Pattern: item.SourcePath, Target: parseTargetPath(item.TargetPath, serverDetails)}
+		file := spec.File{Pattern: item.SourcePath, Target: parseTargetPath(item.TargetPath, serverDetails.ArtifactoryUrl)}
 		if strings.HasSuffix(item.SourcePath, "pom.xml") {
 			pomSpecFile.Files = append(pomSpecFile.Files, file)
 		} else {
@@ -42,9 +42,10 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 	return binariesSpecFile, pomSpecFile, nil
 }
 
-func parseTargetPath(target string, serverDetails *config.ServerDetails) string {
-	if strings.Contains(target, serverDetails.ArtifactoryUrl) {
-		return target[len(serverDetails.ArtifactoryUrl):]
+// Returns the target path inside a given server URL.
+func parseTargetPath(target, serverUrl string) string {
+	if strings.Contains(target, serverUrl) {
+		return target[len(serverUrl):]
 	}
 	return target
 }

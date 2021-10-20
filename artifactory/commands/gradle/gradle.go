@@ -168,7 +168,7 @@ func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
 }
 
-func (gc *GradleCommand) SetXrayScanFormat(format audit.OutputFormat) *GradleCommand {
+func (gc *GradleCommand) SetScanOutputFormat(format audit.OutputFormat) *GradleCommand {
 	gc.scanOutputFormat = format
 	return gc
 }

@@ -204,7 +204,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
-	setDeployFalse(vConfig)
+	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
 	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
 	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
 	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
@@ -212,6 +212,15 @@ func setEmptyDeployer(vConfig *viper.Viper) {
 
 func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
+	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.ReleaseRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.SnapshotRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	}
 }
 
 func (config *mvnRunConfig) GetCmd() *exec.Cmd {

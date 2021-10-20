@@ -250,7 +250,7 @@ func (npc *NpmPublishCommand) publish() error {
 			return err
 		}
 		if !pass {
-			return errorutils.CheckError(errors.New("Xray scan failed. No artifacts will be published."))
+			return errorutils.CheckError(errors.New("Violations were found by Xray. No artifacts will be published."))
 		}
 	}
 	return npc.doDeploy(target, npc.serverDetails)

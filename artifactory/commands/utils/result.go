@@ -62,7 +62,7 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath
 	if err != nil {
 		return nil, err
 	}
-	// Iterate over the modules map , counting seccesses/failures & save artifact's SourcePath, TargetPath and Sha256.
+	// Iterate over the modules map, counting successes/failures & save artifact's SourcePath, TargetPath, and Sha256.
 	succeeded, failed := 0, 0
 	var artifactsArray []clientutils.FileTransferDetails
 	for _, module := range *modulesMap {

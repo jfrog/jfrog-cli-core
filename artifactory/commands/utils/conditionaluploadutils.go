@@ -38,7 +38,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	if !xrScanCmd.IsScanPassed() {
-		log.Info("Xray scan failed. No Artifacts will be deployed")
+		log.Info("Violations were found by Xray. No artifacts will be deployed")
 		return nil, nil, nil
 	}
 	return binariesSpecFile, pomSpecFile, nil

@@ -170,7 +170,7 @@ func ExtractXrayScanFromArgs(args []string) (cleanArgs []string, xrayScan bool, 
 	return
 }
 
-func ExtractXrayOutputFormat(args []string) (cleanArgs []string, format string, err error) {
+func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format string, err error) {
 	cleanArgs = append([]string(nil), args...)
 
 	flagIndex, valIndex, format, err := FindFlag("--format", args)

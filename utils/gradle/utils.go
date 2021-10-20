@@ -105,12 +105,6 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	return runConfig, nil
 }
 
-func setEmptyDeployer(vConfig *viper.Viper) {
-	setDeployFalse(vConfig)
-	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
-	vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
-}
-
 func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
 	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {

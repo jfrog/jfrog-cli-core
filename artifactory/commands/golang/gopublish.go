@@ -85,7 +85,7 @@ func (gpc *GoPublishCommand) Run() error {
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
 		buildInfoService := utils.CreateBuildInfoService()
-		goBuild, err = buildInfoService.GetOrCreateBuild(buildName, buildNumber, projectKey)
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
 			return errorutils.CheckError(err)
 		}

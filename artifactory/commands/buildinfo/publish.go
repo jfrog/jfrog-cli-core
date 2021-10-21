@@ -77,7 +77,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	}
 
 	buildInfoService := utils.CreateBuildInfoService()
-	build, err := buildInfoService.GetOrCreateBuild(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
+	build, err := buildInfoService.GetOrCreateBuildWithProject(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -87,8 +87,14 @@ func (bpc *BuildPublishCommand) Run() error {
 	build.SetBuildAgentVersion(coreutils.GetClientAgentVersion())
 	build.SetArtifactoryPrincipal(bpc.serverDetails.User)
 	build.SetBuildUrl(bpc.config.BuildUrl)
-	build.IncludeEnv(strings.Split(bpc.config.EnvInclude, ";")...)
-	build.ExcludeEnv(strings.Split(bpc.config.EnvExclude, ";")...)
+	err = build.IncludeEnv(strings.Split(bpc.config.EnvInclude, ";")...)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	err = build.ExcludeEnv(strings.Split(bpc.config.EnvExclude, ";")...)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
 
 	buildInfo, err := build.ToBuildInfo()
 	if errorutils.CheckError(err) != nil {
@@ -109,7 +115,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
 
 	if !bpc.config.DryRun {
-		return utils.RemoveBuildDir(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
+		return build.Clean()
 	}
 	return nil
 }

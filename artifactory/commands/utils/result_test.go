@@ -1,16 +1,17 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 // Checks a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
@@ -23,7 +24,7 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	// Delete DeployableArtifacts tempDir
 	defer os.Remove(filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")
-	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile)
+	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile, false)
 	assert.NoError(t, err)
 	for transferDetails := new(clientutils.FileTransferDetails); result.reader.NextRecord(transferDetails) == nil; transferDetails = new(clientutils.FileTransferDetails) {
 		assert.True(t, strings.HasPrefix(transferDetails.TargetPath, "http://localhost:8080/artifactory/"))

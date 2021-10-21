@@ -170,6 +170,17 @@ func ExtractXrayScanFromArgs(args []string) (cleanArgs []string, xrayScan bool, 
 	return
 }
 
+func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format string, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, valIndex, format, err := FindFlag("--format", args)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valIndex)
+	return
+}
+
 // Iterate over each argument, if env variable is found (e.g $HOME) replace it with env value.
 func ParseArgs(args []string) ([]string, error) {
 	// Escape backslash & space

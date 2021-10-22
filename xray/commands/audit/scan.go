@@ -2,6 +2,8 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -29,7 +31,8 @@ const (
 	Table OutputFormat = "table"
 	Json  OutputFormat = "json"
 
-	indexingCommand = "graph"
+	indexingCommand          = "graph"
+	fileNotSupportedExitCode = 3
 )
 
 type ScanCommand struct {
@@ -102,6 +105,12 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
+		if e, ok := err.(*exec.ExitError); ok {
+			if e.ExitCode() == fileNotSupportedExitCode {
+				log.Debug(fmt.Sprintf("File %s is not supported by Xray indexr app.", filePath))
+			}
+			return &indexerResults, nil
+		}
 		return nil, errorutils.CheckError(err)
 	}
 	err = json.Unmarshal([]byte(output), &indexerResults)
@@ -195,6 +204,12 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err
+			}
+			// In case of empty graph returned by the indexer,
+			// for instance due to unsupported file format, continue without sendding a
+			// graph request to Xray.
+			if graph.Id == "" {
+				return nil
 			}
 			// Add a new task to the seconde prodicer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.

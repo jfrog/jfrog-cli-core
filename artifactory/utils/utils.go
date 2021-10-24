@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"github.com/asafgabai/build-info-go/build"
+	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"net/http"

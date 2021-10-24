@@ -3,13 +3,13 @@ module github.com/jfrog/jfrog-cli-core/v2
 go 1.14
 
 require (
-	github.com/asafgabai/build-info-go v0.0.0-20210930113756-361acbd83bf5
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/codegangsta/cli v1.20.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
+	github.com/jfrog/build-info-go v0.0.0-20211020140610-2b15ac5444b5
 	github.com/jfrog/gocmd v0.5.0
 	github.com/jfrog/gofrog v1.0.7
 	github.com/jfrog/jfrog-client-go v1.5.0
@@ -34,4 +34,4 @@ exclude (
 
 //replace github.com/jfrog/gocmd => ../gocmd
 
-//replace github.com/asafgabai/build-info-go => ../build-info-go
+//replace github.com/jfrog/build-info-go => ../build-info-go

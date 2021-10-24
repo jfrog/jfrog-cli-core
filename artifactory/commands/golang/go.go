@@ -3,7 +3,7 @@ package golang
 import (
 	"errors"
 	"fmt"
-	"github.com/asafgabai/build-info-go/build"
+	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
 	executors "github.com/jfrog/gocmd/executers/utils"

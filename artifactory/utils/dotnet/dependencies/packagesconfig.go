@@ -3,7 +3,7 @@ package dependencies
 import (
 	"encoding/xml"
 	"fmt"
-	buildinfo "github.com/asafgabai/build-info-go/entities"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

@@ -21,9 +21,9 @@ type DependenciesCache struct {
 // Key: dependency_name Value: dependency's struct with all relevant information.
 // If cache file does not exist -> return nil, nil.
 // If error occurred, return error.
-func GetProjectDependenciesCache() (*DependenciesCache, error) {
+func GetProjectDependenciesCache(cacheDir string) (*DependenciesCache, error) {
 	cache := new(DependenciesCache)
-	cacheFilePath, exists, err := getCacheFilePath()
+	cacheFilePath, exists, err := getCacheFilePath(cacheDir)
 	if errorutils.CheckError(err) != nil || !exists {
 		return nil, err
 	}
@@ -31,7 +31,12 @@ func GetProjectDependenciesCache() (*DependenciesCache, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	defer jsonFile.Close()
+	defer func() {
+		e := jsonFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -47,13 +52,13 @@ func GetProjectDependenciesCache() (*DependenciesCache, error) {
 // Receives map of all current project's dependencies information.
 // The map contains the dependencies retrieved from Artifactory as well as those read from cache.
 // Writes the updated project's dependencies cache with all current dependencies.
-func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency) error {
+func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheDir string) error {
 	updatedCache := DependenciesCache{Version: cacheLatestVersion, DepsMap: updatedMap}
 	content, err := json.Marshal(&updatedCache)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	cacheFilePath, _, err := getCacheFilePath()
+	cacheFilePath, _, err := getCacheFilePath(cacheDir)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -85,12 +90,11 @@ func (cache DependenciesCache) GetDependency(dependencyName string) *buildinfo.D
 }
 
 // Cache file will be located in the ./.jfrog/projects/deps.cache.json
-func getCacheFilePath() (cacheFilePath string, exists bool, err error) {
-	projectsDirPath, err := os.Getwd()
+func getCacheFilePath(cacheDir string) (cacheFilePath string, exists bool, err error) {
 	if errorutils.CheckError(err) != nil {
 		return "", false, err
 	}
-	projectsDirPath = filepath.Join(projectsDirPath, ".jfrog", "projects")
+	projectsDirPath := filepath.Join(cacheDir, ".jfrog", "projects")
 	err = fileutils.CreateDirIfNotExist(projectsDirPath)
 	if err != nil {
 		return "", false, err

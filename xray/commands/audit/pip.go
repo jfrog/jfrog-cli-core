@@ -1,14 +1,9 @@
 package audit
 
 import (
-	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/pip"
+	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"strings"
-)
-
-const (
-	pipPackageTypeIdentifier = "pypi://"
 )
 
 type AuditPipCommand struct {
@@ -23,18 +18,35 @@ func NewAuditPipCommand(auditCmd AuditCommand) *AuditPipCommand {
 	return &AuditPipCommand{AuditCommand: auditCmd}
 }
 
-func (auditCmd *AuditPipCommand) Run() (err error) {
-	rootNodes, err := auditCmd.buildPipDependencyTree()
+func (apc *AuditPipCommand) Run() error {
+	dependencyTree, err := apc.buildPipDependencyTree()
 	if err != nil {
 		return err
 	}
-	return auditCmd.runScanGraph(rootNodes)
+	return apc.runScanGraph(dependencyTree)
 }
 
-func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
-	tempDirPath, err := fileutils.CreateTempDir()
+func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
+	dependenciesGraph, rootDependenciesList, err := apc.getDependencies()
 	if err != nil {
 		return nil, err
+	}
+	var dependencyTree []*services.GraphNode
+	for _, rootDep := range rootDependenciesList {
+		parentNode := &services.GraphNode{
+			Id:    pythonPackageTypeIdentifier + rootDep,
+			Nodes: []*services.GraphNode{},
+		}
+		populatePythonDependencyTree(parentNode, dependenciesGraph)
+		dependencyTree = append(dependencyTree, parentNode)
+	}
+	return dependencyTree, nil
+}
+
+func (apc *AuditPipCommand) getDependencies() (map[string][]string, []string, error) {
+	tempDirPath, err := fileutils.CreateTempDir()
+	if err != nil {
+		return nil, nil, err
 	}
 	defer func() {
 		e := fileutils.RemoveTempDir(tempDirPath)
@@ -44,50 +56,24 @@ func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode
 	}()
 	err = piputils.RunVirtualEnv(tempDirPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// pip install project
 	err = piputils.RunPipInstall(tempDirPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, parents, err := piputils.RunPipDepTree(tempDirPath)
+	dependenciesGraph, rootDependencies, err := piputils.RunPipDepTree(tempDirPath)
 	if err != nil {
-		return nil, err
-	}
-	var modulesDependencyTrees []*services.GraphNode
-	for _, parent := range parents {
-		parentNode := &services.GraphNode{
-			Id:    pipPackageTypeIdentifier + parent,
-			Nodes: []*services.GraphNode{},
-		}
-		populatePipDependencyTree(parentNode, dependenciesGraph)
-		modulesDependencyTrees = append(modulesDependencyTrees, parentNode)
+		return nil, nil, err
 	}
 
-	return modulesDependencyTrees, err
+	return dependenciesGraph, rootDependencies, nil
 }
 
-func populatePipDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, pipPackageTypeIdentifier)]
-	// Recursively create & append all node's dependencies.
-	for _, dependency := range currDepChildren {
-		childNode := &services.GraphNode{
-			Id:     pipPackageTypeIdentifier + dependency,
-			Nodes:  []*services.GraphNode{},
-			Parent: currNode,
-		}
-		currNode.Nodes = append(currNode.Nodes, childNode)
-		populatePipDependencyTree(childNode, dependenciesGraph)
-	}
-}
-
-func (auditCmd *AuditPipCommand) CommandName() string {
+func (apc *AuditPipCommand) CommandName() string {
 	return "xr_audit_pip"
 }

@@ -12,14 +12,14 @@ func TestBuildPipDependencyList(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipCommand()
-	parentNodes, err := auditCmd.buildPipDependencyTree()
+	rootNodes, err := auditCmd.buildPipDependencyTree()
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.NotEmpty(t, parentNodes)
+	assert.NotEmpty(t, rootNodes)
 
 	// Test root module
-	rootNode := getAndAssertNode(t, parentNodes, "pip-example:1.2.3")
+	rootNode := getAndAssertNode(t, rootNodes, "pip-example:1.2.3")
 	// Test child module
 	childNode := getAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
 	// Test sub child module

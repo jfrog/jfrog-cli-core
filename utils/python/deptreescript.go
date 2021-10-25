@@ -1,4 +1,4 @@
-package piputils
+package python
 
 const pipDepTreeVersion = "3"
 

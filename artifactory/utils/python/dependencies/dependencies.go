@@ -18,22 +18,26 @@ import (
 // If the dependency was downloaded in this pip-install execution, checksum will be fetched from Artifactory.
 // Otherwise, check if exists in cache.
 // Return dependency-names of all dependencies which its information could not be obtained.
-func AddDepsInfoAndReturnMissingDeps(dependenciesMap map[string]*buildinfo.Dependency, dependenciesCache *DependenciesCache, dependencyToFileMap map[string]string, servicesManager artifactory.ArtifactoryServicesManager, repository string) ([]string, error) {
+func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, cacheDirPath string, servicesManager artifactory.ArtifactoryServicesManager, repository string) error {
+	dependenciesCache, err := GetProjectDependenciesCache(cacheDirPath)
+	if err != nil {
+		return err
+	}
+
 	var missingDeps []string
 	// Iterate dependencies map to update info.
-	for depName := range dependenciesMap {
+	for depName, depInfo := range dependenciesMap {
 		// Get dependency info.
-		depFileName, depChecksum, err := getDependencyInfo(depName, repository, dependenciesCache, dependencyToFileMap, servicesManager)
+		depFileName, depChecksum, err := getDependencyInfo(depName, repository, dependenciesCache, depInfo.Id, servicesManager)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		// Check if info not found.
 		if depFileName == "" || depChecksum == nil {
 			// Dependency either wasn't downloaded in this run nor stored in cache.
 			missingDeps = append(missingDeps, depName)
-
-			// dependenciesMapT should contain only dependencies with checksums.
+			// dependenciesMap should contain only dependencies with checksums.
 			delete(dependenciesMap, depName)
 
 			continue
@@ -48,28 +52,33 @@ func AddDepsInfoAndReturnMissingDeps(dependenciesMap map[string]*buildinfo.Depen
 		dependenciesMap[depName].Checksum = depChecksum
 	}
 
-	return missingDeps, nil
+	promptMissingDependencies(missingDeps)
+	return nil
 }
 
 // Get dependency information.
 // If dependency was downloaded in this pip-install execution, fetch info from Artifactory.
 // Otherwise, fetch info from cache.
-func getDependencyInfo(depName, repository string, dependenciesCache *DependenciesCache, dependencyToFileMap map[string]string, servicesManager artifactory.ArtifactoryServicesManager) (string, *buildinfo.Checksum, error) {
+func getDependencyInfo(depName, repository string, dependenciesCache *DependenciesCache, depFileName string, servicesManager artifactory.ArtifactoryServicesManager) (string, *buildinfo.Checksum, error) {
 	// Check if this dependency was updated during this pip-install execution, and we have its file-name.
 	// If updated - fetch checksum from Artifactory, regardless of what was previously stored in cache.
-	depFileName, ok := dependencyToFileMap[depName]
-	if ok && depFileName != "" {
-		checksum, err := getDependencyChecksumFromArtifactory(servicesManager, repository, depFileName)
-		return depFileName, checksum, err
+
+	if dependenciesCache != nil {
+		depFromCache := dependenciesCache.GetDependency(depName)
+		if depFromCache != nil {
+			// situations to use cached dependency:
+			// 	1. if file name is empty and therefore the dep is cached
+			// 	2. if file name equals the cached file name
+			if depFileName == "" || depFileName == depFromCache.Id {
+				// Checksum found in cache, return info
+				return depFromCache.Id, depFromCache.Checksum, nil
+			}
+		}
 	}
 
-	// Check cache for dependency checksum.
-	if dependenciesCache != nil {
-		dep := dependenciesCache.GetDependency(depName)
-		if dep != nil {
-			// Checksum found in cache, return info
-			return dep.Id, dep.Checksum, nil
-		}
+	if depFileName != "" {
+		checksum, err := getDependencyChecksumFromArtifactory(servicesManager, repository, depFileName)
+		return depFileName, checksum, err
 	}
 
 	return "", nil, nil
@@ -87,7 +96,12 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	if err != nil {
 		return nil, err
 	}
-	defer stream.Close()
+	defer func() {
+		e := stream.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	result, err := ioutil.ReadAll(stream)
 	if err != nil {
 		return nil, err
@@ -116,6 +130,14 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
 
 	return checksum, nil
+}
+
+func promptMissingDependencies(missingDeps []string) {
+	if len(missingDeps) > 0 {
+		log.Warn(strings.Join(missingDeps, "\n"))
+		log.Warn("The pypi packages above could not be found in Artifactory or were not downloaded in this execution, therefore they are not included in the build-info.\n" +
+			"Reinstalling in clean environment or using '--no-cache-dir' and '--force-reinstall' flags (in one execution only), will force downloading and populating Artifactory with these packages, and therefore resolve the issue.")
+	}
 }
 
 type aqlResult struct {

@@ -39,11 +39,11 @@ func TestDependenciesCache(t *testing.T) {
 		Checksum: &csC,
 	}
 	cacheMap["C"] = &depenC
-	err = UpdateDependenciesCache(cacheMap)
+	err = UpdateDependenciesCache(cacheMap, tmpTestPath)
 	if err != nil {
 		t.Error("Failed creating dependencies cache: " + err.Error())
 	}
-	cache, err := readCacheAndCheckError()
+	cache, err := readCacheAndCheckError(tmpTestPath)
 	if err != nil {
 		t.Error("Failed reading dependencies cache: " + err.Error())
 	}
@@ -68,12 +68,12 @@ func TestDependenciesCache(t *testing.T) {
 		Checksum: &csT,
 	}
 	cacheMap["T"] = &depenT
-	err = UpdateDependenciesCache(cacheMap)
+	err = UpdateDependenciesCache(cacheMap, tmpTestPath)
 	if err != nil {
 		t.Error("Failed creating dependencies cache: " + err.Error())
 	}
 
-	cache, err = readCacheAndCheckError()
+	cache, err = readCacheAndCheckError(tmpTestPath)
 	if err != nil {
 		t.Error("Failed reading dependencies cache: " + err.Error())
 	}
@@ -88,8 +88,8 @@ func TestDependenciesCache(t *testing.T) {
 	}
 }
 
-func readCacheAndCheckError() (cache *DependenciesCache, err error) {
-	cache, err = GetProjectDependenciesCache()
+func readCacheAndCheckError(cacheDir string) (cache *DependenciesCache, err error) {
+	cache, err = GetProjectDependenciesCache(cacheDir)
 	if err != nil {
 		return
 	}

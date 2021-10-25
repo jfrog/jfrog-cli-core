@@ -1,21 +1,17 @@
-package pip
+package pipenv
 
 import (
-	"errors"
 	"fmt"
-	"net/url"
-	"os/exec"
-	"strings"
-
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/auth"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strings"
 )
 
-type PipInstaller struct {
+type PipenvInstaller struct {
 	ServerDetails       *config.ServerDetails
 	Args                []string
 	Repository          string
@@ -23,100 +19,46 @@ type PipInstaller struct {
 	DependencyToFileMap map[string]string
 }
 
-func (pi *PipInstaller) Install() error {
-	// Prepare for running.
-	pipExecutablePath, pipIndexUrl, err := pi.prepare()
-	if err != nil {
-		return err
-	}
-
-	// Run pip install.
-	err = pi.runPipInstall(pipExecutablePath, pipIndexUrl)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err error) {
-	log.Debug("Preparing prerequisites.")
-
-	pipExecutablePath, err = exec.LookPath("pip")
-	if err != nil {
-		return
-	}
-	if pipExecutablePath == "" {
-		return "", "", errorutils.CheckError(errors.New("Could not find the 'pip' executable in the system PATH"))
-	}
-	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
-	return
-}
-
-func getArtifactoryUrlWithCredentials(serverDetails *config.ServerDetails, repository string) (string, error) {
-	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	username := serverDetails.GetUser()
-	password := serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if serverDetails.GetAccessToken() != "" {
-		username, err = auth.ExtractUsernameFromAccessToken(serverDetails.GetAccessToken())
-		if err != nil {
-			return "", err
-		}
-		password = serverDetails.GetAccessToken()
-	}
-
-	if username != "" && password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
-	rtUrl.Path += "api/pypi/" + repository + "/simple"
-
-	return rtUrl.String(), nil
-}
-
-func (pi *PipInstaller) runPipInstall(pipExecutablePath, pipIndexUrl string) error {
-	pipInstallCmd := &PipCmd{
-		Executable:  pipExecutablePath,
+func (pi *PipenvInstaller) Install(pipenvExecutablePath string) error {
+	pipenvInstallCmd := &python.PythonCmd{
+		Executable:  pipenvExecutablePath,
 		Command:     "install",
-		CommandArgs: append(pi.Args, "-i", pipIndexUrl),
+		CommandArgs: append(pi.Args, "-v", "--pypi-mirror"),
 	}
-
+	err := pipenvInstallCmd.SetPypiRepoUrlWithCredentials(pi.ServerDetails, pi.Repository)
+	if err != nil {
+		return err
+	}
 	// Check if need to run with log parsing.
 	if pi.ShouldParseLogs {
-		return pi.runPipInstallWithLogParsing(pipInstallCmd)
+		return pi.runPipenvInstallWithLogParsing(pipenvInstallCmd)
 	}
 
 	// Run without log parsing.
-	return gofrogcmd.RunCmd(pipInstallCmd)
+	return gofrogcmd.RunCmd(pipenvInstallCmd)
 }
 
 // Run pip-install command while parsing the logs for downloaded packages.
 // Supports running pip either in non-verbose and verbose mode.
 // Populates 'dependencyToFileMap' with downloaded package-name and its actual downloaded file (wheel/egg/zip...).
-func (pi *PipInstaller) runPipInstallWithLogParsing(pipInstallCmd *PipCmd) error {
+func (pi *PipenvInstaller) runPipenvInstallWithLogParsing(pipenvInstallCmd *python.PythonCmd) error {
 	// Create regular expressions for log parsing.
 	collectingPackageRegexp, err := clientutils.GetRegExp(`^Collecting\s(\w[\w-\.]+)`)
 	if err != nil {
 		return err
 	}
-	downloadFileRegexp, err := clientutils.GetRegExp(`^\s\sDownloading\s[^\s]*\/([^\s]*)`)
+	downloadFileRegexp, err := clientutils.GetRegExp(`^\s\sDownloading\s(\S*)\s\(`)
 	if err != nil {
 		return err
 	}
-	installedPackagesRegexp, err := clientutils.GetRegExp(`^Requirement\salready\ssatisfied\:\s(\w[\w-\.]+)`)
+	installedPackagesRegexp, err := clientutils.GetRegExp(`^\s\sUsing\scached\s([\S]+)\s\(`)
 	if err != nil {
 		return err
 	}
 
 	downloadedDependencies := make(map[string]string)
-	var packageName string
 	expectingPackageFilePath := false
-
+	packageName := ""
 	// Extract downloaded package name.
 	dependencyNameParser := gofrogcmd.CmdOutputPattern{
 		RegExp: collectingPackageRegexp,
@@ -156,17 +98,25 @@ func (pi *PipInstaller) runPipInstallWithLogParsing(pipInstallCmd *PipCmd) error
 			}
 
 			// If this pattern matched before package-name was found, do not collect this path.
+
+			// Save dependency information
 			if !expectingPackageFilePath {
 				log.Debug(fmt.Sprintf("Could not resolve package name for download path: %s , continuing...", packageName))
 				return pattern.Line, nil
 			}
 
-			// Save dependency information.
 			filePath := pattern.MatchedResults[1]
-			downloadedDependencies[strings.ToLower(packageName)] = filePath
+			lastSlashIndex := strings.LastIndex(filePath, "/")
+			var fileName string
+			if lastSlashIndex == -1 {
+				fileName = filePath
+			} else {
+				fileName = filePath[lastSlashIndex+1:]
+			}
+			downloadedDependencies[strings.ToLower(packageName)] = fileName
 			expectingPackageFilePath = false
 
-			log.Debug(fmt.Sprintf("Found package: %s installed with: %s", packageName, filePath))
+			log.Debug(fmt.Sprintf("Found package: %s installed with: %s", packageName, fileName))
 			return pattern.Line, nil
 		},
 	}
@@ -181,21 +131,30 @@ func (pi *PipInstaller) runPipInstallWithLogParsing(pipInstallCmd *PipCmd) error
 				return pattern.Line, nil
 			}
 
+			filePath := pattern.MatchedResults[1]
+			lastSlashIndex := strings.LastIndex(filePath, "/")
+			var fileName string
+			if lastSlashIndex == -1 {
+				fileName = filePath
+			} else {
+				fileName = filePath[lastSlashIndex+1:]
+			}
 			// Save dependency with empty file name.
-			downloadedDependencies[strings.ToLower(pattern.MatchedResults[1])] = ""
-
-			log.Debug(fmt.Sprintf("Found package: %s already installed", pattern.MatchedResults[1]))
+			downloadedDependencies[strings.ToLower(packageName)] = fileName
+			expectingPackageFilePath = false
+			log.Debug(fmt.Sprintf("Found package: %s already installed", fileName))
 			return pattern.Line, nil
 		},
 	}
 
 	// Execute command.
-	_, _, _, err = gofrogcmd.RunCmdWithOutputParser(pipInstallCmd, true, &dependencyNameParser, &dependencyFileParser, &installedPackagesParser)
+	_, _, _, err = gofrogcmd.RunCmdWithOutputParser(pipenvInstallCmd, true, &dependencyNameParser, &dependencyFileParser, &installedPackagesParser)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
 
 	// Update dependencyToFileMap.
+
 	pi.DependencyToFileMap = downloadedDependencies
 
 	return nil

@@ -101,6 +101,8 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 		switch confType {
 		case utils.Go:
 			err = configFile.configGo()
+		case utils.Pipenv:
+			fallthrough
 		case utils.Pip:
 			err = configFile.configPip()
 		case utils.Yarn:

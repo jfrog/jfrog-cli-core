@@ -1,4 +1,4 @@
-package pip
+package python
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package pip
+package python
 
 import (
 	"errors"
@@ -48,14 +48,23 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 	if err != nil {
 		return nil, err
 	}
-	defer fileutils.RemoveTempDir(tempDirPath)
-
+	defer func() {
+		e := fileutils.RemoveTempDir(tempDirPath)
+		if err == nil {
+			err = e
+		}
+	}()
 	// Change work-dir to temp, preserve current work-dir when method ends.
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	defer os.Chdir(wd)
+	defer func() {
+		e := os.Chdir(wd)
+		if err == nil {
+			err = e
+		}
+	}()
 	err = os.Chdir(tempDirPath)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -102,7 +111,7 @@ func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
 
 // Execute egg_info command for setup.py, return command's output.
 func executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath string) (string, error) {
-	pythonEggInfoCmd := &PipCmd{
+	pythonEggInfoCmd := &PythonCmd{
 		Executable:  pythonExecutablePath,
 		Command:     setuppyFilePath,
 		CommandArgs: []string{"egg_info"},

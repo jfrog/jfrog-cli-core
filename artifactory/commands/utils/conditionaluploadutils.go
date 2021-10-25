@@ -1,12 +1,14 @@
 package utils
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -14,11 +16,12 @@ import (
 // If the scan passes, the method will return two filespec ready for upload, thee first one contains all the binaries
 // and the seconde all the pom.xml's.
 // If one of the file's scan failed both of the return values will be nil.
-func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails) (*spec.SpecFiles, *spec.SpecFiles, error) {
+func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format audit.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
 	binariesSpecFile := &spec.SpecFiles{}
 	pomSpecFile := &spec.SpecFiles{}
+	deployableArtifacts.Reader().Reset()
 	for item := new(clientutils.FileTransferDetails); deployableArtifacts.Reader().NextRecord(item) == nil; item = new(clientutils.FileTransferDetails) {
-		file := spec.File{Pattern: item.SourcePath, Target: item.TargetPath}
+		file := spec.File{Pattern: item.SourcePath, Target: parseTargetPath(item.TargetPath, serverDetails.ArtifactoryUrl)}
 		if strings.HasSuffix(item.SourcePath, "pom.xml") {
 			pomSpecFile.Files = append(pomSpecFile.Files, file)
 		} else {
@@ -29,14 +32,38 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	// Only non pom.xml should be scanned
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile)
+	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err
 	}
 	if !xrScanCmd.IsScanPassed() {
-		log.Info("Xray scan failed. No Artifact will be deployed")
+		log.Info("Violations were found by Xray. No artifacts will be deployed")
 		return nil, nil, nil
 	}
 	return binariesSpecFile, pomSpecFile, nil
+}
+
+// Returns the target path inside a given server URL.
+func parseTargetPath(target, serverUrl string) string {
+	if strings.Contains(target, serverUrl) {
+		return target[len(serverUrl):]
+	}
+	return target
+}
+
+func GetXrayOutputFormat(formatFlagVal string) (format audit.OutputFormat, err error) {
+	// Default print format is table.
+	format = audit.Table
+	if formatFlagVal != "" {
+		switch strings.ToLower(formatFlagVal) {
+		case string(audit.Table):
+			format = audit.Table
+		case string(audit.Json):
+			format = audit.Json
+		default:
+			err = errorutils.CheckError(errors.New("only the following output formats are supported: table or json"))
+		}
+	}
+	return
 }

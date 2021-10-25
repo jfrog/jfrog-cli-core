@@ -10,9 +10,9 @@ require (
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
 	github.com/jfrog/build-info-go v0.0.0-20211020140610-2b15ac5444b5
-	github.com/jfrog/gocmd v0.5.0
+	github.com/jfrog/gocmd v0.5.1
 	github.com/jfrog/gofrog v1.0.7
-	github.com/jfrog/jfrog-client-go v1.5.0
+	github.com/jfrog/jfrog-client-go v1.5.1
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3

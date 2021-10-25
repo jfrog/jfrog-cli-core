@@ -7,18 +7,20 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 type GradleCommand struct {
-	tasks           string
-	configPath      string
-	configuration   *utils.BuildConfiguration
-	serverDetails   *config.ServerDetails
-	threads         int
-	detailedSummary bool
-	xrayScan        bool
-	result          *commandsutils.Result
+	tasks            string
+	configPath       string
+	configuration    *utils.BuildConfiguration
+	serverDetails    *config.ServerDetails
+	threads          int
+	detailedSummary  bool
+	xrayScan         bool
+	scanOutputFormat audit.OutputFormat
+	result           *commandsutils.Result
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -74,7 +76,7 @@ func (gc *GradleCommand) Run() error {
 }
 
 func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
-	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath)
+	result, err := commandsutils.UnmarshalDeployableArtifacts(filesPath, gc.configPath, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}
@@ -85,7 +87,9 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 // ConditionalUpload will scan the artifact using Xray and will upload them only if the scan passes with no
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
-	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails)
+	// Initialize the server details (from config) if it hasn't been initialized yet.
+	gc.ServerDetails()
+	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads, gc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)
 	if !gc.detailedSummary {
@@ -106,7 +110,9 @@ func (gc *GradleCommand) conditionalUpload() error {
 	// First upload binaries
 	if len(binariesSpecFile.Files) > 0 {
 		uploadCmd := generic.NewUploadCommand()
-		uploadCmd.SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
+		uploadConfiguration := new(utils.UploadConfiguration)
+		uploadConfiguration.Threads = gc.threads
+		uploadCmd.SetUploadConfiguration(uploadConfiguration).SetBuildConfiguration(gc.configuration).SetSpec(binariesSpecFile).SetServerDetails(gc.serverDetails)
 		err = uploadCmd.Run()
 		if err != nil {
 			return err
@@ -161,6 +167,11 @@ func (gc *GradleCommand) SetXrayScan(xrayScan bool) *GradleCommand {
 
 func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
+}
+
+func (gc *GradleCommand) SetScanOutputFormat(format audit.OutputFormat) *GradleCommand {
+	gc.scanOutputFormat = format
+	return gc
 }
 
 func (gc *GradleCommand) Result() *commandsutils.Result {

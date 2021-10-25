@@ -2,13 +2,14 @@ package utils
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
-	"io/ioutil"
-	"os"
 )
 
 const (
@@ -50,24 +51,29 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 // UnmarshalDeployableArtifacts reads and parses the deployed artifacts details from the provided file.
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 // deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
-// ProjectConfigPath - path to gradle/maven config yaml path.
-func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, ProjectConfigPath string) (*Result, error) {
+// projectConfigPath - path to gradle/maven config yaml path.
+// lateDeploy - boolean indicates if the artifcats was expected to be deployed.
+func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath string, lateDeploy bool) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	url, repo, err := getDeployerUrlAndRepo(modulesMap, ProjectConfigPath)
+	url, repo, err := getDeployerUrlAndRepo(modulesMap, projectConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	// Iterate over the modules map , counting seccesses/failures & save artifact's SourcePath, TargetPath and Sha256.
+	// Iterate over the modules map, counting successes/failures & save artifact's SourcePath, TargetPath, and Sha256.
 	succeeded, failed := 0, 0
 	var artifactsArray []clientutils.FileTransferDetails
 	for _, module := range *modulesMap {
 		for _, artifact := range module {
-			if artifact.DeploySucceeded {
+			if lateDeploy || artifact.DeploySucceeded {
+				artifactDetails, err := artifact.CreateFileTransferDetails(url, repo)
+				if err != nil {
+					return nil, err
+				}
+				artifactsArray = append(artifactsArray, artifactDetails)
 				succeeded++
-				artifactsArray = append(artifactsArray, artifact.CreateFileTransferDetails(url, repo))
 			} else {
 				failed++
 			}

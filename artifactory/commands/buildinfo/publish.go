@@ -112,7 +112,8 @@ func (bpc *BuildPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
+	log.Info("Build info successfully deployed.")
+	log.Info("Browse it in Artifactory under " + buildLink)
 
 	if !bpc.config.DryRun {
 		return build.Clean()

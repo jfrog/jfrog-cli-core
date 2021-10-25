@@ -2,7 +2,10 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
+	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
@@ -28,7 +31,8 @@ const (
 	Table OutputFormat = "table"
 	Json  OutputFormat = "json"
 
-	indexingCommand = "graph"
+	indexingCommand          = "graph"
+	fileNotSupportedExitCode = 3
 )
 
 type ScanCommand struct {
@@ -101,6 +105,12 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
+		if e, ok := err.(*exec.ExitError); ok {
+			if e.ExitCode() == fileNotSupportedExitCode {
+				log.Debug(fmt.Sprintf("File %s is not supported by Xray indexr app.", filePath))
+			}
+			return &indexerResults, nil
+		}
 		return nil, errorutils.CheckError(err)
 	}
 	err = json.Unmarshal([]byte(output), &indexerResults)
@@ -113,7 +123,7 @@ func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, fil
 		return nil, err
 	}
 	params := services.NewXrayGraphScanParams()
-	params.RepoPath = file.Target
+	params.RepoPath = getXrayRepoPathFromTarget(file.Target)
 	params.Watches = scanCmd.watches
 	params.Graph = graph
 	scanId, err := xrayManager.ScanGraph(params)
@@ -137,7 +147,11 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
+	threads := 1
+	if scanCmd.threads > 1 {
+		threads = scanCmd.threads
+	}
+	resultsArr := make([][]*services.ScanResponse, threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
 	fileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	indexedFileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -170,7 +184,6 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
 		for _, fileGroup := range scanCmd.spec.Files {
-
 			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue)
 			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
@@ -191,6 +204,12 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err
+			}
+			// In case of empty graph returned by the indexer,
+			// for instance due to unsupported file format, continue without sendding a
+			// graph request to Xray.
+			if graph.Id == "" {
+				return nil
 			}
 			// Add a new task to the seconde prodicer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
@@ -238,7 +257,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 		}
 	}
 	err := xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == Table, scanCmd.includeVulnerabilities, scanCmd.includeLincenses, true)
-	if scanPassed {
+	if scanPassed && err == nil {
 		log.Info("Scan completed successfully.")
 	}
 	return scanPassed, err
@@ -300,4 +319,15 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		}
 	}
 	return nil
+}
+
+// Xray expect a path inside a repo, but not accpet path to a file.
+// Therefore, if the given target path is a path to a file,
+// the path to the parent directory will be return.
+// Otherwise the func will return the path itself.
+func getXrayRepoPathFromTarget(target string) (repoPath string) {
+	if strings.HasSuffix(target, "/") {
+		return target
+	}
+	return target[:strings.LastIndex(target, "/")+1]
 }

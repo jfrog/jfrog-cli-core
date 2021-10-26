@@ -30,6 +30,9 @@ func (apec *AuditPipenvCommand) Run() (err error) {
 func (apec *AuditPipenvCommand) buildPipenvDependencyTree() (*services.GraphNode, error) {
 	// Run pipenv graph to get dependencies tree
 	dependenciesGraph, rootDependencies, err := pipenvutils.GetPipenvDependenciesGraph(".jfrog")
+	if err != nil {
+		return nil, err
+	}
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err

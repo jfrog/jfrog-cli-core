@@ -70,6 +70,9 @@ func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
 // Executes the pipenv graph and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
 func GetPipenvDependenciesGraph(venvDir string) (map[string][]string, []string, error) {
 	err := runPipenvInstall(venvDir)
+	if err != nil {
+		return nil, nil, err
+	}
 	packages, err := runPipenvGraph(venvDir)
 	if err != nil {
 		return nil, nil, err

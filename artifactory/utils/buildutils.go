@@ -2,7 +2,8 @@ package utils
 
 import (
 	"bytes"
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,8 +26,8 @@ const BuildInfoDetails = "details"
 const BuildTempPath = "jfrog/builds/"
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
-	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "_" + projectKey))
-	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, encodedDirName)
+	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
+	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, hex.EncodeToString(hash[:]))
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err

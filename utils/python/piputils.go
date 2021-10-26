@@ -61,7 +61,10 @@ func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
+	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{"--version"}, "")
+	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"--version"}, "")
+	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", "pipenv"}, "")
+	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
 	if err != nil {
 		return nil, nil, err
 	}

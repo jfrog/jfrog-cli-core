@@ -20,18 +20,12 @@ try:
 except ImportError:
     from collections import Mapping
 
-try:
-    from pip._internal.utils.misc import get_installed_distributions
-    from pip._internal.operations.freeze import FrozenRequirement
-except ImportError:
-    from pip import get_installed_distributions, FrozenRequirement
-
 from pip._vendor import pkg_resources
 # inline:
 # from graphviz import backend, Digraph
 
 
-__version__ = '2.1.0'
+__version__ = '2.2.0'
 
 
 flatten = chain.from_iterable
@@ -39,27 +33,22 @@ flatten = chain.from_iterable
 
 def sorted_tree(tree):
     """Sorts the dict representation of the tree
-
     The root packages as well as the intermediate packages are sorted
     in the alphabetical order of the package names.
-
     :param dict tree: the pkg dependency tree obtained by calling
                      `construct_tree` function
     :returns: sorted tree
     :rtype: collections.OrderedDict
-
     """
     return OrderedDict([(k, sorted(v)) for k, v in sorted(tree.items())])
 
 
 def guess_version(pkg_key, default='?'):
     """Guess the version of a pkg when pip doesn't provide it
-
     :param str pkg_key: key of the package
     :param str default: default version to return if unable to find
     :returns: version
     :rtype: string
-
     """
     try:
         m = import_module(pkg_key)
@@ -99,10 +88,8 @@ def frozen_req_from_dist(dist):
 
 class Package(object):
     """Abstract class for wrappers around objects that pip returns.
-
     This class needs to be subclassed with implementations for
     `render_as_root` and `render_as_branch` methods.
-
     """
 
     def __init__(self, obj):
@@ -124,8 +111,7 @@ class Package(object):
 
     @staticmethod
     def frozen_repr(obj):
-        fr = frozen_req_from_dist(obj)
-        return str(fr).strip()
+        return str(obj.as_requirement())
 
     def __getattr__(self, key):
         return getattr(self._obj, key)
@@ -139,7 +125,6 @@ class Package(object):
 
 class DistPackage(Package):
     """Wrapper class for pkg_resources.Distribution instances
-
       :param obj: pkg_resources.Distribution to wrap over
       :param req: optional ReqPackage object to associate this
                   DistPackage with. This is useful for displaying the
@@ -176,16 +161,12 @@ class DistPackage(Package):
 
     def as_parent_of(self, req):
         """Return a DistPackage instance associated to a requirement
-
         This association is necessary for reversing the PackageDAG.
-
         If `req` is None, and the `req` attribute of the current
         instance is also None, then the same instance will be
         returned.
-
         :param ReqPackage req: the requirement to associate with
         :returns: DistPackage instance
-
         """
         if req is None and self.req is None:
             return self
@@ -199,7 +180,6 @@ class DistPackage(Package):
 
 class ReqPackage(Package):
     """Wrapper class for Requirements instance
-
       :param obj: The `Requirements` instance to wrap over
       :param dist: optional `pkg_resources.Distribution` instance for
                    this requirement
@@ -263,10 +243,8 @@ class ReqPackage(Package):
 class PackageDAG(Mapping):
     """Representation of Package dependencies as directed acyclic graph
     using a dict (Mapping) as the underlying datastructure.
-
     The nodes and their relationships (edges) are internally
     stored using a map as follows,
-
     {a: [b, c],
      b: [d],
      c: [d, e],
@@ -274,16 +252,13 @@ class PackageDAG(Mapping):
      e: [],
      f: [b],
      g: [e, f]}
-
     Here, node `a` has 2 children nodes `b` and `c`. Consider edge
     direction from `a` -> `b` and `a` -> `c` respectively.
-
     A node is expected to be an instance of a subclass of
     `Package`. The keys are must be of class `DistPackage` and each
     item in values must be of class `ReqPackage`. (See also
     ReversedPackageDAG where the key and value types are
     interchanged).
-
     """
 
     @classmethod
@@ -297,27 +272,22 @@ class PackageDAG(Mapping):
 
     def __init__(self, m):
         """Initialize the PackageDAG object
-
         :param dict m: dict of node objects (refer class docstring)
         :returns: None
         :rtype: NoneType
-
         """
         self._obj = m
         self._index = {p.key: p for p in list(self._obj)}
 
     def get_node_as_parent(self, node_key):
         """Get the node from the keys of the dict representing the DAG.
-
         This method is useful if the dict representing the DAG
         contains different kind of objects in keys and values. Use
         this method to lookup a node obj as a parent (from the keys of
         the dict) given a node key.
-
         :param node_key: identifier corresponding to key attr of node obj
         :returns: node obj (as present in the keys of the dict)
         :rtype: Object
-
         """
         try:
             return self._index[node_key]
@@ -326,26 +296,21 @@ class PackageDAG(Mapping):
 
     def get_children(self, node_key):
         """Get child nodes for a node by it's key
-
         :param str node_key: key of the node to get children of
         :returns: list of child nodes
         :rtype: ReqPackage[]
-
         """
         node = self.get_node_as_parent(node_key)
         return self._obj[node] if node else []
 
     def filter(self, include, exclude):
         """Filters nodes in a graph by given parameters
-
         If a node is included, then all it's children are also
         included.
-
         :param set include: set of node keys to include (or None)
         :param set exclude: set of node keys to exclude (or None)
         :returns: filtered version of the graph
         :rtype: PackageDAG
-
         """
         # If neither of the filters are specified, short circuit
         if include is None and exclude is None:
@@ -402,10 +367,8 @@ class PackageDAG(Mapping):
 
     def reverse(self):
         """Reverse the DAG, or turn it upside-down
-
         In other words, the directions of edges of the nodes in the
         DAG will be reversed.
-
         Note that this function purely works on the nodes in the
         graph. This implies that to perform a combination of filtering
         and reversing, the order in which `filter` and `reverse`
@@ -414,10 +377,8 @@ class PackageDAG(Mapping):
         it's children will be considered when reversing. On the other
         hand, if filter is called on reversed DAG, then the definition
         of "child" nodes is as per the reversed DAG.
-
         :returns: DAG in the reversed form
         :rtype: ReversedPackageDAG
-
         """
         m = defaultdict(list)
         child_keys = set(r.key for r in flatten(self._obj.values()))
@@ -438,9 +399,7 @@ class PackageDAG(Mapping):
     def sort(self):
         """Return sorted tree in which the underlying _obj dict is an
         OrderedDict, sorted alphabetically by the keys
-
         :returns: Instance of same class with OrderedDict
-
         """
         return self.__class__(sorted_tree(self._obj))
 
@@ -458,23 +417,18 @@ class PackageDAG(Mapping):
 class ReversedPackageDAG(PackageDAG):
     """Representation of Package dependencies in the reverse
     order.
-
     Similar to it's super class `PackageDAG`, the underlying
     datastructure is a dict, but here the keys are expected to be of
     type `ReqPackage` and each item in the values of type
     `DistPackage`.
-
     Typically, this object will be obtained by calling
     `PackageDAG.reverse`.
-
     """
 
     def reverse(self):
         """Reverse the already reversed DAG to get the PackageDAG again
-
         :returns: reverse of the reversed DAG
         :rtype: PackageDAG
-
         """
         m = defaultdict(list)
         child_keys = set(r.key for r in flatten(self._obj.values()))
@@ -492,7 +446,6 @@ class ReversedPackageDAG(PackageDAG):
 
 def render_text(tree, list_all=True, frozen=False):
     """Print tree as text on console
-
     :param dict tree: the package tree
     :param bool list_all: whether to list all the pgks at the root
                           level or only those that are the
@@ -500,7 +453,6 @@ def render_text(tree, list_all=True, frozen=False):
     :param bool frozen: whether or not show the names of the pkgs in
                         the output that's favourable to pip --freeze
     :returns: None
-
     """
     tree = tree.sort()
     nodes = tree.keys()
@@ -530,16 +482,13 @@ def render_text(tree, list_all=True, frozen=False):
 
 def render_json(tree, indent):
     """Converts the tree into a flat json representation.
-
     The json repr will be a list of hashes, each hash having 2 fields:
       - package
       - dependencies: list of dependencies
-
     :param dict tree: dependency tree
     :param int indent: no. of spaces to indent json
     :returns: json representation of the tree
     :rtype: str
-
     """
     tree = tree.sort()
     return json.dumps([{'package': k.as_dict(),
@@ -550,19 +499,16 @@ def render_json(tree, indent):
 
 def render_json_tree(tree, indent):
     """Converts the tree into a nested json representation.
-
     The json repr will be a list of hashes, each hash having the following fields:
       - package_name
       - key
       - required_version
       - installed_version
       - dependencies: list of dependencies
-
     :param dict tree: dependency tree
     :param int indent: no. of spaces to indent json
     :returns: json representation of the tree
     :rtype: str
-
     """
     tree = tree.sort()
     branch_keys = set(r.key for r in flatten(tree.values()))
@@ -591,12 +537,10 @@ def render_json_tree(tree, indent):
 
 def dump_graphviz(tree, output_format='dot', is_reverse=False):
     """Output dependency graph as one of the supported GraphViz output formats.
-
     :param dict tree: dependency graph
     :param string output_format: output format
     :returns: representation of tree in the specified output format
     :rtype: str or binary representation depending on the output format
-
     """
     try:
         from graphviz import backend, Digraph
@@ -652,7 +596,6 @@ def dump_graphviz(tree, output_format='dot', is_reverse=False):
 
 def print_graphviz(dump_output):
     """Dump the data generated by GraphViz to stdout.
-
     :param dump_output: The output from dump_graphviz
     """
     if hasattr(dump_output, 'encode'):
@@ -665,13 +608,10 @@ def print_graphviz(dump_output):
 def conflicting_deps(tree):
     """Returns dependencies which are not present or conflict with the
     requirements of other packages.
-
     e.g. will warn if pkg1 requires pkg2==2.0 and pkg2==1.0 is installed
-
     :param tree: the requirements tree (dict)
     :returns: dict of DistPackage -> list of unsatisfied/unknown ReqPackage
     :rtype: dict
-
     """
     conflicting = defaultdict(list)
     for p, rs in tree.items():
@@ -697,11 +637,9 @@ def render_conflicts_text(conflicts):
 
 def cyclic_deps(tree):
     """Return cyclic dependencies as list of tuples
-
     :param PackageDAG pkgs: package tree/dag
     :returns: list of tuples representing cyclic dependencies
     :rtype: list
-
     """
     index = {p.key: set([r.key for r in rs]) for p, rs in tree.items()}
     cyclic = []
@@ -840,8 +778,7 @@ def main():
     result = handle_non_host_target(args)
     if result is not None:
         return result
-    pkgs = get_installed_distributions(local_only=args.local_only,
-                                       user_only=args.user_only)
+    pkgs = list(pkg_resources.working_set)
 
     tree = PackageDAG.from_pkgs(pkgs)
 

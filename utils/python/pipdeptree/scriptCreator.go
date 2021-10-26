@@ -12,9 +12,9 @@ import (
 const (
 	pipDepTreeContentFileName     = "deptreescript.go"
 	pipDepTreePythonScript        = "pipdeptree.py"
-	pipDepTreeContentRelativePath = "utils/pip"
+	pipDepTreeContentRelativePath = "utils/python"
 	// The pip-dep-tree script version. The version should be manually incremented following changes to the pipdeptree.py source file.
-	pipDepTreeVersion = "3"
+	pipDepTreeVersion = "4"
 )
 
 // This main function should be executed manually following changes in pipdeptree.py. Running the function generates new 'pipDepTreeContentFileName' from 'pipDepTreePythonScript.
@@ -42,7 +42,7 @@ func main() {
 	// Replace all backticks ( ` ) with a single quote ( ' )
 	pyFileString := strings.ReplaceAll(string(pyFile), "`", "'")
 	// Add it the relevant package
-	resourceString := "package piputils\n\n"
+	resourceString := "package python\n\n"
 	// Add a const string with the script's version
 	resourceString += "const pipDepTreeVersion = \"" + pipDepTreeVersion + "\"\n\n"
 	// Write the script content a a byte-slice

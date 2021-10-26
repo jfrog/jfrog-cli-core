@@ -24,10 +24,7 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Failed running command: '%s %s %s' with error: %s - %s", envs, execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String()))
 	}
-	if err != nil {
-		return nil, err
-	}
-	return stdout.Bytes(), err
+	return stdout.Bytes(), nil
 }
 
 // Parse pip-dependency-map raw output to dependencies map (mapping dependency to his child deps) and top level deps list

@@ -68,7 +68,7 @@ func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	// Parse the result.
 	// Parse into array.
 	packages := make([]pythonDependencyPackage, 0)
-	if err := json.Unmarshal(data, &packages); err != nil {
+	if err = json.Unmarshal(data, &packages); err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 

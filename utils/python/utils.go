@@ -22,7 +22,7 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	cmd.Stderr = &stderr
 	err = errorutils.CheckError(cmd.Run())
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed running command: '%s %s' with error: %s - %s", execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String()))
+		return nil, errors.New(fmt.Sprintf("Failed running command: '%s %s %s' with error: %s - %s", envs, execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String()))
 	}
 	if err != nil {
 		return nil, err

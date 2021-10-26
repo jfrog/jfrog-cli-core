@@ -15,9 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
-      - name: Install pipenv
-        run: |
-          pip install pipenv
       - name: Setup Go
         uses: actions/setup-go@v2
       - name: Lint

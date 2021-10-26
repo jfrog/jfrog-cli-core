@@ -18,10 +18,8 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	}
 	assert.NotEmpty(t, rootNode)
 
-	// Test root module
-	someNode := getAndAssertNode(t, rootNode.Nodes, "delegator.py:0.1.1")
 	// Test child module
-	childNode := getAndAssertNode(t, someNode.Nodes, "pexpect:4.8.0")
+	childNode := getAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
 	// Test sub child module
 	getAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 }

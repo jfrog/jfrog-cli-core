@@ -5,8 +5,7 @@ name = "pypi"
 
 [packages]
 toml = "*"
-"delegator.py" = "*"
-webencodings = "*"
+pexpect = "4.8.0"
 
 [dev-packages]
 

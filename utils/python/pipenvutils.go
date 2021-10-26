@@ -10,7 +10,7 @@ import (
 
 func getPipenvEnv(venvDir string) string {
 	if venvDir != "" {
-		return fmt.Sprintf("WORKON_HOME='%s'", venvDir)
+		return fmt.Sprintf("WORKON_HOME=%s", venvDir)
 	}
 
 	return ""

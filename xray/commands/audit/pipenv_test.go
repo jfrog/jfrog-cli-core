@@ -8,7 +8,8 @@ import (
 
 func TestBuildPipenvDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := createTestWorkspace(t, "pipenv-project")
+	tempDirPath, cleanUp := createTestWorkspace(t, "pipenv-project")
+	tempDirPath = tempDirPath
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipenvCommand()

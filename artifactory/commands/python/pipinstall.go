@@ -58,8 +58,8 @@ func (pic *PipInstallCommand) Run() error {
 // Convert dependencyToFileMap to Dependencies map.
 func (pc *PipInstallCommand) getAllDependencies(dependencyToFileMap map[string]string) map[string]*buildinfo.Dependency {
 	dependenciesMap := make(map[string]*buildinfo.Dependency, len(dependencyToFileMap))
-	for depName := range dependencyToFileMap {
-		dependenciesMap[depName] = &buildinfo.Dependency{Id: depName}
+	for depName, fileName := range dependencyToFileMap {
+		dependenciesMap[depName] = &buildinfo.Dependency{Id: fileName}
 	}
 
 	return dependenciesMap

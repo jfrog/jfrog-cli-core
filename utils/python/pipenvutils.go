@@ -36,9 +36,25 @@ func GetPipenvDependenciesList(venvDir string) (map[string]bool, error) {
 	return parseDependenciesToList(packages)
 }
 
+// Executes the pipenv install and pipenv graph
+// Returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
+func GetPipenvDependenciesGraph(venvDir string) (map[string][]string, []string, error) {
+	err := runPipenvInstall(venvDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	packages, err := runPipenvGraph(venvDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Parse the result.
+	return parseDependenciesToGraph(packages)
+}
+
 func runPipenvInstall(venvDir string) error {
 	_, err := runPythonCommand("pipenv", []string{"install"}, getPipenvEnv(venvDir))
 	if err != nil {
+		// if pipenv couldn't find python executable, try appending it to the install command
 		pythonPath, err := exec.LookPath("python3")
 		if err != nil && pythonPath != "" {
 			return err
@@ -65,20 +81,6 @@ func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
 	}
 	// Parse the result.
 	return packages, nil
-}
-
-// Executes the pipenv graph and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
-func GetPipenvDependenciesGraph(venvDir string) (map[string][]string, []string, error) {
-	err := runPipenvInstall(venvDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	packages, err := runPipenvGraph(venvDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Parse the result.
-	return parseDependenciesToGraph(packages)
 }
 
 // Parse pip-dependency-map raw output to dependencies map (mapping dependency to his child deps) and top level deps list

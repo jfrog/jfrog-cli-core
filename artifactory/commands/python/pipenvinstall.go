@@ -49,7 +49,7 @@ func (pic *PipenvInstallCommand) Run() error {
 		return err
 	}
 	// Collect build-info.
-	if err := pic.collectBuildInfo(venvDirPath, allDependencies, buildinfo.Pipenv); err != nil {
+	if err = pic.collectBuildInfo(venvDirPath, allDependencies, buildinfo.Pipenv); err != nil {
 		return err
 	}
 

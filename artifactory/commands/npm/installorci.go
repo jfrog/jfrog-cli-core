@@ -317,7 +317,7 @@ func (nca *NpmCommandArgs) validateNpmVersion() error {
 	}
 	if npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. (Current version is: %s)", nca.command, npmVersion.GetVersion())))
+			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher.(Current version is: %s)", nca.command, npmVersion.GetVersion())))
 	}
 	nca.npmVersion = npmVersion
 	return nil

@@ -20,7 +20,7 @@ func Version(executablePath string) (*version.Version, error) {
 }
 
 func getVersion(executablePath string) (string, error) {
-	command := exec.Command(executablePath, "-version")
+	command := exec.Command(executablePath, "--loglevel=error", "-version")
 	buffer := bytes.NewBuffer([]byte{})
 	command.Stderr = buffer
 	command.Stdout = buffer

@@ -3,6 +3,7 @@ package npmutils
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -20,12 +21,13 @@ func Version(executablePath string) (*version.Version, error) {
 }
 
 func getVersion(executablePath string) (string, error) {
-	command := exec.Command(executablePath, "--loglevel=error", "-version")
-	buffer := bytes.NewBuffer([]byte{})
-	command.Stderr = buffer
-	command.Stdout = buffer
+	command := exec.Command(executablePath, "-version")
+	stderr := bytes.NewBuffer([]byte{})
+	stdout := bytes.NewBuffer([]byte{})
+	command.Stderr = stderr
+	command.Stdout = stdout
 	err := command.Run()
-	return buffer.String(), coreutils.ConvertExitCodeError(errorutils.CheckError(err))
+	return stdout.String(), coreutils.ConvertExitCodeError(errorutils.CheckError(errors.New(fmt.Sprintf("%s - %s", err, stderr))))
 }
 
 func GetNpmVersionAndExecPath() (*version.Version, string, error) {

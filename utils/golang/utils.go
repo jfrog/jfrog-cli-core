@@ -1,26 +1,12 @@
 package goutils
 
 import (
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gocmd/cmd"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os/exec"
 )
-
-type Dependency struct {
-	Name       string
-	Version    string
-	Scopes     []string
-	FileType   string
-	Checksum   *buildinfo.Checksum
-	PathToRoot [][]string
-}
-
-func (dep *Dependency) GetPathToRoot() [][]string {
-	return dep.PathToRoot
-}
 
 type Cmd struct {
 	Go           string

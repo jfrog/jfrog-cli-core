@@ -4,24 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"os/exec"
 	"strings"
 )
 
-func getPipenvEnv(venvDir string) string {
+func getPipenvEnvironmentString(venvDir string) string {
 	if venvDir != "" {
 		return fmt.Sprintf("WORKON_HOME=%s", venvDir)
 	}
-
 	return ""
 }
 
-// Execute pipenv install command. "pipenv install"
+// Execute "pipenv --venv" to get the pipenv virtual env path
 func GetPipenvVenv(venvDir string) (string, error) {
-	output, err := runPythonCommand("pipenv", []string{"--venv"}, getPipenvEnv(venvDir))
+	output, err := runPythonCommand("pipenv", []string{"--venv"}, getPipenvEnvironmentString(venvDir))
 	if err != nil {
 		return "", err
 	}
+
 	return strings.TrimSuffix(string(output), "\n"), err
 }
 
@@ -39,38 +38,25 @@ func GetPipenvDependenciesList(venvDir string) (map[string]bool, error) {
 // Executes the pipenv install and pipenv graph
 // Returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
 func GetPipenvDependenciesGraph(venvDir string) (map[string][]string, []string, error) {
-	err := runPipenvInstall(venvDir)
+	// run pipenv install
+	_, err := runPythonCommand("pipenv", []string{"install"}, getPipenvEnvironmentString(venvDir))
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// run pipenv graph
 	packages, err := runPipenvGraph(venvDir)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	// Parse the result.
 	return parseDependenciesToGraph(packages)
 }
 
-func runPipenvInstall(venvDir string) error {
-	_, err := runPythonCommand("pipenv", []string{"install"}, getPipenvEnv(venvDir))
-	if err != nil {
-		// if pipenv couldn't find python executable, try appending it to the install command
-		pythonPath, err := exec.LookPath("python3")
-		if err != nil && pythonPath != "" {
-			return err
-		}
-
-		_, err = runPythonCommand("pipenv", []string{"install", "--python", pythonPath}, getPipenvEnv(venvDir))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Executes the pipenv graph and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
 func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
-	data, err := runPythonCommand("pipenv", []string{"graph", "--json"}, getPipenvEnv(venvDir))
+	data, err := runPythonCommand("pipenv", []string{"graph", "--json"}, getPipenvEnvironmentString(venvDir))
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +79,5 @@ func parseDependenciesToList(packages []pythonDependencyPackage) (map[string]boo
 			allPackages[subPkg.PackageName] = true
 		}
 	}
-
 	return allPackages, nil
 }

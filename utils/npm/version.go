@@ -21,11 +21,16 @@ func Version(executablePath string) (*version.Version, error) {
 
 func getVersion(executablePath string) (string, error) {
 	command := exec.Command(executablePath, "-version")
-	buffer := bytes.NewBuffer([]byte{})
-	command.Stderr = buffer
-	command.Stdout = buffer
+	stderr := bytes.NewBuffer([]byte{})
+	stdout := bytes.NewBuffer([]byte{})
+	command.Stderr = stderr
+	command.Stdout = stdout
 	err := command.Run()
-	return buffer.String(), coreutils.ConvertExitCodeError(errorutils.CheckError(err))
+	if err != nil {
+		err = coreutils.ConvertExitCodeError(err)
+		return "", errorutils.CheckError(errors.New(stderr.String() + "-" + err.Error()))
+	}
+	return stdout.String(), nil
 }
 
 func GetNpmVersionAndExecPath() (*version.Version, string, error) {

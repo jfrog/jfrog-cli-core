@@ -53,6 +53,11 @@ func (cb *UpdateBundleCommand) Run() error {
 		if err != nil {
 			return err
 		}
+		recursive, err := spec.IsRecursive(true)
+		if err != nil {
+			return err
+		}
+		params.Recursive = recursive
 		cb.releaseBundlesParams.SpecFiles = append(cb.releaseBundlesParams.SpecFiles, params)
 	}
 

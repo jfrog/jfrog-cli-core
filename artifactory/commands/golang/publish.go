@@ -26,7 +26,7 @@ import (
 )
 
 // Publish go project to Artifactory.
-func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (*servicesutils.OperationSummary, []buildinfo.Artifact, error) {
+func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (summary *servicesutils.OperationSummary, artifacts []buildinfo.Artifact, err error) {
 	projectPath, err := goutils.GetProjectRoot()
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
@@ -57,7 +57,12 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	if err != nil {
 		return nil, nil, err
 	}
-	defer fileutils.RemoveTempDir(tempDirPath)
+	defer func() {
+		e := fileutils.RemoveTempDir(tempDirPath)
+		if err == nil {
+			err = e
+		}
+	}()
 
 	var zipArtifact *buildinfo.Artifact
 	params := _go.NewGoParams()
@@ -71,7 +76,6 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	if err != nil {
 		return nil, nil, err
 	}
-	var artifacts []buildinfo.Artifact
 	if collectBuildInfo {
 		artifacts = []buildinfo.Artifact{*modArtifact, *zipArtifact}
 	}
@@ -99,13 +103,13 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		params.InfoPath = pathToInfo
 	}
 
-	summary, err := servicesManager.PublishGoProject(params)
+	summary, err = servicesManager.PublishGoProject(params)
 	return summary, artifacts, err
 }
 
 // Creates the info file.
 // Returns the path to that file.
-func createInfoFile(packageVersion string) (string, error) {
+func createInfoFile(packageVersion string) (path string, err error) {
 	currentTime := time.Now().Format("2006-01-02T15:04:05Z")
 	goInfoContent := goInfo{Version: packageVersion, Time: currentTime}
 	content, err := json.Marshal(&goInfoContent)
@@ -116,12 +120,17 @@ func createInfoFile(packageVersion string) (string, error) {
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	defer file.Close()
+	defer func() {
+		e := file.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	_, err = file.Write(content)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	path, err := filepath.Abs(file.Name())
+	path, err = filepath.Abs(file.Name())
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -164,13 +173,17 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 
 // Archive the go project.
 // Returns the path of the temp archived project file.
-func archive(moduleName, version, projectPath, tempDir string) (string, *buildinfo.Artifact, error) {
+func archive(moduleName, version, projectPath, tempDir string) (name string, zipArtifact *buildinfo.Artifact, err error) {
 	tempFile, err := ioutil.TempFile(tempDir, "project.zip")
-
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
-	defer tempFile.Close()
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	err = archiveProject(tempFile, projectPath, moduleName, version)
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
@@ -202,9 +215,9 @@ func archive(moduleName, version, projectPath, tempDir string) (string, *buildin
 		return "", nil, err
 	}
 
-	artifact := &buildinfo.Artifact{Name: version + ".zip", Type: "zip"}
-	artifact.Checksum = &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
-	return tempFile.Name(), artifact, nil
+	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip"}
+	zipArtifact.Checksum = &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
+	return tempFile.Name(), zipArtifact, nil
 }
 
 // Add the info file also as an artifact to be part of the build info.

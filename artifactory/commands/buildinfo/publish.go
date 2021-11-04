@@ -85,18 +85,18 @@ func (bpc *BuildPublishCommand) Run() error {
 	build.SetAgentName(coreutils.GetCliUserAgentName())
 	build.SetAgentVersion(coreutils.GetCliUserAgentVersion())
 	build.SetBuildAgentVersion(coreutils.GetClientAgentVersion())
-	build.SetArtifactoryPrincipal(bpc.serverDetails.User)
+	build.SetPrincipal(bpc.serverDetails.User)
 	build.SetBuildUrl(bpc.config.BuildUrl)
-	err = build.IncludeEnv(strings.Split(bpc.config.EnvInclude, ";")...)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = build.ExcludeEnv(strings.Split(bpc.config.EnvExclude, ";")...)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
 
 	buildInfo, err := build.ToBuildInfo()
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	err = buildInfo.IncludeEnv(strings.Split(bpc.config.EnvInclude, ";")...)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	err = buildInfo.ExcludeEnv(strings.Split(bpc.config.EnvExclude, ";")...)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}

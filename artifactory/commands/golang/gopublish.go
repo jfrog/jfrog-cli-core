@@ -115,12 +115,6 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-
-		// No dependencies were published but those dependencies need to be loaded for the build info.
-		err = goModule.CalcDependencies()
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
 	}
 
 	return err

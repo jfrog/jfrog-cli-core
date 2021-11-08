@@ -7,6 +7,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray"
 )
 
+const (
+	XrayScanStatusFailed = "failed"
+)
+
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
 	xrayDetails, err := serviceDetails.CreateXrayAuthConfig()
 	if err != nil {

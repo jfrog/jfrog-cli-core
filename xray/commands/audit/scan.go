@@ -206,19 +206,22 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				return err
 			}
 			// In case of empty graph returned by the indexer,
-			// for instance due to unsupported file format, continue without sendding a
+			// for instance due to unsupported file format, continue without sending a
 			// graph request to Xray.
 			if graph.Id == "" {
 				return nil
 			}
-			// Add a new task to the seconde prodicer/consumer
+			// Add a new task to the second producer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
 				scanResults, err := scanCmd.getXrScanGraphResults(graph, file)
 				if err != nil {
 					return err
 				}
-				resultsArr[threadId] = append(resultsArr[threadId], scanResults)
+				scanErr := commands.CheckScanResultsStatus(scanResults.ScannedStatus , filePath)
+				if scanErr == nil {
+					resultsArr[threadId] = append(resultsArr[threadId], scanResults)
+				}
 				return
 			}
 
@@ -239,7 +242,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	go func() {
 		// Blocking until consuming is finished.
 		fileConsumer.Run()
-		// After all files has been indexed, The seconde producer notifies that no more tasks will be produced.
+		// After all files have been indexed, The second producer notifies that no more tasks will be produced.
 		indexedFileConsumer.Done()
 	}()
 	// Blocking until consuming is finished.
@@ -265,7 +268,7 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {
 
-	fileData.Pattern = (clientutils.ReplaceTildeWithUserHome(fileData.Pattern))
+	fileData.Pattern = clientutils.ReplaceTildeWithUserHome(fileData.Pattern)
 	patternType := fileData.GetPatternType()
 	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, patternType, false)
 	if err != nil {
@@ -310,7 +313,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		if err != nil {
 			return err
 		}
-		// Because paths should contains all files and directories (walks recursively) we can ignore dirs, as only files relevance for indexing.
+		// Because paths should contain all files and directories (walks recursively) we can ignore dirs, as only files relevance for indexing.
 		if isDir {
 			continue
 		}
@@ -321,10 +324,10 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	return nil
 }
 
-// Xray expect a path inside a repo, but not accpet path to a file.
+// Xray expect a path inside a repo, but not accept path to a file.
 // Therefore, if the given target path is a path to a file,
 // the path to the parent directory will be return.
-// Otherwise the func will return the path itself.
+// Otherwise, the func will return the path itself.
 func getXrayRepoPathFromTarget(target string) (repoPath string) {
 	if strings.HasSuffix(target, "/") {
 		return target

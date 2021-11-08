@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -18,4 +19,11 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayS
 		return nil, err
 	}
 	return xray.New(serviceConfig)
+}
+
+func CheckScanResultsStatus(scannedStatus , component string) error {
+	if scannedStatus == XrayScanStatusFailed {
+		return errors.New("Scanning " + component  + " failed")
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -77,7 +78,8 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 		}
 
 		// Log the scanned module ID
-		log.Info("Scanning module " + moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:] + "...")
+		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
+		log.Info("Scanning module " + moduleName + "...")
 
 		// Scan and wait for results
 		scanId, err := xrayManager.ScanGraph(*params)
@@ -85,11 +87,17 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 			return err
 		}
 		scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
-		if err != nil {
+		if err != nil{
 			return err
 		}
-		results = append(results, *scanResults)
+		scanErr := commands.CheckScanResultsStatus(scanResults.ScannedStatus , moduleName)
+		if scanErr == nil {
+			results = append(results, *scanResults)
+		}
 	}
-	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
-	return err
+	if results == nil || len(results) < 1 {
+		// if all scans failed , fail the audit command
+		return errors.New("audit command failed due to Xray internal error")
+	}
+	return xrutils.PrintScanResults(results, auditCmd.outputFormat == commands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
 }

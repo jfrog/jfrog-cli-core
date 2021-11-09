@@ -75,6 +75,7 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 			RepoPath:   auditCmd.targetRepoPath,
 			Watches:    auditCmd.watches,
 			ProjectKey: auditCmd.projectKey,
+			ScanType:   services.Dependency,
 		}
 
 		// Log the scanned module ID

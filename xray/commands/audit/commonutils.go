@@ -70,7 +70,7 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 	}
 	var results []services.ScanResponse
 	for _, moduleDependencyTree := range modulesDependencyTrees {
-		params := &services.XrayGraphScanParams{
+		params := services.XrayGraphScanParams{
 			Graph:      moduleDependencyTree,
 			RepoPath:   auditCmd.targetRepoPath,
 			Watches:    auditCmd.watches,
@@ -83,7 +83,7 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 		log.Info("Scanning module " + moduleName + "...")
 
 		// Scan and wait for results
-		scanId, err := xrayManager.ScanGraph(*params)
+		scanId, err := xrayManager.ScanGraph(params)
 		if err != nil {
 			return err
 		}

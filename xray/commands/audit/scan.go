@@ -122,10 +122,13 @@ func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, fil
 	if err != nil {
 		return nil, err
 	}
-	params := services.NewXrayGraphScanParams()
-	params.RepoPath = getXrayRepoPathFromTarget(file.Target)
-	params.Watches = scanCmd.watches
-	params.Graph = graph
+	params := services.XrayGraphScanParams{
+		Graph:      graph,
+		RepoPath:   getXrayRepoPathFromTarget(file.Target),
+		Watches:    scanCmd.watches,
+		ProjectKey: scanCmd.projectKey,
+		ScanType:   services.Binary,
+	}
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
 		return nil, err

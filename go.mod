@@ -9,9 +9,9 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
-	github.com/jfrog/build-info-go v0.0.0-20211020140610-2b15ac5444b5
+	github.com/jfrog/build-info-go v0.0.0
 	github.com/jfrog/gocmd v0.5.1
-	github.com/jfrog/gofrog v1.0.7
+	github.com/jfrog/gofrog v1.1.0
 	github.com/jfrog/jfrog-client-go v1.5.1
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
@@ -34,6 +34,6 @@ replace github.com/jfrog/jfrog-client-go => github.com/asafgabai/jfrog-client-go
 
 replace github.com/jfrog/gocmd => github.com/asafgabai/gocmd v0.1.20-0.20211102131620-5f5cb5c71bec
 
-replace github.com/jfrog/build-info-go => github.com/asafgabai/build-info-go v0.0.0-20211102101348-8ac1f7354ba1
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v0.0.0-20211109131214-8204208ea47e
 
 replace github.com/jfrog/gofrog => github.com/asafgabai/gofrog v1.0.7-0.20211102100824-06d5cfd1fc1b

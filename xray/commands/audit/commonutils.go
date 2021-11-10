@@ -88,7 +88,7 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 			return err
 		}
 		scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 		scanErr := commands.CheckScanResultsStatus(scanResults.ScannedStatus , moduleName)
@@ -97,7 +97,7 @@ func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.Gr
 		}
 	}
 	if results == nil || len(results) < 1 {
-		// if all scans failed , fail the audit command
+		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
 	return xrutils.PrintScanResults(results, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)

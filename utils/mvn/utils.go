@@ -137,7 +137,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 
 	mavenOpts := os.Getenv("MAVEN_OPTS")
 
-	if len(plexusClassworlds) != 1 {
+	if len(plexusClassworlds) < 1 {
 		return nil, errorutils.CheckError(errors.New("couldn't find plexus-classworlds-x.x.x.jar in Maven installation path, please check M2_HOME environment variable"))
 	}
 

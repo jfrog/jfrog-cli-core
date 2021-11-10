@@ -1,10 +1,13 @@
 package oc
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -158,19 +161,44 @@ func (osb *OcStartBuildCommand) validateOcVersion() error {
 }
 
 func startBuild(executablePath string, ocFlags []string) (ocBuildName string, err error) {
-	cmdArgs := []string{"start-build", "-w", "--template={{.metadata.name}}"}
+	cmdArgs := []string{"start-build", "-w", "--template={{.metadata.name}}{{\"\\n\"}}"}
 	cmdArgs = append(cmdArgs, ocFlags...)
 
-	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
+	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
+	cmd := exec.Command(executablePath, cmdArgs...)
+	outputReader, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	ocBuildName = strings.TrimSpace(string(outputBytes))
+	defer func() {
+		e := errorutils.CheckError(outputReader.Close())
+		if err == nil {
+			err = e
+		}
+	}()
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	// The build name is in the first line of the output
+	scanner := bufio.NewScanner(outputReader)
+	scanner.Scan()
+	ocBuildName = scanner.Text()
+
+	// Print the output to stderr
+	_, err = io.Copy(os.Stderr, outputReader)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	err = errorutils.CheckError(cmd.Wait())
 	return
 }
 
 func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha256 string, err error) {
 	cmdArgs := []string{"get", "build", ocBuildName, "--template={{.status.outputDockerImageReference}}@{{.status.output.to.imageDigest}}"}
+	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
 		return "", "", errorutils.CheckError(err)

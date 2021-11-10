@@ -3,6 +3,10 @@ package golang
 import (
 	"errors"
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
 	executors "github.com/jfrog/gocmd/executers/utils"
@@ -10,14 +14,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 type GoCommand struct {
@@ -26,6 +28,7 @@ type GoCommand struct {
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
 	configFilePath     string
+	vcsFallback        bool
 }
 
 func NewGoCommand() *GoCommand {
@@ -106,7 +109,24 @@ func (gc *GoCommand) Run() error {
 	if err != nil {
 		return err
 	}
+
+	// Extract vcs fallback from the args.
+	gc.goArg, err = gc.extractVcsFallbackFromArgs()
 	return gc.run()
+}
+
+func (gc *GoCommand) extractVcsFallbackFromArgs() (cleanArgs []string, err error) {
+	var flagIndex int
+	cleanArgs = append([]string(nil), gc.goArg...)
+
+	// Extract vcs-fallback boolean flag from the args.
+	flagIndex, gc.vcsFallback, err = coreutils.FindBooleanTrueFlag("--vcs-fallback", cleanArgs)
+	if err != nil {
+		return
+	}
+
+	coreutils.RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
 }
 
 func (gc *GoCommand) run() error {
@@ -143,9 +163,9 @@ func (gc *GoCommand) run() error {
 
 	var targetRepo string
 
-	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo())
+	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.vcsFallback)
 	if err != nil {
-		return err
+		return coreutils.ConvertExitCodeError(err)
 	}
 	if isCollectBuildInfo {
 		tempDirPath := ""

@@ -2,7 +2,6 @@ package oc
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"os/exec"
@@ -136,7 +135,7 @@ func (osb *OcStartBuildCommand) validateAllowedOptions() error {
 	for _, arg := range osb.ocArgs {
 		for _, optionName := range notAllowedOcOptions {
 			if arg == optionName || strings.HasPrefix(arg, optionName+"=") {
-				return errorutils.CheckError(errors.New(fmt.Sprintf("the %s option is not allowed", optionName)))
+				return errorutils.CheckErrorf("the %s option is not allowed", optionName)
 			}
 		}
 	}
@@ -151,8 +150,8 @@ func (osb *OcStartBuildCommand) validateOcVersion() error {
 	trimmedVersion := strings.TrimPrefix(ocVersionStr, "v")
 	ocVersion := version.NewVersion(trimmedVersion)
 	if ocVersion.Compare(minSupportedOcVersion) > 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")))
+		return errorutils.CheckErrorf(
+			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")
 	}
 	return nil
 }
@@ -178,7 +177,7 @@ func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha2
 	output := string(outputBytes)
 	splitOutput := strings.Split(strings.TrimSpace(output), "@")
 	if len(splitOutput) != 2 {
-		return "", "", errorutils.CheckError(errors.New(fmt.Sprintf("Unable to parse image tag and digest of build %s. Output from OpenShift CLI: %s", ocBuildName, output)))
+		return "", "", errorutils.CheckErrorf("Unable to parse image tag and digest of build %s. Output from OpenShift CLI: %s", ocBuildName, output)
 	}
 
 	return splitOutput[0], splitOutput[1], nil

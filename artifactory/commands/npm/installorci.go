@@ -2,7 +2,6 @@ package npm
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -176,7 +175,7 @@ func (nca *NpmCommandArgs) preparePrerequisites(repo string) error {
 	}
 
 	if npmExecPath == "" {
-		return errorutils.CheckError(errors.New("could not find the 'npm' executable in the system PATH"))
+		return errorutils.CheckErrorf("could not find the 'npm' executable in the system PATH")
 	}
 	nca.executablePath = npmExecPath
 
@@ -316,8 +315,8 @@ func (nca *NpmCommandArgs) validateNpmVersion() error {
 		return err
 	}
 	if npmVersion.Compare(minSupportedNpmVersion) > 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI npm %s command requires npm client version " + minSupportedNpmVersion + " or higher. The Current version is: %s", nca.command, npmVersion.GetVersion())))
+		return errorutils.CheckErrorf(
+			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. The Current version is: %s", nca.command, npmVersion.GetVersion())
 	}
 	nca.npmVersion = npmVersion
 	return nil
@@ -445,7 +444,7 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 
 func (nca *NpmCommandArgs) restoreNpmrcAndError(err error) error {
 	if restoreErr := nca.restoreNpmrcFunc(); restoreErr != nil {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())))
+		return errorutils.CheckErrorf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())
 	}
 	return err
 }
@@ -456,7 +455,7 @@ func (nca *NpmCommandArgs) setArtifactoryAuth() error {
 		return err
 	}
 	if authArtDetails.GetSshAuthHeaders() != nil {
-		return errorutils.CheckError(errors.New("SSH authentication is not supported in this command"))
+		return errorutils.CheckErrorf("SSH authentication is not supported in this command")
 	}
 	nca.authArtDetails = authArtDetails
 	return nil

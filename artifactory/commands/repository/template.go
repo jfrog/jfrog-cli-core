@@ -568,12 +568,12 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 // Repo key must have a prefix of "<projectKey>-". This callback adds the prefix to the repo key if it is missing.
 func projectKeyCallback(iq *utils.InteractiveQuestionnaire, projectKey string) (string, error) {
 	if _, ok := iq.AnswersMap[Key]; !ok {
-		return "", errorutils.CheckError(errors.New("repository key is missing in configuration map"))
+		return "", errorutils.CheckErrorf("repository key is missing in configuration map")
 	}
 	requiredProjectPrefix := projectKey + "-"
 	currentRepoKey, ok := iq.AnswersMap[Key].(string)
 	if !ok {
-		return "", errorutils.CheckError(errors.New("template syntax error: the value for the repository key is not a string type"))
+		return "", errorutils.CheckErrorf("template syntax error: the value for the repository key is not a string type")
 	}
 
 	if !strings.HasPrefix(currentRepoKey, requiredProjectPrefix) {

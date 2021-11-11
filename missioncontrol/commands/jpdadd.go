@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
@@ -24,7 +23,7 @@ func JpdAdd(flags *JpdAddFlags) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return errorutils.CheckError(errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body)))
+		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 
 	log.Debug("Mission Control response: " + resp.Status)

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -61,7 +60,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.ServerDetails, string, error) {
 	lastSlashIndex := strings.LastIndex(extractorsRemote, "/")
 	if lastSlashIndex == -1 {
-		return nil, "", errorutils.CheckError(errors.New(fmt.Sprintf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)))
+		return nil, "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)
 	}
 
 	serverDetails, err := config.GetSpecificConfig(extractorsRemote[:lastSlashIndex], false, true)
@@ -104,7 +103,7 @@ func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPat
 	httpClientDetails := auth.CreateHttpClientDetails()
 	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		err = errorutils.CheckError(errors.New(resp.Status + " received when attempting to download " + downloadUrl))
+		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
 	}
 
 	return err

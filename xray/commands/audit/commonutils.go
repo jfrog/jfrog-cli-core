@@ -12,7 +12,7 @@ import (
 
 type AuditCommand struct {
 	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
+	outputFormat           commands.OutputFormat
 	watches                []string
 	projectKey             string
 	targetRepoPath         string
@@ -29,7 +29,7 @@ func (auditCmd *AuditCommand) SetServerDetails(server *config.ServerDetails) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) SetOutputFormat(format OutputFormat) *AuditCommand {
+func (auditCmd *AuditCommand) SetOutputFormat(format commands.OutputFormat) *AuditCommand {
 	auditCmd.outputFormat = format
 	return auditCmd
 }
@@ -63,42 +63,30 @@ func (auditCmd *AuditCommand) SetIncludeLicenses(include bool) *AuditCommand {
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) runScanGraph(modulesDependencyTrees []*services.GraphNode) error {
-	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
+func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
 	var results []services.ScanResponse
+	params := services.XrayGraphScanParams{
+		RepoPath:   auditCmd.targetRepoPath,
+		Watches:    auditCmd.watches,
+		ProjectKey: auditCmd.projectKey,
+		ScanType:   services.Dependency,
+	}
 	for _, moduleDependencyTree := range modulesDependencyTrees {
-		params := services.XrayGraphScanParams{
-			Graph:      moduleDependencyTree,
-			RepoPath:   auditCmd.targetRepoPath,
-			Watches:    auditCmd.watches,
-			ProjectKey: auditCmd.projectKey,
-			ScanType:   services.Dependency,
-		}
-
+		params.Graph = moduleDependencyTree
 		// Log the scanned module ID
 		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
 		log.Info("Scanning module " + moduleName + "...")
 
-		// Scan and wait for results
-		scanId, err := xrayManager.ScanGraph(params)
+		scanResults, err := commands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
 		if err != nil {
-			return err
+			log.Error("Scanning %s failed with error: %s", moduleName, err.Error())
+			break
 		}
-		scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
-		if err != nil {
-			return err
-		}
-		scanErr := commands.CheckScanResultsStatus(scanResults.ScannedStatus , moduleName)
-		if scanErr == nil {
-			results = append(results, *scanResults)
-		}
+		results = append(results, *scanResults)
 	}
 	if results == nil || len(results) < 1 {
 		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
-	return xrutils.PrintScanResults(results, auditCmd.outputFormat == Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	return xrutils.PrintScanResults(results, auditCmd.outputFormat == commands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
 }

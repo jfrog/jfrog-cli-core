@@ -152,7 +152,7 @@ func (gc *GoCommand) run() error {
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
 				// Package name was not supplied. Invalid go get commend
-				return errorutils.CheckError(errors.New("Invalid get command. Package name is missing"))
+				return errorutils.CheckErrorf("Invalid get command. Package name is missing")
 			}
 			tempDirPath, err = fileutils.CreateTempDir()
 			if err != nil {

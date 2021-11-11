@@ -1,14 +1,10 @@
 package commands
 
 import (
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
-)
-
-const (
-	XrayScanStatusFailed = "failed"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
@@ -25,9 +21,18 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayS
 	return xray.New(serviceConfig)
 }
 
-func CheckScanResultsStatus(scannedStatus , component string) error {
-	if scannedStatus == XrayScanStatusFailed {
-		return errors.New("Scanning " + component  + " failed")
+func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params services.XrayGraphScanParams, includeVulnerabilities, includeLicenses bool) (*services.ScanResponse, error) {
+	xrayManager, err := CreateXrayServiceManager(serverDetails)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	scanId, err := xrayManager.ScanGraph(params)
+	if err != nil {
+		return nil, err
+	}
+	scanResults, err := xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
+	if err != nil {
+		return nil, err
+	}
+	return scanResults, nil
 }

@@ -1,7 +1,6 @@
 package container
 
 import (
-	"fmt"
 	"path"
 	"strings"
 
@@ -48,7 +47,7 @@ func (image *Image) Name() (string, error) {
 
 func (image *Image) validateTag() error {
 	if !strings.Contains(image.tag, "/") {
-		return errorutils.CheckError(fmt.Errorf("The image '%s' is missing '/' which indicates the image name/tag", image.tag))
+		return errorutils.CheckErrorf("The image '%s' is missing '/' which indicates the image name/tag", image.tag)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package mvnutils
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -61,7 +60,7 @@ func getMavenHome() (string, error) {
 		// First we will try lo look for 'mvn' in PATH.
 		mvnPath, err := exec.LookPath("mvn")
 		if err != nil || mvnPath == "" {
-			return "", errorutils.CheckError(errors.New(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+			return "", errorutils.CheckErrorf(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
 		}
 		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
 		cmd := exec.Command("mvn", "--version")
@@ -80,7 +79,7 @@ func getMavenHome() (string, error) {
 			}
 		}
 		if mavenHome == "" {
-			return "", errorutils.CheckError(errors.New("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+			return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
 		}
 	}
 	log.Debug("Maven home location: ", mavenHome)
@@ -138,7 +137,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 	mavenOpts := os.Getenv("MAVEN_OPTS")
 
 	if len(plexusClassworlds) < 1 {
-		return nil, errorutils.CheckError(errors.New("couldn't find plexus-classworlds-x.x.x.jar in Maven installation path, please check M2_HOME environment variable"))
+		return nil, errorutils.CheckErrorf("couldn't find plexus-classworlds-x.x.x.jar in Maven installation path, please check M2_HOME environment variable")
 	}
 
 	var currentWorkdir string

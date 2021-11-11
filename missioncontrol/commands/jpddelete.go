@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"errors"
-
 	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -22,7 +20,7 @@ func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
 		return err
 	}
 	if resp.StatusCode != 204 {
-		return errorutils.CheckError(errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body)))
+		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)
 	return nil

@@ -327,9 +327,9 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	return nil
 }
 
-// Xray expect a path inside a repo, but not accept path to a file.
+// Xray expects a path inside a repo, but does not accept a path to a file.
 // Therefore, if the given target path is a path to a file,
-// the path to the parent directory will be return.
+// the path to the parent directory will be returned.
 // Otherwise, the func will return the path itself.
 func getXrayRepoPathFromTarget(target string) (repoPath string) {
 	if strings.HasSuffix(target, "/") {

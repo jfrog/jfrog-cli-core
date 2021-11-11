@@ -9,10 +9,10 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
-	github.com/jfrog/build-info-go v0.0.0
-	github.com/jfrog/gocmd v0.5.2
+	github.com/jfrog/build-info-go v0.1.0
+	github.com/jfrog/gocmd v0.5.3
 	github.com/jfrog/gofrog v1.1.0
-	github.com/jfrog/jfrog-client-go v1.5.2
+	github.com/jfrog/jfrog-client-go v1.6.0
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3
@@ -30,10 +30,10 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/asafgabai/jfrog-client-go v0.18.1-0.20211109142056-a0da842a23df
+//replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
 
-replace github.com/jfrog/gocmd => github.com/asafgabai/gocmd v0.1.20-0.20211109145116-4d1a4b4ae25e
+//replace github.com/jfrog/gocmd => ../gocmd
 
-replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v0.0.0-20211109131214-8204208ea47e
+//replace github.com/jfrog/build-info-go => ../build-info-go
 
 //replace github.com/jfrog/gofrog => ../gofrog

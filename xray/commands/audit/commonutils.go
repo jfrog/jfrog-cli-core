@@ -3,7 +3,7 @@ package audit
 import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -12,7 +12,7 @@ import (
 
 type AuditCommand struct {
 	serverDetails          *config.ServerDetails
-	outputFormat           commands.OutputFormat
+	outputFormat           xraycommands.OutputFormat
 	watches                []string
 	projectKey             string
 	targetRepoPath         string
@@ -29,7 +29,7 @@ func (auditCmd *AuditCommand) SetServerDetails(server *config.ServerDetails) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) SetOutputFormat(format commands.OutputFormat) *AuditCommand {
+func (auditCmd *AuditCommand) SetOutputFormat(format xraycommands.OutputFormat) *AuditCommand {
 	auditCmd.outputFormat = format
 	return auditCmd
 }
@@ -77,7 +77,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
 		log.Info("Scanning module " + moduleName + "...")
 
-		scanResults, err := commands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
+		scanResults, err := xraycommands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
 		if err != nil {
 			log.Error("Scanning %s failed with error: %s", moduleName, err.Error())
 			break
@@ -88,5 +88,5 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
-	return xrutils.PrintScanResults(results, auditCmd.outputFormat == commands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	return xrutils.PrintScanResults(results, auditCmd.outputFormat == xraycommands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
 }

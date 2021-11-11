@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -15,7 +15,7 @@ import (
 // If the scan passes, the method will return two filespec ready for upload, thee first one contains all the binaries
 // and the seconde all the pom.xml's.
 // If one of the file's scan failed both of the return values will be nil.
-func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format commands.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
+func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format xraycommands.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
 	binariesSpecFile := &spec.SpecFiles{}
 	pomSpecFile := &spec.SpecFiles{}
 	deployableArtifacts.Reader().Reset()
@@ -31,7 +31,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	// Only non pom.xml should be scanned
-	xrScanCmd := commands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
+	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err
@@ -51,15 +51,15 @@ func parseTargetPath(target, serverUrl string) string {
 	return target
 }
 
-func GetXrayOutputFormat(formatFlagVal string) (format commands.OutputFormat, err error) {
+func GetXrayOutputFormat(formatFlagVal string) (format xraycommands.OutputFormat, err error) {
 	// Default print format is table.
-	format = commands.Table
+	format = xraycommands.Table
 	if formatFlagVal != "" {
 		switch strings.ToLower(formatFlagVal) {
-		case string(commands.Table):
-			format = commands.Table
-		case string(commands.Json):
-			format = commands.Json
+		case string(xraycommands.Table):
+			format = xraycommands.Table
+		case string(xraycommands.Json):
+			format = xraycommands.Json
 		default:
 			err = errorutils.CheckErrorf("only the following output formats are supported: table or json")
 		}

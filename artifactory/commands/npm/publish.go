@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,7 +44,7 @@ type NpmPublishCommandArgs struct {
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
-	scanOutputFormat       commands.OutputFormat
+	scanOutputFormat       xraycommands.OutputFormat
 	packDestination        string
 }
 
@@ -89,7 +89,7 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
-func (npc *NpmPublishCommand) SetScanOutputFormat(format commands.OutputFormat) *NpmPublishCommand {
+func (npc *NpmPublishCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *NpmPublishCommand {
 	npc.scanOutputFormat = format
 	return npc
 }
@@ -307,7 +307,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := commands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
+	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err

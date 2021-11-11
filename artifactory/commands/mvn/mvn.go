@@ -7,7 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -20,7 +20,7 @@ type MvnCommand struct {
 	threads          int
 	detailedSummary  bool
 	xrayScan         bool
-	scanOutputFormat commands.OutputFormat
+	scanOutputFormat xraycommands.OutputFormat
 	result           *commandsutils.Result
 	disableDeploy    bool
 }
@@ -77,7 +77,7 @@ func (mc *MvnCommand) IsXrayScan() bool {
 	return mc.xrayScan
 }
 
-func (mc *MvnCommand) SetScanOutputFormat(format commands.OutputFormat) *MvnCommand {
+func (mc *MvnCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *MvnCommand {
 	mc.scanOutputFormat = format
 	return mc
 }

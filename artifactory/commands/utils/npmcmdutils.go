@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -202,7 +202,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat commands.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xraycommands.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)

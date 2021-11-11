@@ -28,3 +28,5 @@ exclude (
 	github.com/miekg/dns v1.0.14
 	github.com/pkg/sftp v1.10.1
 )
+
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.5.3-0.20211111172843-7ed94fb910a6

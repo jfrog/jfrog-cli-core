@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"

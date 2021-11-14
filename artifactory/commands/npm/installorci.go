@@ -4,14 +4,14 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 
@@ -23,7 +23,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

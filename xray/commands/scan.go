@@ -227,7 +227,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				}
 				scanResults, err := RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
 				if err != nil {
-					log.Error("Scanning %s failed with error: %s", graph.Id, err.Error())
+					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
 					return
 				}
 				resultsArr[threadId] = append(resultsArr[threadId], scanResults)

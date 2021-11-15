@@ -79,7 +79,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 
 		scanResults, err := xraycommands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
 		if err != nil {
-			log.Error("Scanning %s failed with error: %s", moduleName, err.Error())
+			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
 			break
 		}
 		results = append(results, *scanResults)

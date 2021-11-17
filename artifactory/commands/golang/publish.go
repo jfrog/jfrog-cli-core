@@ -179,16 +179,15 @@ func archive(moduleName, version, projectPath, tempDir string) (name string, zip
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
+	openedFile = true
 	defer func() {
-		if !openedFile {
-			return
-		}
-		e := tempFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
+		if openedFile {
+			e := tempFile.Close()
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
 		}
 	}()
-	openedFile = true
 	err = archiveProject(tempFile, projectPath, moduleName, version)
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)

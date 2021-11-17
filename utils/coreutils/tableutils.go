@@ -238,7 +238,9 @@ type embeddedTableCell struct {
 func PrintMessage(message string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
-	tableWriter.SetStyle(table.StyleLight)
+	if IsTerminal() {
+		tableWriter.SetStyle(table.StyleLight)
+	}
 	tableWriter.AppendRow(table.Row{message})
 	tableWriter.Render()
 }

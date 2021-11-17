@@ -1,24 +1,17 @@
 package pip
 
 import (
-	"errors"
 	"fmt"
-	"net/url"
-	"os/exec"
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/auth"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type PipInstaller struct {
-	ServerDetails       *config.ServerDetails
-	Args                []string
-	Repository          string
+	CommonExecutor
 	ShouldParseLogs     bool
 	DependencyToFileMap map[string]string
 }
@@ -37,46 +30,6 @@ func (pi *PipInstaller) Install() error {
 	}
 
 	return nil
-}
-
-func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err error) {
-	log.Debug("Preparing prerequisites.")
-
-	pipExecutablePath, err = exec.LookPath("pip")
-	if err != nil {
-		return
-	}
-	if pipExecutablePath == "" {
-		return "", "", errorutils.CheckError(errors.New("Could not find the 'pip' executable in the system PATH"))
-	}
-	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
-	return
-}
-
-func getArtifactoryUrlWithCredentials(serverDetails *config.ServerDetails, repository string) (string, error) {
-	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	username := serverDetails.GetUser()
-	password := serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if serverDetails.GetAccessToken() != "" {
-		username, err = auth.ExtractUsernameFromAccessToken(serverDetails.GetAccessToken())
-		if err != nil {
-			return "", err
-		}
-		password = serverDetails.GetAccessToken()
-	}
-
-	if username != "" && password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
-	rtUrl.Path += "api/pypi/" + repository + "/simple"
-
-	return rtUrl.String(), nil
 }
 
 func (pi *PipInstaller) runPipInstall(pipExecutablePath, pipIndexUrl string) error {

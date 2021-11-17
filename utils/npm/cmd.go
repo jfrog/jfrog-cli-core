@@ -3,14 +3,7 @@ package npmutils
 import (
 	"io"
 	"os/exec"
-	"regexp"
 )
-
-var npmCommands = regexp.MustCompile(`npm-install|npmi|npm-ci|npmci|npm-publish|npmp`)
-
-func IsNpmCommand(cmd string) bool {
-	return npmCommands.MatchString(cmd)
-}
 
 func (config *NpmConfig) GetCmd() *exec.Cmd {
 	var cmd []string

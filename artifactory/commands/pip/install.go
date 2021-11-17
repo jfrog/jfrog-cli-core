@@ -36,7 +36,7 @@ func (pic *PipInstallCommand) Run() error {
 		return err
 	}
 
-	pipInstaller := &piputils.PipInstaller{Args: pic.args, ServerDetails: pic.rtDetails, Repository: pic.repository, ShouldParseLogs: pic.shouldCollectBuildInfo}
+	pipInstaller := &piputils.PipInstaller{CommonExecutor: piputils.CommonExecutor{Args: pic.args, ServerDetails: pic.rtDetails, Repository: pic.repository}, ShouldParseLogs: pic.shouldCollectBuildInfo}
 	err = pipInstaller.Install()
 	if err != nil {
 		pic.cleanBuildInfoDir()

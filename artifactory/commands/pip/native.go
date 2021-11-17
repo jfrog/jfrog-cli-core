@@ -12,6 +12,7 @@ type PipNativeCommand struct {
 	*PipCommand
 }
 
+// NewPipNativeCommand represents any pip command which is not "install".
 func NewPipNativeCommand(cmdName string) *PipNativeCommand {
 	return &PipNativeCommand{cmdName: cmdName, PipCommand: &PipCommand{}}
 }
@@ -29,8 +30,6 @@ func (pnc *PipNativeCommand) Run() error {
 }
 
 func (pnc *PipNativeCommand) prepare() (err error) {
-	log.Debug("Preparing prerequisites.")
-
 	// Filter out build flags.
 	pnc.args, _, err = utils.ExtractBuildDetailsFromArgs(pnc.args)
 	return

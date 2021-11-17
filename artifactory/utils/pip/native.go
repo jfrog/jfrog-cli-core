@@ -1,7 +1,12 @@
 package pip
 
-import gofrogcmd "github.com/jfrog/gofrog/io"
+import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"os"
+)
 
+// NativeExecutor handles the execution of any pip command which is not "install".
 type NativeExecutor struct {
 	CmdName string
 	CommonExecutor
@@ -30,6 +35,8 @@ func (pne *NativeExecutor) runPipNative(pipExecutablePath, pipIndexUrl string) e
 		CommandArgs: append(pne.Args, "-i", pipIndexUrl),
 	}
 
-	// Run without log parsing.
-	return gofrogcmd.RunCmd(pipCmd)
+	command := pipCmd.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
 }

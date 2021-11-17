@@ -2,19 +2,21 @@ package npm
 
 import (
 	"fmt"
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 )
 
 type NativeCommandArgs struct {
 	CommonArgs
 }
 
+// NativeCommand represents any npm command which is not "install", "ci" or "publish".
 type NativeCommand struct {
 	configFilePath string
 	*NativeCommandArgs
@@ -41,7 +43,7 @@ func (nnc *NativeCommand) SetServerDetails(serverDetails *config.ServerDetails) 
 }
 
 func (nnc *NativeCommand) Init() error {
-	// Filter JFrog CLI's specific flags.
+	// Filter out JFrog CLI's specific flags.
 	_, _, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(nnc.npmArgs)
 	if err != nil {
 		return err
@@ -111,5 +113,8 @@ func (nca *NativeCommandArgs) runNpmNativeCommand() error {
 		StrWriter:    nil,
 		ErrWriter:    nil,
 	}
-	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))
+	command := npmCmdConfig.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
 }

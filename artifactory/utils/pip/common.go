@@ -17,7 +17,7 @@ type CommonExecutor struct {
 }
 
 func (pce *CommonExecutor) prepare() (pipExecutablePath, pipIndexUrl string, err error) {
-	log.Debug("Preparing prerequisites.")
+	log.Debug("Preparing prerequisites...")
 
 	pipExecutablePath, err = exec.LookPath("pip")
 	if err != nil {

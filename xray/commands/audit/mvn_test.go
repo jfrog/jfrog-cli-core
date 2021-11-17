@@ -20,7 +20,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	// Check root module
 	multi := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 	if multi == nil {
-	    t.Fatal(err)
+	    t.FailNow()
 	}
 	assert.Empty(t, multi.Nodes)
 

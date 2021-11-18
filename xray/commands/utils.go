@@ -30,9 +30,5 @@ func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params servi
 	if err != nil {
 		return nil, err
 	}
-	scanResults, err := xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
-	if err != nil {
-		return nil, err
-	}
-	return scanResults, nil
+	return xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
 }

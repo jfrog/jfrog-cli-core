@@ -31,6 +31,8 @@ var cliUserAgentVersion string
 var clientAgentName string
 var clientAgentVersion string
 
+var cliExecutableName string
+
 func init() {
 	// Initialize error handling.
 	if os.Getenv(ErrorHandling) == string(OnErrorPanic) {
@@ -394,4 +396,12 @@ func SetClientAgentVersion(versionToSet string) {
 
 func GetClientAgentVersion() string {
 	return clientAgentVersion
+}
+
+func SetCliExecutableName(executableName string) {
+	cliExecutableName = executableName
+}
+
+func GetCliExecutableName() string {
+	return cliExecutableName
 }

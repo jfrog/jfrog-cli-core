@@ -102,7 +102,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 	return npc.detailedSummary
 }
 
-func (npc *NpmPublishCommand) Run() error {
+func (npc *NpmPublishCommand) Init() error {
 	var err error
 	npc.npmVersion, npc.executablePath, err = npmutils.GetNpmVersionAndExecPath()
 	if err != nil {
@@ -130,10 +130,10 @@ func (npc *NpmPublishCommand) Run() error {
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
 	npc.SetDetailedSummary(detailedSummary).SetXrayScan(xrayScan).SetScanOutputFormat(scanOutputFormat)
-	return npc.run()
+	return nil
 }
 
-func (npc *NpmPublishCommand) run() error {
+func (npc *NpmPublishCommand) Run() error {
 	log.Info("Running npm Publish")
 	if err := npc.preparePrerequisites(); err != nil {
 		return err

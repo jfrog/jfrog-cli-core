@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
@@ -144,7 +143,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	modFilePath := filepath.Join(projectPath, "go.mod")
 	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
 	if !modFileExists {
-		return nil, nil, errorutils.CheckError(errors.New("Could not find project's go.mod in " + projectPath))
+		return nil, nil, errorutils.CheckErrorf("Could not find project's go.mod in " + projectPath)
 	}
 	modFile, err := os.Open(modFilePath)
 	if err != nil {

@@ -77,7 +77,7 @@ func getMavenHome() (string, error) {
 		for _, line := range output {
 			if strings.HasPrefix(line, "Maven home:") {
 				mavenHome = strings.Split(line, " ")[2]
-				if runtime.GOOS == "windows" {
+				if coreutils.IsWindows() {
 					mavenHome = strings.TrimSuffix(mavenHome, "\r")
 				}
 				mavenHome, err = filepath.Abs(mavenHome)

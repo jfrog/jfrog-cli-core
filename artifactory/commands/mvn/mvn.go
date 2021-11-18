@@ -1,15 +1,18 @@
 package mvn
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
 
 	commandsutils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -190,7 +193,10 @@ func (mc *MvnCommand) createMvnRunConfig(dependenciesPath string) (*mvnRunConfig
 		}
 	}
 
-	mavenHome := os.Getenv("M2_HOME")
+	mavenHome, err := getMavenHome()
+	if err != nil {
+		return nil, err
+	}
 	plexusClassworlds, err := filepath.Glob(filepath.Join(mavenHome, "boot", "plexus-classworlds*.jar"))
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -311,4 +317,46 @@ type mvnRunConfig struct {
 	generatedBuildInfoPath       string
 	mavenOpts                    string
 	deployableArtifactsFilePath  string
+}
+
+func getMavenHome() (string, error) {
+	log.Debug("Checking prerequisites.")
+	mavenHome := os.Getenv(MavenHome)
+	if mavenHome == "" {
+		// The M2_HOME environment variable is not defined.
+		// Since Maven installation can be located in different locations,
+		// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+		// We need to grab the location using the mvn --version command
+
+		// First we will try lo look for 'mvn' in PATH.
+		mvnPath, err := exec.LookPath("mvn")
+		if err != nil || mvnPath == "" {
+			return "", errorutils.CheckError(errors.New(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+		}
+		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
+		cmd := exec.Command("mvn", "--version")
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		err = errorutils.CheckError(cmd.Run())
+		if err != nil {
+			return "", err
+		}
+		output := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+		// Finding the relevant "Maven home" line in command response.
+		for _, line := range output {
+			if strings.HasPrefix(line, "Maven home:") {
+				mavenHome = strings.Split(line, " ")[2]
+				if runtime.GOOS == "windows" {
+					mavenHome = strings.TrimSuffix(mavenHome, "\r")
+				}
+				mavenHome, err = filepath.Abs(mavenHome)
+				break
+			}
+		}
+		if mavenHome == "" {
+			return "", errorutils.CheckError(errors.New("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories."))
+		}
+	}
+	log.Debug("Maven home location: ", mavenHome)
+	return mavenHome, nil
 }

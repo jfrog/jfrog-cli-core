@@ -258,17 +258,6 @@ func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, index
 	indexedFileConsumer.Run()
 }
 
-func (scanCmd *ScanCommand) checkScanPassed(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner) {
-	go func() {
-		// Blocking until consuming is finished.
-		fileConsumer.Run()
-		// After all files have been indexed, The second producer notifies that no more tasks will be produced.
-		indexedFileConsumer.Done()
-	}()
-	// Blocking until consuming is finished.
-	indexedFileConsumer.Run()
-}
-
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {
 
 	fileData.Pattern = clientutils.ReplaceTildeWithUserHome(fileData.Pattern)

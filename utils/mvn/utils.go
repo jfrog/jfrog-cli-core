@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -76,6 +77,10 @@ func getMavenHome() (string, error) {
 		for _, line := range output {
 			if strings.HasPrefix(line, "Maven home:") {
 				mavenHome = strings.Split(line, " ")[2]
+				if runtime.GOOS == "windows" {
+					mavenHome = strings.TrimSuffix(mavenHome, "\r")
+				}
+				mavenHome, err = filepath.Abs(mavenHome)
 				break
 			}
 		}

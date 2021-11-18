@@ -174,14 +174,18 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 // Archive the go project.
 // Returns the path of the temp archived project file.
 func archive(moduleName, version, projectPath, tempDir string) (name string, zipArtifact *buildinfo.Artifact, err error) {
+	openedFile := false
 	tempFile, err := ioutil.TempFile(tempDir, "project.zip")
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
+	openedFile = true
 	defer func() {
-		e := tempFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
+		if openedFile {
+			e := tempFile.Close()
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
 		}
 	}()
 	err = archiveProject(tempFile, projectPath, moduleName, version)
@@ -210,6 +214,7 @@ func archive(moduleName, version, projectPath, tempDir string) (name string, zip
 	if err := tempFile.Close(); err != nil {
 		return "", nil, err
 	}
+	openedFile = false
 	fileDetails, err := fileutils.GetFileDetails(tempFile.Name(), true)
 	if err != nil {
 		return "", nil, err

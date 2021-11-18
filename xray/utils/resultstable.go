@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -226,7 +225,7 @@ func convertCves(cves []services.Cve) []cveRow {
 
 func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow, error) {
 	if len(impactedPackages) == 0 {
-		return nil, nil, nil, nil, nil, errorutils.CheckError(errors.New("failed while parsing the response from Xray: violation doesn't have any components"))
+		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 	}
 	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
 	var directComponents [][]componentRow

@@ -2,8 +2,6 @@ package npm
 
 import (
 	"bufio"
-	"errors"
-	"fmt"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -46,7 +44,7 @@ func (com *CommonArgs) preparePrerequisites(repo string) error {
 	}
 
 	if npmExecPath == "" {
-		return errorutils.CheckError(errors.New("could not find the 'npm' executable in the system PATH"))
+		return errorutils.CheckErrorf("could not find the 'npm' executable in the system PATH")
 	}
 	com.executablePath = npmExecPath
 
@@ -99,7 +97,7 @@ func (com *CommonArgs) setArtifactoryAuth() error {
 		return err
 	}
 	if authArtDetails.GetSshAuthHeaders() != nil {
-		return errorutils.CheckError(errors.New("SSH authentication is not supported in this command"))
+		return errorutils.CheckErrorf("SSH authentication is not supported in this command")
 	}
 	com.authArtDetails = authArtDetails
 	return nil
@@ -147,7 +145,7 @@ func (com *CommonArgs) setTypeRestriction(key string, value string) {
 
 func (com *CommonArgs) restoreNpmrcAndError(err error) error {
 	if restoreErr := com.restoreNpmrcFunc(); restoreErr != nil {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())))
+		return errorutils.CheckErrorf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())
 	}
 	return err
 }
@@ -158,8 +156,8 @@ func (com *CommonArgs) validateNpmVersion() error {
 		return err
 	}
 	if npmVersion.Compare(minSupportedNpmVersion) > 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. The Current version is: %s", com.cmdName, npmVersion.GetVersion())))
+		return errorutils.CheckErrorf(
+			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. The Current version is: %s", com.cmdName, npmVersion.GetVersion())
 	}
 	com.npmVersion = npmVersion
 	return nil

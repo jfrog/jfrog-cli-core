@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
@@ -144,7 +143,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	modFilePath := filepath.Join(projectPath, "go.mod")
 	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
 	if !modFileExists {
-		return nil, nil, errorutils.CheckError(errors.New("Could not find project's go.mod in " + projectPath))
+		return nil, nil, errorutils.CheckErrorf("Could not find project's go.mod in " + projectPath)
 	}
 	modFile, err := os.Open(modFilePath)
 	if err != nil {
@@ -174,14 +173,18 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 // Archive the go project.
 // Returns the path of the temp archived project file.
 func archive(moduleName, version, projectPath, tempDir string) (name string, zipArtifact *buildinfo.Artifact, err error) {
+	openedFile := false
 	tempFile, err := ioutil.TempFile(tempDir, "project.zip")
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
+	openedFile = true
 	defer func() {
-		e := tempFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
+		if openedFile {
+			e := tempFile.Close()
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
 		}
 	}()
 	err = archiveProject(tempFile, projectPath, moduleName, version)
@@ -210,6 +213,7 @@ func archive(moduleName, version, projectPath, tempDir string) (name string, zip
 	if err := tempFile.Close(); err != nil {
 		return "", nil, err
 	}
+	openedFile = false
 	fileDetails, err := fileutils.GetFileDetails(tempFile.Name(), true)
 	if err != nil {
 		return "", nil, err

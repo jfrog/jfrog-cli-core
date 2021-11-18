@@ -164,7 +164,7 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 		splitted := strings.Split(fileName, ".")
 
 		if len(splitted) != 5 {
-			return nil, errorutils.CheckError(fmt.Errorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileName, path))
+			return nil, errorutils.CheckErrorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileName, path)
 		}
 		// Last element is the timestamp.
 		time, err := strconv.ParseInt(splitted[4], 10, 64)

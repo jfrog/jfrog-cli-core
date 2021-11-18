@@ -2,7 +2,6 @@ package permissiontarget
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -38,7 +37,7 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 		switch key {
 		case Name:
 			if _, ok := value.(string); !ok {
-				return errorutils.CheckError(errors.New("template syntax error: the value for the  key: \"Name\" is not a string type."))
+				return errorutils.CheckErrorf("template syntax error: the value for the  key: \"Name\" is not a string type.")
 			}
 		case Build:
 			isBuildSection = true
@@ -52,7 +51,7 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 			}
 			permissionTargetConfigMap[key] = permissionSection
 		default:
-			return errorutils.CheckError(errors.New("template syntax error: unknown key: \"" + key + "\"."))
+			return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")
 		}
 	}
 	// Convert the new JSON with the correct types to params struct

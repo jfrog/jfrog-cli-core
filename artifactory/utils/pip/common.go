@@ -1,7 +1,6 @@
 package pip
 
 import (
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -24,7 +23,7 @@ func (pce *CommonExecutor) prepare() (pipExecutablePath, pipIndexUrl string, err
 		return
 	}
 	if pipExecutablePath == "" {
-		return "", "", errorutils.CheckError(errors.New("could not find the 'pip' executable in the system PATH"))
+		return "", "", errorutils.CheckErrorf("could not find the 'pip' executable in the system PATH")
 	}
 	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pce.ServerDetails, pce.Repository)
 	return

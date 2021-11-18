@@ -231,7 +231,7 @@ func GetJfrogHomeDir() (string, error) {
 
 	userHomeDir := fileutils.GetHomeDir()
 	if userHomeDir == "" {
-		err := errorutils.CheckError(errors.New("couldn't find home directory. Make sure your HOME environment variable is set"))
+		err := errorutils.CheckErrorf("couldn't find home directory. Make sure your HOME environment variable is set")
 		if err != nil {
 			return "", err
 		}

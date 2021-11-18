@@ -1,7 +1,6 @@
 package buildinfo
 
 import (
-	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"net/http"
@@ -110,7 +109,7 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 		buildString = buildString + " of project: " + bac.buildConfiguration.Project
 	}
 	if !found {
-		return 0, errorutils.CheckError(errors.New(buildString + " not found in Artifactory."))
+		return 0, errorutils.CheckErrorf(buildString + " not found in Artifactory.")
 	}
 
 	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.BuildInfo.Started)

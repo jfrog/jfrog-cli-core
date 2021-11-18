@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -37,8 +36,8 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, err
 	}
 	xrayVersion := version.NewVersion(xrayVersionStr)
 	if !xrayVersion.AtLeast(GraphScanMinVersion) {
-		return "", errorutils.CheckError(errors.New("You are using Xray version " +
-			string(xrayVersion.GetVersion()) + ", while this operation requires Xray version " + GraphScanMinVersion + " or higher."))
+		return "", errorutils.CheckErrorf("You are using Xray version " +
+			string(xrayVersion.GetVersion()) + ", while this operation requires Xray version " + GraphScanMinVersion + " or higher.")
 	}
 
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
@@ -76,7 +75,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	if tempDirExists {
 		err = os.RemoveAll(tempDirPath)
 		if err != nil {
-			return "", errorutils.CheckError(errors.New(fmt.Sprintf("Temporary download directory already exists, and can't be removed: %s\nRemove this directory manually and try again: %s", err.Error(), tempDirPath)))
+			return "", errorutils.CheckErrorf("Temporary download directory already exists, and can't be removed: %s\nRemove this directory manually and try again: %s", err.Error(), tempDirPath)
 		}
 	}
 
@@ -98,10 +97,10 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	if err == nil && resp.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return "", errorutils.CheckError(errors.New(fmt.Sprintf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())))
+			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())
 		}
 		resp.Body.Close()
-		return "", errorutils.CheckError(errors.New(fmt.Sprintf("%s received when attempting to download %s\n%s", resp.Status, url, body)))
+		return "", errorutils.CheckErrorf("%s received when attempting to download %s\n%s", resp.Status, url, body)
 	}
 
 	// Add execution permissions to the indexer

@@ -28,7 +28,7 @@ func (auditCmd *AuditPipCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	return auditCmd.runScanGraph(rootNodes)
+	return auditCmd.ScanDependencyTree(rootNodes)
 }
 
 func (auditCmd *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {

@@ -99,7 +99,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (*RepositoryConfig, error) {
 	if !vConfig.IsSet(prefix) {
-		return nil, errorutils.CheckError(fmt.Errorf("%s information is missing within %s", prefix, configFilePath))
+		return nil, errorutils.CheckErrorf("%s information is missing within %s", prefix, configFilePath)
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
@@ -149,7 +149,7 @@ func GetResolutionOnlyConfiguration(projectType ProjectType) (*RepositoryConfig,
 		return nil, err
 	}
 	if !exists {
-		return nil, errorutils.CheckError(fmt.Errorf(projectType.String() + " Project configuration does not exist."))
+		return nil, errorutils.CheckErrorf(projectType.String() + " Project configuration does not exist.")
 	}
 	return ReadResolutionOnlyConfiguration(confFilePath)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func CreateUsage(command string, name string, commands []string) string {
-	return "\nName:\n\t" + "jfrog " + command + " - " + name + "\n\nUsage:\n\t" + strings.Join(commands[:], "\n\t") + "\n"
+	return "\nName:\n\t" + command + " - " + name + "\n\nUsage:\n\t" + strings.Join(commands[:], "\n\t") + "\n"
 }
 
 func CreateBashCompletionFunc(extraCommands ...string) cli.BashCompleteFunc {

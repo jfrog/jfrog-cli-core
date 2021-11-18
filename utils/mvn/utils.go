@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"

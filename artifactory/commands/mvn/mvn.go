@@ -95,13 +95,8 @@ func (mc *MvnCommand) SetResult(result *commandsutils.Result) *MvnCommand {
 
 func (mc *MvnCommand) Run() error {
 	log.Info("Running Mvn...")
-	err := validateMavenInstallation()
-	if err != nil {
-		return err
-	}
 
-	var dependenciesPath string
-	dependenciesPath, err = downloadDependencies()
+	dependenciesPath, err := downloadDependencies()
 	if err != nil {
 		return err
 	}

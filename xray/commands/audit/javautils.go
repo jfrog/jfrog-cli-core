@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"errors"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"strconv"
 	"time"
@@ -33,7 +32,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 		return nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckError(errors.New("Couldn't find build " + buildConfig.BuildName + "/" + buildConfig.BuildNumber))
+		return nil, errorutils.CheckErrorf("Couldn't find build " + buildConfig.BuildName + "/" + buildConfig.BuildNumber)
 	}
 	modules := []*services.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {

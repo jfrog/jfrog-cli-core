@@ -278,7 +278,7 @@ func (extractor *packagesExtractor) getGlobalPackagesCache() (string, error) {
 		return "", err
 	}
 	if !exists {
-		return "", errorutils.CheckError(fmt.Errorf("Could not find global packages path at: %s", globalPackagesPath))
+		return "", errorutils.CheckErrorf("Could not find global packages path at: %s", globalPackagesPath)
 	}
 	return globalPackagesPath, nil
 }

@@ -1,8 +1,6 @@
 package coreutils
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -70,7 +68,7 @@ func getFlagValueAndValueIndex(flagName string, args []string, flagIndex int) (f
 		if len(indexValue) > 1 {
 			return indexValue[1:], flagIndex, nil
 		}
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Flag %s is provided with empty value.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Flag %s is provided with empty value.", flagName)
 	}
 
 	// Check if it is a different flag with same prefix, e.g --server-id-another
@@ -81,14 +79,14 @@ func getFlagValueAndValueIndex(flagName string, args []string, flagIndex int) (f
 	// If reached here, expect the flag value in next argument.
 	if len(args) < flagIndex+2 {
 		// Flag value does not exist.
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Failed extracting value of provided flag: %s.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Failed extracting value of provided flag: %s.", flagName)
 	}
 
 	nextIndexValue := args[flagIndex+1]
 	// Don't allow next value to be a flag.
 	if strings.HasPrefix(nextIndexValue, "-") {
 		// Flag value does not exist.
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Failed extracting value of provided flag: %s.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Failed extracting value of provided flag: %s.", flagName)
 	}
 
 	return nextIndexValue, flagIndex + 1, nil

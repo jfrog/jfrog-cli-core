@@ -7,7 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -19,7 +19,7 @@ type GradleCommand struct {
 	threads          int
 	detailedSummary  bool
 	xrayScan         bool
-	scanOutputFormat audit.OutputFormat
+	scanOutputFormat xraycommands.OutputFormat
 	result           *commandsutils.Result
 }
 
@@ -169,7 +169,7 @@ func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
 }
 
-func (gc *GradleCommand) SetScanOutputFormat(format audit.OutputFormat) *GradleCommand {
+func (gc *GradleCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *GradleCommand {
 	gc.scanOutputFormat = format
 	return gc
 }

@@ -1,8 +1,6 @@
 package generic
 
 import (
-	"errors"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -91,7 +89,7 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 		return
 	}
 	if errorOccurred {
-		err = errorutils.CheckError(errors.New("Operation finished with errors, please review the logs."))
+		err = errorutils.CheckErrorf("Operation finished with errors, please review the logs.")
 	}
 	return
 }

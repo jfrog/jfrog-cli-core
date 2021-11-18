@@ -144,7 +144,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 		return
 	}
 	if pythonExecutablePath == "" {
-		return "", errorutils.CheckError(errors.New("Could not find the 'python' executable in the system PATH"))
+		return "", errorutils.CheckErrorf("Could not find the 'python' executable in the system PATH")
 	}
 	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {

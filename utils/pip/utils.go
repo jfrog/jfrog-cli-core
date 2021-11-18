@@ -3,7 +3,6 @@ package piputils
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -48,7 +47,7 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 			return errorutils.CheckError(err)
 		}
 		if execPath == "" {
-			return errorutils.CheckError(errors.New("Could not find python3 or virtualenv executable in PATH"))
+			return errorutils.CheckErrorf("Could not find python3 or virtualenv executable in PATH")
 		}
 	}
 	cmdArgs = append(cmdArgs, venvDirPath)

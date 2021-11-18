@@ -170,12 +170,6 @@ func startBuild(executablePath string, ocFlags []string) (ocBuildName string, er
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	defer func() {
-		e := errorutils.CheckError(outputReader.Close())
-		if err == nil {
-			err = e
-		}
-	}()
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	if err != nil {
@@ -192,7 +186,7 @@ func startBuild(executablePath string, ocFlags []string) (ocBuildName string, er
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	err = errorutils.CheckError(cmd.Wait())
+	err = errorutils.CheckError(convertExitError(cmd.Wait()))
 	return
 }
 
@@ -201,7 +195,7 @@ func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha2
 	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
-		return "", "", errorutils.CheckError(err)
+		return "", "", errorutils.CheckError(convertExitError(err))
 	}
 	output := string(outputBytes)
 	splitOutput := strings.Split(strings.TrimSpace(output), "@")
@@ -216,7 +210,7 @@ func getOcVersion(executablePath string) (string, error) {
 	cmdArgs := []string{"version", "-o=json"}
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", errorutils.CheckError(convertExitError(err))
 	}
 	var versionRes ocVersionResponse
 	err = json.Unmarshal(outputBytes, &versionRes)
@@ -225,6 +219,13 @@ func getOcVersion(executablePath string) (string, error) {
 	}
 
 	return versionRes.ClientVersion.GitVersion, nil
+}
+
+func convertExitError(err error) error {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		return errors.New(string(exitError.Stderr))
+	}
+	return err
 }
 
 type ocVersionResponse struct {

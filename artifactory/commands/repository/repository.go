@@ -63,7 +63,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	case Virtual:
 		err = virtualRepoHandlers[repoConfigMap[PackageType].(string)](servicesManager, content, isUpdate)
 	default:
-		return errorutils.CheckError(errors.New("unsupported rclass"))
+		return errorutils.CheckErrorf("unsupported rclass")
 	}
 	return err
 }

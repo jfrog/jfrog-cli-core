@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -179,7 +178,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 
 func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (string, error) {
 	if config.GetString("type") != projectType.String() {
-		return "", errorutils.CheckError(errors.New("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type")))
+		return "", errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
 	}
 
 	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PropertiesTempPath)
@@ -270,7 +269,7 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 		return err
 	}
 	if artDetails.GetArtifactoryUrl() == "" {
-		return errorutils.CheckError(errors.New("Server ID " + serverId + ": URL is required."))
+		return errorutils.CheckErrorf("Server ID " + serverId + ": URL is required.")
 	}
 	vConfig.Set(contextPrefix+Url, artDetails.GetArtifactoryUrl())
 

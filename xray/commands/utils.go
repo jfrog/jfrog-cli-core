@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
@@ -18,4 +19,16 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayS
 		return nil, err
 	}
 	return xray.New(serviceConfig)
+}
+
+func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params services.XrayGraphScanParams, includeVulnerabilities, includeLicenses bool) (*services.ScanResponse, error) {
+	xrayManager, err := CreateXrayServiceManager(serverDetails)
+	if err != nil {
+		return nil, err
+	}
+	scanId, err := xrayManager.ScanGraph(params)
+	if err != nil {
+		return nil, err
+	}
+	return xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
 }

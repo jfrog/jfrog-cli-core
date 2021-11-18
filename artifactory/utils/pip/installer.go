@@ -1,7 +1,6 @@
 package pip
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -47,7 +46,7 @@ func (pi *PipInstaller) prepare() (pipExecutablePath, pipIndexUrl string, err er
 		return
 	}
 	if pipExecutablePath == "" {
-		return "", "", errorutils.CheckError(errors.New("Could not find the 'pip' executable in the system PATH"))
+		return "", "", errorutils.CheckErrorf("Could not find the 'pip' executable in the system PATH")
 	}
 	pipIndexUrl, err = getArtifactoryUrlWithCredentials(pi.ServerDetails, pi.Repository)
 	return

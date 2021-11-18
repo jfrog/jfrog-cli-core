@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
@@ -17,7 +16,7 @@ func LicenseRelease(bucketId, jpdId string, mcDetails *config.ServerDetails) err
 		Name: jpdId}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckError(errors.New("Failed to marshal json: " + err.Error()))
+		return errorutils.CheckErrorf("Failed to marshal json: " + err.Error())
 	}
 	missionControlUrl := mcDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/release"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(mcDetails)
@@ -30,7 +29,7 @@ func LicenseRelease(bucketId, jpdId string, mcDetails *config.ServerDetails) err
 		return err
 	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return errorutils.CheckError(errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body)))
+		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)
 	return nil

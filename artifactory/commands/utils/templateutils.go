@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
@@ -39,10 +38,10 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]AnswerWriter) error {
 	if _, ok := writersMap[key]; !ok {
-		return errorutils.CheckError(errors.New("template syntax error: unknown key: \"" + key + "\"."))
+		return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")
 	}
 	if _, ok := value.(string); !ok {
-		return errorutils.CheckError(errors.New("template syntax error: the value for the  key: \"" + key + "\" is not a string type."))
+		return errorutils.CheckErrorf("template syntax error: the value for the  key: \"" + key + "\" is not a string type.")
 	}
 	return nil
 }
@@ -53,14 +52,14 @@ func ValidateTemplatePath(templatePath string) error {
 		return errorutils.CheckError(err)
 	}
 	if exists || strings.HasSuffix(templatePath, string(os.PathSeparator)) {
-		return errorutils.CheckError(errors.New("path cannot be a directory," + PathErrorSuffixMsg))
+		return errorutils.CheckErrorf("path cannot be a directory," + PathErrorSuffixMsg)
 	}
 	exists, err = fileutils.IsFileExists(templatePath, false)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	if exists {
-		return errorutils.CheckError(errors.New("file already exists," + PathErrorSuffixMsg))
+		return errorutils.CheckErrorf("file already exists," + PathErrorSuffixMsg)
 	}
 	return nil
 }

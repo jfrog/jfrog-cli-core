@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io"
@@ -55,12 +54,12 @@ func (curlCmd *CurlCommand) Run() error {
 
 	// If the command already includes credentials flag, return an error.
 	if curlCmd.isCredentialsFlagExists() {
-		return errorutils.CheckError(errors.New("Curl command must not include credentials flag (-u or --user)."))
+		return errorutils.CheckErrorf("Curl command must not include credentials flag (-u or --user).")
 	}
 
 	// If the command already includes certificates flag, return an error.
 	if curlCmd.serverDetails.ClientCertPath != "" && curlCmd.isCertificateFlagExists() {
-		return errorutils.CheckError(errors.New("Curl command must not include certificate flag (--cert or --key)."))
+		return errorutils.CheckErrorf("Curl command must not include certificate flag (--cert or --key).")
 	}
 
 	// Get target url for the curl command.
@@ -111,13 +110,13 @@ func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue 
 	// Representing the target API for the Curl command.
 	uriIndex, uriValue = curlCmd.findUriValueAndIndex()
 	if uriIndex == -1 {
-		err = errorutils.CheckError(errors.New("Could not find argument in curl command."))
+		err = errorutils.CheckErrorf("Could not find argument in curl command.")
 		return
 	}
 
 	// If user provided full-url, throw an error.
 	if strings.HasPrefix(uriValue, "http://") || strings.HasPrefix(uriValue, "https://") {
-		err = errorutils.CheckError(errors.New("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping')."))
+		err = errorutils.CheckErrorf("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping').")
 		return
 	}
 

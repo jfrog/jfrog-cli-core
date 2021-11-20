@@ -2,7 +2,6 @@ package replication
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -98,7 +97,7 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 				return err
 			}
 		} else {
-			return errorutils.CheckError(errors.New("expected 'targetRepoKey' field in the json template file."))
+			return errorutils.CheckErrorf("expected 'targetRepoKey' field in the json template file.")
 		}
 	}
 	return servicesManager.CreateReplication(params)

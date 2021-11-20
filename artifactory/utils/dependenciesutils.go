@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,8 +18,8 @@ import (
 
 const (
 	// This env var should be used for downloading the extractor jars through an Artifactory remote
-	// repository, instead of downloading directly from ojo. The remote repository should be
-	// configured to proxy ojo.
+	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
+	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 )
@@ -52,16 +51,16 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
 
-	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from oss.jfrog.org.")
-	// If not configured to download through a remote repository in Artifactory, download from ojo.
-	return &config.ServerDetails{ArtifactoryUrl: "https://oss.jfrog.org/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
+	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
+	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
+	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
 // Get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
 func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.ServerDetails, string, error) {
 	lastSlashIndex := strings.LastIndex(extractorsRemote, "/")
 	if lastSlashIndex == -1 {
-		return nil, "", errorutils.CheckError(errors.New(fmt.Sprintf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)))
+		return nil, "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)
 	}
 
 	serverDetails, err := config.GetSpecificConfig(extractorsRemote[:lastSlashIndex], false, true)
@@ -104,7 +103,7 @@ func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPat
 	httpClientDetails := auth.CreateHttpClientDetails()
 	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		err = errorutils.CheckError(errors.New(resp.Status + " received when attempting to download " + downloadUrl))
+		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
 	}
 
 	return err

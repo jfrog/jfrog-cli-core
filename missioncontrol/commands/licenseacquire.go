@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
@@ -19,7 +18,7 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 	}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckError(errors.New("Failed to marshal json: " + err.Error()))
+		return errorutils.CheckErrorf("Failed to marshal json: " + err.Error())
 	}
 	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/acquire"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
@@ -32,7 +31,7 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errorutils.CheckError(errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body)))
+		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)
 
@@ -43,7 +42,7 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 		return errorutils.CheckError(err)
 	}
 	if len(licenseKeys.LicenseKeys) < 1 {
-		return errorutils.CheckError(errors.New("failed to acquire license key from Mission Control: received 0 license keys"))
+		return errorutils.CheckErrorf("failed to acquire license key from Mission Control: received 0 license keys")
 	}
 	// Print license to log
 	log.Output(licenseKeys.LicenseKeys[0])

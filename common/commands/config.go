@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -150,7 +149,7 @@ func (cc *ConfigCommand) Config() error {
 	if cc.encPassword && cc.details.ArtifactoryUrl != "" {
 		err = cc.encryptPassword()
 		if err != nil {
-			return errorutils.CheckError(fmt.Errorf("The following error was received while trying to encrypt your password: %s ", err))
+			return errorutils.CheckErrorf("The following error was received while trying to encrypt your password: %s ", err)
 		}
 	}
 
@@ -502,7 +501,7 @@ func Use(serverId string) error {
 		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
 		return nil
 	}
-	return errorutils.CheckError(errors.New(fmt.Sprintf("Could not find a server with ID '%s'.", serverId)))
+	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", serverId)
 }
 
 func ClearConfig(interactive bool) {
@@ -542,7 +541,7 @@ func checkSingleAuthMethod(details *config.ServerDetails) error {
 		details.AccessToken != "" && details.RefreshToken == "",
 		details.SshKeyPath != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
-		return errorutils.CheckError(errors.New("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token"))
+		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token")
 	}
 	return nil
 }

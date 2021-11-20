@@ -12,13 +12,16 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditMvnCommand()
+	auditCmd := NewEmptyAuditMavenCommand()
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, modulesDependencyTrees)
 
 	// Check root module
 	multi := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
+	if multi == nil {
+		t.FailNow()
+	}
 	assert.Empty(t, multi.Nodes)
 
 	// Check multi1 with a transitive dependency

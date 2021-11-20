@@ -34,21 +34,26 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 		return err
 	}
 	// All the values in the template are strings
-	// Go over the the confMap and write the values with the correct type using the writersMap
+	// Go over the confMap and write the values with the correct type using the writersMap
 	for key, value := range repoConfigMap {
 		if err = utils.ValidateMapEntry(key, value, writersMap); err != nil {
 			return
 		}
-		writersMap[key](&repoConfigMap, key, value.(string))
+		if err = writersMap[key](&repoConfigMap, key, value.(string)); err != nil {
+			return
+		}
 	}
 	// Write a JSON with the correct values
 	content, err := json.Marshal(repoConfigMap)
+	if err != nil {
+		return err
+	}
 
 	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}
-	// Rclass and packgeType are mandatory keys in our templates
+	// Rclass and packageType are mandatory keys in our templates
 	// Using their values we'll pick the suitable handler from one of the handler maps to create/update a repository
 	switch repoConfigMap[Rclass] {
 	case Local:
@@ -58,7 +63,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	case Virtual:
 		err = virtualRepoHandlers[repoConfigMap[PackageType].(string)](servicesManager, content, isUpdate)
 	default:
-		return errorutils.CheckError(errors.New("unsupported rclass"))
+		return errorutils.CheckErrorf("unsupported rclass")
 	}
 	return err
 }
@@ -74,6 +79,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	IncludePatterns:                   utils.WriteStringAnswer,
 	ExcludePatterns:                   utils.WriteStringAnswer,
 	RepoLayoutRef:                     utils.WriteStringAnswer,
+	ProjectKey:                        utils.WriteStringAnswer,
 	HandleReleases:                    utils.WriteBoolAnswer,
 	HandleSnapshots:                   utils.WriteBoolAnswer,
 	MaxUniqueSnapshots:                utils.WriteIntAnswer,
@@ -148,14 +154,33 @@ func writeContentSynchronisation(resultMap *map[string]interface{}, key, value s
 		return errors.New("invalid value for Content Synchronisation")
 	}
 	var cs services.ContentSynchronisation
-	cs.Enabled, _ = strconv.ParseBool(answerArray[0])
-	cs.Statistics.Enabled, _ = strconv.ParseBool(answerArray[1])
-	cs.Properties.Enabled, _ = strconv.ParseBool(answerArray[2])
-	cs.Source.OriginAbsenceDetection, _ = strconv.ParseBool(answerArray[3])
+
+	enabled, err := strconv.ParseBool(answerArray[0])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[1])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Statistics.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[2])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Properties.Enabled = &enabled
+
+	enabled, err = strconv.ParseBool(answerArray[3])
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	cs.Source.OriginAbsenceDetection = &enabled
 
 	(*resultMap)[key] = cs
 	return nil
-
 }
 
 // repoHandler is a function that gets serviceManager, JSON configuration content and a flag indicates is the operation in an update operation
@@ -187,6 +212,7 @@ var localRepoHandlers = map[string]repoHandler{
 	Conan:     localConanHandler,
 	Chef:      localChefHandler,
 	Puppet:    localPuppetHandler,
+	Alpine:    localAlpineHandler,
 	Generic:   localGenericHandler,
 }
 
@@ -526,6 +552,20 @@ func localPuppetHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func localAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Alpine(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -568,6 +608,7 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Conda:     remoteCondaHandler,
 	P2:        remoteP2Handler,
 	Vcs:       remoteVcsHandler,
+	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
 }
 
@@ -893,6 +934,20 @@ func remoteVcsHandler(servicesManager artifactory.ArtifactoryServicesManager, js
 	return err
 }
 
+func remoteAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Alpine(params)
+	}
+	return err
+}
+
 func remoteP2Handler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewP2RemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -972,6 +1027,7 @@ var virtualRepoHandlers = map[string]repoHandler{
 	Puppet:  virtualPuppetHandler,
 	Conda:   virtualCondaHandler,
 	P2:      virtualP2Handler,
+	Alpine:  virtualAlpineHandler,
 	Generic: virtualGenericHandler,
 }
 
@@ -1265,6 +1321,20 @@ func virtualP2Handler(servicesManager artifactory.ArtifactoryServicesManager, js
 		err = servicesManager.UpdateVirtualRepository().P2(params)
 	} else {
 		err = servicesManager.CreateVirtualRepository().P2(params)
+	}
+	return err
+}
+
+func virtualAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineVirtualRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateVirtualRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateVirtualRepository().Alpine(params)
 	}
 	return err
 }

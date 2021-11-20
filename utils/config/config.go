@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"io/ioutil"
@@ -121,7 +120,7 @@ func getServerConfByServerId(serverId string, configs []*ServerDetails) (*Server
 			return conf, nil
 		}
 	}
-	return nil, errorutils.CheckError(errors.New(fmt.Sprintf("Server ID '%s' does not exist.", serverId)))
+	return nil, errorutils.CheckErrorf("Server ID '%s' does not exist.", serverId)
 }
 
 func GetAndRemoveConfiguration(serverName string, configs []*ServerDetails) (*ServerDetails, []*ServerDetails) {

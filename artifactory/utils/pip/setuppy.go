@@ -1,8 +1,6 @@
 package pip
 
 import (
-	"errors"
-	"fmt"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -35,7 +33,7 @@ func getProjectNameFromFileContent(content []byte) (string, error) {
 	// Find first match of packageNameRegexp.
 	match := packageNameRegexp.FindStringSubmatch(string(content))
 	if len(match) < 2 {
-		return "", errorutils.CheckError(errors.New("Failed extracting package name from content."))
+		return "", errorutils.CheckErrorf("Failed extracting package name from content.")
 	}
 
 	return match[1], nil
@@ -76,7 +74,7 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 	// Read PKG-INFO file.
 	pkginfoFileExists, err := fileutils.IsFileExists(pkginfoPath, false)
 	if !pkginfoFileExists {
-		return nil, errorutils.CheckError(errors.New(fmt.Sprintf("File 'PKG-INFO' couldn't be found in its designated location: %s", pkginfoPath)))
+		return nil, errorutils.CheckErrorf("File 'PKG-INFO' couldn't be found in its designated location: %s", pkginfoPath)
 	}
 
 	return ioutil.ReadFile(pkginfoPath)
@@ -92,7 +90,7 @@ func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
 
 	matchedOutputLines := pkginfoRegexp.FindAllString(egginfoOutput, -1)
 	if len(matchedOutputLines) != 1 {
-		return "", errorutils.CheckError(errors.New("Failed parsing egg_info command, couldn't find PKG-INFO location."))
+		return "", errorutils.CheckErrorf("Failed parsing egg_info command, couldn't find PKG-INFO location.")
 	}
 
 	// Extract path from matched line.

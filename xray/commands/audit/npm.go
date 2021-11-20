@@ -1,12 +1,8 @@
 package audit
 
 import (
-	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -14,69 +10,18 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
+func NewAuditNpmCommand(auditCmd AuditCommand) *AuditNpmCommand {
+	return &AuditNpmCommand{AuditCommand: auditCmd}
+}
+
 type AuditNpmCommand struct {
-	serverDetails          *config.ServerDetails
-	outputFormat           OutputFormat
-	arguments              []string
-	typeRestriction        npmutils.TypeRestriction
-	watches                []string
-	projectKey             string
-	targetRepoPath         string
-	includeVulnerabilities bool
-	includeLincenses       bool
-}
-
-func (auditCmd *AuditNpmCommand) SetOutputFormat(format OutputFormat) *AuditNpmCommand {
-	auditCmd.outputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetArguments(args []string) *AuditNpmCommand {
-	auditCmd.arguments = args
-	return auditCmd
+	AuditCommand
+	typeRestriction npmutils.TypeRestriction
 }
 
 func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *AuditNpmCommand {
 	auditCmd.typeRestriction = typeRestriction
 	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetServerDetails(server *config.ServerDetails) *AuditNpmCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
-}
-
-func (auditCmd *AuditNpmCommand) SetWatches(watches []string) *AuditNpmCommand {
-	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetProject(project string) *AuditNpmCommand {
-	auditCmd.projectKey = project
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetTargetRepoPath(repoPath string) *AuditNpmCommand {
-	auditCmd.targetRepoPath = repoPath
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetIncludeVulnerabilities(include bool) *AuditNpmCommand {
-	auditCmd.includeVulnerabilities = include
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) SetIncludeLincenses(include bool) *AuditNpmCommand {
-	auditCmd.includeLincenses = include
-	return auditCmd
-}
-
-func NewAuditNpmCommand() *AuditNpmCommand {
-	return &AuditNpmCommand{}
 }
 
 func (auditCmd *AuditNpmCommand) Run() (err error) {
@@ -99,46 +44,10 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// Parse the dependencies into an Xray dependency tree format
-	npmGraph := parseNpmDependenciesList(dependenciesList, packageInfo)
-	xrayManager, err := commands.CreateXrayServiceManager(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	params := services.NewXrayGraphScanParams()
-	params.Graph = npmGraph
-	params.RepoPath = auditCmd.targetRepoPath
-	params.Watches = auditCmd.watches
-	params.ProjectKey = auditCmd.projectKey
+	// Parse the dependencies into Xray dependency tree format
+	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
 
-	scanId, err := xrayManager.ScanGraph(params)
-	if err != nil {
-		return err
-	}
-
-	scanResults, err := xrayManager.GetScanGraphResults(scanId, auditCmd.includeVulnerabilities, auditCmd.includeLincenses)
-	if err != nil {
-		return err
-	}
-	if auditCmd.outputFormat == Table {
-		resultsPath, err := xrutils.WriteJsonResults([]services.ScanResponse{*scanResults})
-		if err != nil {
-			return err
-		}
-		fmt.Println("The full scan results are available here: " + resultsPath)
-
-		if auditCmd.includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(scanResults.Vulnerabilities, false)
-		} else {
-			err = xrutils.PrintViolationsTable(scanResults.Violations, false)
-		}
-		if auditCmd.includeLincenses {
-			xrutils.PrintLicensesTable(scanResults.Licenses, false)
-		}
-	} else {
-		err = xrutils.PrintJson([]services.ScanResponse{*scanResults})
-	}
-	return err
+	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 
 // Parse the dependencies into an Xray dependency tree format

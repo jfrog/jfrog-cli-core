@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"github.com/gookit/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -27,7 +25,10 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	coloredOutput := coreutils.IsTerminal()
 
 	for _, violation := range violations {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(violation.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		currSeverity := getSeverity(violation.Severity)
 		if violation.ViolationType == "security" {
 			cves := convertCves(violation.Cves)
@@ -101,7 +102,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) error {
 	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --target-path or --project.\n" +
+		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
 
@@ -110,7 +111,10 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 	var vulnerabilitiesRows []vulnerabilityRow
 
 	for _, vulnerability := range vulnerabilities {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components := splitComponents(vulnerability.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		cves := convertCves(vulnerability.Cves)
 		currSeverity := getSeverity(vulnerability.Severity)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -148,7 +152,10 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 	var licensesRows []licenseRow
 
 	for _, license := range licenses {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components := splitComponents(license.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
+		if err != nil {
+			return err
+		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				licenseRow{
@@ -164,15 +171,6 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 
 	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found")
 	return err
-}
-
-func PrintJson(jsonRes []services.ScanResponse) error {
-	results, err := json.Marshal(&jsonRes)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	fmt.Println(clientutils.IndentJson(results))
-	return nil
 }
 
 // Used for vulnerabilities and security violations
@@ -225,7 +223,10 @@ func convertCves(cves []services.Cve) []cveRow {
 	return cveRows
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow) {
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow, error) {
+	if len(impactedPackages) == 0 {
+		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
+	}
 	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
 	var directComponents [][]componentRow
 	for currCompId, currComp := range impactedPackages {
@@ -237,7 +238,7 @@ func splitComponents(impactedPackages map[string]services.Component, multipleRoo
 		currComponents := getDirectComponents(currComp.ImpactPaths, multipleRoots)
 		directComponents = append(directComponents, currComponents)
 	}
-	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents
+	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents, nil
 }
 
 var packageTypes = map[string]string{
@@ -249,6 +250,7 @@ var packageTypes = map[string]string{
 	"generic":  "Generic",
 	"npm":      "npm",
 	"pip":      "Python",
+	"pypi":     "Python",
 	"composer": "Composer",
 	"go":       "Go",
 	"alpine":   "Alpine",

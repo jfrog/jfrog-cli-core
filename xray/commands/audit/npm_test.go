@@ -64,14 +64,14 @@ func TestParseNpmDependenciesList(t *testing.T) {
 
 	xrayDependenciesTree := parseNpmDependenciesList(dependencies, packageInfo)
 
-	equals := comapareTree(expectedTree, xrayDependenciesTree)
+	equals := compareTree(expectedTree, xrayDependenciesTree)
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 	}
 
 }
 
-func comapareTree(a, b *services.GraphNode) bool {
+func compareTree(a, b *services.GraphNode) bool {
 	if a.Id != b.Id {
 		return false
 	}
@@ -79,7 +79,7 @@ func comapareTree(a, b *services.GraphNode) bool {
 	for _, nodeA := range a.Nodes {
 		found := false
 		for _, nodeB := range b.Nodes {
-			if comapareTree(nodeA, nodeB) {
+			if compareTree(nodeA, nodeB) {
 				found = true
 				break
 			}

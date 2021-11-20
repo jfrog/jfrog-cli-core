@@ -31,6 +31,8 @@ var cliUserAgentVersion string
 var clientAgentName string
 var clientAgentVersion string
 
+var cliExecutableName string
+
 func init() {
 	// Initialize error handling.
 	if os.Getenv(ErrorHandling) == string(OnErrorPanic) {
@@ -229,7 +231,7 @@ func GetJfrogHomeDir() (string, error) {
 
 	userHomeDir := fileutils.GetHomeDir()
 	if userHomeDir == "" {
-		err := errorutils.CheckError(errors.New("couldn't find home directory. Make sure your HOME environment variable is set"))
+		err := errorutils.CheckErrorf("couldn't find home directory. Make sure your HOME environment variable is set")
 		if err != nil {
 			return "", err
 		}
@@ -394,4 +396,12 @@ func SetClientAgentVersion(versionToSet string) {
 
 func GetClientAgentVersion() string {
 	return clientAgentVersion
+}
+
+func SetCliExecutableName(executableName string) {
+	cliExecutableName = executableName
+}
+
+func GetCliExecutableName() string {
+	return cliExecutableName
 }

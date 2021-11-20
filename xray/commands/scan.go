@@ -1,16 +1,18 @@
-package audit
+package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -29,7 +31,8 @@ const (
 	Table OutputFormat = "table"
 	Json  OutputFormat = "json"
 
-	indexingCommand = "graph"
+	indexingCommand          = "graph"
+	fileNotSupportedExitCode = 3
 )
 
 type ScanCommand struct {
@@ -42,7 +45,7 @@ type ScanCommand struct {
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
-	includeLincenses       bool
+	includeLicenses        bool
 	scanPassed             bool
 }
 
@@ -81,8 +84,8 @@ func (scanCmd *ScanCommand) SetIncludeVulnerabilities(include bool) *ScanCommand
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetIncludeLincenses(include bool) *ScanCommand {
-	scanCmd.includeLincenses = include
+func (scanCmd *ScanCommand) SetIncludeLicenses(include bool) *ScanCommand {
+	scanCmd.includeLicenses = include
 	return scanCmd
 }
 
@@ -102,35 +105,26 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
-		return nil, errorutils.CheckError(err)
+		if e, ok := err.(*exec.ExitError); ok {
+			if e.ExitCode() == fileNotSupportedExitCode {
+				log.Debug(fmt.Sprintf("File %s is not supported by Xray indexer app.", filePath))
+				return &indexerResults, nil
+			}
+		}
+		return nil, errorutils.CheckErrorf("Xray indexer app failed indexing %s with %s: %s", filePath, err, output)
 	}
 	err = json.Unmarshal([]byte(output), &indexerResults)
 	return &indexerResults, errorutils.CheckError(err)
 }
 
-func (scanCmd *ScanCommand) getXrScanGraphResults(graph *services.GraphNode, file *spec.File) (*services.ScanResponse, error) {
-	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
-	if err != nil {
-		return nil, err
-	}
-	params := services.NewXrayGraphScanParams()
-	params.RepoPath = file.Target
-	params.Watches = scanCmd.watches
-	params.Graph = graph
-	scanId, err := xrayManager.ScanGraph(params)
-	if err != nil {
-		return nil, err
-	}
-	scanResults, err := xrayManager.GetScanGraphResults(scanId, scanCmd.includeVulnerabilities, scanCmd.includeLincenses)
-	if err != nil {
-		return nil, err
-	}
-	return scanResults, nil
-}
-
 func (scanCmd *ScanCommand) Run() (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.New("Scan command failed. " + err.Error())
+		}
+	}()
 	// First download Xray Indexer if needed
-	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
+	xrayManager, err := CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -138,7 +132,11 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	resultsArr := make([][]*services.ScanResponse, scanCmd.threads)
+	threads := 1
+	if scanCmd.threads > 1 {
+		threads = scanCmd.threads
+	}
+	resultsArr := make([][]*services.ScanResponse, threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
 	fileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	indexedFileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -146,7 +144,21 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	// Start walking on the filesystem to "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
-	scanCmd.scanPassed, err = scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr)
+	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer)
+
+	// Handle results
+	scanCmd.scanPassed = true
+	flatResults := []services.ScanResponse{}
+	for _, arr := range resultsArr {
+		for _, res := range arr {
+			flatResults = append(flatResults, *res)
+			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
+				// A violation or vulnerability was found, the scan failed.
+				scanCmd.scanPassed = false
+			}
+		}
+	}
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
 	if err != nil {
 		return err
 	}
@@ -154,7 +166,12 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	return indexedFileProducerErrorsQueue.GetError()
+	err = indexedFileProducerErrorsQueue.GetError()
+	if err != nil {
+		return err
+	}
+	log.Info("Scan completed successfully.")
+	return nil
 }
 
 func NewScanCommand() *ScanCommand {
@@ -171,7 +188,6 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
 		for _, fileGroup := range scanCmd.spec.Files {
-
 			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue)
 			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
@@ -193,12 +209,26 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			if err != nil {
 				return err
 			}
-			// Add a new task to the seconde prodicer/consumer
+			// In case of empty graph returned by the indexer,
+			// for instance due to unsupported file format, continue without sending a
+			// graph request to Xray.
+			if graph.Id == "" {
+				return nil
+			}
+			// Add a new task to the second producer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
-				scanResults, err := scanCmd.getXrScanGraphResults(graph, file)
+				params := services.XrayGraphScanParams{
+					Graph:      graph,
+					RepoPath:   getXrayRepoPathFromTarget(file.Target),
+					Watches:    scanCmd.watches,
+					ProjectKey: scanCmd.projectKey,
+					ScanType:   services.Binary,
+				}
+				scanResults, err := RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
 				if err != nil {
-					return err
+					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
+					return
 				}
 				resultsArr[threadId] = append(resultsArr[threadId], scanResults)
 				return
@@ -217,65 +247,20 @@ func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils
 	}
 }
 
-func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner, resultsArr [][]*services.ScanResponse) (bool, error) {
+func (scanCmd *ScanCommand) performScanTasks(fileConsumer parallel.Runner, indexedFileConsumer parallel.Runner) {
 	go func() {
 		// Blocking until consuming is finished.
 		fileConsumer.Run()
-		// After all files has been indexed, The seconde producer notifies that no more tasks will be produced.
+		// After all files have been indexed, The second producer notifies that no more tasks will be produced.
 		indexedFileConsumer.Done()
 	}()
 	// Blocking until consuming is finished.
 	indexedFileConsumer.Run()
-	// Handle results
-	scanPassed := true
-	violations := []services.Violation{}
-	vulnerabilities := []services.Vulnerability{}
-	licenses := []services.License{}
-	flatResults := []services.ScanResponse{}
-	for _, arr := range resultsArr {
-		for _, res := range arr {
-			flatResults = append(flatResults, *res)
-
-			if scanCmd.outputFormat == Table {
-				violations = append(violations, res.Violations...)
-				vulnerabilities = append(vulnerabilities, res.Vulnerabilities...)
-				licenses = append(licenses, res.Licenses...)
-			}
-			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
-				// A violation or vulnerability was found, the scan failed.
-				scanPassed = false
-			}
-		}
-	}
-	var err error
-	if scanCmd.outputFormat == Table {
-		if len(flatResults) > 0 {
-			resultsPath, err := xrutils.WriteJsonResults(flatResults)
-			if err != nil {
-				return false, err
-			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
-		}
-		if scanCmd.includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(vulnerabilities, true)
-		} else {
-			err = xrutils.PrintViolationsTable(violations, true)
-		}
-		if scanCmd.includeLincenses {
-			xrutils.PrintLicensesTable(licenses, true)
-		}
-	} else {
-		err = xrutils.PrintJson(flatResults)
-	}
-	if scanPassed {
-		log.Info("Scan completed successfully.")
-	}
-	return scanPassed, err
 }
 
 func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandlerFunc) error {
 
-	fileData.Pattern = (clientutils.ReplaceTildeWithUserHome(fileData.Pattern))
+	fileData.Pattern = clientutils.ReplaceTildeWithUserHome(fileData.Pattern)
 	patternType := fileData.GetPatternType()
 	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, patternType, false)
 	if err != nil {
@@ -320,7 +305,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		if err != nil {
 			return err
 		}
-		// Because paths should contains all files and directories (walks recursively) we can ignore dirs, as only files relevance for indexing.
+		// Because paths should contain all files and directories (walks recursively) we can ignore dirs, as only files relevance for indexing.
 		if isDir {
 			continue
 		}
@@ -329,4 +314,15 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		}
 	}
 	return nil
+}
+
+// Xray expects a path inside a repo, but does not accept a path to a file.
+// Therefore, if the given target path is a path to a file,
+// the path to the parent directory will be returned.
+// Otherwise, the func will return the path itself.
+func getXrayRepoPathFromTarget(target string) (repoPath string) {
+	if strings.HasSuffix(target, "/") {
+		return target
+	}
+	return target[:strings.LastIndex(target, "/")+1]
 }

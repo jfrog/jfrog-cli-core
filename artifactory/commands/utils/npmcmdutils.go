@@ -4,9 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,10 +13,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -26,7 +28,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
-	"github.com/pkg/errors"
 )
 
 const minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
@@ -69,7 +70,7 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	// Validate version.
 	rtVersion := version.NewVersion(versionStr)
 	if !rtVersion.AtLeast(minSupportedArtifactoryVersionForNpmCmds) {
-		return errorutils.CheckError(errors.New("this operation requires Artifactory version " + minSupportedArtifactoryVersionForNpmCmds + " or higher"))
+		return errorutils.CheckErrorf("this operation requires Artifactory version " + minSupportedArtifactoryVersionForNpmCmds + " or higher")
 	}
 
 	return nil
@@ -104,7 +105,7 @@ func getNpmAuthUsingBasicAuth(artDetails *auth.ServiceDetails) (npmAuth string, 
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body)))
+		return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body))
 	}
 
 	return string(body), nil
@@ -201,7 +202,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xraycommands.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -230,6 +231,16 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xra
 	}
 	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
+
+	flagIndex, valueIndex, format, err := coreutils.FindFlag("--format", args)
+	if err != nil {
+		return
+	}
+	scanOutputFormat, err = GetXrayOutputFormat(format)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 	return
@@ -290,7 +301,7 @@ func createRestoreFileFunc(filePath, backupPath string) func() error {
 				err = os.Remove(filePath)
 				return errorutils.CheckError(err)
 			}
-			return errorutils.CheckError(errors.New(createRestoreErrorPrefix(filePath, backupPath) + err.Error()))
+			return errorutils.CheckErrorf(createRestoreErrorPrefix(filePath, backupPath) + err.Error())
 		}
 
 		if err := fileutils.MoveFile(backupPath, filePath); err != nil {

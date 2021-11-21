@@ -1,7 +1,7 @@
 package utils
 
 import (
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"strings"
 

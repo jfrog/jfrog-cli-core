@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"

@@ -1,4 +1,4 @@
-package commands
+package scan
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -118,7 +119,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		}
 	}()
 	// First download Xray Indexer if needed
-	xrayManager, err := CreateXrayServiceManager(scanCmd.serverDetails)
+	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -226,7 +227,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					ProjectKey: scanCmd.projectKey,
 					ScanType:   services.Binary,
 				}
-				scanResults, err := RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
+				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
 				if err != nil {
 					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
 					return

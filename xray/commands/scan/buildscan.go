@@ -19,6 +19,10 @@ type BuildScanV2Command struct {
 	failBuild              bool
 }
 
+func NewBuildScanV2Command() *BuildScanV2Command {
+	return &BuildScanV2Command{}
+}
+
 func (bsc *BuildScanV2Command) SetServerDetails(server *config.ServerDetails) *BuildScanV2Command {
 	bsc.serverDetails = server
 	return bsc
@@ -46,10 +50,6 @@ func (bsc *BuildScanV2Command) SetIncludeVulnerabilities(include bool) *BuildSca
 func (bsc *BuildScanV2Command) SetFailBuild(failBuild bool) *BuildScanV2Command {
 	bsc.failBuild = failBuild
 	return bsc
-}
-
-func NewBuildScanV2Command() *BuildScanV2Command {
-	return &BuildScanV2Command{}
 }
 
 func (bsc *BuildScanV2Command) Run() (err error) {

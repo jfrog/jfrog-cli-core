@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
-	"regexp"
-	"strings"
-
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -20,17 +16,15 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os/exec"
+	"regexp"
+	"strings"
 )
 
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
-type OutputFormat string
 
 const (
-	// OutputFormat values
-	Table OutputFormat = "table"
-	Json  OutputFormat = "json"
-
 	indexingCommand          = "graph"
 	fileNotSupportedExitCode = 3
 )
@@ -41,7 +35,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
-	outputFormat           OutputFormat
+	outputFormat           xrutils.OutputFormat
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
@@ -54,7 +48,7 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetOutputFormat(format OutputFormat) *ScanCommand {
+func (scanCmd *ScanCommand) SetOutputFormat(format xrutils.OutputFormat) *ScanCommand {
 	scanCmd.outputFormat = format
 	return scanCmd
 }
@@ -158,9 +152,16 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			}
 		}
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
 	if err != nil {
 		return err
+	}
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
+	if err != nil {
+		return err
+	}
+	if xrutils.CheckIfFailBuild(scanCmd.includeVulnerabilities == false, flatResults) {
+		return xrutils.ThrowFailBuildError()
 	}
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {

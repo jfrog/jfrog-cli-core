@@ -13,7 +13,7 @@ import (
 
 type AuditCommand struct {
 	serverDetails          *config.ServerDetails
-	outputFormat           xraycommands.OutputFormat
+	outputFormat           xrutils.OutputFormat
 	watches                []string
 	projectKey             string
 	targetRepoPath         string
@@ -30,7 +30,7 @@ func (auditCmd *AuditCommand) SetServerDetails(server *config.ServerDetails) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) SetOutputFormat(format xraycommands.OutputFormat) *AuditCommand {
+func (auditCmd *AuditCommand) SetOutputFormat(format xrutils.OutputFormat) *AuditCommand {
 	auditCmd.outputFormat = format
 	return auditCmd
 }
@@ -89,5 +89,12 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
-	return xrutils.PrintScanResults(results, auditCmd.outputFormat == xraycommands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	err := xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	if err != nil {
+		return err
+	}
+	if xrutils.CheckIfFailBuild(auditCmd.includeVulnerabilities == false, results) {
+		return xrutils.ThrowFailBuildError()
+	}
+	return nil
 }

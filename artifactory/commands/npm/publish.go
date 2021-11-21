@@ -6,6 +6,7 @@ import (
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,7 +45,7 @@ type NpmPublishCommandArgs struct {
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
-	scanOutputFormat       xraycommands.OutputFormat
+	scanOutputFormat       xrutils.OutputFormat
 	packDestination        string
 }
 
@@ -89,7 +90,7 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
-func (npc *NpmPublishCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *NpmPublishCommand {
+func (npc *NpmPublishCommand) SetScanOutputFormat(format xrutils.OutputFormat) *NpmPublishCommand {
 	npc.scanOutputFormat = format
 	return npc
 }

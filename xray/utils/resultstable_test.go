@@ -20,6 +20,10 @@ func TestPrintViolationsTable(t *testing.T) {
 
 	for _, test := range tests {
 		err := PrintViolationsTable(test.violations, false)
+		assert.NoError(t, err)
+		if CheckIfFailBuild(true, []services.ScanResponse{{Violations: test.violations}}) {
+			err = ThrowFailBuildError()
+		}
 		assert.Equal(t, test.expectedError, err != nil)
 	}
 }

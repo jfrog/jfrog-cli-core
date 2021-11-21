@@ -2,10 +2,11 @@ package generic
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"strconv"
 	"time"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -45,6 +46,10 @@ func (uc *UploadCommand) SetUploadConfiguration(uploadConfiguration *utils.Uploa
 
 func (uc *UploadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	uc.progress = progress
+}
+
+func (uc *UploadCommand) IsFileProgress() bool {
+	return true
 }
 
 func (uc *UploadCommand) ShouldPrompt() bool {

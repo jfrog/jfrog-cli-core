@@ -2,11 +2,12 @@ package generic
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
@@ -49,6 +50,10 @@ func (dc *DownloadCommand) SetConfiguration(configuration *utils.DownloadConfigu
 
 func (dc *DownloadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	dc.progress = progress
+}
+
+func (dc *DownloadCommand) IsFileProgress() bool {
+	return true
 }
 
 func (dc *DownloadCommand) ShouldPrompt() bool {

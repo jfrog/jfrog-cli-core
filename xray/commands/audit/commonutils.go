@@ -93,8 +93,11 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	if err != nil {
 		return err
 	}
-	if xrutils.CheckIfFailBuild(auditCmd.includeVulnerabilities == false, results) {
-		return xrutils.ThrowFailBuildError()
+	if auditCmd.includeVulnerabilities == false {
+		if xrutils.CheckIfFailBuild(results) {
+			return xrutils.ThrowFailBuildError()
+		}
 	}
+
 	return nil
 }

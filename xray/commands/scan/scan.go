@@ -161,8 +161,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if xrutils.CheckIfFailBuild(scanCmd.includeVulnerabilities == false, flatResults) {
-		return xrutils.ThrowFailBuildError()
+	if scanCmd.includeVulnerabilities == false {
+		if xrutils.CheckIfFailBuild(flatResults) {
+			return xrutils.ThrowFailBuildError()
+		}
 	}
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {

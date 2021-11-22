@@ -90,13 +90,11 @@ func printJson(jsonRes []services.ScanResponse) error {
 	return nil
 }
 
-func CheckIfFailBuild(includeViolations bool, results []services.ScanResponse) bool {
-	if includeViolations == true {
-		for _, result := range results {
-			for _, violation := range result.Violations {
-				if violation.FailBuild == true {
-					return true
-				}
+func CheckIfFailBuild(results []services.ScanResponse) bool {
+	for _, result := range results {
+		for _, violation := range result.Violations {
+			if violation.FailBuild == true {
+				return true
 			}
 		}
 	}

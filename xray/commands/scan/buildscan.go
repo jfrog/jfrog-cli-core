@@ -69,15 +69,17 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 	}
 	defer func() {
 		if failBuild {
-			// deferred so if build summery fails it will still throw build error if needed
+			// deferred so if build summery fails it will still throw fail build if needed
 			if err != nil {
 				log.Error(err)
 			}
 			err = xrutils.ThrowFailBuildError()
 		}
 	}()
+
 	if bsc.includeVulnerabilities {
 		// if vulnerabilities flag is true, get vulnerabilities from xray with build-summery and print to output
+		log.Info("Running build-summary command to get all vulnerabilities...")
 		err = bsc.runBuildSummaryAndPrintVulnerabilities(xrayManager, params)
 		if err != nil {
 			return err
@@ -87,9 +89,14 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 }
 
 func (bsc *BuildScanV2Command) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
-	err := xrayManager.BuildScanV2(params)
+	buildScanInfo, err := xrayManager.BuildScanV2(params)
 	if err != nil {
 		return false, err
+	}
+	if strings.Contains(buildScanInfo, services.XrayScanBuildNoFailBuildPolicy) {
+		// No Xray “Fail build in case of a violation” policy rule has been defined on this build,
+		// so no need to get results or print
+		return false, nil
 	}
 	buildScanResults, err := xrayManager.GetBuildScanResults(params)
 	if err != nil {
@@ -100,7 +107,7 @@ func (bsc *BuildScanV2Command) runBuildScanAndPrintResults(xrayManager *xray.Xra
 	if err != nil {
 		return false, err
 	}
-	return xrutils.CheckIfFailBuild(true, scanResponseArray), nil
+	return xrutils.CheckIfFailBuild(scanResponseArray), nil
 }
 
 func (bsc *BuildScanV2Command) runBuildSummaryAndPrintVulnerabilities(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) error {

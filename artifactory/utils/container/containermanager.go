@@ -46,6 +46,7 @@ type ContainerManager interface {
 	Id(image *Image) (string, error)
 	OsCompatibility(image *Image) (string, string, error)
 	Pull(image *Image) error
+	Save(image *Image, outputPath string) error
 	GetContainerManagerType() ContainerManagerType
 }
 
@@ -73,6 +74,12 @@ func (containerManager *containerManager) Id(image *Image) (string, error) {
 // Pull image
 func (containerManager *containerManager) Pull(image *Image) error {
 	cmd := &pullCmd{image: image, containerManager: containerManager.Type}
+	return cmd.RunCmd()
+}
+
+// Save image
+func (containerManager *containerManager) Save(image *Image, outputPath string) error {
+	cmd := &saveCmd{image: image, containerManager: containerManager.Type, outputPath: outputPath}
 	return cmd.RunCmd()
 }
 
@@ -242,6 +249,30 @@ func (pullCmd *pullCmd) RunCmd() error {
 	command := pullCmd.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
+	return command.Run()
+}
+
+// Image save command
+type saveCmd struct {
+	image            *Image
+	containerManager ContainerManagerType
+	outputPath       string
+}
+
+func (saveCmd *saveCmd) GetCmd() *exec.Cmd {
+	var cmd []string
+	cmd = append(cmd, "save")
+	cmd = append(cmd, saveCmd.image.tag)
+	cmd = append(cmd, "-o")
+	cmd = append(cmd, saveCmd.outputPath)
+	return exec.Command(saveCmd.containerManager.String(), cmd[:]...)
+}
+
+func (saveCmd *saveCmd) RunCmd() error {
+	command := saveCmd.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	log.Info("Running docker command: docker " + strings.Join(command.Args, " "))
 	return command.Run()
 }
 

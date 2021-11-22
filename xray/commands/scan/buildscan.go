@@ -52,6 +52,7 @@ func (bsc *BuildScanV2Command) SetFailBuild(failBuild bool) *BuildScanV2Command 
 	return bsc
 }
 
+// New Build-Scan command that works directly with Xray
 func (bsc *BuildScanV2Command) Run() (err error) {
 	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
 	if err != nil {
@@ -63,7 +64,7 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 		Project:     bsc.buildConfiguration.Project,
 	}
 
-	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
+	failBuild, err := bsc.runBuildScanV2AndPrintResults(xrayManager, params)
 	if err != nil {
 		return err
 	}
@@ -88,7 +89,7 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 	return nil
 }
 
-func (bsc *BuildScanV2Command) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
+func (bsc *BuildScanV2Command) runBuildScanV2AndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
 	buildScanInfo, err := xrayManager.BuildScanV2(params)
 	if err != nil {
 		return false, err
@@ -98,7 +99,7 @@ func (bsc *BuildScanV2Command) runBuildScanAndPrintResults(xrayManager *xray.Xra
 		// so no need to get results or print
 		return false, nil
 	}
-	buildScanResults, err := xrayManager.GetBuildScanResults(params)
+	buildScanResults, err := xrayManager.GetBuildScanV2Results(params)
 	if err != nil {
 		return false, err
 	}

@@ -3,6 +3,7 @@ package mvnutils
 import (
 	"bytes"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -24,11 +25,12 @@ const (
 	mavenExtractorDependencyVersion = "2.30.2"
 	classworldsConfFileName         = "classworlds.conf"
 	MavenHome                       = "M2_HOME"
+	minSupportedMvnVersion          = "3.1.0"
 )
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	log.Info("Running Mvn...")
-	mvnHome, err := getMavenHome()
+	mvnHome, err := getMavenHomeAndValidateVersion()
 	if err != nil {
 		return err
 	}
@@ -48,46 +50,89 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	return mvnRunConfig.runCmd()
 }
 
-func getMavenHome() (string, error) {
+func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
 	mavenHome := os.Getenv(MavenHome)
-	if mavenHome == "" {
-		// The M2_HOME environment variable is not defined.
-		// Since Maven installation can be located in different locations,
-		// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-		// We need to grab the location using the mvn --version command
+	mvnVersion := ""
 
-		// First we will try lo look for 'mvn' in PATH.
-		mvnPath, err := exec.LookPath("mvn")
-		if err != nil || mvnPath == "" {
-			return "", errorutils.CheckErrorf(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
-		}
-		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
-		cmd := exec.Command("mvn", "--version")
-		var stdout bytes.Buffer
-		cmd.Stdout = &stdout
-		err = errorutils.CheckError(cmd.Run())
-		if err != nil {
-			return "", err
-		}
-		output := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-		// Finding the relevant "Maven home" line in command response.
-		for _, line := range output {
-			if strings.HasPrefix(line, "Maven home:") {
-				mavenHome = strings.Split(line, " ")[2]
-				if coreutils.IsWindows() {
-					mavenHome = strings.TrimSuffix(mavenHome, "\r")
-				}
-				mavenHome, err = filepath.Abs(mavenHome)
-				break
+	output, err := runMvnVersionCommand(mavenHome)
+	if err != nil {
+		return "", err
+	}
+	// Finding the relevant "Maven home" line in command response.
+	for _, line := range output {
+		if mavenHome == "" && strings.HasPrefix(line, "Maven home:") {
+			mavenHome, err = parseMvnHome(line)
+			if err != nil {
+				return "", err
 			}
 		}
-		if mavenHome == "" {
-			return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+		if strings.HasPrefix(line, "Apache Maven") {
+			mvnVersion = strings.Split(line, " ")[2]
 		}
 	}
+
+	if mavenHome == "" {
+		return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " ") + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+	}
+
+	if mvnVersion == "" {
+		return "", errorutils.CheckErrorf("Could not parse mvn version by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " ") + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+	}
+
+	err = validateMinimumVersion(mvnVersion)
+	if err != nil {
+		return "", err
+	}
 	log.Debug("Maven home location: ", mavenHome)
+	log.Debug("Maven version: ", mvnVersion)
 	return mavenHome, nil
+}
+
+func runMvnVersionCommand(mavenHome string) ([]string, error) {
+	mvnPath := ""
+	var err error
+	if mavenHome != "" {
+		mvnPath = filepath.Join(mavenHome, "bin", "mvn")
+	} else {
+		mvnPath, err = exec.LookPath("mvn")
+		if err != nil || mvnPath == "" {
+			return nil, errorutils.CheckErrorf(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+		}
+	}
+	cmd := exec.Command(mvnPath, "--version")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	err = errorutils.CheckError(cmd.Run())
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(strings.TrimSpace(stdout.String()), "\n"), nil
+}
+
+func parseMvnHome(line string) (string, error) {
+	// The M2_HOME environment variable is not defined.
+	// Since Maven installation can be located in different locations,
+	// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+	// We need to grab the location using the mvn --version command
+	mavenHome := strings.Split(line, " ")[2]
+	if coreutils.IsWindows() {
+		mavenHome = strings.TrimSuffix(mavenHome, "\r")
+	}
+	mavenHome, err := filepath.Abs(mavenHome)
+	if err != nil {
+		return "", err
+	}
+	return mavenHome, nil
+}
+
+func validateMinimumVersion(mvnVersion string) error {
+	ver := version.NewVersion(mvnVersion)
+	if ver.Compare(minSupportedMvnVersion) > 0 {
+		return errorutils.CheckErrorf(
+			"JFrog CLI mvn commands requires npm client version "+minSupportedMvnVersion+" or higher. The Current version is: %s", mvnVersion)
+	}
+	return nil
 }
 
 func downloadDependencies() (string, error) {

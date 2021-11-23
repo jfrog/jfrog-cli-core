@@ -11,40 +11,40 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-type BuildScanCommand struct {
+type BuildScanLegacyCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	failBuild          bool
 	serverDetails      *config.ServerDetails
 }
 
-func NewBuildScanCommand() *BuildScanCommand {
-	return &BuildScanCommand{}
+func NewBuildScanLegacyCommand() *BuildScanLegacyCommand {
+	return &BuildScanLegacyCommand{}
 }
 
-func (bsc *BuildScanCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildScanLegacyCommand {
 	bsc.serverDetails = serverDetails
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetFailBuild(failBuild bool) *BuildScanLegacyCommand {
 	bsc.failBuild = failBuild
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanLegacyCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
 
-func (bsc *BuildScanCommand) CommandName() string {
-	return "rt_build_scan"
+func (bsc *BuildScanLegacyCommand) CommandName() string {
+	return "rt_build_scan_legacy"
 }
 
-func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
+func (bsc *BuildScanLegacyCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bsc.serverDetails, nil
 }
 
-func (bsc *BuildScanCommand) Run() error {
+func (bsc *BuildScanLegacyCommand) Run() error {
 	log.Info("Triggered Xray build scan... The scan may take a few minutes.")
 	servicesManager, err := utils.CreateServiceManager(bsc.serverDetails, -1, false)
 	if err != nil {

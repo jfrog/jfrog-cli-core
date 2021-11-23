@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-type BuildScanV2Command struct {
+type BuildScanCommand struct {
 	serverDetails          *config.ServerDetails
 	outputFormat           xrutils.OutputFormat
 	buildConfiguration     *rtutils.BuildConfiguration
@@ -19,41 +19,41 @@ type BuildScanV2Command struct {
 	failBuild              bool
 }
 
-func NewBuildScanV2Command() *BuildScanV2Command {
-	return &BuildScanV2Command{}
+func NewBuildScanCommand() *BuildScanCommand {
+	return &BuildScanCommand{}
 }
 
-func (bsc *BuildScanV2Command) SetServerDetails(server *config.ServerDetails) *BuildScanV2Command {
+func (bsc *BuildScanCommand) SetServerDetails(server *config.ServerDetails) *BuildScanCommand {
 	bsc.serverDetails = server
 	return bsc
 }
 
-func (bsc *BuildScanV2Command) SetOutputFormat(format xrutils.OutputFormat) *BuildScanV2Command {
+func (bsc *BuildScanCommand) SetOutputFormat(format xrutils.OutputFormat) *BuildScanCommand {
 	bsc.outputFormat = format
 	return bsc
 }
 
-func (bsc *BuildScanV2Command) ServerDetails() (*config.ServerDetails, error) {
+func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bsc.serverDetails, nil
 }
 
-func (bsc *BuildScanV2Command) SetBuildConfiguration(buildConfiguration *rtutils.BuildConfiguration) *BuildScanV2Command {
+func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *rtutils.BuildConfiguration) *BuildScanCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
 
-func (bsc *BuildScanV2Command) SetIncludeVulnerabilities(include bool) *BuildScanV2Command {
+func (bsc *BuildScanCommand) SetIncludeVulnerabilities(include bool) *BuildScanCommand {
 	bsc.includeVulnerabilities = include
 	return bsc
 }
 
-func (bsc *BuildScanV2Command) SetFailBuild(failBuild bool) *BuildScanV2Command {
+func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 	bsc.failBuild = failBuild
 	return bsc
 }
 
 // New Build-Scan command that works directly with Xray
-func (bsc *BuildScanV2Command) Run() (err error) {
+func (bsc *BuildScanCommand) Run() (err error) {
 	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 		Project:     bsc.buildConfiguration.Project,
 	}
 
-	failBuild, err := bsc.runBuildScanV2AndPrintResults(xrayManager, params)
+	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
 		return err
 	}
@@ -89,8 +89,8 @@ func (bsc *BuildScanV2Command) Run() (err error) {
 	return nil
 }
 
-func (bsc *BuildScanV2Command) runBuildScanV2AndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
-	buildScanInfo, err := xrayManager.BuildScanV2(params)
+func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
+	buildScanInfo, err := xrayManager.BuildScan(params)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ func (bsc *BuildScanV2Command) runBuildScanV2AndPrintResults(xrayManager *xray.X
 		// so no need to get results or print
 		return false, nil
 	}
-	buildScanResults, err := xrayManager.GetBuildScanV2Results(params)
+	buildScanResults, err := xrayManager.GetBuildScanResults(params)
 	if err != nil {
 		return false, err
 	}
@@ -111,7 +111,7 @@ func (bsc *BuildScanV2Command) runBuildScanV2AndPrintResults(xrayManager *xray.X
 	return xrutils.CheckIfFailBuild(scanResponseArray), nil
 }
 
-func (bsc *BuildScanV2Command) runBuildSummaryAndPrintVulnerabilities(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) error {
+func (bsc *BuildScanCommand) runBuildSummaryAndPrintVulnerabilities(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) error {
 	summaryResponse, err := xrayManager.BuildSummary(params)
 	if err != nil {
 		return err
@@ -156,18 +156,7 @@ func getComponentsField(summeryComponents []services.SummeryComponent, impactPat
 
 	for _, component := range summeryComponents {
 
-		// example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
-		componentShortName := component.ComponentId[strings.LastIndex(component.ComponentId, ":")+1:]
-
-		var componentImpactPaths [][]services.ImpactPathNode
-		for _, impactPath := range impactPaths {
-			// search for all impact paths that contain the package
-			if strings.Contains(strings.ToLower(impactPath), strings.ToLower(componentShortName)) {
-				pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
-				componentImpactPaths = append(componentImpactPaths, pathNode)
-			}
-		}
-
+		componentImpactPaths := getComponentImpactPaths(component.ComponentId, buildName, impactPaths)
 		if len(componentImpactPaths) > 0 {
 			components[component.ComponentId] = services.Component{
 				FixedVersions: component.FixedVersions,
@@ -187,6 +176,21 @@ func getRootComponentFromImpactPath(impactPath, buildName string) string {
 	return rootComponent
 }
 
-func (bsc *BuildScanV2Command) CommandName() string {
+func getComponentImpactPaths(componentId, buildName string, impactPaths []string) [][]services.ImpactPathNode {
+	// example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
+	componentShortName := componentId[strings.LastIndex(componentId, ":")+1:]
+
+	var componentImpactPaths [][]services.ImpactPathNode
+	for _, impactPath := range impactPaths {
+		// search for all impact paths that contain the package
+		if strings.Contains(strings.ToLower(impactPath), strings.ToLower(componentShortName)) {
+			pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
+			componentImpactPaths = append(componentImpactPaths, pathNode)
+		}
+	}
+	return componentImpactPaths
+}
+
+func (bsc *BuildScanCommand) CommandName() string {
 	return "xr_build_scan_v2"
 }

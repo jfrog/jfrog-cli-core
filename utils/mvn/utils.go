@@ -1,7 +1,6 @@
 package mvnutils
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
@@ -26,6 +25,7 @@ const (
 	classworldsConfFileName         = "classworlds.conf"
 	mavenHome                       = "M2_HOME"
 	minSupportedMvnVersion          = "3.1.0"
+	minSupportedMvnVersionError     = "JFrog CLI mvn commands requires Maven version \"+minSupportedMvnVersion+\" or higher."
 )
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
@@ -52,20 +52,20 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 
 func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
-	mavenHome := os.Getenv(mavenHome)
+	mvnHome := os.Getenv(mavenHome)
 	mvnVersion := ""
 
-	output, err := runMvnVersionCommand(mavenHome)
+	output, err := runMvnVersionCommand(mvnHome)
 	if err != nil {
 		return "", err
 	}
 	// Finding the relevant "Maven home" line in command response.
 	for _, line := range output {
-		if mavenHome == "" && strings.HasPrefix(line, "Maven home:") {
+		if mvnHome == "" && strings.HasPrefix(line, "Maven home:") {
 			// The M2_HOME environment variable is not defined.
 			// Since Maven installation can be located in different locations,
 			// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-			mavenHome, err = parseMvnHome(line)
+			mvnHome, err = parseMvnHome(line)
 			if err != nil {
 				return "", err
 			}
@@ -75,21 +75,21 @@ func getMavenHomeAndValidateVersion() (string, error) {
 		}
 	}
 
-	if mavenHome == "" {
+	if mvnHome == "" {
 		return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " ") + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
 	}
-
 	if mvnVersion == "" {
-		return "", errorutils.CheckErrorf("Could not parse mvn version by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " "))
+		log.Info("Could not get maven version, by running 'mvn --version' command. " + minSupportedMvnVersionError)
 	}
 
 	err = validateMinimumVersion(mvnVersion)
 	if err != nil {
 		return "", err
 	}
-	log.Debug("Maven home location: ", mavenHome)
+
+	log.Debug("Maven home location: ", mvnHome)
 	log.Debug("Maven version: ", mvnVersion)
-	return mavenHome, nil
+	return mvnHome, nil
 }
 
 func runMvnVersionCommand(mavenHome string) ([]string, error) {
@@ -100,17 +100,16 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 	} else {
 		mvnPath, err = exec.LookPath("mvn")
 		if err != nil || mvnPath == "" {
-			return nil, errorutils.CheckErrorf(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+			return nil, errorutils.CheckErrorf(err.Error() + "Hint: The mvn executable may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
 		}
 	}
 	cmd := exec.Command(mvnPath, "--version")
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	err = errorutils.CheckError(cmd.Run())
-	if err != nil {
+
+	output, err := cmd.Output()
+	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	return strings.Split(strings.TrimSpace(stdout.String()), "\n"), nil
+	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
 }
 
 func parseMvnHome(line string) (string, error) {
@@ -120,7 +119,7 @@ func parseMvnHome(line string) (string, error) {
 	}
 	mavenHome, err := filepath.Abs(mavenHome)
 	if err != nil {
-		return "", err
+		return "", errorutils.CheckError(err)
 	}
 	return mavenHome, nil
 }
@@ -128,8 +127,7 @@ func parseMvnHome(line string) (string, error) {
 func validateMinimumVersion(mvnVersion string) error {
 	ver := version.NewVersion(mvnVersion)
 	if ver.Compare(minSupportedMvnVersion) > 0 {
-		return errorutils.CheckErrorf(
-			"JFrog CLI mvn commands requires maven client version "+minSupportedMvnVersion+" or higher. The Current version is: %s", mvnVersion)
+		return errorutils.CheckErrorf("%s The Current version is: %s", minSupportedMvnVersionError, mvnVersion)
 	}
 	return nil
 }

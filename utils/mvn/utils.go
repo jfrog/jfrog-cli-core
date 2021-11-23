@@ -80,7 +80,7 @@ func getMavenHomeAndValidateVersion() (string, error) {
 	}
 
 	if mvnVersion == "" {
-		return "", errorutils.CheckErrorf("Could not parse mvn version by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " ") + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+		return "", errorutils.CheckErrorf("Could not parse mvn version by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " "))
 	}
 
 	err = validateMinimumVersion(mvnVersion)

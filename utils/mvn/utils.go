@@ -24,7 +24,7 @@ import (
 const (
 	mavenExtractorDependencyVersion = "2.30.2"
 	classworldsConfFileName         = "classworlds.conf"
-	MavenHome                       = "M2_HOME"
+	mavenHome                       = "M2_HOME"
 	minSupportedMvnVersion          = "3.1.0"
 )
 
@@ -52,7 +52,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 
 func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
-	mavenHome := os.Getenv(MavenHome)
+	mavenHome := os.Getenv(mavenHome)
 	mvnVersion := ""
 
 	output, err := runMvnVersionCommand(mavenHome)
@@ -62,6 +62,9 @@ func getMavenHomeAndValidateVersion() (string, error) {
 	// Finding the relevant "Maven home" line in command response.
 	for _, line := range output {
 		if mavenHome == "" && strings.HasPrefix(line, "Maven home:") {
+			// The M2_HOME environment variable is not defined.
+			// Since Maven installation can be located in different locations,
+			// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
 			mavenHome, err = parseMvnHome(line)
 			if err != nil {
 				return "", err
@@ -111,10 +114,6 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 }
 
 func parseMvnHome(line string) (string, error) {
-	// The M2_HOME environment variable is not defined.
-	// Since Maven installation can be located in different locations,
-	// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-	// We need to grab the location using the mvn --version command
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {
 		mavenHome = strings.TrimSuffix(mavenHome, "\r")
@@ -130,7 +129,7 @@ func validateMinimumVersion(mvnVersion string) error {
 	ver := version.NewVersion(mvnVersion)
 	if ver.Compare(minSupportedMvnVersion) > 0 {
 		return errorutils.CheckErrorf(
-			"JFrog CLI mvn commands requires npm client version "+minSupportedMvnVersion+" or higher. The Current version is: %s", mvnVersion)
+			"JFrog CLI mvn commands requires maven client version "+minSupportedMvnVersion+" or higher. The Current version is: %s", mvnVersion)
 	}
 	return nil
 }

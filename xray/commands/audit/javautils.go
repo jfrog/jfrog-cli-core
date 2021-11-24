@@ -58,12 +58,12 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 		}
 
 		for _, parent := range requestedBy {
-			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &dependency)
+			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], dependency)
 		}
 	}
 
 	for _, directDependency := range directDependencies {
-		populateTransitiveDependencies(moduleTree, &directDependency, parentToChildren, []string{})
+		populateTransitiveDependencies(moduleTree, directDependency, parentToChildren, []string{})
 	}
 	return moduleTree
 }
@@ -82,7 +82,7 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *services.GraphNode, dependency *buildinfo.Dependency, parentToChildren *dependencyMultimap, idsAdded []string) {
+func populateTransitiveDependencies(parent *services.GraphNode, dependency buildinfo.Dependency, parentToChildren *dependencyMultimap, idsAdded []string) {
 	if hasLoop(idsAdded, dependency.Id) {
 		return
 	}
@@ -107,22 +107,22 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 }
 
 type dependencyMultimap struct {
-	multimap map[string]map[string]*buildinfo.Dependency
+	multimap map[string]map[string]buildinfo.Dependency
 }
 
 func newDependencyMultimap() *dependencyMultimap {
 	dependencyMultimap := new(dependencyMultimap)
-	dependencyMultimap.multimap = make(map[string]map[string]*buildinfo.Dependency)
+	dependencyMultimap.multimap = make(map[string]map[string]buildinfo.Dependency)
 	return dependencyMultimap
 }
 
-func (dm *dependencyMultimap) putChild(parent string, child *buildinfo.Dependency) {
+func (dm *dependencyMultimap) putChild(parent string, child buildinfo.Dependency) {
 	if dm.multimap[parent] == nil {
-		dm.multimap[parent] = make(map[string]*buildinfo.Dependency)
+		dm.multimap[parent] = make(map[string]buildinfo.Dependency)
 	}
 	dm.multimap[parent][child.Id] = child
 }
 
-func (dm *dependencyMultimap) getChildren(parent string) map[string]*buildinfo.Dependency {
+func (dm *dependencyMultimap) getChildren(parent string) map[string]buildinfo.Dependency {
 	return dm.multimap[parent]
 }

@@ -2,7 +2,6 @@ package freetiersetup
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -91,64 +90,45 @@ func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.Serve
 		return nil, err
 	}
 	message := fmt.Sprintf("Sync: Get MyJFrog status report. Request ID:%s...", ftc.id)
-	ticker := time.NewTicker(defaultSyncSleepInterval)
-	timeout := make(chan bool)
-	errChan := make(chan error)
-	resultChan := make(chan []byte)
-	endPoint := myJfrogEndPoint
-	go func() {
-		for {
-			select {
-			case <-timeout:
-				errChan <- errorutils.CheckError(errors.New("Timeout"))
-				resultChan <- nil
-				return
-			case _ = <-ticker.C:
-				resp, body, err := client.SendPost(endPoint, requestContent, httpClientDetails, "")
-				if err != nil {
-					errChan <- err
-					resultChan <- nil
-					return
-				}
-				if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusNotFound); err != nil {
-					errChan <- errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
-					resultChan <- nil
-					return
-				}
-				log.Debug(message)
-				if resp.StatusCode == http.StatusOK {
-					ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we creat your environment")
-					statusResponse := myJfrogGetStatusResponse{}
-					if err = json.Unmarshal(body, &statusResponse); err != nil {
-						errChan <- errorutils.CheckError(err)
-						resultChan <- nil
-						return
-					}
-					// Got the ne server deatiles
-					if statusResponse.Ready {
-						errChan <- nil
-						resultChan <- body
-						return
-					}
-				}
+
+	pollingAction := func() (shouldStop bool, responseBody []byte, err error) {
+		log.Debug(message)
+		resp, body, err := client.SendPost(myJfrogEndPoint, requestContent, httpClientDetails, "")
+		if err != nil {
+			return true, nil, err
+		}
+		if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusNotFound); err != nil {
+			err = errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
+			return true, nil, err
+		}
+		log.Debug(message)
+		// Got the a valid response. waits for ready=true
+		if resp.StatusCode == http.StatusOK {
+			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we creat your environment")
+			statusResponse := myJfrogGetStatusResponse{}
+			if err = json.Unmarshal(body, &statusResponse); err != nil {
+				return true, nil, err
+			}
+			// Got the new server deatiles
+			if statusResponse.Ready {
+				return true, body, nil
 			}
 		}
-	}()
-	// Make sure we don't wait forever
-	go func() {
-		time.Sleep(maxWaitMinutes)
-		timeout <- true
-	}()
-	// Wait for result or error
-	err = <-errChan
-	body := <-resultChan
-	ticker.Stop()
+		return false, nil, nil
+	}
+
+	pollingExecutor := &httputils.PollingExecutor{
+		Timout:          maxWaitMinutes,
+		PollingInterval: defaultSyncSleepInterval,
+		PollingAction:   pollingAction,
+	}
+
+	body, err := pollingExecutor.Execute()
 	if err != nil {
 		return nil, err
 	}
 	statusResponse := myJfrogGetStatusResponse{}
 	if err = json.Unmarshal(body, &statusResponse); err != nil {
-		println(err)
 		return nil, errorutils.CheckError(err)
 	}
 	ftc.progress.ClearHeadlineMsg()

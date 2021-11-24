@@ -45,9 +45,17 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	if err != nil {
 		return err
 	}
-
 	defer os.Remove(mvnRunConfig.buildInfoProperties)
-	return mvnRunConfig.runCmd()
+
+	if err = mvnRunConfig.runCmd(); err != nil {
+		// Delete empty generatedBuildInfo file in case of an error
+		if mvnRunConfig.generatedBuildInfoPath != "" {
+			if removeErr := os.Remove(mvnRunConfig.generatedBuildInfoPath); removeErr != nil {
+				log.Error("Couldn't delete file "+mvnRunConfig.generatedBuildInfoPath, removeErr)
+			}
+		}
+	}
+	return err
 }
 
 func getMavenHomeAndValidateVersion() (string, error) {

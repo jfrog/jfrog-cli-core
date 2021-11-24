@@ -36,7 +36,16 @@ func RunGradle(tasks, configPath, deployableArtifactsFile string, configuration 
 		return err
 	}
 	defer os.Remove(gradleRunConfig.env[gradleBuildInfoProperties])
-	return gradleRunConfig.runCmd()
+
+	if err = gradleRunConfig.runCmd(); err != nil {
+		// Delete empty generatedBuildInfo file in case of an error
+		if gradleRunConfig.generatedBuildInfoPath != "" {
+			if removeErr := os.Remove(gradleRunConfig.generatedBuildInfoPath); removeErr != nil {
+				log.Error("Couldn't delete file "+gradleRunConfig.generatedBuildInfoPath, removeErr)
+			}
+		}
+	}
+	return err
 }
 
 func downloadGradleDependencies() (gradleDependenciesDir, gradlePluginFilename string, err error) {
@@ -101,6 +110,7 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 			return nil, err
 		}
 	}
+	runConfig.generatedBuildInfoPath = vConfig.GetString(utils.GeneratedBuildInfo)
 
 	return runConfig, nil
 }
@@ -141,10 +151,11 @@ func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, 
 }
 
 type gradleRunConfig struct {
-	gradle     string
-	tasks      string
-	initScript string
-	env        map[string]string
+	gradle                 string
+	tasks                  string
+	initScript             string
+	generatedBuildInfoPath string
+	env                    map[string]string
 }
 
 func (config *gradleRunConfig) GetCmd() *exec.Cmd {

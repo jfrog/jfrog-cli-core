@@ -118,7 +118,7 @@ func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.Serve
 	}
 
 	pollingExecutor := &httputils.PollingExecutor{
-		Timout:          maxWaitMinutes,
+		Timeout:         maxWaitMinutes,
 		PollingInterval: defaultSyncSleepInterval,
 		PollingAction:   pollingAction,
 	}

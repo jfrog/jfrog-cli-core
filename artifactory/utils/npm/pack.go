@@ -21,7 +21,7 @@ func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.N
 	return &npmutils.NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"pack"},
-		CommandFlags: append(splitFlags),
+		CommandFlags: append(splitFlags, "--json=false"),
 		StrWriter:    nil,
 		ErrWriter:    nil,
 	}

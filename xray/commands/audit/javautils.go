@@ -49,7 +49,7 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 
 	directDependencies := make(map[string]buildinfo.Dependency)
 	parentToChildren := newDependencyMultimap()
-	for _, dependency := range module.Dependencies {
+	for index, dependency := range module.Dependencies {
 		requestedBy := dependency.RequestedBy
 		if isDirectDependency(module.Id, requestedBy) {
 			// If no parents at all or the direct parent is the module, assume dependency is a direct
@@ -58,12 +58,13 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 		}
 
 		for _, parent := range requestedBy {
-			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], dependency)
+			// we use '&module.Dependencies[index]' to avoid reusing the &dependency pointer
+			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &module.Dependencies[index])
 		}
 	}
 
 	for _, directDependency := range directDependencies {
-		populateTransitiveDependencies(moduleTree, directDependency, parentToChildren, []string{})
+		populateTransitiveDependencies(moduleTree, directDependency.Id, parentToChildren, []string{})
 	}
 	return moduleTree
 }
@@ -82,18 +83,18 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *services.GraphNode, dependency buildinfo.Dependency, parentToChildren *dependencyMultimap, idsAdded []string) {
-	if hasLoop(idsAdded, dependency.Id) {
+func populateTransitiveDependencies(parent *services.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
+	if hasLoop(idsAdded, dependencyId) {
 		return
 	}
-	idsAdded = append(idsAdded, dependency.Id)
+	idsAdded = append(idsAdded, dependencyId)
 	node := &services.GraphNode{
-		Id:    GavPackageTypeIdentifier + dependency.Id,
+		Id:    GavPackageTypeIdentifier + dependencyId,
 		Nodes: []*services.GraphNode{},
 	}
 	parent.Nodes = append(parent.Nodes, node)
 	for _, child := range parentToChildren.getChildren(node.Id) {
-		populateTransitiveDependencies(node, child, parentToChildren, idsAdded)
+		populateTransitiveDependencies(node, child.Id, parentToChildren, idsAdded)
 	}
 }
 
@@ -107,22 +108,22 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 }
 
 type dependencyMultimap struct {
-	multimap map[string]map[string]buildinfo.Dependency
+	multimap map[string]map[string]*buildinfo.Dependency
 }
 
 func newDependencyMultimap() *dependencyMultimap {
 	dependencyMultimap := new(dependencyMultimap)
-	dependencyMultimap.multimap = make(map[string]map[string]buildinfo.Dependency)
+	dependencyMultimap.multimap = make(map[string]map[string]*buildinfo.Dependency)
 	return dependencyMultimap
 }
 
-func (dm *dependencyMultimap) putChild(parent string, child buildinfo.Dependency) {
+func (dm *dependencyMultimap) putChild(parent string, child *buildinfo.Dependency) {
 	if dm.multimap[parent] == nil {
-		dm.multimap[parent] = make(map[string]buildinfo.Dependency)
+		dm.multimap[parent] = make(map[string]*buildinfo.Dependency)
 	}
 	dm.multimap[parent][child.Id] = child
 }
 
-func (dm *dependencyMultimap) getChildren(parent string) map[string]buildinfo.Dependency {
+func (dm *dependencyMultimap) getChildren(parent string) map[string]*buildinfo.Dependency {
 	return dm.multimap[parent]
 }

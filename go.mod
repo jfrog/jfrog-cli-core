@@ -26,8 +26,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
-
 // Exclude vulnerable dependencies
 exclude (
 	github.com/miekg/dns v1.0.14

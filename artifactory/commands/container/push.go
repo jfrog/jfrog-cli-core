@@ -73,36 +73,39 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
+	buildName, err := pc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
 	// Return if build-info and detailed summary were not requested.
-	saveBuildInfo := pc.buildConfiguration.BuildName != "" && pc.buildConfiguration.BuildNumber != ""
-	if !saveBuildInfo && !pc.IsDetailedSummary() {
+	if !pc.buildConfiguration.IsCollectBuildInfo() && !pc.IsDetailedSummary() {
 		return nil
 	}
-	if err := utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, pc.buildConfiguration.GetBuildNumber(), pc.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads, -1)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilderForDockerOrPodman(image, pc.Repo(), pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, pc.BuildConfiguration().Project, serviceManager, container.Push, cm)
+	builder, err := container.NewBuildInfoBuilderForDockerOrPodman(image, pc.Repo(), buildName, pc.BuildConfiguration().GetBuildNumber(), pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
 	if err != nil {
 		return err
 	}
 	// Save buildinfo if needed
-	if saveBuildInfo {
-		buildInfo, err := builder.Build(pc.BuildConfiguration().Module)
+	if pc.buildConfiguration.IsCollectBuildInfo() {
+		buildInfo, err := builder.Build(pc.BuildConfiguration().GetModule())
 		if err != nil {
 			return err
 		}
-		err = utils.SaveBuildInfo(pc.BuildConfiguration().BuildName, pc.BuildConfiguration().BuildNumber, pc.BuildConfiguration().Project, buildInfo)
+		err = utils.SaveBuildInfo(buildName, pc.BuildConfiguration().GetBuildNumber(), pc.BuildConfiguration().GetProject(), buildInfo)
 		if err != nil {
 			return err
 		}
 	}
 	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
-		if !saveBuildInfo {
+		if !pc.buildConfiguration.IsCollectBuildInfo() {
 			// If we saved buildinfo earlier, this update already happened.
 			err = builder.UpdateArtifactsAndDependencies()
 			if err != nil {

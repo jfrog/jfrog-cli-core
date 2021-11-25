@@ -1,9 +1,10 @@
 package audit
 
 import (
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"strconv"
 	"time"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -15,24 +16,30 @@ const (
 )
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
-	buildConfiguration := &artifactoryUtils.BuildConfiguration{
-		BuildName:   buildName,
-		BuildNumber: strconv.FormatInt(time.Now().Unix(), 10),
-	}
+	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
+
 	return buildConfiguration, func(err error) {
-		err = artifactoryUtils.RemoveBuildDir(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project)
+		buildName, err := buildConfiguration.GetBuildName()
+		if err != nil {
+			return
+		}
+		err = artifactoryUtils.RemoveBuildDir(buildName, buildConfiguration.GetBuildNumber(), buildConfiguration.GetProject())
 	}
 }
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
 func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*services.GraphNode, error) {
-	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildConfig.BuildName, buildConfig.BuildNumber, buildConfig.Project)
+	buildName, err := buildConfig.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildConfig.GetBuildNumber(), buildConfig.GetProject())
 	if err != nil {
 		return nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckErrorf("Couldn't find build " + buildConfig.BuildName + "/" + buildConfig.BuildNumber)
+		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildConfig.GetBuildNumber())
 	}
 	modules := []*services.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {

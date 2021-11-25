@@ -2,20 +2,23 @@ package buildinfo
 
 import (
 	"errors"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
-	"io"
-	"os"
-	"os/exec"
-	"strconv"
 )
 
 const (
@@ -64,7 +67,11 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 
 func (config *BuildAddGitCommand) Run() error {
 	log.Info("Reading the git branch, revision and remote URL and adding them to the build-info.")
-	err := utils.SaveBuildGeneralDetails(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project)
+	bn, err := config.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	err = utils.SaveBuildGeneralDetails(bn, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}
@@ -115,13 +122,13 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(config.buildConfiguration.BuildName, config.buildConfiguration.BuildNumber, config.buildConfiguration.Project, populateFunc)
+	err = utils.SavePartialBuildInfo(bn, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject(), populateFunc)
 	if err != nil {
 		return err
 	}
 
 	// Done.
-	log.Debug("Collected VCS details for", config.buildConfiguration.BuildName+"/"+config.buildConfiguration.BuildNumber+".")
+	log.Debug("Collected VCS details for", bn+"/"+config.buildConfiguration.GetBuildNumber()+".")
 	return nil
 }
 
@@ -337,7 +344,11 @@ func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfigu
 	}
 
 	// Get latest build-info from Artifactory.
-	buildInfoParams := services.BuildInfoParams{BuildName: config.buildConfiguration.BuildName, BuildNumber: "LATEST"}
+	bn, err := config.buildConfiguration.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	buildInfoParams := services.BuildInfoParams{BuildName: bn, BuildNumber: artclientutils.LatestBuildNumberKey}
 	publishedBuildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return nil, err

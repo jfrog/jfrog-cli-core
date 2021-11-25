@@ -120,22 +120,6 @@ func FindBooleanFlag(flagName string, args []string) (flagIndex int, flagValue b
 	return -1, false, nil
 }
 
-// Boolean flag can be provided in one of the following forms:
-// 1. --flag=value, where value can be true/false
-// 2. --flag, here the value is true
-// Return values:
-// flagIndex - index of flagName in args.
-// flagValue - value of flagName.
-// err - error if flag exists, but we failed to extract its value.
-// If flag does not exist flagIndex = -1 with true value and nil error.
-func FindBooleanTrueFlag(flagName string, args []string) (flagIndex int, flagValue bool, err error) {
-	flagIndex, flagValue, err = FindBooleanFlag(flagName, args)
-	if flagIndex < 1 {
-		flagValue = true
-	}
-	return
-}
-
 // Find the first match of any of the provided flags in args.
 // Return same values as FindFlag.
 func FindFlagFirstMatch(flags, args []string) (flagIndex, flagValueIndex int, flagValue string, err error) {

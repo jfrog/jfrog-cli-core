@@ -348,8 +348,8 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 h1:QldyIu/L63oPpyvQmHgvgickp1Yw510KJOqX7H24mg8=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778/go.mod h1:2MuV+tbUrU1zIOPMxZ5EncGwgmMJsa+9ucAQZXxsObs=
-github.com/yahavi/gocmd v0.1.13-0.20211109135307-6b3e0aca9965 h1:dl2JD1BpOpLhKvclvfXOMVyZAq8zgLa/AIs7Gci6O4I=
-github.com/yahavi/gocmd v0.1.13-0.20211109135307-6b3e0aca9965/go.mod h1:9vy9wCBY7h1JC5AES3Fz1TrKnZT6mDpr5bimodUN/nI=
+github.com/yahavi/gocmd v0.1.13-0.20211125074825-bde54c41b486 h1:1UeBGkiuBbwdtrK9HhAYQEvOZwYd0mnk5uT2HHV3gjY=
+github.com/yahavi/gocmd v0.1.13-0.20211125074825-bde54c41b486/go.mod h1:9vy9wCBY7h1JC5AES3Fz1TrKnZT6mDpr5bimodUN/nI=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

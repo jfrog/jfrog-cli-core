@@ -28,7 +28,7 @@ type GoCommand struct {
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
 	configFilePath     string
-	vcsFallback        bool
+	noFallback         bool
 }
 
 func NewGoCommand() *GoCommand {
@@ -110,17 +110,20 @@ func (gc *GoCommand) Run() error {
 		return err
 	}
 
-	// Extract vcs fallback from the args.
-	gc.goArg, err = gc.extractVcsFallbackFromArgs()
+	// Extract no-fallback flag from the args.
+	gc.goArg, err = gc.extractNoFallbackFromArgs()
+	if err != nil {
+		return err
+	}
 	return gc.run()
 }
 
-func (gc *GoCommand) extractVcsFallbackFromArgs() (cleanArgs []string, err error) {
+func (gc *GoCommand) extractNoFallbackFromArgs() (cleanArgs []string, err error) {
 	var flagIndex int
 	cleanArgs = append([]string(nil), gc.goArg...)
 
-	// Extract vcs-fallback boolean flag from the args.
-	flagIndex, gc.vcsFallback, err = coreutils.FindBooleanTrueFlag("--vcs-fallback", cleanArgs)
+	// Extract no-fallback boolean flag from the args.
+	flagIndex, gc.noFallback, err = coreutils.FindBooleanFlag("--no-fallback", cleanArgs)
 	if err != nil {
 		return
 	}
@@ -163,7 +166,7 @@ func (gc *GoCommand) run() error {
 
 	var targetRepo string
 
-	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.vcsFallback)
+	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.noFallback)
 	if err != nil {
 		return coreutils.ConvertExitCodeError(err)
 	}

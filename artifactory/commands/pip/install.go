@@ -3,6 +3,7 @@ package pip
 import (
 	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -36,7 +36,7 @@ func (pic *PipInstallCommand) Run() error {
 		return err
 	}
 
-	pipInstaller := &piputils.PipInstaller{Args: pic.args, ServerDetails: pic.rtDetails, Repository: pic.repository, ShouldParseLogs: pic.shouldCollectBuildInfo}
+	pipInstaller := &piputils.PipInstaller{CommonExecutor: piputils.CommonExecutor{Args: pic.args, ServerDetails: pic.rtDetails, Repository: pic.repository}, ShouldParseLogs: pic.shouldCollectBuildInfo}
 	err = pipInstaller.Install()
 	if err != nil {
 		pic.cleanBuildInfoDir()
@@ -144,7 +144,7 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 		return
 	}
 	if pythonExecutablePath == "" {
-		return "", errorutils.CheckError(errors.New("Could not find the 'python' executable in the system PATH"))
+		return "", errorutils.CheckErrorf("Could not find the 'python' executable in the system PATH")
 	}
 	pic.args, pic.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pic.args)
 	if err != nil {

@@ -1,8 +1,8 @@
 package container
 
 import (
-	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -10,7 +10,6 @@ import (
 
 	artutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -182,7 +181,7 @@ func (builder *buildInfoBuilder) getManifestAndLayersDetails() (layers map[strin
 			return layers, manifestContent, err
 		}
 	}
-	return nil, nil, errorutils.CheckError(errors.New(fmt.Sprintf(imageNotFoundErrorMessage, builder.image.tag)))
+	return nil, nil, errorutils.CheckErrorf(imageNotFoundErrorMessage, builder.image.tag)
 }
 
 func (builder *buildInfoBuilder) handlePull(manifestDependency, configLayerDependency buildinfo.Dependency, imageManifest *manifest, searchResults map[string]*utils.ResultItem) error {
@@ -241,7 +240,7 @@ func (builder *buildInfoBuilder) handleMissingLayer(layerMediaType, layerFileNam
 		log.Info(fmt.Sprintf("Foreign layer: %s is missing in Artifactory and therefore will not be added to the build-info.", layerFileName))
 		return nil
 	}
-	return errorutils.CheckError(errors.New("Could not find layer: " + layerFileName + " in Artifactory"))
+	return errorutils.CheckErrorf("Could not find layer: " + layerFileName + " in Artifactory")
 }
 
 // Set build properties on image layers in Artifactory.
@@ -352,7 +351,7 @@ func searchManifestAndLayersDetails(builder *buildInfoBuilder, imagePathPattern 
 		}
 	} else {
 		if builder.containerManager == nil {
-			err = errorutils.CheckError(errors.New("build info collection for multi-architecture images is not supported in build-docker-create and oc start-build commands"))
+			err = errorutils.CheckErrorf("build info collection for multi-architecture images is not supported in build-docker-create and oc start-build commands")
 			return
 		}
 		// Check if search results contain multi-architecture images (fat-manifest).
@@ -425,12 +424,12 @@ func GetImageTagWithDigest(filePath string) (tag string, sha256 string, err erro
 	}
 	splittedData := strings.Split(string(data), `@`)
 	if len(splittedData) != 2 {
-		err = errorutils.CheckError(errors.New(`unexpected file format "` + filePath + `". The file should include one line in the following format: image-tag@sha256`))
+		err = errorutils.CheckErrorf(`unexpected file format "` + filePath + `". The file should include one line in the following format: image-tag@sha256`)
 		return
 	}
 	tag, sha256 = splittedData[0], strings.Trim(splittedData[1], "\n")
 	if tag == "" || sha256 == "" {
-		err = errorutils.CheckError(errors.New(`missing image-tag/sha256 in file: "` + filePath + `"`))
+		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "` + filePath + `"`)
 	}
 	return
 }
@@ -540,7 +539,7 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]*utils.ResultItem, b
 				return totalDownloaded, err
 			}
 			if resp.StatusCode != http.StatusOK {
-				return totalDownloaded, errorutils.CheckError(errors.New("Artifactory response: " + resp.Status + "for" + string(body)))
+				return totalDownloaded, errorutils.CheckErrorf("Artifactory response: " + resp.Status + "for" + string(body))
 			}
 			totalDownloaded++
 		}

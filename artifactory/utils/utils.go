@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"github.com/jfrog/build-info-go/build"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -76,10 +78,10 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	if resp.StatusCode == http.StatusConflict {
 		message := "\nYour Artifactory server is not configured to encrypt passwords.\n" +
 			"You may use \"art config --enc-password=false\""
-		return "", errorutils.CheckError(errors.New(message))
+		return "", errorutils.CheckErrorf(message)
 	}
 
-	return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status))
+	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status)
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
@@ -205,7 +207,7 @@ func CheckIfRepoExists(repository string, artDetails auth.ServiceDetails) error 
 	}
 
 	if !repoExists {
-		return errorutils.CheckError(errors.New("The repository '" + repository + "' does not exist."))
+		return errorutils.CheckErrorf("The repository '" + repository + "' does not exist.")
 	}
 	return nil
 }
@@ -250,4 +252,11 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 		return errorutils.CheckError(err)
 	}
 	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
+}
+
+func CreateBuildInfoService() *build.BuildInfoService {
+	buildInfoService := build.NewBuildInfoService()
+	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
+	buildInfoService.SetLogger(log.Logger)
+	return buildInfoService
 }

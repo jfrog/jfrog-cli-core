@@ -2,10 +2,10 @@ package npmutils
 
 import (
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"strings"
 
 	"github.com/buger/jsonparser"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )

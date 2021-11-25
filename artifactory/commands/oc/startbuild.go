@@ -1,10 +1,13 @@
 package oc
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -136,7 +139,7 @@ func (osb *OcStartBuildCommand) validateAllowedOptions() error {
 	for _, arg := range osb.ocArgs {
 		for _, optionName := range notAllowedOcOptions {
 			if arg == optionName || strings.HasPrefix(arg, optionName+"=") {
-				return errorutils.CheckError(errors.New(fmt.Sprintf("the %s option is not allowed", optionName)))
+				return errorutils.CheckErrorf("the %s option is not allowed", optionName)
 			}
 		}
 	}
@@ -151,34 +154,53 @@ func (osb *OcStartBuildCommand) validateOcVersion() error {
 	trimmedVersion := strings.TrimPrefix(ocVersionStr, "v")
 	ocVersion := version.NewVersion(trimmedVersion)
 	if ocVersion.Compare(minSupportedOcVersion) > 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")))
+		return errorutils.CheckErrorf(
+			"JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher")
 	}
 	return nil
 }
 
 func startBuild(executablePath string, ocFlags []string) (ocBuildName string, err error) {
-	cmdArgs := []string{"start-build", "-w", "--template={{.metadata.name}}"}
+	cmdArgs := []string{"start-build", "-w", "--template={{.metadata.name}}{{\"\\n\"}}"}
 	cmdArgs = append(cmdArgs, ocFlags...)
 
-	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
+	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
+	cmd := exec.Command(executablePath, cmdArgs...)
+	outputReader, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	ocBuildName = strings.TrimSpace(string(outputBytes))
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	// The build name is in the first line of the output
+	scanner := bufio.NewScanner(outputReader)
+	scanner.Scan()
+	ocBuildName = scanner.Text()
+
+	// Print the output to stderr
+	_, err = io.Copy(os.Stderr, outputReader)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	err = errorutils.CheckError(convertExitError(cmd.Wait()))
 	return
 }
 
 func getImageDetails(executablePath, ocBuildName string) (imageTag, manifestSha256 string, err error) {
 	cmdArgs := []string{"get", "build", ocBuildName, "--template={{.status.outputDockerImageReference}}@{{.status.output.to.imageDigest}}"}
+	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
-		return "", "", errorutils.CheckError(err)
+		return "", "", errorutils.CheckError(convertExitError(err))
 	}
 	output := string(outputBytes)
 	splitOutput := strings.Split(strings.TrimSpace(output), "@")
 	if len(splitOutput) != 2 {
-		return "", "", errorutils.CheckError(errors.New(fmt.Sprintf("Unable to parse image tag and digest of build %s. Output from OpenShift CLI: %s", ocBuildName, output)))
+		return "", "", errorutils.CheckErrorf("Unable to parse image tag and digest of build %s. Output from OpenShift CLI: %s", ocBuildName, output)
 	}
 
 	return splitOutput[0], splitOutput[1], nil
@@ -188,7 +210,7 @@ func getOcVersion(executablePath string) (string, error) {
 	cmdArgs := []string{"version", "-o=json"}
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", errorutils.CheckError(convertExitError(err))
 	}
 	var versionRes ocVersionResponse
 	err = json.Unmarshal(outputBytes, &versionRes)
@@ -197,6 +219,13 @@ func getOcVersion(executablePath string) (string, error) {
 	}
 
 	return versionRes.ClientVersion.GitVersion, nil
+}
+
+func convertExitError(err error) error {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		return errors.New(string(exitError.Stderr))
+	}
+	return err
 }
 
 type ocVersionResponse struct {

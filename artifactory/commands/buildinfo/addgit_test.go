@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 )
 
 const (

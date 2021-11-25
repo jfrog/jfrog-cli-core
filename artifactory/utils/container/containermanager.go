@@ -2,7 +2,6 @@ package container
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -88,7 +87,7 @@ func (containerManager *containerManager) OsCompatibility(image *Image) (string,
 	content = strings.Trim(content, "\n")
 	firstSeparator := strings.Index(content, ",")
 	if firstSeparator == -1 {
-		return "", "", errorutils.CheckError(errors.New("couldn't find OS and architecture of image:" + image.tag))
+		return "", "", errorutils.CheckErrorf("couldn't find OS and architecture of image:" + image.tag)
 	}
 	return content[:firstSeparator], content[firstSeparator+1:], err
 }
@@ -188,7 +187,7 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) RunCmd() (
 func ResolveRegistryFromTag(imageTag string) (string, error) {
 	indexOfFirstSlash := strings.Index(imageTag, "/")
 	if indexOfFirstSlash < 0 {
-		err := errorutils.CheckError(errors.New("Invalid image tag received for pushing to Artifactory - tag does not include a slash."))
+		err := errorutils.CheckErrorf("Invalid image tag received for pushing to Artifactory - tag does not include a slash.")
 		return "", err
 	}
 	indexOfSecondSlash := strings.Index(imageTag[indexOfFirstSlash+1:], "/")
@@ -274,14 +273,14 @@ func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig,
 	log.Debug(containerManager.String()+" login while assuming proxy-less failed:", err)
 	indexOfSlash := strings.Index(imageRegistry, "/")
 	if indexOfSlash < 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())))
+		return errorutils.CheckErrorf(LoginFailureMessage, containerManager.String(), imageRegistry, containerManager.String())
 	}
 	cmd = &LoginCmd{DockerRegistry: imageRegistry[:indexOfSlash], Username: config.ServerDetails.User, Password: config.ServerDetails.Password}
 	err = cmd.RunCmd()
 	if err != nil {
 		// Login failed for both attempts
-		return errorutils.CheckError(errors.New(fmt.Sprintf(LoginFailureMessage,
-			containerManager.String(), fmt.Sprintf("%s, %s", imageRegistry, imageRegistry[:indexOfSlash]), containerManager.String()) + " " + err.Error()))
+		return errorutils.CheckErrorf(LoginFailureMessage,
+			containerManager.String(), fmt.Sprintf("%s, %s", imageRegistry, imageRegistry[:indexOfSlash]), containerManager.String()+" "+err.Error())
 	}
 	// Login succeeded
 	return nil
@@ -318,7 +317,7 @@ func ValidateClientApiVersion() error {
 		return errorutils.CheckError(err)
 	}
 	if !IsCompatibleApiVersion(content) {
-		return errorutils.CheckError(errors.New("This operation requires Docker API version " + MinSupportedApiVersion + " or higher."))
+		return errorutils.CheckErrorf("This operation requires Docker API version " + MinSupportedApiVersion + " or higher.")
 	}
 	return nil
 }

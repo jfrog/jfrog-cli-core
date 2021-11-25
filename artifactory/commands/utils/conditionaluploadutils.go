@@ -1,12 +1,11 @@
 package utils
 
 import (
-	"errors"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -16,7 +15,7 @@ import (
 // If the scan passes, the method will return two filespec ready for upload, thee first one contains all the binaries
 // and the seconde all the pom.xml's.
 // If one of the file's scan failed both of the return values will be nil.
-func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format audit.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
+func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format xraycommands.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
 	binariesSpecFile := &spec.SpecFiles{}
 	pomSpecFile := &spec.SpecFiles{}
 	deployableArtifacts.Reader().Reset()
@@ -32,7 +31,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	// Only non pom.xml should be scanned
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
+	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err
@@ -52,17 +51,17 @@ func parseTargetPath(target, serverUrl string) string {
 	return target
 }
 
-func GetXrayOutputFormat(formatFlagVal string) (format audit.OutputFormat, err error) {
+func GetXrayOutputFormat(formatFlagVal string) (format xraycommands.OutputFormat, err error) {
 	// Default print format is table.
-	format = audit.Table
+	format = xraycommands.Table
 	if formatFlagVal != "" {
 		switch strings.ToLower(formatFlagVal) {
-		case string(audit.Table):
-			format = audit.Table
-		case string(audit.Json):
-			format = audit.Json
+		case string(xraycommands.Table):
+			format = xraycommands.Table
+		case string(xraycommands.Json):
+			format = xraycommands.Json
 		default:
-			err = errorutils.CheckError(errors.New("only the following output formats are supported: table or json"))
+			err = errorutils.CheckErrorf("only the following output formats are supported: table or json")
 		}
 	}
 	return

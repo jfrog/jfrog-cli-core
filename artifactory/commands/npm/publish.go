@@ -3,8 +3,9 @@ package npm
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"io"
 	"io/ioutil"
 	"os"
@@ -22,8 +23,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -45,7 +44,7 @@ type NpmPublishCommandArgs struct {
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
-	scanOutputFormat       audit.OutputFormat
+	scanOutputFormat       xraycommands.OutputFormat
 	packDestination        string
 }
 
@@ -90,7 +89,7 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
-func (npc *NpmPublishCommand) SetScanOutputFormat(format audit.OutputFormat) *NpmPublishCommand {
+func (npc *NpmPublishCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *NpmPublishCommand {
 	npc.scanOutputFormat = format
 	return npc
 }
@@ -103,7 +102,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 	return npc.detailedSummary
 }
 
-func (npc *NpmPublishCommand) Run() error {
+func (npc *NpmPublishCommand) Init() error {
 	var err error
 	npc.npmVersion, npc.executablePath, err = npmutils.GetNpmVersionAndExecPath()
 	if err != nil {
@@ -131,10 +130,10 @@ func (npc *NpmPublishCommand) Run() error {
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
 	npc.SetDetailedSummary(detailedSummary).SetXrayScan(xrayScan).SetScanOutputFormat(scanOutputFormat)
-	return npc.run()
+	return nil
 }
 
-func (npc *NpmPublishCommand) run() error {
+func (npc *NpmPublishCommand) Run() error {
 	log.Info("Running npm Publish")
 	if err := npc.preparePrerequisites(); err != nil {
 		return err
@@ -250,7 +249,7 @@ func (npc *NpmPublishCommand) publish() error {
 			return err
 		}
 		if !pass {
-			return errorutils.CheckError(errors.New("Violations were found by Xray. No artifacts will be published."))
+			return errorutils.CheckErrorf("Violations were found by Xray. No artifacts will be published.")
 		}
 	}
 	return npc.doDeploy(target, npc.serverDetails)
@@ -298,7 +297,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 
 	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {
-		return errorutils.CheckError(errors.New("Failed to upload the npm package to Artifactory. See Artifactory logs for more details."))
+		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
 }
@@ -308,7 +307,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := audit.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
+	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err
@@ -384,7 +383,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 		hdr, err := tarReader.Next()
 		if err != nil {
 			if err == io.EOF {
-				return errorutils.CheckError(errors.New("Could not find 'package.json' in the compressed npm package: " + npc.packedFilePath))
+				return errorutils.CheckErrorf("Could not find 'package.json' in the compressed npm package: " + npc.packedFilePath)
 			}
 			return errorutils.CheckError(err)
 		}
@@ -403,7 +402,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 func deleteCreatedTarballAndError(packedFilePath string, currentError error) error {
 	if err := deleteCreatedTarball(packedFilePath); err != nil {
 		errorText := fmt.Sprintf("Two errors occurred: \n%s \n%s", currentError, err)
-		return errorutils.CheckError(errors.New(errorText))
+		return errorutils.CheckErrorf(errorText)
 	}
 	return currentError
 }

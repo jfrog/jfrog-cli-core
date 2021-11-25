@@ -34,7 +34,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 		return
 	}
 
-	return auditCmd.runScanGraph(modulesDependencyTrees)
+	return auditCmd.ScanDependencyTree(modulesDependencyTrees)
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {

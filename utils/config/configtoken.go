@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -95,7 +94,7 @@ func Export(details *ServerDetails) (string, error) {
 			return "", err
 		}
 		if masterKeyFromConsole != masterKeyFromFile {
-			return "", errorutils.CheckError(errors.New("could not generate config token: config is encrypted, and wrong master key was provided"))
+			return "", errorutils.CheckErrorf("could not generate config token: config is encrypted, and wrong master key was provided")
 		}
 	}
 	buffer, err := json.Marshal(fromServerDetails(details))

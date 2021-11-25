@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,8 +16,6 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -263,25 +262,6 @@ func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
 		return errorutils.CheckError(os.RemoveAll(tempDirPath))
 	}
 	return nil
-}
-
-type BuildInfoConfiguration struct {
-	serverDetails auth.ServiceDetails
-	DryRun        bool
-	EnvInclude    string
-	EnvExclude    string
-}
-
-func (config *BuildInfoConfiguration) GetServerDetails() auth.ServiceDetails {
-	return config.serverDetails
-}
-
-func (config *BuildInfoConfiguration) SetServerDetails(art auth.ServiceDetails) {
-	config.serverDetails = art
-}
-
-func (config *BuildInfoConfiguration) IsDryRun() bool {
-	return config.DryRun
 }
 
 type BuildConfiguration struct {

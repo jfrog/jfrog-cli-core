@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/buger/jsonparser"
@@ -61,7 +60,7 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 		return repos, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return repos, errorutils.CheckError(errors.New("Artifactory response: " + resp.Status + "\n" + utils.IndentJson(body)))
+		return repos, errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + utils.IndentJson(body))
 	}
 
 	jsonparser.ArrayEach(body, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
@@ -90,7 +89,7 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 	repoDetails := &services.RepositoryDetails{}
 	err := serviceManager.GetRepository(repoName, &repoDetails)
 	if err != nil {
-		return false, errorutils.CheckError(errors.New("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error()))
+		return false, errorutils.CheckErrorf("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error())
 	}
 	return repoDetails.GetRepoType() == "remote", nil
 }

@@ -246,7 +246,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 			continue
 		}
 		if i+1 == len(cmd.CommandFlags) {
-			return "", errorutils.CheckError(errorutils.CheckError(fmt.Errorf(cmdFlag, " flag was provided without value")))
+			return "", errorutils.CheckErrorf(cmdFlag, " flag was provided without value")
 		}
 		return cmd.CommandFlags[i+1], nil
 	}

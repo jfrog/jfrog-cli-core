@@ -1,10 +1,9 @@
 package golang
 
 import (
-	"errors"
+	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -75,27 +74,24 @@ func (gpc *GoPublishCommand) Run() error {
 
 	version := version.NewVersion(artifactoryVersion)
 	if !version.AtLeast(minSupportedArtifactoryVersion) {
-		return errorutils.CheckError(errors.New("This operation requires Artifactory version 6.2.0 or higher. "))
+		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
 	}
 
 	buildName := gpc.buildConfiguration.BuildName
 	buildNumber := gpc.buildConfiguration.BuildNumber
 	projectKey := gpc.buildConfiguration.Project
+	var goBuild *build.Build
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
+		buildInfoService := utils.CreateBuildInfoService()
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 	}
 
-	goProject, err := project.Load(gpc.version, "")
-	if err != nil {
-		return err
-	}
-
 	// Publish the package to Artifactory
-	summary, err := goProject.PublishPackage(gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
 	if err != nil {
 		return err
 	}
@@ -107,15 +103,17 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 	// Publish the build-info to Artifactory
 	if isCollectBuildInfo {
-		if len(goProject.Dependencies()) == 0 {
-			// No dependencies were published but those dependencies need to be loaded for the build info.
-			goProject.LoadDependencies()
-		}
-		err = goProject.CreateBuildInfoDependencies()
+		goModule, err := goBuild.AddGoModule("")
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(true, gpc.buildConfiguration.Module, gpc.RepositoryConfig.TargetRepo()))
+		if gpc.buildConfiguration.Module != "" {
+			goModule.SetName(gpc.buildConfiguration.Module)
+		}
+		err = goModule.AddArtifacts(artifacts...)
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	return err

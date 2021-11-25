@@ -2,11 +2,10 @@ package buildinfo
 
 import (
 	"errors"
-	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -78,7 +77,7 @@ func (config *BuildAddGitCommand) Run() error {
 			return err
 		}
 		if !exists {
-			return errorutils.CheckError(errors.New("Could not find .git"))
+			return errorutils.CheckErrorf("Could not find .git")
 		}
 	}
 
@@ -216,7 +215,7 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	}
 	if !exitOk {
 		// May happen when trying to run git log for non-existing revision.
-		return nil, errorutils.CheckError(errors.New("failed executing git log command"))
+		return nil, errorutils.CheckErrorf("failed executing git log command")
 	}
 
 	// Return found issues.
@@ -359,7 +358,7 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 
 	// Validate that the config contains issues.
 	if !vConfig.IsSet("issues") {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(MissingConfigurationError, "issues")))
+		return errorutils.CheckErrorf(MissingConfigurationError, "issues")
 	}
 
 	// Get server-id.
@@ -372,13 +371,13 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 
 	// Get tracker data
 	if !vConfig.IsSet(ConfigIssuesPrefix + "trackerName") {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(MissingConfigurationError, ConfigIssuesPrefix+"trackerName")))
+		return errorutils.CheckErrorf(MissingConfigurationError, ConfigIssuesPrefix+"trackerName")
 	}
 	ic.TrackerName = vConfig.GetString(ConfigIssuesPrefix + "trackerName")
 
 	// Get issues pattern
 	if !vConfig.IsSet(ConfigIssuesPrefix + "regexp") {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(MissingConfigurationError, ConfigIssuesPrefix+"regexp")))
+		return errorutils.CheckErrorf(MissingConfigurationError, ConfigIssuesPrefix+"regexp")
 	}
 	ic.Regexp = vConfig.GetString(ConfigIssuesPrefix + "regexp")
 
@@ -389,20 +388,20 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 
 	// Get issues key group index
 	if !vConfig.IsSet(ConfigIssuesPrefix + "keyGroupIndex") {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(MissingConfigurationError, ConfigIssuesPrefix+"keyGroupIndex")))
+		return errorutils.CheckErrorf(MissingConfigurationError, ConfigIssuesPrefix+"keyGroupIndex")
 	}
 	ic.KeyGroupIndex, err = strconv.Atoi(vConfig.GetString(ConfigIssuesPrefix + "keyGroupIndex"))
 	if err != nil {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(ConfigParseValueError, ConfigIssuesPrefix+"keyGroupIndex", err.Error())))
+		return errorutils.CheckErrorf(ConfigParseValueError, ConfigIssuesPrefix+"keyGroupIndex", err.Error())
 	}
 
 	// Get issues summary group index
 	if !vConfig.IsSet(ConfigIssuesPrefix + "summaryGroupIndex") {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(MissingConfigurationError, ConfigIssuesPrefix+"summaryGroupIndex")))
+		return errorutils.CheckErrorf(MissingConfigurationError, ConfigIssuesPrefix+"summaryGroupIndex")
 	}
 	ic.SummaryGroupIndex, err = strconv.Atoi(vConfig.GetString(ConfigIssuesPrefix + "summaryGroupIndex"))
 	if err != nil {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(ConfigParseValueError, ConfigIssuesPrefix+"summaryGroupIndex", err.Error())))
+		return errorutils.CheckErrorf(ConfigParseValueError, ConfigIssuesPrefix+"summaryGroupIndex", err.Error())
 	}
 
 	// Get aggregation aggregate
@@ -410,7 +409,7 @@ func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath stri
 	if vConfig.IsSet(ConfigIssuesPrefix + "aggregate") {
 		ic.Aggregate, err = strconv.ParseBool(vConfig.GetString(ConfigIssuesPrefix + "aggregate"))
 		if err != nil {
-			return errorutils.CheckError(errors.New(fmt.Sprintf(ConfigParseValueError, ConfigIssuesPrefix+"aggregate", err.Error())))
+			return errorutils.CheckErrorf(ConfigParseValueError, ConfigIssuesPrefix+"aggregate", err.Error())
 		}
 	}
 

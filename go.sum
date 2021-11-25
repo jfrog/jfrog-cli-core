@@ -220,8 +220,8 @@ github.com/jedib0t/go-pretty/v6 v6.2.2/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoM
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c h1:0wHTDhpdH+ueqq5IzC79mGiq5PckLOgXzt5kil4CoJc=
 github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c/go.mod h1:zpUT/lS1EA2WuiiTckK0IZgnl+ONVkqu/gRAVgDzang=
-github.com/jfrog/gocmd v0.5.5-0.20211124162113-60531e4d9053 h1:2tzNWzEpB9ZFYaR1VFOOkllPjofIBmYS7p/002K9UM4=
-github.com/jfrog/gocmd v0.5.5-0.20211124162113-60531e4d9053/go.mod h1:VXyWB3SmAyppuN6QChKKT/DxRoPqCa9t6xMsU6lck5s=
+github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4 h1:alM+FEMsymgzaSQMzGwDoWtjDlhouN5dbY10SH+iSXk=
+github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4/go.mod h1:4+ngOdyQlhP0i1/JuHqOC6hwjYWnCEp6ZJEExwyo9U4=
 github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
 github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
 github.com/jfrog/jfrog-client-go v1.6.2-0.20211124162552-294b033f185b h1:H7ANqa+GssiPac1kFlt22EGw5F+EyS7mk98Xptsc6/0=

@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestCreateCommandUsage(t *testing.T) {
 		},
 	}
 	appName := "test-app"
-	expected := fmt.Sprintf("jfrog %s %s [command options] <%s> <%s>", appName, cmd.Name, cmd.Arguments[0].Name, cmd.Arguments[1].Name)
+	expected := fmt.Sprintf("%s %s %s [command options] <%s> <%s>", coreutils.GetCliExecutableName(), appName, cmd.Name, cmd.Arguments[0].Name, cmd.Arguments[1].Name)
 	assert.Equal(t, createCommandUsage(cmd, appName), expected)
 }
 

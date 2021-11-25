@@ -34,3 +34,9 @@ func TestDownloadExtractorsFromReleases(t *testing.T) {
 	expectedClasswordsPath := filepath.Join(dependenciesPath, "classworlds.conf")
 	assert.FileExists(t, expectedClasswordsPath)
 }
+
+func TestGetMavenHomeAndValidateVersion(t *testing.T) {
+	mvnHome, err := getMavenHomeAndValidateVersion()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, mvnHome)
+}

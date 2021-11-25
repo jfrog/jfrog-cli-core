@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -202,7 +201,7 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 		}
 		override := coreutils.AskYesNo("Configuration file already exists at "+configFilePath+". Override it?", false)
 		if !override {
-			return errorutils.CheckError(errors.New("operation canceled"))
+			return errorutils.CheckErrorf("operation canceled")
 		}
 		return nil
 	}
@@ -403,7 +402,7 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 		if defaultServerId == "" {
 			// Repositories flags were provided.
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-				return errorutils.CheckError(errors.New(errorPrefix + setServerIdError))
+				return errorutils.CheckErrorf(errorPrefix + setServerIdError)
 			}
 		} else {
 			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
@@ -414,12 +413,12 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 	} else {
 		// Server-id flag was provided, but no repositories flags.
 		if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckError(errors.New(errorPrefix + setRepositoryError))
+			return errorutils.CheckErrorf(errorPrefix + setRepositoryError)
 		}
 	}
 	// Release/snapshot repositories should be entangled to each other.
 	if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-		return errorutils.CheckError(errors.New(errorPrefix + setSnapshotAndReleaseError))
+		return errorutils.CheckErrorf(errorPrefix + setSnapshotAndReleaseError)
 	}
 	return nil
 }
@@ -441,7 +440,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 		return "", err
 	}
 	if len(serversIds) == 0 {
-		return "", errorutils.CheckError(errors.New("No Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details."))
+		return "", errorutils.CheckErrorf("No Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details.")
 	}
 
 	// Ask whether to use artifactory

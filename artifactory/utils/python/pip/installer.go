@@ -13,9 +13,7 @@ import (
 )
 
 type PipInstaller struct {
-	ServerDetails       *config.ServerDetails
-	Args                []string
-	Repository          string
+	CommonExecutor
 	ShouldParseLogs     bool
 	DependencyToFileMap map[string]string
 }

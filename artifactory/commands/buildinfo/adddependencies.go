@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"errors"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	regxp "regexp"
 	"strconv"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"

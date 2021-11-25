@@ -1,8 +1,8 @@
 package yarn
 
 import (
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 	"os"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"strings"
 )
 
@@ -56,7 +57,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 }
 
 func createCommandUsage(cmd Command, appName string) string {
-	usage := fmt.Sprintf("jfrog %s %s", appName, cmd.Name)
+	usage := fmt.Sprintf(coreutils.GetCliExecutableName()+" %s %s", appName, cmd.Name)
 	if len(cmd.Flags) > 0 {
 		usage += " [command options]"
 	}

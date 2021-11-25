@@ -3,9 +3,9 @@ package dependencies
 import (
 	"encoding/xml"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -278,7 +278,7 @@ func (extractor *packagesExtractor) getGlobalPackagesCache() (string, error) {
 		return "", err
 	}
 	if !exists {
-		return "", errorutils.CheckError(fmt.Errorf("Could not find global packages path at: %s", globalPackagesPath))
+		return "", errorutils.CheckErrorf("Could not find global packages path at: %s", globalPackagesPath)
 	}
 	return globalPackagesPath, nil
 }

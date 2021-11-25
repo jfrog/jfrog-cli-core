@@ -3,12 +3,12 @@ package golang
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
 	executors "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -117,11 +117,13 @@ func (gc *GoCommand) run() error {
 	buildName := gc.buildConfiguration.BuildName
 	buildNumber := gc.buildConfiguration.BuildNumber
 	projectKey := gc.buildConfiguration.Project
+	var goBuild *build.Build
 	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
+		buildInfoService := utils.CreateBuildInfoService()
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 	}
 
@@ -141,8 +143,6 @@ func (gc *GoCommand) run() error {
 		return err
 	}
 
-	var targetRepo string
-
 	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo())
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (gc *GoCommand) run() error {
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
 				// Package name was not supplied. Invalid go get commend
-				return errorutils.CheckError(errors.New("Invalid get command. Package name is missing"))
+				return errorutils.CheckErrorf("Invalid get command. Package name is missing")
 			}
 			tempDirPath, err = fileutils.CreateTempDir()
 			if err != nil {
@@ -165,19 +165,14 @@ func (gc *GoCommand) run() error {
 				return err
 			}
 		}
-		goProject, err := project.Load("-", tempDirPath)
+		goModule, err := goBuild.AddGoModule(tempDirPath)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
-		err = goProject.LoadDependencies()
-		if err != nil {
-			return err
+		if gc.buildConfiguration.Module != "" {
+			goModule.SetName(gc.buildConfiguration.Module)
 		}
-		err = goProject.CreateBuildInfoDependencies()
-		if err != nil {
-			return err
-		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(false, gc.buildConfiguration.Module, targetRepo))
+		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 
 	return err

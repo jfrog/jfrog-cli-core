@@ -2,7 +2,6 @@ package npmutils
 
 import (
 	"bytes"
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -21,11 +20,16 @@ func Version(executablePath string) (*version.Version, error) {
 
 func getVersion(executablePath string) (string, error) {
 	command := exec.Command(executablePath, "-version")
-	buffer := bytes.NewBuffer([]byte{})
-	command.Stderr = buffer
-	command.Stdout = buffer
+	stderr := bytes.NewBuffer([]byte{})
+	stdout := bytes.NewBuffer([]byte{})
+	command.Stderr = stderr
+	command.Stdout = stdout
 	err := command.Run()
-	return buffer.String(), coreutils.ConvertExitCodeError(errorutils.CheckError(err))
+	if err != nil {
+		err = coreutils.ConvertExitCodeError(err)
+		return "", errorutils.CheckErrorf(stderr.String() + "-" + err.Error())
+	}
+	return stdout.String(), nil
 }
 
 func GetNpmVersionAndExecPath() (*version.Version, string, error) {
@@ -36,7 +40,7 @@ func GetNpmVersionAndExecPath() (*version.Version, string, error) {
 	}
 
 	if npmExecPath == "" {
-		return nil, "", errorutils.CheckError(errors.New("could not find the 'npm' executable in the system PATH"))
+		return nil, "", errorutils.CheckErrorf("could not find the 'npm' executable in the system PATH")
 	}
 
 	log.Debug("Using npm executable:", npmExecPath)

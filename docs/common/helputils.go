@@ -3,11 +3,15 @@ package common
 import (
 	"fmt"
 	"github.com/codegangsta/cli"
-	"strings"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 func CreateUsage(command string, name string, commands []string) string {
-	return "\nName:\n\t" + "jfrog " + command + " - " + name + "\n\nUsage:\n\t" + strings.Join(commands[:], "\n\t") + "\n"
+	var usage string
+	for _, cmd := range commands {
+		usage += coreutils.GetCliExecutableName() + " " + cmd + "\n\t"
+	}
+	return "\nName:\n\t" + coreutils.GetCliExecutableName() + " " + command + " - " + name + "\n\nUsage:\n\t" + usage
 }
 
 func CreateBashCompletionFunc(extraCommands ...string) cli.BashCompleteFunc {

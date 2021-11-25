@@ -2,10 +2,12 @@ package utils
 
 import (
 	"bytes"
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,8 +16,6 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -25,8 +25,8 @@ const BuildInfoDetails = "details"
 const BuildTempPath = "jfrog/builds/"
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
-	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "_" + projectKey))
-	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, encodedDirName)
+	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
+	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, hex.EncodeToString(hash[:]))
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err
@@ -262,25 +262,6 @@ func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
 		return errorutils.CheckError(os.RemoveAll(tempDirPath))
 	}
 	return nil
-}
-
-type BuildInfoConfiguration struct {
-	serverDetails auth.ServiceDetails
-	DryRun        bool
-	EnvInclude    string
-	EnvExclude    string
-}
-
-func (config *BuildInfoConfiguration) GetServerDetails() auth.ServiceDetails {
-	return config.serverDetails
-}
-
-func (config *BuildInfoConfiguration) SetServerDetails(art auth.ServiceDetails) {
-	config.serverDetails = art
-}
-
-func (config *BuildInfoConfiguration) IsDryRun() bool {
-	return config.DryRun
 }
 
 type BuildConfiguration struct {

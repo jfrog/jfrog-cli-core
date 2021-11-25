@@ -220,6 +220,8 @@ github.com/jedib0t/go-pretty/v6 v6.2.2/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoM
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c h1:0wHTDhpdH+ueqq5IzC79mGiq5PckLOgXzt5kil4CoJc=
 github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c/go.mod h1:zpUT/lS1EA2WuiiTckK0IZgnl+ONVkqu/gRAVgDzang=
+github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4 h1:alM+FEMsymgzaSQMzGwDoWtjDlhouN5dbY10SH+iSXk=
+github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4/go.mod h1:4+ngOdyQlhP0i1/JuHqOC6hwjYWnCEp6ZJEExwyo9U4=
 github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
 github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
 github.com/jfrog/jfrog-client-go v1.6.2-0.20211124162552-294b033f185b h1:H7ANqa+GssiPac1kFlt22EGw5F+EyS7mk98Xptsc6/0=
@@ -353,8 +355,6 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 h1:QldyIu/L63oPpyvQmHgvgickp1Yw510KJOqX7H24mg8=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778/go.mod h1:2MuV+tbUrU1zIOPMxZ5EncGwgmMJsa+9ucAQZXxsObs=
-github.com/yahavi/gocmd v0.1.13-0.20211125083756-21b801aa845a h1:33c6vD+CvkWPJtoMbORyv6RJ1vcCwG5/ZEYAM92Hydc=
-github.com/yahavi/gocmd v0.1.13-0.20211125083756-21b801aa845a/go.mod h1:VXyWB3SmAyppuN6QChKKT/DxRoPqCa9t6xMsU6lck5s=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

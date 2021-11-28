@@ -86,9 +86,9 @@ func getDependencyInfo(depName, repository string, dependenciesCache *Dependenci
 
 // Fetch checksum for file from Artifactory.
 // If the file isn't found, or md5 or sha1 are missing, return nil.
-func getDependencyChecksumFromArtifactory(servicesManager artifactory.ArtifactoryServicesManager, repository, dependencyFile string) (*buildinfo.Checksum, error) {
+func getDependencyChecksumFromArtifactory(servicesManager artifactory.ArtifactoryServicesManager, repository, dependencyFile string) (checksum *buildinfo.Checksum, err error) {
 	log.Debug(fmt.Sprintf("Fetching checksums for: %s", dependencyFile))
-	repository, err := utils.GetRepoNameForDependenciesSearch(repository, servicesManager)
+	repository, err = utils.GetRepoNameForDependenciesSearch(repository, servicesManager)
 	if err != nil {
 		return nil, err
 	}
@@ -126,10 +126,10 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	}
 
 	// Update checksum.
-	checksum := &buildinfo.Checksum{Sha1: sha1, Md5: md5}
+	checksum = &buildinfo.Checksum{Sha1: sha1, Md5: md5}
 	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
 
-	return checksum, nil
+	return
 }
 
 func promptMissingDependencies(missingDeps []string) {

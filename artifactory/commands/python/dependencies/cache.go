@@ -21,8 +21,8 @@ type DependenciesCache struct {
 // Key: dependency_name Value: dependency's struct with all relevant information.
 // If cache file does not exist -> return nil, nil.
 // If error occurred, return error.
-func GetProjectDependenciesCache(cacheDir string) (*DependenciesCache, error) {
-	cache := new(DependenciesCache)
+func GetProjectDependenciesCache(cacheDir string) (cache *DependenciesCache, err error) {
+	cache = new(DependenciesCache)
 	cacheFilePath, exists, err := getCacheFilePath(cacheDir)
 	if errorutils.CheckError(err) != nil || !exists {
 		return nil, err
@@ -45,14 +45,13 @@ func GetProjectDependenciesCache(cacheDir string) (*DependenciesCache, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-
-	return cache, nil
+	return
 }
 
 // Receives map of all current project's dependencies information.
 // The map contains the dependencies retrieved from Artifactory as well as those read from cache.
 // Writes the updated project's dependencies cache with all current dependencies.
-func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheDir string) error {
+func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheDir string) (err error) {
 	updatedCache := DependenciesCache{Version: cacheLatestVersion, DepsMap: updatedMap}
 	content, err := json.Marshal(&updatedCache)
 	if err != nil {
@@ -77,8 +76,7 @@ func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheD
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-
-	return nil
+	return
 }
 
 // Return required dependency from cache.

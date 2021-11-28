@@ -348,29 +348,33 @@ func (bc *BuildConfiguration) GetModule() string {
 	return bc.module
 }
 
-// Returns nil if the build name / number / module are found, otherwise, return error.
+// Return nil if build name & number & module are found or none of them.
 func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
-	if err := bc.ValidateBuildParams(); err != nil {
-		return errorutils.CheckErrorf("the build-name and build-number options are mandatory when the module option is provided.")
-	}
 	buildName, err := bc.GetBuildName()
 	if err != nil {
 		return err
 	}
-	if bc.GetModule() != "" && buildName == "" && bc.GetBuildNumber() == "" {
-		return errorutils.CheckErrorf("Module is not found.")
+	buildNumber := bc.GetBuildNumber()
+	module := bc.GetModule()
+	if err := bc.ValidateBuildParams(); err != nil {
+		return err
+	}
+	if module != "" && buildName == "" && buildNumber == "" {
+		return errorutils.CheckErrorf("the build-name and build-number options are mandatory when the module option is provided.")
+
 	}
 	return nil
 }
 
-// Returns nil if the build name / build number are found, otherwise, return error.
+// Return nil if build name & number are found or none of them.
 func (bc *BuildConfiguration) ValidateBuildParams() error {
 	buildName, err := bc.GetBuildName()
 	if err != nil {
 		return err
 	}
-	if buildName == "" || bc.GetBuildNumber() == "" {
-		return errorutils.CheckErrorf("Build name and build number is not found.")
+	buildNumber := bc.GetBuildNumber()
+	if (buildName == "" && buildNumber != "") || (buildName != "" && buildNumber == "") {
+		return errorutils.CheckErrorf(("the build-name and build-number options cannot be provided separately"))
 	}
 	return nil
 }

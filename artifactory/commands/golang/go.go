@@ -3,6 +3,10 @@ package golang
 import (
 	"errors"
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
@@ -10,14 +14,12 @@ import (
 	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 type GoCommand struct {
@@ -26,6 +28,7 @@ type GoCommand struct {
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
 	configFilePath     string
+	noFallback         bool
 }
 
 func NewGoCommand() *GoCommand {
@@ -106,7 +109,27 @@ func (gc *GoCommand) Run() error {
 	if err != nil {
 		return err
 	}
+
+	// Extract no-fallback flag from the args.
+	gc.goArg, err = gc.extractNoFallbackFromArgs()
+	if err != nil {
+		return err
+	}
 	return gc.run()
+}
+
+func (gc *GoCommand) extractNoFallbackFromArgs() (cleanArgs []string, err error) {
+	var flagIndex int
+	cleanArgs = append([]string(nil), gc.goArg...)
+
+	// Extract no-fallback boolean flag from the args.
+	flagIndex, gc.noFallback, err = coreutils.FindBooleanFlag("--no-fallback", cleanArgs)
+	if err != nil {
+		return
+	}
+
+	coreutils.RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
 }
 
 func (gc *GoCommand) run() error {
@@ -143,9 +166,9 @@ func (gc *GoCommand) run() error {
 		return err
 	}
 
-	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo())
+	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.noFallback)
 	if err != nil {
-		return err
+		return coreutils.ConvertExitCodeError(err)
 	}
 	if isCollectBuildInfo {
 		tempDirPath := ""

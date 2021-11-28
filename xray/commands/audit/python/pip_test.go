@@ -2,6 +2,7 @@ package python
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -11,10 +12,8 @@ func TestBuildPipDependencyList(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipCommand()
-	rootNodes, err := auditCmd.buildPipDependencyTree()
-	rootNodes = rootNodes
-	err = err
-	//assert.NoError(t, err)
+	_, err := auditCmd.buildPipDependencyTree()
+	assert.NoError(t, err)
 	//assert.NotEmpty(t, rootNodes)
 	//if rootNodes != nil {
 	//	// Test root module

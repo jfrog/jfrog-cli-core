@@ -44,10 +44,10 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 	return dependencyTree, nil
 }
 
-func (apc *AuditPipCommand) getDependencies() (map[string][]string, []string, error) {
+func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 	defer func() {
 		e := fileutils.RemoveTempDir(tempDirPath)
@@ -57,22 +57,18 @@ func (apc *AuditPipCommand) getDependencies() (map[string][]string, []string, er
 	}()
 	err = piputils.RunVirtualEnv(tempDirPath)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	// pip install project
 	err = piputils.RunPipInstall(tempDirPath)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, rootDependencies, err := piputils.RunPipDepTree(tempDirPath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return dependenciesGraph, rootDependencies, nil
+	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(tempDirPath)
+	return
 }
 
 func (apc *AuditPipCommand) CommandName() string {

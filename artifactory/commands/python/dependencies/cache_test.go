@@ -23,11 +23,8 @@ func TestDependenciesCache(t *testing.T) {
 		t.Error("Failed Chdir: " + err.Error())
 	}
 	defer func() {
-		e := os.RemoveAll(tmpTestPath)
-		assert.NoError(t, e)
-
-		e = os.Chdir(wd)
-		assert.NoError(t, e)
+		assert.NoError(t, os.Chdir(wd))
+		assert.NoError(t, os.RemoveAll(tmpTestPath))
 	}()
 
 	cacheMap := make(map[string]*buildinfo.Dependency)

@@ -111,7 +111,9 @@ func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 		dir, _ := os.Getwd()
 		log.Info("the wd:" + dir)
 		err = fileutils.RemoveTempDir(tempDirPath)
-		log.Info("errr:" + err.Error())
+		if err != nil {
+			log.Info("errr:" + err.Error())
+		}
 		assert.NoError(t, err)
 	}
 }

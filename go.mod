@@ -10,7 +10,6 @@ require (
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
 	github.com/jfrog/build-info-go v0.1.2
-	github.com/jfrog/gocmd v0.5.5
 	github.com/jfrog/gofrog v1.1.0
 	github.com/jfrog/jfrog-client-go v1.6.2
 	github.com/magiconair/properties v1.8.5
@@ -30,8 +29,8 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.6.3-0.20211125104048-cb20703ca609
+replace github.com/jfrog/jfrog-client-go => github.com/asafgabai/jfrog-client-go v0.18.1-0.20211128134428-1ab0bbc80b37
 
-replace github.com/jfrog/gocmd => github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4
+replace github.com/jfrog/build-info-go => github.com/asafgabai/build-info-go v0.0.0-20211128131014-731a651df220
 
-replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v0.1.2-0.20211125102823-5181de8a8884
+replace github.com/jfrog/gofrog => github.com/asafgabai/gofrog v1.0.7-0.20211124142550-392f9a68eb53

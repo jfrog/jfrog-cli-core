@@ -3,7 +3,6 @@ package python
 import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -45,27 +44,27 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 }
 
 func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
-	tempDirPath, err := fileutils.CreateTempDir()
-	if err != nil {
-		return
-	}
-	defer func() {
-		e := fileutils.RemoveTempDir(tempDirPath)
-		if err == nil {
-			err = e
-		}
-	}()
-	err = piputils.RunVirtualEnv(tempDirPath)
+	//tempDirPath, err := fileutils.CreateTempDir()
+	//if err != nil {
+	//	return
+	//}
+	//defer func() {
+	//	e := fileutils.RemoveTempDir(tempDirPath)
+	//	if err == nil {
+	//		err = e
+	//	}
+	//}()
+	err = piputils.RunVirtualEnv("mic")
 	if err != nil {
 		return
 	}
 	// pip install project
-	err = piputils.RunPipInstall(tempDirPath)
+	err = piputils.RunPipInstall("mic")
 	if err != nil {
 		return
 	}
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(tempDirPath)
+	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree("mic")
 	return
 }
 

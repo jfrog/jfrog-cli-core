@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	myJfrogEndPoint          = "https://myjfrog-api.jfrog.info/api/v1/activation/cloud/cli/getStatus/"
+	myJfrogEndPoint          = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
 	defaultSyncSleepInterval = 5 * time.Second  // 5 seconds
 	maxWaitMinutes           = 10 * time.Minute // 10 minutes
 )

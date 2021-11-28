@@ -1,6 +1,7 @@
-package audit
+package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := createTestWorkspace(t, "gradle-example-ci-server")
+	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
 	defer cleanUp()
 	err := os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700)
 	assert.NoError(t, err)
@@ -23,20 +24,20 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.Len(t, modulesDependencyTrees, 5)
 
 	// Check module
-	module := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
+	module := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 	assert.Len(t, module.Nodes, 7)
 
 	// Check direct dependency
-	directDependency := getAndAssertNode(t, module.Nodes, "junit:junit:4.11")
+	directDependency := audit.GetAndAssertNode(t, module.Nodes, "junit:junit:4.11")
 	assert.Len(t, directDependency.Nodes, 1)
 
 	// Check transitive dependency
-	getAndAssertNode(t, directDependency.Nodes, "org.hamcrest:hamcrest-core:1.3")
+	audit.GetAndAssertNode(t, directDependency.Nodes, "org.hamcrest:hamcrest-core:1.3")
 }
 
 func TestGradleTreesWithConfig(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := createTestWorkspace(t, "gradle-example-publish")
+	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-publish")
 	defer cleanUp()
 	err := os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700)
 	assert.NoError(t, err)
@@ -48,20 +49,20 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.Len(t, modulesDependencyTrees, 3)
 
 	// Check module
-	module := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:webservice:1.0-SNAPSHOT")
+	module := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:webservice:1.0-SNAPSHOT")
 	assert.Len(t, module.Nodes, 7)
 
 	// Check direct dependency
-	directDependency := getAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")
+	directDependency := audit.GetAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")
 	assert.Len(t, directDependency.Nodes, 1)
 
 	// Check transitive dependency
-	getAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
+	audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 }
 
 func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := createTestWorkspace(t, "gradle-example-ci-server")
+	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
 	defer cleanUp()
 	err := os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700)
 	assert.NoError(t, err)
@@ -75,14 +76,14 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.Len(t, modulesDependencyTrees, 5)
 
 	// Check module
-	module := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
+	module := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 	assert.Len(t, module.Nodes, 6)
-	assert.Nil(t, getModule(module.Nodes, "junit:junit:4.11"))
+	assert.Nil(t, audit.GetModule(module.Nodes, "junit:junit:4.11"))
 
 	// Check direct dependency
-	directDependency := getAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")
+	directDependency := audit.GetAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")
 	assert.Len(t, directDependency.Nodes, 1)
 
 	// Check transitive dependency
-	getAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
+	audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 }

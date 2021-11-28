@@ -3,6 +3,7 @@ package dependencies
 import (
 	"errors"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -22,8 +23,11 @@ func TestDependenciesCache(t *testing.T) {
 		t.Error("Failed Chdir: " + err.Error())
 	}
 	defer func() {
-		os.RemoveAll(tmpTestPath)
-		os.Chdir(wd)
+		e := os.RemoveAll(tmpTestPath)
+		assert.NoError(t, e)
+
+		e = os.Chdir(wd)
+		assert.NoError(t, e)
 	}()
 
 	cacheMap := make(map[string]*buildinfo.Dependency)

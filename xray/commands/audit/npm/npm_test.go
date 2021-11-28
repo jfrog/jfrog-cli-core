@@ -1,4 +1,4 @@
-package audit
+package npm
 
 import (
 	"encoding/json"

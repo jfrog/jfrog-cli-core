@@ -24,37 +24,34 @@ func GetPipenvVenv(venvDir string) (string, error) {
 	return strings.TrimSuffix(string(output), "\n"), err
 }
 
-// Executes the pipenv graph and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
+// Get simple list of all dependencies (using pipenv graph)
 func GetPipenvDependenciesList(venvDir string) (map[string]bool, error) {
 	packages, err := runPipenvGraph(venvDir)
 	if err != nil {
 		return nil, err
 	}
-
-	// Parse the result.
 	return parseDependenciesToList(packages)
 }
 
-// Executes the pipenv install and pipenv graph
+// Executes pipenv install and pipenv graph.
 // Returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
 func GetPipenvDependenciesGraph(venvDir string) (map[string][]string, []string, error) {
-	// run pipenv install
+	// Run pipenv install
 	_, err := runPythonCommand("pipenv", []string{"install"}, getPipenvEnvironmentString(venvDir))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// run pipenv graph
+	// Run pipenv graph
 	packages, err := runPipenvGraph(venvDir)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Parse the result.
 	return parseDependenciesToGraph(packages)
 }
 
-// Executes the pipenv graph and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
+// Executes pipenv graph
+// Returns a dependency map of all the installed pipenv packages and another list of the top level dependencies
 func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
 	data, err := runPythonCommand("pipenv", []string{"graph", "--json"}, getPipenvEnvironmentString(venvDir))
 	if err != nil {
@@ -65,11 +62,11 @@ func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
 	if err := json.Unmarshal(data, &packages); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	// Parse the result.
 	return packages, nil
 }
 
-// Parse pip-dependency-map raw output to dependencies map (mapping dependency to his child deps) and top level deps list
+// Parse pythonDependencyPackage list to dependencies map (mapping dependency to his child deps)
+// also returns a list of top level dependencies
 func parseDependenciesToList(packages []pythonDependencyPackage) (map[string]bool, error) {
 	// Create packages map.
 	allPackages := map[string]bool{}

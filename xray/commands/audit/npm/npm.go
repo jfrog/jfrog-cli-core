@@ -1,8 +1,9 @@
-package audit
+package npm
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -10,12 +11,12 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func NewAuditNpmCommand(auditCmd AuditCommand) *AuditNpmCommand {
+func NewAuditNpmCommand(auditCmd audit.AuditCommand) *AuditNpmCommand {
 	return &AuditNpmCommand{AuditCommand: auditCmd}
 }
 
 type AuditNpmCommand struct {
-	AuditCommand
+	audit.AuditCommand
 	typeRestriction npmutils.TypeRestriction
 }
 

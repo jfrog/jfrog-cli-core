@@ -67,8 +67,12 @@ func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheD
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer cacheFile.Close()
-
+	defer func() {
+		e := cacheFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	_, err = cacheFile.Write(content)
 	if err != nil {
 		return errorutils.CheckError(err)

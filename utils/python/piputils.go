@@ -2,7 +2,6 @@ package python
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -61,14 +60,10 @@ func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{"--version"}, "")
-	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"--version"}, "")
-	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", "pipenv"}, "")
-	data, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
+	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
 	if err != nil {
 		return nil, nil, err
 	}
-	// Parse the result.
 	// Parse into array.
 	packages := make([]pythonDependencyPackage, 0)
 	if err = json.Unmarshal(data, &packages); err != nil {

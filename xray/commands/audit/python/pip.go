@@ -1,20 +1,21 @@
-package audit
+package python
 
 import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type AuditPipCommand struct {
-	AuditCommand
+	audit.AuditCommand
 }
 
 func NewEmptyAuditPipCommand() *AuditPipCommand {
-	return &AuditPipCommand{AuditCommand: *NewAuditCommand()}
+	return &AuditPipCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditPipCommand(auditCmd AuditCommand) *AuditPipCommand {
+func NewAuditPipCommand(auditCmd audit.AuditCommand) *AuditPipCommand {
 	return &AuditPipCommand{AuditCommand: auditCmd}
 }
 
@@ -23,7 +24,7 @@ func (apc *AuditPipCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return apc.runScanGraph(dependencyTree)
+	return apc.ScanDependencyTree(dependencyTree)
 }
 
 func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {

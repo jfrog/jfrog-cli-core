@@ -27,7 +27,8 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	return stdout.Bytes(), nil
 }
 
-// Parse pip-dependency-map raw output to dependencies map (mapping dependency to his child deps) and top level deps list
+// Parse pythonDependencyPackage list to dependencies map (mapping dependency to his child deps)
+// also returns a list of top level dependencies
 func parseDependenciesToGraph(packages []pythonDependencyPackage) (map[string][]string, []string, error) {
 	// Create packages map.
 	packagesMap := map[string][]string{}

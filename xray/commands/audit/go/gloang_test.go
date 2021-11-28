@@ -1,6 +1,7 @@
-package audit
+package _go
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 func TestBuildGoDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := createTestWorkspace(t, "go-project")
+	_, cleanUp := audit.CreateTestWorkspace(t, "go-project")
 	defer cleanUp()
 
 	err := removeTxtSuffix("go.mod.txt")
@@ -31,13 +32,13 @@ func TestBuildGoDependencyList(t *testing.T) {
 	assert.Len(t, rootNode.Nodes, 2)
 
 	// Test child without sub nodes
-	child1 := getAndAssertNode(t, rootNode.Nodes, "golang.org/x/text:0.3.3")
+	child1 := audit.GetAndAssertNode(t, rootNode.Nodes, "golang.org/x/text:0.3.3")
 	assert.Len(t, child1.Nodes, 0)
 
 	// Test child with 1 sub node
-	child2 := getAndAssertNode(t, rootNode.Nodes, "rsc.io/quote:1.5.2")
+	child2 := audit.GetAndAssertNode(t, rootNode.Nodes, "rsc.io/quote:1.5.2")
 	assert.Len(t, child2.Nodes, 1)
-	getAndAssertNode(t, child2.Nodes, "rsc.io/sampler:1.3.0")
+	audit.GetAndAssertNode(t, child2.Nodes, "rsc.io/sampler:1.3.0")
 }
 
 func removeTxtSuffix(txtFileName string) error {

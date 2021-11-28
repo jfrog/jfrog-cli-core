@@ -1,4 +1,4 @@
-package audit
+package java
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"

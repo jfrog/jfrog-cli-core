@@ -109,10 +109,10 @@ func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
 
 // Execute egg_info command for setup.py, return command's output.
 func executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath string) (string, error) {
-	pythonEggInfoCmd := &PythonCmd{
-		Executable:  pythonExecutablePath,
-		Command:     setuppyFilePath,
-		CommandArgs: []string{"egg_info"},
+	pythonEggInfoCmd := &PythonCommand{
+		executable:  pythonExecutablePath,
+		commandName: setuppyFilePath,
+		args:        []string{"egg_info"},
 	}
 	return gofrogcmd.RunCmdOutput(pythonEggInfoCmd)
 }

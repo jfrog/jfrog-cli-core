@@ -1,21 +1,22 @@
-package audit
+package python
 
 import (
 	pipenvutils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"path/filepath"
 )
 
 type AuditPipenvCommand struct {
-	AuditCommand
+	audit.AuditCommand
 }
 
 func NewEmptyAuditPipenvCommand() *AuditPipenvCommand {
-	return &AuditPipenvCommand{AuditCommand: *NewAuditCommand()}
+	return &AuditPipenvCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditPipenvCommand(auditCmd AuditCommand) *AuditPipenvCommand {
+func NewAuditPipenvCommand(auditCmd audit.AuditCommand) *AuditPipenvCommand {
 	return &AuditPipenvCommand{AuditCommand: auditCmd}
 }
 
@@ -24,7 +25,7 @@ func (apec *AuditPipenvCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	return apec.runScanGraph([]*services.GraphNode{rootNode})
+	return apec.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 
 func (apec *AuditPipenvCommand) buildPipenvDependencyTree() (*services.GraphNode, error) {

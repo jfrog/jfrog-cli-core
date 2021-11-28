@@ -1,7 +1,8 @@
-package audit
+package java
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
@@ -10,15 +11,15 @@ import (
 )
 
 type AuditMavenCommand struct {
-	AuditCommand
+	audit.AuditCommand
 	insecureTls bool
 }
 
 func NewEmptyAuditMavenCommand() *AuditMavenCommand {
-	return &AuditMavenCommand{AuditCommand: *NewAuditCommand()}
+	return &AuditMavenCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditMavenCommand(auditCmd AuditCommand) *AuditMavenCommand {
+func NewAuditMavenCommand(auditCmd audit.AuditCommand) *AuditMavenCommand {
 	return &AuditMavenCommand{AuditCommand: auditCmd}
 }
 

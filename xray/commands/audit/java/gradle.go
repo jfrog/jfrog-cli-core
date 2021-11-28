@@ -1,7 +1,8 @@
-package audit
+package java
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
@@ -10,16 +11,16 @@ import (
 )
 
 type AuditGradleCommand struct {
-	AuditCommand
+	audit.AuditCommand
 	excludeTestDeps bool
 	useWrapper      bool
 }
 
 func NewEmptyAuditGradleCommand() *AuditGradleCommand {
-	return &AuditGradleCommand{AuditCommand: *NewAuditCommand()}
+	return &AuditGradleCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditGradleCommand(auditCmd AuditCommand) *AuditGradleCommand {
+func NewAuditGradleCommand(auditCmd audit.AuditCommand) *AuditGradleCommand {
 	return &AuditGradleCommand{AuditCommand: auditCmd}
 }
 

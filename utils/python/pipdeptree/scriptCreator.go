@@ -41,7 +41,7 @@ func main() {
 	}
 	// Replace all backticks ( ` ) with a single quote ( ' )
 	pyFileString := strings.ReplaceAll(string(pyFile), "`", "'")
-	// Add it the relevant package
+
 	resourceString := "package python\n\n"
 	// Add a const string with the script's version
 	resourceString += "const pipDepTreeVersion = \"" + pipDepTreeVersion + "\"\n\n"

@@ -66,11 +66,11 @@ func getDependencyInfo(depName, repository string, dependenciesCache *Dependenci
 	if dependenciesCache != nil {
 		depFromCache := dependenciesCache.GetDependency(depName)
 		if depFromCache != nil {
-			// situations to use cached dependency:
-			// 	1. if file name is empty and therefore the dep is cached
-			// 	2. if file name equals the cached file name
+			// Cached dependencies are used in the following cases:
+			// 	1. When file name is empty and therefore the dependency is cached
+			// 	2. When file name is identical to the cached file name
 			if depFileName == "" || depFileName == depFromCache.Id {
-				// Checksum found in cache, return info
+				// The checksum was found in cache - the info is returned.
 				return depFromCache.Id, depFromCache.Checksum, nil
 			}
 		}

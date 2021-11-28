@@ -1,4 +1,4 @@
-package audit
+package python
 
 import (
 	"github.com/jfrog/jfrog-client-go/xray/services"

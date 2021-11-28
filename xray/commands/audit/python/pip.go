@@ -4,6 +4,7 @@ import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -50,7 +51,9 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 		return
 	}
 	defer func() {
+		log.Error("err:" + err.Error())
 		e := fileutils.RemoveTempDir(tempDirPath)
+		log.Error("err:" + e.Error())
 		if err == nil {
 			err = e
 		}

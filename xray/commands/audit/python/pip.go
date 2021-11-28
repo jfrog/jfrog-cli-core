@@ -33,7 +33,6 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 	if err != nil {
 		return nil, err
 	}
-	log.Info("444")
 	var dependencyTree []*services.GraphNode
 	for _, rootDep := range rootDependenciesList {
 		parentNode := &services.GraphNode{

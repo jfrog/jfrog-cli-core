@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -25,7 +26,7 @@ const (
 	classworldsConfFileName         = "classworlds.conf"
 	mavenHome                       = "M2_HOME"
 	minSupportedMvnVersion          = "3.1.0"
-	minSupportedMvnVersionError     = "JFrog CLI mvn commands requires Maven version \"+minSupportedMvnVersion+\" or higher."
+	minSupportedMvnVersionError     = "JFrog CLI mvn commands requires Maven version " + minSupportedMvnVersion + " or higher."
 )
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
@@ -70,8 +71,9 @@ func getMavenHomeAndValidateVersion() (string, error) {
 				return "", err
 			}
 		}
-		if strings.HasPrefix(line, "Apache Maven") {
-			mvnVersion = strings.Split(line, " ")[2]
+		if strings.Contains(line, "Apache Maven") {
+			versionRegex := regexp.MustCompile("Apache\\sMaven\\s(\\w[\\w-\\.]+)\\s")
+			mvnVersion = versionRegex.FindStringSubmatch(line)[1]
 		}
 	}
 
@@ -80,11 +82,11 @@ func getMavenHomeAndValidateVersion() (string, error) {
 	}
 	if mvnVersion == "" {
 		log.Info("Could not get maven version, by running 'mvn --version' command. " + minSupportedMvnVersionError)
-	}
-
-	err = validateMinimumVersion(mvnVersion)
-	if err != nil {
-		return "", err
+	} else {
+		err = validateMinimumVersion(mvnVersion)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	log.Debug("Maven home location: ", mvnHome)

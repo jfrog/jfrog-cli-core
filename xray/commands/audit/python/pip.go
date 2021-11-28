@@ -33,6 +33,7 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 	if err != nil {
 		return nil, err
 	}
+	log.Info("444")
 	var dependencyTree []*services.GraphNode
 	for _, rootDep := range rootDependenciesList {
 		parentNode := &services.GraphNode{
@@ -50,14 +51,9 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	if err != nil {
 		return
 	}
+	log.Info("1111")
 	defer func() {
 		e := fileutils.RemoveTempDir(tempDirPath)
-		if err != nil {
-			log.Info(err.Error())
-		}
-		if e != nil {
-			log.Info(e.Error())
-		}
 		if err == nil {
 			err = e
 		}
@@ -66,13 +62,13 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	if err != nil {
 		return
 	}
-
+	log.Info("2222")
 	// pip install project
 	err = piputils.RunPipInstall(tempDirPath)
 	if err != nil {
 		return
 	}
-
+	log.Info("3333")
 	// Run pipdeptree.py to get dependencies tree
 	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(tempDirPath)
 	return

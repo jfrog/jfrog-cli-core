@@ -132,7 +132,7 @@ func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Pip.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, utils.Pipenv.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))

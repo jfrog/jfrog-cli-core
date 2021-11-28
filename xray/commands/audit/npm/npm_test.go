@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseNpmDependenciesList(t *testing.T) {
-	dependenciesJson, err := ioutil.ReadFile("../../../utils/testdata/dependencies.json")
+	dependenciesJson, err := ioutil.ReadFile("../../../../utils/testdata/dependencies.json")
 	if err != nil {
 		t.Error(err)
 	}

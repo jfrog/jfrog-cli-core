@@ -76,11 +76,11 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	// Build Info Collection:
-	buildName, err := dc.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
 	if dc.buildConfiguration.IsCollectBuildInfo() && !dc.DryRun() {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
 		if err = utils.SaveBuildGeneralDetails(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
@@ -163,6 +163,10 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if dc.buildConfiguration.IsCollectBuildInfo() {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
 		var buildDependencies []buildinfo.Dependency
 		buildDependencies, err = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		if err != nil {

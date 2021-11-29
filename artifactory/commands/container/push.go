@@ -73,13 +73,13 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildName, err := pc.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
 	// Return if build-info and detailed summary were not requested.
 	if !pc.buildConfiguration.IsCollectBuildInfo() && !pc.IsDetailedSummary() {
 		return nil
+	}
+	buildName, err := pc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
 	}
 	if err := utils.SaveBuildGeneralDetails(buildName, pc.buildConfiguration.GetBuildNumber(), pc.buildConfiguration.GetProject()); err != nil {
 		return err

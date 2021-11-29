@@ -382,7 +382,7 @@ func (bc *BuildConfiguration) ValidateBuildParams() error {
 }
 
 func (bc *BuildConfiguration) IsCollectBuildInfo() bool {
-	return bc.ValidateBuildParams() == nil
+	return bc != nil && bc.ValidateBuildParams() == nil
 }
 
 func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {

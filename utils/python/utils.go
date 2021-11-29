@@ -15,7 +15,7 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	cmd := exec.Command(execPath, cmdArgs...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, envs)
-	log.Debug(fmt.Sprintf("running command: %v", cmd.Args))
+	log.Info(fmt.Sprintf("running command: %v", cmd.Args))
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

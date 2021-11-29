@@ -70,7 +70,6 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		RepoPath:   auditCmd.targetRepoPath,
 		Watches:    auditCmd.watches,
 		ProjectKey: auditCmd.projectKey,
-		ScanType:   services.Dependency,
 	}
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params.Graph = moduleDependencyTree

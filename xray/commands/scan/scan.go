@@ -224,7 +224,6 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					RepoPath:   getXrayRepoPathFromTarget(file.Target),
 					Watches:    scanCmd.watches,
 					ProjectKey: scanCmd.projectKey,
-					ScanType:   services.Binary,
 				}
 				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
 				if err != nil {

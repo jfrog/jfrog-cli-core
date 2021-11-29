@@ -52,7 +52,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 
 func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
-	mvnHome := ""//os.Getenv(mavenHomeEnv)
+	mvnHome := os.Getenv(mavenHomeEnv)
 	mvnVersion := ""
 
 	output, err := runMvnVersionCommand(mvnHome)

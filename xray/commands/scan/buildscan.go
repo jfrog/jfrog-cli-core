@@ -90,18 +90,12 @@ func (bsc *BuildScanCommand) Run() (err error) {
 }
 
 func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (bool, error) {
-	buildScanInfo, err := xrayManager.BuildScan(params)
+	buildScanResults, err := xrayManager.BuildScan(params)
 	if err != nil {
 		return false, err
 	}
-	if strings.Contains(buildScanInfo, services.XrayScanBuildNoFailBuildPolicy) {
-		// No Xray “Fail build in case of a violation” policy rule has been defined on this build,
-		// so no need to get results or print
+	if buildScanResults == nil {
 		return false, nil
-	}
-	buildScanResults, err := xrayManager.GetBuildScanResults(params)
-	if err != nil {
-		return false, err
 	}
 	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations}}
 	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)

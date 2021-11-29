@@ -1,4 +1,4 @@
-package freetiersetup
+package envsetup
 
 import (
 	"encoding/json"
@@ -22,41 +22,37 @@ import (
 )
 
 const (
-	myJfrogEndPoint          = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
-	defaultSyncSleepInterval = 5 * time.Second  // 5 seconds
-	maxWaitMinutes           = 10 * time.Minute // 10 minutes
+	myJfrogEndPoint   = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
+	syncSleepInterval = 5 * time.Second  // 5 seconds
+	maxWaitMinutes    = 10 * time.Minute // 10 minutes
 )
 
-type FreeTierSetupCommand struct {
+type EnvSetupCommand struct {
 	registrationURL string
 	id              uuid.UUID
 	serverDetails   *config.ServerDetails
 	progress        ioUtils.ProgressMgr
 }
 
-func (ftc *FreeTierSetupCommand) ServerDetails() (*config.ServerDetails, error) {
-	return ftc.serverDetails, nil
+func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
+	return nil, nil
 }
 
-func (ftc *FreeTierSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
+func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	ftc.progress = progress
 }
 
-func (ftc *FreeTierSetupCommand) IsFileProgress() bool {
-	return false
-}
-
-func NewFreeTierSetupCommand(url string) *FreeTierSetupCommand {
-	return &FreeTierSetupCommand{
+func NewEnvSetupCommand(url string) *EnvSetupCommand {
+	return &EnvSetupCommand{
 		registrationURL: url,
 		id:              uuid.New(),
 	}
 }
 
-func (ftc *FreeTierSetupCommand) Run() (err error) {
+func (ftc *EnvSetupCommand) Run() (err error) {
 	browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
-	ftc.progress.SetHeadlineMsg("Welcome to JFrog CLI! To complete your JFrog environment setup, please fill out the details in your browser")
-	server, err := ftc.getServerDetails()
+	ftc.progress.SetHeadlineMsg("Thank you for installing JFrog CLI! To complete your JFrog environment setup, please fill out the details in your browser")
+	server, err := ftc.getNewServerDetails()
 	if err != nil {
 		return
 	}
@@ -64,18 +60,19 @@ func (ftc *FreeTierSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	println("Your new JFrog environment is ready!")
-	println("	1.CD into your code project directory")
-	println("	2.Run \"jf project init\"")
-	println("	3.Read more about how to get started at https://...")
+	fmt.Println("Your new JFrog environment is ready!")
+	fmt.Println("	1. CD into your code project directory")
+	fmt.Println("	2. Run \"jf project init\"")
+	fmt.Println("	3. Read more about how to get started at https://...")
 	return nil
 }
 
-func (ftc *FreeTierSetupCommand) CommandName() string {
+func (ftc *EnvSetupCommand) CommandName() string {
 	return "setup"
 }
 
-func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.ServerDetails, err error) {
+// Returns the new server deatailes from My-JFrog
+func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerDetails, err error) {
 	requestBody := &myJfrogGetStatusRequest{CliRegistrationId: ftc.id.String()}
 	requestContent, err := json.Marshal(requestBody)
 	if errorutils.CheckError(err) != nil {
@@ -102,7 +99,7 @@ func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.Serve
 			return true, nil, err
 		}
 		log.Debug(message)
-		// Got the a valid response. waits for ready=true
+		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
 			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we creat your environment")
 			statusResponse := myJfrogGetStatusResponse{}
@@ -119,7 +116,7 @@ func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.Serve
 
 	pollingExecutor := &httputils.PollingExecutor{
 		Timeout:         maxWaitMinutes,
-		PollingInterval: defaultSyncSleepInterval,
+		PollingInterval: syncSleepInterval,
 		PollingAction:   pollingAction,
 	}
 
@@ -140,6 +137,7 @@ func (ftc *FreeTierSetupCommand) getServerDetails() (serverDetails *config.Serve
 	return serverDetails, nil
 }
 
+// Add the given server details to the cli's config by running a 'jf config' command
 func configServer(server *config.ServerDetails) error {
 	u, err := url.Parse(server.Url)
 	if errorutils.CheckError(err) != nil {
@@ -149,7 +147,6 @@ func configServer(server *config.ServerDetails) error {
 	serverId := strings.Split(u.Host, ".")[0]
 	configCmd := commands.NewConfigCommand().SetInteractive(false).SetServerId(serverId).SetDetails(server)
 	return configCmd.Config()
-
 }
 
 type myJfrogGetStatusRequest struct {

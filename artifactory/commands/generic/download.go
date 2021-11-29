@@ -52,10 +52,6 @@ func (dc *DownloadCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	dc.progress = progress
 }
 
-func (dc *DownloadCommand) IsFileProgress() bool {
-	return true
-}
-
 func (dc *DownloadCommand) ShouldPrompt() bool {
 	return !dc.DryRun() && dc.SyncDeletesPath() != "" && !dc.Quiet()
 }
@@ -69,6 +65,10 @@ func (dc *DownloadCommand) Run() error {
 }
 
 func (dc *DownloadCommand) download() error {
+	// Init progress bar if needed
+	if dc.progress != nil {
+		dc.progress.InitProgressReaders()
+	}
 	// Create Service Manager:
 	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.DryRun(), dc.progress)
 	if err != nil {

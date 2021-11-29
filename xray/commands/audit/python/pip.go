@@ -55,17 +55,17 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 			err = e
 		}
 	}()
-	err = piputils.RunVirtualEnv("mic")
+	err = piputils.RunVirtualEnv(tempDirPath)
 	if err != nil {
 		return
 	}
-	//// pip install project
-	//err = piputils.RunPipInstall("mic")
-	//if err != nil {
-	//	return
-	//}
-	//// Run pipdeptree.py to get dependencies tree
-	//dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree("mic")
+	// pip install project
+	err = piputils.RunPipInstall(tempDirPath)
+	if err != nil {
+		return
+	}
+	// Run pipdeptree.py to get dependencies tree
+	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(tempDirPath)
 	return
 }
 

@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
 )
 
 type AuditPipCommand struct {
@@ -45,27 +46,53 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 }
 
 func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	// Create temp dir to run all work outside users working directory
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
 		return
 	}
+
+	err = os.Chdir(tempDirPath)
+	if err != nil {
+		return
+	}
+
 	defer func() {
-		e := fileutils.RemoveTempDir(tempDirPath)
+		e := os.Chdir(wd)
+		if e != nil && err == nil {
+			err = e
+			return
+		}
+
+		e = fileutils.RemoveTempDir(tempDirPath)
 		if err == nil {
 			err = e
 		}
 	}()
-	err = piputils.RunVirtualEnv(tempDirPath)
+
+	err = fileutils.CopyDir(wd, tempDirPath, true, nil)
 	if err != nil {
 		return
 	}
-	// pip install project
-	err = piputils.RunPipInstall(tempDirPath)
+
+	// 'virtualenv venv'
+	err = piputils.RunVirtualEnv()
 	if err != nil {
 		return
 	}
+	// 'pip install .'
+	err = piputils.RunPipInstall()
+	if err != nil {
+		return
+	}
+
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(tempDirPath)
+	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree()
 	return
 }
 

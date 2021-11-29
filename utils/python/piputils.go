@@ -13,7 +13,7 @@ import (
 )
 
 // Execute virtualenv command: "virtualenv {venvDirPath}" / "python3 -m venv {venvDirPath}"
-func RunVirtualEnv(venvDirPath string) (err error) {
+func RunVirtualEnv() (err error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
 	if err != nil || execPath == "" {
@@ -34,7 +34,7 @@ func RunVirtualEnv(venvDirPath string) (err error) {
 			return errorutils.CheckErrorf("Could not find python3 or virtualenv executable in PATH")
 		}
 	}
-	cmdArgs = append(cmdArgs, venvDirPath)
+	cmdArgs = append(cmdArgs, "venv")
 	_, err = runPythonCommand(execPath, cmdArgs, "")
 	return errorutils.CheckError(err)
 }
@@ -49,18 +49,18 @@ func venvBinDirByOS() string {
 }
 
 // Execute pip install command. "pip install ."
-func RunPipInstall(venvDirPath string) (err error) {
-	_, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", ".", "--target=" + venvDirPath}, "")
+func RunPipInstall() (err error) {
+	_, err = runPythonCommand(filepath.Join("venv", venvBinDirByOS(), "pip"), []string{"install", "."}, "")
 	return err
 }
 
 // Executes the pip-dependency-map script and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
-func RunPipDepTree(venvDirPath string) (map[string][]string, []string, error) {
+func RunPipDepTree() (map[string][]string, []string, error) {
 	pipDependencyMapScriptPath, err := GetDepTreeScriptPath()
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
+	data, err := runPythonCommand(filepath.Join("venv", venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
 	if err != nil {
 		return nil, nil, err
 	}

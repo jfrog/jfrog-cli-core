@@ -220,61 +220,14 @@ github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i
 github.com/jedib0t/go-pretty/v6 v6.2.2 h1:o3McN0rQ4X+IU+HduppSp9TwRdGLRW2rhJXy9CJaCRw=
 github.com/jedib0t/go-pretty/v6 v6.2.2/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoMwqZnuiK2r2a0=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
-<<<<<<< HEAD
-<<<<<<< HEAD
 github.com/jfrog/build-info-go v0.1.2-0.20211125102823-5181de8a8884 h1:vZWtc4v0f0mKIKtNfQyhT51xfvirKcBPj7J4jmHp8gs=
 github.com/jfrog/build-info-go v0.1.2-0.20211125102823-5181de8a8884/go.mod h1:36CadWBeUUttapHPTk7xsZrVdI82Wmtnorxj/nayoiE=
 github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4 h1:alM+FEMsymgzaSQMzGwDoWtjDlhouN5dbY10SH+iSXk=
 github.com/jfrog/gocmd v0.5.6-0.20211125095246-93273e52cec4/go.mod h1:4+ngOdyQlhP0i1/JuHqOC6hwjYWnCEp6ZJEExwyo9U4=
 github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
 github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
-github.com/jfrog/jfrog-client-go v1.6.3-0.20211125104048-cb20703ca609 h1:NVYvcTn1UhIPHZS6v/aT5uxhlRz8A0goJI0NyvzzizI=
-github.com/jfrog/jfrog-client-go v1.6.3-0.20211125104048-cb20703ca609/go.mod h1:5QwspRHDT24yqHPH0DGUXek3vJdG3MSU3zBABt5GfC4=
-=======
-<<<<<<< HEAD
-=======
->>>>>>> a8791081... Update go.mod & go.sum
-github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c h1:0wHTDhpdH+ueqq5IzC79mGiq5PckLOgXzt5kil4CoJc=
-github.com/jfrog/build-info-go v0.1.2-0.20211124162342-28afdc82a46c/go.mod h1:zpUT/lS1EA2WuiiTckK0IZgnl+ONVkqu/gRAVgDzang=
-github.com/jfrog/gocmd v0.5.5-0.20211124162113-60531e4d9053 h1:2tzNWzEpB9ZFYaR1VFOOkllPjofIBmYS7p/002K9UM4=
-github.com/jfrog/gocmd v0.5.5-0.20211124162113-60531e4d9053/go.mod h1:VXyWB3SmAyppuN6QChKKT/DxRoPqCa9t6xMsU6lck5s=
-github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
-github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
-<<<<<<< HEAD
-github.com/jfrog/jfrog-client-go v1.6.2-0.20211124162552-294b033f185b h1:H7ANqa+GssiPac1kFlt22EGw5F+EyS7mk98Xptsc6/0=
-github.com/jfrog/jfrog-client-go v1.6.2-0.20211124162552-294b033f185b/go.mod h1:0Mj1EPH4/7mntcBWH3UhbhmESI+/rlQdXIheveh2Kes=
-=======
-<<<<<<< Updated upstream
-github.com/jfrog/build-info-go v0.1.1-0.20211116095320-767c1e8a864f h1:C/yddTf+RlYSxFGF5EkSkbPdkCeIRMasyRjbixHDhK8=
-github.com/jfrog/build-info-go v0.1.1-0.20211116095320-767c1e8a864f/go.mod h1:P89ESdsP7o2fqp8GGvHZjm+UgYKbkK6vk247VeCraKk=
-github.com/jfrog/gocmd v0.5.4-0.20211116142418-92ddf344a6a4 h1:Fiyhml0odtLuStYxXG5odROSpIcKU9KgYT6SxHHCMYU=
-github.com/jfrog/gocmd v0.5.4-0.20211116142418-92ddf344a6a4/go.mod h1:wyDi6TzEZNRi+6ahF4UA9xy2DPeF6TzlXzoCyI8SZc8=
-github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
-github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
-github.com/jfrog/jfrog-client-go v1.6.1-0.20211118142316-d9a261c51de9 h1:DrDjVfYWYV3dqVf58JDPg2nay2pfc3rYQcI8DOaH9ds=
-github.com/jfrog/jfrog-client-go v1.6.1-0.20211118142316-d9a261c51de9/go.mod h1:ONNT1MwUc9+m/KaKQlnBuStqGp/mahM3UmUKJEyO9ks=
-=======
-github.com/jfrog/build-info-go v0.1.0 h1:mIGmS8I8EUxlGZ8DM2B530U8GVxHtVJmsP4QDt2P3w8=
-github.com/jfrog/build-info-go v0.1.0/go.mod h1:P89ESdsP7o2fqp8GGvHZjm+UgYKbkK6vk247VeCraKk=
-github.com/jfrog/gocmd v0.3.1/go.mod h1:spTHT8F2u0DtGdVq3v6frnSiqaKwPdNuMQd856MCHhw=
-github.com/jfrog/gocmd v0.5.3 h1:RkvDwnrso8jkEhiVipnUzFBpHRE8zwOM3eTwetb6sus=
-github.com/jfrog/gocmd v0.5.3/go.mod h1:5q+DvcECGiJmLgut8KRYBzQaLNwl/W6kC/vwMffGm7g=
-github.com/jfrog/gofrog v1.0.6/go.mod h1:HkDzg+tMNw23UryoOv0+LB94BzYcl6MCIoz8Tmlb+s8=
-github.com/jfrog/gofrog v1.1.0 h1:nhbfSVUYWRxKHeU0RsPAUQeo1suc4oAcEttIKQRvWhs=
-github.com/jfrog/gofrog v1.1.0/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
-github.com/jfrog/jfrog-cli v1.52.0 h1:Ox1sJdOizSkzlwWFNeq7BarEz3WWwEWsgu7Fz1Zdto0=
-github.com/jfrog/jfrog-cli v1.52.0/go.mod h1:2xyVVvCKvHL84jP3B0+xMejvziVSnxbsr6jO3qn3Trk=
-github.com/jfrog/jfrog-cli-core v1.10.0 h1:FSJ48wHwoOeTZxU3v7wrcK0+AfrjD1JYIKCtbArwPt0=
-github.com/jfrog/jfrog-cli-core v1.10.0/go.mod h1:6MjhK6/XgFRlgw+qxQ6YUfXuFp+BCfIpy394iBgmTYo=
-github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
-github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
->>>>>>> Stashed changes
->>>>>>> 76e465e5... Add progress indication to new setup command
->>>>>>> 186b7355... Add progress indication to new setup command
-=======
-github.com/jfrog/jfrog-client-go v1.6.1 h1:uu1kr1pOHb0NmT+Equm+FwOOoksWCeSqBOdhmd+60HY=
-github.com/jfrog/jfrog-client-go v1.6.1/go.mod h1:oR5emUgDSN+T8jNXqimKy9VxszQQuWumv1bst8od3vU=
->>>>>>> a8791081... Update go.mod & go.sum
+github.com/jfrog/jfrog-client-go v1.6.3-0.20211129155531-7d566d06876a h1:2mV6SxJeOxWQryaF1s3j0jrLhBGvuL+9ltm6yrrSZoE=
+github.com/jfrog/jfrog-client-go v1.6.3-0.20211129155531-7d566d06876a/go.mod h1:E8gMv5x7CsRs/3GB8uymlOoDBg//uTZ1yRnjfd9YwB8=
 github.com/json-iterator/go v1.1.11/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
@@ -597,9 +550,8 @@ golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2/go.mod h1:NqM8EUOU14njkJ3
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/text v0.3.4/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
+golang.org/x/text v0.3.5 h1:i6eZZ+zk0SOf0xgBpEpPD18qWcJda6q1sxt3S0kzyUQ=
 golang.org/x/text v0.3.5/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
-golang.org/x/text v0.3.7 h1:olpwvP2KacW1ZWvsR7uQhoyTYvKAupfQrRGBFM352Gk=
-golang.org/x/text v0.3.7/go.mod h1:u+2+/6zg+i71rQMx5EYifcz6MCKuco9NR6JIITiCfzQ=
 golang.org/x/time v0.0.0-20181108054448-85acf8d2951c/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/time v0.0.0-20190308202827-9d24e82272b4/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/time v0.0.0-20191024005414-555d28b269f0/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=

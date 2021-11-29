@@ -120,10 +120,11 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 }
 
 func parseMvnHome(line string) (string, error) {
-	// line example: 'Maven home: /usr/share/maven'
-
+	// Line example: 'Maven home: /usr/share/maven'
+	
 	// Remove all prefix before 'Maven' (if exists)
 	line = line[strings.Index(line,"Maven"):]
+	// Get version string 
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {
 		mavenHome = strings.TrimSuffix(mavenHome, "\r")

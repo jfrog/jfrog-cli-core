@@ -9,7 +9,7 @@ require (
 	github.com/codegangsta/cli v1.20.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
-	github.com/jfrog/build-info-go v0.1.1
+	github.com/jfrog/build-info-go v0.1.2
 	github.com/jfrog/gocmd v0.5.5
 	github.com/jfrog/gofrog v1.1.0
 	github.com/jfrog/jfrog-client-go v1.6.1
@@ -30,7 +30,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/sverdlov93/jfrog-client-go v1.0.2-0.20211123120352-b4c6e6326dfc
+replace github.com/jfrog/jfrog-client-go => github.com/sverdlov93/jfrog-client-go v1.0.2-0.20211129170123-19dd4bf11efd
 
 replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v0.1.3-0.20211128101310-46a0b11306a1
 

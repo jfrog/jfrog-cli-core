@@ -1,6 +1,10 @@
 package cisetup
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+)
 
 const ConfigServerId = "jfrog-instance"
 
@@ -13,7 +17,7 @@ type CiSetupData struct {
 	BuildName      string
 	CiType         CiType
 	// A collection of the technologies that were detected in the project.
-	DetectedTechnologies map[Technology]bool
+	DetectedTechnologies map[coreutils.Technology]bool
 	// The chosen build technology stored with all the necessary information.
 	BuiltTechnology *TechnologyInfo
 	VcsCredentials  VcsServerDetails
@@ -21,7 +25,7 @@ type CiSetupData struct {
 }
 
 type TechnologyInfo struct {
-	Type               Technology
+	Type               coreutils.Technology
 	VirtualRepo        string
 	LocalSnapshotsRepo string
 	LocalReleasesRepo  string
@@ -63,8 +67,8 @@ const (
 	Pipelines     = "JFrog Pipelines"
 )
 
-var execNames = map[Technology]string{
-	Maven:  "mvn",
-	Gradle: "gradle",
-	Npm:    "npm",
+var execNames = map[coreutils.Technology]string{
+	coreutils.Maven:  "mvn",
+	coreutils.Gradle: "gradle",
+	coreutils.Npm:    "npm",
 }

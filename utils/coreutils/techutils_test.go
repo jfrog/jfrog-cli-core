@@ -1,4 +1,4 @@
-package cisetup
+package coreutils
 
 import (
 	"testing"

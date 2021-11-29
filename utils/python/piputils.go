@@ -50,7 +50,7 @@ func venvBinDirByOS() string {
 
 // Execute pip install command. "pip install ."
 func RunPipInstall(venvDirPath string) (err error) {
-	_, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", "."}, "")
+	_, err = runPythonCommand(filepath.Join(venvDirPath, venvBinDirByOS(), "pip"), []string{"install", ".", "--target=" + venvDirPath}, "")
 	return err
 }
 

@@ -24,7 +24,6 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Failed running command: '%s %s %s' with error: %s - %s", envs, execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String()))
 	}
-	log.Info(stdout.String() + stderr.String())
 	return stdout.Bytes(), nil
 }
 

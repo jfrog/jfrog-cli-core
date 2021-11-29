@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -66,20 +65,25 @@ func getMavenHomeAndValidateVersion() (string, error) {
 			// The M2_HOME environment variable is not defined.
 			// Since Maven installation can be located in different locations,
 			// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-			line = "fsdfsdf"+line
 			mvnHome, err = parseMvnHome(line)
 			if err != nil {
 				return "", err
 			}
-		}
-		if strings.Contains(line, "Apache Maven") {
-			versionRegex := regexp.MustCompile("Apache\\sMaven\\s(\\w[\\w-\\.]+)\\s")
-			mvnVersion = versionRegex.FindStringSubmatch(line)[1]
+		} else if strings.Contains(line, "Apache Maven") {
+			// line example: 'Apache Maven 3.6.3 (SUSE 3.6.3-4.2.1)'
+			// or sometimes '^[[1mApache Maven 3.6.3 (SUSE 3.6.3-4.2.1)^[[m'
+			line = line[strings.Index(line,"Apache"):]
+			mvnVersion = strings.Split(line, " ")[2]
+		} else if mvnHome != "" && mvnVersion != "" {
+			break
 		}
 	}
 
 	if mvnHome == "" {
-		return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + strings.Join(output, " ") + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+		return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" +
+			strings.Join(output, " ") + "\n" +
+			"You also have the option of setting the M2_HOME environment variable value to the maven installation directory, " +
+			"which is the directory which includes the bin and lib directories.")
 	}
 	if mvnVersion == "" {
 		log.Info("Could not get maven version, by running 'mvn --version' command. " + minSupportedMvnVersionError)
@@ -116,6 +120,9 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 }
 
 func parseMvnHome(line string) (string, error) {
+	// line example: 'Maven home: /usr/share/maven'
+
+	// Remove all prefix before 'Maven' (if exists)
 	line = line[strings.Index(line,"Maven"):]
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {

@@ -24,7 +24,7 @@ import (
 const (
 	mavenExtractorDependencyVersion = "2.30.2"
 	classworldsConfFileName         = "classworlds.conf"
-	mavenHome                       = "M2_HOME"
+	mavenHomeEnv                    = "M2_HOME"
 	minSupportedMvnVersion          = "3.1.0"
 	minSupportedMvnVersionError     = "JFrog CLI mvn commands requires Maven version " + minSupportedMvnVersion + " or higher."
 )
@@ -53,7 +53,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 
 func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
-	mvnHome := os.Getenv(mavenHome)
+	mvnHome := ""//os.Getenv(mavenHomeEnv)
 	mvnVersion := ""
 
 	output, err := runMvnVersionCommand(mvnHome)
@@ -62,10 +62,11 @@ func getMavenHomeAndValidateVersion() (string, error) {
 	}
 	// Finding the relevant "Maven home" line in command response.
 	for _, line := range output {
-		if mvnHome == "" && strings.HasPrefix(line, "Maven home:") {
+		if mvnHome == "" && strings.Contains(line, "Maven home:") {
 			// The M2_HOME environment variable is not defined.
 			// Since Maven installation can be located in different locations,
 			// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+			line = "fsdfsdf"+line
 			mvnHome, err = parseMvnHome(line)
 			if err != nil {
 				return "", err
@@ -115,6 +116,7 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 }
 
 func parseMvnHome(line string) (string, error) {
+	line = line[strings.Index(line,"Maven"):]
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {
 		mavenHome = strings.TrimSuffix(mavenHome, "\r")

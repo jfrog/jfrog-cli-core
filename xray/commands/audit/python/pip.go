@@ -1,7 +1,6 @@
 package python
 
 import (
-	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -55,16 +54,16 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 			err = e
 		}
 	}()
-	err = piputils.RunVirtualEnv("mic")
-	if err != nil {
-		return
-	}
-	// pip install project
-	err = piputils.RunPipInstall("mic")
-	if err != nil {
-		return
-	}
-	// Run pipdeptree.py to get dependencies tree
+	//err = piputils.RunVirtualEnv("mic")
+	//if err != nil {
+	//	return
+	//}
+	//// pip install project
+	//err = piputils.RunPipInstall("mic")
+	//if err != nil {
+	//	return
+	//}
+	//// Run pipdeptree.py to get dependencies tree
 	//dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree("mic")
 	return
 }

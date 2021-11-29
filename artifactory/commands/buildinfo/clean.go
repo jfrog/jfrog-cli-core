@@ -30,14 +30,14 @@ func (bcc *BuildCleanCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (bcc *BuildCleanCommand) Run() error {
 	log.Info("Cleaning build info...")
-	bn, err := bcc.buildConfiguration.GetBuildName()
+	buildName, err := bcc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	err = utils.RemoveBuildDir(bn, bcc.buildConfiguration.GetBuildNumber(), bcc.buildConfiguration.GetProject())
+	err = utils.RemoveBuildDir(buildName, bcc.buildConfiguration.GetBuildNumber(), bcc.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}
-	log.Info("Cleaned build info", bn+"/"+bcc.buildConfiguration.GetBuildNumber()+".")
+	log.Info("Cleaned build info", buildName+"/"+bcc.buildConfiguration.GetBuildNumber()+".")
 	return nil
 }

@@ -38,11 +38,11 @@ func (bac *BuildAppendCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (bac *BuildAppendCommand) Run() error {
 	log.Info("Running Build Append command...")
-	bn, err := bac.buildConfiguration.GetBuildName()
+	buildName, err := bac.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	if err := utils.SaveBuildGeneralDetails(bn, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject()); err != nil {
+	if err := utils.SaveBuildGeneralDetails(buildName, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 
@@ -67,9 +67,9 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(bn, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject(), populateFunc)
+	err = utils.SavePartialBuildInfo(buildName, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject(), populateFunc)
 	if err == nil {
-		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", bn+"/"+bac.buildConfiguration.GetBuildNumber())
+		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", buildName+"/"+bac.buildConfiguration.GetBuildNumber())
 	}
 	return err
 }

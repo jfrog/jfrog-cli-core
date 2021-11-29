@@ -67,11 +67,11 @@ func (config *BuildAddGitCommand) SetServerId(serverId string) *BuildAddGitComma
 
 func (config *BuildAddGitCommand) Run() error {
 	log.Info("Reading the git branch, revision and remote URL and adding them to the build-info.")
-	bn, err := config.buildConfiguration.GetBuildName()
+	buildName, err := config.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	err = utils.SaveBuildGeneralDetails(bn, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject())
+	err = utils.SaveBuildGeneralDetails(buildName, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}
@@ -122,13 +122,13 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(bn, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject(), populateFunc)
+	err = utils.SavePartialBuildInfo(buildName, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject(), populateFunc)
 	if err != nil {
 		return err
 	}
 
 	// Done.
-	log.Debug("Collected VCS details for", bn+"/"+config.buildConfiguration.GetBuildNumber()+".")
+	log.Debug("Collected VCS details for", buildName+"/"+config.buildConfiguration.GetBuildNumber()+".")
 	return nil
 }
 
@@ -344,11 +344,11 @@ func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfigu
 	}
 
 	// Get latest build-info from Artifactory.
-	bn, err := config.buildConfiguration.GetBuildName()
+	buildName, err := config.buildConfiguration.GetBuildName()
 	if err != nil {
 		return nil, err
 	}
-	buildInfoParams := services.BuildInfoParams{BuildName: bn, BuildNumber: artclientutils.LatestBuildNumberKey}
+	buildInfoParams := services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey}
 	publishedBuildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return nil, err

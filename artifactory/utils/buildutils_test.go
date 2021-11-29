@@ -22,7 +22,7 @@ func TestGetBuildName(t *testing.T) {
 	const buildNameFile = "fileBuildName"
 
 	// Setup global build name env var.
-	// Ensure other parallel tests wont get effected.
+	// Ensure that other parallel tests won't be effected.
 	oldBuildName := coreutils.BuildName
 	coreutils.BuildName = oldBuildName + timestamp
 	defer func() { coreutils.BuildName = oldBuildName }()
@@ -30,7 +30,9 @@ func TestGetBuildName(t *testing.T) {
 	// Create build config in temp folder.
 	tmpDir, err := fileutils.CreateTempDir()
 	require.NoError(t, err)
-	defer fileutils.RemoveTempDir(tmpDir)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
@@ -39,7 +41,9 @@ func TestGetBuildName(t *testing.T) {
 	wdCopy, err := os.Getwd()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Chdir(tmpDir))
-	defer os.Chdir(wdCopy)
+	defer func() {
+		assert.NoError(t, os.Chdir(wdCopy))
+	}()
 
 	buildConfig := NewBuildConfiguration(buildName, "buildNumber", "module", "project")
 	for i := 0; i < 2; i++ {
@@ -48,7 +52,9 @@ func TestGetBuildName(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, actualBuildName, buildName)
 
-		// Set build name using env var.
+		// Set build name // Set build name using env var.
+		// We're now making suer that these env vars aren't affecting the build name and number,
+		// because they should still be read from the params.using env var.
 		os.Setenv(coreutils.BuildName, buildNameEnv)
 	}
 
@@ -59,8 +65,7 @@ func TestGetBuildName(t *testing.T) {
 	assert.Equal(t, actualBuildName, buildNameEnv)
 	assert.NoError(t, os.Unsetenv(coreutils.BuildName))
 
-	// Validate build name form file (third priority).
-
+	// Validate build name form config file (third priority).
 	buildConfig.SetBuildName("")
 	actualBuildName, err = buildConfig.GetBuildName()
 	assert.NoError(t, err)
@@ -75,7 +80,9 @@ func TestGetBuildNumber(t *testing.T) {
 	// Create build config in temp folder.
 	tmpDir, err := fileutils.CreateTempDir()
 	require.NoError(t, err)
-	defer fileutils.RemoveTempDir(tmpDir)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
@@ -84,11 +91,12 @@ func TestGetBuildNumber(t *testing.T) {
 	wdCopy, err := os.Getwd()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Chdir(tmpDir))
-	defer os.Chdir(wdCopy)
+	defer func() {
+		assert.NoError(t, os.Chdir(wdCopy))
+	}()
 
 	// Setup global build number env var.
-
-	// Ensure other parallel tests wont get effected.
+	// Make sure other parallel tests won't be affected.
 	oldBuildNumber := coreutils.BuildNumber
 	coreutils.BuildNumber = oldBuildNumber + timestamp
 	defer func() { coreutils.BuildNumber = oldBuildNumber }()

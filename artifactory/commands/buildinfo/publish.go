@@ -1,6 +1,7 @@
 package buildinfo
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -80,11 +81,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	}
 
 	buildInfoService := utils.CreateBuildInfoService()
-	bn, err := bpc.buildConfiguration.GetBuildName()
+	buildName, err := bpc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	build, err := buildInfoService.GetOrCreateBuildWithProject(bn, bpc.buildConfiguration.GetBuildNumber(), bpc.buildConfiguration.GetProject())
+	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, bpc.buildConfiguration.GetBuildNumber(), bpc.buildConfiguration.GetProject())
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -150,21 +151,21 @@ func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifact
 }
 
 func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime time.Time) (string, error) {
-	bn, err := bpc.buildConfiguration.GetBuildName()
+	buildName, err := bpc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return "", err
 	}
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
-			bpc.serverDetails.GetUrl(), bn, bpc.buildConfiguration.GetBuildNumber()), nil
+			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber()), nil
 	} else if bpc.buildConfiguration.GetProject() != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			bpc.serverDetails.GetUrl(), bn, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
+			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
-		bpc.serverDetails.GetUrl(), bn, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10)), nil
+		bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10)), nil
 }
 
 // Return the next build number based on the previously published build.
@@ -176,12 +177,15 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	}
 	if !found || publishedBuildInfo.BuildInfo.Number == "" {
 		return "1", nil
-	} else {
-		latestBuildNumber, err := strconv.Atoi(publishedBuildInfo.BuildInfo.Number)
-		if errorutils.CheckError(err) != nil {
-			return "", err
-		}
-		latestBuildNumber++
-		return strconv.Itoa(latestBuildNumber), nil
 	}
+	latestBuildNumber, err := strconv.Atoi(publishedBuildInfo.BuildInfo.Number)
+	if errorutils.CheckError(err) != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			log.Warn("The latest build number is " + publishedBuildInfo.BuildInfo.Number + ". Since it is not an integer, and therefore cannot be incremented to automatically generate the next build number, setting the next build number to 1.")
+			return "1", nil
+		}
+		return "", err
+	}
+	latestBuildNumber++
+	return strconv.Itoa(latestBuildNumber), nil
 }

@@ -348,7 +348,9 @@ func (bc *BuildConfiguration) GetModule() string {
 	return bc.module
 }
 
-// Return nil if build name & number & module are found or none of them.
+// Validates:
+// 1. If the build number exists, the build name also exists (and And vice versa).
+// 2. If the modules exists, the build name/number are also exist (and vice versa).
 func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	buildName, err := bc.GetBuildName()
 	if err != nil {
@@ -366,7 +368,7 @@ func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	return nil
 }
 
-// Return nil if build name & number are found or none of them.
+// Validates that if the build number exists, the build name also exists (and And vice versa).
 func (bc *BuildConfiguration) ValidateBuildParams() error {
 	buildName, err := bc.GetBuildName()
 	if err != nil {

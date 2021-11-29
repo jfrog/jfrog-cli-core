@@ -45,11 +45,11 @@ func (bpc *BuildPromotionCommand) Run() error {
 	if err := bpc.buildConfiguration.ValidateBuildParams(); err != nil {
 		return err
 	}
-	bn, err := bpc.buildConfiguration.GetBuildName()
+	buildName, err := bpc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	bpc.BuildName, bpc.BuildNumber = bn, bpc.buildConfiguration.GetBuildNumber()
+	bpc.BuildName, bpc.BuildNumber = buildName, bpc.buildConfiguration.GetBuildNumber()
 	return servicesManager.PromoteBuild(bpc.PromotionParams)
 }
 

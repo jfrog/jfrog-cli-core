@@ -94,11 +94,11 @@ type scanSummary struct {
 
 func getXrayScanParams(buildConfiguration utils.BuildConfiguration) (services.XrayScanParams, error) {
 	xrayScanParams := services.NewXrayScanParams()
-	bn, err := buildConfiguration.GetBuildName()
+	buildName, err := buildConfiguration.GetBuildName()
 	if err != nil {
 		return xrayScanParams, err
 	}
-	xrayScanParams.BuildName = bn
+	xrayScanParams.BuildName = buildName
 	xrayScanParams.BuildNumber = buildConfiguration.GetBuildNumber()
 	xrayScanParams.ProjectKey = buildConfiguration.GetProject()
 

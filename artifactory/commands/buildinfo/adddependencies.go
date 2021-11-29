@@ -53,11 +53,11 @@ func (badc *BuildAddDependenciesCommand) Run() error {
 	success, fail := 0, 0
 	var err error
 	if !badc.dryRun {
-		bn, err := badc.buildConfiguration.GetBuildName()
+		buildName, err := badc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		if err = utils.SaveBuildGeneralDetails(bn, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject()); err != nil {
+		if err = utils.SaveBuildGeneralDetails(buildName, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -281,11 +281,11 @@ func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []bui
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = dependencies
 	}
-	bn, err := badc.buildConfiguration.GetBuildName()
+	buildName, err := badc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	return utils.SavePartialBuildInfo(bn, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject(), populateFunc)
+	return utils.SavePartialBuildInfo(buildName, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {

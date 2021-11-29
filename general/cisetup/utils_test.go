@@ -1,6 +1,7 @@
 package cisetup
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/general/techindicators"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,13 +9,13 @@ import (
 
 func TestConvertBuildCmd(t *testing.T) {
 	tests := []buildCmd{
-		{"simpleMvn", Maven, "mvn clean install", "jfrog rt mvn clean install"},
-		{"simpleGradle", Gradle, "gradle clean build", "jfrog rt gradle clean build"},
-		{"simpleNpmInstall", Npm, "npm install", "jfrog rt npmi"},
-		{"simpleNpmI", Npm, "npm i", "jfrog rt npmi"},
-		{"simpleNpmCi", Npm, "npm ci", "jfrog rt npmci"},
-		{"hiddenMvn", Npm, "npm i FOLDERmvnHERE", "jfrog rt npmi FOLDERmvnHERE"},
-		{"hiddenNpm", Maven, "mvn clean install -f \"HIDDENnpm/pom.xml\"", "jfrog rt mvn clean install -f \"HIDDENnpm/pom.xml\""},
+		{"simpleMvn", techindicators.Maven, "mvn clean install", "jfrog rt mvn clean install"},
+		{"simpleGradle", techindicators.Gradle, "gradle clean build", "jfrog rt gradle clean build"},
+		{"simpleNpmInstall", techindicators.Npm, "npm install", "jfrog rt npmi"},
+		{"simpleNpmI", techindicators.Npm, "npm i", "jfrog rt npmi"},
+		{"simpleNpmCi", techindicators.Npm, "npm ci", "jfrog rt npmci"},
+		{"hiddenMvn", techindicators.Npm, "npm i FOLDERmvnHERE", "jfrog rt npmi FOLDERmvnHERE"},
+		{"hiddenNpm", techindicators.Maven, "mvn clean install -f \"HIDDENnpm/pom.xml\"", "jfrog rt mvn clean install -f \"HIDDENnpm/pom.xml\""},
 	}
 
 	for _, test := range tests {
@@ -33,7 +34,7 @@ func TestConvertBuildCmd(t *testing.T) {
 
 type buildCmd struct {
 	name     string
-	tech     Technology
+	tech     techindicators.Technology
 	original string
 	expected string
 }

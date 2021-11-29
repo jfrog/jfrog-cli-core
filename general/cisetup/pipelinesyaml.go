@@ -2,6 +2,7 @@ package cisetup
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/general/techindicators"
 	"strconv"
 	"strings"
 
@@ -123,11 +124,11 @@ func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoRes
 	var step PipelineStep
 
 	switch yg.SetupData.BuiltTechnology.Type {
-	case Maven:
+	case techindicators.Maven:
 		step = yg.createMavenStep(gitResourceName)
-	case Gradle:
+	case techindicators.Gradle:
 		step = yg.createGradleStep(gitResourceName)
-	case Npm:
+	case techindicators.Npm:
 		step, err = yg.createNpmStep(gitResourceName)
 		if err != nil {
 			return nil, err
@@ -153,10 +154,10 @@ func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) P
 	}
 }
 
-func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech Technology) string {
+func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech techindicators.Technology) string {
 	cmd := yg.SetupData.BuiltTechnology.BuildCmd
 	// Remove exec name.
-	return strings.TrimPrefix(strings.TrimSpace(cmd), execNames[tech]+" ")
+	return strings.TrimPrefix(strings.TrimSpace(cmd), techindicators.GetExecName(tech)+" ")
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitResourceName string) NativeStepConfiguration {

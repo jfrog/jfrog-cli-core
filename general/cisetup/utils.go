@@ -2,6 +2,7 @@ package cisetup
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/general/techindicators"
 	"strings"
 )
 
@@ -79,16 +80,16 @@ func getJfrogCliConfigCmd(rtIntName, serverId string, useOld bool) string {
 func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupData) []string {
 	var configs []string
 	switch data.BuiltTechnology.Type {
-	case Maven:
+	case techindicators.Maven:
 		if setM2ForMaven {
 			configs = append(configs, m2pathCmd)
 		}
 		configs = append(configs, getMavenConfigCmd(serverId, data.BuiltTechnology.VirtualRepo))
 
-	case Gradle:
+	case techindicators.Gradle:
 		configs = append(configs, getBuildToolConfigCmd(gradleConfigCmdName, serverId, data.BuiltTechnology.VirtualRepo))
 
-	case Npm:
+	case techindicators.Npm:
 		configs = append(configs, getBuildToolConfigCmd(npmConfigCmdName, serverId, data.BuiltTechnology.VirtualRepo))
 
 	}
@@ -99,7 +100,7 @@ func getTechConfigsCommands(serverId string, setM2ForMaven bool, data *CiSetupDa
 func convertBuildCmd(data *CiSetupData) (buildCmd string, err error) {
 	commandsArray := []string{}
 	switch data.BuiltTechnology.Type {
-	case Npm:
+	case techindicators.Npm:
 		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, npmInstallRegexp, npmInstallRegexpReplacement)
 		if err != nil {
 			return "", err
@@ -108,9 +109,9 @@ func convertBuildCmd(data *CiSetupData) (buildCmd string, err error) {
 		if err != nil {
 			return "", err
 		}
-	case Maven:
+	case techindicators.Maven:
 		fallthrough
-	case Gradle:
+	case techindicators.Gradle:
 		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, mvnGradleRegexp, mvnGradleRegexpReplacement)
 		if err != nil {
 			return "", err

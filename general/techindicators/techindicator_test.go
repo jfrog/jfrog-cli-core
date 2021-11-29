@@ -1,4 +1,4 @@
-package cisetup
+package techindicators
 
 import (
 	"testing"
@@ -15,19 +15,13 @@ func TestTechIndicator(t *testing.T) {
 		{"simpleMavenTest", "pom.xml", Maven},
 		{"npmTest", "../package.json", Npm},
 		{"windowsGradleTest", "c://users/test/package/build.gradle", Gradle},
+		{"windowsPipTest", "c://users/test/package/setup.py", Pip},
+		{"windowsGolangTest", "c://users/test/package/go.mod", Go},
 		{"noTechTest", "pomxml", ""},
 	}
-	indicators := GetTechIndicators()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var detectedTech Technology
-			for _, indicator := range indicators {
-				if indicator.Indicates(test.filePath) {
-					detectedTech = indicator.GetTechnology()
-					break
-				}
-			}
+			detectedTech := indicateTechByFile(test.filePath)
 			assert.Equal(t, test.expected, detectedTech)
 		})
 	}

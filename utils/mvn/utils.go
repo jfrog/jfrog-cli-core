@@ -119,16 +119,18 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
 }
 
+// Parse maven home path from line output
+// Line example: 'Maven home: /usr/share/maven'
 func parseMvnHome(line string) (string, error) {
-	// Line example: 'Maven home: /usr/share/maven'
-	
 	// Remove all prefix before 'Maven' (if exists)
-	line = line[strings.Index(line, "Maven"):]
-	// Get version string 
+	line = line[strings.Index(line,"Maven"):]
+	// Get version string
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {
 		mavenHome = strings.TrimSuffix(mavenHome, "\r")
 	}
+	// Remove trailing spaces ( /r /n and etc)
+	mavenHome = strings.TrimSpace(mavenHome)
 	mavenHome, err := filepath.Abs(mavenHome)
 	if err != nil {
 		return "", errorutils.CheckError(err)

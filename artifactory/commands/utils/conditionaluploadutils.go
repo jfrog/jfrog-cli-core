@@ -13,7 +13,7 @@ import (
 )
 
 // ScanDeployableArtifacts scans all files founds in the given parsed deployableArtifacts results.
-// If the scan passes, the method will return two filespec ready for upload, thee first one contains all the binaries
+// If the scan passes, the method returns two filespec ready for upload, the first one contains all the binaries
 // and the seconde all the pom.xml's.
 // If one of the file's scan failed both of the return values will be nil.
 func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format xrutils.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {

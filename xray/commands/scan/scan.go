@@ -157,13 +157,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
-	if err != nil {
-		return err
-	}
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
 	if scanCmd.includeVulnerabilities == false {
 		if xrutils.CheckIfFailBuild(flatResults) {
-			return xrutils.ThrowFailBuildError()
+			return xrutils.NewFailBuildError()
 		}
 	}
 	err = fileProducerErrorsQueue.GetError()

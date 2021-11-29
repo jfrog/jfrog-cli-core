@@ -22,7 +22,7 @@ func TestPrintViolationsTable(t *testing.T) {
 		err := PrintViolationsTable(test.violations, false)
 		assert.NoError(t, err)
 		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
-			err = ThrowFailBuildError()
+			err = NewFailBuildError()
 		}
 		assert.Equal(t, test.expectedError, err != nil)
 	}

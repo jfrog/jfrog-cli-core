@@ -101,6 +101,6 @@ func CheckIfFailBuild(results []services.ScanResponse) bool {
 	return false
 }
 
-func ThrowFailBuildError() error {
+func NewFailBuildError() error {
 	return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}
 }

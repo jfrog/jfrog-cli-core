@@ -52,7 +52,7 @@ func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 	return bsc
 }
 
-// New Build-Scan command that works directly with Xray
+// Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
 	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
 	if err != nil {
@@ -70,18 +70,18 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	}
 	defer func() {
 		if failBuild {
-			// deferred so if build summery fails it will still throw fail build if needed
+			// deferred so if build summery fails, it will still return a fail build error if needed
 			if err != nil {
 				log.Error(err)
 			}
-			err = xrutils.ThrowFailBuildError()
+			err = xrutils.NewFailBuildError()
 		}
 	}()
 
 	if bsc.includeVulnerabilities {
 		// if vulnerabilities flag is true, get vulnerabilities from xray with build-summery and print to output
-		log.Info("Running build-summary command to get all vulnerabilities...")
-		err = bsc.runBuildSummaryAndPrintVulnerabilities(xrayManager, params)
+		log.Info("Getting the build-summary from Xray...")
+		err = bsc.runBuildSummaryAndPrintResults(xrayManager, params)
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	return xrutils.CheckIfFailBuild(scanResponseArray), nil
 }
 
-func (bsc *BuildScanCommand) runBuildSummaryAndPrintVulnerabilities(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) error {
+func (bsc *BuildScanCommand) runBuildSummaryAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) error {
 	summaryResponse, err := xrayManager.BuildSummary(params)
 	if err != nil {
 		return err
@@ -137,8 +137,8 @@ func convertIssuesToVulnerabilities(issues []services.Issue, params services.Xra
 }
 
 func getCvesField(summeryCves []services.SummeryCve) []services.Cve {
-	// The response from summery is score combined with vector, so we take the score only
-	// example: "4.0/CVSS:2.0/AV:N/AC:L/Au:S/C:N/I:N/A:P"
+	// The build-summery API response includes both the score and the vector. We're taking the score only
+	// Example: "4.0/CVSS:2.0/AV:N/AC:L/Au:S/C:N/I:N/A:P"  >> "4.0"
 	var cves []services.Cve
 	for _, summeryCve := range summeryCves {
 		cve := services.Cve{
@@ -153,9 +153,7 @@ func getCvesField(summeryCves []services.SummeryCve) []services.Cve {
 
 func getComponentsField(summeryComponents []services.SummeryComponent, impactPaths []string, buildName string) map[string]services.Component {
 	components := map[string]services.Component{}
-
 	for _, component := range summeryComponents {
-
 		componentImpactPaths := getComponentImpactPaths(component.ComponentId, buildName, impactPaths)
 		if len(componentImpactPaths) > 0 {
 			components[component.ComponentId] = services.Component{
@@ -182,7 +180,7 @@ func getComponentImpactPaths(componentId, buildName string, impactPaths []string
 
 	var componentImpactPaths [][]services.ImpactPathNode
 	for _, impactPath := range impactPaths {
-		// search for all impact paths that contain the package
+		// Search for all impact paths that contain the package
 		if strings.Contains(strings.ToLower(impactPath), strings.ToLower(componentShortName)) {
 			pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
 			componentImpactPaths = append(componentImpactPaths, pathNode)
@@ -192,5 +190,5 @@ func getComponentImpactPaths(componentId, buildName string, impactPaths []string
 }
 
 func (bsc *BuildScanCommand) CommandName() string {
-	return "xr_build_scan_v2"
+	return "xr_build_scan"
 }

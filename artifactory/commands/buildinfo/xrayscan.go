@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// Deprecated BuildScan Command. The new build scan command is "xray/commands/scan/buildscan"
 type BuildScanLegacyCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	failBuild          bool

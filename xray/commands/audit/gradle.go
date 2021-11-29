@@ -44,7 +44,7 @@ func (auditCmd *AuditGradleCommand) Run() (err error) {
 }
 
 func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
-	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
+	buildConfiguration, cleanBuild := createBuildConfig("audit-gradle")
 	defer cleanBuild(err)
 
 	err = auditCmd.runGradle(buildConfiguration)

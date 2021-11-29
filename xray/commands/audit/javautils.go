@@ -14,7 +14,7 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
+func createBuildConfig(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
 	buildConfiguration := &artifactoryUtils.BuildConfiguration{
 		BuildName:   buildName,
 		BuildNumber: strconv.FormatInt(time.Now().Unix(), 10),

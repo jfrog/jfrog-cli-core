@@ -7,39 +7,28 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
 const indexerEnvPrefix = "JFROG_INDEXER_"
 
-type ContainerScanCommand struct {
+type DockerScanCommand struct {
 	ScanCommand
-	containerManagerType container.ContainerManagerType
-	imageTag             string
+	imageTag string
 }
 
-func NewEmptyContainerScanCommand() *ContainerScanCommand {
-	return &ContainerScanCommand{ScanCommand: *NewScanCommand()}
+func NewDockerScanCommand() *DockerScanCommand {
+	return &DockerScanCommand{ScanCommand: *NewScanCommand()}
 }
 
-func NewAuditContainerCommand(scanCommand ScanCommand) *ContainerScanCommand {
-	return &ContainerScanCommand{ScanCommand: scanCommand}
-}
-
-func (csc *ContainerScanCommand) SetImageTag(imageTag string) *ContainerScanCommand {
+func (csc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
 	csc.imageTag = imageTag
 	return csc
 }
 
-func (csc *ContainerScanCommand) SetContainerManagerType(containerManagerType container.ContainerManagerType) *ContainerScanCommand {
-	csc.containerManagerType = containerManagerType
-	return csc
-}
-
-func (csc *ContainerScanCommand) Run() (err error) {
+func (csc *DockerScanCommand) Run() (err error) {
 	// Perform scan.
-	cm := container.NewManager(csc.containerManagerType)
-	image := container.NewImage(csc.imageTag)
 
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -52,13 +41,12 @@ func (csc *ContainerScanCommand) Run() (err error) {
 		}
 	}()
 
-	// run docker/podman save command to create tar file from image and pass it to the indexer to perform layers scan.
+	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
 	tarFilePath := filepath.Join(tempDirPath, "image.tar")
-	err = cm.Save(image, tarFilePath)
+	err = csc.dockerSave(tarFilePath)
 	if err != nil {
-		return errors.New("Failed running " + csc.containerManagerType.String() + " save command with error: " + err.Error())
+		return errors.New("Failed running docker save command with error: " + err.Error())
 	}
-
 	filSpec := spec.NewBuilder().
 		Pattern(tarFilePath).
 		BuildSpec()
@@ -76,9 +64,19 @@ func (csc *ContainerScanCommand) Run() (err error) {
 	}()
 	return csc.ScanCommand.Run()
 }
+func (csc *DockerScanCommand) dockerSave(tarFilePath string) error {
+	var cmd []string
+	cmd = append(cmd, "save")
+	cmd = append(cmd, csc.imageTag)
+	cmd = append(cmd, "-o")
+	cmd = append(cmd, tarFilePath)
+	saveCmd := exec.Command(container.DockerClient.String(), cmd[:]...)
+	return saveCmd.Run()
+}
 
-// when indexing docker rpm files the indexer app needs connection with Xray Server to deal with the rpm files
-func (csc *ContainerScanCommand) setCredentialEnvsForIndexerApp() error {
+// When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.
+// This is because RPM indexing is performed on the server side. This method therefore sets the Xray credentials as env vars to be read and used by the indexer-app.
+func (csc *DockerScanCommand) setCredentialEnvsForIndexerApp() error {
 	err := os.Setenv(indexerEnvPrefix+"XRAY_URL", csc.serverDetails.XrayUrl)
 	if err != nil {
 		return err
@@ -101,7 +99,7 @@ func (csc *ContainerScanCommand) setCredentialEnvsForIndexerApp() error {
 	return nil
 }
 
-func (csc *ContainerScanCommand) unsetCredentialEnvsForIndexerApp() error {
+func (csc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 	err := os.Unsetenv(indexerEnvPrefix + "XRAY_URL")
 	if err != nil {
 		return err
@@ -122,6 +120,6 @@ func (csc *ContainerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 	return nil
 }
 
-func (csc *ContainerScanCommand) CommandName() string {
-	return "xr_container_scan"
+func (csc *DockerScanCommand) CommandName() string {
+	return "xr_docker_scan"
 }

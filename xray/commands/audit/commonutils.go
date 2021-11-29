@@ -93,9 +93,10 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	if err != nil {
 		return err
 	}
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
 	if auditCmd.includeVulnerabilities == false {
 		if xrutils.CheckIfFailBuild(results) {
-			return xrutils.ThrowFailBuildError()
+			return xrutils.NewFailBuildError()
 		}
 	}
 

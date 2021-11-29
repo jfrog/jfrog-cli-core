@@ -2,10 +2,11 @@ package generic
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"strconv"
 	"time"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -66,6 +67,10 @@ func (uc *UploadCommand) Run() error {
 // Uploads the artifacts in the specified local path pattern to the specified target path.
 // Returns the total number of artifacts successfully uploaded.
 func (uc *UploadCommand) upload() error {
+	// Init progress bar if needed
+	if uc.progress != nil {
+		uc.progress.InitProgressReaders()
+	}
 	// In case of sync-delete get the user to confirm first, and save the operation timestamp.
 	syncDeletesProp := ""
 	if uc.syncDelete() {

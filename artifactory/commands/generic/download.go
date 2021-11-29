@@ -2,11 +2,12 @@ package generic
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
@@ -64,6 +65,10 @@ func (dc *DownloadCommand) Run() error {
 }
 
 func (dc *DownloadCommand) download() error {
+	// Init progress bar if needed
+	if dc.progress != nil {
+		dc.progress.InitProgressReaders()
+	}
 	// Create Service Manager:
 	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.DryRun(), dc.progress)
 	if err != nil {

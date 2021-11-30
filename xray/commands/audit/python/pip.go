@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
+	"path/filepath"
 )
 
 type AuditPipCommand struct {
@@ -69,6 +70,11 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 			err = e
 			return
 		}
+		e = fileutils.RemoveTempDir(tempDirPath)
+		// For Asaf:
+		if e != nil {
+			log.Info("For Asaf:" + e.Error())
+		}
 
 		e = fileutils.RemoveTempDir(tempDirPath)
 		// For Asaf:
@@ -91,6 +97,15 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	if err != nil {
 		return
 	}
+	defer func() {
+		e := fileutils.RemoveTempDir(filepath.Join(tempDirPath, "venv"))
+		if e != nil {
+			log.Info("For Asaf2:" + e.Error())
+		}
+		if err == nil {
+			err = e
+		}
+	}()
 
 	// 'pip install .'
 	err = piputils.RunPipInstall()

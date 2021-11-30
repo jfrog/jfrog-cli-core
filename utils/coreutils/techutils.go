@@ -13,6 +13,7 @@ const (
 	Gradle = "Gradle"
 	Npm    = "npm"
 	Go     = "go"
+	Pip    = "pip"
 )
 
 type TechnologyIndicator interface {
@@ -64,17 +65,36 @@ func (gi GoIndicator) Indicates(file string) bool {
 	return strings.Contains(file, "go.mod")
 }
 
-func GetTechIndicators() []TechnologyIndicator {
+type PipIndicator struct {
+}
+
+func (pi PipIndicator) GetTechnology() Technology {
+	return Pip
+}
+
+func (pi PipIndicator) Indicates(file string) bool {
+	return strings.Contains(file, "setup.py")
+}
+
+func GetMinSupportedTechIndicators() []TechnologyIndicator {
 	return []TechnologyIndicator{
 		MavenIndicator{},
 		GradleIndicator{},
 		NpmIndicator{},
-		GoIndicator{},
 	}
 }
 
-func DetectTechnologies(path string) (map[Technology]bool, error) {
-	indicators := GetTechIndicators()
+func GetTechIndicators() []TechnologyIndicator {
+	return append(GetMinSupportedTechIndicators(), GoIndicator{}, PipIndicator{})
+}
+
+func DetectTechnologies(path string, limitTechnologiesSupport bool) (map[Technology]bool, error) {
+	var indicators []TechnologyIndicator
+	if limitTechnologiesSupport {
+		indicators = GetMinSupportedTechIndicators()
+	} else {
+		indicators = GetTechIndicators()
+	}
 	filesList, err := fileutils.ListFilesRecursiveWalkIntoDirSymlink(path, false)
 	if err != nil {
 		return nil, err

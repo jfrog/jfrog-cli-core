@@ -70,21 +70,16 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 			err = e
 			return
 		}
-		e = fileutils.RemoveTempDir(tempDirPath)
-		// For Asaf:
-		if e != nil {
-			log.Info("For Asaf:" + e.Error())
-		}
 
 		e = fileutils.RemoveTempDir(tempDirPath)
-		// For Asaf:
-		if e != nil {
-			log.Info("For Asaf:" + e.Error())
-		}
-
 		if err == nil {
+			// For Asaf:
+			if e != nil {
+				log.Info("For Asaf:" + e.Error())
+			}
 			err = e
 		}
+
 	}()
 
 	err = fileutils.CopyDir(wd, tempDirPath, true, nil)
@@ -98,9 +93,18 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 		return
 	}
 	defer func() {
-		e := fileutils.RemoveTempDir(filepath.Join(tempDirPath, "venv"))
+		e := fileutils.RemoveTempDir(filepath.Join(tempDirPath, "build"))
 		if e != nil {
 			log.Info("For Asaf2:" + e.Error())
+		}
+		if err == nil {
+			err = e
+		}
+	}()
+	defer func() {
+		e := fileutils.RemoveTempDir(filepath.Join(tempDirPath, "pip_example.egg-info"))
+		if e != nil {
+			log.Info("For Asaf3:" + e.Error())
 		}
 		if err == nil {
 			err = e

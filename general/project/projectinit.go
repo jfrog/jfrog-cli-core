@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -64,7 +65,18 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		}
 	}
 	// Create build config
-	return pic.createBuildConfig()
+	err = pic.createBuildConfig()
+	if err == nil {
+		message :=
+			"You're all set!\n" +
+				"The project config is stored inside the .jfrog directory.\n" +
+				"Here's how you get started -\n" +
+				coreutils.GettingStartedGuideUrl
+		fmt.Println()
+		err = coreutils.PrintTable("", "", message)
+		fmt.Println()
+	}
+	return
 }
 
 type BuildConfigFile struct {

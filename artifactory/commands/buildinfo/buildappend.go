@@ -42,7 +42,11 @@ func (bac *BuildAppendCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject()); err != nil {
+	buildNumber, err := bac.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 
@@ -67,9 +71,9 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(buildName, bac.buildConfiguration.GetBuildNumber(), bac.buildConfiguration.GetProject(), populateFunc)
+	err = utils.SavePartialBuildInfo(buildName, buildNumber, bac.buildConfiguration.GetProject(), populateFunc)
 	if err == nil {
-		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", buildName+"/"+bac.buildConfiguration.GetBuildNumber())
+		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", buildName+"/"+buildNumber)
 	}
 	return err
 }

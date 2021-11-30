@@ -85,7 +85,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, bpc.buildConfiguration.GetBuildNumber(), bpc.buildConfiguration.GetProject())
+	buildNumber, err := bpc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, bpc.buildConfiguration.GetProject())
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -155,17 +159,21 @@ func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime ti
 	if err != nil {
 		return "", err
 	}
+	buildNumber, err := bpc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return "", err
+	}
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
-			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber()), nil
+			bpc.serverDetails.GetUrl(), buildName, buildNumber), nil
 	} else if bpc.buildConfiguration.GetProject() != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
+			bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
-		bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10)), nil
+		bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10)), nil
 }
 
 // Return the next build number based on the previously published build.

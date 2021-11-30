@@ -34,10 +34,14 @@ func (bcc *BuildCleanCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = utils.RemoveBuildDir(buildName, bcc.buildConfiguration.GetBuildNumber(), bcc.buildConfiguration.GetProject())
+	buildNumber, err := bcc.buildConfiguration.GetBuildNumber()
 	if err != nil {
 		return err
 	}
-	log.Info("Cleaned build info", buildName+"/"+bcc.buildConfiguration.GetBuildNumber()+".")
+	err = utils.RemoveBuildDir(buildName, buildNumber, bcc.buildConfiguration.GetProject())
+	if err != nil {
+		return err
+	}
+	log.Info("Cleaned build info", buildName+"/"+buildNumber+".")
 	return nil
 }

@@ -89,7 +89,11 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	if err != nil {
 		return nil, err
 	}
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(buildName, configuration.GetBuildNumber(), configuration.GetProject(), deployableArtifactsFile, vConfig, utils.Gradle)
+	buildNumber, err := configuration.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(buildName, buildNumber, configuration.GetProject(), deployableArtifactsFile, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}

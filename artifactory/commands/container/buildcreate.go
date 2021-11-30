@@ -34,7 +34,10 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildNumber := bpc.BuildConfiguration().GetBuildNumber()
+	buildNumber, err := bpc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	project := bpc.BuildConfiguration().GetProject()
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err

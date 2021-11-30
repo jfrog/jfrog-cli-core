@@ -107,8 +107,7 @@ func (dc *DotnetCommand) Exec() error {
 		return err
 	}
 
-	isCollectBuildInfo := len(dc.buildConfiguration.BuildName) > 0 && len(dc.buildConfiguration.BuildNumber) > 0
-	if !isCollectBuildInfo {
+	if !dc.buildConfiguration.IsCollectBuildInfo() {
 		return nil
 	}
 
@@ -120,15 +119,18 @@ func (dc *DotnetCommand) Exec() error {
 	if err != nil {
 		return err
 	}
-
-	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
-		return err
-	}
-	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.Module)
+	buildName, err := dc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, buildInfo)
+	if err = utils.SaveBuildGeneralDetails(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject()); err != nil {
+		return err
+	}
+	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.GetModule())
+	if err != nil {
+		return err
+	}
+	return utils.SaveBuildInfo(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject(), buildInfo)
 }
 
 func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {

@@ -218,11 +218,15 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		}
 	}
 
-	if len(buildConf.BuildName) > 0 && len(buildConf.BuildNumber) > 0 {
-		vConfig.Set(utils.BuildName, buildConf.BuildName)
-		vConfig.Set(utils.BuildNumber, buildConf.BuildNumber)
-		vConfig.Set(utils.BuildProject, buildConf.Project)
-		err = utils.SaveBuildGeneralDetails(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project)
+	buildName, err := buildConf.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	if buildConf.IsCollectBuildInfo() {
+		vConfig.Set(utils.BuildName, buildName)
+		vConfig.Set(utils.BuildNumber, buildConf.GetBuildNumber())
+		vConfig.Set(utils.BuildProject, buildConf.GetProject())
+		err = utils.SaveBuildGeneralDetails(buildName, buildConf.GetBuildNumber(), buildConf.GetProject())
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +245,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		setDeployFalse(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project, deployableArtifactsFile, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildName, buildConf.GetBuildNumber(), buildConf.GetProject(), deployableArtifactsFile, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

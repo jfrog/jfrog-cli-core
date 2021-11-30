@@ -17,7 +17,6 @@ const (
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-
 	return buildConfiguration, func(err error) {
 		buildName, err := buildConfiguration.GetBuildName()
 		if err != nil {

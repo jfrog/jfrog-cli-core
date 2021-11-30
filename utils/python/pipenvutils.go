@@ -15,8 +15,8 @@ func getPipenvEnvironmentString(venvDir string) string {
 }
 
 // Execute "pipenv --venv" to get the pipenv virtual env path
-func GetPipenvVenv(venvDir string) (string, error) {
-	output, err := runPythonCommand("pipenv", []string{"--venv"}, getPipenvEnvironmentString(venvDir))
+func GetPipenvVenv() (string, error) {
+	output, err := runPythonCommand("pipenv", []string{"--venv"}, "")
 	if err != nil {
 		return "", err
 	}

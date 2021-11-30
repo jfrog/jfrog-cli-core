@@ -65,7 +65,7 @@ func (peic *PipenvInstallCommand) Run() (err error) {
 		}
 
 		allDependencies := peic.getAllDependencies(allDepsList, dependencyToFileMap)
-		venvDirPath, err := pipenvutils.GetPipenvVenv("")
+		venvDirPath, err := pipenvutils.GetPipenvVenv()
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	buildFileName = "build.yml"
+	buildFileName = "build.yaml"
 )
 
 type ProjectInitCommand struct {

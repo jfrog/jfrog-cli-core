@@ -96,13 +96,16 @@ func (uc *UploadCommand) upload() error {
 	addVcsProps := false
 	buildProps := ""
 	// Build Info Collection:
-	isCollectBuildInfo := uc.buildConfiguration != nil && len(uc.buildConfiguration.BuildName) > 0 && len(uc.buildConfiguration.BuildNumber) > 0
-	if isCollectBuildInfo && !uc.DryRun() {
+	if uc.buildConfiguration.IsCollectBuildInfo() && !uc.DryRun() {
 		addVcsProps = true
-		if err := utils.SaveBuildGeneralDetails(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project); err != nil {
+		buildName, err := uc.buildConfiguration.GetBuildName()
+		if err != nil {
 			return err
 		}
-		buildProps, err = utils.CreateBuildProperties(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project)
+		if err := utils.SaveBuildGeneralDetails(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject()); err != nil {
+			return err
+		}
+		buildProps, err = utils.CreateBuildProperties(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject())
 		if err != nil {
 			return err
 		}
@@ -130,7 +133,7 @@ func (uc *UploadCommand) upload() error {
 	// otherwise we use the upload service which provides only general counters.
 	var successCount, failCount int
 	var artifactsDetailsReader *content.ContentReader = nil
-	if uc.DetailedSummary() || isCollectBuildInfo {
+	if uc.DetailedSummary() || uc.buildConfiguration.IsCollectBuildInfo() {
 		var summary *rtServicesUtils.OperationSummary
 		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
 		if err != nil {
@@ -176,7 +179,7 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Build info
-	if !uc.DryRun() && isCollectBuildInfo {
+	if !uc.DryRun() && uc.buildConfiguration.IsCollectBuildInfo() {
 		var buildArtifacts []buildinfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
@@ -184,10 +187,14 @@ func (uc *UploadCommand) upload() error {
 		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Artifacts = buildArtifacts
-			partial.ModuleId = uc.buildConfiguration.Module
+			partial.ModuleId = uc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(uc.buildConfiguration.BuildName, uc.buildConfiguration.BuildNumber, uc.buildConfiguration.Project, populateFunc)
+		buildName, err := uc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		err = utils.SavePartialBuildInfo(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject(), populateFunc)
 
 	}
 	return err

@@ -2,6 +2,10 @@ package npm
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
@@ -13,9 +17,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const npmrcFileName = ".npmrc"
@@ -173,8 +174,11 @@ func (ica *InstallCiArgs) collectDependenciesChecksums() error {
 	if err != nil {
 		return err
 	}
-
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, ica.buildConfiguration.BuildName)
+	buildName, err := ica.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
 	if err != nil {
 		return err
 	}
@@ -193,8 +197,8 @@ func (ica *InstallCiArgs) collectDependenciesChecksums() error {
 
 func (ica *InstallCiArgs) saveDependenciesData() error {
 	log.Debug("Saving data.")
-	if ica.buildConfiguration.Module == "" {
-		ica.buildConfiguration.Module = ica.packageInfo.BuildInfoModuleId()
+	if ica.buildConfiguration.GetModule() == "" {
+		ica.buildConfiguration.SetModule(ica.packageInfo.BuildInfoModuleId())
 	}
 
 	dependencies, missingDependencies := ica.transformDependencies()

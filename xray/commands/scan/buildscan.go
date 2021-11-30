@@ -58,10 +58,14 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	buildName, err := bsc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
 	params := services.XrayBuildParams{
-		BuildName:   bsc.buildConfiguration.BuildName,
-		BuildNumber: bsc.buildConfiguration.BuildNumber,
-		Project:     bsc.buildConfiguration.Project,
+		BuildName:   buildName,
+		BuildNumber: bsc.buildConfiguration.GetBuildNumber(),
+		Project:     bsc.buildConfiguration.GetProject(),
 	}
 
 	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)

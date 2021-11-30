@@ -52,7 +52,10 @@ func (bsc *BuildScanLegacyCommand) Run() error {
 		return err
 	}
 
-	xrayScanParams := getXrayScanParams(*bsc.buildConfiguration)
+	xrayScanParams, err := getXrayScanParams(*bsc.buildConfiguration)
+	if err != nil {
+		return err
+	}
 	result, err := servicesManager.XrayScanBuild(xrayScanParams)
 	if err != nil {
 		return err
@@ -90,11 +93,15 @@ type scanSummary struct {
 	Url         string `json:"more_details_url,omitempty"`
 }
 
-func getXrayScanParams(buildConfiguration utils.BuildConfiguration) services.XrayScanParams {
+func getXrayScanParams(buildConfiguration utils.BuildConfiguration) (services.XrayScanParams, error) {
 	xrayScanParams := services.NewXrayScanParams()
-	xrayScanParams.BuildName = buildConfiguration.BuildName
-	xrayScanParams.BuildNumber = buildConfiguration.BuildNumber
-	xrayScanParams.ProjectKey = buildConfiguration.Project
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return xrayScanParams, err
+	}
+	xrayScanParams.BuildName = buildName
+	xrayScanParams.BuildNumber = buildConfiguration.GetBuildNumber()
+	xrayScanParams.ProjectKey = buildConfiguration.GetProject()
 
-	return xrayScanParams
+	return xrayScanParams, nil
 }

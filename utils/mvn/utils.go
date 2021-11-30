@@ -2,13 +2,14 @@ package mvnutils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
@@ -72,7 +73,7 @@ func getMavenHomeAndValidateVersion() (string, error) {
 		} else if strings.Contains(line, "Apache Maven") {
 			// line example: 'Apache Maven 3.6.3 (SUSE 3.6.3-4.2.1)'
 			// or sometimes '^[[1mApache Maven 3.6.3 (SUSE 3.6.3-4.2.1)^[[m'
-			line = line[strings.Index(line,"Apache"):]
+			line = line[strings.Index(line, "Apache"):]
 			mvnVersion = strings.Split(line, " ")[2]
 		} else if mvnHome != "" && mvnVersion != "" {
 			break
@@ -123,7 +124,7 @@ func runMvnVersionCommand(mavenHome string) ([]string, error) {
 // Line example: 'Maven home: /usr/share/maven'
 func parseMvnHome(line string) (string, error) {
 	// Remove all prefix before 'Maven' (if exists)
-	line = line[strings.Index(line,"Maven"):]
+	line = line[strings.Index(line, "Maven"):]
 	// Get version string
 	mavenHome := strings.Split(line, " ")[2]
 	if coreutils.IsWindows() {
@@ -218,15 +219,23 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		}
 	}
 
+	toCollect, err := buildConf.IsCollectBuildInfo()
+	if err != nil {
+		return nil, err
+	}
 	buildName, err := buildConf.GetBuildName()
 	if err != nil {
 		return nil, err
 	}
-	if buildConf.IsCollectBuildInfo() {
+	buildNumber, err := buildConf.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	if toCollect {
 		vConfig.Set(utils.BuildName, buildName)
-		vConfig.Set(utils.BuildNumber, buildConf.GetBuildNumber())
+		vConfig.Set(utils.BuildNumber, buildNumber)
 		vConfig.Set(utils.BuildProject, buildConf.GetProject())
-		err = utils.SaveBuildGeneralDetails(buildName, buildConf.GetBuildNumber(), buildConf.GetProject())
+		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, buildConf.GetProject())
 		if err != nil {
 			return nil, err
 		}
@@ -245,7 +254,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		setDeployFalse(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildName, buildConf.GetBuildNumber(), buildConf.GetProject(), deployableArtifactsFile, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildName, buildNumber, buildConf.GetProject(), deployableArtifactsFile, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

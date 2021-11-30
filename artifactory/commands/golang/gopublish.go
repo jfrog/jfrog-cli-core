@@ -77,23 +77,31 @@ func (gpc *GoPublishCommand) Run() error {
 	if !version.AtLeast(minSupportedArtifactoryVersion) {
 		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
 	}
-
-	buildName, err := gpc.buildConfiguration.GetBuildName()
+	var goBuild *build.Build
+	var buildName, buildNumber, project string
+	toCollect, err := gpc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
 		return err
 	}
-	var goBuild *build.Build
-	if gpc.buildConfiguration.IsCollectBuildInfo() {
+	if toCollect {
+		buildName, err = gpc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err = gpc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		project = gpc.buildConfiguration.GetProject()
 		buildInfoService := utils.CreateBuildInfoService()
-
-		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, gpc.buildConfiguration.GetBuildNumber(), gpc.buildConfiguration.GetProject())
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 	}
 
 	// Publish the package to Artifactory
-	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, gpc.buildConfiguration.GetBuildNumber(), gpc.buildConfiguration.GetProject(), serviceManager)
+	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, serviceManager)
 	if err != nil {
 		return err
 	}
@@ -104,7 +112,7 @@ func (gpc *GoPublishCommand) Run() error {
 		result.SetReader(summary.TransferDetailsReader)
 	}
 	// Publish the build-info to Artifactory
-	if gpc.buildConfiguration.IsCollectBuildInfo() {
+	if toCollect {
 		goModule, err := goBuild.AddGoModule("")
 		if err != nil {
 			return errorutils.CheckError(err)

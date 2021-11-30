@@ -325,19 +325,23 @@ func (bc *BuildConfiguration) GetBuildName() (string, error) {
 	return bc.buildName, nil
 }
 
-func (bc *BuildConfiguration) GetBuildNumber() string {
+func (bc *BuildConfiguration) GetBuildNumber() (string, error) {
 	if bc.buildNumber != "" {
-		return bc.buildNumber
+		return bc.buildNumber, nil
 	}
 	// Resolve from env var.
 	if bc.buildNumber = os.Getenv(coreutils.BuildNumber); bc.buildNumber != "" {
-		return bc.buildNumber
+		return bc.buildNumber, nil
 	}
 	// If build name was resolve from build.yaml file, use 'LATEST' as build number.
-	if buildName, err := bc.GetBuildName(); err == nil && buildName != "" && bc.loadedFromConfigFile {
+	buildName, err := bc.GetBuildName()
+	if err != nil {
+		return "", err
+	}
+	if buildName != "" && bc.loadedFromConfigFile {
 		bc.buildNumber = artclientutils.LatestBuildNumberKey
 	}
-	return bc.buildNumber
+	return bc.buildNumber, nil
 }
 
 func (bc *BuildConfiguration) GetProject() string {
@@ -356,7 +360,10 @@ func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	if err != nil {
 		return err
 	}
-	buildNumber := bc.GetBuildNumber()
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	module := bc.GetModule()
 	if err := bc.ValidateBuildParams(); err != nil {
 		return err
@@ -374,16 +381,29 @@ func (bc *BuildConfiguration) ValidateBuildParams() error {
 	if err != nil {
 		return err
 	}
-	buildNumber := bc.GetBuildNumber()
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	if (buildName == "" && buildNumber != "") || (buildName != "" && buildNumber == "") {
 		return errorutils.CheckErrorf(("the build-name and build-number options cannot be provided separately"))
 	}
 	return nil
 }
 
-func (bc *BuildConfiguration) IsCollectBuildInfo() bool {
+func (bc *BuildConfiguration) IsCollectBuildInfo() (bool, error) {
+	if bc == nil {
+		return false, nil
+	}
 	buildName, err := bc.GetBuildName()
-	return bc != nil && bc.GetBuildNumber() != "" && buildName != "" && err == nil
+	if err != nil {
+		return false, err
+	}
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return false, err
+	}
+	return buildNumber != "" && buildName != "", nil
 }
 
 func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {

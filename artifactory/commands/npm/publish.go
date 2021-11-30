@@ -190,7 +190,10 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 
 	npc.workingDirectory = currentDir
 	log.Debug("Working directory set to:", npc.workingDirectory)
-	npc.collectBuildInfo = npc.buildConfiguration.IsCollectBuildInfo()
+	npc.collectBuildInfo, err = npc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
 	if err = npc.setPublishPath(); err != nil {
 		return err
 	}
@@ -270,8 +273,12 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			if err != nil {
 				return err
 			}
-			utils.SaveBuildGeneralDetails(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject())
-			up.BuildProps, err = utils.CreateBuildProperties(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject())
+			buildNumber, err := npc.buildConfiguration.GetBuildNumber()
+			if err != nil {
+				return err
+			}
+			utils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			up.BuildProps, err = utils.CreateBuildProperties(buildName, buildNumber, npc.buildConfiguration.GetProject())
 			if err != nil {
 				return err
 			}
@@ -338,7 +345,11 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 	if err != nil {
 		return err
 	}
-	return utils.SavePartialBuildInfo(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject(), populateFunc)
+	buildNumber, err := npc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, buildNumber, npc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {

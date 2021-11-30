@@ -98,8 +98,12 @@ func getXrayScanParams(buildConfiguration utils.BuildConfiguration) (services.Xr
 	if err != nil {
 		return xrayScanParams, err
 	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return xrayScanParams, err
+	}
 	xrayScanParams.BuildName = buildName
-	xrayScanParams.BuildNumber = buildConfiguration.GetBuildNumber()
+	xrayScanParams.BuildNumber = buildNumber
 	xrayScanParams.ProjectKey = buildConfiguration.GetProject()
 
 	return xrayScanParams, nil

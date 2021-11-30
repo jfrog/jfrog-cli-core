@@ -71,7 +71,11 @@ func (config *BuildAddGitCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = utils.SaveBuildGeneralDetails(buildName, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject())
+	buildNumber, err := config.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	err = utils.SaveBuildGeneralDetails(buildName, buildNumber, config.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}
@@ -122,13 +126,13 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(buildName, config.buildConfiguration.GetBuildNumber(), config.buildConfiguration.GetProject(), populateFunc)
+	err = utils.SavePartialBuildInfo(buildName, buildNumber, config.buildConfiguration.GetProject(), populateFunc)
 	if err != nil {
 		return err
 	}
 
 	// Done.
-	log.Debug("Collected VCS details for", buildName+"/"+config.buildConfiguration.GetBuildNumber()+".")
+	log.Debug("Collected VCS details for", buildName+"/"+buildNumber+".")
 	return nil
 }
 

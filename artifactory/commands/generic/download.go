@@ -76,12 +76,20 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	// Build Info Collection:
-	if dc.buildConfiguration.IsCollectBuildInfo() && !dc.DryRun() {
+	toCollect, err := dc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if toCollect && !dc.DryRun() {
 		buildName, err := dc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		if err = utils.SaveBuildGeneralDetails(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject()); err != nil {
+		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -103,7 +111,7 @@ func (dc *DownloadCommand) download() error {
 	// otherwise we use the download service which provides only general counters.
 	var totalDownloaded, totalFailed int
 	var summary *serviceutils.OperationSummary
-	if dc.buildConfiguration.IsCollectBuildInfo() || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
+	if toCollect || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
 		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
 		if err != nil {
 			errorOccurred = true
@@ -162,8 +170,12 @@ func (dc *DownloadCommand) download() error {
 	log.Debug("Downloaded", strconv.Itoa(totalDownloaded), "artifacts.")
 
 	// Build Info
-	if dc.buildConfiguration.IsCollectBuildInfo() {
+	if toCollect {
 		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
 		if err != nil {
 			return err
 		}
@@ -177,7 +189,7 @@ func (dc *DownloadCommand) download() error {
 			partial.ModuleId = dc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject(), populateFunc)
+		err = utils.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
 	}
 
 	return err

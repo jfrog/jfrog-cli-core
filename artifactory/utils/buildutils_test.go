@@ -105,7 +105,8 @@ func TestGetBuildNumber(t *testing.T) {
 	buildConfig := NewBuildConfiguration("", buildNumber, "module", "project")
 	for i := 0; i < 2; i++ {
 		// Validate build number form params input (first priority).
-		actualBuildNumber := buildConfig.GetBuildNumber()
+		actualBuildNumber, err := buildConfig.GetBuildNumber()
+		assert.NoError(t, err)
 		assert.Equal(t, actualBuildNumber, buildNumber)
 
 		// Set build number using env var.
@@ -114,25 +115,39 @@ func TestGetBuildNumber(t *testing.T) {
 
 	// Validate build number form env var (second priority).
 	buildConfig.SetBuildNumber("")
-	assert.Equal(t, buildConfig.GetBuildNumber(), buildNumberEnv)
+	actualBuildNumber, err := buildConfig.GetBuildNumber()
+	assert.NoError(t, err)
+	assert.Equal(t, actualBuildNumber, buildNumberEnv)
 	assert.NoError(t, os.Unsetenv(coreutils.BuildNumber))
 
 	// Validate build number form file (third priority).
 	buildConfig.SetBuildNumber("")
-	assert.Equal(t, buildConfig.GetBuildNumber(), buildNumberFromFile)
+	actualBuildNumber, err = buildConfig.GetBuildNumber()
+	assert.NoError(t, err)
+	assert.Equal(t, actualBuildNumber, buildNumberFromFile)
 }
 
 func TestIsCollectBuildInfo(t *testing.T) {
 	buildConfig := NewBuildConfiguration("", "", "", "")
-	assert.False(t, buildConfig.IsCollectBuildInfo())
+	toCollect,err := buildConfig.IsCollectBuildInfo()
+	assert.NoError(t,err)
+	assert.False(t, toCollect)
 	buildConfig.SetBuildName("a")
-	assert.False(t, buildConfig.IsCollectBuildInfo())
+	toCollect,err = buildConfig.IsCollectBuildInfo()
+	assert.NoError(t,err)
+	assert.False(t, toCollect)
 	buildConfig.SetProject("a")
-	assert.False(t, buildConfig.IsCollectBuildInfo())
+	toCollect,err = buildConfig.IsCollectBuildInfo()
+	assert.NoError(t,err)
+	assert.False(t, toCollect)
 	buildConfig.SetModule("a")
-	assert.False(t, buildConfig.IsCollectBuildInfo())
+	toCollect,err = buildConfig.IsCollectBuildInfo()
+	assert.NoError(t,err)
+	assert.False(t, toCollect)
 	buildConfig.SetBuildNumber("a")
-	assert.True(t, buildConfig.IsCollectBuildInfo())
+	toCollect,err = buildConfig.IsCollectBuildInfo()
+	assert.NoError(t,err)
+	assert.True(t, toCollect)
 }
 
 func TestIsLoadedFromConfigFile(t *testing.T) {
@@ -168,7 +183,8 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 	assert.Equal(t, buildName, buildNameFile)
-	buildumber := buildConfig.GetBuildNumber()
+	buildumber, err := buildConfig.GetBuildNumber()
+	assert.NoError(t, err)
 	assert.Equal(t, buildumber, artclientutils.LatestBuildNumberKey)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 
@@ -177,7 +193,8 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.False(t, buildConfig.IsLoadedFromConfigFile())
 
 	// Create build config in temp folder
-	buildumber = buildConfig.GetBuildNumber()
+	buildumber, err = buildConfig.GetBuildNumber()
+	assert.NoError(t, err)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 	buildName, err = buildConfig.GetBuildName()
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())

@@ -1,9 +1,10 @@
 package audit
 
 import (
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"strconv"
 	"time"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -15,24 +16,30 @@ const (
 )
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
-	buildConfiguration := &artifactoryUtils.BuildConfiguration{
-		BuildName:   buildName,
-		BuildNumber: strconv.FormatInt(time.Now().Unix(), 10),
-	}
+	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
+
 	return buildConfiguration, func(err error) {
-		err = artifactoryUtils.RemoveBuildDir(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project)
+		buildName, err := buildConfiguration.GetBuildName()
+		if err != nil {
+			return
+		}
+		err = artifactoryUtils.RemoveBuildDir(buildName, buildConfiguration.GetBuildNumber(), buildConfiguration.GetProject())
 	}
 }
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
 func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*services.GraphNode, error) {
-	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildConfig.BuildName, buildConfig.BuildNumber, buildConfig.Project)
+	buildName, err := buildConfig.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildConfig.GetBuildNumber(), buildConfig.GetProject())
 	if err != nil {
 		return nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckErrorf("Couldn't find build " + buildConfig.BuildName + "/" + buildConfig.BuildNumber)
+		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildConfig.GetBuildNumber())
 	}
 	modules := []*services.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {
@@ -49,7 +56,7 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 
 	directDependencies := make(map[string]buildinfo.Dependency)
 	parentToChildren := newDependencyMultimap()
-	for _, dependency := range module.Dependencies {
+	for index, dependency := range module.Dependencies {
 		requestedBy := dependency.RequestedBy
 		if isDirectDependency(module.Id, requestedBy) {
 			// If no parents at all or the direct parent is the module, assume dependency is a direct
@@ -58,12 +65,13 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 		}
 
 		for _, parent := range requestedBy {
-			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &dependency)
+			// we use '&module.Dependencies[index]' to avoid reusing the &dependency pointer
+			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &module.Dependencies[index])
 		}
 	}
 
 	for _, directDependency := range directDependencies {
-		populateTransitiveDependencies(moduleTree, &directDependency, parentToChildren, []string{})
+		populateTransitiveDependencies(moduleTree, directDependency.Id, parentToChildren, []string{})
 	}
 	return moduleTree
 }
@@ -82,18 +90,18 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *services.GraphNode, dependency *buildinfo.Dependency, parentToChildren *dependencyMultimap, idsAdded []string) {
-	if hasLoop(idsAdded, dependency.Id) {
+func populateTransitiveDependencies(parent *services.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
+	if hasLoop(idsAdded, dependencyId) {
 		return
 	}
-	idsAdded = append(idsAdded, dependency.Id)
+	idsAdded = append(idsAdded, dependencyId)
 	node := &services.GraphNode{
-		Id:    GavPackageTypeIdentifier + dependency.Id,
+		Id:    GavPackageTypeIdentifier + dependencyId,
 		Nodes: []*services.GraphNode{},
 	}
 	parent.Nodes = append(parent.Nodes, node)
 	for _, child := range parentToChildren.getChildren(node.Id) {
-		populateTransitiveDependencies(node, child, parentToChildren, idsAdded)
+		populateTransitiveDependencies(node, child.Id, parentToChildren, idsAdded)
 	}
 }
 

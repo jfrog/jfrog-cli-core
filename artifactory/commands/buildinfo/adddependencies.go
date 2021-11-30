@@ -2,10 +2,10 @@ package buildinfo
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	regxp "regexp"
 	"strconv"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -53,7 +53,11 @@ func (badc *BuildAddDependenciesCommand) Run() error {
 	success, fail := 0, 0
 	var err error
 	if !badc.dryRun {
-		if err = utils.SaveBuildGeneralDetails(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project); err != nil {
+		buildName, err := badc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -277,7 +281,11 @@ func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []bui
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = dependencies
 	}
-	return utils.SavePartialBuildInfo(badc.buildConfiguration.BuildName, badc.buildConfiguration.BuildNumber, badc.buildConfiguration.Project, populateFunc)
+	buildName, err := badc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, badc.buildConfiguration.GetBuildNumber(), badc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {

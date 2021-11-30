@@ -2,11 +2,12 @@ package generic
 
 import (
 	"errors"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
@@ -64,6 +65,10 @@ func (dc *DownloadCommand) Run() error {
 }
 
 func (dc *DownloadCommand) download() error {
+	// Init progress bar if needed
+	if dc.progress != nil {
+		dc.progress.InitProgressReaders()
+	}
 	// Create Service Manager:
 	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.DryRun(), dc.progress)
 	if err != nil {
@@ -71,9 +76,12 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	// Build Info Collection:
-	isCollectBuildInfo := len(dc.buildConfiguration.BuildName) > 0 && len(dc.buildConfiguration.BuildNumber) > 0
-	if isCollectBuildInfo && !dc.DryRun() {
-		if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
+	if dc.buildConfiguration.IsCollectBuildInfo() && !dc.DryRun() {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -95,7 +103,7 @@ func (dc *DownloadCommand) download() error {
 	// otherwise we use the download service which provides only general counters.
 	var totalDownloaded, totalFailed int
 	var summary *serviceutils.OperationSummary
-	if isCollectBuildInfo || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
+	if dc.buildConfiguration.IsCollectBuildInfo() || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
 		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
 		if err != nil {
 			errorOccurred = true
@@ -154,7 +162,11 @@ func (dc *DownloadCommand) download() error {
 	log.Debug("Downloaded", strconv.Itoa(totalDownloaded), "artifacts.")
 
 	// Build Info
-	if isCollectBuildInfo {
+	if dc.buildConfiguration.IsCollectBuildInfo() {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
 		var buildDependencies []buildinfo.Dependency
 		buildDependencies, err = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		if err != nil {
@@ -162,10 +174,10 @@ func (dc *DownloadCommand) download() error {
 		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
-			partial.ModuleId = dc.buildConfiguration.Module
+			partial.ModuleId = dc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, populateFunc)
+		err = utils.SavePartialBuildInfo(buildName, dc.buildConfiguration.GetBuildNumber(), dc.buildConfiguration.GetProject(), populateFunc)
 	}
 
 	return err

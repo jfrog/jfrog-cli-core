@@ -25,11 +25,15 @@ const (
 	TempDir            = "JFROG_CLI_TEMP_DIR"
 	LogLevel           = "JFROG_CLI_LOG_LEVEL"
 	ReportUsage        = "JFROG_CLI_REPORT_USAGE"
-	HomeDir            = "JFROG_CLI_HOME_DIR"
 	DependenciesDir    = "JFROG_CLI_DEPENDENCIES_DIR"
-	BuildName          = "JFROG_CLI_BUILD_NAME"
-	BuildNumber        = "JFROG_CLI_BUILD_NUMBER"
-	Project            = "JFROG_CLI_BUILD_PROJECT"
 	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 	CI                 = "CI"
+)
+
+// Although these vars are constant, they are defined inside a vars section and not a constants section because the tests modify these values.
+var (
+	HomeDir     = "JFROG_CLI_HOME_DIR"
+	BuildName   = "JFROG_CLI_BUILD_NAME"
+	BuildNumber = "JFROG_CLI_BUILD_NUMBER"
+	Project     = "JFROG_CLI_BUILD_PROJECT"
 )

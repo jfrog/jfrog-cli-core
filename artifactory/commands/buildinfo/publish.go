@@ -1,19 +1,23 @@
 package buildinfo
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	biconf "github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -77,7 +81,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	}
 
 	buildInfoService := utils.CreateBuildInfoService()
-	build, err := buildInfoService.GetOrCreateBuildWithProject(bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, bpc.buildConfiguration.Project)
+	buildName, err := bpc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, bpc.buildConfiguration.GetBuildNumber(), bpc.buildConfiguration.GetProject())
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -100,7 +108,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.Project)
+	if bpc.buildConfiguration.IsLoadedFromConfigFile() {
+		buildInfo.Number, err = bpc.getNextBuildNumber(buildInfo.Name, servicesManager)
+		bpc.buildConfiguration.SetBuildNumber(buildInfo.Number)
+	}
+	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.GetProject())
 	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
 	}
@@ -135,19 +147,45 @@ func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifact
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
-	return bpc.getBuildInfoUiUrl(majorVersion, buildTime), nil
+	return bpc.getBuildInfoUiUrl(majorVersion, buildTime)
 }
 
-func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime time.Time) string {
+func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime time.Time) (string, error) {
+	buildName, err := bpc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return "", err
+	}
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
-			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber)
-	} else if bpc.buildConfiguration.Project != "" {
+			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber()), nil
+	} else if bpc.buildConfiguration.GetProject() != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.Project, bpc.buildConfiguration.Project)
+			bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
-		bpc.serverDetails.GetUrl(), bpc.buildConfiguration.BuildName, bpc.buildConfiguration.BuildNumber, strconv.FormatInt(timestamp, 10))
+		bpc.serverDetails.GetUrl(), buildName, bpc.buildConfiguration.GetBuildNumber(), strconv.FormatInt(timestamp, 10)), nil
+}
+
+// Return the next build number based on the previously published build.
+// Return "1" if no build is found
+func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesManager artifactory.ArtifactoryServicesManager) (string, error) {
+	publishedBuildInfo, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey})
+	if err != nil {
+		return "", err
+	}
+	if !found || publishedBuildInfo.BuildInfo.Number == "" {
+		return "1", nil
+	}
+	latestBuildNumber, err := strconv.Atoi(publishedBuildInfo.BuildInfo.Number)
+	if errorutils.CheckError(err) != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			log.Warn("The latest build number is " + publishedBuildInfo.BuildInfo.Number + ". Since it is not an integer, and therefore cannot be incremented to automatically generate the next build number, setting the next build number to 1.")
+			return "1", nil
+		}
+		return "", err
+	}
+	latestBuildNumber++
+	return strconv.Itoa(latestBuildNumber), nil
 }

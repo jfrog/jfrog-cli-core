@@ -1,8 +1,8 @@
 package mvnutils
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,12 +23,14 @@ import (
 const (
 	mavenExtractorDependencyVersion = "2.30.2"
 	classworldsConfFileName         = "classworlds.conf"
-	MavenHome                       = "M2_HOME"
+	mavenHomeEnv                    = "M2_HOME"
+	minSupportedMvnVersion          = "3.1.0"
+	minSupportedMvnVersionError     = "JFrog CLI mvn commands requires Maven version " + minSupportedMvnVersion + " or higher."
 )
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	log.Info("Running Mvn...")
-	mvnHome, err := getMavenHome()
+	mvnHome, err := getMavenHomeAndValidateVersion()
 	if err != nil {
 		return err
 	}
@@ -48,46 +50,100 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	return mvnRunConfig.runCmd()
 }
 
-func getMavenHome() (string, error) {
+func getMavenHomeAndValidateVersion() (string, error) {
 	log.Debug("Checking prerequisites.")
-	mavenHome := os.Getenv(MavenHome)
-	if mavenHome == "" {
-		// The M2_HOME environment variable is not defined.
-		// Since Maven installation can be located in different locations,
-		// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
-		// We need to grab the location using the mvn --version command
+	mvnHome := os.Getenv(mavenHomeEnv)
+	mvnVersion := ""
 
-		// First we will try lo look for 'mvn' in PATH.
-		mvnPath, err := exec.LookPath("mvn")
-		if err != nil || mvnPath == "" {
-			return "", errorutils.CheckErrorf(err.Error() + "Hint: The mvn command may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+	output, err := runMvnVersionCommand(mvnHome)
+	if err != nil {
+		return "", err
+	}
+	// Finding the relevant "Maven home" line in command response.
+	for _, line := range output {
+		if mvnHome == "" && strings.Contains(line, "Maven home:") {
+			// The M2_HOME environment variable is not defined.
+			// Since Maven installation can be located in different locations,
+			// Depending on the installation type and the OS (for example: For Mac with brew install: /usr/local/Cellar/maven/{version}/libexec or Ubuntu with debian: /usr/share/maven),
+			mvnHome, err = parseMvnHome(line)
+			if err != nil {
+				return "", err
+			}
+		} else if strings.Contains(line, "Apache Maven") {
+			// line example: 'Apache Maven 3.6.3 (SUSE 3.6.3-4.2.1)'
+			// or sometimes '^[[1mApache Maven 3.6.3 (SUSE 3.6.3-4.2.1)^[[m'
+			line = line[strings.Index(line,"Apache"):]
+			mvnVersion = strings.Split(line, " ")[2]
+		} else if mvnHome != "" && mvnVersion != "" {
+			break
 		}
-		log.Debug(MavenHome, " is not defined. Retrieving Maven home using 'mvn --version' command.")
-		cmd := exec.Command("mvn", "--version")
-		var stdout bytes.Buffer
-		cmd.Stdout = &stdout
-		err = errorutils.CheckError(cmd.Run())
+	}
+
+	if mvnHome == "" {
+		return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" +
+			strings.Join(output, " ") + "\n" +
+			"You also have the option of setting the M2_HOME environment variable value to the maven installation directory, " +
+			"which is the directory which includes the bin and lib directories.")
+	}
+	if mvnVersion == "" {
+		log.Info("Could not get maven version, by running 'mvn --version' command. " + minSupportedMvnVersionError)
+	} else {
+		err = validateMinimumVersion(mvnVersion)
 		if err != nil {
 			return "", err
 		}
-		output := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-		// Finding the relevant "Maven home" line in command response.
-		for _, line := range output {
-			if strings.HasPrefix(line, "Maven home:") {
-				mavenHome = strings.Split(line, " ")[2]
-				if coreutils.IsWindows() {
-					mavenHome = strings.TrimSuffix(mavenHome, "\r")
-				}
-				mavenHome, err = filepath.Abs(mavenHome)
-				break
-			}
-		}
-		if mavenHome == "" {
-			return "", errorutils.CheckErrorf("Could not find the location of the maven home directory, by running 'mvn --version' command. The command output is:\n" + stdout.String() + "\nYou also have the option of setting the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
+	}
+
+	log.Debug("Maven home location: ", mvnHome)
+	log.Debug("Maven version: ", mvnVersion)
+	return mvnHome, nil
+}
+
+func runMvnVersionCommand(mavenHome string) ([]string, error) {
+	mvnPath := ""
+	var err error
+	if mavenHome != "" {
+		mvnPath = filepath.Join(mavenHome, "bin", "mvn")
+	} else {
+		mvnPath, err = exec.LookPath("mvn")
+		if err != nil || mvnPath == "" {
+			return nil, errorutils.CheckErrorf(err.Error() + "Hint: The mvn executable may not be included in the PATH. Either add it to the path, or set the M2_HOME environment variable value to the maven installation directory, which is the directory which includes the bin and lib directories.")
 		}
 	}
-	log.Debug("Maven home location: ", mavenHome)
+	cmd := exec.Command(mvnPath, "--version")
+
+	output, err := cmd.Output()
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
+}
+
+// Parse maven home path from line output
+// Line example: 'Maven home: /usr/share/maven'
+func parseMvnHome(line string) (string, error) {
+	// Remove all prefix before 'Maven' (if exists)
+	line = line[strings.Index(line,"Maven"):]
+	// Get version string
+	mavenHome := strings.Split(line, " ")[2]
+	if coreutils.IsWindows() {
+		mavenHome = strings.TrimSuffix(mavenHome, "\r")
+	}
+	// Remove trailing spaces ( /r /n and etc)
+	mavenHome = strings.TrimSpace(mavenHome)
+	mavenHome, err := filepath.Abs(mavenHome)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
 	return mavenHome, nil
+}
+
+func validateMinimumVersion(mvnVersion string) error {
+	ver := version.NewVersion(mvnVersion)
+	if ver.Compare(minSupportedMvnVersion) > 0 {
+		return errorutils.CheckErrorf("%s The Current version is: %s", minSupportedMvnVersionError, mvnVersion)
+	}
+	return nil
 }
 
 func downloadDependencies() (string, error) {
@@ -162,11 +218,15 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		}
 	}
 
-	if len(buildConf.BuildName) > 0 && len(buildConf.BuildNumber) > 0 {
-		vConfig.Set(utils.BuildName, buildConf.BuildName)
-		vConfig.Set(utils.BuildNumber, buildConf.BuildNumber)
-		vConfig.Set(utils.BuildProject, buildConf.Project)
-		err = utils.SaveBuildGeneralDetails(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project)
+	buildName, err := buildConf.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	if buildConf.IsCollectBuildInfo() {
+		vConfig.Set(utils.BuildName, buildName)
+		vConfig.Set(utils.BuildNumber, buildConf.GetBuildNumber())
+		vConfig.Set(utils.BuildProject, buildConf.GetProject())
+		err = utils.SaveBuildGeneralDetails(buildName, buildConf.GetBuildNumber(), buildConf.GetProject())
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +245,7 @@ func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, m
 		setDeployFalse(vConfig)
 	}
 
-	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project, deployableArtifactsFile, vConfig, utils.Maven)
+	buildInfoProperties, err := utils.CreateBuildInfoPropertiesFile(buildName, buildConf.GetBuildNumber(), buildConf.GetProject(), deployableArtifactsFile, vConfig, utils.Maven)
 	if err != nil {
 		return nil, err
 	}

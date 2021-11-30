@@ -1,13 +1,14 @@
 package golang
 
 import (
+	"os/exec"
+
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/version"
-	"os/exec"
 )
 
 const minSupportedArtifactoryVersion = "6.2.0"
@@ -77,21 +78,22 @@ func (gpc *GoPublishCommand) Run() error {
 		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
 	}
 
-	buildName := gpc.buildConfiguration.BuildName
-	buildNumber := gpc.buildConfiguration.BuildNumber
-	projectKey := gpc.buildConfiguration.Project
+	buildName, err := gpc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
 	var goBuild *build.Build
-	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
-	if isCollectBuildInfo {
+	if gpc.buildConfiguration.IsCollectBuildInfo() {
 		buildInfoService := utils.CreateBuildInfoService()
-		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
+
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, gpc.buildConfiguration.GetBuildNumber(), gpc.buildConfiguration.GetProject())
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 	}
 
 	// Publish the package to Artifactory
-	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, projectKey, serviceManager)
+	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, gpc.buildConfiguration.GetBuildNumber(), gpc.buildConfiguration.GetProject(), serviceManager)
 	if err != nil {
 		return err
 	}
@@ -102,13 +104,13 @@ func (gpc *GoPublishCommand) Run() error {
 		result.SetReader(summary.TransferDetailsReader)
 	}
 	// Publish the build-info to Artifactory
-	if isCollectBuildInfo {
+	if gpc.buildConfiguration.IsCollectBuildInfo() {
 		goModule, err := goBuild.AddGoModule("")
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		if gpc.buildConfiguration.Module != "" {
-			goModule.SetName(gpc.buildConfiguration.Module)
+		if gpc.buildConfiguration.GetModule() != "" {
+			goModule.SetName(gpc.buildConfiguration.GetModule())
 		}
 		err = goModule.AddArtifacts(artifacts...)
 		if err != nil {

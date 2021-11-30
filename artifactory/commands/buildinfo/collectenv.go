@@ -23,7 +23,11 @@ func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *ut
 func (bcec *BuildCollectEnvCommand) Run() error {
 	log.Info("Collecting environment variables...")
 	buildInfoService := utils.CreateBuildInfoService()
-	build, err := buildInfoService.GetOrCreateBuildWithProject(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project)
+	buildName, err := bcec.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, bcec.buildConfiguration.GetBuildNumber(), bcec.buildConfiguration.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -31,7 +35,7 @@ func (bcec *BuildCollectEnvCommand) Run() error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	log.Info("Collected environment variables for", bcec.buildConfiguration.BuildName+"/"+bcec.buildConfiguration.BuildNumber+".")
+	log.Info("Collected environment variables for", buildName+"/"+bcec.buildConfiguration.GetBuildNumber()+".")
 	return nil
 }
 

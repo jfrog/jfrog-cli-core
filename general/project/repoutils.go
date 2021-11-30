@@ -67,7 +67,7 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		RemoteUrl: GoRemoteDefaultUrl,
 		Virtual:   GoVirtualDefaultName,
 	},
-	coreutils.Pip: {
+	coreutils.Pypi: {
 		Local:     PypiLocalDefaultName,
 		Remote:    PypiRemoteDefaultName,
 		RemoteUrl: PypiRemoteDefaultUrl,

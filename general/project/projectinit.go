@@ -45,7 +45,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		}
 		pic.serverId = defaultServer.ServerId
 	}
-	technologiesMap, err := coreutils.DetectTechnologies(pic.projectPath, false)
+	technologiesMap, err := coreutils.DetectTechnologies(pic.projectPath, false, true)
 	if err != nil {
 		return err
 	}
@@ -107,6 +107,10 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		return errorutils.CheckError(err)
 	}
 	techName := strings.ToLower(string(tech))
+	// Due to cli-artifactory naming mismatch we have to add this line
+	if tech == coreutils.Pypi {
+		techName = "pip"
+	}
 	configFilePath := filepath.Join(jfrogProjectDir, techName+".yaml")
 	configFile := artifactoryCommandsUtils.ConfigFile{
 		Version:    artifactoryCommandsUtils.BuildConfVersion,
@@ -129,7 +133,7 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 	case coreutils.Go:
 		configFile.Resolver.Repo = GoVirtualDefaultName
 		configFile.Deployer.Repo = GoVirtualDefaultName
-	case coreutils.Pip:
+	case coreutils.Pypi:
 		configFile.Resolver.Repo = PypiVirtualDefaultName
 		configFile.Deployer.Repo = PypiVirtualDefaultName
 	}

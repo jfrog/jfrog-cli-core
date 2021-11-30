@@ -101,7 +101,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		log.Debug(message)
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
-			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we creat your environment")
+			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment")
 			statusResponse := myJfrogGetStatusResponse{}
 			if err = json.Unmarshal(body, &statusResponse); err != nil {
 				return true, nil, err

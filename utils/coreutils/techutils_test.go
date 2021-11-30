@@ -15,6 +15,8 @@ func TestTechIndicator(t *testing.T) {
 		{"simpleMavenTest", "pom.xml", Maven},
 		{"npmTest", "../package.json", Npm},
 		{"windowsGradleTest", "c://users/test/package/build.gradle", Gradle},
+		{"windowsPipTest", "c://users/test/package/setup.py", Pypi},
+		{"windowsGolangTest", "c://users/test/package/go.mod", Go},
 		{"noTechTest", "pomxml", ""},
 	}
 	indicators := GetTechIndicators()

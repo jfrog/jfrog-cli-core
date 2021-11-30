@@ -13,7 +13,7 @@ const (
 	Gradle = "Gradle"
 	Npm    = "npm"
 	Go     = "go"
-	Pip    = "pip"
+	Pypi   = "pypi"
 )
 
 type TechnologyIndicator interface {
@@ -51,7 +51,7 @@ func (ni NpmIndicator) GetTechnology() Technology {
 }
 
 func (ni NpmIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "package.json")
+	return strings.Contains(file, "package.json") || strings.Contains(file, "package-lock.json") || strings.Contains(file, "npm-shrinkwrap.json")
 }
 
 type GoIndicator struct {
@@ -65,15 +65,15 @@ func (gi GoIndicator) Indicates(file string) bool {
 	return strings.Contains(file, "go.mod")
 }
 
-type PipIndicator struct {
+type PypiIndicator struct {
 }
 
-func (pi PipIndicator) GetTechnology() Technology {
-	return Pip
+func (pi PypiIndicator) GetTechnology() Technology {
+	return Pypi
 }
 
-func (pi PipIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "setup.py")
+func (pi PypiIndicator) Indicates(file string) bool {
+	return strings.Contains(file, "setup.py") || strings.Contains(file, "requirements.txt")
 }
 
 func GetMinSupportedTechIndicators() []TechnologyIndicator {
@@ -85,17 +85,23 @@ func GetMinSupportedTechIndicators() []TechnologyIndicator {
 }
 
 func GetTechIndicators() []TechnologyIndicator {
-	return append(GetMinSupportedTechIndicators(), GoIndicator{}, PipIndicator{})
+	return append(GetMinSupportedTechIndicators(), GoIndicator{}, PypiIndicator{})
 }
 
-func DetectTechnologies(path string, limitTechnologiesSupport bool) (map[Technology]bool, error) {
+func DetectTechnologies(path string, limitTechnologiesSupport, recursive bool) (map[Technology]bool, error) {
 	var indicators []TechnologyIndicator
 	if limitTechnologiesSupport {
 		indicators = GetMinSupportedTechIndicators()
 	} else {
 		indicators = GetTechIndicators()
 	}
-	filesList, err := fileutils.ListFilesRecursiveWalkIntoDirSymlink(path, false)
+	var filesList []string
+	var err error
+	if recursive {
+		filesList, err = fileutils.ListFilesRecursiveWalkIntoDirSymlink(path, false)
+	} else {
+		filesList, err = fileutils.ListFiles(path, true)
+	}
 	if err != nil {
 		return nil, err
 	}

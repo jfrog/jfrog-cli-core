@@ -16,10 +16,11 @@ import (
 
 var timestamp = strconv.FormatInt(time.Now().Unix(), 10)
 
+const buildNameFile = "fileBuildName"
+
 func TestGetBuildName(t *testing.T) {
 	const buildName = "buildName1"
 	const buildNameEnv = "envBuildName"
-	const buildNameFile = "fileBuildName"
 
 	// Setup global build name env var.
 	// Ensure that other parallel tests won't be effected.
@@ -119,4 +120,68 @@ func TestGetBuildNumber(t *testing.T) {
 	// Validate build number form file (third priority).
 	buildConfig.SetBuildNumber("")
 	assert.Equal(t, buildConfig.GetBuildNumber(), buildNumberFromFile)
+}
+
+func TestIsCollectBuildInfo(t *testing.T) {
+	buildConfig := NewBuildConfiguration("", "", "", "")
+	assert.False(t, buildConfig.IsCollectBuildInfo())
+	buildConfig.SetBuildName("a")
+	assert.False(t, buildConfig.IsCollectBuildInfo())
+	buildConfig.SetProject("a")
+	assert.False(t, buildConfig.IsCollectBuildInfo())
+	buildConfig.SetModule("a")
+	assert.False(t, buildConfig.IsCollectBuildInfo())
+	buildConfig.SetBuildNumber("a")
+	assert.True(t, buildConfig.IsCollectBuildInfo())
+}
+
+func TestIsLoadedFromConfigFile(t *testing.T) {
+	// Create build config in temp folder.
+	tmpDir, err := fileutils.CreateTempDir()
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
+	buildConfig := NewBuildConfiguration("", "", "", "")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+	buildConfig.SetBuildName("a")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+	buildConfig.SetProject("a")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+	buildConfig.SetModule("a")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+	buildConfig.SetBuildNumber("a")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+
+	buildConfig.SetBuildNumber("")
+	buildConfig.SetBuildName("")
+	// Create build config in temp folder
+	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
+	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
+	wdCopy, err := os.Getwd()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chdir(tmpDir))
+	defer func() {
+		assert.NoError(t, os.Chdir(wdCopy))
+	}()
+	buildName, err := buildConfig.GetBuildName()
+	assert.NoError(t, err)
+	assert.True(t, buildConfig.IsLoadedFromConfigFile())
+	assert.Equal(t, buildName, buildNameFile)
+	buildumber := buildConfig.GetBuildNumber()
+	assert.Equal(t, buildumber, artclientutils.LatestBuildNumberKey)
+	assert.True(t, buildConfig.IsLoadedFromConfigFile())
+
+	// Try to get build number first before build name.
+	buildConfig = NewBuildConfiguration("", "", "", "")
+	assert.False(t, buildConfig.IsLoadedFromConfigFile())
+
+	// Create build config in temp folder
+	buildumber = buildConfig.GetBuildNumber()
+	assert.True(t, buildConfig.IsLoadedFromConfigFile())
+	buildName, err = buildConfig.GetBuildName()
+	assert.True(t, buildConfig.IsLoadedFromConfigFile())
+	assert.NoError(t, err)
+	assert.Equal(t, buildName, buildNameFile)
+	assert.Equal(t, buildumber, artclientutils.LatestBuildNumberKey)
 }

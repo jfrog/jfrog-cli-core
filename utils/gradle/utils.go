@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.18"
+	gradleExtractorDependencyVersion = "4.25.0"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"

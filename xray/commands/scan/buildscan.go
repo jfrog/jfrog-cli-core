@@ -178,18 +178,27 @@ func getRootComponentFromImpactPath(impactPath, buildName string) string {
 }
 
 func getComponentImpactPaths(componentId, buildName string, impactPaths []string) [][]services.ImpactPathNode {
-	// example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
+	// componentShortName example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
 	componentShortName := componentId[strings.LastIndex(componentId, ":")+1:]
 
 	var componentImpactPaths [][]services.ImpactPathNode
 	for _, impactPath := range impactPaths {
 		// Search for all impact paths that contain the package
-		if strings.Contains(strings.ToLower(impactPath), strings.ToLower(componentShortName)) {
+		if isPathContainsComponent(impactPath, componentShortName) {
 			pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
 			componentImpactPaths = append(componentImpactPaths, pathNode)
 		}
 	}
 	return componentImpactPaths
+}
+
+func isPathContainsComponent(impactPath, component string) bool {
+	for _, split := range strings.Split(impactPath, "/") {
+		if split == component {
+			return true
+		}
+	}
+	return false
 }
 
 func (bsc *BuildScanCommand) CommandName() string {

@@ -38,7 +38,7 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 }
 
 func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
-	buildConfiguration, cleanBuild := createBuildConfig("audit-mvn")
+	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
 	err = auditCmd.runMvn(buildConfiguration)

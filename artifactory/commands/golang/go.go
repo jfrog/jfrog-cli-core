@@ -137,12 +137,22 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	buildName := gc.buildConfiguration.BuildName
-	buildNumber := gc.buildConfiguration.BuildNumber
-	projectKey := gc.buildConfiguration.Project
+
 	var goBuild *build.Build
-	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
-	if isCollectBuildInfo {
+	toCollect, err := gc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if toCollect {
+		buildName, err := gc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err := gc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		projectKey := gc.buildConfiguration.GetProject()
 		buildInfoService := utils.CreateBuildInfoService()
 		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
@@ -170,7 +180,7 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return coreutils.ConvertExitCodeError(err)
 	}
-	if isCollectBuildInfo {
+	if toCollect {
 		tempDirPath := ""
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
@@ -192,8 +202,8 @@ func (gc *GoCommand) run() error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		if gc.buildConfiguration.Module != "" {
-			goModule.SetName(gc.buildConfiguration.Module)
+		if gc.buildConfiguration.GetModule() != "" {
+			goModule.SetName(gc.buildConfiguration.GetModule())
 		}
 		err = errorutils.CheckError(goModule.CalcDependencies())
 	}

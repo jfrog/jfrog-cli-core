@@ -1,6 +1,8 @@
 package scan
 
 import (
+	"strings"
+
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
@@ -8,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"strings"
 )
 
 type BuildScanCommand struct {
@@ -58,10 +59,18 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	buildName, err := bsc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bsc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	params := services.XrayBuildParams{
-		BuildName:   bsc.buildConfiguration.BuildName,
-		BuildNumber: bsc.buildConfiguration.BuildNumber,
-		Project:     bsc.buildConfiguration.Project,
+		BuildName:   buildName,
+		BuildNumber: buildNumber,
+		Project:     bsc.buildConfiguration.GetProject(),
 	}
 
 	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)

@@ -3,6 +3,7 @@ package envsetup
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"net/http"
 	"net/url"
 	"strings"
@@ -63,7 +64,8 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	fmt.Println("Your new JFrog environment is ready!")
 	fmt.Println("	1. CD into your code project directory")
 	fmt.Println("	2. Run \"jf project init\"")
-	fmt.Println("	3. Read more about how to get started at https://...")
+	fmt.Println("	3. Read more about how to get started at - ")
+	fmt.Println("\t" + coreutils.GettingStartedGuideUrl)
 	return nil
 }
 
@@ -101,7 +103,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		log.Debug(message)
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
-			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we creat your environment")
+			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment")
 			statusResponse := myJfrogGetStatusResponse{}
 			if err = json.Unmarshal(body, &statusResponse); err != nil {
 				return true, nil, err

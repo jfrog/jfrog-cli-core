@@ -2,8 +2,10 @@ package cisetup
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 const (
@@ -156,9 +158,9 @@ func generateAllStages(stages ...string) (allStagesString string) {
 func generateEnvironments(buildType string) string {
 	envs := ""
 	switch buildType {
-	case Maven:
+	case coreutils.Maven:
 		fallthrough
-	case Gradle:
+	case coreutils.Gradle:
 		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType))
 	default:
 		envs += ""
@@ -173,12 +175,12 @@ func generateRtConfigSteps(techInfo *TechnologyInfo, rtUrl string) string {
 	deployerRepos := ""
 	resolverRepos := ""
 	switch techInfo.Type {
-	case Maven:
+	case coreutils.Maven:
 		deployerRepos = fmt.Sprintf(mavenRepoTemplate, techInfo.LocalReleasesRepo, techInfo.LocalSnapshotsRepo)
 		resolverRepos = fmt.Sprintf(mavenRepoTemplate, techInfo.VirtualRepo, techInfo.VirtualRepo)
-	case Gradle:
+	case coreutils.Gradle:
 		fallthrough
-	case Npm:
+	case coreutils.Npm:
 		deployerRepos = fmt.Sprintf(singleRepoTemplate, techInfo.LocalReleasesRepo)
 		resolverRepos = fmt.Sprintf(singleRepoTemplate, techInfo.VirtualRepo)
 	default:
@@ -196,11 +198,11 @@ func generateBuildStages(buildCmd, buildType string) (buildStages string) {
 	resolverId := fmt.Sprintf(resolverIdTemplate, strings.ToUpper(buildType))
 	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType))
 	switch buildType {
-	case Maven:
+	case coreutils.Maven:
 		buildStages += generateStage("Exec Maven", fmt.Sprintf(mavenRunStepTemplate, buildCmd, resolverId, deployerId))
-	case Gradle:
+	case coreutils.Gradle:
 		buildStages += generateStage("Exec Gradle", fmt.Sprintf(gradleRunStepTemplate, buildCmd, resolverId, deployerId))
-	case Npm:
+	case coreutils.Npm:
 		buildStages += generateStage("Exec Npm install", fmt.Sprintf(npmInstallStepTemplate, resolverId))
 		buildStages += generateStage("Exec Npm publish", fmt.Sprintf(npmPublishStepTemplate, deployerId))
 	default:

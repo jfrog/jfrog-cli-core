@@ -109,7 +109,7 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	}
 
 	// Save build-info.
-	module := buildinfo.Module{Id: pic.buildConfiguration.GetModule(), Type: buildinfo.Pip, Dependencies: projectDependencies}
+	module := buildinfo.Module{Id: pic.buildConfiguration.GetModule(), Type: buildinfo.Python, Dependencies: projectDependencies}
 	modules = append(modules, module)
 
 	buildInfo.Modules = modules
@@ -117,7 +117,11 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	if err != nil {
 		return err
 	}
-	utils.SaveBuildInfo(buildName, pic.buildConfiguration.GetBuildNumber(), pic.buildConfiguration.GetProject(), buildInfo)
+	buildNumber, err := pic.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	utils.SaveBuildInfo(buildName, buildNumber, pic.buildConfiguration.GetProject(), buildInfo)
 	return nil
 }
 
@@ -162,14 +166,22 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 	}
 
 	// Prepare build-info.
-	if pic.buildConfiguration.IsCollectBuildInfo() {
-		var buildName string
+	toCollect, err := pic.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
+		var buildName, buildNumber string
 		buildName, err = pic.buildConfiguration.GetBuildName()
 		if err != nil {
 			return "", err
 		}
+		buildNumber, err = pic.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return "", err
+		}
 		pic.shouldCollectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(buildName, pic.buildConfiguration.GetBuildNumber(), pic.buildConfiguration.GetProject()); err != nil {
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, pic.buildConfiguration.GetProject()); err != nil {
 			return
 		}
 	}
@@ -221,7 +233,11 @@ func (pic *PipInstallCommand) cleanBuildInfoDir() {
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
 	}
-	if err := utils.RemoveBuildDir(buildName, pic.buildConfiguration.GetBuildNumber(), pic.buildConfiguration.GetProject()); err != nil {
+	buildNumber, err := pic.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+	}
+	if err := utils.RemoveBuildDir(buildName, buildNumber, pic.buildConfiguration.GetProject()); err != nil {
 		log.Error(fmt.Sprintf("Failed cleaning build-info directory: %s", err.Error()))
 	}
 }

@@ -1,18 +1,15 @@
-package commands
+package scan
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
-	"regexp"
-	"strings"
-
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -20,17 +17,15 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os/exec"
+	"regexp"
+	"strings"
 )
 
 type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
-type OutputFormat string
 
 const (
-	// OutputFormat values
-	Table OutputFormat = "table"
-	Json  OutputFormat = "json"
-
 	indexingCommand          = "graph"
 	fileNotSupportedExitCode = 3
 )
@@ -41,7 +36,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
-	outputFormat           OutputFormat
+	outputFormat           xrutils.OutputFormat
 	projectKey             string
 	watches                []string
 	includeVulnerabilities bool
@@ -54,7 +49,7 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetOutputFormat(format OutputFormat) *ScanCommand {
+func (scanCmd *ScanCommand) SetOutputFormat(format xrutils.OutputFormat) *ScanCommand {
 	scanCmd.outputFormat = format
 	return scanCmd
 }
@@ -124,7 +119,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		}
 	}()
 	// First download Xray Indexer if needed
-	xrayManager, err := CreateXrayServiceManager(scanCmd.serverDetails)
+	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -158,9 +153,15 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			}
 		}
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
 	if err != nil {
 		return err
+	}
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
+	if scanCmd.includeVulnerabilities == false {
+		if xrutils.CheckIfFailBuild(flatResults) {
+			return xrutils.NewFailBuildError()
+		}
 	}
 	err = fileProducerErrorsQueue.GetError()
 	if err != nil {
@@ -223,9 +224,8 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					RepoPath:   getXrayRepoPathFromTarget(file.Target),
 					Watches:    scanCmd.watches,
 					ProjectKey: scanCmd.projectKey,
-					ScanType:   services.Binary,
 				}
-				scanResults, err := RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
+				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
 				if err != nil {
 					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
 					return

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,7 +12,7 @@ import (
 	"strings"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/version"
@@ -45,7 +46,7 @@ type NpmPublishCommandArgs struct {
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
-	scanOutputFormat       xraycommands.OutputFormat
+	scanOutputFormat       xrutils.OutputFormat
 	packDestination        string
 }
 
@@ -90,7 +91,7 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
-func (npc *NpmPublishCommand) SetScanOutputFormat(format xraycommands.OutputFormat) *NpmPublishCommand {
+func (npc *NpmPublishCommand) SetScanOutputFormat(format xrutils.OutputFormat) *NpmPublishCommand {
 	npc.scanOutputFormat = format
 	return npc
 }
@@ -190,7 +191,10 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 
 	npc.workingDirectory = currentDir
 	log.Debug("Working directory set to:", npc.workingDirectory)
-	npc.collectBuildInfo = npc.buildConfiguration.IsCollectBuildInfo()
+	npc.collectBuildInfo, err = npc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
 	if err = npc.setPublishPath(); err != nil {
 		return err
 	}
@@ -270,8 +274,12 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			if err != nil {
 				return err
 			}
-			utils.SaveBuildGeneralDetails(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject())
-			up.BuildProps, err = utils.CreateBuildProperties(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject())
+			buildNumber, err := npc.buildConfiguration.GetBuildNumber()
+			if err != nil {
+				return err
+			}
+			utils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			up.BuildProps, err = utils.CreateBuildProperties(buildName, buildNumber, npc.buildConfiguration.GetProject())
 			if err != nil {
 				return err
 			}
@@ -312,7 +320,7 @@ func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.Se
 		Pattern(file).
 		Target(target).
 		BuildSpec()
-	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
+	xrScanCmd := scan.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
 	err := xrScanCmd.Run()
 
 	return xrScanCmd.IsScanPassed(), err
@@ -338,7 +346,11 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 	if err != nil {
 		return err
 	}
-	return utils.SavePartialBuildInfo(buildName, npc.buildConfiguration.GetBuildNumber(), npc.buildConfiguration.GetProject(), populateFunc)
+	buildNumber, err := npc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, buildNumber, npc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {

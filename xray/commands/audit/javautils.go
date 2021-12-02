@@ -17,13 +17,16 @@ const (
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-
 	return buildConfiguration, func(err error) {
 		buildName, err := buildConfiguration.GetBuildName()
 		if err != nil {
 			return
 		}
-		err = artifactoryUtils.RemoveBuildDir(buildName, buildConfiguration.GetBuildNumber(), buildConfiguration.GetProject())
+		buildNumber, err := buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return
+		}
+		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 
@@ -34,12 +37,16 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	if err != nil {
 		return nil, err
 	}
-	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildConfig.GetBuildNumber(), buildConfig.GetProject())
+	buildNumber, err := buildConfig.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildNumber, buildConfig.GetProject())
 	if err != nil {
 		return nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildConfig.GetBuildNumber())
+		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
 	}
 	modules := []*services.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {

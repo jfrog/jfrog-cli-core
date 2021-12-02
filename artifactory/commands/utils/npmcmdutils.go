@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -122,13 +122,21 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration, npmVersion *version.Version) (collectBuildInfo bool, packageInfo *npmutils.PackageInfo, err error) {
-	if buildConfiguration.IsCollectBuildInfo() {
+	toCollect, err := buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
 		collectBuildInfo = true
 		buildName, err := buildConfiguration.GetBuildName()
 		if err != nil {
 			return false, nil, err
 		}
-		if err = utils.SaveBuildGeneralDetails(buildName, buildConfiguration.GetBuildNumber(), buildConfiguration.GetProject()); err != nil {
+		buildNumber, err := buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return false, nil, err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, buildConfiguration.GetProject()); err != nil {
 			return false, nil, err
 		}
 
@@ -208,7 +216,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xraycommands.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -262,7 +270,11 @@ func SaveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguratio
 	if err != nil {
 		return err
 	}
-	return utils.SavePartialBuildInfo(buildName, buildConfiguration.GetBuildNumber(), buildConfiguration.GetProject(), populateFunc)
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
 }
 
 func PrintMissingDependencies(missingDependencies []buildinfo.Dependency) {

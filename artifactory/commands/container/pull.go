@@ -43,7 +43,10 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildNumber := pc.BuildConfiguration().GetBuildNumber()
+	buildNumber, err := pc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	project := pc.BuildConfiguration().GetProject()
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {

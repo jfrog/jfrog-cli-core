@@ -96,16 +96,24 @@ func (uc *UploadCommand) upload() error {
 	addVcsProps := false
 	buildProps := ""
 	// Build Info Collection:
-	if uc.buildConfiguration.IsCollectBuildInfo() && !uc.DryRun() {
+	toCollect, err := uc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if toCollect && !uc.DryRun() {
 		addVcsProps = true
 		buildName, err := uc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		if err := utils.SaveBuildGeneralDetails(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject()); err != nil {
+		buildNumber, err := uc.buildConfiguration.GetBuildNumber()
+		if err != nil {
 			return err
 		}
-		buildProps, err = utils.CreateBuildProperties(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject())
+		if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, uc.buildConfiguration.GetProject()); err != nil {
+			return err
+		}
+		buildProps, err = utils.CreateBuildProperties(buildName, buildNumber, uc.buildConfiguration.GetProject())
 		if err != nil {
 			return err
 		}
@@ -133,7 +141,7 @@ func (uc *UploadCommand) upload() error {
 	// otherwise we use the upload service which provides only general counters.
 	var successCount, failCount int
 	var artifactsDetailsReader *content.ContentReader = nil
-	if uc.DetailedSummary() || uc.buildConfiguration.IsCollectBuildInfo() {
+	if uc.DetailedSummary() || toCollect {
 		var summary *rtServicesUtils.OperationSummary
 		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
 		if err != nil {
@@ -179,7 +187,7 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Build info
-	if !uc.DryRun() && uc.buildConfiguration.IsCollectBuildInfo() {
+	if !uc.DryRun() && toCollect {
 		var buildArtifacts []buildinfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
@@ -194,7 +202,11 @@ func (uc *UploadCommand) upload() error {
 		if err != nil {
 			return err
 		}
-		err = utils.SavePartialBuildInfo(buildName, uc.buildConfiguration.GetBuildNumber(), uc.buildConfiguration.GetProject(), populateFunc)
+		buildNumber, err := uc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		err = utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
 
 	}
 	return err

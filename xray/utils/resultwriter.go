@@ -4,10 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+)
+
+type OutputFormat string
+
+const (
+	// OutputFormat values
+	Table OutputFormat = "table"
+	Json  OutputFormat = "json"
 )
 
 func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVulnerabilities, includeLicenses, isMultipleRoots bool) (err error) {
@@ -79,4 +88,19 @@ func printJson(jsonRes []services.ScanResponse) error {
 	}
 	fmt.Println(clientutils.IndentJson(results))
 	return nil
+}
+
+func CheckIfFailBuild(results []services.ScanResponse) bool {
+	for _, result := range results {
+		for _, violation := range result.Violations {
+			if violation.FailBuild == true {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func NewFailBuildError() error {
+	return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}
 }

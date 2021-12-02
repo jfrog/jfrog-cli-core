@@ -63,7 +63,10 @@ func (osb *OcStartBuildCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildNumber := osb.buildConfiguration.GetBuildNumber()
+	buildNumber, err := osb.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
 	project := osb.buildConfiguration.GetProject()
 	if buildName == "" {
 		return nil

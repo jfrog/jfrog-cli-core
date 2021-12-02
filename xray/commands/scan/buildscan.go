@@ -75,7 +75,13 @@ func (bsc *BuildScanCommand) Run() (err error) {
 
 	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
-		return err
+		if !strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
+			// if the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
+			// we still continue to build summery if needed
+			log.Info(err.Error())
+		} else {
+			return err
+		}
 	}
 	defer func() {
 		if failBuild {
@@ -102,9 +108,6 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	buildScanResults, err := xrayManager.BuildScan(params)
 	if err != nil {
 		return false, err
-	}
-	if buildScanResults == nil {
-		return false, nil
 	}
 	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations}}
 	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)

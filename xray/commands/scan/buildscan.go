@@ -12,6 +12,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
+const (
+	BuildScanMinVersion = "3.37.0"
+)
+
 type BuildScanCommand struct {
 	serverDetails          *config.ServerDetails
 	outputFormat           xrutils.OutputFormat
@@ -56,6 +60,14 @@ func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 // Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
 	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
+	if err != nil {
+		return err
+	}
+	xrayVersion, err := xrayManager.GetVersion()
+	if err != nil {
+		return err
+	}
+	err = commands.ValidateXrayMinimumVersion(xrayVersion, BuildScanMinVersion)
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -15,6 +14,7 @@ import (
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli"
 )
 
 func init() {

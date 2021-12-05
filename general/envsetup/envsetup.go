@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,8 +19,6 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-
-	"github.com/pkg/browser"
 )
 
 const (
@@ -51,8 +50,10 @@ func NewEnvSetupCommand(url string) *EnvSetupCommand {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
+	fmt.Println("Thank you for installing JFrog CLI!")
+	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
+	time.Sleep(5 * time.Second)
 	browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
-	ftc.progress.SetHeadlineMsg("Thank you for installing JFrog CLI! To complete your JFrog environment setup, please fill out the details in your browser")
 	server, err := ftc.getNewServerDetails()
 	if err != nil {
 		return
@@ -61,12 +62,16 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Your new JFrog environment is ready!")
-	fmt.Println("	1. CD into your code project directory")
-	fmt.Println("	2. Run \"jf project init\"")
-	fmt.Println("	3. Read more about how to get started at - ")
-	fmt.Println("\t" + coreutils.GettingStartedGuideUrl)
-	return nil
+	message :=
+		coreutils.PrintBold("Your new JFrog environment is ready!") +
+			"\n" +
+			"1. CD into your code project directory\n" +
+			"2. Run \"jf project init\"\n" +
+			"3. Read more about how to get started at -\n" +
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+
+	err = coreutils.PrintTable("", "", message)
+	return
 }
 
 func (ftc *EnvSetupCommand) CommandName() string {

@@ -199,21 +199,12 @@ func getComponentImpactPaths(componentId, buildName string, impactPaths []string
 	var componentImpactPaths [][]services.ImpactPathNode
 	for _, impactPath := range impactPaths {
 		// Search for all impact paths that contain the package
-		if isPathContainsComponent(impactPath, componentShortName) {
+		if strings.Contains(impactPath, componentShortName) {
 			pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
 			componentImpactPaths = append(componentImpactPaths, pathNode)
 		}
 	}
 	return componentImpactPaths
-}
-
-func isPathContainsComponent(impactPath, component string) bool {
-	for _, split := range strings.Split(impactPath, "/") {
-		if split == component {
-			return true
-		}
-	}
-	return false
 }
 
 func (bsc *BuildScanCommand) CommandName() string {

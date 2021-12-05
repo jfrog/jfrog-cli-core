@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gookit/color"
 	artifactoryCommandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -71,20 +70,26 @@ func (pic *ProjectInitCommand) Run() (err error) {
 	}
 
 	message :=
-		bold("You're all set!") +
+		coreutils.PrintBold("This project is initialized!\n") +
+			coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
 			"\n\n" +
-			bold("The project config is stored inside the .jfrog directory.") +
-			"\n\n" +
-			title("Audit your code project for security vulnerabilities by running") +
+			coreutils.PrintTitle("Audit your code project for security vulnerabilities by running") +
 			"\n" +
 			"jf audit\n\n" +
-			title("Scan any software package on this machine for security vulnerabilities by running") +
+			coreutils.PrintTitle("or if you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+			"\n" +
+			"Open the IDE\n" +
+			"Install the JFrog extension or plugin\n" +
+			"View the JFrog panel\n" +
+			"\n" +
+			coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
 			"\n" +
 			"jf scan path/to/dir/or/package\n\n" +
+
 			pic.createBuildMessage(technologiesMap) +
-			title("Read more using this link:") +
+			coreutils.PrintTitle("Read more using this link:") +
 			"\n" +
-			link(coreutils.GettingStartedGuideUrl)
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 	fmt.Println()
 	err = coreutils.PrintTable("", "", message)
 	fmt.Println()
@@ -111,49 +116,22 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			case coreutils.Pypi:
 				message +=
 					"jf pip install\n" +
-						"jf rt u path/to/package/file default-pypi-local" + comment(" # Publish your pip package") +
+						"jf rt u path/to/package/file default-pypi-local" +
+						coreutils.PrintComment(" # Publish your pip package") +
 						"\n"
 			}
 		}
 	}
 	if message != "" {
-		message = title("Build the code & deploy the packages by running") +
+		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
 			"\n" +
 			message +
 			"\n" +
-			title("Publish the build-info to Artifactory") +
+			coreutils.PrintTitle("Publish the build-info to Artifactory") +
 			"\n" +
 			"jf rt bp\n\n"
 	}
 	return message
-}
-
-// Print the test to the console in green color.
-func title(str string) string {
-	return colorStr(str, color.Green)
-}
-
-// Print the test to the console in cyan color.
-func link(str string) string {
-	return colorStr(str, color.Cyan)
-}
-
-// Print the test to the console with bold style.
-func bold(str string) string {
-	return colorStr(str, color.Bold)
-}
-
-// Print the test to the console in gray color.
-func comment(str string) string {
-	return colorStr(str, color.Gray)
-}
-
-// Print the test to the console with the specified color.
-func colorStr(str string, c color.Color) string {
-	if coreutils.IsTerminal() {
-		return c.Render(str)
-	}
-	return str
 }
 
 type BuildConfigFile struct {

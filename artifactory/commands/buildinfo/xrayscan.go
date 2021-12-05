@@ -11,47 +11,51 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-type BuildScanCommand struct {
+// Deprecated BuildScan Command. The new build scan command is "xray/commands/scan/buildscan"
+type BuildScanLegacyCommand struct {
 	buildConfiguration *utils.BuildConfiguration
 	failBuild          bool
 	serverDetails      *config.ServerDetails
 }
 
-func NewBuildScanCommand() *BuildScanCommand {
-	return &BuildScanCommand{}
+func NewBuildScanLegacyCommand() *BuildScanLegacyCommand {
+	return &BuildScanLegacyCommand{}
 }
 
-func (bsc *BuildScanCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildScanLegacyCommand {
 	bsc.serverDetails = serverDetails
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetFailBuild(failBuild bool) *BuildScanLegacyCommand {
 	bsc.failBuild = failBuild
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanCommand {
+func (bsc *BuildScanLegacyCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanLegacyCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
 
-func (bsc *BuildScanCommand) CommandName() string {
-	return "rt_build_scan"
+func (bsc *BuildScanLegacyCommand) CommandName() string {
+	return "rt_build_scan_legacy"
 }
 
-func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
+func (bsc *BuildScanLegacyCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bsc.serverDetails, nil
 }
 
-func (bsc *BuildScanCommand) Run() error {
+func (bsc *BuildScanLegacyCommand) Run() error {
 	log.Info("Triggered Xray build scan... The scan may take a few minutes.")
 	servicesManager, err := utils.CreateServiceManager(bsc.serverDetails, -1, false)
 	if err != nil {
 		return err
 	}
 
-	xrayScanParams := getXrayScanParams(*bsc.buildConfiguration)
+	xrayScanParams, err := getXrayScanParams(*bsc.buildConfiguration)
+	if err != nil {
+		return err
+	}
 	result, err := servicesManager.XrayScanBuild(xrayScanParams)
 	if err != nil {
 		return err
@@ -89,11 +93,19 @@ type scanSummary struct {
 	Url         string `json:"more_details_url,omitempty"`
 }
 
-func getXrayScanParams(buildConfiguration utils.BuildConfiguration) services.XrayScanParams {
+func getXrayScanParams(buildConfiguration utils.BuildConfiguration) (services.XrayScanParams, error) {
 	xrayScanParams := services.NewXrayScanParams()
-	xrayScanParams.BuildName = buildConfiguration.BuildName
-	xrayScanParams.BuildNumber = buildConfiguration.BuildNumber
-	xrayScanParams.ProjectKey = buildConfiguration.Project
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return xrayScanParams, err
+	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return xrayScanParams, err
+	}
+	xrayScanParams.BuildName = buildName
+	xrayScanParams.BuildNumber = buildNumber
+	xrayScanParams.ProjectKey = buildConfiguration.GetProject()
 
-	return xrayScanParams
+	return xrayScanParams, nil
 }

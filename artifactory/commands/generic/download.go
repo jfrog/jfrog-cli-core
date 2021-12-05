@@ -76,9 +76,20 @@ func (dc *DownloadCommand) download() error {
 	}
 
 	// Build Info Collection:
-	isCollectBuildInfo := len(dc.buildConfiguration.BuildName) > 0 && len(dc.buildConfiguration.BuildNumber) > 0
-	if isCollectBuildInfo && !dc.DryRun() {
-		if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
+	toCollect, err := dc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if toCollect && !dc.DryRun() {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -100,7 +111,7 @@ func (dc *DownloadCommand) download() error {
 	// otherwise we use the download service which provides only general counters.
 	var totalDownloaded, totalFailed int
 	var summary *serviceutils.OperationSummary
-	if isCollectBuildInfo || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
+	if toCollect || dc.SyncDeletesPath() != "" || dc.DetailedSummary() {
 		summary, err = servicesManager.DownloadFilesWithSummary(downloadParamsArray...)
 		if err != nil {
 			errorOccurred = true
@@ -159,7 +170,15 @@ func (dc *DownloadCommand) download() error {
 	log.Debug("Downloaded", strconv.Itoa(totalDownloaded), "artifacts.")
 
 	// Build Info
-	if isCollectBuildInfo {
+	if toCollect {
+		buildName, err := dc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
 		var buildDependencies []buildinfo.Dependency
 		buildDependencies, err = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
 		if err != nil {
@@ -167,10 +186,10 @@ func (dc *DownloadCommand) download() error {
 		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies
-			partial.ModuleId = dc.buildConfiguration.Module
+			partial.ModuleId = dc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, populateFunc)
+		err = utils.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
 	}
 
 	return err

@@ -33,6 +33,7 @@ const (
 	Maven
 	Gradle
 	Dotnet
+	Build
 )
 
 var ProjectTypes = []string{
@@ -45,6 +46,7 @@ var ProjectTypes = []string{
 	"maven",
 	"gradle",
 	"dotnet",
+	"build",
 }
 
 func (projectType ProjectType) String() string {

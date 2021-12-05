@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.18"
+	gradleExtractorDependencyVersion = "4.25.0"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"
@@ -85,8 +85,15 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	if disableDeploy {
 		setDeployFalse(vConfig)
 	}
-
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, deployableArtifactsFile, vConfig, utils.Gradle)
+	buildName, err := configuration.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	buildNumber, err := configuration.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(buildName, buildNumber, configuration.GetProject(), deployableArtifactsFile, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}

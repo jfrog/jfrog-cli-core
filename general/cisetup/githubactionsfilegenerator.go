@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 var GithubActionsDir = filepath.Join(".github", "workflows")
@@ -57,7 +59,7 @@ type GithubActionsGenerator struct {
 
 func (gg *GithubActionsGenerator) Generate() (githubActionsBytes []byte, githubActionsName string, err error) {
 	// setM2 env variable if maven is used.
-	setM2 := gg.SetupData.BuiltTechnology.Type == Maven
+	setM2 := gg.SetupData.BuiltTechnology.Type == coreutils.Maven
 	buildToolsConfigCommands := strings.Join(getTechConfigsCommands(ConfigServerId, setM2, gg.SetupData), "\n          ")
 	buildCommand, err := convertBuildCmd(gg.SetupData)
 	if err != nil {

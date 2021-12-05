@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const buildConfVersion = 1
+const BuildConfVersion = 1
 
 const (
 	// Common flags
@@ -67,7 +67,7 @@ type ConfigFile struct {
 
 func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
 	configFile := &ConfigFile{
-		Version:    buildConfVersion,
+		Version:    BuildConfVersion,
 		ConfigType: confType.String(),
 	}
 	configFile.populateConfigFromFlags(c)

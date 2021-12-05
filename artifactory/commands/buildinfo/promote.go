@@ -8,8 +8,9 @@ import (
 
 type BuildPromotionCommand struct {
 	services.PromotionParams
-	serverDetails *config.ServerDetails
-	dryRun        bool
+	buildConfiguration *utils.BuildConfiguration
+	serverDetails      *config.ServerDetails
+	dryRun             bool
 }
 
 func NewBuildPromotionCommand() *BuildPromotionCommand {
@@ -31,11 +32,28 @@ func (bpc *BuildPromotionCommand) SetPromotionParams(params services.PromotionPa
 	return bpc
 }
 
+func (bpc *BuildPromotionCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildPromotionCommand {
+	bpc.buildConfiguration = buildConfiguration
+	return bpc
+}
+
 func (bpc *BuildPromotionCommand) Run() error {
 	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, -1, bpc.dryRun)
 	if err != nil {
 		return err
 	}
+	if err := bpc.buildConfiguration.ValidateBuildParams(); err != nil {
+		return err
+	}
+	buildName, err := bpc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bpc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	bpc.BuildName, bpc.BuildNumber = buildName, buildNumber
 	return servicesManager.PromoteBuild(bpc.PromotionParams)
 }
 

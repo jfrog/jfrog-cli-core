@@ -4,14 +4,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
@@ -120,9 +122,21 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration, npmVersion *version.Version) (collectBuildInfo bool, packageInfo *npmutils.PackageInfo, err error) {
-	if len(buildConfiguration.BuildName) > 0 && len(buildConfiguration.BuildNumber) > 0 {
+	toCollect, err := buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
 		collectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project); err != nil {
+		buildName, err := buildConfiguration.GetBuildName()
+		if err != nil {
+			return false, nil, err
+		}
+		buildNumber, err := buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return false, nil, err
+		}
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, buildConfiguration.GetProject()); err != nil {
 			return false, nil, err
 		}
 
@@ -189,7 +203,7 @@ type results struct {
 
 func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
 	buildDependencies := make(map[string]*buildinfo.Dependency)
-	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: "LATEST"})
+	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey})
 	if err != nil || !found {
 		return buildDependencies, err
 	}
@@ -202,7 +216,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	return buildDependencies, nil
 }
 
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xraycommands.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
 	threads = 3
 	// Extract threads information from the args.
 	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
@@ -249,11 +263,18 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xra
 func SaveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguration *utils.BuildConfiguration) error {
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Dependencies = dependencies
-		partial.ModuleId = buildConfiguration.Module
+		partial.ModuleId = buildConfiguration.GetModule()
 		partial.ModuleType = buildinfo.Npm
 	}
-
-	return utils.SavePartialBuildInfo(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project, populateFunc)
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
 }
 
 func PrintMissingDependencies(missingDependencies []buildinfo.Dependency) {

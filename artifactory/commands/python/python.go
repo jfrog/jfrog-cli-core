@@ -78,11 +78,19 @@ func (pc *PythonCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dep
 	}
 
 	// Save build-info.
-	module := buildinfo.Module{Id: pc.buildConfiguration.Module, Type: buildinfo.Python, Dependencies: projectDependencies}
+	module := buildinfo.Module{Id: pc.buildConfiguration.GetModule(), Type: buildinfo.Python, Dependencies: projectDependencies}
 	modules = append(modules, module)
 
 	buildInfo.Modules = modules
-	return utils.SaveBuildInfo(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project, buildInfo)
+	buildName, err := pc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := pc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SaveBuildInfo(buildName, buildNumber, pc.buildConfiguration.GetProject(), buildInfo)
 }
 
 func (pc *PythonCommand) determineModuleName() error {
@@ -91,7 +99,7 @@ func (pc *PythonCommand) determineModuleName() error {
 		return err
 	}
 	// If module-name was set by the command, don't change it.
-	if pc.buildConfiguration.Module != "" {
+	if pc.buildConfiguration.GetModule() != "" {
 		return nil
 	}
 
@@ -103,10 +111,14 @@ func (pc *PythonCommand) determineModuleName() error {
 
 	// If the package name is unknown, set the module name to be the build name.
 	if moduleName == "" {
-		moduleName = pc.buildConfiguration.BuildName
+		buildName, err := pc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		moduleName = buildName
 	}
 
-	pc.buildConfiguration.Module = moduleName
+	pc.buildConfiguration.SetModule(moduleName)
 	return nil
 }
 
@@ -118,9 +130,22 @@ func (pc *PythonCommand) prepareBuildPrerequisites() (err error) {
 	}
 
 	// Prepare build-info.
-	if pc.buildConfiguration.BuildName != "" && pc.buildConfiguration.BuildNumber != "" {
+	toCollect, err := pc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
+		var buildName, buildNumber string
+		buildName, err = pc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err = pc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
 		pc.shouldCollectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
 			return
 		}
 	}
@@ -177,7 +202,15 @@ func getSetupPyFilePath() (string, error) {
 }
 
 func (pc *PythonCommand) cleanBuildInfoDir() {
-	if err := utils.RemoveBuildDir(pc.buildConfiguration.BuildName, pc.buildConfiguration.BuildNumber, pc.buildConfiguration.Project); err != nil {
+	buildName, err := pc.buildConfiguration.GetBuildName()
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+	}
+	buildNumber, err := pc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+	}
+	if err := utils.RemoveBuildDir(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
 		log.Error(fmt.Sprintf("Failed cleaning build-info directory: %s", err.Error()))
 	}
 }

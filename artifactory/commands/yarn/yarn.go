@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 
@@ -356,7 +357,11 @@ func (yc *YarnCommand) setDependenciesList() error {
 	}
 
 	// Collect checksums from last build to decrease requests to Artifactory
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, yc.buildConfiguration.BuildName)
+	buildName, err := yc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
 	if err != nil {
 		return err
 	}
@@ -441,8 +446,8 @@ func (yc *YarnCommand) saveDependenciesData() error {
 		}
 	}
 
-	if yc.buildConfiguration.Module == "" {
-		yc.buildConfiguration.Module = yc.packageInfo.BuildInfoModuleId()
+	if yc.buildConfiguration.GetModule() == "" {
+		yc.buildConfiguration.SetModule(yc.packageInfo.BuildInfoModuleId())
 	}
 
 	if err := commandUtils.SaveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {

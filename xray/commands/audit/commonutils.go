@@ -13,7 +13,7 @@ import (
 
 type AuditCommand struct {
 	serverDetails          *config.ServerDetails
-	outputFormat           xraycommands.OutputFormat
+	outputFormat           xrutils.OutputFormat
 	watches                []string
 	projectKey             string
 	targetRepoPath         string
@@ -30,7 +30,7 @@ func (auditCmd *AuditCommand) SetServerDetails(server *config.ServerDetails) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) SetOutputFormat(format xraycommands.OutputFormat) *AuditCommand {
+func (auditCmd *AuditCommand) SetOutputFormat(format xrutils.OutputFormat) *AuditCommand {
 	auditCmd.outputFormat = format
 	return auditCmd
 }
@@ -70,7 +70,6 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		RepoPath:   auditCmd.targetRepoPath,
 		Watches:    auditCmd.watches,
 		ProjectKey: auditCmd.projectKey,
-		ScanType:   services.Dependency,
 	}
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params.Graph = moduleDependencyTree
@@ -89,5 +88,16 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
-	return xrutils.PrintScanResults(results, auditCmd.outputFormat == xraycommands.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	err := xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	if err != nil {
+		return err
+	}
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
+	if auditCmd.includeVulnerabilities == false {
+		if xrutils.CheckIfFailBuild(results) {
+			return xrutils.NewFailBuildError()
+		}
+	}
+
+	return nil
 }

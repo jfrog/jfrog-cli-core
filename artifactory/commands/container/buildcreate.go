@@ -30,9 +30,15 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 		return err
 	}
 	image := container.NewImage(bpc.imageTag)
-	buildName := bpc.BuildConfiguration().BuildName
-	buildNumber := bpc.BuildConfiguration().BuildNumber
-	project := bpc.BuildConfiguration().Project
+	buildName, err := bpc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bpc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	project := bpc.BuildConfiguration().GetProject()
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
@@ -44,7 +50,7 @@ func (bpc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildInfo, err := builder.Build(bpc.BuildConfiguration().Module)
+	buildInfo, err := builder.Build(bpc.BuildConfiguration().GetModule())
 	if err != nil {
 		return err
 	}

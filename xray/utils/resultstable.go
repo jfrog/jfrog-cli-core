@@ -2,12 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/gookit/color"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -20,7 +18,6 @@ import (
 func PrintViolationsTable(violations []services.Violation, multipleRoots bool) error {
 	var securityViolationsRows []vulnerabilityRow
 	var licenseViolationsRows []licenseViolationRow
-	failBuild := false
 
 	coloredOutput := coreutils.IsTerminal()
 
@@ -63,10 +60,6 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 				)
 			}
 		}
-
-		if !failBuild && violation.FailBuild {
-			failBuild = true
-		}
 	}
 
 	// Sort the rows by severity and whether the row contains fixed versions
@@ -85,16 +78,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	if err != nil {
 		return err
 	}
-	err = coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
-	if err != nil {
-		return err
-	}
-
-	if failBuild {
-		return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}
-	}
-
-	return nil
+	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
@@ -348,14 +332,6 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		components = append(components, row)
 	}
 	return components
-}
-
-func createTableWriter() table.Writer {
-	tableWriter := table.NewWriter()
-	tableWriter.SetOutputMirror(os.Stdout)
-	tableWriter.SetStyle(table.StyleLight)
-	tableWriter.Style().Options.SeparateRows = true
-	return tableWriter
 }
 
 type severity struct {

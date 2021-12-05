@@ -39,9 +39,15 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildName := pc.BuildConfiguration().BuildName
-	buildNumber := pc.BuildConfiguration().BuildNumber
-	project := pc.BuildConfiguration().Project
+	buildName, err := pc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := pc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	project := pc.BuildConfiguration().GetProject()
 	// Return if no build name and number was provided
 	if buildName == "" || buildNumber == "" {
 		return nil
@@ -57,7 +63,7 @@ func (pc *PullCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildInfo, err := builder.Build(pc.BuildConfiguration().Module)
+	buildInfo, err := builder.Build(pc.BuildConfiguration().GetModule())
 	if err != nil {
 		return err
 	}

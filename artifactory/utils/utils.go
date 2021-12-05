@@ -3,14 +3,15 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/build-info-go/build"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/jfrog/build-info-go/build"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/jfrog/jfrog-client-go/utils/io"
 
@@ -210,22 +211,6 @@ func CheckIfRepoExists(repository string, artDetails auth.ServiceDetails) error 
 		return errorutils.CheckErrorf("The repository '" + repository + "' does not exist.")
 	}
 	return nil
-}
-
-// Get build name and number from env, only if both were not provided
-func GetBuildNameAndNumber(buildName, buildNumber string) (string, string) {
-	if buildName != "" || buildNumber != "" {
-		return buildName, buildNumber
-	}
-	return os.Getenv(coreutils.BuildName), os.Getenv(coreutils.BuildNumber)
-}
-
-// Get build project from env, if not provided
-func GetBuildProject(buildProject string) string {
-	if buildProject != "" {
-		return buildProject
-	}
-	return os.Getenv(coreutils.Project)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.

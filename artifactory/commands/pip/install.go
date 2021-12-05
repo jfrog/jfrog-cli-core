@@ -3,11 +3,12 @@ package pip
 import (
 	"errors"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	piputils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/pip"
@@ -98,7 +99,7 @@ func (pic *PipInstallCommand) getAllDependencies(dependencyToFileMap map[string]
 	return dependenciesMap
 }
 
-func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dependency) {
+func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dependency) error {
 	buildInfo := &buildinfo.BuildInfo{}
 	var modules []buildinfo.Module
 	var projectDependencies []buildinfo.Dependency
@@ -108,16 +109,25 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	}
 
 	// Save build-info.
-	module := buildinfo.Module{Id: pic.buildConfiguration.Module, Type: buildinfo.Pip, Dependencies: projectDependencies}
+	module := buildinfo.Module{Id: pic.buildConfiguration.GetModule(), Type: buildinfo.Python, Dependencies: projectDependencies}
 	modules = append(modules, module)
 
 	buildInfo.Modules = modules
-	utils.SaveBuildInfo(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project, buildInfo)
+	buildName, err := pic.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := pic.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	utils.SaveBuildInfo(buildName, buildNumber, pic.buildConfiguration.GetProject(), buildInfo)
+	return nil
 }
 
 func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) error {
 	// If module-name was set in command, don't change it.
-	if pic.buildConfiguration.Module != "" {
+	if pic.buildConfiguration.GetModule() != "" {
 		return nil
 	}
 
@@ -129,10 +139,14 @@ func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) e
 
 	// If package-name unknown, set module as build-name.
 	if moduleName == "" {
-		moduleName = pic.buildConfiguration.BuildName
+		buildName, err := pic.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		moduleName = buildName
 	}
 
-	pic.buildConfiguration.Module = moduleName
+	pic.buildConfiguration.SetModule(moduleName)
 	return nil
 }
 
@@ -152,9 +166,22 @@ func (pic *PipInstallCommand) prepare() (pythonExecutablePath string, err error)
 	}
 
 	// Prepare build-info.
-	if pic.buildConfiguration.BuildName != "" && pic.buildConfiguration.BuildNumber != "" {
+	toCollect, err := pic.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
+		var buildName, buildNumber string
+		buildName, err = pic.buildConfiguration.GetBuildName()
+		if err != nil {
+			return "", err
+		}
+		buildNumber, err = pic.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return "", err
+		}
 		pic.shouldCollectBuildInfo = true
-		if err = utils.SaveBuildGeneralDetails(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project); err != nil {
+		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, pic.buildConfiguration.GetProject()); err != nil {
 			return
 		}
 	}
@@ -202,7 +229,15 @@ func getSetupPyFilePath() (string, error) {
 }
 
 func (pic *PipInstallCommand) cleanBuildInfoDir() {
-	if err := utils.RemoveBuildDir(pic.buildConfiguration.BuildName, pic.buildConfiguration.BuildNumber, pic.buildConfiguration.Project); err != nil {
+	buildName, err := pic.buildConfiguration.GetBuildName()
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+	}
+	buildNumber, err := pic.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+	}
+	if err := utils.RemoveBuildDir(buildName, buildNumber, pic.buildConfiguration.GetProject()); err != nil {
 		log.Error(fmt.Sprintf("Failed cleaning build-info directory: %s", err.Error()))
 	}
 }

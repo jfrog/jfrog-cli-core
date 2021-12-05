@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -58,11 +59,15 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 	log.Info("Build", ocBuildName, "finished successfully.")
-
-	buildName := osb.buildConfiguration.BuildName
-	buildNumber := osb.buildConfiguration.BuildNumber
-	project := osb.buildConfiguration.Project
-
+	buildName, err := osb.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := osb.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	project := osb.buildConfiguration.GetProject()
 	if buildName == "" {
 		return nil
 	}
@@ -86,7 +91,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	buildInfo, err := builder.Build(osb.buildConfiguration.Module)
+	buildInfo, err := builder.Build(osb.buildConfiguration.GetModule())
 	if err != nil {
 		return err
 	}

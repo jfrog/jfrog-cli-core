@@ -132,6 +132,7 @@ func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId stri
 	return module
 }
 
+// Get specific module from modules list
 func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")

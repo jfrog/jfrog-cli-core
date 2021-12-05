@@ -59,9 +59,9 @@ func TestGetComponentImpactPaths(t *testing.T) {
 		{"com.fasterxml.jackson.core:jackson-databind",
 			"myBuild",
 			[]string{
-				"default/builds/myBuild/bill.jar/com/fasterxml/jackson/jackson-databind/core",
-				"default/builds/myBuild/bill.zip/com/fasterxml/jackson/jackson-databind/core",
-				"default/builds/myBuild/bill.tgz/com/fasterxml/jackson/jackson-web/core",
+				"project/builds/myBuild/bill.jar/com/fasterxml/jackson/jackson-databind",
+				"project/builds/myBuild/bill.zip/com/fasterxml/jackson/jackson-databind",
+				"project/builds/myBuild/bill.tgz/com/fasterxml/jackson/jackson-web",
 			},
 			[][]services.ImpactPathNode{
 				{{ComponentId: "bill.jar"}},

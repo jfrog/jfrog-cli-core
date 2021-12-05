@@ -13,7 +13,7 @@ require (
 	github.com/jfrog/build-info-go v0.1.4
 	github.com/jfrog/gocmd v0.6.0
 	github.com/jfrog/gofrog v1.1.0
-	github.com/jfrog/jfrog-client-go v1.6.4
+	github.com/jfrog/jfrog-client-go v1.6.5
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-shellwords v1.0.3

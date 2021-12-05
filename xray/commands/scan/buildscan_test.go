@@ -61,7 +61,7 @@ func TestGetComponentImpactPaths(t *testing.T) {
 			[]string{
 				"default/builds/myBuild/bill.jar/com/fasterxml/jackson/jackson-databind/core",
 				"default/builds/myBuild/bill.zip/com/fasterxml/jackson/jackson-databind/core",
-				"default/builds/myBuild/bill.tgz/com/fasterxml/jackson/jackson-databind-web/core",
+				"default/builds/myBuild/bill.tgz/com/fasterxml/jackson/jackson-web/core",
 			},
 			[][]services.ImpactPathNode{
 				{{ComponentId: "bill.jar"}},

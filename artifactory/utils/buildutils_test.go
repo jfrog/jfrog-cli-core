@@ -127,6 +127,32 @@ func TestGetBuildNumber(t *testing.T) {
 	assert.Equal(t, actualBuildNumber, buildNumberFromFile)
 }
 
+func TestGetProject(t *testing.T) {
+	const project = "project1"
+	const projectEnv = "envProject"
+
+	// Setup global project env var.
+	// Make sure other parallel tests won't be affected.
+	oldProject := coreutils.Project
+	coreutils.Project = oldProject + timestamp
+	defer func() { coreutils.Project = oldProject }()
+
+	buildConfig := NewBuildConfiguration("", "", "", project)
+	for i := 0; i < 2; i++ {
+		actualProject := buildConfig.GetProject()
+		assert.Equal(t, actualProject, project)
+
+		// Set project using env var.
+		os.Setenv(coreutils.Project, projectEnv)
+	}
+
+	// Validate project form env var (second priority).
+	buildConfig.SetProject("")
+	actualProject := buildConfig.GetProject()
+	assert.Equal(t, actualProject, projectEnv)
+	assert.NoError(t, os.Unsetenv(coreutils.Project))
+}
+
 func TestIsCollectBuildInfo(t *testing.T) {
 	buildConfig := NewBuildConfiguration("", "", "", "")
 	toCollect, err := buildConfig.IsCollectBuildInfo()

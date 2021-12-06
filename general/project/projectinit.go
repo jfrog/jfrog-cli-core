@@ -77,7 +77,6 @@ func (pic *ProjectInitCommand) Run() (err error) {
 }
 
 func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreutils.Technology]bool) string {
-
 	return coreutils.PrintBold("This project is initialized!\n") +
 		coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
 		"\n\n" +
@@ -93,7 +92,6 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
-
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
@@ -139,7 +137,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 
 // Returns all detected technologies found in the project directory.
 // First, try to return only the technologies that detected according to files in the root directory.
-// In case no indication found, the search continue recursively.
+// In case no indication found in the root directory, the search continue recursively.
 func (pic *ProjectInitCommand) detectTechnologies() (technologiesMap map[coreutils.Technology]bool, err error) {
 	technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, false)
 	if err != nil {

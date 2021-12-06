@@ -3,12 +3,13 @@ package envsetup
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/pkg/browser"
 
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
@@ -50,7 +51,6 @@ func NewEnvSetupCommand(url string) *EnvSetupCommand {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	fmt.Println("Thank you for installing JFrog CLI!")
 	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
 	time.Sleep(5 * time.Second)
 	browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())

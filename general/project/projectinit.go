@@ -50,6 +50,13 @@ func (pic *ProjectInitCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	// In case no technologies were detected in the root diretory, try again recursively.
+	if len(technologiesMap) == 0 {
+		technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, true)
+		if err != nil {
+			return err
+		}
+	}
 	// First create repositories for the detected technologies.
 	for tech, detected := range technologiesMap {
 		if detected {

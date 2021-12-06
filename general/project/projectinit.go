@@ -80,18 +80,18 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 	return coreutils.PrintBold("This project is initialized!\n") +
 		coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
 		"\n\n" +
-		coreutils.PrintTitle("Audit your code project for security vulnerabilities by running") +
+		coreutils.PrintTitle("Audit your project for security vulnerabilities by running") +
 		"\n" +
 		"jf audit\n\n" +
-		coreutils.PrintTitle("or if you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
-		"\n" +
-		"Open the IDE\n" +
-		"Install the JFrog extension or plugin\n" +
-		"View the JFrog panel\n" +
-		"\n" +
 		coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
+		coreutils.PrintTitle("If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		"\n" +
+		"1. Open the IDE\n" +
+		"2. Install the JFrog extension or plugin\n" +
+		"3. View the JFrog panel" +
+		"\n\n" +
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +

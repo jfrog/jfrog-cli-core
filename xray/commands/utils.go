@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	GraphScanMinVersion = "3.29.0"
-	ScanTypeMinVersion  = "3.37.2"
+	GraphScanMinXrayVersion = "3.29.0"
+	ScanTypeMinXrayVersion  = "3.37.2"
 )
 
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
@@ -42,9 +42,10 @@ func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params servi
 	if err != nil {
 		return nil, err
 	}
-	// Remove scan type param if Xray version is under minimum supported version
-	err = ValidateXrayMinimumVersion(xrayVersion, ScanTypeMinVersion)
+
+	err = ValidateXrayMinimumVersion(xrayVersion, ScanTypeMinXrayVersion)
 	if err != nil {
+		// Remove scan type param if Xray version is under minimum supported version
 		params.ScanType = ""
 	}
 
@@ -53,4 +54,16 @@ func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params servi
 		return nil, err
 	}
 	return xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
+}
+
+func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, string, error) {
+	xrayManager, err := CreateXrayServiceManager(serviceDetails)
+	if err != nil {
+		return nil, "", err
+	}
+	xrayVersion, err := xrayManager.GetVersion()
+	if err != nil {
+		return nil, "", err
+	}
+	return xrayManager, xrayVersion, nil
 }

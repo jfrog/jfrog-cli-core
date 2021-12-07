@@ -73,11 +73,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		ScanType:   services.Dependency,
 	}
 	// Get Xray version
-	xrayManager, err := xraycommands.CreateXrayServiceManager(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	xrayVersion, err := xrayManager.GetVersion()
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(auditCmd.serverDetails)
 	if err != nil {
 		return err
 	}

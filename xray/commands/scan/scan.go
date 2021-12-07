@@ -119,15 +119,11 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		}
 	}()
 	// Validate Xray minimum version
-	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
+	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
-	xrayVersion, err := xrayManager.GetVersion()
-	if err != nil {
-		return err
-	}
-	err = commands.ValidateXrayMinimumVersion(xrayVersion, commands.GraphScanMinVersion)
+	err = commands.ValidateXrayMinimumVersion(xrayVersion, commands.GraphScanMinXrayVersion)
 	if err != nil {
 		return err
 	}

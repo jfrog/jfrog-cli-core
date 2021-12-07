@@ -59,11 +59,7 @@ func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 
 // Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
-	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
-	if err != nil {
-		return err
-	}
-	xrayVersion, err := xrayManager.GetVersion()
+	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(bsc.serverDetails)
 	if err != nil {
 		return err
 	}

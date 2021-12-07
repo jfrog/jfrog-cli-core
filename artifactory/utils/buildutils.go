@@ -345,6 +345,11 @@ func (bc *BuildConfiguration) GetBuildNumber() (string, error) {
 }
 
 func (bc *BuildConfiguration) GetProject() string {
+	if bc.project != "" {
+		return bc.project
+	}
+	// Resolve from env var.
+	bc.project = os.Getenv(coreutils.Project)
 	return bc.project
 }
 

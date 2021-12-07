@@ -70,6 +70,12 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		RepoPath:   auditCmd.targetRepoPath,
 		Watches:    auditCmd.watches,
 		ProjectKey: auditCmd.projectKey,
+		ScanType:   services.Dependency,
+	}
+	// Get Xray version
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(auditCmd.serverDetails)
+	if err != nil {
+		return err
 	}
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		params.Graph = moduleDependencyTree
@@ -77,7 +83,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
 		log.Info("Scanning module " + moduleName + "...")
 
-		scanResults, err := xraycommands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses)
+		scanResults, err := xraycommands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, xrayVersion)
 		if err != nil {
 			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
 			break
@@ -88,7 +94,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		// if all scans failed, fail the audit command
 		return errors.New("audit command failed due to Xray internal error")
 	}
-	err := xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
+	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, false)
 	if err != nil {
 		return err
 	}

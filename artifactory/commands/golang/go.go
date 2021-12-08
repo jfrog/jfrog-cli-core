@@ -213,6 +213,8 @@ func (gc *GoCommand) run() error {
 	return err
 }
 
+// Gets the URL of the specified repository Go API in Artifactory.
+// The URL contains credentials (username and access token or password).
 func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
 	rtUrl, err := url.Parse(details.GetUrl())
 	if err != nil {

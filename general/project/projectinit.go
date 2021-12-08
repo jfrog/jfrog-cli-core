@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gookit/color"
 	artifactoryCommandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -47,7 +46,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		}
 		pic.serverId = defaultServer.ServerId
 	}
-	technologiesMap, err := coreutils.DetectTechnologies(pic.projectPath, false, false)
+	technologiesMap, err := pic.detectTechnologies()
 	if err != nil {
 		return err
 	}
@@ -70,26 +69,33 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return
 	}
 
-	message :=
-		bold("You're all set!") +
-			"\n\n" +
-			bold("The project config is stored inside the .jfrog directory.") +
-			"\n\n" +
-			title("Audit your code project for security vulnerabilities by running") +
-			"\n" +
-			"jf audit\n\n" +
-			title("Scan any software package on this machine for security vulnerabilities by running") +
-			"\n" +
-			"jf scan path/to/dir/or/package\n\n" +
-			pic.createBuildMessage(technologiesMap) +
-			title("Read more using this link:") +
-			"\n" +
-			link(coreutils.GettingStartedGuideUrl)
 	fmt.Println()
-	err = coreutils.PrintTable("", "", message)
+	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap))
 	fmt.Println()
 
 	return
+}
+
+func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreutils.Technology]bool) string {
+	return coreutils.PrintBold("This project is initialized!\n") +
+		coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
+		"\n\n" +
+		coreutils.PrintTitle("Audit your project for security vulnerabilities by running") +
+		"\n" +
+		"jf audit\n\n" +
+		coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
+		"\n" +
+		"jf scan path/to/dir/or/package\n\n" +
+		coreutils.PrintTitle("If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		"\n" +
+		"1. Open the IDE\n" +
+		"2. Install the JFrog extension or plugin\n" +
+		"3. View the JFrog panel" +
+		"\n\n" +
+		pic.createBuildMessage(technologiesMap) +
+		coreutils.PrintTitle("Read more using this link:") +
+		"\n" +
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
@@ -111,49 +117,40 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			case coreutils.Pypi:
 				message +=
 					"jf pip install\n" +
-						"jf rt u path/to/package/file default-pypi-local" + comment(" # Publish your pip package") +
+						"jf rt u path/to/package/file default-pypi-local" +
+						coreutils.PrintComment(" # Publish your pip package") +
 						"\n"
 			}
 		}
 	}
 	if message != "" {
-		message = title("Build the code & deploy the packages by running") +
+		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
 			"\n" +
 			message +
 			"\n" +
-			title("Publish the build-info to Artifactory") +
+			coreutils.PrintTitle("Publish the build-info to Artifactory") +
 			"\n" +
 			"jf rt bp\n\n"
 	}
 	return message
 }
 
-// Print the test to the console in green color.
-func title(str string) string {
-	return colorStr(str, color.Green)
-}
-
-// Print the test to the console in cyan color.
-func link(str string) string {
-	return colorStr(str, color.Cyan)
-}
-
-// Print the test to the console with bold style.
-func bold(str string) string {
-	return colorStr(str, color.Bold)
-}
-
-// Print the test to the console in gray color.
-func comment(str string) string {
-	return colorStr(str, color.Gray)
-}
-
-// Print the test to the console with the specified color.
-func colorStr(str string, c color.Color) string {
-	if coreutils.IsTerminal() {
-		return c.Render(str)
+// Returns all detected technologies found in the project directory.
+// First, try to return only the technologies that detected according to files in the root directory.
+// In case no indication found in the root directory, the search continue recursively.
+func (pic *ProjectInitCommand) detectTechnologies() (technologiesMap map[coreutils.Technology]bool, err error) {
+	technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, false)
+	if err != nil {
+		return
 	}
-	return str
+	// In case no technologies were detected in the root diretory, try again recursively.
+	if len(technologiesMap) == 0 {
+		technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, true)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 type BuildConfigFile struct {

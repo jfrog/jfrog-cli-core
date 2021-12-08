@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
+
+	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 
 	"github.com/jfrog/gofrog/parallel"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -18,7 +21,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -76,7 +78,7 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return err
 	}
@@ -130,11 +132,11 @@ func (yc *YarnCommand) validateSupportedCommand() error {
 			npmCommand := yc.yarnArgs[index+1]
 			// The command 'yarn npm publish' is not supported
 			if npmCommand == "publish" {
-				return errorutils.CheckError(errors.New("The command 'jfrog rt yarn npm publish' is not supported. Use 'jfrog rt upload' instead."))
+				return errorutils.CheckErrorf("The command 'jfrog rt yarn npm publish' is not supported. Use 'jfrog rt upload' instead.")
 			}
 			// 'yarn npm *' commands other than 'info' and 'whoami' are not supported
 			if npmCommand != "info" && npmCommand != "whoami" {
-				return errorutils.CheckError(errors.New(fmt.Sprintf("The command 'jfrog rt yarn npm %s' is not supported.", npmCommand)))
+				return errorutils.CheckErrorf("The command 'jfrog rt yarn npm %s' is not supported.", npmCommand)
 			}
 		}
 	}
@@ -215,8 +217,8 @@ func (yc *YarnCommand) validateYarnVersion() error {
 	}
 	yarnVersion := version.NewVersion(yarnVersionStr)
 	if yarnVersion.Compare(minSupportedYarnVersion) > 0 {
-		return errorutils.CheckError(errors.New(fmt.Sprintf(
-			"JFrog CLI yarn command requires Yarn version " + minSupportedYarnVersion + " or higher")))
+		return errorutils.CheckErrorf(
+			"JFrog CLI yarn command requires Yarn version " + minSupportedYarnVersion + " or higher")
 	}
 	return nil
 }
@@ -227,7 +229,7 @@ func (yc *YarnCommand) setArtifactoryAuth() error {
 		return err
 	}
 	if authArtDetails.GetSshAuthHeaders() != nil {
-		return errorutils.CheckError(errors.New("SSH authentication is not supported in this command"))
+		return errorutils.CheckErrorf("SSH authentication is not supported in this command")
 	}
 	yc.authArtDetails = authArtDetails
 	return nil
@@ -355,7 +357,11 @@ func (yc *YarnCommand) setDependenciesList() error {
 	}
 
 	// Collect checksums from last build to decrease requests to Artifactory
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, yc.buildConfiguration.BuildName)
+	buildName, err := yc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
 	if err != nil {
 		return err
 	}
@@ -396,7 +402,7 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 		innerDepKey := getYarnDependencyKeyFromLocator(dependencyPtr.Locator)
 		innerYarnDep, exist := dependenciesMap[innerDepKey]
 		if !exist {
-			return errorutils.CheckError(errors.New(fmt.Sprintf("An error occurred while creating dependencies tree: dependency %s was not found.", dependencyPtr.Locator)))
+			return errorutils.CheckErrorf("An error occurred while creating dependencies tree: dependency %s was not found.", dependencyPtr.Locator)
 		}
 		yc.appendDependencyRecursively(innerYarnDep, append([]string{id}, pathToRoot...), dependenciesMap,
 			previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
@@ -440,8 +446,8 @@ func (yc *YarnCommand) saveDependenciesData() error {
 		}
 	}
 
-	if yc.buildConfiguration.Module == "" {
-		yc.buildConfiguration.Module = yc.packageInfo.BuildInfoModuleId()
+	if yc.buildConfiguration.GetModule() == "" {
+		yc.buildConfiguration.SetModule(yc.packageInfo.BuildInfoModuleId())
 	}
 
 	if err := commandUtils.SaveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {
@@ -496,12 +502,12 @@ func extractAuthIdentFromNpmAuth(npmAuth string) (string, error) {
 
 		lineParts := strings.SplitN(currLine, "=", 2)
 		if len(lineParts) < 2 {
-			return "", errorutils.CheckError(errors.New("failed while retrieving npm auth details from Artifactory"))
+			return "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
 		}
 		return strings.TrimSpace(lineParts[1]), nil
 	}
 
-	return "", errorutils.CheckError(errors.New("failed while retrieving npm auth details from Artifactory"))
+	return "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
 }
 
 // Yarn dependency locator usually looks like this: package-name@npm:1.2.3, which is used as the key in the dependencies map.

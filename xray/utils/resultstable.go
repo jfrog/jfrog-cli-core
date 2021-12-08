@@ -1,17 +1,12 @@
 package utils
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/gookit/color"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -23,7 +18,6 @@ import (
 func PrintViolationsTable(violations []services.Violation, multipleRoots bool) error {
 	var securityViolationsRows []vulnerabilityRow
 	var licenseViolationsRows []licenseViolationRow
-	failBuild := false
 
 	coloredOutput := coreutils.IsTerminal()
 
@@ -66,10 +60,6 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 				)
 			}
 		}
-
-		if !failBuild && violation.FailBuild {
-			failBuild = true
-		}
 	}
 
 	// Sort the rows by severity and whether the row contains fixed versions
@@ -88,16 +78,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	if err != nil {
 		return err
 	}
-	err = coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
-	if err != nil {
-		return err
-	}
-
-	if failBuild {
-		return coreutils.CliError{ExitCode: coreutils.ExitCodeVulnerableBuild, ErrorMsg: "One or more of the violations found are set to fail builds that include them"}
-	}
-
-	return nil
+	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
@@ -105,7 +86,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) error {
 	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --target-path or --project.\n" +
+		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
 		"Below are all vulnerabilities detected.")
 
@@ -176,15 +157,6 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 	return err
 }
 
-func PrintJson(jsonRes []services.ScanResponse) error {
-	results, err := json.Marshal(&jsonRes)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	fmt.Println(clientutils.IndentJson(results))
-	return nil
-}
-
 // Used for vulnerabilities and security violations
 type vulnerabilityRow struct {
 	severity               string         `col-name:"Severity"`
@@ -237,7 +209,7 @@ func convertCves(cves []services.Cve) []cveRow {
 
 func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow, error) {
 	if len(impactedPackages) == 0 {
-		return nil, nil, nil, nil, nil, errorutils.CheckError(errors.New("failed while parsing the response from Xray: violation doesn't have any components"))
+		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 	}
 	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
 	var directComponents [][]componentRow
@@ -262,6 +234,7 @@ var packageTypes = map[string]string{
 	"generic":  "Generic",
 	"npm":      "npm",
 	"pip":      "Python",
+	"pypi":     "Python",
 	"composer": "Composer",
 	"go":       "Go",
 	"alpine":   "Alpine",
@@ -359,14 +332,6 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		components = append(components, row)
 	}
 	return components
-}
-
-func createTableWriter() table.Writer {
-	tableWriter := table.NewWriter()
-	tableWriter.SetOutputMirror(os.Stdout)
-	tableWriter.SetStyle(table.StyleLight)
-	tableWriter.Style().Options.SeparateRows = true
-	return tableWriter
 }
 
 type severity struct {

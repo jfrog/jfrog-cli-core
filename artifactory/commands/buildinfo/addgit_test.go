@@ -2,10 +2,6 @@ package buildinfo
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,11 +9,16 @@ import (
 	"testing"
 	"time"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 )
 
 const (
@@ -141,7 +142,7 @@ func getBuildInfoPartials(t *testing.T, buildName, buildNumber, projectKey strin
 
 // Run BAG command. If setDotGit==true, provide baseDir to the command. Else, change wd to baseDir and make the command find .git manually.
 func runBuildAddGit(t *testing.T, buildName, buildNumber string, baseDir string, setDotGit bool) error {
-	buildAddGitConfiguration := new(BuildAddGitCommand).SetBuildConfiguration(&utils.BuildConfiguration{BuildName: buildName, BuildNumber: buildNumber})
+	buildAddGitConfiguration := new(BuildAddGitCommand).SetBuildConfiguration(utils.NewBuildConfiguration(buildName, buildNumber, "", ""))
 	if setDotGit {
 		buildAddGitConfiguration.SetDotGitPath(baseDir)
 	} else {
@@ -247,7 +248,7 @@ func TestAddGitDoCollect(t *testing.T) {
 			Regexp:            `(.+-[0-9]+)\s-\s(.+)`,
 			TrackerName:       "test",
 		},
-		buildConfiguration: &utils.BuildConfiguration{BuildNumber: "1", BuildName: "cli-tests-rt-build1"},
+		buildConfiguration: utils.NewBuildConfiguration("cli-tests-rt-build1", "1", "", ""),
 		configFilePath:     "",
 		dotGitPath:         dotGitPath,
 	}

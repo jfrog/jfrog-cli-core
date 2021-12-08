@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	gradleExtractorDependencyVersion = "4.24.12"
+	gradleExtractorDependencyVersion = "4.25.0"
 	gradleInitScriptTemplate         = "gradle.init"
 	usePlugin                        = "useplugin"
 	useWrapper                       = "usewrapper"
@@ -83,10 +83,17 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	}
 
 	if disableDeploy {
-		setEmptyDeployer(vConfig)
+		setDeployFalse(vConfig)
 	}
-
-	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(configuration.BuildName, configuration.BuildNumber, configuration.Project, deployableArtifactsFile, vConfig, utils.Gradle)
+	buildName, err := configuration.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	buildNumber, err := configuration.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	runConfig.env[gradleBuildInfoProperties], err = utils.CreateBuildInfoPropertiesFile(buildName, buildNumber, configuration.GetProject(), deployableArtifactsFile, vConfig, utils.Gradle)
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +112,14 @@ func createGradleRunConfig(tasks, configPath, deployableArtifactsFile string, co
 	return runConfig, nil
 }
 
-func setEmptyDeployer(vConfig *viper.Viper) {
+func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
-	vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
+	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.Repo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
+	}
 }
 
 func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, error) {

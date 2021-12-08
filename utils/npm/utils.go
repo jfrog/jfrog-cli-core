@@ -1,13 +1,11 @@
 package npmutils
 
 import (
-	"errors"
 	"fmt"
-	"os/exec"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"strings"
 
 	"github.com/buger/jsonparser"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -32,19 +30,6 @@ type Dependency struct {
 
 func (dep *Dependency) GetPathToRoot() [][]string {
 	return dep.PathToRoot
-}
-
-func FindNpmExecutable() (path string, err error) {
-	npmExecPath, err := exec.LookPath("npm")
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	if npmExecPath == "" {
-		return "", errorutils.CheckError(errors.New("could not find 'npm' executable"))
-	}
-	log.Debug("Found npm executable at:", npmExecPath)
-	return npmExecPath, nil
 }
 
 func CalculateDependenciesList(typeRestriction TypeRestriction, npmArgs []string, executablePath, buildInfoModuleId string) (dependenciesList map[string]*Dependency, err error) {

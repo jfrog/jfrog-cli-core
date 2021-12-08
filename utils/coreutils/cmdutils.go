@@ -1,11 +1,10 @@
 package coreutils
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/gookit/color"
 	"github.com/mattn/go-shellwords"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -70,7 +69,7 @@ func getFlagValueAndValueIndex(flagName string, args []string, flagIndex int) (f
 		if len(indexValue) > 1 {
 			return indexValue[1:], flagIndex, nil
 		}
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Flag %s is provided with empty value.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Flag %s is provided with empty value.", flagName)
 	}
 
 	// Check if it is a different flag with same prefix, e.g --server-id-another
@@ -81,14 +80,14 @@ func getFlagValueAndValueIndex(flagName string, args []string, flagIndex int) (f
 	// If reached here, expect the flag value in next argument.
 	if len(args) < flagIndex+2 {
 		// Flag value does not exist.
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Failed extracting value of provided flag: %s.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Failed extracting value of provided flag: %s.", flagName)
 	}
 
 	nextIndexValue := args[flagIndex+1]
 	// Don't allow next value to be a flag.
 	if strings.HasPrefix(nextIndexValue, "-") {
 		// Flag value does not exist.
-		return "", -1, errorutils.CheckError(errors.New(fmt.Sprintf("Failed extracting value of provided flag: %s.", flagName)))
+		return "", -1, errorutils.CheckErrorf("Failed extracting value of provided flag: %s.", flagName)
 	}
 
 	return nextIndexValue, flagIndex + 1, nil
@@ -170,6 +169,17 @@ func ExtractXrayScanFromArgs(args []string) (cleanArgs []string, xrayScan bool, 
 	return
 }
 
+func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format string, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, valIndex, format, err := FindFlag("--format", args)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valIndex)
+	return
+}
+
 // Iterate over each argument, if env variable is found (e.g $HOME) replace it with env value.
 func ParseArgs(args []string) ([]string, error) {
 	// Escape backslash & space
@@ -188,4 +198,32 @@ func ParseArgs(args []string) ([]string, error) {
 
 func isQuote(s string) bool {
 	return len(s) > 0 && ((s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\''))
+}
+
+// Print the test to the console in green color.
+func PrintTitle(str string) string {
+	return colorStr(str, color.Green)
+}
+
+// Print the test to the console in cyan color.
+func PrintLink(str string) string {
+	return colorStr(str, color.Cyan)
+}
+
+// Print the test to the console with bold style.
+func PrintBold(str string) string {
+	return colorStr(str, color.Bold)
+}
+
+// Print the test to the console in gray color.
+func PrintComment(str string) string {
+	return colorStr(str, color.Gray)
+}
+
+// Print the test to the console with the specified color.
+func colorStr(str string, c color.Color) string {
+	if IsTerminal() {
+		return c.Render(str)
+	}
+	return str
 }

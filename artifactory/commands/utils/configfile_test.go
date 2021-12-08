@@ -416,7 +416,7 @@ func setStringFlags(flagSet *flag.FlagSet, flags ...string) []string {
 func checkCommonAndGetConfiguration(t *testing.T, projectType string, tempDirPath string) *viper.Viper {
 	config, err := utils.ReadConfigFile(filepath.Join(tempDirPath, "projects", projectType+".yaml"), utils.YAML)
 	assert.NoError(t, err)
-	assert.Equal(t, buildConfVersion, config.GetInt("version"))
+	assert.Equal(t, BuildConfVersion, config.GetInt("version"))
 	assert.Equal(t, projectType, config.GetString("type"))
 	return config
 }

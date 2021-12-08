@@ -123,11 +123,11 @@ func (yg *JFrogPipelinesYamlGenerator) createSteps(gitResourceName, buildInfoRes
 	var step PipelineStep
 
 	switch yg.SetupData.BuiltTechnology.Type {
-	case Maven:
+	case coreutils.Maven:
 		step = yg.createMavenStep(gitResourceName)
-	case Gradle:
+	case coreutils.Gradle:
 		step = yg.createGradleStep(gitResourceName)
-	case Npm:
+	case coreutils.Npm:
 		step, err = yg.createNpmStep(gitResourceName)
 		if err != nil {
 			return nil, err
@@ -143,7 +143,7 @@ func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) P
 		StepType: MvnBuild,
 		Configuration: &MavenStepConfiguration{
 			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
-			MvnCommand:              yg.getBuildCmdForNativeStep(Maven),
+			MvnCommand:              yg.SetupData.GetBuildCmdForNativeStep(),
 			ResolverSnapshotRepo:    yg.SetupData.BuiltTechnology.VirtualRepo,
 			ResolverReleaseRepo:     yg.SetupData.BuiltTechnology.VirtualRepo,
 		},
@@ -153,7 +153,7 @@ func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) P
 	}
 }
 
-func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech Technology) string {
+func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech coreutils.Technology) string {
 	cmd := yg.SetupData.BuiltTechnology.BuildCmd
 	// Remove exec name.
 	return strings.TrimPrefix(strings.TrimSpace(cmd), execNames[tech]+" ")
@@ -188,7 +188,7 @@ func (yg *JFrogPipelinesYamlGenerator) createGradleStep(gitResourceName string) 
 		StepType: GradleBuild,
 		Configuration: &GradleStepConfiguration{
 			NativeStepConfiguration: yg.getDefaultNativeStepConfiguration(gitResourceName),
-			GradleCommand:           yg.getBuildCmdForNativeStep(Gradle),
+			GradleCommand:           yg.SetupData.GetBuildCmdForNativeStep(),
 			ResolverRepo:            yg.SetupData.BuiltTechnology.VirtualRepo,
 		},
 		Execution: StepExecution{

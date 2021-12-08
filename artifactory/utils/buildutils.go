@@ -2,7 +2,8 @@ package utils
 
 import (
 	"bytes"
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,20 +14,24 @@ import (
 	"strings"
 	"time"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const BuildInfoDetails = "details"
-const BuildTempPath = "jfrog/builds/"
+const (
+	BuildInfoDetails          = "details"
+	BuildTempPath             = "jfrog/builds/"
+	ProjectConfigBuildNameKey = "name"
+)
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
-	encodedDirName := base64.StdEncoding.EncodeToString([]byte(buildName + "_" + buildNumber + "_" + projectKey))
-	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, encodedDirName)
+	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
+	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, hex.EncodeToString(hash[:]))
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err
@@ -172,7 +177,10 @@ func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*build
 			return nil, err
 		}
 		buildInfo := new(buildinfo.BuildInfo)
-		json.Unmarshal(content, &buildInfo)
+		err = json.Unmarshal(content, &buildInfo)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
 		generatedBuildsInfo = append(generatedBuildsInfo, buildInfo)
 	}
 	return generatedBuildsInfo, nil
@@ -204,7 +212,10 @@ func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (build
 			return nil, err
 		}
 		partial := new(buildinfo.Partial)
-		json.Unmarshal(content, &partial)
+		err = json.Unmarshal(content, &partial)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
 		partials = append(partials, partial)
 	}
 
@@ -217,12 +228,29 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*bu
 		return nil, err
 	}
 	generalDetailsFilePath := filepath.Join(partialsBuildDir, BuildInfoDetails)
+	fileExists, err := fileutils.IsFileExists(generalDetailsFilePath, false)
+	if err != nil {
+		return nil, err
+	}
+	if fileExists == false {
+		var buildString string
+		if projectKey != "" {
+			buildString = fmt.Sprintf("build-name: <%s>, build-number: <%s> and project: <%s>", buildName, buildNumber, projectKey)
+		} else {
+			buildString = fmt.Sprintf("build-name: <%s> and build-number: <%s>", buildName, buildNumber)
+		}
+		return nil, errors.New("Failed to construct the build-info to be published. " +
+			"This may be because there were no previous commands, which collected build-info for " + buildString)
+	}
 	content, err := fileutils.ReadFile(generalDetailsFilePath)
 	if err != nil {
 		return nil, err
 	}
 	details := new(buildinfo.General)
-	json.Unmarshal(content, &details)
+	err = json.Unmarshal(content, &details)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
 	return details, nil
 }
 
@@ -241,38 +269,148 @@ func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
 	return nil
 }
 
-type BuildInfoConfiguration struct {
-	serverDetails auth.ServiceDetails
-	DryRun        bool
-	EnvInclude    string
-	EnvExclude    string
-}
-
-func (config *BuildInfoConfiguration) GetServerDetails() auth.ServiceDetails {
-	return config.serverDetails
-}
-
-func (config *BuildInfoConfiguration) SetServerDetails(art auth.ServiceDetails) {
-	config.serverDetails = art
-}
-
-func (config *BuildInfoConfiguration) IsDryRun() bool {
-	return config.DryRun
-}
-
 type BuildConfiguration struct {
-	BuildName   string
-	BuildNumber string
-	Module      string
-	Project     string
+	buildName            string
+	buildNumber          string
+	module               string
+	project              string
+	loadedFromConfigFile bool
 }
 
-func ValidateBuildAndModuleParams(buildConfig *BuildConfiguration) error {
-	if (buildConfig.BuildName == "" && buildConfig.BuildNumber != "") || (buildConfig.BuildName != "" && buildConfig.BuildNumber == "") {
-		return errors.New("the build-name and build-number options cannot be provided separately")
+func NewBuildConfiguration(buildName, buildNumber, module, project string) *BuildConfiguration {
+	return &BuildConfiguration{buildName: buildName, buildNumber: buildNumber, module: module, project: project}
+}
+
+func (bc *BuildConfiguration) SetBuildName(buildName string) *BuildConfiguration {
+	bc.buildName = buildName
+	return bc
+}
+
+func (bc *BuildConfiguration) SetBuildNumber(buildNumber string) *BuildConfiguration {
+	bc.buildNumber = buildNumber
+	return bc
+}
+
+func (bc *BuildConfiguration) SetProject(project string) *BuildConfiguration {
+	bc.project = project
+	return bc
+}
+
+func (bc *BuildConfiguration) SetModule(module string) *BuildConfiguration {
+	bc.module = module
+	return bc
+}
+
+func (bc *BuildConfiguration) GetBuildName() (string, error) {
+	if bc.buildName != "" {
+		return bc.buildName, nil
 	}
-	if buildConfig.Module != "" && buildConfig.BuildName == "" && buildConfig.BuildNumber == "" {
-		return errors.New("the build-name and build-number options are mandatory when the module option is provided")
+	// Resolve from env var.
+	if envValue := os.Getenv(coreutils.BuildName); envValue != "" {
+		bc.buildName = envValue
+		return bc.buildName, nil
+	}
+	// Resolve from config file in '.jfrog' folder.
+	confFilePath, exist, err := GetProjectConfFilePath(Build)
+	if err != nil || !exist {
+		return "", err
+	}
+	vConfig, err := ReadConfigFile(confFilePath, YAML)
+	if err != nil || vConfig == nil {
+		return "", err
+	}
+	if bc.buildName = vConfig.GetString(ProjectConfigBuildNameKey); bc.buildName != "" {
+		bc.loadedFromConfigFile = true
+	}
+	return bc.buildName, nil
+}
+
+func (bc *BuildConfiguration) GetBuildNumber() (string, error) {
+	if bc.buildNumber != "" {
+		return bc.buildNumber, nil
+	}
+	// Resolve from env var.
+	if bc.buildNumber = os.Getenv(coreutils.BuildNumber); bc.buildNumber != "" {
+		return bc.buildNumber, nil
+	}
+	// If build name was resolve from build.yaml file, use 'LATEST' as build number.
+	buildName, err := bc.GetBuildName()
+	if err != nil {
+		return "", err
+	}
+	if buildName != "" && bc.loadedFromConfigFile {
+		bc.buildNumber = artclientutils.LatestBuildNumberKey
+	}
+	return bc.buildNumber, nil
+}
+
+func (bc *BuildConfiguration) GetProject() string {
+	if bc.project != "" {
+		return bc.project
+	}
+	// Resolve from env var.
+	bc.project = os.Getenv(coreutils.Project)
+	return bc.project
+}
+
+func (bc *BuildConfiguration) GetModule() string {
+	return bc.module
+}
+
+// Validates:
+// 1. If the build number exists, the build name also exists (and And vice versa).
+// 2. If the modules exists, the build name/number are also exist (and vice versa).
+func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
+	buildName, err := bc.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	module := bc.GetModule()
+	if err := bc.ValidateBuildParams(); err != nil {
+		return err
+	}
+	if module != "" && buildName == "" && buildNumber == "" {
+		return errorutils.CheckErrorf("the build-name and build-number options are mandatory when the module option is provided.")
+
 	}
 	return nil
+}
+
+// Validates that if the build number exists, the build name also exists (and And vice versa).
+func (bc *BuildConfiguration) ValidateBuildParams() error {
+	buildName, err := bc.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	if (buildName == "" && buildNumber != "") || (buildName != "" && buildNumber == "") {
+		return errorutils.CheckErrorf(("the build-name and build-number options cannot be provided separately"))
+	}
+	return nil
+}
+
+func (bc *BuildConfiguration) IsCollectBuildInfo() (bool, error) {
+	if bc == nil {
+		return false, nil
+	}
+	buildName, err := bc.GetBuildName()
+	if err != nil {
+		return false, err
+	}
+	buildNumber, err := bc.GetBuildNumber()
+	if err != nil {
+		return false, err
+	}
+	return buildNumber != "" && buildName != "", nil
+}
+
+func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {
+	return bc.loadedFromConfigFile
 }

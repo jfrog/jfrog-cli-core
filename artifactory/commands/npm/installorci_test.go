@@ -38,7 +38,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"registry = http://goodRegistry",
 			"_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
 
-	npmi := NpmCommandArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
+	npmi := InstallCiArgs{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
@@ -74,7 +74,7 @@ func TestPrepareConfigDataTypeRestriction(t *testing.T) {
 		"kuku=true":                    npmutils.DefaultRestriction}
 
 	for json, typeRestriction := range typeRestrictions {
-		npmi := NpmCommandArgs{}
+		npmi := InstallCiArgs{}
 		npmi.prepareConfigData([]byte(json))
 		if npmi.typeRestriction != typeRestriction {
 			t.Errorf("Type restriction was supposed to be %d but set to: %d when using the json:\n%s", typeRestriction, npmi.typeRestriction, json)

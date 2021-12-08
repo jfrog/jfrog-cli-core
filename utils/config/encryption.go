@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,10 +52,10 @@ func (config *ConfigV5) decrypt() error {
 		return err
 	}
 	if !secFileExists {
-		return errorutils.CheckError(errors.New(decryptErrorPrefix + "security configuration file was not found"))
+		return errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file was not found")
 	}
 	if key == "" {
-		return errorutils.CheckError(errors.New(decryptErrorPrefix + "security configuration file does not contain a master key"))
+		return errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file does not contain a master key")
 	}
 	return handleSecrets(config, decrypt, key)
 }
@@ -151,7 +150,7 @@ func encrypt(secret string, key string) (string, error) {
 		return "", nil
 	}
 	if len(key) != 32 {
-		return "", errorutils.CheckError(errors.New(encryptErrorPrefix + "Wrong length for master key. Key should have a length of exactly: " + strconv.Itoa(masterKeyLength) + " bytes"))
+		return "", errorutils.CheckErrorf(encryptErrorPrefix + "Wrong length for master key. Key should have a length of exactly: " + strconv.Itoa(masterKeyLength) + " bytes")
 	}
 	c, err := aes.NewCipher([]byte(key))
 	if err != nil {
@@ -194,7 +193,7 @@ func decrypt(encryptedSecret string, key string) (string, error) {
 
 	nonceSize := gcm.NonceSize()
 	if len(cipherText) < nonceSize {
-		return "", errorutils.CheckError(errors.New(decryptErrorPrefix + "unexpected cipher text size"))
+		return "", errorutils.CheckErrorf(decryptErrorPrefix + "unexpected cipher text size")
 	}
 
 	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]

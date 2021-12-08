@@ -1,7 +1,6 @@
 package cisetup
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -114,7 +113,7 @@ func (pc *JFrogPipelinesConfigurator) createVcsIntegration(psm *pipelines.Pipeli
 		integrationName = pc.createIntegrationName(services.GitlabName)
 		integrationId, err = psm.CreateGitlabIntegration(integrationName, pc.SetupData.VcsBaseUrl, pc.SetupData.VcsCredentials.AccessToken)
 	default:
-		return "", -1, errorutils.CheckError(errors.New("vcs type is not supported at the moment"))
+		return "", -1, errorutils.CheckErrorf("vcs type is not supported at the moment")
 	}
 	// If no error, or unexpected error, return.
 	if err == nil {

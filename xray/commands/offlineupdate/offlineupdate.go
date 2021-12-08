@@ -182,7 +182,7 @@ func createXrayFileNameFromUrl(url string) (fileName string, err error) {
 	sections := strings.Split(url, "/")
 	length := len(sections)
 	if length < 2 {
-		err = errorutils.CheckError(errors.New(fmt.Sprintf("Unexpected URL format: %s", originalUrl)))
+		err = errorutils.CheckErrorf("Unexpected URL format: %s", originalUrl)
 		return
 	}
 	fileName = fmt.Sprintf("%s__%s", sections[length-2], sections[length-1])
@@ -205,14 +205,14 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 		return
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		err = errorutils.CheckError(errors.New("Response: " + err.Error()))
+		err = errorutils.CheckErrorf("Response: " + err.Error())
 		return
 	}
 
 	var urls FilesList
 	err = json.Unmarshal(body, &urls)
 	if err != nil {
-		err = errorutils.CheckError(errors.New("Failed parsing json response: " + string(body)))
+		err = errorutils.CheckErrorf("Failed parsing json response: " + string(body))
 		return
 	}
 

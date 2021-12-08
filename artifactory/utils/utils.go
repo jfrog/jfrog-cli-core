@@ -10,6 +10,9 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/jfrog/build-info-go/build"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+
 	"github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -76,10 +79,10 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	if resp.StatusCode == http.StatusConflict {
 		message := "\nYour Artifactory server is not configured to encrypt passwords.\n" +
 			"You may use \"art config --enc-password=false\""
-		return "", errorutils.CheckError(errors.New(message))
+		return "", errorutils.CheckErrorf(message)
 	}
 
-	return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status))
+	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status)
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
@@ -205,25 +208,9 @@ func CheckIfRepoExists(repository string, artDetails auth.ServiceDetails) error 
 	}
 
 	if !repoExists {
-		return errorutils.CheckError(errors.New("The repository '" + repository + "' does not exist."))
+		return errorutils.CheckErrorf("The repository '" + repository + "' does not exist.")
 	}
 	return nil
-}
-
-// Get build name and number from env, only if both were not provided
-func GetBuildNameAndNumber(buildName, buildNumber string) (string, string) {
-	if buildName != "" || buildNumber != "" {
-		return buildName, buildNumber
-	}
-	return os.Getenv(coreutils.BuildName), os.Getenv(coreutils.BuildNumber)
-}
-
-// Get build project from env, if not provided
-func GetBuildProject(buildProject string) string {
-	if buildProject != "" {
-		return buildProject
-	}
-	return os.Getenv(coreutils.Project)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.
@@ -250,4 +237,11 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 		return errorutils.CheckError(err)
 	}
 	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
+}
+
+func CreateBuildInfoService() *build.BuildInfoService {
+	buildInfoService := build.NewBuildInfoService()
+	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
+	buildInfoService.SetLogger(log.Logger)
+	return buildInfoService
 }

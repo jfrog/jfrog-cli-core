@@ -106,10 +106,9 @@ func (dc *DotnetCommand) Exec() error {
 	if err != nil {
 		return err
 	}
-
-	isCollectBuildInfo := len(dc.buildConfiguration.BuildName) > 0 && len(dc.buildConfiguration.BuildNumber) > 0
-	if !isCollectBuildInfo {
-		return nil
+	toCollect, err := dc.buildConfiguration.IsCollectBuildInfo()
+	if !toCollect || err != nil {
+		return err
 	}
 
 	slnFile, err := dc.updateSolutionPathAndGetFileName()
@@ -120,15 +119,22 @@ func (dc *DotnetCommand) Exec() error {
 	if err != nil {
 		return err
 	}
-
-	if err = utils.SaveBuildGeneralDetails(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project); err != nil {
-		return err
-	}
-	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.Module)
+	buildName, err := dc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(dc.buildConfiguration.BuildName, dc.buildConfiguration.BuildNumber, dc.buildConfiguration.Project, buildInfo)
+	buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
+		return err
+	}
+	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.GetModule())
+	if err != nil {
+		return err
+	}
+	return utils.SaveBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), buildInfo)
 }
 
 func (dc *DotnetCommand) updateSolutionPathAndGetFileName() (string, error) {
@@ -246,7 +252,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 			continue
 		}
 		if i+1 == len(cmd.CommandFlags) {
-			return "", errorutils.CheckError(errorutils.CheckError(fmt.Errorf(cmdFlag, " flag was provided without value")))
+			return "", errorutils.CheckErrorf(cmdFlag, " flag was provided without value")
 		}
 		return cmd.CommandFlags[i+1], nil
 	}

@@ -2,13 +2,11 @@ package dependencies
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -114,7 +112,7 @@ func (assets *assets) getAllDependencies() (map[string]*buildinfo.Dependency, er
 				log.Warn("The file", nupkgFilePath, "doesn't exist in the NuGet cache directory but it does exist as a target in the assets files."+absentNupkgWarnMsg)
 				continue
 			}
-			return nil, errorutils.CheckError(errors.New("The file " + nupkgFilePath + " doesn't exist in the NuGet cache directory."))
+			return nil, errorutils.CheckErrorf("The file " + nupkgFilePath + " doesn't exist in the NuGet cache directory.")
 		}
 		fileDetails, err := fileutils.GetFileDetails(nupkgFilePath, true)
 		if err != nil {
@@ -179,7 +177,7 @@ func (library *library) getNupkgFileName() (string, error) {
 			return strings.TrimSuffix(fileName, ".sha512"), nil
 		}
 	}
-	return "", errorutils.CheckError(fmt.Errorf("Could not find nupkg file name for: %s", library.Path))
+	return "", errorutils.CheckErrorf("Could not find nupkg file name for: %s", library.Path)
 }
 
 type project struct {

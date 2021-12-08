@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDownloadExtractorsFromOjo(t *testing.T) {
+func TestDownloadExtractorsFromReleases(t *testing.T) {
 	// Set 'JFROG_CLI_DEPENDENCIES_DIR' env var to a temp dir
 	tempDirPath, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
@@ -20,7 +20,7 @@ func TestDownloadExtractorsFromOjo(t *testing.T) {
 	err = os.Setenv(coreutils.DependenciesDir, tempDirPath)
 	assert.NoError(t, err)
 
-	// Make sure the JAR will be downloaded from ojo
+	// Make sure the JAR will be downloaded from releases.jfrog.io
 	err = os.Unsetenv(utils.ExtractorsRemoteEnv)
 	assert.NoError(t, err)
 
@@ -33,4 +33,10 @@ func TestDownloadExtractorsFromOjo(t *testing.T) {
 	assert.FileExists(t, expectedJarPath)
 	expectedClasswordsPath := filepath.Join(dependenciesPath, "classworlds.conf")
 	assert.FileExists(t, expectedClasswordsPath)
+}
+
+func TestGetMavenHomeAndValidateVersion(t *testing.T) {
+	mvnHome, err := getMavenHomeAndValidateVersion()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, mvnHome)
 }

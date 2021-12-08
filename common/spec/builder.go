@@ -21,6 +21,7 @@ type builder struct {
 	excludeArtifacts bool
 	includeDeps      bool
 	bundle           string
+	publicGpgKey     string
 	recursive        bool
 	flat             bool
 	regexp           bool
@@ -122,6 +123,11 @@ func (b *builder) Bundle(bundle string) *builder {
 	return b
 }
 
+func (b *builder) PublicGpgKey(gpgKey string) *builder {
+	b.publicGpgKey = gpgKey
+	return b
+}
+
 func (b *builder) Archive(archive string) *builder {
 	b.archive = archive
 	return b
@@ -184,6 +190,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				Build:            b.build,
 				Project:          b.project,
 				Bundle:           b.bundle,
+				PublicGpgKey:     b.publicGpgKey,
 				Explode:          b.explode,
 				ArchiveEntries:   b.archiveEntries,
 				Archive:          b.archive,

@@ -40,6 +40,7 @@ const (
 	IncludePatterns = "includesPattern"
 	ExcludePatterns = "excludesPattern"
 	RepoLayoutRef   = "repoLayoutRef"
+	ProjectKey      = "projectKey"
 
 	// Mutual local and remote repository configuration JSON keys
 	HandleReleases               = "handleReleases"
@@ -153,6 +154,7 @@ const (
 	Chef      = "chef"
 	Puppet    = "puppet"
 	Vcs       = "vcs"
+	Alpine    = "alpine"
 	Conda     = "conda"
 	P2        = "p2"
 
@@ -221,6 +223,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	IncludePatterns:                   {Text: IncludePatterns},
 	ExcludePatterns:                   {Text: ExcludePatterns},
 	RepoLayoutRef:                     {Text: RepoLayoutRef},
+	ProjectKey:                        {Text: ProjectKey},
 	HandleReleases:                    {Text: HandleReleases},
 	HandleSnapshots:                   {Text: HandleSnapshots},
 	MaxUniqueSnapshots:                {Text: MaxUniqueSnapshots},
@@ -291,7 +294,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 }
 
 var baseLocalRepoConfKeys = []string{
-	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, BlackedOut, XrayIndex,
+	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, BlackedOut, XrayIndex,
 	PropertySets, ArchiveBrowsingEnabled, OptionalIndexCompressionFormats, DownloadRedirect, BlockPushingSchema1,
 }
 
@@ -316,7 +319,7 @@ var dockerLocalRepoConfKeys = []string{
 }
 
 var baseRemoteRepoConfKeys = []string{
-	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, HardFail, Offline,
+	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, HardFail, Offline,
 	BlackedOut, XrayIndex, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
 	MissedRetrievalCachePeriodSecs, UnusedArtifactsCleanupEnabled, UnusedArtifactsCleanupPeriodHours, AssumedOfflinePeriodSecs,
 	ShareConfiguration, SynchronizeProperties, BlockMismatchingMimeTypes, PropertySets, AllowAnyHostAuth, EnableCookieManagement,
@@ -385,7 +388,7 @@ var genericRemoteRepoConfKeys = []string{
 }
 
 var baseVirtualRepoConfKeys = []string{
-	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
+	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
 	DefaultDeploymentRepo,
 }
 
@@ -415,7 +418,7 @@ var goVirtualRepoConfKeys = []string{
 
 var commonPkgTypes = []string{
 	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Yum, Conan,
-	Chef, Puppet, Generic,
+	Chef, Puppet, Alpine, Generic,
 }
 
 var localRepoAdditionalPkgTypes = []string{
@@ -459,6 +462,7 @@ var pkgTypeSuggestsMap = map[string]prompt.Suggest{
 	Vcs:       {Text: Vcs},
 	Conda:     {Text: Conda},
 	P2:        {Text: P2},
+	Alpine:    {Text: Alpine},
 }
 
 func NewRepoTemplateCommand() *RepoTemplateCommand {
@@ -558,6 +562,25 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 	}
 	// We don't need the templateType value in the final configuration
 	delete(iq.AnswersMap, TemplateType)
+	return "", nil
+}
+
+// Repo key must have a prefix of "<projectKey>-". This callback adds the prefix to the repo key if it is missing.
+func projectKeyCallback(iq *utils.InteractiveQuestionnaire, projectKey string) (string, error) {
+	if _, ok := iq.AnswersMap[Key]; !ok {
+		return "", errorutils.CheckErrorf("repository key is missing in configuration map")
+	}
+	requiredProjectPrefix := projectKey + "-"
+	currentRepoKey, ok := iq.AnswersMap[Key].(string)
+	if !ok {
+		return "", errorutils.CheckErrorf("template syntax error: the value for the repository key is not a string type")
+	}
+
+	if !strings.HasPrefix(currentRepoKey, requiredProjectPrefix) {
+		newRepoKey := requiredProjectPrefix + currentRepoKey
+		log.Info("Repository key should start with the projectKey followed by a dash. Modifying repo key to: '" + newRepoKey + "'.")
+		iq.AnswersMap[Key] = newRepoKey
+	}
 	return "", nil
 }
 
@@ -761,6 +784,12 @@ var questionMap = map[string]utils.QuestionInfo{
 		},
 		AllowVars: true,
 		Writer:    utils.WriteStringAnswer,
+	},
+	ProjectKey: {
+		Options:   nil,
+		AllowVars: false,
+		Writer:    utils.WriteStringAnswer,
+		Callback:  projectKeyCallback,
 	},
 	HandleReleases:               BoolToStringQuestionInfo,
 	HandleSnapshots:              BoolToStringQuestionInfo,

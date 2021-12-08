@@ -1,12 +1,9 @@
 package buildinfo
 
 import (
-	"os"
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -25,18 +22,24 @@ func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *ut
 
 func (bcec *BuildCollectEnvCommand) Run() error {
 	log.Info("Collecting environment variables...")
-	err := utils.SaveBuildGeneralDetails(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project)
+	buildInfoService := utils.CreateBuildInfoService()
+	buildName, err := bcec.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Env = getEnvVariables()
-	}
-	err = utils.SavePartialBuildInfo(bcec.buildConfiguration.BuildName, bcec.buildConfiguration.BuildNumber, bcec.buildConfiguration.Project, populateFunc)
+	buildNumber, err := bcec.buildConfiguration.GetBuildNumber()
 	if err != nil {
 		return err
 	}
-	log.Info("Collected environment variables for", bcec.buildConfiguration.BuildName+"/"+bcec.buildConfiguration.BuildNumber+".")
+	build, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, bcec.buildConfiguration.GetProject())
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	err = build.CollectEnv()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Info("Collected environment variables for", buildName+"/"+buildNumber+".")
 	return nil
 }
 
@@ -47,15 +50,4 @@ func (bcec *BuildCollectEnvCommand) ServerDetails() (*config.ServerDetails, erro
 
 func (bcec *BuildCollectEnvCommand) CommandName() string {
 	return "rt_build_collect_env"
-}
-
-func getEnvVariables() buildinfo.Env {
-	m := make(map[string]string)
-	for _, e := range os.Environ() {
-		pair := strings.Split(e, "=")
-		if len(pair[0]) != 0 {
-			m["buildInfo.env."+pair[0]] = pair[1]
-		}
-	}
-	return m
 }

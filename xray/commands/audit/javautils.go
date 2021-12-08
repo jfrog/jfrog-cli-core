@@ -1,19 +1,13 @@
 package audit
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
+
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -22,24 +16,37 @@ const (
 )
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
-	buildConfiguration := &artifactoryUtils.BuildConfiguration{
-		BuildName:   buildName,
-		BuildNumber: strconv.FormatInt(time.Now().Unix(), 10),
-	}
+	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
 	return buildConfiguration, func(err error) {
-		err = artifactoryUtils.RemoveBuildDir(buildConfiguration.BuildName, buildConfiguration.BuildNumber, buildConfiguration.Project)
+		buildName, err := buildConfiguration.GetBuildName()
+		if err != nil {
+			return
+		}
+		buildNumber, err := buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return
+		}
+		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
 func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*services.GraphNode, error) {
-	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildConfig.BuildName, buildConfig.BuildNumber, buildConfig.Project)
+	buildName, err := buildConfig.GetBuildName()
+	if err != nil {
+		return nil, err
+	}
+	buildNumber, err := buildConfig.GetBuildNumber()
+	if err != nil {
+		return nil, err
+	}
+	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildNumber, buildConfig.GetProject())
 	if err != nil {
 		return nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckError(errors.New("Couldn't find build " + buildConfig.BuildName + "/" + buildConfig.BuildNumber))
+		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
 	}
 	modules := []*services.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {
@@ -49,66 +56,6 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func runScanGraph(modulesDependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails, includeVulnerabilities bool, includeLicenses bool, targetRepoPath, projectKey string, watches []string, outputFormat OutputFormat) error {
-	xrayManager, err := commands.CreateXrayServiceManager(serverDetails)
-	if err != nil {
-		return err
-	}
-
-	var violations []services.Violation
-	var vulnerabilities []services.Vulnerability
-	var licenses []services.License
-	var results []services.ScanResponse
-	for _, moduleDependencyTree := range modulesDependencyTrees {
-		params := &services.XrayGraphScanParams{
-			Graph:      moduleDependencyTree,
-			RepoPath:   targetRepoPath,
-			Watches:    watches,
-			ProjectKey: projectKey,
-		}
-
-		// Print the module ID
-		log.Info("Scanning module " + moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:] + "...")
-
-		// Scan and wait for results
-		scanId, err := xrayManager.ScanGraph(*params)
-		if err != nil {
-			return err
-		}
-		scanResults, err := xrayManager.GetScanGraphResults(scanId, includeVulnerabilities, includeLicenses)
-		if err != nil {
-			return err
-		}
-		results = append(results, *scanResults)
-
-		if outputFormat == Table {
-			violations = append(violations, scanResults.Violations...)
-			vulnerabilities = append(vulnerabilities, scanResults.Vulnerabilities...)
-			licenses = append(licenses, scanResults.Licenses...)
-		}
-	}
-	if outputFormat == Table {
-		if len(results) > 0 {
-			resultsPath, err := xrutils.WriteJsonResults(results)
-			if err != nil {
-				return err
-			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
-		}
-		if includeVulnerabilities {
-			xrutils.PrintVulnerabilitiesTable(vulnerabilities, false)
-		} else {
-			err = xrutils.PrintViolationsTable(violations, false)
-		}
-		if includeLicenses {
-			xrutils.PrintLicensesTable(licenses, false)
-		}
-	} else {
-		err = xrutils.PrintJson(results)
-	}
-	return err
-}
-
 func addModuleTree(module buildinfo.Module) *services.GraphNode {
 	moduleTree := &services.GraphNode{
 		Id: GavPackageTypeIdentifier + module.Id,
@@ -116,7 +63,7 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 
 	directDependencies := make(map[string]buildinfo.Dependency)
 	parentToChildren := newDependencyMultimap()
-	for _, dependency := range module.Dependencies {
+	for index, dependency := range module.Dependencies {
 		requestedBy := dependency.RequestedBy
 		if isDirectDependency(module.Id, requestedBy) {
 			// If no parents at all or the direct parent is the module, assume dependency is a direct
@@ -125,12 +72,13 @@ func addModuleTree(module buildinfo.Module) *services.GraphNode {
 		}
 
 		for _, parent := range requestedBy {
-			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &dependency)
+			// we use '&module.Dependencies[index]' to avoid reusing the &dependency pointer
+			parentToChildren.putChild(GavPackageTypeIdentifier+parent[0], &module.Dependencies[index])
 		}
 	}
 
 	for _, directDependency := range directDependencies {
-		populateTransitiveDependencies(moduleTree, &directDependency, parentToChildren, []string{})
+		populateTransitiveDependencies(moduleTree, directDependency.Id, parentToChildren, []string{})
 	}
 	return moduleTree
 }
@@ -149,18 +97,18 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *services.GraphNode, dependency *buildinfo.Dependency, parentToChildren *dependencyMultimap, idsAdded []string) {
-	if hasLoop(idsAdded, dependency.Id) {
+func populateTransitiveDependencies(parent *services.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
+	if hasLoop(idsAdded, dependencyId) {
 		return
 	}
-	idsAdded = append(idsAdded, dependency.Id)
+	idsAdded = append(idsAdded, dependencyId)
 	node := &services.GraphNode{
-		Id:    GavPackageTypeIdentifier + dependency.Id,
+		Id:    GavPackageTypeIdentifier + dependencyId,
 		Nodes: []*services.GraphNode{},
 	}
 	parent.Nodes = append(parent.Nodes, node)
 	for _, child := range parentToChildren.getChildren(node.Id) {
-		populateTransitiveDependencies(node, child, parentToChildren, idsAdded)
+		populateTransitiveDependencies(node, child.Id, parentToChildren, idsAdded)
 	}
 }
 

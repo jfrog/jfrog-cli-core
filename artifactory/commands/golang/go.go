@@ -3,21 +3,23 @@ package golang
 import (
 	"errors"
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
+	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/gocmd"
 	"github.com/jfrog/gocmd/cmd"
 	executors "github.com/jfrog/gocmd/executers/utils"
 	"github.com/jfrog/gocmd/params"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/golang/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 type GoCommand struct {
@@ -26,6 +28,7 @@ type GoCommand struct {
 	deployerParams     *utils.RepositoryConfig
 	resolverParams     *utils.RepositoryConfig
 	configFilePath     string
+	noFallback         bool
 }
 
 func NewGoCommand() *GoCommand {
@@ -106,22 +109,54 @@ func (gc *GoCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return gc.run()
-}
 
-func (gc *GoCommand) run() error {
-	err := golang.LogGoVersion()
+	// Extract no-fallback flag from the args.
+	gc.goArg, err = gc.extractNoFallbackFromArgs()
 	if err != nil {
 		return err
 	}
-	buildName := gc.buildConfiguration.BuildName
-	buildNumber := gc.buildConfiguration.BuildNumber
-	projectKey := gc.buildConfiguration.Project
-	isCollectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
-	if isCollectBuildInfo {
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
+	return gc.run()
+}
+
+func (gc *GoCommand) extractNoFallbackFromArgs() (cleanArgs []string, err error) {
+	var flagIndex int
+	cleanArgs = append([]string(nil), gc.goArg...)
+
+	// Extract no-fallback boolean flag from the args.
+	flagIndex, gc.noFallback, err = coreutils.FindBooleanFlag("--no-fallback", cleanArgs)
+	if err != nil {
+		return
+	}
+
+	coreutils.RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
+}
+
+func (gc *GoCommand) run() error {
+	err := goutils.LogGoVersion()
+	if err != nil {
+		return err
+	}
+
+	var goBuild *build.Build
+	toCollect, err := gc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if toCollect {
+		buildName, err := gc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
+		}
+		buildNumber, err := gc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		projectKey := gc.buildConfiguration.GetProject()
+		buildInfoService := utils.CreateBuildInfoService()
+		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
+		if err != nil {
+			return errorutils.CheckError(err)
 		}
 	}
 
@@ -141,18 +176,16 @@ func (gc *GoCommand) run() error {
 		return err
 	}
 
-	var targetRepo string
-
-	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo())
+	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.noFallback)
 	if err != nil {
-		return err
+		return coreutils.ConvertExitCodeError(err)
 	}
-	if isCollectBuildInfo {
+	if toCollect {
 		tempDirPath := ""
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
 				// Package name was not supplied. Invalid go get commend
-				return errorutils.CheckError(errors.New("Invalid get command. Package name is missing"))
+				return errorutils.CheckErrorf("Invalid get command. Package name is missing")
 			}
 			tempDirPath, err = fileutils.CreateTempDir()
 			if err != nil {
@@ -165,19 +198,14 @@ func (gc *GoCommand) run() error {
 				return err
 			}
 		}
-		goProject, err := project.Load("-", tempDirPath)
+		goModule, err := goBuild.AddGoModule(tempDirPath)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
-		err = goProject.LoadDependencies()
-		if err != nil {
-			return err
+		if gc.buildConfiguration.GetModule() != "" {
+			goModule.SetName(gc.buildConfiguration.GetModule())
 		}
-		err = goProject.CreateBuildInfoDependencies()
-		if err != nil {
-			return err
-		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, projectKey, goProject.BuildInfo(false, gc.buildConfiguration.Module, targetRepo))
+		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 
 	return err

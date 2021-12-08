@@ -1,14 +1,15 @@
 package buildinfo
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -37,7 +38,15 @@ func (bac *BuildAppendCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (bac *BuildAppendCommand) Run() error {
 	log.Info("Running Build Append command...")
-	if err := utils.SaveBuildGeneralDetails(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project); err != nil {
+	buildName, err := bac.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := bac.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 
@@ -62,9 +71,9 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(bac.buildConfiguration.BuildName, bac.buildConfiguration.BuildNumber, bac.buildConfiguration.Project, populateFunc)
+	err = utils.SavePartialBuildInfo(buildName, buildNumber, bac.buildConfiguration.GetProject(), populateFunc)
 	if err == nil {
-		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", bac.buildConfiguration.BuildName+"/"+bac.buildConfiguration.BuildNumber)
+		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", buildName+"/"+buildNumber)
 	}
 	return err
 }
@@ -99,13 +108,17 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 	}
 
 	// Get published build-info from Artifactory.
-	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend}
+	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend, ProjectKey: bac.buildConfiguration.GetProject()}
 	buildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return 0, err
 	}
+	buildString := fmt.Sprintf("Build %s/%s", bac.buildNameToAppend, bac.buildNumberToAppend)
+	if bac.buildConfiguration.GetProject() != "" {
+		buildString = buildString + " of project: " + bac.buildConfiguration.GetProject()
+	}
 	if !found {
-		return 0, errorutils.CheckError(errors.New("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + " not found in Artifactory."))
+		return 0, errorutils.CheckErrorf(buildString + " not found in Artifactory.")
 	}
 
 	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfo.BuildInfo.Started)
@@ -115,7 +128,7 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 
 	// Convert from nanoseconds to milliseconds
 	timestamp := buildTime.UnixNano() / 1000000
-	log.Debug("Build " + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + ". Started: " + buildInfo.BuildInfo.Started + ". Calculated timestamp: " + strconv.FormatInt(timestamp, 10))
+	log.Debug(buildString + ". Started: " + buildInfo.BuildInfo.Started + ". Calculated timestamp: " + strconv.FormatInt(timestamp, 10))
 
 	return timestamp, err
 }
@@ -129,8 +142,8 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.Ch
 	}
 
 	buildInfoRepo := "artifactory-build-info"
-	if bac.buildConfiguration.Project != "" {
-		buildInfoRepo = bac.buildConfiguration.Project + "-build-info"
+	if bac.buildConfiguration.GetProject() != "" {
+		buildInfoRepo = bac.buildConfiguration.GetProject() + "-build-info"
 	}
 	buildInfoPath := serviceDetails.GetUrl() + buildInfoRepo + "/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())

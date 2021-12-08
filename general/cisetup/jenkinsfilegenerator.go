@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 const JenkinsfileName = "Jenkinsfile"
@@ -97,7 +98,7 @@ func (jg *JenkinsfileGenerator) Generate() (jenkinsfileBytes []byte, jenkinsfile
 	}
 	var envSet string
 	// Set the M2_HOME env variable if maven is used.
-	if jg.SetupData.BuiltTechnology.Type == Maven {
+	if jg.SetupData.BuiltTechnology.Type == coreutils.Maven {
 		envSet = m2HomeSet
 	}
 	return []byte(fmt.Sprintf(jenkinsfileTemplate, envSet, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url, ConfigServerId, serviceDetails.Url, buildToolsConfigCommands, jg.SetupData.RepositoryName, buildCommand, ConfigServerId)), JenkinsfileName, nil

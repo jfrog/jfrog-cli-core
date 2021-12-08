@@ -16,7 +16,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditGradleCommand()
+	auditCmd := NewEmptyAuditGradleCommand()
 	auditCmd.useWrapper = true
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	assert.NoError(t, err)
@@ -25,10 +25,9 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Check module
 	module := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 	assert.Len(t, module.Nodes, 7)
-	assert.NotNil(t, getModule(t, module.Nodes, "junit:junit:4.11"))
 
 	// Check direct dependency
-	directDependency := getAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")
+	directDependency := getAndAssertNode(t, module.Nodes, "junit:junit:4.11")
 	assert.Len(t, directDependency.Nodes, 1)
 
 	// Check transitive dependency
@@ -43,7 +42,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditGradleCommand()
+	auditCmd := NewEmptyAuditGradleCommand()
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
 	assert.NoError(t, err)
 	assert.Len(t, modulesDependencyTrees, 3)
@@ -57,7 +56,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.Len(t, directDependency.Nodes, 1)
 
 	// Check transitive dependency
-	getAndAssertNode(t, directDependency.Nodes, "junit:junit:4.7")
+	getAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 }
 
 func TestGradleTreesExcludeTestDeps(t *testing.T) {
@@ -68,7 +67,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewAuditGradleCommand()
+	auditCmd := NewEmptyAuditGradleCommand()
 	auditCmd.useWrapper = true
 	auditCmd.excludeTestDeps = true
 	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
@@ -78,7 +77,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Check module
 	module := getAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 	assert.Len(t, module.Nodes, 6)
-	assert.Nil(t, getModule(t, module.Nodes, "junit:junit:4.11"))
+	assert.Nil(t, getModule(module.Nodes, "junit:junit:4.11"))
 
 	// Check direct dependency
 	directDependency := getAndAssertNode(t, module.Nodes, "org.apache.wicket:wicket:1.3.7")

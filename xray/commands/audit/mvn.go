@@ -64,6 +64,6 @@ func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfigu
 	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
 }
 
-func (na *AuditMavenCommand) CommandName() string {
+func (auditCmd *AuditMavenCommand) CommandName() string {
 	return "xr_audit_mvn"
 }

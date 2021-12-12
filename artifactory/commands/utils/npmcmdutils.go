@@ -166,7 +166,12 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	if err != nil {
 		return
 	}
-	defer stream.Close()
+	defer func() {
+		e := stream.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	var result []byte
 	result, err = ioutil.ReadAll(stream)
 	if err != nil {

@@ -35,7 +35,11 @@ func PrintSearchResults(reader *content.ContentReader) error {
 		if length == 1 {
 			suffix = ""
 		}
-		printSearchResult(*searchResult, suffix)
+		err = printSearchResult(*searchResult, suffix)
+		if length == 0 {
+			log.Output("[]")
+			return err
+		}
 		length--
 	}
 	log.Output("]")

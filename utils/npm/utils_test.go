@@ -34,7 +34,7 @@ func TestParseDependencies(t *testing.T) {
 		{"shopify-liquid:1.d7.9", [][]string{{"xpm:0.1.1", "@jfrog/npm_scoped:1.0.0", "root"}}},
 	}
 	dependencies := make(map[string]*Dependency)
-	err = parseDependencies([]byte(dependenciesJsonList), "myScope", []string{"root"}, &dependencies)
+	err = parseDependencies(dependenciesJsonList, "myScope", []string{"root"}, &dependencies)
 	if err != nil {
 		t.Error(err)
 	}

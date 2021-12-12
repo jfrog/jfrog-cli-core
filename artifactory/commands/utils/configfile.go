@@ -209,7 +209,10 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	f.Close()
+	err = f.Close()
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
 	// The file will be written at the end of successful configuration command.
 	return errorutils.CheckError(os.Remove(configFilePath))
 }

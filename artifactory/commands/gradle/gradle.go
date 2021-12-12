@@ -55,7 +55,10 @@ func (gc *GradleCommand) Run() error {
 		}
 		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
-		tempFile.Close()
+		err = tempFile.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	err := gradleutils.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
@@ -88,7 +91,10 @@ func (gc *GradleCommand) unmarshalDeployableArtifacts(filesPath string) error {
 // violation.
 func (gc *GradleCommand) conditionalUpload() error {
 	// Initialize the server details (from config) if it hasn't been initialized yet.
-	gc.ServerDetails()
+	_, err := gc.ServerDetails()
+	if err != nil {
+		return err
+	}
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(gc.result, gc.serverDetails, gc.threads, gc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)

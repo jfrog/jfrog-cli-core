@@ -85,8 +85,7 @@ func (pic *PipInstallCommand) collectBuildInfo(pythonExecutablePath string, depe
 	if err != nil {
 		return err
 	}
-	pic.saveBuildInfo(allDependencies)
-	return nil
+	return pic.saveBuildInfo(allDependencies)
 }
 
 // Convert dependencyToFileMap to Dependencies map.
@@ -121,8 +120,7 @@ func (pic *PipInstallCommand) saveBuildInfo(allDependencies map[string]*buildinf
 	if err != nil {
 		return err
 	}
-	utils.SaveBuildInfo(buildName, buildNumber, pic.buildConfiguration.GetProject(), buildInfo)
-	return nil
+	return utils.SaveBuildInfo(buildName, buildNumber, pic.buildConfiguration.GetProject(), buildInfo)
 }
 
 func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) error {

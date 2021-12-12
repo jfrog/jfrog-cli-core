@@ -136,7 +136,7 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 
 func readMasterKeyFromConsole() (string, error) {
 	print("Please enter the master key: ")
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := terminal.ReadPassword(syscall.Stdin)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

@@ -53,7 +53,10 @@ func NewEnvSetupCommand(url string) *EnvSetupCommand {
 func (ftc *EnvSetupCommand) Run() (err error) {
 	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
 	time.Sleep(5 * time.Second)
-	browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
+	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
+	if err != nil {
+		return
+	}
 	server, err := ftc.getNewServerDetails()
 	if err != nil {
 		return

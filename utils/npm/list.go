@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	coreutils "github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )

@@ -37,7 +37,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 
 func ScanPasswordFromConsole(message string) (string, error) {
 	print(message)
-	bytePassword, err := terminal.ReadPassword(syscall.Stdin)
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

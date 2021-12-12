@@ -2,8 +2,8 @@ package common
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/urfave/cli"
 )
 
 func CreateUsage(command string, name string, commands []string) string {

@@ -3,6 +3,7 @@ package dependencies
 import (
 	"errors"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,20 +12,15 @@ import (
 
 func TestDependenciesCache(t *testing.T) {
 	// Change test's work directory, rollback after function returns.
-	wd, _ := os.Getwd()
+
 	tmpTestPath := filepath.Join(os.TempDir(), "cacheTest")
 	err := os.MkdirAll(tmpTestPath, os.ModePerm)
 	if err != nil {
 		t.Error("Failed mkDirAll: " + err.Error())
 	}
-	err = os.Chdir(tmpTestPath)
-	if err != nil {
-		t.Error("Failed Chdir: " + err.Error())
-	}
-	defer func() {
-		os.RemoveAll(tmpTestPath)
-		os.Chdir(wd)
-	}()
+	chdirCallback := testsutils.ChangeDirWithCallback(t, tmpTestPath)
+	defer chdirCallback()
+	defer testsutils.RemoveAllAndAssert(t, tmpTestPath)
 
 	cacheMap := make(map[string]*buildinfo.Dependency)
 	csA := buildinfo.Checksum{Sha1: "sha1A", Md5: "md5A"}

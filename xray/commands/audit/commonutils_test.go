@@ -1,7 +1,7 @@
 package audit
 
 import (
-	"os"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,17 +12,13 @@ import (
 )
 
 func createTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
-	cwd, err := os.Getwd()
+	tempDirPath, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	err := fileutils.CopyDir(filepath.Join("..", "testdata", sourceDir), tempDirPath, true, nil)
 	assert.NoError(t, err)
-	tempDirPath, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	err = fileutils.CopyDir(filepath.Join("..", "testdata", sourceDir), tempDirPath, true, nil)
-	assert.NoError(t, err)
-	err = os.Chdir(tempDirPath)
-	assert.NoError(t, err)
+	chdirCallback := testsutils.ChangeDirWithCallback(t, tempDirPath)
 	return tempDirPath, func() {
-		assert.NoError(t, os.Chdir(cwd))
-		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath))
+		chdirCallback()
+		createTempDirCallback()
 	}
 }
 

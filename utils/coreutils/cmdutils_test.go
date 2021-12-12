@@ -1,8 +1,8 @@
 package coreutils
 
 import (
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
-	"os"
 	"reflect"
 	"testing"
 )
@@ -193,8 +193,8 @@ func TestParseArgs(t *testing.T) {
 	want = []string{`-f a\b\pom.xml`}
 	got, _ = ParseArgs([]string{`"-f a\b\pom.xml"`})
 	assert.EqualValues(t, got, want)
-	os.Setenv("JFROGPARSETEST", "jfrog")
-	defer os.Unsetenv("JFROGPARSETEST")
+	setEnvCallback := testsutils.SetEnvWithCallbackAndAssert(t, "JFROGPARSETEST", "jfrog")
+	defer setEnvCallback()
 
 	// Check env variable parse
 	want = []string{`--build-name=jfrog`}

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"os"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -11,7 +11,6 @@ import (
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var timestamp = strconv.FormatInt(time.Now().Unix(), 10)
@@ -29,22 +28,15 @@ func TestGetBuildName(t *testing.T) {
 	defer func() { coreutils.BuildName = oldBuildName }()
 
 	// Create build config in temp folder.
-	tmpDir, err := fileutils.CreateTempDir()
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}()
+	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
-	wdCopy, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(tmpDir))
-	defer func() {
-		assert.NoError(t, os.Chdir(wdCopy))
-	}()
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	defer chdirCallBack()
 
 	buildConfig := NewBuildConfiguration(buildName, "buildNumber", "module", "project")
 	for i := 0; i < 2; i++ {
@@ -56,7 +48,7 @@ func TestGetBuildName(t *testing.T) {
 		// Set build name // Set build name using env var.
 		// We're now making suer that these env vars aren't affecting the build name and number,
 		// because they should still be read from the params.using env var.
-		os.Setenv(coreutils.BuildName, buildNameEnv)
+		testsutils.SetEnvAndAssert(t, coreutils.BuildName, buildNameEnv)
 	}
 
 	// Validate build name form env var (second priority).
@@ -64,7 +56,7 @@ func TestGetBuildName(t *testing.T) {
 	actualBuildName, err := buildConfig.GetBuildName()
 	assert.NoError(t, err)
 	assert.Equal(t, actualBuildName, buildNameEnv)
-	assert.NoError(t, os.Unsetenv(coreutils.BuildName))
+	testsutils.UnSetEnvAndAssert(t, coreutils.BuildName)
 
 	// Validate build name form config file (third priority).
 	buildConfig.SetBuildName("")
@@ -79,22 +71,15 @@ func TestGetBuildNumber(t *testing.T) {
 	const buildNumberFromFile = artclientutils.LatestBuildNumberKey
 
 	// Create build config in temp folder.
-	tmpDir, err := fileutils.CreateTempDir()
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}()
+	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
-	wdCopy, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(tmpDir))
-	defer func() {
-		assert.NoError(t, os.Chdir(wdCopy))
-	}()
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	defer chdirCallBack()
 
 	// Setup global build number env var.
 	// Make sure other parallel tests won't be affected.
@@ -110,7 +95,7 @@ func TestGetBuildNumber(t *testing.T) {
 		assert.Equal(t, actualBuildNumber, buildNumber)
 
 		// Set build number using env var.
-		os.Setenv(coreutils.BuildNumber, buildNumberEnv)
+		testsutils.SetEnvAndAssert(t, coreutils.BuildNumber, buildNumberEnv)
 	}
 
 	// Validate build number form env var (second priority).
@@ -118,7 +103,7 @@ func TestGetBuildNumber(t *testing.T) {
 	actualBuildNumber, err := buildConfig.GetBuildNumber()
 	assert.NoError(t, err)
 	assert.Equal(t, actualBuildNumber, buildNumberEnv)
-	assert.NoError(t, os.Unsetenv(coreutils.BuildNumber))
+	testsutils.UnSetEnvAndAssert(t, coreutils.BuildNumber)
 
 	// Validate build number form file (third priority).
 	buildConfig.SetBuildNumber("")
@@ -143,14 +128,14 @@ func TestGetProject(t *testing.T) {
 		assert.Equal(t, actualProject, project)
 
 		// Set project using env var.
-		os.Setenv(coreutils.Project, projectEnv)
+		testsutils.SetEnvAndAssert(t, coreutils.Project, projectEnv)
 	}
 
 	// Validate project form env var (second priority).
 	buildConfig.SetProject("")
 	actualProject := buildConfig.GetProject()
 	assert.Equal(t, actualProject, projectEnv)
-	assert.NoError(t, os.Unsetenv(coreutils.Project))
+	testsutils.UnSetEnvAndAssert(t, coreutils.Project)
 }
 
 func TestIsCollectBuildInfo(t *testing.T) {
@@ -178,11 +163,8 @@ func TestIsCollectBuildInfo(t *testing.T) {
 
 func TestIsLoadedFromConfigFile(t *testing.T) {
 	// Create build config in temp folder.
-	tmpDir, err := fileutils.CreateTempDir()
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}()
+	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
 	buildConfig := NewBuildConfiguration("", "", "", "")
 	assert.False(t, buildConfig.IsLoadedFromConfigFile())
 	buildConfig.SetBuildName("a")
@@ -199,12 +181,8 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
-	wdCopy, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(tmpDir))
-	defer func() {
-		assert.NoError(t, os.Chdir(wdCopy))
-	}()
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	defer chdirCallBack()
 	buildName, err := buildConfig.GetBuildName()
 	assert.NoError(t, err)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())

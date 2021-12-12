@@ -1,6 +1,7 @@
 package utils
 
 import (
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,7 +23,7 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
 	// Delete DeployableArtifacts tempDir
-	defer os.Remove(filepath.Dir(tempDeployableArtifacts))
+	defer testsutils.RemoveAndAssert(t, filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")
 	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile, false)
 	assert.NoError(t, err)
@@ -51,7 +52,10 @@ func createTempDeployableArtifactFile() (filePath string, err error) {
 	if err != nil {
 		return
 	}
-	fileutils.CopyFile(tmpDir, summary.Name())
+	err = fileutils.CopyFile(tmpDir, summary.Name())
+	if err != nil {
+		return
+	}
 	filePath = filepath.Join(tmpDir, "artifacts")
 	return
 }

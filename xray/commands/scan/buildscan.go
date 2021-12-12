@@ -93,7 +93,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	}
 	defer func() {
 		if failBuild {
-			// deferred so if build summery fails, it will still return a fail build error if needed
+			// deferred so if build summary fails, it will still return a fail build error if needed
 			if err != nil {
 				log.Error(err)
 			}
@@ -102,7 +102,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	}()
 
 	if bsc.includeVulnerabilities {
-		// if vulnerabilities flag is true, get vulnerabilities from xray with build-summery and print to output
+		// if vulnerabilities flag is true, get vulnerabilities from xray with build-summary and print to output
 		log.Info("Getting the build-summary from Xray...")
 		err = bsc.runBuildSummaryAndPrintResults(xrayManager, params)
 		if err != nil {
@@ -150,24 +150,24 @@ func convertIssuesToVulnerabilities(issues []services.Issue, params services.Xra
 	return vulnerabilities
 }
 
-func getCvesField(summeryCves []services.SummeryCve) []services.Cve {
-	// The build-summery API response includes both the score and the vector. We're taking the score only
+func getCvesField(summaryCves []services.SummeryCve) []services.Cve {
+	// The build-summary API response includes both the score and the vector. We're taking the score only
 	// Example: "4.0/CVSS:2.0/AV:N/AC:L/Au:S/C:N/I:N/A:P"  >> "4.0"
 	var cves []services.Cve
-	for _, summeryCve := range summeryCves {
+	for _, summaryCve := range summaryCves {
 		cve := services.Cve{
-			Id:          summeryCve.Id,
-			CvssV2Score: strings.Split(summeryCve.CvssV2Score, "/")[0],
-			CvssV3Score: strings.Split(summeryCve.CvssV3Score, "/")[0],
+			Id:          summaryCve.Id,
+			CvssV2Score: strings.Split(summaryCve.CvssV2Score, "/")[0],
+			CvssV3Score: strings.Split(summaryCve.CvssV3Score, "/")[0],
 		}
 		cves = append(cves, cve)
 	}
 	return cves
 }
 
-func getComponentsField(summeryComponents []services.SummeryComponent, impactPaths []string, buildName string) map[string]services.Component {
+func getComponentsField(summaryComponents []services.SummeryComponent, impactPaths []string, buildName string) map[string]services.Component {
 	components := map[string]services.Component{}
-	for _, component := range summeryComponents {
+	for _, component := range summaryComponents {
 		componentImpactPaths := getComponentImpactPaths(component.ComponentId, buildName, impactPaths)
 		if len(componentImpactPaths) > 0 {
 			components[component.ComponentId] = services.Component{

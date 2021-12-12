@@ -3,9 +3,9 @@ package components
 import (
 	"errors"
 	"fmt"
-	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/urfave/cli"
 	"strings"
 )
 

@@ -3,12 +3,15 @@ package audit
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"strings"
 )
 
 type AuditCommand struct {
@@ -66,12 +69,7 @@ func (auditCmd *AuditCommand) SetIncludeLicenses(include bool) *AuditCommand {
 
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
 	var results []services.ScanResponse
-	params := services.XrayGraphScanParams{
-		RepoPath:   auditCmd.targetRepoPath,
-		Watches:    auditCmd.watches,
-		ProjectKey: auditCmd.projectKey,
-		ScanType:   services.Dependency,
-	}
+	params := auditCmd.createXrayGraphScanParams()
 	// Get Xray version
 	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(auditCmd.serverDetails)
 	if err != nil {
@@ -106,4 +104,18 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	}
 
 	return nil
+}
+
+func (auditCmd *AuditCommand) createXrayGraphScanParams() services.XrayGraphScanParams {
+	params := services.XrayGraphScanParams{
+		RepoPath: auditCmd.targetRepoPath,
+		Watches:  auditCmd.watches,
+		ScanType: services.Dependency,
+	}
+	if auditCmd.projectKey == "" {
+		params.ProjectKey = os.Getenv(coreutils.Project)
+	} else {
+		params.ProjectKey = auditCmd.projectKey
+	}
+	return params
 }

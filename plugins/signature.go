@@ -2,10 +2,10 @@ package plugins
 
 import (
 	"encoding/json"
-	"github.com/codegangsta/cli"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/urfave/cli"
 )
 
 const SignatureCommandName = "hidden-plugin-signature"

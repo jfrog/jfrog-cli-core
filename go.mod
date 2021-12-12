@@ -6,7 +6,6 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/codegangsta/cli v1.20.0
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.4.2
 	github.com/jedib0t/go-pretty/v6 v6.2.2
@@ -20,6 +19,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
+	github.com/urfave/cli v1.22.5
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/mod v0.4.2
 	gopkg.in/yaml.v2 v2.4.0
@@ -30,6 +30,7 @@ exclude (
 	github.com/miekg/dns v1.0.14
 	github.com/pkg/sftp v1.10.1
 )
+
 
 replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.6.6-0.20211212101841-a9f989ada3a4
 

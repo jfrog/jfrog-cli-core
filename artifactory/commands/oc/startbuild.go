@@ -215,7 +215,9 @@ func getOcVersion(executablePath string) (string, error) {
 	cmdArgs := []string{"version", "-o=json"}
 	outputBytes, err := exec.Command(executablePath, cmdArgs...).Output()
 	if err != nil {
-		return "", errorutils.CheckError(convertExitError(err))
+		// If an error occurred, maybe it's because the '-o' flag is not supported in OpenShift CLI v3 and below.
+		// Try executing this command without this flag.
+		return getOldOcVersion(executablePath)
 	}
 	var versionRes ocVersionResponse
 	err = json.Unmarshal(outputBytes, &versionRes)
@@ -224,6 +226,26 @@ func getOcVersion(executablePath string) (string, error) {
 	}
 
 	return versionRes.ClientVersion.GitVersion, nil
+}
+
+// Running 'oc version' without the '-o=json' flag that is not supported in OpenShift CLI v3 and below.
+func getOldOcVersion(executablePath string) (string, error) {
+	outputBytes, err := exec.Command(executablePath, "version").Output()
+	if err != nil {
+		return "", errorutils.CheckError(convertExitError(err))
+	}
+	// In OpenShift CLI v3 the output of 'oc version' looks like this:
+	// oc v3.0.0
+	// kubernetes v1.11.0
+	// [...]
+	// Get the first line of the output
+	scanner := bufio.NewScanner(strings.NewReader(string(outputBytes)))
+	scanner.Scan()
+	firstLine := scanner.Text()
+	if !strings.HasPrefix(firstLine, "oc v") {
+		return "", errorutils.CheckErrorf("Could not parse OpenShift CLI version. JFrog CLI oc start-build command requires OpenShift CLI version " + minSupportedOcVersion + " or higher.")
+	}
+	return strings.TrimPrefix(firstLine, "oc "), nil
 }
 
 func convertExitError(err error) error {

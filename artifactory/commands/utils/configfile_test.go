@@ -25,7 +25,9 @@ func init() {
 func TestGoConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer fileutils.RemoveTempDirAndAssert(t, tempDirPath)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	}()
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")

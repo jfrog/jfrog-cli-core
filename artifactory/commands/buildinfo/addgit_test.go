@@ -10,7 +10,6 @@ import (
 	"time"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +53,7 @@ func runTest(t *testing.T, originalDir string) {
 
 func TestBuildAddGitSubmodules(t *testing.T) {
 	var projectPath string
-	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	projectPath = testsutils.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"), tmpDir)
 
@@ -299,7 +298,8 @@ func TestServerDetailsFromConfigFile(t *testing.T) {
 
 	homeEnv := os.Getenv(coreutils.HomeDir)
 	defer testsutils.SetEnvAndAssert(t, coreutils.HomeDir, homeEnv)
-	baseDir := testsutils.GetwdAndAssert(t)
+	baseDir, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
 	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 	configFilePath := filepath.Join("..", "testdata", "buildissues", "issuesconfig_success.yaml")
 	config := BuildAddGitCommand{
@@ -325,7 +325,8 @@ func TestServerDetailsWithoutConfigFile(t *testing.T) {
 	homeEnv := os.Getenv(coreutils.HomeDir)
 	defer testsutils.SetEnvAndAssert(t, coreutils.HomeDir, homeEnv)
 
-	baseDir := testsutils.GetwdAndAssert(t)
+	baseDir, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
 	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 
 	config := BuildAddGitCommand{}

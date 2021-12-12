@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -28,14 +30,16 @@ func TestGetBuildName(t *testing.T) {
 	defer func() { coreutils.BuildName = oldBuildName }()
 
 	// Create build config in temp folder.
-	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
-	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, wd, tmpDir)
 	defer chdirCallBack()
 
 	buildConfig := NewBuildConfiguration(buildName, "buildNumber", "module", "project")
@@ -71,14 +75,16 @@ func TestGetBuildNumber(t *testing.T) {
 	const buildNumberFromFile = artclientutils.LatestBuildNumberKey
 
 	// Create build config in temp folder.
-	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
-	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, wd, tmpDir)
 	defer chdirCallBack()
 
 	// Setup global build number env var.
@@ -163,7 +169,7 @@ func TestIsCollectBuildInfo(t *testing.T) {
 
 func TestIsLoadedFromConfigFile(t *testing.T) {
 	// Create build config in temp folder.
-	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	buildConfig := NewBuildConfiguration("", "", "", "")
 	assert.False(t, buildConfig.IsLoadedFromConfigFile())
@@ -181,7 +187,9 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
-	chdirCallBack := testsutils.ChangeDirWithCallback(t, tmpDir)
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, wd, tmpDir)
 	defer chdirCallBack()
 	buildName, err := buildConfig.GetBuildName()
 	assert.NoError(t, err)

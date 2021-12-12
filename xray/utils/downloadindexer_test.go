@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestDeleteOldIndexers(t *testing.T) {
-	testsDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	testsDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	indexersDir := filepath.Join(testsDir, "xray-indexer")
 	indexersDirsPaths := []string{

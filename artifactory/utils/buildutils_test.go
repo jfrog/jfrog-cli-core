@@ -187,9 +187,9 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 	assert.Equal(t, buildName, buildNameFile)
-	buildumber, err := buildConfig.GetBuildNumber()
+	buildNumber, err := buildConfig.GetBuildNumber()
 	assert.NoError(t, err)
-	assert.Equal(t, buildumber, artclientutils.LatestBuildNumberKey)
+	assert.Equal(t, buildNumber, artclientutils.LatestBuildNumberKey)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 
 	// Try to get build number first before build name.
@@ -197,12 +197,12 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.False(t, buildConfig.IsLoadedFromConfigFile())
 
 	// Create build config in temp folder
-	buildumber, err = buildConfig.GetBuildNumber()
+	buildNumber, err = buildConfig.GetBuildNumber()
 	assert.NoError(t, err)
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 	buildName, err = buildConfig.GetBuildName()
 	assert.True(t, buildConfig.IsLoadedFromConfigFile())
 	assert.NoError(t, err)
 	assert.Equal(t, buildName, buildNameFile)
-	assert.Equal(t, buildumber, artclientutils.LatestBuildNumberKey)
+	assert.Equal(t, buildNumber, artclientutils.LatestBuildNumberKey)
 }

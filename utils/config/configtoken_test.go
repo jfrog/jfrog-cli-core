@@ -35,7 +35,6 @@ func TestImportFromV2(t *testing.T) {
 	assert.Equal(t, "http://127.0.0.1:8081/xray/", serverDetails.XrayUrl)
 	assert.Equal(t, "http://127.0.0.1:8081/mc/", serverDetails.MissionControlUrl)
 	assert.Equal(t, "http://127.0.0.1:8081/pipelines/", serverDetails.PipelinesUrl)
-	assert.Equal(t, "http://127.0.0.1:8081/access/api", serverDetails.AccessUrl)
 	assert.Equal(t, "admin", serverDetails.User)
 	assert.Equal(t, "password", serverDetails.Password)
 }

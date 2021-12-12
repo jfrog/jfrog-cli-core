@@ -23,7 +23,7 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
 	// Delete DeployableArtifacts tempDir
-	defer testsutils.RemoveAndAssert(t, filepath.Dir(tempDeployableArtifacts))
+	defer testsutils.RemoveAllAndAssert(t, filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")
 	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile, false)
 	assert.NoError(t, err)

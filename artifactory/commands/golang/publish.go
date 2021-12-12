@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils/checksum"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 )
@@ -159,14 +159,14 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 		return content, nil, nil
 	}
 
-	checksums, err := checksum.Calc(bytes.NewBuffer(content))
+	checksums, err := biutils.CalcChecksums(bytes.NewBuffer(content))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errorutils.CheckError(err)
 	}
 
 	// Add mod file as artifact
 	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod"}
-	artifact.Checksum = &buildinfo.Checksum{Sha1: checksums[checksum.SHA1], Md5: checksums[checksum.MD5]}
+	artifact.Checksum = &buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
 	return content, artifact, nil
 }
 

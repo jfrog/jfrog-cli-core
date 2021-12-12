@@ -12,6 +12,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
+const (
+	BuildScanMinVersion = "3.37.0"
+)
+
 type BuildScanCommand struct {
 	serverDetails          *config.ServerDetails
 	outputFormat           xrutils.OutputFormat
@@ -55,7 +59,11 @@ func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 
 // Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
-	xrayManager, err := commands.CreateXrayServiceManager(bsc.serverDetails)
+	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(bsc.serverDetails)
+	if err != nil {
+		return err
+	}
+	err = commands.ValidateXrayMinimumVersion(xrayVersion, BuildScanMinVersion)
 	if err != nil {
 		return err
 	}
@@ -75,7 +83,13 @@ func (bsc *BuildScanCommand) Run() (err error) {
 
 	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
-		return err
+		if !strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
+			// if the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
+			// we still continue to build summery if needed
+			log.Info(err.Error())
+		} else {
+			return err
+		}
 	}
 	defer func() {
 		if failBuild {
@@ -102,9 +116,6 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	buildScanResults, err := xrayManager.BuildScan(params)
 	if err != nil {
 		return false, err
-	}
-	if buildScanResults == nil {
-		return false, nil
 	}
 	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations}}
 	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)
@@ -178,13 +189,13 @@ func getRootComponentFromImpactPath(impactPath, buildName string) string {
 }
 
 func getComponentImpactPaths(componentId, buildName string, impactPaths []string) [][]services.ImpactPathNode {
-	// example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
+	// componentShortName example: "com.fasterxml.jackson.core:jackson-databind" >> "jackson-databind"
 	componentShortName := componentId[strings.LastIndex(componentId, ":")+1:]
 
 	var componentImpactPaths [][]services.ImpactPathNode
 	for _, impactPath := range impactPaths {
 		// Search for all impact paths that contain the package
-		if strings.Contains(strings.ToLower(impactPath), strings.ToLower(componentShortName)) {
+		if strings.Contains(impactPath, componentShortName) {
 			pathNode := []services.ImpactPathNode{{ComponentId: getRootComponentFromImpactPath(impactPath, buildName)}}
 			componentImpactPaths = append(componentImpactPaths, pathNode)
 		}

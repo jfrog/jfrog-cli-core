@@ -24,44 +24,38 @@ import (
 )
 
 const (
-	GraphScanMinVersion = "3.29.0"
-	indexerDirName      = "xray-indexer"
-	tempIndexerDirName  = "temp"
+	indexerDirName     = "xray-indexer"
+	tempIndexerDirName = "temp"
 )
 
-func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager) (string, error) {
-	xrayVersionStr, err := xrayManager.GetVersion()
-	if err != nil {
-		return "", err
-	}
-	xrayVersion := version.NewVersion(xrayVersionStr)
-	if !xrayVersion.AtLeast(GraphScanMinVersion) {
-		return "", errorutils.CheckErrorf("You are using Xray version " +
-			string(xrayVersion.GetVersion()) + ", while this operation requires Xray version " + GraphScanMinVersion + " or higher.")
-	}
-
+func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionStr string) (indexerPath string, err error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
 	indexerBinaryName := getIndexerBinaryName()
-	indexerPath := filepath.Join(indexerDirPath, xrayVersionStr, indexerBinaryName)
+	indexerPath = filepath.Join(indexerDirPath, xrayVersionStr, indexerBinaryName)
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
 		return "", err
 	}
 	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
-	defer lockFile.Unlock()
-
+	defer func() {
+		e := lockFile.Unlock()
+		if err == nil {
+			err = e
+		}
+	}()
 	exists, err := fileutils.IsFileExists(indexerPath, false)
 	if exists || err != nil {
-		return indexerPath, err
+		return
 	}
 
 	log.Info("JFrog Xray Indexer is not cached locally. Downloading it now...")
-	return downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
+	indexerPath, err = downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
+	return
 }
 
 func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, indexerBinaryName string) (string, error) {
@@ -99,7 +93,10 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 		if err != nil {
 			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())
 		}
-		resp.Body.Close()
+		err = resp.Body.Close()
+		if err != nil {
+			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to close the body of the response: %s", resp.Status, url, err.Error())
+		}
 		return "", errorutils.CheckErrorf("%s received when attempting to download %s\n%s", resp.Status, url, body)
 	}
 

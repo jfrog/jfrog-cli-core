@@ -1,14 +1,15 @@
 package goutils
 
 import (
-	"github.com/jfrog/gocmd/cmd"
+	"github.com/jfrog/build-info-go/utils"
+	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os/exec"
 )
 
-type Cmd struct {
+type GoCmdConfig struct {
 	Go           string
 	Command      []string
 	CommandFlags []string
@@ -17,7 +18,15 @@ type Cmd struct {
 	ErrWriter    io.WriteCloser
 }
 
-func (config *Cmd) GetCmd() (cmd *exec.Cmd) {
+func NewGoCmdConfig() (*GoCmdConfig, error) {
+	execPath, err := exec.LookPath("go")
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	return &GoCmdConfig{Go: execPath}, nil
+}
+
+func (config *GoCmdConfig) GetCmd() (cmd *exec.Cmd) {
 	var cmdStr []string
 	cmdStr = append(cmdStr, config.Go)
 	cmdStr = append(cmdStr, config.Command...)
@@ -27,20 +36,20 @@ func (config *Cmd) GetCmd() (cmd *exec.Cmd) {
 	return
 }
 
-func (config *Cmd) GetEnv() map[string]string {
+func (config *GoCmdConfig) GetEnv() map[string]string {
 	return map[string]string{}
 }
 
-func (config *Cmd) GetStdWriter() io.WriteCloser {
+func (config *GoCmdConfig) GetStdWriter() io.WriteCloser {
 	return config.StrWriter
 }
 
-func (config *Cmd) GetErrWriter() io.WriteCloser {
+func (config *GoCmdConfig) GetErrWriter() io.WriteCloser {
 	return config.ErrWriter
 }
 
 func LogGoVersion() error {
-	output, err := GetGoVersion()
+	output, err := getGoVersion()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -48,24 +57,18 @@ func LogGoVersion() error {
 	return nil
 }
 
-func GetGoVersion() (string, error) {
-	path, err := cmd.GetGoVersion()
+func getGoVersion() (string, error) {
+	goCmd, err := NewGoCmdConfig()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", err
 	}
-	return path, nil
-}
-
-func GetCachePath() (string, error) {
-	path, err := cmd.GetCachePath()
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return path, nil
+	goCmd.Command = []string{"version"}
+	output, err := gofrogcmd.RunCmdOutput(goCmd)
+	return output, errorutils.CheckError(err)
 }
 
 func GetGoModCachePath() (string, error) {
-	path, err := cmd.GetGoModCachePath()
+	path, err := utils.GetGoModCachePath()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -73,7 +76,7 @@ func GetGoModCachePath() (string, error) {
 }
 
 func GetProjectRoot() (string, error) {
-	path, err := cmd.GetProjectRoot()
+	path, err := utils.GetProjectRoot()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -81,7 +84,7 @@ func GetProjectRoot() (string, error) {
 }
 
 func GetModuleName(projectDir string) (string, error) {
-	path, err := cmd.GetModuleNameByDir(projectDir)
+	path, err := utils.GetModuleNameByDir(projectDir, log.Logger)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -89,7 +92,7 @@ func GetModuleName(projectDir string) (string, error) {
 }
 
 func GetDependenciesList(projectDir string) (map[string]bool, error) {
-	deps, err := cmd.GetDependenciesList(projectDir)
+	deps, err := utils.GetDependenciesList(projectDir, log.Logger)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
@@ -97,7 +100,7 @@ func GetDependenciesList(projectDir string) (map[string]bool, error) {
 }
 
 func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
-	deps, err := cmd.GetDependenciesGraph(projectDir)
+	deps, err := utils.GetDependenciesGraph(projectDir, log.Logger)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

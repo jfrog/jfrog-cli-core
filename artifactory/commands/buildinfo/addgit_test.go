@@ -53,9 +53,10 @@ func runTest(t *testing.T, originalDir string) {
 }
 
 func TestBuildAddGitSubmodules(t *testing.T) {
-	var projectPath, tmpDir string
-	projectPath, tmpDir = testsutils.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"))
-	defer fileutils.RemoveTempDir(tmpDir)
+	var projectPath string
+	tmpDir, createTempDirCallback := fileutils.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	projectPath = testsutils.InitVcsSubmoduleTestDir(t, filepath.Join("..", "testdata", "git_test_submodule"), tmpDir)
 
 	testsName := []string{"dotGitProvided", "dotGitSearched"}
 	for _, test := range testsName {
@@ -151,7 +152,7 @@ func runBuildAddGit(t *testing.T, buildName, buildNumber string, baseDir string,
 			assert.Error(t, err)
 			return err
 		}
-		defer os.Chdir(wd)
+		defer testsutils.ChangeDirAndAssert(t, wd)
 
 		err = os.Chdir(baseDir)
 		if err != nil {
@@ -297,15 +298,9 @@ func TestServerDetailsFromConfigFile(t *testing.T) {
 	expectedUser := "admin"
 
 	homeEnv := os.Getenv(coreutils.HomeDir)
-	defer os.Setenv(coreutils.HomeDir, homeEnv)
-	baseDir, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-	err = os.Setenv(coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
-	if err != nil {
-		t.Error(err)
-	}
+	defer testsutils.SetEnvAndAssert(t, coreutils.HomeDir, homeEnv)
+	baseDir := testsutils.GetwdAndAssert(t)
+	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 	configFilePath := filepath.Join("..", "testdata", "buildissues", "issuesconfig_success.yaml")
 	config := BuildAddGitCommand{
 		configFilePath: configFilePath,
@@ -328,16 +323,10 @@ func TestServerDetailsWithoutConfigFile(t *testing.T) {
 	expectedUser := "admin2"
 
 	homeEnv := os.Getenv(coreutils.HomeDir)
-	defer os.Setenv(coreutils.HomeDir, homeEnv)
+	defer testsutils.SetEnvAndAssert(t, coreutils.HomeDir, homeEnv)
 
-	baseDir, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-	err = os.Setenv(coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
-	if err != nil {
-		t.Error(err)
-	}
+	baseDir := testsutils.GetwdAndAssert(t)
+	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, filepath.Join(baseDir, "..", "testdata"))
 
 	config := BuildAddGitCommand{}
 	details, err := config.ServerDetails()

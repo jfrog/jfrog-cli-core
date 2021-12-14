@@ -142,7 +142,7 @@ func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) e
 		if err != nil {
 			return err
 		}
-		log.Info(fmt.Sprintf("Using build name: %s as module name.", buildName))
+		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
 		moduleName = buildName
 	}
 

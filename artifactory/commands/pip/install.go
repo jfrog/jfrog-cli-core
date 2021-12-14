@@ -202,7 +202,7 @@ func getPackageName(pythonExecutablePath string, pipArgs []string) (string, erro
 	packageName, err := piputils.ExtractPackageNameFromSetupPy(filePath, pythonExecutablePath)
 	if err != nil {
 		// If setup.py egg_info command failed we use build name as module name and continue to pip-install execution
-		log.Info("Failed determining module-name by running 'setup.py egg_info' command: " + err.Error())
+		log.Info("Couldn't determine module-name after running the 'egg_info' command: " + err.Error())
 		return "", nil
 	}
 	return packageName, err

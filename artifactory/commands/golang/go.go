@@ -1,25 +1,26 @@
 package golang
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"path"
-	"path/filepath"
-	"strings"
-
 	"github.com/jfrog/build-info-go/build"
-	"github.com/jfrog/gocmd"
-	"github.com/jfrog/gocmd/cmd"
-	executors "github.com/jfrog/gocmd/executers/utils"
-	"github.com/jfrog/gocmd/params"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
+	rtutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/http"
+	"net/url"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 type GoCommand struct {
@@ -164,22 +165,23 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	resolverServiceManager, err := utils.CreateServiceManager(resolverDetails, -1, false)
-	if err != nil {
-		return err
-	}
-	resolverParams := &params.Params{}
-	resolverParams.SetRepo(gc.resolverParams.TargetRepo()).SetServiceManager(resolverServiceManager)
-
 	serverDetails, err := resolverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
-
-	err = gocmd.Run(gc.goArg, serverDetails, gc.resolverParams.TargetRepo(), gc.noFallback)
+	repoUrl, err := getArtifactoryApiUrl(gc.resolverParams.TargetRepo(), serverDetails)
 	if err != nil {
-		return coreutils.ConvertExitCodeError(err)
+		return err
 	}
+	// If noFallback=false, missing packages will be fetched directly from VCS
+	if !gc.noFallback {
+		repoUrl += "|direct"
+	}
+	err = biutils.RunGo(gc.goArg, repoUrl)
+	if err != nil {
+		return coreutils.ConvertExitCodeError(errorutils.CheckError(err))
+	}
+
 	if toCollect {
 		tempDirPath := ""
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
@@ -211,6 +213,34 @@ func (gc *GoCommand) run() error {
 	return err
 }
 
+// Gets the URL of the specified repository Go API in Artifactory.
+// The URL contains credentials (username and access token or password).
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
+	rtUrl, err := url.Parse(details.GetUrl())
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	username := details.GetUser()
+	password := details.GetPassword()
+
+	// Get credentials from access-token if exists.
+	if details.GetAccessToken() != "" {
+		log.Debug("Using proxy with access-token.")
+		username, err = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
+		if err != nil {
+			return "", err
+		}
+		password = details.GetAccessToken()
+	}
+
+	if username != "" && password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
+	rtUrl.Path += "api/go/" + repoName
+	return rtUrl.String(), nil
+}
+
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
 // The path to those chache files is retrived using the supplied package name and Artifactory details.
 func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) error {
@@ -231,8 +261,9 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 // However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
-	packageCachePath, err := cmd.GetGoModCachePath()
+	packageCachePath, err := biutils.GetGoModCachePath()
 	if err != nil {
+		err = errorutils.CheckError(err)
 		return
 	}
 	packageNameSplitted := strings.Split(packageName, "@")
@@ -248,7 +279,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 		}
 		packageVersionRequest := buildPackageVersionRequest(name, branchName)
 		// Retrive the package version using Artifactory
-		version, err = executors.GetPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
+		version, err = getPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
 		if err != nil {
 			return
 		}
@@ -259,6 +290,40 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 	}
 	return path, nil
 
+}
+
+// getPackageVersion returns the matching version for the packageName string using the Artifactory details that are provided.
+// PackageName string should be in the following format: <Package Path>/@V/<Requested Branch Name>.info OR latest.info
+// For example the jfrog/jfrog-cli/@v/master.info packageName will return the corresponding canonical version (vX.Y.Z) string for the jfrog-cli master branch.
+func getPackageVersion(repoName, packageName string, details auth.ServiceDetails) (string, error) {
+	artifactoryApiUrl, err := rtutils.BuildArtifactoryUrl(details.GetUrl(), "api/go/"+repoName, make(map[string]string))
+	if err != nil {
+		return "", err
+	}
+	artHttpDetails := details.CreateHttpClientDetails()
+	client, err := httpclient.ClientBuilder().Build()
+	if err != nil {
+		return "", err
+	}
+	artifactoryApiUrl = artifactoryApiUrl + "/" + packageName
+	resp, body, _, err := client.SendGet(artifactoryApiUrl, true, artHttpDetails, "")
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status))
+	}
+	// Extract version from response
+	var version PackageVersionResponseContent
+	err = json.Unmarshal(body, &version)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return version.Version, nil
+}
+
+type PackageVersionResponseContent struct {
+	Version string `json:"Version,omitempty"`
 }
 
 // getFileSystemPackagePath returns a string that represents the package files cache path.

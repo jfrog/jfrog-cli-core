@@ -53,7 +53,7 @@ func (bpc *BuildPromotionCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	bpc.BuildName, bpc.BuildNumber = buildName, buildNumber
+	bpc.BuildName, bpc.BuildNumber, bpc.ProjectKey = buildName, buildNumber, bpc.buildConfiguration.GetProject()
 	return servicesManager.PromoteBuild(bpc.PromotionParams)
 }
 

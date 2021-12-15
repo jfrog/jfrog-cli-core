@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gookit/color"
 	"github.com/mattn/go-shellwords"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -197,4 +198,32 @@ func ParseArgs(args []string) ([]string, error) {
 
 func isQuote(s string) bool {
 	return len(s) > 0 && ((s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\''))
+}
+
+// Print the test to the console in green color.
+func PrintTitle(str string) string {
+	return colorStr(str, color.Green)
+}
+
+// Print the test to the console in cyan color.
+func PrintLink(str string) string {
+	return colorStr(str, color.Cyan)
+}
+
+// Print the test to the console with bold style.
+func PrintBold(str string) string {
+	return colorStr(str, color.Bold)
+}
+
+// Print the test to the console in gray color.
+func PrintComment(str string) string {
+	return colorStr(str, color.Gray)
+}
+
+// Print the test to the console with the specified color.
+func colorStr(str string, c color.Color) string {
+	if IsTerminal() {
+		return c.Render(str)
+	}
+	return str
 }

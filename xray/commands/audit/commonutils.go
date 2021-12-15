@@ -3,8 +3,6 @@ package audit
 import (
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"

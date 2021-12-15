@@ -116,6 +116,7 @@ func (pc *PythonCommand) determineModuleName() error {
 			return err
 		}
 		moduleName = buildName
+		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
 	}
 
 	pc.buildConfiguration.SetModule(moduleName)
@@ -174,7 +175,11 @@ func getPackageName(pythonExecutablePath string) (string, error) {
 	// Extract package name from setup.py.
 	packageName, err := ExtractPackageNameFromSetupPy(filePath, pythonExecutablePath)
 	if err != nil {
-		return "", errors.New("Failed determining module-name from 'setup.py' file: " + err.Error())
+		if err != nil {
+			// If setup.py egg_info command failed we use build name as module name and continue to pip-install execution
+			log.Info("Couldn't determine module-name after running the 'egg_info' command: " + err.Error())
+			return "", nil
+		}
 	}
 	return packageName, err
 }

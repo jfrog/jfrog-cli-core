@@ -117,7 +117,8 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	if err != nil {
 		return false, err
 	}
-	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations}}
+	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations, XrayDataUrl: buildScanResults.MoreDetailsUrl}}
+	log.Info("Xray data is available to view at: " + buildScanResults.MoreDetailsUrl)
 	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)
 	if err != nil {
 		return false, err

@@ -83,7 +83,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 
 	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
-		if !strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
+		if strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
 			// if the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
 			// we still continue to build summery if needed
 			log.Info(err.Error())

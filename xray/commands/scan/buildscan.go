@@ -81,7 +81,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 		Project:     bsc.buildConfiguration.GetProject(),
 	}
 
-	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
+	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
 		if !strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
 			// if the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
@@ -92,7 +92,8 @@ func (bsc *BuildScanCommand) Run() (err error) {
 		}
 	}
 	defer func() {
-		if failBuild {
+		// if failBuild flag is true and also got fail build response from Xray
+		if bsc.failBuild && isFailBuildResponse {
 			// deferred so if build summary fails, it will still return a fail build error if needed
 			if err != nil {
 				log.Error(err)

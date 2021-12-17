@@ -22,6 +22,7 @@ type AuditCommand struct {
 	targetRepoPath         string
 	includeVulnerabilities bool
 	includeLicenses        bool
+	fail                   bool
 }
 
 func NewAuditCommand() *AuditCommand {
@@ -67,6 +68,11 @@ func (auditCmd *AuditCommand) SetIncludeLicenses(include bool) *AuditCommand {
 	return auditCmd
 }
 
+func (auditCmd *AuditCommand) SetFail(fail bool) *AuditCommand {
+	auditCmd.fail = fail
+	return auditCmd
+}
+
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
 	var results []services.ScanResponse
 	params := auditCmd.createXrayGraphScanParams()
@@ -97,7 +103,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		return err
 	}
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
-	if auditCmd.includeVulnerabilities == false {
+	if auditCmd.fail && !auditCmd.includeVulnerabilities {
 		if xrutils.CheckIfFailBuild(results) {
 			return xrutils.NewFailBuildError()
 		}

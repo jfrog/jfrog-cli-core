@@ -168,7 +168,8 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
+	// If user provided --fail=false, don't fail the build.
 	if scanCmd.fail && scanCmd.includeVulnerabilities == false {
 		if xrutils.CheckIfFailBuild(flatResults) {
 			return xrutils.NewFailBuildError()

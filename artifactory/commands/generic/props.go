@@ -67,7 +67,7 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 	defer func() {
 		for _, reader := range temp {
 			e := reader.Close()
-			if err == nil && e != nil {
+			if err == nil {
 				err = e
 			}
 

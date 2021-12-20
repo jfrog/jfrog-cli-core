@@ -170,7 +170,7 @@ func (ica *InstallCiArgs) GetDependenciesList() map[string]*npmutils.Dependency 
 
 func (ica *InstallCiArgs) collectDependenciesChecksums() error {
 	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
-	servicesManager, err := utils.CreateServiceManager(ica.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(ica.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

@@ -44,7 +44,7 @@ func reportUsage(command Command, channel chan<- bool) {
 		}
 		if serverDetails != nil && serverDetails.ArtifactoryUrl != "" {
 			log.Debug(usage.ReportUsagePrefix + "Sending info...")
-			serviceManager, err := utils.CreateServiceManager(serverDetails, -1, false)
+			serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 			if err != nil {
 				log.Debug(usage.ReportUsagePrefix + err.Error())
 				return

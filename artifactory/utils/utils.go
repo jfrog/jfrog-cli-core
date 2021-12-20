@@ -85,13 +85,13 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status)
 }
 
-func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithThreads(serverDetails, isDryRun, 0, httpRetries)
+func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitTime int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithThreads(serverDetails, isDryRun, 0, httpRetries, httpRetryWaitTime)
 }
 
 // Create a service manager with threads.
 // If the value sent for httpRetries is negative, the default will be used.
-func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries int) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitTime int) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -108,6 +108,9 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 	if httpRetries >= 0 {
 		config.SetHttpRetries(httpRetries)
 	}
+	if httpRetryWaitTime >= 0 {
+		config.SetHttpRetryWaitTime(httpRetryWaitTime)
+	}
 	if threads > 0 {
 		config.SetThreads(threads)
 	}
@@ -118,7 +121,7 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 	return artifactory.New(serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitTime int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -134,6 +137,7 @@ func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, th
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
 		SetHttpRetries(httpRetries).
+		SetHttpRetryWaitTime(httpRetryWaitTime).
 		Build()
 
 	if err != nil {

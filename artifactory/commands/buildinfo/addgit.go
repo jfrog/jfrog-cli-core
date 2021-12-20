@@ -342,7 +342,7 @@ func (config *BuildAddGitCommand) getLatestVcsRevision(vcsUrl string) (string, e
 // Returns build info, or empty build info struct if not found.
 func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfiguration) (*buildinfo.BuildInfo, error) {
 	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(issuesConfig.ServerDetails, -1, false)
+	sm, err := utils.CreateServiceManager(issuesConfig.ServerDetails, -1, 0, false)
 	if err != nil {
 		return nil, err
 	}

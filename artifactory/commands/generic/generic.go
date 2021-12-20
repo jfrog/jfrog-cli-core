@@ -15,6 +15,7 @@ type GenericCommand struct {
 	syncDeletesPath string
 	quiet           bool
 	retries         int
+	retryWaitTime   int
 }
 
 func NewGenericCommand() *GenericCommand {
@@ -54,6 +55,11 @@ func (gc *GenericCommand) Retries() int {
 
 func (gc *GenericCommand) SetRetries(retries int) *GenericCommand {
 	gc.retries = retries
+	return gc
+}
+
+func (gc *GenericCommand) SetRetryWaitTime(retryWaitTime int) *GenericCommand {
+	gc.retryWaitTime = retryWaitTime
 	return gc
 }
 

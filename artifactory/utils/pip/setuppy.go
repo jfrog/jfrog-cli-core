@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io/ioutil"
-	"os"
 )
 
 // Get the project-name by running 'egg_info' command on setup.py and extracting it from 'PKG-INFO' file.
@@ -48,19 +47,8 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 	}
 	defer fileutils.RemoveTempDir(tempDirPath)
 
-	// Change work-dir to temp, preserve current work-dir when method ends.
-	wd, err := os.Getwd()
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-	defer os.Chdir(wd)
-	err = os.Chdir(tempDirPath)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-
 	// Run python egg_info command.
-	egginfoOutput, err := executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath)
+	egginfoOutput, err := executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath, tempDirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
@@ -83,7 +71,7 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 // Parse the output of 'python egg_info' command, in order to find the path of generated file 'PKG-INFO'.
 func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
 	// Regexp for extracting 'PKG-INFO' file-path from the 'egg_info' command output.
-	pkginfoRegexp, err := utils.GetRegExp(`(?m)writing\s(\w[\w-\.]+\.egg\-info[\\\/]PKG-INFO)`)
+	pkginfoRegexp, err := utils.GetRegExp(`(?m)writing\s(\S+\.egg\-info[\\\/]PKG-INFO)`)
 	if err != nil {
 		return "", err
 	}
@@ -99,11 +87,11 @@ func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
 }
 
 // Execute egg_info command for setup.py, return command's output.
-func executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath string) (string, error) {
+func executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath, tempDirPath string) (string, error) {
 	pythonEggInfoCmd := &PipCmd{
 		Executable:  pythonExecutablePath,
 		Command:     setuppyFilePath,
-		CommandArgs: []string{"egg_info"},
+		CommandArgs: []string{"egg_info", "--egg-base", tempDirPath},
 	}
 	return gofrogcmd.RunCmdOutput(pythonEggInfoCmd)
 }

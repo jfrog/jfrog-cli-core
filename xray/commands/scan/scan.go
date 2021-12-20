@@ -42,6 +42,7 @@ type ScanCommand struct {
 	includeVulnerabilities bool
 	includeLicenses        bool
 	scanPassed             bool
+	fail                   bool
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
@@ -86,6 +87,11 @@ func (scanCmd *ScanCommand) SetIncludeLicenses(include bool) *ScanCommand {
 
 func (scanCmd *ScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return scanCmd.serverDetails, nil
+}
+
+func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
+	scanCmd.fail = fail
+	return scanCmd
 }
 
 func (scanCmd *ScanCommand) IsScanPassed() bool {
@@ -162,8 +168,9 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
-	if scanCmd.includeVulnerabilities == false {
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
+	// If user provided --fail=false, don't fail the build.
+	if scanCmd.fail && scanCmd.includeVulnerabilities == false {
 		if xrutils.CheckIfFailBuild(flatResults) {
 			return xrutils.NewFailBuildError()
 		}

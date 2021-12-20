@@ -1,7 +1,6 @@
 package pip
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -141,6 +140,7 @@ func (pic *PipInstallCommand) determineModuleName(pythonExecutablePath string) e
 		if err != nil {
 			return err
 		}
+		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
 		moduleName = buildName
 	}
 
@@ -199,7 +199,9 @@ func getPackageName(pythonExecutablePath string, pipArgs []string) (string, erro
 	// Extract package name from setup.py.
 	packageName, err := piputils.ExtractPackageNameFromSetupPy(filePath, pythonExecutablePath)
 	if err != nil {
-		return "", errors.New("Failed determining module-name from 'setup.py' file: " + err.Error())
+		// If setup.py egg_info command failed we use build name as module name and continue to pip-install execution
+		log.Info("Couldn't determine module-name after running the 'egg_info' command: " + err.Error())
+		return "", nil
 	}
 	return packageName, err
 }

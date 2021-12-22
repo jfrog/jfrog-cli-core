@@ -206,18 +206,19 @@ func getSetupPyFilePath() (string, error) {
 	return filePath, nil
 }
 
-func (pc *PythonCommand) cleanBuildInfoDir() {
+func (pc *PythonCommand) cleanBuildInfoDir() error {
 	buildName, err := pc.buildConfiguration.GetBuildName()
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+		return errors.New("Failed cleaning build-info directory while getting build name:" + err.Error())
 	}
 	buildNumber, err := pc.buildConfiguration.GetBuildNumber()
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed cleaning build-info directory while getting build name: %s", err.Error()))
+		return errors.New("Failed cleaning build-info directory while getting build name:" + err.Error())
 	}
 	if err := utils.RemoveBuildDir(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
-		log.Error(fmt.Sprintf("Failed cleaning build-info directory: %s", err.Error()))
+		return errors.New("Failed cleaning build-info directory:" + err.Error())
 	}
+	return nil
 }
 
 func (pc *PythonCommand) setPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, repository string, projectType utils.ProjectType) error {

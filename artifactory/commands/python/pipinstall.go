@@ -1,6 +1,7 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
@@ -29,7 +30,10 @@ func (pic *PipInstallCommand) Run() (err error) {
 	}
 	defer func() {
 		if err != nil {
-			pic.cleanBuildInfoDir()
+			e := pic.cleanBuildInfoDir()
+			if e != nil {
+				err = errors.New(err.Error() + "\n" + e.Error())
+			}
 		}
 	}()
 

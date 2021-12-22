@@ -64,9 +64,8 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 
 	defer func() {
 		e := os.Chdir(wd)
-		if e != nil && err == nil {
+		if err == nil {
 			err = e
-			return
 		}
 
 		e = fileutils.RemoveTempDir(tempDirPath)

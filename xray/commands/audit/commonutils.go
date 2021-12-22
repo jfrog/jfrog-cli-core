@@ -1,8 +1,8 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -100,7 +100,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	}
 	if results == nil || len(results) < 1 {
 		// if all scans failed, fail the audit command
-		return errors.New("Audit command failed due to Xray internal error")
+		return errorutils.CheckErrorf("Audit command failed due to Xray internal error")
 	}
 	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1)
 	if err != nil {
@@ -152,7 +152,7 @@ func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId stri
 	return module
 }
 
-// Get specific module from modules list
+// Get a specific module from the provided modules list
 func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")

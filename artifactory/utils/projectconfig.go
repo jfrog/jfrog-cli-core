@@ -26,6 +26,7 @@ type ProjectType int
 const (
 	Go ProjectType = iota
 	Pip
+	Pipenv
 	Npm
 	Yarn
 	Nuget
@@ -38,6 +39,7 @@ const (
 var ProjectTypes = []string{
 	"go",
 	"pip",
+	"pipenv",
 	"npm",
 	"yarn",
 	"nuget",

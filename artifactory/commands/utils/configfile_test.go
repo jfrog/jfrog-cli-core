@@ -99,6 +99,46 @@ func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
+func TestPipenvConfigFile(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	tempDirPath := createTempEnv(t)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(tempDirPath))
+	}()
+
+	// Create build config
+	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	err := CreateBuildConfig(context, utils.Pipenv)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Pipenv.String(), tempDirPath)
+	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
+// In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
+func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	err, cleanUp := tests.ConfigTestServer(t)
+	assert.NoError(t, err)
+	defer cleanUp()
+
+	// Create build config
+	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	err = CreateBuildConfig(context, utils.Pipenv)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, utils.Pipenv.String(), os.Getenv(coreutils.HomeDir))
+	assert.Equal(t, "test", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "test", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
 func TestNpmConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)

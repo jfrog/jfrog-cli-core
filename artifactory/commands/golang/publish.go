@@ -94,7 +94,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		defer func() {
 			e := os.Remove(pathToInfo)
 			if err == nil {
-				err = e
+				err = errorutils.CheckError(e)
 			}
 		}()
 		if collectBuildInfo {

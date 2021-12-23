@@ -8,6 +8,7 @@ import (
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -57,7 +58,7 @@ func (gc *GradleCommand) Run() error {
 		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
 		err = tempFile.Close()
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 	}
 

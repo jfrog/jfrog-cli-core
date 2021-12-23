@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -107,7 +108,7 @@ func (mc *MvnCommand) Run() error {
 		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
 		err = tempFile.Close()
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 	}
 

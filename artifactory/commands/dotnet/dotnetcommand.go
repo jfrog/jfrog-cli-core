@@ -271,7 +271,7 @@ func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.Fil
 	defer func() {
 		e := configFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 

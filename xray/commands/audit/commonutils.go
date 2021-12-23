@@ -2,7 +2,9 @@ package audit
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -132,17 +134,14 @@ func (auditCmd *AuditCommand) createXrayGraphScanParams() services.XrayGraphScan
 }
 
 func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	tempDirPath, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	err = fileutils.CopyDir(filepath.Join("..", "..", "testdata", sourceDir), tempDirPath, true, nil)
-	assert.NoError(t, err)
-	err = os.Chdir(tempDirPath)
-	assert.NoError(t, err)
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	assert.NoError(t, fileutils.CopyDir(filepath.Join("..", "..", "testdata", sourceDir), tempDirPath, true, nil))
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tempDirPath)
 	return tempDirPath, func() {
-		assert.NoError(t, os.Chdir(cwd))
-		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath))
+		chdirCallback()
+		createTempDirCallback()
 	}
 }
 

@@ -108,7 +108,7 @@ func TestPipenvConfigFile(t *testing.T) {
 	}()
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Pipenv)
 	assert.NoError(t, err)
 
@@ -128,7 +128,7 @@ func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
 	err = CreateBuildConfig(context, utils.Pipenv)
 	assert.NoError(t, err)
 

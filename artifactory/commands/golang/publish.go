@@ -91,7 +91,12 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		if err != nil {
 			return nil, nil, err
 		}
-		defer os.Remove(pathToInfo)
+		defer func() {
+			e := os.Remove(pathToInfo)
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
+		}()
 		if collectBuildInfo {
 			infoArtifact, err := createInfoFileArtifact(pathToInfo, packageVersion)
 			if err != nil {

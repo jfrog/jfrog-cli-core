@@ -29,8 +29,7 @@ func TestPrintSearchResults(t *testing.T) {
 	log.SetLogger(newLog)
 
 	// Print search result.
-	err = PrintSearchResults(reader)
-	assert.NoError(t, err)
+	assert.NoError(t, PrintSearchResults(reader))
 
 	// Compare output.
 	logOutput := buffer.Bytes()

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"os"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"reflect"
 	"testing"
 
@@ -46,11 +46,10 @@ func TestExtractBuildDetailsFromEnv(t *testing.T) {
 		{[]string{"foo", "-X", "123", "--bar", "--build-name=test1", "--build-number=1", "--foox"}, []string{"foo", "-X", "123", "--bar", "--foox"}, NewBuildConfiguration("test1", "1", "", "")},
 		{[]string{"foo", "-X", "123", "--bar", "--foox"}, []string{"foo", "-X", "123", "--bar", "--foox"}, NewBuildConfiguration(buildNameEnv, buildNumberEnv, "", "")},
 	}
-
-	os.Setenv(coreutils.BuildName, buildNameEnv)
-	os.Setenv(coreutils.BuildNumber, buildNumberEnv)
-	defer os.Unsetenv(coreutils.BuildName)
-	defer os.Unsetenv(coreutils.BuildNumber)
+	setEnvCallback := testsutils.SetEnvWithCallbackAndAssert(t, coreutils.BuildName, buildNameEnv)
+	defer setEnvCallback()
+	setEnvCallback = testsutils.SetEnvWithCallbackAndAssert(t, coreutils.BuildNumber, buildNumberEnv)
+	defer setEnvCallback()
 	for _, test := range tests {
 		actualArgs, actualBuildConfig, err := ExtractBuildDetailsFromArgs(test.command)
 		if err != nil {

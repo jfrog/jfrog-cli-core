@@ -57,10 +57,11 @@ func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVul
 	return err
 }
 
-func writeJsonResults(results []services.ScanResponse) (string, error) {
+func writeJsonResults(results []services.ScanResponse) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
+		return
 	}
 	defer func() {
 		e := out.Close()
@@ -70,15 +71,22 @@ func writeJsonResults(results []services.ScanResponse) (string, error) {
 	}()
 	bytesRes, err := json.Marshal(&results)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
+		return
 	}
 	var content bytes.Buffer
 	err = json.Indent(&content, bytesRes, "", "  ")
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
+		return
 	}
 	_, err = out.Write([]byte(content.String()))
-	return out.Name(), errorutils.CheckError(err)
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	resultsPath = out.Name()
+	return
 }
 
 func printJson(jsonRes []services.ScanResponse) error {

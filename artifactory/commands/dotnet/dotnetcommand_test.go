@@ -3,6 +3,7 @@ package dotnet
 import (
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func TestGetFlagValueExists(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				defer os.Remove(test.currentConfigPath)
+				defer testsutils.RemoveAndAssert(t, test.currentConfigPath)
 			}
 			c := &dotnet.Cmd{CommandFlags: test.cmdFlags}
 			_, err := getFlagValueIfExists("-configfile", c)

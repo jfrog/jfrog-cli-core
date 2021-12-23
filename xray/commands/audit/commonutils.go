@@ -1,17 +1,21 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"strings"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
 )
 
 type AuditCommand struct {
@@ -96,7 +100,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	}
 	if results == nil || len(results) < 1 {
 		// if all scans failed, fail the audit command
-		return errors.New("audit command failed due to Xray internal error")
+		return errorutils.CheckErrorf("Audit command failed due to Xray internal error")
 	}
 	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1)
 	if err != nil {
@@ -125,4 +129,40 @@ func (auditCmd *AuditCommand) createXrayGraphScanParams() services.XrayGraphScan
 		params.ProjectKey = auditCmd.projectKey
 	}
 	return params
+}
+
+func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	tempDirPath, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	err = fileutils.CopyDir(filepath.Join("..", "..", "testdata", sourceDir), tempDirPath, true, nil)
+	assert.NoError(t, err)
+	err = os.Chdir(tempDirPath)
+	assert.NoError(t, err)
+	return tempDirPath, func() {
+		assert.NoError(t, os.Chdir(cwd))
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath))
+	}
+}
+
+func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
+	module := GetModule(modules, moduleId)
+	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
+	return module
+}
+
+// Get a specific module from the provided modules list
+func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
+	for _, module := range modules {
+		splitIdentifier := strings.Split(module.Id, "//")
+		id := splitIdentifier[0]
+		if len(splitIdentifier) > 1 {
+			id = splitIdentifier[1]
+		}
+		if id == moduleId {
+			return module
+		}
+	}
+	return nil
 }

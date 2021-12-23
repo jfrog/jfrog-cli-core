@@ -75,7 +75,8 @@ func TestPrepareConfigDataTypeRestriction(t *testing.T) {
 
 	for json, typeRestriction := range typeRestrictions {
 		npmi := InstallCiArgs{}
-		npmi.prepareConfigData([]byte(json))
+		_, err := npmi.prepareConfigData([]byte(json))
+		assert.NoError(t, err)
 		if npmi.typeRestriction != typeRestriction {
 			t.Errorf("Type restriction was supposed to be %d but set to: %d when using the json:\n%s", typeRestriction, npmi.typeRestriction, json)
 		}

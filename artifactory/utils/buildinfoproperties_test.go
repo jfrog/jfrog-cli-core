@@ -1,6 +1,7 @@
 package utils
 
 import (
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"testing"
 
@@ -33,7 +34,7 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(propsFile)
+	defer testsutils.RemoveAndAssert(t, propsFile)
 
 	actualConfig, err := ReadConfigFile(propsFile, PROPERTIES)
 	if err != nil {
@@ -95,7 +96,7 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(propsFilePath)
+	defer testsutils.RemoveAndAssert(t, propsFilePath)
 
 	actualConfig, err := ReadConfigFile(propsFilePath, PROPERTIES)
 	if err != nil {
@@ -133,7 +134,7 @@ func TestGeneratedBuildInfoFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(propsFilePath)
+	defer testsutils.RemoveAndAssert(t, propsFilePath)
 
 	actualConfig, err := ReadConfigFile(propsFilePath, PROPERTIES)
 	if err != nil {
@@ -147,7 +148,7 @@ func TestGeneratedBuildInfoFile(t *testing.T) {
 	if !fileutils.IsPathExists(actualConfig.GetString(generatedBuildInfoKey), false) {
 		t.Error("Path: ", actualConfig.GetString(generatedBuildInfoKey), "does not exists")
 	}
-	defer os.Remove(actualConfig.GetString(generatedBuildInfoKey))
+	defer testsutils.RemoveAndAssert(t, actualConfig.GetString(generatedBuildInfoKey))
 }
 
 func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectType ProjectType) {
@@ -193,8 +194,5 @@ func getOriginalProxyValue() string {
 }
 
 func setProxy(proxy string, t *testing.T) {
-	err := os.Setenv(HttpProxy, proxy)
-	if err != nil {
-		t.Error(err)
-	}
+	testsutils.SetEnvAndAssert(t, HttpProxy, proxy)
 }

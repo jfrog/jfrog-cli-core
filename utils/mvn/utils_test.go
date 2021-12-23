@@ -2,27 +2,25 @@ package mvnutils
 
 import (
 	"fmt"
-	"os"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"path/filepath"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDownloadExtractorsFromReleases(t *testing.T) {
 	// Set 'JFROG_CLI_DEPENDENCIES_DIR' env var to a temp dir
-	tempDirPath, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	defer fileutils.RemoveTempDir(tempDirPath)
-	err = os.Setenv(coreutils.DependenciesDir, tempDirPath)
-	assert.NoError(t, err)
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+
+	testsutils.SetEnvAndAssert(t, coreutils.DependenciesDir, tempDirPath)
 
 	// Make sure the JAR will be downloaded from releases.jfrog.io
-	err = os.Unsetenv(utils.ExtractorsRemoteEnv)
-	assert.NoError(t, err)
+	testsutils.UnSetEnvAndAssert(t, utils.ExtractorsRemoteEnv)
 
 	// Download JAR and create classworlds.conf
 	dependenciesPath, err := downloadDependencies()

@@ -75,6 +75,6 @@ func (auditCmd *AuditGradleCommand) runGradle(buildConfiguration *utils.BuildCon
 	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
 }
 
-func (na *AuditGradleCommand) CommandName() string {
+func (auditCmd *AuditGradleCommand) CommandName() string {
 	return "xr_audit_gradle"
 }

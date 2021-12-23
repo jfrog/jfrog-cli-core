@@ -82,6 +82,6 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 	}
 }
 
-func (na *AuditGoCommand) CommandName() string {
+func (auditCmd *AuditGoCommand) CommandName() string {
 	return "xr_audit_go"
 }

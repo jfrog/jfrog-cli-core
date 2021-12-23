@@ -56,7 +56,12 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 		return "", err
 	}
 	lockFile, err := lock.CreateLock(lockDirPath)
-	defer lockFile.Unlock()
+	defer func() {
+		e := lockFile.Unlock()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +169,12 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return err
 	}
 	lockFile, err := lock.CreateLock(lockDirPath)
-	defer lockFile.Unlock()
+	defer func() {
+		e := lockFile.Unlock()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
 		return err
 	}

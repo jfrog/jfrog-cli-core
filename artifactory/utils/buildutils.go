@@ -391,7 +391,7 @@ func (bc *BuildConfiguration) ValidateBuildParams() error {
 		return err
 	}
 	if (buildName == "" && buildNumber != "") || (buildName != "" && buildNumber == "") {
-		return errorutils.CheckErrorf(("the build-name and build-number options cannot be provided separately"))
+		return errorutils.CheckErrorf("the build-name and build-number options cannot be provided separately")
 	}
 	return nil
 }

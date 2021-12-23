@@ -2,6 +2,7 @@ package utils
 
 import (
 	"flag"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,10 +25,12 @@ func init() {
 func TestGoConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer fileutils.RemoveTempDir(tempDirPath)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	}()
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Go)
 	assert.NoError(t, err)
 
@@ -47,7 +50,7 @@ func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
 	err = CreateBuildConfig(context, utils.Go)
 	assert.NoError(t, err)
 
@@ -62,12 +65,10 @@ func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 func TestPipConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Pip)
 	assert.NoError(t, err)
 
@@ -87,7 +88,7 @@ func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
 	err = CreateBuildConfig(context, utils.Pip)
 	assert.NoError(t, err)
 
@@ -107,7 +108,7 @@ func TestPipenvConfigFile(t *testing.T) {
 	}()
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Pipenv)
 	assert.NoError(t, err)
 
@@ -127,7 +128,7 @@ func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
 	err = CreateBuildConfig(context, utils.Pipenv)
 	assert.NoError(t, err)
 
@@ -142,12 +143,10 @@ func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 func TestNpmConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Npm)
 	assert.NoError(t, err)
 
@@ -167,7 +166,7 @@ func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
 	err = CreateBuildConfig(context, utils.Npm)
 	assert.NoError(t, err)
 
@@ -182,12 +181,10 @@ func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 func TestNugetConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo")
 	err := CreateBuildConfig(context, utils.Nuget)
 	assert.NoError(t, err)
 
@@ -206,7 +203,7 @@ func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo + "=repo")
+	context := createContext(t, resolutionRepo+"=repo")
 	err = CreateBuildConfig(context, utils.Nuget)
 	assert.NoError(t, err)
 
@@ -220,12 +217,10 @@ func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 func TestMavenConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
+	context := createContext(t, resolutionServerId+"=relServer", resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
 		deploymentServerId+"=depServer", deploymentReleasesRepo+"=release-repo-local", deploymentSnapshotsRepo+"=snapshot-repo-local",
 		includePatterns+"=*pattern*;second", excludePatterns+"=excluding;*pattern")
 	err := CreateBuildConfig(context, utils.Maven)
@@ -251,7 +246,7 @@ func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
+	context := createContext(t, resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
 		deploymentReleasesRepo+"=release-repo-local", deploymentSnapshotsRepo+"=snapshot-repo-local")
 	err = CreateBuildConfig(context, utils.Maven)
 	assert.NoError(t, err)
@@ -269,12 +264,10 @@ func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 func TestGradleConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local",
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local",
 		ivyDescPattern+"=[ivy]/[pattern]", ivyArtifactsPattern+"=[artifact]/[pattern]")
 	err := CreateBuildConfig(context, utils.Gradle)
 	assert.NoError(t, err)
@@ -301,7 +294,7 @@ func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 	defer cleanUp()
 
 	// Create build config
-	context := createContext(resolutionRepo+"=repo", deploymentRepo+"=repo-local",
+	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local",
 		ivyDescPattern+"=[ivy]/[pattern]", ivyArtifactsPattern+"=[artifact]/[pattern]")
 	err = CreateBuildConfig(context, utils.Gradle)
 	assert.NoError(t, err)
@@ -323,12 +316,10 @@ func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
 
 	// Create build config
-	context := createContext(resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
 	err := CreateBuildConfig(context, utils.Gradle)
 	assert.NoError(t, err)
 
@@ -349,10 +340,8 @@ func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 func TestValidateConfigResolver(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
-	configFile := NewConfigFile(utils.Go, createContext())
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
+	configFile := NewConfigFile(utils.Go, createContext(t))
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
@@ -383,10 +372,8 @@ func TestValidateConfigResolver(t *testing.T) {
 func TestValidateConfigDeployer(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
-	}()
-	configFile := NewConfigFile(utils.Go, createContext())
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
+	configFile := NewConfigFile(utils.Go, createContext(t))
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
@@ -418,26 +405,25 @@ func TestValidateConfigDeployer(t *testing.T) {
 func createTempEnv(t *testing.T) string {
 	tmpDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	err = os.Setenv(coreutils.HomeDir, tmpDir)
-	assert.NoError(t, err)
+	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, tmpDir)
 	return tmpDir
 }
 
 // Create new Codegangsta context with all required flags.
-func createContext(stringFlags ...string) *cli.Context {
+func createContext(t *testing.T, stringFlags ...string) *cli.Context {
 	flagSet := flag.NewFlagSet("TestFlagSet", flag.ContinueOnError)
 	flags := setBoolFlags(flagSet, global, usesPlugin, useWrapper, deployMavenDesc, deployIvyDesc, nugetV2)
 	flags = append(flags, setStringFlags(flagSet, stringFlags...)...)
-	flagSet.Parse(flags)
+	assert.NoError(t, flagSet.Parse(flags))
 	return cli.NewContext(nil, flagSet, nil)
 }
 
 // Set boolean flags and initialize them to true. Return a slice of them.
 func setBoolFlags(flagSet *flag.FlagSet, flags ...string) []string {
 	cmdFlags := []string{}
-	for _, flag := range flags {
-		flagSet.Bool(flag, true, "")
-		cmdFlags = append(cmdFlags, "--"+flag)
+	for _, boolFlag := range flags {
+		flagSet.Bool(boolFlag, true, "")
+		cmdFlags = append(cmdFlags, "--"+boolFlag)
 	}
 	return cmdFlags
 }
@@ -445,9 +431,9 @@ func setBoolFlags(flagSet *flag.FlagSet, flags ...string) []string {
 // Set string flags. Return a slice of their values.
 func setStringFlags(flagSet *flag.FlagSet, flags ...string) []string {
 	cmdFlags := []string{}
-	for _, flag := range flags {
-		flagSet.String(strings.Split(flag, "=")[0], "", "")
-		cmdFlags = append(cmdFlags, "--"+flag)
+	for _, stringFlag := range flags {
+		flagSet.String(strings.Split(stringFlag, "=")[0], "", "")
+		cmdFlags = append(cmdFlags, "--"+stringFlag)
 	}
 	return cmdFlags
 }

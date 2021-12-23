@@ -223,7 +223,7 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 			components = append(components, v)
 		}
 	}
-	lastUpdate = urls.Last_update
+	lastUpdate = urls.LastUpdate
 	return
 }
 
@@ -236,6 +236,6 @@ type OfflineUpdatesFlags struct {
 }
 
 type FilesList struct {
-	Last_update int64
-	Urls        []string
+	LastUpdate int64
+	Urls       []string
 }

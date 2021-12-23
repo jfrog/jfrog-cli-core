@@ -3,6 +3,7 @@ package dependencies
 import (
 	"errors"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -12,19 +13,18 @@ import (
 
 func TestDependenciesCache(t *testing.T) {
 	// Change test's work directory, rollback after function returns.
-	wd, _ := os.Getwd()
+
 	tmpTestPath := filepath.Join(os.TempDir(), "cacheTest")
 	err := os.MkdirAll(tmpTestPath, os.ModePerm)
 	if err != nil {
 		t.Error("Failed mkDirAll: " + err.Error())
 	}
-	err = os.Chdir(tmpTestPath)
-	if err != nil {
-		t.Error("Failed Chdir: " + err.Error())
-	}
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tmpTestPath)
 	defer func() {
-		assert.NoError(t, os.Chdir(wd))
-		assert.NoError(t, os.RemoveAll(tmpTestPath))
+		chdirCallback()
+		testsutils.RemoveAllAndAssert(t, tmpTestPath)
 	}()
 
 	cacheMap := make(map[string]*buildinfo.Dependency)

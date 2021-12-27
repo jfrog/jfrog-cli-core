@@ -66,7 +66,7 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 	defer func() {
 		e := out.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	bytesRes, err := json.Marshal(&results)

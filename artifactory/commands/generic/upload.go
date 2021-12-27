@@ -152,7 +152,7 @@ func (uc *UploadCommand) upload() (err error) {
 			defer func() {
 				e := artifactsDetailsReader.Close()
 				if err == nil {
-					err = e
+					err = errorutils.CheckError(e)
 				}
 			}()
 			// If 'detailed summary' was requested, then the reader should not be closed here.

@@ -70,7 +70,7 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 		for _, reader := range temp {
 			e := reader.Close()
 			if err == nil {
-				err = e
+				err = errorutils.CheckError(e)
 			}
 
 		}

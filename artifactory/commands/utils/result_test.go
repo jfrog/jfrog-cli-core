@@ -46,7 +46,7 @@ func createTempDeployableArtifactFile() (filePath string, err error) {
 	defer func() {
 		e := summary.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	tmpDir, err := fileutils.CreateTempDir()

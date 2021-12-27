@@ -99,7 +99,7 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	defer func() {
 		e := stream.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	result, err := ioutil.ReadAll(stream)

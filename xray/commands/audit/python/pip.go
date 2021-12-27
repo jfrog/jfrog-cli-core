@@ -3,6 +3,7 @@ package python
 import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
@@ -65,7 +66,7 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	defer func() {
 		e := os.Chdir(wd)
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 
 		e = fileutils.RemoveTempDir(tempDirPath)

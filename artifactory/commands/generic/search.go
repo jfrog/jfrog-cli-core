@@ -43,7 +43,7 @@ func (sc *SearchCommand) Search() (contentReader *content.ContentReader, err err
 		for _, reader := range searchResults {
 			e := reader.Close()
 			if err == nil {
-				err = e
+				err = errorutils.CheckError(e)
 			}
 		}
 	}()

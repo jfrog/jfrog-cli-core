@@ -193,7 +193,7 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployabl
 	defer func() {
 		e := propertiesFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	if err != nil {
@@ -315,7 +315,7 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	defer func() {
 		e := tempFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	if err != nil {

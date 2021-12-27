@@ -168,7 +168,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	defer func() {
 		e := stream.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	var result []byte

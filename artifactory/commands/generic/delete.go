@@ -68,7 +68,7 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 		for _, reader := range temp {
 			e := reader.Close()
 			if err == nil {
-				err = e
+				err = errorutils.CheckError(e)
 			}
 		}
 	}()

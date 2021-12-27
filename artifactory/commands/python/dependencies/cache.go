@@ -34,7 +34,7 @@ func GetProjectDependenciesCache(cacheDir string) (cache *DependenciesCache, err
 	defer func() {
 		e := jsonFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	byteValue, err := ioutil.ReadAll(jsonFile)
@@ -69,7 +69,7 @@ func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheD
 	defer func() {
 		e := cacheFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	_, err = cacheFile.Write(content)

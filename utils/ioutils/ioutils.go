@@ -70,7 +70,7 @@ func CopyFile(src, dst string, fileMode os.FileMode) (err error) {
 	defer func() {
 		e := from.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 
@@ -81,7 +81,7 @@ func CopyFile(src, dst string, fileMode os.FileMode) (err error) {
 	defer func() {
 		e := to.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 

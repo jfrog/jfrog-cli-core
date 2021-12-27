@@ -126,7 +126,7 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 	defer func() {
 		e := f.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	if err != nil {

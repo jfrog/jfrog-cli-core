@@ -134,7 +134,7 @@ func unmarshalDeployableArtifactsJson(filesPath string) (modules *map[string][]c
 	defer func() {
 		e := jsonFile.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	if err != nil {

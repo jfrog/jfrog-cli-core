@@ -407,7 +407,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 	defer func() {
 		e := tarball.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	gZipReader, err := gzip.NewReader(tarball)

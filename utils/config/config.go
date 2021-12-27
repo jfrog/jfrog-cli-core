@@ -327,6 +327,9 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		fallthrough
 	case "3", "4":
 		content, err = convertConfigV4toV5(content)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Save config after all conversions (also updates version).

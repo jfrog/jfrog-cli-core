@@ -348,10 +348,10 @@ type StepType string
 
 const (
 	MvnBuild         StepType = "MvnBuild"
-	GradleBuild               = "GradleBuild"
-	NpmBuild                  = "NpmBuild"
-	Bash                      = "Bash"
-	PublishBuildInfo          = "PublishBuildInfo"
+	GradleBuild      StepType = "GradleBuild"
+	NpmBuild         StepType = "NpmBuild"
+	Bash             StepType = "Bash"
+	PublishBuildInfo StepType = "PublishBuildInfo"
 )
 
 type PipelineStep struct {

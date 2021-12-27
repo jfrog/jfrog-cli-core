@@ -31,6 +31,9 @@ func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfigur
 			return
 		}
 		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
+		if err != nil {
+			log.Error(err)
+		}
 	}
 }
 

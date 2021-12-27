@@ -33,6 +33,7 @@ const (
 	Gradle
 	Dotnet
 	Build
+	Terraform
 )
 
 var ProjectTypes = []string{
@@ -45,6 +46,7 @@ var ProjectTypes = []string{
 	"gradle",
 	"dotnet",
 	"build",
+	"terraform",
 }
 
 func (projectType ProjectType) String() string {

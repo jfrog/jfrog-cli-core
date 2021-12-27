@@ -114,6 +114,8 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 			err = configFile.configMaven()
 		case utils.Gradle:
 			err = configFile.configGradle()
+		case utils.Terraform:
+			err = configFile.configTerraform()
 		}
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -311,6 +313,10 @@ func (configFile *ConfigFile) configGradle() error {
 func (configFile *ConfigFile) readGradleGlobalConfig() {
 	configFile.UsePlugin = coreutils.AskYesNo("Is the Gradle Artifactory Plugin already applied in the build script?", false)
 	configFile.UseWrapper = coreutils.AskYesNo("Use Gradle wrapper?", false)
+}
+
+func (configFile *ConfigFile) configTerraform() error {
+	return configFile.setDeployerResolver()
 }
 
 func (configFile *ConfigFile) setDeployer() error {

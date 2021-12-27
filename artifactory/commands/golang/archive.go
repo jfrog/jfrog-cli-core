@@ -33,6 +33,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os"
 	"path"
@@ -98,6 +99,9 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 	var files []File
 
 	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Error(err)
+		}
 		relPath, err := filepath.Rel(dir, filePath)
 		if err != nil {
 			return err

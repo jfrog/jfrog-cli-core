@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
 
 	"github.com/buger/jsonparser"
@@ -64,6 +65,9 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 	}
 
 	_, err = jsonparser.ArrayEach(body, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		if err != nil {
+			log.Error(err)
+		}
 		val, _, _, err := jsonparser.Get(value, "key")
 		if err == nil {
 			repos = append(repos, string(val))

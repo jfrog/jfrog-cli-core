@@ -254,7 +254,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 	// Copy the entire content of the relevant Go pkg directory to the requested destination path.
 	err = fileutils.CopyDir(packageFilesPath, destPath, true, nil)
 	if err != nil {
-		return fmt.Errorf("Couldn't find suitable package files: %s", packageFilesPath)
+		return fmt.Errorf("couldn't find suitable package files: %s", packageFilesPath)
 	}
 	return nil
 }

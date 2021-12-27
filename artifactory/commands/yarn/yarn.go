@@ -243,7 +243,7 @@ func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
 
 func (yc *YarnCommand) restoreConfigurationsAndError(err error) error {
 	if restoreErr := yc.restoreConfigurationsFromBackup(); restoreErr != nil {
-		return fmt.Errorf("Two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
+		return fmt.Errorf("two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
 	}
 	return err
 }

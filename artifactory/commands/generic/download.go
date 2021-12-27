@@ -294,6 +294,9 @@ func createLegalPath(root, path string) string {
 
 func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Error(err)
+		}
 		// Convert path to absolute path
 		path, err = filepath.Abs(path)
 		if errorutils.CheckError(err) != nil {

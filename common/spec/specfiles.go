@@ -226,7 +226,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 			return errors.New("spec cannot include 'sort-order' if 'sort-by' is not included")
 		}
 		if isSortOrder && !isValidSortOrder {
-			return errors.New("The value of 'sort-order' can only be 'asc' or 'desc'.")
+			return errors.New("the value of 'sort-order' can only be 'asc' or 'desc'")
 		}
 		if !isBuild && (isExcludeArtifacts || isIncludeDeps) {
 			return errors.New("spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included")

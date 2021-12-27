@@ -17,11 +17,12 @@ import (
 
 // Checks a case that targetRepository is not written in a deployableArtifacts file and needs to be read from the config file.
 func TestUnmarshalDeployableArtifacts(t *testing.T) {
-	err, cleanUpJfrogHome := tests.ConfigTestServer(t)
+	cleanUpJfrogHome, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
+	assert.NoError(t, err)
 	// Delete DeployableArtifacts tempDir
 	defer testsutils.RemoveAllAndAssert(t, filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")

@@ -114,6 +114,9 @@ func (bpc *BuildPublishCommand) Run() error {
 	}
 	if bpc.buildConfiguration.IsLoadedFromConfigFile() {
 		buildInfo.Number, err = bpc.getNextBuildNumber(buildInfo.Name, servicesManager)
+		if err != nil {
+			return err
+		}
 		bpc.buildConfiguration.SetBuildNumber(buildInfo.Number)
 	}
 	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.GetProject())

@@ -13,7 +13,6 @@ import (
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
@@ -208,7 +207,7 @@ type results struct {
 
 func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
 	buildDependencies := make(map[string]*buildinfo.Dependency)
-	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey})
+	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: serviceutils.LatestBuildNumberKey})
 	if err != nil || !found {
 		return buildDependencies, err
 	}

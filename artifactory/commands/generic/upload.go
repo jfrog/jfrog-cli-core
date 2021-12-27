@@ -175,7 +175,7 @@ func (uc *UploadCommand) upload() (err error) {
 	uc.result.SetSuccessCount(successCount)
 	uc.result.SetFailCount(failCount)
 	if errorOccurred {
-		err = errors.New("Upload finished with errors, Please review the logs.")
+		err = errors.New("upload finished with errors, Please review the logs")
 		return err
 	}
 	if failCount > 0 {
@@ -211,7 +211,9 @@ func (uc *UploadCommand) upload() (err error) {
 			return err
 		}
 		err = utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
-
+		if err != nil {
+			return err
+		}
 	}
 	return err
 }

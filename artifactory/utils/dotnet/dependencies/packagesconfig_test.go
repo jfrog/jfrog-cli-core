@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -155,6 +156,7 @@ func TestExtractDependencies(t *testing.T) {
 
 	expectedAllDependencies := []string{"id1", "id2"}
 	allDependencies, err := extractor.AllDependencies()
+	assert.NoError(t, err)
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {
 			t.Error("Expecting", v, "dependency")

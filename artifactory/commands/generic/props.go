@@ -57,13 +57,15 @@ func createPropsServiceManager(threads, httpRetries int, serverDetails *config.S
 		SetThreads(threads).
 		SetHttpRetries(httpRetries).
 		Build()
-
+	if err != nil {
+		return nil, err
+	}
 	return artifactory.New(serviceConfig)
 }
 
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {
 	var errorOccurred = false
-	temp := []*content.ContentReader{}
+	var temp []*content.ContentReader
 	defer func() {
 		for _, reader := range temp {
 			e := reader.Close()

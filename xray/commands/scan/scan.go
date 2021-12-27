@@ -170,7 +170,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
 	// If user provided --fail=false, don't fail the build.
-	if scanCmd.fail && scanCmd.includeVulnerabilities == false {
+	if scanCmd.fail && !scanCmd.includeVulnerabilities {
 		if xrutils.CheckIfFailBuild(flatResults) {
 			return xrutils.NewFailBuildError()
 		}
@@ -322,7 +322,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		if isDir {
 			continue
 		}
-		if matches != nil && len(matches) > 0 {
+		if len(matches) > 0 {
 			dataHandlerFunc(path)
 		}
 	}

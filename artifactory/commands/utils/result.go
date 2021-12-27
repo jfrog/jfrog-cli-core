@@ -52,7 +52,7 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 // The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
 // deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
 // projectConfigPath - path to gradle/maven config yaml path.
-// lateDeploy - boolean indicates if the artifcats was expected to be deployed.
+// lateDeploy - boolean indicates if the artifacts was expected to be deployed.
 func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath string, lateDeploy bool) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
@@ -80,6 +80,9 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath
 		}
 	}
 	err = clientutils.SaveFileTransferDetailsInFile(deployableArtifactsFilePath, &artifactsArray)
+	if err != nil {
+		return nil, err
+	}
 	// Return result
 	result := new(Result)
 	result.SetSuccessCount(succeeded)
@@ -125,6 +128,9 @@ func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifac
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
 	jsonFile, err := os.Open(filesPath)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
 	defer jsonFile.Close()
 	if err != nil {
 		return nil, errorutils.CheckError(err)

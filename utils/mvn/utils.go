@@ -322,7 +322,6 @@ type mvnRunConfig struct {
 	mavenHome                    string
 	pluginDependencies           string
 	workspace                    string
-	pom                          string
 	goals                        []string
 	buildInfoProperties          string
 	artifactoryResolutionEnabled bool

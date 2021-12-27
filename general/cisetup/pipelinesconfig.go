@@ -58,7 +58,7 @@ func (pc *JFrogPipelinesConfigurator) doAddPipelineSource(psm *pipelines.Pipelin
 		// If source already exists, ignore error.
 		if _, ok := err.(*services.SourceAlreadyExistsError); ok {
 			log.Debug("Pipeline Source for repo '" + pc.SetupData.GetRepoFullName() + "' and branch '" + pc.SetupData.GitBranch + "' already exists and will be used.")
-			err = nil
+			return nil
 		}
 	}
 	return
@@ -151,7 +151,7 @@ func (pc *JFrogPipelinesConfigurator) createArtifactoryIntegration(psm *pipeline
 		// If integration already exists, ignore error.
 		if _, ok := err.(*services.IntegrationAlreadyExistsError); ok {
 			log.Debug("Integration '" + integrationName + "' already exists and will be used.")
-			err = nil
+			return integrationName, nil
 		}
 	}
 	return integrationName, err

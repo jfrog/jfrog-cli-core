@@ -85,7 +85,7 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 		return err
 	}
 	defer tempFile.Close()
-	_, err = tempFile.Write([]byte(content.String()))
+	_, err = tempFile.Write(content.Bytes())
 	return err
 }
 
@@ -109,7 +109,7 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildin
 		return err
 	}
 	defer tempFile.Close()
-	_, err = tempFile.Write([]byte(content.String()))
+	_, err = tempFile.Write(content.Bytes())
 	return errorutils.CheckError(err)
 }
 
@@ -140,7 +140,7 @@ func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(detailsFilePath, []byte(content.String()), 0600)
+	err = ioutil.WriteFile(detailsFilePath, content.Bytes(), 0600)
 	return errorutils.CheckError(err)
 }
 
@@ -232,7 +232,7 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*bu
 	if err != nil {
 		return nil, err
 	}
-	if fileExists == false {
+	if !fileExists {
 		var buildString string
 		if projectKey != "" {
 			buildString = fmt.Sprintf("build-name: <%s>, build-number: <%s> and project: <%s>", buildName, buildNumber, projectKey)

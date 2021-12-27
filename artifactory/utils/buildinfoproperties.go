@@ -187,6 +187,9 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployabl
 		return "", err
 	}
 	propertiesFile, err := ioutil.TempFile(propertiesPath, PropertiesTempPrefix)
+	if errorutils.CheckError(err) != nil {
+		return "", err
+	}
 	defer propertiesFile.Close()
 	if err != nil {
 		return "", errorutils.CheckError(err)

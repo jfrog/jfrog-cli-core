@@ -136,6 +136,9 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 // Download MD5 and SHA1 from the build info artifact.
 func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.ChecksumDetails, error) {
 	serviceDetails, err := bac.serverDetails.CreateArtAuthConfig()
+	if err != nil {
+		return fileutils.ChecksumDetails{}, err
+	}
 	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
 		return fileutils.ChecksumDetails{}, err

@@ -140,7 +140,7 @@ func (dc *DownloadCommand) download() error {
 	dc.result.SetFailCount(totalFailed)
 	// Check for errors.
 	if errorOccurred {
-		return errors.New("Download finished with errors, please review the logs.")
+		return errors.New("download finished with errors, please review the logs")
 	}
 	if dc.DryRun() {
 		dc.result.SetSuccessCount(totalDownloaded)
@@ -171,18 +171,18 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if toCollect {
-		buildName, err := dc.buildConfiguration.GetBuildName()
-		if err != nil {
-			return err
+		buildName, collectErr := dc.buildConfiguration.GetBuildName()
+		if collectErr != nil {
+			return collectErr
 		}
-		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
-		if err != nil {
-			return err
+		buildNumber, collectErr := dc.buildConfiguration.GetBuildNumber()
+		if collectErr != nil {
+			return collectErr
 		}
 		var buildDependencies []buildinfo.Dependency
-		buildDependencies, err = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
-		if err != nil {
-			return err
+		buildDependencies, collectErr = serviceutils.ConvertArtifactsDetailsToBuildInfoDependencies(summary.ArtifactsDetailsReader)
+		if collectErr != nil {
+			return collectErr
 		}
 		populateFunc := func(partial *buildinfo.Partial) {
 			partial.Dependencies = buildDependencies

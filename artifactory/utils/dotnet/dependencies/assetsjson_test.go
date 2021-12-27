@@ -2,6 +2,7 @@ package dependencies
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -99,6 +100,7 @@ func TestNewAssetsExtractor(t *testing.T) {
 	}
 
 	allDependencies, err := extractor.AllDependencies()
+	assert.NoError(t, err)
 	expectedAllDependencies := []string{"dep1", "dep2"}
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {

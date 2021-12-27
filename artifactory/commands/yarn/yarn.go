@@ -3,7 +3,6 @@ package yarn
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -114,7 +113,7 @@ func (yc *YarnCommand) Run() error {
 		}
 	}
 
-	log.Info(fmt.Sprintf("Yarn finished successfully."))
+	log.Info("Yarn finished successfully.")
 	return nil
 }
 
@@ -244,7 +243,7 @@ func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
 
 func (yc *YarnCommand) restoreConfigurationsAndError(err error) error {
 	if restoreErr := yc.restoreConfigurationsFromBackup(); restoreErr != nil {
-		return errors.New(fmt.Sprintf("Two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error()))
+		return fmt.Errorf("Two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
 	}
 	return err
 }
@@ -478,15 +477,6 @@ type YarnDepDetails struct {
 type YarnDependencyPointer struct {
 	Descriptor string `json:"descriptor,omitempty"`
 	Locator    string `json:"locator,omitempty"`
-}
-
-func createRestoreErrorPrefix(workingDirectory string) string {
-	return fmt.Sprintf("Error occurred while restoring the project's %s file. "+
-		"To restore the project: delete %s and change the name of the backup file at %s (if exists) to '%s'.\nFailure cause: ",
-		yarnrcFileName,
-		filepath.Join(workingDirectory, yarnrcFileName),
-		filepath.Join(workingDirectory, yarnrcBackupFileName),
-		yarnrcFileName)
 }
 
 // npmAuth we get back from Artifactory includes several fields, but we need only the field '_auth'

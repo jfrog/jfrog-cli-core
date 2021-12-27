@@ -1,8 +1,6 @@
 package npm
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,11 +9,6 @@ import (
 )
 
 func TestPrepareConfigData(t *testing.T) {
-	currentDir, err := os.Getwd()
-	assert.NoError(t, err)
-	testdataPath := filepath.Join(currentDir, "artifactory", "commands", "testdata")
-	testdataPath, err = filepath.Abs(testdataPath)
-	assert.NoError(t, err)
 	configBefore := []byte(
 		"json=true\n" +
 			"user-agent=npm/5.5.1 node/v8.9.1 darwin x64\n" +

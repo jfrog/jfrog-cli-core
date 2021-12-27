@@ -91,11 +91,11 @@ func GetDefaultConfiguredConf(configs []*ServerDetails) (*ServerDetails, error) 
 		return details, nil
 	}
 	for _, conf := range configs {
-		if conf.IsDefault == true {
+		if conf.IsDefault {
 			return conf, nil
 		}
 	}
-	return nil, errors.New("Couldn't find default server.")
+	return nil, errors.New("couldn't find default server")
 }
 
 // Returns default artifactory conf. Returns nil if default server doesn't exists.
@@ -223,12 +223,11 @@ func getConfigFile() (content []byte, err error) {
 			return nil, err
 		}
 		if exists, err := fileutils.IsFileExists(versionedConfigPath, false); exists {
+			if err != nil {
+				return nil, err
+			}
 			// If an old config file was found returns its content or an error.
-			content, err = fileutils.ReadFile(versionedConfigPath)
-			return content, err
-		}
-		if err != nil {
-			return nil, err
+			return fileutils.ReadFile(versionedConfigPath)
 		}
 	}
 
@@ -245,7 +244,7 @@ func (config *ConfigV5) getContent() ([]byte, error) {
 	if err != nil {
 		return []byte{}, errorutils.CheckError(err)
 	}
-	return []byte(content.String()), nil
+	return content.Bytes(), nil
 }
 
 // Move SSL certificates from the old location in security dir to certs dir.

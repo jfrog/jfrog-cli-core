@@ -132,15 +132,17 @@ func (mc *MvnCommand) Run() error {
 // Returns the ServerDetails. The information returns from the config file provided.
 func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Get the serverDetails from the config file.
-	var err error
 	if mc.serverDetails == nil {
 		vConfig, err := utils.ReadConfigFile(mc.configPath, utils.YAML)
 		if err != nil {
 			return nil, err
 		}
 		mc.serverDetails, err = utils.GetServerDetails(vConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return mc.serverDetails, err
+	return mc.serverDetails, nil
 }
 
 func (mc *MvnCommand) unmarshalDeployableArtifacts(filesPath string) error {

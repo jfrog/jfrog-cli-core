@@ -208,6 +208,9 @@ func (gc *GoCommand) run() error {
 			goModule.SetName(gc.buildConfiguration.GetModule())
 		}
 		err = errorutils.CheckError(goModule.CalcDependencies())
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -242,7 +245,7 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 }
 
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
-// The path to those chache files is retrived using the supplied package name and Artifactory details.
+// The path to those cache files is retrieved using the supplied package name and Artifactory details.
 func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) error {
 	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, authArtDetails)
 	if err != nil {
@@ -256,9 +259,9 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 	return nil
 }
 
-// getPackageFilePathFromArtifactory returns a string that represents the package files chache path.
-// In most cases the path to those chache files is retrived using the supplied package name and Artifactory details.
-// However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
+// getPackageFilePathFromArtifactory returns a string that represents the package files cache path.
+// In most cases the path to those cache files is retrieved using the supplied package name and Artifactory details.
+// However, if the user asked for a specific version (package@vX.Y.Z) the unnecessary call to Artifactory is avoided.
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
 	packageCachePath, err := biutils.GetGoModCachePath()
@@ -278,7 +281,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 			branchName = packageNameSplitted[1]
 		}
 		packageVersionRequest := buildPackageVersionRequest(name, branchName)
-		// Retrive the package version using Artifactory
+		// Retrieve the package version using Artifactory
 		version, err = getPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
 		if err != nil {
 			return

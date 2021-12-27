@@ -306,16 +306,6 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	}
 }
 
-func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
-	if !cc.useBasicAuthOnly && (cc.details.Password != "" && cc.details.AccessToken == "") {
-		useRefreshableToken := coreutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
-			"JFrog CLI supports replacing the configured username and password/API key with automatically created access token that's refreshed hourly. "+
-			"Enable this setting?", true)
-		cc.useBasicAuthOnly = !useRefreshableToken
-	}
-	return
-}
-
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
 	if err == nil {

@@ -47,7 +47,6 @@ type NpmPublishCommandArgs struct {
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
 	scanOutputFormat       xrutils.OutputFormat
-	packDestination        string
 }
 
 type NpmPublishCommand struct {

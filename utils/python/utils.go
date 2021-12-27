@@ -2,7 +2,6 @@ package python
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -22,7 +21,7 @@ func runPythonCommand(execPath string, cmdArgs []string, envs string) (data []by
 	cmd.Stderr = &stderr
 	err = errorutils.CheckError(cmd.Run())
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed running command: '%s %s %s' with error: %s - %s", envs, execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String()))
+		return nil, fmt.Errorf("failed running command: '%s %s %s' with error: %s - %s", envs, execPath, strings.Join(cmdArgs, " "), err.Error(), stderr.String())
 	}
 	return stdout.Bytes(), nil
 }
@@ -45,7 +44,7 @@ func parseDependenciesToGraph(packages []pythonDependencyPackage) (map[string][]
 
 	var topLevelPackagesList []string
 	for pkgName := range packagesMap {
-		if allSubPackages[pkgName] == false {
+		if !allSubPackages[pkgName] {
 			topLevelPackagesList = append(topLevelPackagesList, pkgName)
 		}
 	}

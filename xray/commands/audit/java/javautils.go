@@ -1,6 +1,7 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strconv"
 	"time"
 
@@ -18,6 +19,9 @@ const (
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
 	return buildConfiguration, func(err error) {
+		if err != nil {
+			log.Error(err)
+		}
 		buildName, err := buildConfiguration.GetBuildName()
 		if err != nil {
 			return
@@ -48,7 +52,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	if len(generatedBuildsInfos) == 0 {
 		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
 	}
-	modules := []*services.GraphNode{}
+	var modules []*services.GraphNode
 	for _, module := range generatedBuildsInfos[0].Modules {
 		modules = append(modules, addModuleTree(module))
 	}

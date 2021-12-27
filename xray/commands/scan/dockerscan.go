@@ -74,6 +74,7 @@ func (csc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
+
 	// Perform scan on image.tar
 	return csc.ScanCommand.Run()
 }

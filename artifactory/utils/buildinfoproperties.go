@@ -304,7 +304,12 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 	}
 	var tempFile *os.File
 	tempFile, err = ioutil.TempFile(buildPath, GeneratedBuildInfoTempPrefix)
-	defer tempFile.Close()
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
 		return err
 	}

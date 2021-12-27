@@ -188,7 +188,7 @@ func (ica *InstallCiArgs) collectDependenciesChecksums() error {
 	go func() {
 		defer producerConsumer.Done()
 		for i := range ica.dependencies {
-			producerConsumer.AddTaskWithError(handlerFunc(i), errorsQueue.AddError)
+			_, _ = producerConsumer.AddTaskWithError(handlerFunc(i), errorsQueue.AddError)
 		}
 	}()
 	producerConsumer.Run()

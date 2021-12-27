@@ -129,9 +129,9 @@ func getServiceManager(serverId string) (artifactory.ArtifactoryServicesManager,
 
 }
 
-// Check if default repository is allready exists
+// Check if default repository is already exists
 func repoExists(servicesManager artifactory.ArtifactoryServicesManager, repoKey string) bool {
 	repo := &services.RepositoryDetails{}
-	servicesManager.GetRepository(repoKey, repo)
+	_ = servicesManager.GetRepository(repoKey, repo)
 	return repo.Key != ""
 }

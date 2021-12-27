@@ -247,7 +247,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				return
 			}
 
-			indexedFileProducer.AddTaskWithError(taskFunc, errorsQueue.AddError)
+			_, _ = indexedFileProducer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 			return
 		}
 	}
@@ -256,7 +256,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, fileHandlerFunc FileContext) indexFileHandlerFunc {
 	return func(filePath string) {
 		taskFunc := fileHandlerFunc(filePath)
-		producer.AddTaskWithError(taskFunc, errorsQueue.AddError)
+		_, _ = producer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 	}
 }
 

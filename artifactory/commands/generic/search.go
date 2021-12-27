@@ -26,7 +26,7 @@ func (sc *SearchCommand) Run() error {
 	return err
 }
 
-func (sc *SearchCommand) Search() (*content.ContentReader, error) {
+func (sc *SearchCommand) Search() (contentReader *content.ContentReader, err error) {
 	// Service Manager
 	serverDetails, err := sc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
@@ -41,7 +41,10 @@ func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	var searchResults []*content.ContentReader
 	defer func() {
 		for _, reader := range searchResults {
-			reader.Close()
+			e := reader.Close()
+			if err == nil {
+				err = e
+			}
 		}
 	}()
 	for i := 0; i < len(sc.Spec().Files); i++ {

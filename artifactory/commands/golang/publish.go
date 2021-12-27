@@ -144,7 +144,7 @@ func createInfoFile(packageVersion string) (path string, err error) {
 
 // Read go.mod file.
 // Pass createArtifact = true to create an Artifact for build-info.
-func readModFile(version, projectPath string, createArtifact bool) ([]byte, *buildinfo.Artifact, error) {
+func readModFile(version, projectPath string, createArtifact bool) (content []byte, artifact *buildinfo.Artifact, err error) {
 	modFilePath := filepath.Join(projectPath, "go.mod")
 	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
 	if !modFileExists {
@@ -154,8 +154,13 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	if err != nil {
 		return nil, nil, err
 	}
-	defer modFile.Close()
-	content, err := ioutil.ReadAll(modFile)
+	defer func() {
+		e := modFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
+	content, err = ioutil.ReadAll(modFile)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
@@ -170,9 +175,9 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	}
 
 	// Add mod file as artifact
-	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod"}
+	artifact = &buildinfo.Artifact{Name: version + ".mod", Type: "mod"}
 	artifact.Checksum = &buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
-	return content, artifact, nil
+	return
 }
 
 // Archive the go project.

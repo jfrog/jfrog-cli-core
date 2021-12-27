@@ -373,7 +373,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 
 	go func() {
 		defer producerConsumer.Done()
-		yc.appendDependencyRecursively(root, []string{}, dependenciesMap, previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
+		_ = yc.appendDependencyRecursively(root, []string{}, dependenciesMap, previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
 	}()
 
 	producerConsumer.Run()

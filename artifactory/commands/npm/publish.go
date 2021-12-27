@@ -295,14 +295,20 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		if npc.collectBuildInfo {
 			npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
 		} else {
-			summary.ArtifactsDetailsReader.Close()
+			err = summary.ArtifactsDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 		if npc.detailedSummary {
 			npc.result.SetReader(summary.TransferDetailsReader)
 			npc.result.SetFailCount(totalFailed)
 			npc.result.SetSuccessCount(summary.TotalSucceeded)
 		} else {
-			summary.TransferDetailsReader.Close()
+			err = summary.TransferDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		_, totalFailed, err = servicesManager.UploadFiles(up)

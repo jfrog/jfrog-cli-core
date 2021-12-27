@@ -66,7 +66,7 @@ func (uc *UploadCommand) Run() error {
 
 // Uploads the artifacts in the specified local path pattern to the specified target path.
 // Returns the total number of artifacts successfully uploaded.
-func (uc *UploadCommand) upload() error {
+func (uc *UploadCommand) upload() (err error) {
 	// Init progress bar if needed
 	if uc.progress != nil {
 		uc.progress.InitProgressReaders()
@@ -79,7 +79,6 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Create Service Manager:
-	var err error
 	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
 	if err != nil {
 		return err
@@ -150,13 +149,18 @@ func (uc *UploadCommand) upload() error {
 		}
 		if summary != nil {
 			artifactsDetailsReader = summary.ArtifactsDetailsReader
-			defer artifactsDetailsReader.Close()
+			defer func() {
+				e := artifactsDetailsReader.Close()
+				if err == nil {
+					err = e
+				}
+			}()
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if uc.DetailedSummary() {
 				uc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				summary.TransferDetailsReader.Close()
+				err = summary.TransferDetailsReader.Close()
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed

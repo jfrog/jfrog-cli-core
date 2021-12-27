@@ -398,13 +398,18 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	return npc.readPackageInfoFromTarball()
 }
 
-func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
+func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 	log.Debug("Extracting info from npm package:", npc.packedFilePath)
 	tarball, err := os.Open(npc.packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer tarball.Close()
+	defer func() {
+		e := tarball.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {
 		return errorutils.CheckError(err)

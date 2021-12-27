@@ -65,7 +65,7 @@ func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, err
 	return buildDir, nil
 }
 
-func saveBuildData(action interface{}, buildName, buildNumber, projectKey string) error {
+func saveBuildData(action interface{}, buildName, buildNumber, projectKey string) (err error) {
 	b, err := json.Marshal(&action)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -84,12 +84,17 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 	if err != nil {
 		return err
 	}
-	defer tempFile.Close()
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	_, err = tempFile.Write(content.Bytes())
 	return err
 }
 
-func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildinfo.BuildInfo) error {
+func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildinfo.BuildInfo) (err error) {
 	b, err := json.Marshal(buildInfo)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -108,7 +113,12 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildin
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	defer tempFile.Close()
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	_, err = tempFile.Write(content.Bytes())
 	return errorutils.CheckError(err)
 }

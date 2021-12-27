@@ -403,8 +403,11 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 		if !exist {
 			return errorutils.CheckErrorf("An error occurred while creating dependencies tree: dependency %s was not found.", dependencyPtr.Locator)
 		}
-		yc.appendDependencyRecursively(innerYarnDep, append([]string{id}, pathToRoot...), dependenciesMap,
+		err := yc.appendDependencyRecursively(innerYarnDep, append([]string{id}, pathToRoot...), dependenciesMap,
 			previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
+		if err != nil {
+			return err
+		}
 	}
 
 	// The root project should not be added to the dependencies list
@@ -425,7 +428,7 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 			buildinfoDependency.Checksum = checksum
 			return nil
 		}
-		producerConsumer.AddTaskWithError(taskFunc, errorsQueue.AddError)
+		_, _ = producerConsumer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 	}
 
 	buildinfoDependency.RequestedBy = append(buildinfoDependency.RequestedBy, pathToRoot)

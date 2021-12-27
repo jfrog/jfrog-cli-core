@@ -176,13 +176,13 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (name string, err error) {
 	if config.GetString("type") != projectType.String() {
 		return "", errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
 	}
 
 	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PropertiesTempPath)
-	err := os.MkdirAll(propertiesPath, 0777)
+	err = os.MkdirAll(propertiesPath, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
@@ -190,7 +190,12 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployabl
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
-	defer propertiesFile.Close()
+	defer func() {
+		e := propertiesFile.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

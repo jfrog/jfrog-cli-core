@@ -494,14 +494,14 @@ func Use(serverId string) error {
 	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", serverId)
 }
 
-func ClearConfig(interactive bool) {
+func ClearConfig(interactive bool) error {
 	if interactive {
 		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
 		if !confirmed {
-			return
+			return nil
 		}
 	}
-	config.SaveServersConf(make([]*config.ServerDetails, 0))
+	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {

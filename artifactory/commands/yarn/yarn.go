@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 
 	"github.com/jfrog/gofrog/parallel"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -25,7 +25,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 const yarnrcFileName = ".yarnrc.yml"
@@ -44,7 +43,7 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	restoreYarnrcFunc  func() error
-	packageInfo        *npmutils.PackageInfo
+	packageInfo        *biutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
@@ -191,8 +190,27 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	yc.collectBuildInfo, yc.packageInfo, err = commandUtils.PrepareBuildInfo(yc.workingDirectory, yc.buildConfiguration, nil)
+	yc.collectBuildInfo, err = yc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
+		return err
+	}
+	if !yc.collectBuildInfo {
+		return nil
+	}
+
+	buildName, err := yc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := yc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, yc.buildConfiguration.GetProject()); err != nil {
+		return err
+	}
+
+	if yc.packageInfo, err = biutils.ReadPackageInfoFromPackageJson(yc.workingDirectory, nil); err != nil {
 		return err
 	}
 
@@ -418,7 +436,7 @@ func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependenc
 		buildinfoDependency = &buildinfo.Dependency{Id: id}
 		yc.dependencies[id] = buildinfoDependency
 		taskFunc := func(threadId int) error {
-			checksum, fileType, err := commandUtils.GetDependencyInfo(name, version, previousBuildDependencies, servicesManager, threadId)
+			checksum, fileType, err := commandUtils.GetDependencyInfo(name, version, previousBuildDependencies, servicesManager)
 			if err != nil {
 				return err
 			}
@@ -450,12 +468,44 @@ func (yc *YarnCommand) saveDependenciesData() error {
 		yc.buildConfiguration.SetModule(yc.packageInfo.BuildInfoModuleId())
 	}
 
-	if err := commandUtils.SaveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {
+	if err := saveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {
 		return err
 	}
 
-	commandUtils.PrintMissingDependencies(missingDependencies)
+	printMissingDependencies(missingDependencies)
 	return nil
+}
+
+func saveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguration *utils.BuildConfiguration) error {
+	populateFunc := func(partial *buildinfo.Partial) {
+		partial.Dependencies = dependencies
+		partial.ModuleId = buildConfiguration.GetModule()
+		partial.ModuleType = buildinfo.Npm
+	}
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return utils.SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
+}
+
+func printMissingDependencies(missingDependencies []buildinfo.Dependency) {
+	if len(missingDependencies) == 0 {
+		return
+	}
+
+	var missingDependenciesText []string
+	for _, dependency := range missingDependencies {
+		missingDependenciesText = append(missingDependenciesText, dependency.Id)
+	}
+	log.Warn(strings.Join(missingDependenciesText, "\n"))
+	log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
+		"Make sure the dependencies are available in Artifactory for this build.\n" +
+		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
 type YarnDependency struct {

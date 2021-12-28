@@ -2,9 +2,9 @@ package dotnet
 
 import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 const minDotnetSdkCoreVersionForAddSource = "3.1.200"

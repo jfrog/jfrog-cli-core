@@ -1,9 +1,11 @@
 package npm
 
 import (
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -17,10 +19,10 @@ func NewAuditNpmCommand(auditCmd audit.AuditCommand) *AuditNpmCommand {
 
 type AuditNpmCommand struct {
 	audit.AuditCommand
-	typeRestriction npmutils.TypeRestriction
+	typeRestriction biutils.TypeRestriction
 }
 
-func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction npmutils.TypeRestriction) *AuditNpmCommand {
+func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction biutils.TypeRestriction) *AuditNpmCommand {
 	auditCmd.typeRestriction = typeRestriction
 	return auditCmd
 }
@@ -32,16 +34,16 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	npmVersion, npmExecutablePath, err := npmutils.GetNpmVersionAndExecPath()
+	npmVersion, npmExecutablePath, err := biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
-	packageInfo, err := npmutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
+	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
 	if err != nil {
 		return err
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := npmutils.CalculateDependenciesList(typeRestriction, []string{}, npmExecutablePath, packageInfo.BuildInfoModuleId())
+	dependenciesList, err := biutils.CalculateDependenciesList(typeRestriction, npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), []string{}, nil, 1, log.Logger)
 	if err != nil {
 		return err
 	}
@@ -52,11 +54,11 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 }
 
 // Parse the dependencies into an Xray dependency tree format
-func parseNpmDependenciesList(dependencies map[string]*npmutils.Dependency, packageInfo *npmutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
 	treeMap := make(map[string][]string)
-	for dependencyId, dependency := range dependencies {
-		dependencyId = npmPackageTypeIdentifier + dependencyId
-		parent := npmPackageTypeIdentifier + dependency.GetPathToRoot()[0][0]
+	for _, dependency := range dependencies {
+		dependencyId := npmPackageTypeIdentifier + dependency.Id
+		parent := npmPackageTypeIdentifier + dependency.RequestedBy[0][0]
 		if children, ok := treeMap[parent]; ok {
 			treeMap[parent] = append(children, dependencyId)
 		} else {

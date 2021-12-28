@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"github.com/jfrog/gofrog/version"
 	"os/exec"
 
 	"github.com/jfrog/build-info-go/build"
@@ -8,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 const minSupportedArtifactoryVersion = "6.2.0"

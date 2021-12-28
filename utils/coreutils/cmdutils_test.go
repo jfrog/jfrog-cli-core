@@ -1,8 +1,6 @@
 package coreutils
 
 import (
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -177,37 +175,4 @@ func TestFindFlagFirstMatch(t *testing.T) {
 			t.Errorf("Expected flag index of: %d, got: %d.", test.expectedFlagIndex, actualFlagIndex)
 		}
 	}
-}
-
-func TestParseArgs(t *testing.T) {
-	// Check with no quote
-	want := []string{`rt`}
-	got, _ := ParseArgs([]string{`rt`})
-	assert.EqualValues(t, got, want)
-	// Check middle quote
-	want = []string{`pom.xml`}
-	got, _ = ParseArgs([]string{`"p"o"m.xml"`})
-	assert.EqualValues(t, got, want)
-
-	// Check with space and backslash
-	want = []string{`-f a\b\pom.xml`}
-	got, _ = ParseArgs([]string{`"-f a\b\pom.xml"`})
-	assert.EqualValues(t, got, want)
-	setEnvCallback := testsutils.SetEnvWithCallbackAndAssert(t, "JFROGPARSETEST", "jfrog")
-	defer setEnvCallback()
-
-	// Check env variable parse
-	want = []string{`--build-name=jfrog`}
-	got, _ = ParseArgs([]string{`"--build-name=$JFROGPARSETEST"`})
-	assert.EqualValues(t, got, want)
-
-	want = []string{`--build-name=jfrog jfrog`, "--build-number=1"}
-	got, _ = ParseArgs([]string{`"--build-name=jfrog jfrog"`, "--build-number=1"})
-	assert.EqualValues(t, got, want)
-
-	got, _ = ParseArgs([]string{`--build-name="jfrog jfrog"`, "--build-number=1"})
-	assert.EqualValues(t, got, want)
-
-	got, _ = ParseArgs([]string{`--build-name='jfrog jfrog'`, "--build-number=1"})
-	assert.EqualValues(t, got, want)
 }

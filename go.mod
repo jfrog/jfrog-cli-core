@@ -14,7 +14,6 @@ require (
 	github.com/jfrog/jfrog-client-go v1.6.6
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
-	github.com/mattn/go-shellwords v1.0.3
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.8.1
@@ -31,8 +30,8 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.6.7-0.20211227081103-b8b56f0ff475
+replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
 
-//replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v0.1.5-0.20211209071650-c5f4d2e581c3
+replace github.com/jfrog/build-info-go => ../build-info-go
 
 //replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.0.7-0.20211128152632-e218c460d703

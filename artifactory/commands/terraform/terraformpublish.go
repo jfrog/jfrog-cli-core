@@ -5,6 +5,7 @@ import (
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -79,11 +80,7 @@ func (tpc *TerraformPublishCommand) SetTag(tag string) *TerraformPublishCommand 
 
 func (tpc *TerraformPublishCommand) Run() error {
 	log.Info("Running Terraform Publish")
-	// TODO: return this
 	if err := tpc.preparePrerequisites(); err != nil {
-		return err
-	}
-	if err := tpc.getRepoFromConfiguration(); err != nil {
 		return err
 	}
 	if err := tpc.publish(); err != nil {
@@ -94,14 +91,16 @@ func (tpc *TerraformPublishCommand) Run() error {
 }
 
 func (tpc *TerraformPublishCommand) preparePrerequisites() error {
-	currentDir, err := os.Getwd()
+	namespace, provider, tag, err := ExtractTerraformPublishOptionsFromArgs(tpc.args)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-
-	currentDir, err = filepath.Abs(currentDir)
-	if err != nil {
-		return errorutils.CheckError(err)
+	if namespace == "" || provider == "" || tag == "" {
+		return errorutils.CheckErrorf("Wrong number of arguments. for a terraform publish command please provide --namespace, --provider and --tag.")
+	}
+	tpc.SetNamespace(namespace).SetProvider(provider).SetTag(tag)
+	if err := tpc.getRepoFromConfiguration(); err != nil {
+		return err
 	}
 
 	artDetails, err := tpc.serverDetails.CreateArtAuthConfig()
@@ -228,4 +227,29 @@ func (tpc *TerraformPublishCommand) getRepoFromConfiguration() error {
 	}
 	tpc.SetRepo(deployerParams.TargetRepo())
 	return nil
+}
+
+func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, err error) {
+	// Extract namespace information from the args.
+	flagIndex, valueIndex, namespace, err := coreutils.FindFlag("--namespace", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	// Extract provider information from the args.
+	flagIndex, valueIndex, provider, err = coreutils.FindFlag("--provider", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	// Extract tag information from the args.
+	flagIndex, valueIndex, tag, err = coreutils.FindFlag("--tag", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	if len(args) != 0 {
+		err = errorutils.CheckErrorf("Unknown flag:\"" + strings.Split(args[0], "=")[0] + "\". for a terraform publish command please provide --namespace, --provider and --tag.")
+	}
+	return
 }

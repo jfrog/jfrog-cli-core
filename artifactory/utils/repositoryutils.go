@@ -63,12 +63,15 @@ func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]s
 		return repos, errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + utils.IndentJson(body))
 	}
 
-	jsonparser.ArrayEach(body, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+	_, err = jsonparser.ArrayEach(body, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		val, _, _, err := jsonparser.Get(value, "key")
 		if err == nil {
 			repos = append(repos, string(val))
 		}
 	})
+	if err != nil {
+		return repos, err
+	}
 	return repos, nil
 }
 

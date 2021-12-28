@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
@@ -11,7 +12,10 @@ import (
 	"path/filepath"
 )
 
-const indexerEnvPrefix = "JFROG_INDEXER_"
+const (
+	indexerEnvPrefix         = "JFROG_INDEXER_"
+	DockerScanMinXrayVersion = "3.39.0"
+)
 
 type DockerScanCommand struct {
 	ScanCommand
@@ -28,7 +32,15 @@ func (csc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
 }
 
 func (csc *DockerScanCommand) Run() (err error) {
-	// Perform scan.
+	// Validate Xray minimum version
+	_, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(csc.ScanCommand.serverDetails)
+	if err != nil {
+		return err
+	}
+	err = commands.ValidateXrayMinimumVersion(xrayVersion, DockerScanMinXrayVersion)
+	if err != nil {
+		return err
+	}
 
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -62,6 +74,8 @@ func (csc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
+
+	// Perform scan on image.tar
 	return csc.ScanCommand.Run()
 }
 func (csc *DockerScanCommand) dockerSave(tarFilePath string) error {

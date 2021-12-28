@@ -35,7 +35,7 @@ func (dep *Dependency) GetPathToRoot() [][]string {
 func CalculateDependenciesList(typeRestriction TypeRestriction, npmArgs []string, executablePath, buildInfoModuleId string) (dependenciesList map[string]*Dependency, err error) {
 	dependenciesList = make(map[string]*Dependency)
 	if typeRestriction != ProdOnly {
-		if prepareDependencies("dev", executablePath, buildInfoModuleId, npmArgs, &dependenciesList); err != nil {
+		if err = prepareDependencies("dev", executablePath, buildInfoModuleId, npmArgs, &dependenciesList); err != nil {
 			return
 		}
 	}

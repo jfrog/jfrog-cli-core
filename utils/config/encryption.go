@@ -123,6 +123,12 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 	config := viper.New()
 	config.SetConfigType("yaml")
 	f, err := os.Open(secFile)
+	defer func() {
+		e := f.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
 		return "", false, errorutils.CheckError(err)
 	}

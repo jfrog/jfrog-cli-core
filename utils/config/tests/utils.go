@@ -3,6 +3,7 @@ package tests
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
@@ -17,14 +18,14 @@ func CreateTempEnv(t *testing.T, copyEncryptionKey bool) (cleanUp func()) {
 	tmpDir, err := ioutil.TempDir("", "config_test")
 	assert.NoError(t, err)
 	oldHome := os.Getenv(coreutils.HomeDir)
-	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
+	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, tmpDir)
 	copyResources(t, certsConversionResources, tmpDir)
 	if copyEncryptionKey {
 		copyResources(t, encryptionResources, tmpDir)
 	}
 	return func() {
-		os.RemoveAll(tmpDir)
-		os.Setenv(coreutils.HomeDir, oldHome)
+		testsutils.RemoveAllAndAssert(t, tmpDir)
+		testsutils.SetEnvAndAssert(t, coreutils.HomeDir, oldHome)
 	}
 }
 

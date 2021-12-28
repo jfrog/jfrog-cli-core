@@ -4,6 +4,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/parallel"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
@@ -38,9 +39,8 @@ func TestSetAndRestoreEnvironmentVariables(t *testing.T) {
 	yarnCmd := &YarnCommand{envVarsBackup: make(map[string]*string)}
 
 	// Check backup and restore of an existing variable
-	err := os.Setenv(jfrogCliTestingEnvVar, "abc")
-	assert.NoError(t, err)
-	err = yarnCmd.backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "new-value")
+	setEnvCallback := tests.SetEnvWithCallbackAndAssert(t, jfrogCliTestingEnvVar, "abc")
+	err := yarnCmd.backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "new-value")
 	assert.NoError(t, err)
 	assert.Equal(t, "new-value", os.Getenv(jfrogCliTestingEnvVar))
 	err = yarnCmd.restoreEnvironmentVariables()
@@ -48,8 +48,7 @@ func TestSetAndRestoreEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, "abc", os.Getenv(jfrogCliTestingEnvVar))
 
 	// Check backup and restore of a variable that doesn't exist
-	err = os.Unsetenv(jfrogCliTestingEnvVar)
-	assert.NoError(t, err)
+	setEnvCallback()
 	err = yarnCmd.backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "another-value")
 	assert.NoError(t, err)
 	assert.Equal(t, "another-value", os.Getenv(jfrogCliTestingEnvVar))

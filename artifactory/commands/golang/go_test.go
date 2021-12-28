@@ -3,6 +3,7 @@ package golang
 import (
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory/auth"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -36,7 +37,7 @@ func TestGetPackageFilesPath(t *testing.T) {
 	version := "v1.4.1"
 	expectedPackagePath := filepath.Join(packageCachePath, "github.com/golang/mock@"+version)
 	err = os.MkdirAll(expectedPackagePath, os.ModePerm)
-	defer os.RemoveAll(expectedPackagePath)
+	defer testsutils.RemoveAllAndAssert(t, expectedPackagePath)
 	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPackagePath, actualPackagePath)

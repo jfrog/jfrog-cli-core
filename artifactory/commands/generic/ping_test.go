@@ -2,6 +2,7 @@ package generic
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,8 @@ func TestPingSuccess(t *testing.T) {
 	log.SetDefaultLogger()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "OK")
+		_, err := fmt.Fprint(w, "OK")
+		assert.NoError(t, err)
 	}))
 	defer ts.Close()
 	responseBytes, err := new(PingCommand).SetServerDetails(&config.ServerDetails{ArtifactoryUrl: ts.URL + "/"}).Ping()
@@ -32,7 +34,8 @@ func TestPingSuccess(t *testing.T) {
 func TestPingFailed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprint(w, `{"error":"error"}`)
+		_, err := fmt.Fprint(w, `{"error":"error"}`)
+		assert.NoError(t, err)
 	}))
 	defer ts.Close()
 	_, err := new(PingCommand).SetServerDetails(&config.ServerDetails{ArtifactoryUrl: ts.URL + "/"}).Ping()

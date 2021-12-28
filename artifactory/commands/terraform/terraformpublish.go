@@ -188,6 +188,7 @@ func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails
 	up.CommonParams = &specutils.CommonParams{Pattern: pattern, Target: target}
 	up.Archive = "zip"
 	up.Recursive = true
+	up.Exclusions = []string{"*.git", "*.DS_Store"}
 	totalSucceeded, totalFailed, err := servicesManager.UploadFiles(up)
 	if err != nil {
 		return err

@@ -26,7 +26,7 @@ func (buildDiscard *BuildDiscardCommand) SetDiscardBuildsParams(params services.
 }
 
 func (buildDiscard *BuildDiscardCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(buildDiscard.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(buildDiscard.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

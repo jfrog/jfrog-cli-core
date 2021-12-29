@@ -30,7 +30,7 @@ func (mc *MoveCommand) SetThreads(threads int) *MoveCommand {
 // Moves the artifacts using the specified move pattern.
 func (mc *MoveCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManagerWithThreads(mc.serverDetails, mc.DryRun(), mc.threads, mc.retries)
+	servicesManager, err := utils.CreateServiceManagerWithThreads(mc.serverDetails, mc.DryRun(), mc.threads, mc.retries, mc.retryWaitTimeMilliSecs)
 	if err != nil {
 		return err
 	}

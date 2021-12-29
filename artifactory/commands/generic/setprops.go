@@ -26,7 +26,7 @@ func (setProps *SetPropsCommand) Run() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := createPropsServiceManager(setProps.threads, setProps.retries, serverDetails)
+	servicesManager, err := createPropsServiceManager(setProps.threads, setProps.retries, setProps.retryWaitTimeMilliSecs, serverDetails)
 	if err != nil {
 		return err
 	}

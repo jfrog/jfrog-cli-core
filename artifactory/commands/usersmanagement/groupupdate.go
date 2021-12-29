@@ -48,7 +48,7 @@ func (guc *GroupUpdateCommand) CommandName() string {
 }
 
 func (guc *GroupUpdateCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(guc.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(guc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

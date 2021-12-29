@@ -53,7 +53,7 @@ func (pc *PythonCommand) collectBuildInfo(cacheDirPath string, allDependencies m
 		return err
 	}
 	// Populate dependencies information - checksums and file-name.
-	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

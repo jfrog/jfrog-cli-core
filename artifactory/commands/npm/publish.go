@@ -261,7 +261,7 @@ func (npc *NpmPublishCommand) publish() error {
 }
 
 func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) error {
-	servicesManager, err := utils.CreateServiceManager(artDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(artDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

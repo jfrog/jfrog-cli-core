@@ -42,7 +42,7 @@ func (bdc *BuildDockerCreateCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

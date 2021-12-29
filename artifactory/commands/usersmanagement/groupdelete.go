@@ -37,7 +37,7 @@ func (gdc *GroupDeleteCommand) CommandName() string {
 }
 
 func (gdc *GroupDeleteCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(gdc.rtDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(gdc.rtDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

@@ -131,7 +131,7 @@ func getServiceManager(serverId string) (artifactory.ArtifactoryServicesManager,
 	if err != nil {
 		return nil, err
 	}
-	return rtUtils.CreateServiceManager(serviceDetails, -1, false)
+	return rtUtils.CreateServiceManager(serviceDetails, -1, 0, false)
 
 }
 

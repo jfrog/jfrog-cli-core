@@ -80,7 +80,7 @@ func (atcc *AccessTokenCreateCommand) CommandName() string {
 }
 
 func (atcc *AccessTokenCreateCommand) Run() error {
-	servicesManager, err := rtUtils.CreateServiceManager(atcc.serverDetails, -1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(atcc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (atcc *AccessTokenCreateCommand) getTokenParams() (tokenParams services.Cre
 }
 
 func getInstanceId(serverDetails *config.ServerDetails) (string, error) {
-	servicesManager, err := rtUtils.CreateServiceManager(serverDetails, -1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return "", err
 	}

@@ -47,7 +47,7 @@ func (bsc *BuildScanLegacyCommand) ServerDetails() (*config.ServerDetails, error
 
 func (bsc *BuildScanLegacyCommand) Run() error {
 	log.Info("Triggered Xray build scan... The scan may take a few minutes.")
-	servicesManager, err := utils.CreateServiceManager(bsc.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(bsc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

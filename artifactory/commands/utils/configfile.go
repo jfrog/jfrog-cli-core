@@ -102,6 +102,8 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 			err = configFile.configGo()
 		case utils.Pip:
 			err = configFile.configPip()
+		case utils.Pipenv:
+			err = configFile.configPipenv()
 		case utils.Yarn:
 			err = configFile.configYarn()
 		case utils.Npm:
@@ -209,7 +211,10 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	f.Close()
+	err = f.Close()
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
 	// The file will be written at the end of successful configuration command.
 	return errorutils.CheckError(os.Remove(configFilePath))
 }
@@ -219,6 +224,10 @@ func (configFile *ConfigFile) configGo() error {
 }
 
 func (configFile *ConfigFile) configPip() error {
+	return configFile.setResolver()
+}
+
+func (configFile *ConfigFile) configPipenv() error {
 	return configFile.setResolver()
 }
 

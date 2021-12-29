@@ -131,7 +131,7 @@ func TestUnlock(t *testing.T) {
 		t.Errorf("File %s is missing", lock.fileName)
 	}
 
-	lock.Unlock()
+	assert.NoError(t, lock.Unlock())
 
 	exists, err = fileutils.IsFileExists(lock.fileName, false)
 	if err != nil {

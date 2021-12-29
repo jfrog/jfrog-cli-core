@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
@@ -105,7 +106,10 @@ func (mc *MvnCommand) Run() error {
 		}
 		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
 		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
-		tempFile.Close()
+		err = tempFile.Close()
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	err := mvnutils.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
@@ -156,7 +160,10 @@ func (mc *MvnCommand) CommandName() string {
 // violation.
 func (mc *MvnCommand) conditionalUpload() error {
 	// Initialize the server details (from config) if it hasn't been initialized yet.
-	mc.ServerDetails()
+	_, err := mc.ServerDetails()
+	if err != nil {
+		return err
+	}
 	binariesSpecFile, pomSpecFile, err := commandsutils.ScanDeployableArtifacts(mc.result, mc.serverDetails, mc.threads, mc.scanOutputFormat)
 	// If the detailed summary wasn't requested, the reader should be closed here.
 	// (otherwise it will be closed by the detailed summary print method)

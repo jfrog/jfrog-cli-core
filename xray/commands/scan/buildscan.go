@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"fmt"
 	"strings"
 
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -81,19 +82,20 @@ func (bsc *BuildScanCommand) Run() (err error) {
 		Project:     bsc.buildConfiguration.GetProject(),
 	}
 
-	failBuild, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
+	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
 	if err != nil {
-		if !strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
-			// if the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
-			// we still continue to build summery if needed
+		if strings.Contains(err.Error(), services.XrayScanBuildNoFailBuildPolicy) {
+			// If the error is: "No Xray “Fail build in case of a violation” policy rule has been defined on this build",
+			// We still continue to build summery if needed
 			log.Info(err.Error())
 		} else {
 			return err
 		}
 	}
 	defer func() {
-		if failBuild {
-			// deferred so if build summary fails, it will still return a fail build error if needed
+		// If failBuild flag is true and also got fail build response from Xray
+		if bsc.failBuild && isFailBuildResponse {
+			// Deferred so if build summary fails, it will still return a fail build error if needed
 			if err != nil {
 				log.Error(err)
 			}
@@ -102,7 +104,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	}()
 
 	if bsc.includeVulnerabilities {
-		// if vulnerabilities flag is true, get vulnerabilities from xray with build-summary and print to output
+		// If vulnerabilities flag is true, get vulnerabilities from xray with build-summary and print to output
 		log.Info("Getting the build-summary from Xray...")
 		err = bsc.runBuildSummaryAndPrintResults(xrayManager, params)
 		if err != nil {
@@ -117,7 +119,8 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	if err != nil {
 		return false, err
 	}
-	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations}}
+	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations, XrayDataUrl: buildScanResults.MoreDetailsUrl}}
+	fmt.Println("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
 	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)
 	if err != nil {
 		return false, err

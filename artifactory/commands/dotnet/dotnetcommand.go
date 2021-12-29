@@ -268,7 +268,12 @@ func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.Fil
 		return
 	}
 	log.Debug("Nuget config file created at:", configFile.Name())
-	defer configFile.Close()
+	defer func() {
+		e := configFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 
 	// We will prefer to write the NuGet configuration using the `nuget add source` command (addSourceToNugetConfig)
 	// Currently the NuGet configuration utility doesn't allow setting protocolVersion.
@@ -285,7 +290,10 @@ func (dc *DotnetCommand) AddNugetAuthToConfig(cmdType dotnet.ToolchainType, conf
 		return errorutils.CheckError(err)
 	}
 	// We need to close the config file to let the toolchain modify it.
-	configFile.Close()
+	err = configFile.Close()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
 	return addSourceToNugetConfig(cmdType, configFile.Name(), sourceUrl, user, password)
 }
 

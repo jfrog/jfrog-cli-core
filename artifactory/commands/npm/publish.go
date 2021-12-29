@@ -278,7 +278,10 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			if err != nil {
 				return err
 			}
-			utils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			err = utils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			if err != nil {
+				return err
+			}
 			up.BuildProps, err = utils.CreateBuildProperties(buildName, buildNumber, npc.buildConfiguration.GetProject())
 			if err != nil {
 				return err
@@ -332,7 +335,10 @@ func (npc *NpmPublishCommand) saveArtifactData() error {
 	if err != nil {
 		return err
 	}
-	npc.artifactsDetailsReader.Close()
+	err = npc.artifactsDetailsReader.Close()
+	if err != nil {
+		return err
+	}
 
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.Artifacts = buildArtifacts

@@ -41,7 +41,7 @@ func (pc *PropsCommand) SetProps(props string) *PropsCommand {
 	return pc
 }
 
-func createPropsServiceManager(threads, httpRetries, retryWaitTime int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createPropsServiceManager(threads, httpRetries, retryWaitMilliSecs int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func createPropsServiceManager(threads, httpRetries, retryWaitTime int, serverDe
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
 		SetHttpRetries(httpRetries).
-		SetHttpRetryWaitTime(retryWaitTime).
+		SetHttpRetryWaitMilliSecs(retryWaitMilliSecs).
 		Build()
 
 	return artifactory.New(serviceConfig)

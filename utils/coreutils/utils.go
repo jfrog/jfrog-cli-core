@@ -3,6 +3,11 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"os/exec"
@@ -10,12 +15,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 )
 
 const GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"

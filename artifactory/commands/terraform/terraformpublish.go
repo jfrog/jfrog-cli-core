@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	utils2 "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -168,7 +169,7 @@ func isTerraformModule(path string) (bool, error) {
 	}
 	return false, nil
 }
-func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails *config.ServerDetails) error {
+func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails *config.ServerDetails) (err error) {
 	servicesManager, err := utils.CreateServiceManager(artDetails, -1, false)
 	if err != nil {
 		return err
@@ -178,16 +179,15 @@ func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails
 		return err
 	}
 	up := services.NewUploadParams()
-	//up.CommonParams = &specutils.CommonParams{Pattern: filepath.Join(path, "*"), Target: target}
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	pattern := strings.TrimPrefix(pwd+"/", path)
-	up.CommonParams = &specutils.CommonParams{Pattern: pattern, Target: target}
+	up.CommonParams = &specutils.CommonParams{Pattern: "./*", Target: target}
 	up.Archive = "zip"
 	up.Recursive = true
 	up.Exclusions = []string{"*.git", "*.DS_Store"}
+	callbackFunc, err := utils2.ChangeDirWithCallback(path)
+	if err != nil {
+		return err
+	}
+	defer callbackFunc()
 	totalSucceeded, totalFailed, err := servicesManager.UploadFiles(up)
 	if err != nil {
 		return err
@@ -201,14 +201,6 @@ func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails
 	}
 	return nil
 }
-
-//func getModuleNameByCurDir() (string, error) {
-//	pwd, err := os.Getwd()
-//	if err != nil {
-//		return "", err
-//	}
-//	return filepath.Base(pwd), nil
-//}
 
 func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) (string, error) {
 	return filepath.ToSlash(filepath.Join(tpc.repo, tpc.namespace, tpc.provider, moduleName, tpc.tag+".zip")), nil

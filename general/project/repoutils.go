@@ -67,7 +67,13 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		RemoteUrl: GoRemoteDefaultUrl,
 		Virtual:   GoVirtualDefaultName,
 	},
-	coreutils.Pypi: {
+	coreutils.Pip: {
+		Local:     PypiLocalDefaultName,
+		Remote:    PypiRemoteDefaultName,
+		RemoteUrl: PypiRemoteDefaultUrl,
+		Virtual:   PypiVirtualDefaultName,
+	},
+	coreutils.Pipenv: {
 		Local:     PypiLocalDefaultName,
 		Remote:    PypiRemoteDefaultName,
 		RemoteUrl: PypiRemoteDefaultUrl,
@@ -81,7 +87,7 @@ func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string
 		return err
 	}
 	params := services.NewLocalRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Local]
 	if repoExists(servicesManager, params.Key) {
 		return nil
@@ -95,7 +101,7 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 		return err
 	}
 	params := services.NewRemoteRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Remote]
 	params.Url = RepoDefaultName[technologyType][RemoteUrl]
 	if repoExists(servicesManager, params.Key) {
@@ -110,7 +116,7 @@ func CreateDefaultVirtualRepo(technologyType coreutils.Technology, serverId stri
 		return err
 	}
 	params := services.NewVirtualRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Virtual]
 	params.Repositories = []string{RepoDefaultName[technologyType][Local], RepoDefaultName[technologyType][Remote]}
 	params.DefaultDeploymentRepo = RepoDefaultName[technologyType][Local]
@@ -129,7 +135,7 @@ func getServiceManager(serverId string) (artifactory.ArtifactoryServicesManager,
 
 }
 
-// Check if default repository is allready exists
+// Check if default repository is already exists
 func repoExists(servicesManager artifactory.ArtifactoryServicesManager, repoKey string) bool {
 	repo := &services.RepositoryDetails{}
 	servicesManager.GetRepository(repoKey, repo)

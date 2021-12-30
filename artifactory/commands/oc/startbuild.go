@@ -87,7 +87,7 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 	image := container.NewImage(imageTag)
-	builder, err := container.NewBuildInfoBuilderForKanikoOrOpenShift(image, osb.repo, buildName, buildNumber, project, serviceManager, container.Push, manifestSha256)
+	builder, err := container.NewRemoteAgentBuildInfoBuilder(image, osb.repo, buildName, buildNumber, project, serviceManager, manifestSha256)
 	if err != nil {
 		return err
 	}

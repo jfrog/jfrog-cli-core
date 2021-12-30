@@ -96,7 +96,7 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilderForDockerOrPodman(image, pc.Repo(), buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
+	builder, err := container.NewLocalAgentBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,8 @@ func (pc *PushCommand) Run() error {
 	if pc.IsDetailedSummary() {
 		if !toCollect {
 			// If we saved buildinfo earlier, this update already happened.
-			err = builder.UpdateArtifactsAndDependencies()
+			builder.SetDryRun(true)
+			_, err = builder.Build("")
 			if err != nil {
 				return err
 			}

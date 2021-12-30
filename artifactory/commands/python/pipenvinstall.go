@@ -63,18 +63,22 @@ func (peic *PipenvInstallCommand) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		allDepsList, err := pipenvutils.GetPipenvDependenciesList("")
+		dependenciesGraph, _, err := pipenvutils.GetPipenvDependenciesList("")
 		if err != nil {
 			return err
 		}
 
-		allDependencies := peic.getAllDependencies(allDepsList, dependencyToFileMap)
+		allDependencies := peic.getAllDependencies(dependenciesGraph, dependencyToFileMap)
+		pythonExecutablePath, err := getExecutablePath("python")
+		if err != nil {
+			return err
+		}
 		venvDirPath, err := pipenvutils.GetPipenvVenv()
 		if err != nil {
 			return err
 		}
 		// Collect build-info.
-		if err = peic.collectBuildInfo(venvDirPath, allDependencies); err != nil {
+		if err = peic.collectBuildInfo(venvDirPath, pythonExecutablePath, allDependencies, dependenciesGraph); err != nil {
 			return err
 		}
 	}
@@ -84,9 +88,10 @@ func (peic *PipenvInstallCommand) Run() (err error) {
 }
 
 // Convert dependencyToFileMap to Dependencies map.
-func (peic *PipenvInstallCommand) getAllDependencies(allDepsList map[string]bool, dependencyToFileMap map[string]string) map[string]*buildinfo.Dependency {
+func (peic *PipenvInstallCommand) getAllDependencies(allDepsList map[string][]string, dependencyToFileMap map[string]string) map[string]*buildinfo.Dependency {
 	dependenciesMap := make(map[string]*buildinfo.Dependency, len(dependencyToFileMap))
-	for depName := range allDepsList {
+	for depId := range allDepsList {
+		depName := depId[0:strings.Index(depId, ":")]
 		dependenciesMap[depName] = &buildinfo.Dependency{Id: dependencyToFileMap[depName]}
 	}
 	return dependenciesMap

@@ -3,11 +3,13 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"strings"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -54,6 +56,59 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, ca
 
 	promptMissingDependencies(missingDeps)
 	return nil
+}
+
+// Before running this function, dependency IDs may be the file names of the resolved python packages.
+// Update build info dependency IDs and the requestedBy field.
+// dependenciesMap   - Dependency name to Dependency map
+// dependenciesGraph - Dependency graph as built by 'pipdeptree' or 'pipenv graph'
+// packageName       - The resolved package name of the Python project, may be empty if we couldn't resolve it
+// moduleName        - The input module name from the user, or the packageName
+func UpdateDepsIdsAndRequestedBy(dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string, packageName, moduleName string) {
+	// Create a map from dependency to parents
+	requestedByMap := make(map[string][]string)
+	for parent, children := range dependenciesGraph {
+		for _, child := range children {
+			if packageName == "" || !strings.HasPrefix(parent, packageName+":") {
+				requestedByMap[child] = append(requestedByMap[child], parent)
+			}
+		}
+	}
+
+	// For each dependency, set the real dependency ID and the requestedBy field
+	for dependencyId := range dependenciesGraph {
+		dependency := dependenciesMap[dependencyId[0:strings.Index(dependencyId, ":")]]
+		if dependency == nil {
+			continue
+		}
+		var requestedBy [][]string
+		parents, parentsExist := requestedByMap[dependencyId]
+		if parentsExist {
+			// Transitive dependency
+			for _, directParent := range parents {
+				requestedBy = append(requestedBy, getPathToModule(requestedByMap, directParent, moduleName))
+			}
+		} else {
+			// Direct dependency
+			requestedBy = append(requestedBy, []string{moduleName})
+		}
+		dependency.Id = dependencyId
+		dependency.RequestedBy = requestedBy
+	}
+}
+
+func getPathToModule(requestedByMap map[string][]string, parentId, moduleName string) []string {
+	pathToModule := []string{}
+	for {
+		pathToModule = append(pathToModule, parentId)
+		parents, exist := requestedByMap[parentId]
+		if !exist || coreutils.StringsSliceContains(pathToModule, parents[0]) {
+			break
+		}
+		parentId = parents[0]
+	}
+	pathToModule = append(pathToModule, moduleName)
+	return pathToModule
 }
 
 // Get dependency information.

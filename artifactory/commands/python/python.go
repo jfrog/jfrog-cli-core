@@ -3,6 +3,12 @@ package python
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -11,11 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 )
 
 type PythonCommand struct {
@@ -48,11 +49,12 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 	return pc
 }
 
-func (pc *PythonCommand) collectBuildInfo(cacheDirPath string, allDependencies map[string]*buildinfo.Dependency) error {
-	if err := pc.determineModuleName(); err != nil {
+func (pc *PythonCommand) collectBuildInfo(cacheDirPath, pythonExecutablePath string, allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) error {
+	err, packageName := pc.determineModuleName(pythonExecutablePath)
+	if err != nil {
 		return err
 	}
-	// Populate dependencies information - checksums and file-name.
+	// Populate dependencies information - checksums, file-name and IDs
 	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
@@ -61,6 +63,8 @@ func (pc *PythonCommand) collectBuildInfo(cacheDirPath string, allDependencies m
 	if err != nil {
 		return err
 	}
+	dependencies.UpdateDepsIdsAndRequestedBy(allDependencies, dependenciesGraph, packageName, pc.buildConfiguration.GetModule())
+
 	err = dependencies.UpdateDependenciesCache(allDependencies, cacheDirPath)
 	if err != nil {
 		return err
@@ -93,34 +97,35 @@ func (pc *PythonCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dep
 	return utils.SaveBuildInfo(buildName, buildNumber, pc.buildConfiguration.GetProject(), buildInfo)
 }
 
-func (pc *PythonCommand) determineModuleName() error {
-	pythonExecutablePath, err := getExecutablePath("python")
-	if err != nil {
-		return err
-	}
+// Determine the module name and return the package name
+func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (error, string) {
+	// Get package-name.
+	packageName, pkgNameErr := getPackageName(pythonExecutablePath)
+
 	// If module-name was set by the command, don't change it.
 	if pc.buildConfiguration.GetModule() != "" {
-		return nil
+		if pkgNameErr != nil {
+			log.Debug("Couldn't retrieve the package name. Using module name '"+pc.buildConfiguration.GetModule()+"'. Reason: ", pkgNameErr.Error())
+		}
+		return nil, packageName
 	}
 
-	// Get package-name.
-	moduleName, err := getPackageName(pythonExecutablePath)
-	if err != nil {
-		return err
+	if pkgNameErr != nil {
+		return pkgNameErr, ""
 	}
 
 	// If the package name is unknown, set the module name to be the build name.
-	if moduleName == "" {
+	if packageName == "" {
 		buildName, err := pc.buildConfiguration.GetBuildName()
 		if err != nil {
-			return err
+			return err, packageName
 		}
-		moduleName = buildName
+		packageName = buildName
 		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
 	}
 
-	pc.buildConfiguration.SetModule(moduleName)
-	return nil
+	pc.buildConfiguration.SetModule(packageName)
+	return nil, packageName
 }
 
 func (pc *PythonCommand) prepareBuildPrerequisites() (err error) {

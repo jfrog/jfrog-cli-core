@@ -25,12 +25,12 @@ func GetPipenvVenv() (string, error) {
 }
 
 // Get simple list of all dependencies (using pipenv graph)
-func GetPipenvDependenciesList(venvDir string) (map[string]bool, error) {
+func GetPipenvDependenciesList(venvDir string) (map[string][]string, []string, error) {
 	packages, err := runPipenvGraph(venvDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return parseDependenciesToList(packages)
+	return parseDependenciesToGraph(packages)
 }
 
 // Executes pipenv install and pipenv graph.
@@ -63,18 +63,4 @@ func runPipenvGraph(venvDir string) ([]pythonDependencyPackage, error) {
 		return nil, errorutils.CheckError(err)
 	}
 	return packages, nil
-}
-
-// Parse pythonDependencyPackage list to dependencies map (mapping dependency to his child deps)
-// also returns a list of top level dependencies
-func parseDependenciesToList(packages []pythonDependencyPackage) (map[string]bool, error) {
-	// Create packages map.
-	allPackages := map[string]bool{}
-	for _, pkg := range packages {
-		allPackages[pkg.Package.PackageName] = true
-		for _, subPkg := range pkg.Dependencies {
-			allPackages[subPkg.PackageName] = true
-		}
-	}
-	return allPackages, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// Build-info builder for remote agents tools such as: Kaniko, OpenShift CLI (oc), or buildx.
 type remoteAgentbuildInfoBuilder struct {
 	buildInfoBuilder *buildInfoBuilder
 	manifestSha2     string

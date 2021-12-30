@@ -41,7 +41,7 @@ type buildInfoBuilder struct {
 	serviceManager    artifactory.ArtifactoryServicesManager
 	imageSha2         string
 	// If true, don't set layers props in Artifactory.
-	dryRun            bool
+	skipTaggingLayers bool
 	imageLayers       []utils.ResultItem
 }
 
@@ -71,8 +71,8 @@ func (builder *buildInfoBuilder) setImageSha2(imageSha2 string) {
 	builder.imageSha2 = imageSha2
 }
 
-func (builder *buildInfoBuilder) setDryRun(dryRun bool) {
-	builder.dryRun = dryRun
+func (builder *buildInfoBuilder) setskipTaggingLayers(skipTaggingLayers bool) {
+	builder.skipTaggingLayers = skipTaggingLayers
 }
 
 func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
@@ -131,6 +131,7 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifact) {
 	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5}, Path: path.Join(manifest.Path, manifest.Name)}
 }
+
 // Return - fat manifest artifacts as buildinfo.Artifact struct.
 func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.Artifact) {
 	return buildinfo.Artifact{Name: "list.manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5}, Path: path.Join(fatManifest.Path, fatManifest.Name)}
@@ -144,10 +145,10 @@ func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinf
 // Read the file which contains the following format: 'IMAGE-TAG-IN-ARTIFACTORY'@sha256'SHA256-OF-THE-IMAGE-MANIFEST'.
 func GetImageTagWithDigest(filePath string) (tag string, sha256 string, err error) {
 	var buildxMetaData buildxMetaData
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
+	var data []byte
+	data, err = ioutil.ReadFile(filePath)
+	if errorutils.CheckError(err) != nil {
 		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
-		err = errorutils.CheckError(err)
 		return
 	}
 	json.Unmarshal(data, &buildxMetaData)
@@ -184,7 +185,7 @@ func searchManifestDigest(imageOs, imageArch string, manifestList []ManifestDeta
 	return
 }
 
-// return a map of: layer-digest -> layer-search-result
+// Returns a map of: layer-digest -> layer-search-result
 func performSearch(imagePathPattern string, serviceManager artifactory.ArtifactoryServicesManager) (resultMap map[string]*utils.ResultItem, err error) {
 	searchParams := services.NewSearchParams()
 	searchParams.CommonParams = &utils.CommonParams{}
@@ -207,7 +208,7 @@ func performSearch(imagePathPattern string, serviceManager artifactory.Artifacto
 	return
 }
 
-// return a map of: image-sha2 -> image-layers
+// Returns a map of: image-sha2 -> image-layers
 func performMultiPlatformImageSearch(imagePathPattern string, serviceManager artifactory.ArtifactoryServicesManager) (resultMap map[string][]*utils.ResultItem, err error) {
 	searchParams := services.NewSearchParams()
 	searchParams.CommonParams = &utils.CommonParams{}
@@ -310,7 +311,7 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 		if err != nil {
 			return nil, err
 		}
-		if !builder.dryRun {
+		if !builder.skipTaggingLayers {
 			if err := setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager); err != nil {
 				return nil, err
 			}
@@ -326,7 +327,7 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 	return buildInfo, nil
 }
 
-// Create a image's build info from list.manifest.json.
+// Create the image's build info from list.manifest.json.
 func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatManifest, searchRultFatManifest *utils.ResultItem, candidateimages map[string][]*utils.ResultItem, module string) (*buildinfo.BuildInfo, error) {
 	imageProperties := map[string]string{
 		"docker.image.tag": builder.image.Name(),
@@ -340,7 +341,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 	}
 	// Add layers.
 	builder.imageLayers = append(builder.imageLayers, *searchRultFatManifest)
-	// create fat-manifest module
+	// Create fat-manifest module
 	buildInfo := &buildinfo.BuildInfo{Modules: []buildinfo.Module{{
 		Id:         module,
 		Type:       buildinfo.Docker,

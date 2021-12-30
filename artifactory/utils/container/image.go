@@ -9,7 +9,7 @@ import (
 )
 
 type Image struct {
-	// Image name includes the registry domain and image name and image tag.
+	// Image name includes the registry domain, image base name and image tag e.g.: https://my-registry/docker-local/hello-world:latest.
 	name string
 }
 
@@ -53,6 +53,8 @@ func (image *Image) validateTag() error {
 	return nil
 }
 
+// Get image base name by removing the prefixed registry hostname and the tag.
+// e.g.: https://my-registry/docker-local/hello-world:latest. -> hello-world
 func (image *Image) GetImageBaseName() (string, error) {
 	imageName, err := image.GetImageBaseNameWithTag()
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// Build-info builder for local agents tools such as: Docker or Podman.
 type localAgentbuildInfoBuilder struct {
 	buildInfoBuilder *buildInfoBuilder
 	// Name of the container CLI tool e.g. docker
@@ -42,8 +43,8 @@ func (labib *localAgentbuildInfoBuilder) GetLayers() *[]utils.ResultItem {
 	return &labib.buildInfoBuilder.imageLayers
 }
 
-func (labib *localAgentbuildInfoBuilder) SetDryRun(dryRun bool) {
-	labib.buildInfoBuilder.dryRun = dryRun
+func (labib *localAgentbuildInfoBuilder) SetSkipTaggingLayers(skipTaggingLayers bool) {
+	labib.buildInfoBuilder.skipTaggingLayers = skipTaggingLayers
 }
 
 // Create build-info for a docker image.
@@ -84,12 +85,13 @@ func (labib *localAgentbuildInfoBuilder) searchImage() (map[string]*utils.Result
 	return nil, nil, errorutils.CheckErrorf(imageNotFoundErrorMessage, labib.buildInfoBuilder.image.name)
 }
 
+// Search image layers in artifactory by the provided image path in artifactory.
+// If fat-manifest is found, use it to find our image in Artifactory.
 func (labib *localAgentbuildInfoBuilder) search(imagePathPattern string) (resultMap map[string]*utils.ResultItem, err error) {
 	resultMap, err = performSearch(imagePathPattern, labib.buildInfoBuilder.serviceManager)
 	if err != nil {
 		return
 	}
-
 	// Validate there are no .marker layers.
 	totalDownloaded, err := downloadMarkerLayersToRemoteCache(resultMap, labib.buildInfoBuilder)
 	if err != nil {

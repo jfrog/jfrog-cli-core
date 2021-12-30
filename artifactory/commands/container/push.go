@@ -114,8 +114,9 @@ func (pc *PushCommand) Run() error {
 	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
 		if !toCollect {
-			// If we saved buildinfo earlier, this update already happened.
-			builder.SetDryRun(true)
+			// Collect build-info wasn't trigger at this point and we do need it to print the detailed summary.
+			// As a result, we are skipping the 'set image build name/number props' before running collect build-info.
+			builder.SetSkipTaggingLayers(true)
 			_, err = builder.Build("")
 			if err != nil {
 				return err

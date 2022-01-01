@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -218,9 +219,8 @@ func TestGetJfrogDependenciesPath(t *testing.T) {
 	// Check dependencies path when JFROG_DEPENDENCIES_DIR is set, should be JFROG_DEPENDENCIES_DIR/
 	previousDependenciesDirEnv := os.Getenv(coreutils.DependenciesDir)
 	expectedDependenciesPath = "/tmp/my-dependencies/"
-	err = os.Setenv(coreutils.DependenciesDir, expectedDependenciesPath)
-	assert.NoError(t, err)
-	defer os.Setenv(coreutils.DependenciesDir, previousDependenciesDirEnv)
+	testsutils.SetEnvAndAssert(t, coreutils.DependenciesDir, expectedDependenciesPath)
+	defer testsutils.SetEnvAndAssert(t, coreutils.DependenciesDir, previousDependenciesDirEnv)
 	dependenciesPath, err = GetJfrogDependenciesPath()
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 }

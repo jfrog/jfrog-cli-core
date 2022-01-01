@@ -92,11 +92,11 @@ func (pc *PushCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads, -1)
+	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads, -1, 0)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilderForDockerOrPodman(image, pc.Repo(), buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
+	builder, err := container.NewLocalAgentBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
 	if err != nil {
 		return err
 	}
@@ -114,8 +114,10 @@ func (pc *PushCommand) Run() error {
 	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
 		if !toCollect {
-			// If we saved buildinfo earlier, this update already happened.
-			err = builder.UpdateArtifactsAndDependencies()
+			// Collect build-info wasn't trigger at this point and we do need it to print the detailed summary.
+			// As a result, we are skipping the 'set image build name/number props' before running collect build-info.
+			builder.SetSkipTaggingLayers(true)
+			_, err = builder.Build("")
 			if err != nil {
 				return err
 			}

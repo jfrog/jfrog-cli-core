@@ -41,7 +41,7 @@ func (pc *PropsCommand) SetProps(props string) *PropsCommand {
 	return pc
 }
 
-func createPropsServiceManager(threads, httpRetries int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createPropsServiceManager(threads, httpRetries, retryWaitMilliSecs int, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -56,6 +56,7 @@ func createPropsServiceManager(threads, httpRetries int, serverDetails *config.S
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetThreads(threads).
 		SetHttpRetries(httpRetries).
+		SetHttpRetryWaitMilliSecs(retryWaitMilliSecs).
 		Build()
 
 	return artifactory.New(serviceConfig)
@@ -66,7 +67,11 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 	temp := []*content.ContentReader{}
 	defer func() {
 		for _, reader := range temp {
-			reader.Close()
+			e := reader.Close()
+			if err == nil {
+				err = e
+			}
+
 		}
 	}()
 	for i := 0; i < len(spec.Files); i++ {

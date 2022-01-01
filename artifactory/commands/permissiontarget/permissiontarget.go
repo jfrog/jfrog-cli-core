@@ -64,7 +64,7 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(ptc.serverDetails, -1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(ptc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

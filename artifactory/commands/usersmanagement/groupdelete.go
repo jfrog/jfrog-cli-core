@@ -32,14 +32,14 @@ func (gdc *GroupDeleteCommand) Name() string {
 	return gdc.name
 }
 
-func (gcc *GroupDeleteCommand) CommandName() string {
+func (gdc *GroupDeleteCommand) CommandName() string {
 	return "rt_group_delete"
 }
 
-func (gcc *GroupDeleteCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(gcc.rtDetails, -1, false)
+func (gdc *GroupDeleteCommand) Run() error {
+	servicesManager, err := utils.CreateServiceManager(gdc.rtDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
-	return servicesManager.DeleteGroup(gcc.Name())
+	return servicesManager.DeleteGroup(gdc.Name())
 }

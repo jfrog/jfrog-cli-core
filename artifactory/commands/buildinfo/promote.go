@@ -38,7 +38,7 @@ func (bpc *BuildPromotionCommand) SetBuildConfiguration(buildConfiguration *util
 }
 
 func (bpc *BuildPromotionCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, -1, bpc.dryRun)
+	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, -1, 0, bpc.dryRun)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (bpc *BuildPromotionCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	bpc.BuildName, bpc.BuildNumber = buildName, buildNumber
+	bpc.BuildName, bpc.BuildNumber, bpc.ProjectKey = buildName, buildNumber, bpc.buildConfiguration.GetProject()
 	return servicesManager.PromoteBuild(bpc.PromotionParams)
 }
 

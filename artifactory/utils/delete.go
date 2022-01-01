@@ -25,6 +25,6 @@ func ConfirmDelete(pathsToDeleteReader *content.ContentReader) (bool, error) {
 	return coreutils.AskYesNo("Are you sure you want to delete the above paths?", false), nil
 }
 
-func CreateDeleteServiceManager(artDetails *config.ServerDetails, threads, httpRetries int, dryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithThreads(artDetails, dryRun, threads, httpRetries)
+func CreateDeleteServiceManager(artDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithThreads(artDetails, dryRun, threads, httpRetries, httpRetryWaitMilliSecs)
 }

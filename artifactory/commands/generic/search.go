@@ -32,7 +32,7 @@ func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	servicesManager, err := utils.CreateServiceManager(serverDetails, sc.retries, false)
+	servicesManager, err := utils.CreateServiceManager(serverDetails, sc.retries, sc.retryWaitTimeMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}

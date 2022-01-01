@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,5 +84,13 @@ func cleanUpUnitTestsJfrogHome(homeDir string) {
 	}
 	if errorOccurred {
 		os.Exit(1)
+	}
+}
+
+func CreateTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
+	tempDirPath, err := fileutils.CreateTempDir()
+	assert.NoError(t, err, "Couldn't create temp dir")
+	return tempDirPath, func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
 	}
 }

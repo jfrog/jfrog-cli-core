@@ -42,6 +42,7 @@ type ScanCommand struct {
 	includeVulnerabilities bool
 	includeLicenses        bool
 	scanPassed             bool
+	fail                   bool
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
@@ -88,6 +89,11 @@ func (scanCmd *ScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return scanCmd.serverDetails, nil
 }
 
+func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
+	scanCmd.fail = fail
+	return scanCmd
+}
+
 func (scanCmd *ScanCommand) IsScanPassed() bool {
 	return scanCmd.scanPassed
 }
@@ -118,12 +124,17 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			err = errors.New("Scan command failed. " + err.Error())
 		}
 	}()
-	// First download Xray Indexer if needed
-	xrayManager, err := commands.CreateXrayServiceManager(scanCmd.serverDetails)
+	// Validate Xray minimum version
+	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
-	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager)
+	err = commands.ValidateXrayMinimumVersion(xrayVersion, commands.GraphScanMinXrayVersion)
+	if err != nil {
+		return err
+	}
+	// First download Xray Indexer if needed
+	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager, xrayVersion)
 	if err != nil {
 		return err
 	}
@@ -138,7 +149,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	indexedFileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	// Start walking on the filesystem to "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
-	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue)
+	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue, xrayVersion)
 	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer)
 
 	// Handle results
@@ -157,8 +168,9 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations
-	if scanCmd.includeVulnerabilities == false {
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
+	// If user provided --fail=false, don't fail the build.
+	if scanCmd.fail && scanCmd.includeVulnerabilities == false {
 		if xrutils.CheckIfFailBuild(flatResults) {
 			return xrutils.NewFailBuildError()
 		}
@@ -183,13 +195,13 @@ func (scanCmd *ScanCommand) CommandName() string {
 	return "xr_scan"
 }
 
-func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrorsQueue, indexedFileErrorsQueue *clientutils.ErrorsQueue) {
+func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrorsQueue, indexedFileErrorsQueue *clientutils.ErrorsQueue, xrayVersion string) {
 	go func() {
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
 		for _, fileGroup := range scanCmd.spec.Files {
-			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue)
+			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue, xrayVersion)
 			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
 			err := collectFilesForIndexing(fileGroup, taskHandler)
@@ -201,7 +213,7 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 	}()
 }
 
-func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue) FileContext {
+func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, errorsQueue *clientutils.ErrorsQueue, xrayVersion string) FileContext {
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
@@ -224,8 +236,9 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					RepoPath:   getXrayRepoPathFromTarget(file.Target),
 					Watches:    scanCmd.watches,
 					ProjectKey: scanCmd.projectKey,
+					ScanType:   services.Binary,
 				}
-				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses)
+				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
 				if err != nil {
 					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
 					return

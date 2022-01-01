@@ -49,7 +49,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 		return err
 	}
 
-	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, -1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

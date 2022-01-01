@@ -62,18 +62,28 @@ func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	*scanInto = strings.TrimSpace(*scanInto)
 }
 
-func CopyFile(src, dst string, fileMode os.FileMode) error {
+func CopyFile(src, dst string, fileMode os.FileMode) (err error) {
 	from, err := os.Open(src)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer from.Close()
+	defer func() {
+		e := from.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, fileMode)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer to.Close()
+	defer func() {
+		e := to.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	if _, err = io.Copy(to, from); err != nil {
 		return errorutils.CheckError(err)

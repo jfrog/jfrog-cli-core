@@ -95,7 +95,9 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+		"\n\n" +
+		coreutils.GetFeedbackMessage()
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.

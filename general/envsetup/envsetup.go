@@ -3,17 +3,16 @@ package envsetup
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/pkg/browser"
-
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -66,12 +65,13 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		return err
 	}
 	message :=
-		coreutils.PrintBold("Your new JFrog environment is ready!") +
-			"\n" +
+		coreutils.PrintBold("Your new JFrog environment is ready!") + "\n" +
 			"1. CD into your code project directory\n" +
 			"2. Run \"jf project init\"\n" +
 			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+			"\n\n" +
+			coreutils.GetFeedbackMessage()
 
 	err = coreutils.PrintTable("", "", message)
 	return

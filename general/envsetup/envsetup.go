@@ -3,17 +3,16 @@ package envsetup
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/pkg/browser"
-
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -25,7 +24,7 @@ import (
 const (
 	myJfrogEndPoint   = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
 	syncSleepInterval = 5 * time.Second  // 5 seconds
-	maxWaitMinutes    = 10 * time.Minute // 10 minutes
+	maxWaitMinutes    = 30 * time.Minute // 30 minutes
 )
 
 type EnvSetupCommand struct {
@@ -66,12 +65,13 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		return err
 	}
 	message :=
-		coreutils.PrintBold("Your new JFrog environment is ready!") +
-			"\n" +
+		coreutils.PrintBold("Your new JFrog environment is ready!") + "\n" +
 			"1. CD into your code project directory\n" +
 			"2. Run \"jf project init\"\n" +
 			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+			"\n\n" +
+			coreutils.GetFeedbackMessage()
 
 	err = coreutils.PrintTable("", "", message)
 	return
@@ -96,19 +96,38 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 	if err != nil {
 		return nil, err
 	}
-	message := fmt.Sprintf("Sync: Get MyJFrog status report. Request ID:%s...", ftc.id)
 
+	// Define the MyJFrog polling logic.
+	pollingMessage := fmt.Sprintf("Sync: Get MyJFrog status report. Request ID:%s...", ftc.id)
+	pollingErrorMessage := "Sync: Get MyJFrog status request failed. Attempt: %d. Error: %s"
+	// The max consecutive polling errors allowed, before completely failing the setup action.
+	const maxConsecutiveErrors = 6
+	errorsCount := 0
 	pollingAction := func() (shouldStop bool, responseBody []byte, err error) {
-		log.Debug(message)
+		log.Debug(pollingMessage)
+		// Send request to MyJFrog.
 		resp, body, err := client.SendPost(myJfrogEndPoint, requestContent, httpClientDetails, "")
+		// If an HTTP error occured.
 		if err != nil {
-			return true, nil, err
+			errorsCount++
+			log.Debug(fmt.Sprintf(pollingErrorMessage, errorsCount, err.Error()))
+			if errorsCount == maxConsecutiveErrors {
+				return true, nil, err
+			}
+			return false, nil, nil
 		}
+		// If the response is not the expected 200 or 404.
 		if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusNotFound); err != nil {
 			err = errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
-			return true, nil, err
+			errorsCount++
+			log.Debug(fmt.Sprintf(pollingErrorMessage, errorsCount, err.Error()))
+			if errorsCount == maxConsecutiveErrors {
+				return true, nil, err
+			}
+			return false, nil, nil
 		}
-		log.Debug(message)
+		errorsCount = 0
+
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
 			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment")
@@ -116,11 +135,12 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 			if err = json.Unmarshal(body, &statusResponse); err != nil {
 				return true, nil, err
 			}
-			// Got the new server deatiles
+			// Got the new server details
 			if statusResponse.Ready {
 				return true, body, nil
 			}
 		}
+		// The expected 404 response.
 		return false, nil, nil
 	}
 

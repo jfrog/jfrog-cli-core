@@ -145,6 +145,51 @@ func (tpc *TerraformPublishCommand) publish() error {
 	//return tpc.doDeploy("/Users/gail/dev/v2/jfrog-cli/testdata/terraform/terraformproject/aws/asg", "moduleName", tpc.serverDetails)
 }
 
+
+func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) (string, error) {
+	return filepath.ToSlash(filepath.Join(tpc.repo, tpc.namespace, tpc.provider, moduleName, tpc.tag+".zip")), nil
+}
+
+func (tpc *TerraformPublishCommand) getRepoFromConfiguration() error {
+	// Read config file.
+	log.Debug("Preparing to read the config file", tpc.configFilePath)
+	vConfig, err := utils.ReadConfigFile(tpc.configFilePath, utils.YAML)
+	if err != nil {
+		return err
+	}
+	deployerParams, err := utils.GetRepoConfigByPrefix(tpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	if err != nil {
+		return err
+	}
+	tpc.SetRepo(deployerParams.TargetRepo())
+	return nil
+}
+
+func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, err error) {
+	// Extract namespace information from the args.
+	flagIndex, valueIndex, namespace, err := coreutils.FindFlag("--namespace", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	// Extract provider information from the args.
+	flagIndex, valueIndex, provider, err = coreutils.FindFlag("--provider", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	// Extract tag information from the args.
+	flagIndex, valueIndex, tag, err = coreutils.FindFlag("--tag", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	if len(args) != 0 {
+		err = errorutils.CheckErrorf("Unknown flag:\"" + strings.Split(args[0], "=")[0] + "\". for a terraform publish command please provide --namespace, --provider and --tag.")
+	}
+	return
+}
+
 // We identify a terraform module by the existing of '.tf' files inside the directory.
 // isTerraformModule search for '.tf' file inside the directory and returns true it founds at least one.
 func isTerraformModule(path string) (bool, error) {
@@ -200,48 +245,4 @@ func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails
 		return errorutils.CheckErrorf("Failed to upload the terraform module to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
-}
-
-func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) (string, error) {
-	return filepath.ToSlash(filepath.Join(tpc.repo, tpc.namespace, tpc.provider, moduleName, tpc.tag+".zip")), nil
-}
-
-func (tpc *TerraformPublishCommand) getRepoFromConfiguration() error {
-	// Read config file.
-	log.Debug("Preparing to read the config file", tpc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(tpc.configFilePath, utils.YAML)
-	if err != nil {
-		return err
-	}
-	deployerParams, err := utils.GetRepoConfigByPrefix(tpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
-	if err != nil {
-		return err
-	}
-	tpc.SetRepo(deployerParams.TargetRepo())
-	return nil
-}
-
-func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, err error) {
-	// Extract namespace information from the args.
-	flagIndex, valueIndex, namespace, err := coreutils.FindFlag("--namespace", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	// Extract provider information from the args.
-	flagIndex, valueIndex, provider, err = coreutils.FindFlag("--provider", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	// Extract tag information from the args.
-	flagIndex, valueIndex, tag, err = coreutils.FindFlag("--tag", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	if len(args) != 0 {
-		err = errorutils.CheckErrorf("Unknown flag:\"" + strings.Split(args[0], "=")[0] + "\". for a terraform publish command please provide --namespace, --provider and --tag.")
-	}
-	return
 }

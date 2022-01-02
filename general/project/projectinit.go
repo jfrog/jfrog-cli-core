@@ -111,7 +111,8 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			case coreutils.Gradle:
 				message += "jf gradle artifactoryP\n"
 			case coreutils.Npm:
-				message += "jf npm install publish\n"
+				message += "jf npm install\n"
+				message += "jf npm publish\n"
 			case coreutils.Go:
 				message +=
 					"jf go build\n" +

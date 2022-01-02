@@ -200,11 +200,11 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
-		for _, fileGroup := range scanCmd.spec.Files {
-			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue, xrayVersion)
+		for i := range scanCmd.spec.Files {
+			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&scanCmd.spec.Files[i], indexedFileProducer, resultsArr, indexedFileErrorsQueue, xrayVersion)
 			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
-			err := collectFilesForIndexing(fileGroup, taskHandler)
+			err := collectFilesForIndexing(scanCmd.spec.Files[i], taskHandler)
 			if err != nil {
 				log.Error(err)
 				fileErrorsQueue.AddError(err)

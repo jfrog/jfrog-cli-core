@@ -44,7 +44,7 @@ func OfflineUpdate(flags *OfflineUpdatesFlags) error {
 	}
 
 	if flags.Target != "" && (len(vulnerabilities) > 0 || len(components) > 0) {
-		err = os.MkdirAll(flags.Target, 0777)
+		err = os.MkdirAll(flags.Target, 0600) // TODO make sure 600 is sufficient
 		if errorutils.CheckError(err) != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func validateDates(from, to int64) error {
 
 func getXrayTempDir() (string, error) {
 	xrayDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), "jfrog", "xray")
-	if err := os.MkdirAll(xrayDir, 0777); err != nil {
+	if err := os.MkdirAll(xrayDir, 0600); err != nil { // TODO make sure 600 is sufficient
 		return "", errorutils.CheckError(err)
 	}
 	return xrayDir, nil

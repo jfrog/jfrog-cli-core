@@ -171,7 +171,8 @@ func (pic *ProjectInitCommand) createBuildConfig() error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0644))
+	//#nosec G306 -- Build config should be available for other users.
+	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0640))
 }
 
 func createDefaultReposIfNeeded(tech coreutils.Technology, serverId string) error {
@@ -228,5 +229,6 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		return errorutils.CheckError(err)
 	}
 
-	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0644))
+	//#nosec G306 -- Build config should be available for other users.
+	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0640))
 }

@@ -138,13 +138,14 @@ func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, 
 	gradlePluginPath = strings.Replace(gradlePluginPath, "\\", "\\\\", -1)
 	initScriptContent := strings.Replace(utils.GradleInitScript, "${pluginLibDir}", gradlePluginPath, -1)
 	if !fileutils.IsPathExists(gradleDependenciesDir, false) {
-		err = os.MkdirAll(gradleDependenciesDir, 0777)
+		// TODO make sure 600 is sufficient
+		err = os.MkdirAll(gradleDependenciesDir, 0600)
 		if errorutils.CheckError(err) != nil {
 			return "", err
 		}
 	}
-
-	return initScriptPath, errorutils.CheckError(ioutil.WriteFile(initScriptPath, []byte(initScriptContent), 0644))
+	// TODO make sure 600 is sufficient
+	return initScriptPath, errorutils.CheckError(ioutil.WriteFile(initScriptPath, []byte(initScriptContent), 0600))
 }
 
 type gradleRunConfig struct {

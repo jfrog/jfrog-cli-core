@@ -32,7 +32,8 @@ const (
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
 	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
 	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, hex.EncodeToString(hash[:]))
-	err := os.MkdirAll(buildsDir, 0777)
+	//#nosec G302 -- Build dir should be available for other users.
+	err := os.MkdirAll(buildsDir, 0660)
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
@@ -58,7 +59,8 @@ func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, err
 		return "", err
 	}
 	buildDir = filepath.Join(buildDir, "partials")
-	err = os.MkdirAll(buildDir, 0777)
+	//#nosec G302 -- Partials dir should be available for other users.
+	err = os.MkdirAll(buildDir, 0660)
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}

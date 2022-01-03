@@ -173,7 +173,7 @@ func createClassworldsConfig(dependenciesPath string) error {
 	if fileutils.IsPathExists(classworldsPath, false) {
 		return nil
 	}
-	return errorutils.CheckError(ioutil.WriteFile(classworldsPath, []byte(utils.ClassworldsConf), 0644))
+	return errorutils.CheckError(ioutil.WriteFile(classworldsPath, []byte(utils.ClassworldsConf), 0600))
 }
 
 func createMvnRunConfig(dependenciesPath, configPath, deployableArtifactsFile, mavenHome string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (*mvnRunConfig, error) {

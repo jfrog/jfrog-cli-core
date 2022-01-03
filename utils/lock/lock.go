@@ -52,7 +52,8 @@ func (lock *Lock) createFile(folderName string, pid int) error {
 	// We are creating an empty file with the pid and current time part of the name
 	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
 	log.Debug("Creating lock file: ", lock.fileName)
-	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	//#nosec G302 -- Lock file should be available for read/write.
+	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

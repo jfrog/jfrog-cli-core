@@ -434,7 +434,8 @@ func getConfFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = os.MkdirAll(confPath, 0777)
+	//#nosec G301 -- Home dir should be available for other users. Creates the home dir so execution might also be needed.
+	err = os.MkdirAll(confPath, 0770)
 	if err != nil {
 		return "", err
 	}

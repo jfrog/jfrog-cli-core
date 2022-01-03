@@ -128,7 +128,8 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(configFilePath, resBytes, 0644); err != nil {
+	//#nosec G306 -- Build config should be available for other users.
+	if err = ioutil.WriteFile(configFilePath, resBytes, 0640); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(confType.String() + " build config successfully created.")
@@ -207,6 +208,8 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	}
 
 	// Create config file to make sure the path is valid
+
+	//#nosec G302 -- Config file should be available for read.
 	f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if errorutils.CheckError(err) != nil {
 		return err

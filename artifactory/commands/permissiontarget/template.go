@@ -80,7 +80,8 @@ func (pttc *PermissionTargetTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(pttc.path, resBytes, 0644); err != nil {
+	//#nosec G306 -- Template should be available for other users.
+	if err = ioutil.WriteFile(pttc.path, resBytes, 0640); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Permission target configuration template successfully created at %s.", pttc.path))

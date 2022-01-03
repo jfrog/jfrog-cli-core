@@ -82,7 +82,8 @@ func (rtc *ReplicationTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(rtc.path, resBytes, 0644); err != nil {
+	//#nosec G306 -- Template should be available for other users.
+	if err = ioutil.WriteFile(rtc.path, resBytes, 0640); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Replication creation config template successfully created at %s.", rtc.path))

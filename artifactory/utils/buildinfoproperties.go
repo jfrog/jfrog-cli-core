@@ -182,7 +182,8 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployabl
 	}
 
 	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PropertiesTempPath)
-	err = os.MkdirAll(propertiesPath, 0777)
+	//#nosec G302 -- Build info properties should be available for other users.
+	err = os.MkdirAll(propertiesPath, 0660)
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}

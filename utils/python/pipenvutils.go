@@ -21,7 +21,7 @@ func GetPipenvVenv() (string, error) {
 		return "", err
 	}
 
-	return strings.TrimSuffix(string(output), "\n"), err
+	return strings.TrimSpace(string(output)), err
 }
 
 // Get simple list of all dependencies (using pipenv graph)

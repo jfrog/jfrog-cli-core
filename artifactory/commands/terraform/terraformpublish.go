@@ -12,8 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -114,33 +112,42 @@ func (tpc *TerraformPublishCommand) preparePrerequisites() error {
 
 func (tpc *TerraformPublishCommand) publish() error {
 	log.Debug("Deploying terraform module.")
-	pwd, err := os.Getwd()
+	servicesManager, err := utils.CreateTerraformServiceManager(tpc.serverDetails,0, false)
 	if err != nil {
 		return err
 	}
-	return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		pathIinfo, e := os.Lstat(path)
-		if e != nil {
-			return e
-		}
-		// Skip files and check only directories.
-		if !pathIinfo.IsDir() {
-			return nil
-		}
-		terraformModule, e := isTerraformModule(path)
-		if e != nil {
-			return e
-		}
-
-		if terraformModule {
-			moduleName := info.Name()
-			return tpc.doDeploy(path, moduleName, tpc.serverDetails)
-		}
-		return nil
-	})
+	terraformService := services.NewTerraformService(servicesManager.Client(), servicesManager.GetConfig().GetServiceDetails())
+	commonParams := specutils.CommonParams{TargetProps: specutils.NewProperties()}
+	terraformParams := services.NewTerraformParams(&commonParams).SetTargetRepo(tpc.repo).SetNamespace(tpc.namespace).SetProvider(tpc.provider).SetTag(tpc.tag)
+	terraformService.TerraformPublish(terraformParams)
+	return nil
+	//pwd, err := os.Getwd()
+	//if err != nil {
+	//	return err
+	//}
+	//return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
+	//	if err != nil {
+	//		return err
+	//	}
+	//	pathIinfo, e := os.Lstat(path)
+	//	if e != nil {
+	//		return e
+	//	}
+	//	// Skip files and check only directories.
+	//	if !pathIinfo.IsDir() {
+	//		return nil
+	//	}
+	//	terraformModule, e := isTerraformModule(path)
+	//	if e != nil {
+	//		return e
+	//	}
+	//
+	//	if terraformModule {
+	//		moduleName := info.Name()
+	//		return tpc.doDeploy(path, moduleName, tpc.serverDetails)
+	//	}
+	//	return nil
+	//})
 	//return nil
 	//return tpc.doDeploy("/Users/gail/dev/v2/jfrog-cli/testdata/terraform/terraformproject/aws/asg", "moduleName", tpc.serverDetails)
 }
@@ -190,30 +197,6 @@ func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider,
 	return
 }
 
-// We identify a terraform module by the existing of '.tf' files inside the directory.
-// isTerraformModule search for '.tf' file inside the directory and returns true it founds at least one.
-func isTerraformModule(path string) (bool, error) {
-	dirname := path + string(filepath.Separator)
-
-	d, err := os.Open(dirname)
-	if err != nil {
-		return false, err
-	}
-	defer d.Close()
-
-	files, err := d.Readdir(-1)
-	if err != nil {
-		return false, err
-	}
-	for _, file := range files {
-		if file.Mode().IsRegular() {
-			if filepath.Ext(file.Name()) == ".tf" {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
 func (tpc *TerraformPublishCommand) doDeploy(path, moduleName string, artDetails *config.ServerDetails) (err error) {
 	servicesManager, err := utils.CreateServiceManager(artDetails, -1, false)
 	if err != nil {

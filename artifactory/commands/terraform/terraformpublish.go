@@ -116,10 +116,17 @@ func (tpc *TerraformPublishCommand) publish() error {
 	if err != nil {
 		return err
 	}
-	terraformService := services.NewTerraformService(servicesManager.Client(), servicesManager.GetConfig().GetServiceDetails())
 	commonParams := specutils.CommonParams{TargetProps: specutils.NewProperties()}
 	terraformParams := services.NewTerraformParams(&commonParams).SetTargetRepo(tpc.repo).SetNamespace(tpc.namespace).SetProvider(tpc.provider).SetTag(tpc.tag)
-	terraformService.TerraformPublish(terraformParams)
+	success, failed, err := servicesManager.PublishTerraformModule(*terraformParams)
+	if err != nil {
+		return err
+	}
+	tpc.result.SetSuccessCount(success)
+	tpc.result.SetFailCount(failed)
+	//terraformService := services.NewTerraformService(servicesManager.Client(), servicesManager.GetConfig().GetServiceDetails())
+	//
+	//terraformService.TerraformPublish(terraformParams)
 	return nil
 	//pwd, err := os.Getwd()
 	//if err != nil {

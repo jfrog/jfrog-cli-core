@@ -275,7 +275,7 @@ func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandle
 
 	fileData.Pattern = clientutils.ReplaceTildeWithUserHome(fileData.Pattern)
 	patternType := fileData.GetPatternType()
-	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, patternType, false)
+	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, "", patternType, false)
 	if err != nil {
 		return err
 	}

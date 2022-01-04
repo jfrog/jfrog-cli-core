@@ -233,7 +233,7 @@ func prepareArtifactoryParams(specFile spec.File) (*specutils.CommonParams, erro
 func getLocalDependencies(addDepsParams *specutils.CommonParams) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ReplaceTildeWithUserHome(addDepsParams.GetPattern()))
 	// Save parentheses index in pattern, witch have corresponding placeholder.
-	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), addDepsParams.GetPatternType(), false)
+	rootPath, err := fspatterns.GetRootPath(addDepsParams.GetPattern(), addDepsParams.GetTarget(), "", addDepsParams.GetPatternType(), false)
 	if err != nil {
 		return nil, err
 	}

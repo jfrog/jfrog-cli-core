@@ -51,7 +51,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return err
 	}
 	// First create repositories for the detected technologies.
-	for techName, _ := range technologiesMap {
+	for techName := range technologiesMap {
 		// First create repositories for the detected technology.
 		err = createDefaultReposIfNeeded(techName, pic.serverId)
 		if err != nil {
@@ -101,32 +101,32 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
 func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.Technology]bool) string {
 	message := ""
-	for tech, _ := range technologiesMap {
-			switch tech {
-			case coreutils.Maven:
-				message += "jf mvn install deploy\n"
-			case coreutils.Gradle:
-				message += "jf gradle artifactoryP\n"
-			case coreutils.Npm:
-				message += "jf npm install\n"
-				message += "jf npm publish\n"
-			case coreutils.Go:
-				message +=
-					"jf go build\n" +
-						"jf go-publish v1.0.0\n"
-			case coreutils.Pip:
-				message +=
-					"jf pip install\n" +
-						"jf rt u path/to/package/file default-pypi-local" +
-						coreutils.PrintComment(" # Publish your pip package") +
-						"\n"
-			case coreutils.Pipenv:
-				message +=
-					"jf pipenv install\n" +
-						"jf rt u path/to/package/file default-pypi-local" +
-						coreutils.PrintComment(" # Publish your pipenv package") +
-						"\n"
-			}
+	for tech := range technologiesMap {
+		switch tech {
+		case coreutils.Maven:
+			message += "jf mvn install deploy\n"
+		case coreutils.Gradle:
+			message += "jf gradle artifactoryP\n"
+		case coreutils.Npm:
+			message += "jf npm install\n"
+			message += "jf npm publish\n"
+		case coreutils.Go:
+			message +=
+				"jf go build\n" +
+					"jf go-publish v1.0.0\n"
+		case coreutils.Pip:
+			message +=
+				"jf pip install\n" +
+					"jf rt u path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" # Publish your pip package") +
+					"\n"
+		case coreutils.Pipenv:
+			message +=
+				"jf pipenv install\n" +
+					"jf rt u path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" # Publish your pipenv package") +
+					"\n"
+		}
 	}
 	if message != "" {
 		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
@@ -198,7 +198,6 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		return errorutils.CheckError(err)
 	}
 	techName := strings.ToLower(string(tech))
-	// Due to cli-artifactory naming mismatch we have to add this line
 	configFilePath := filepath.Join(jfrogProjectDir, techName+".yaml")
 	configFile := artifactoryCommandsUtils.ConfigFile{
 		Version:    artifactoryCommandsUtils.BuildConfVersion,

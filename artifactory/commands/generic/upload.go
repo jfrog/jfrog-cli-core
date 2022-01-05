@@ -88,7 +88,7 @@ func (uc *UploadCommand) upload() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.retries, uc.DryRun(), uc.progress)
+	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.retries, uc.retryWaitTimeMilliSecs, uc.DryRun(), uc.progress)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 }
 
 func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) error {
-	servicesManager, err := utils.CreateServiceManager(uc.serverDetails, uc.retries, false)
+	servicesManager, err := utils.CreateServiceManager(uc.serverDetails, uc.retries, uc.retryWaitTimeMilliSecs, false)
 	if err != nil {
 		return err
 	}

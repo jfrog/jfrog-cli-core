@@ -82,12 +82,12 @@ func (osb *OcStartBuildCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(osb.serverDetails, -1, false)
+	serviceManager, err := utils.CreateServiceManager(osb.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
 	image := container.NewImage(imageTag)
-	builder, err := container.NewBuildInfoBuilderForKanikoOrOpenShift(image, osb.repo, buildName, buildNumber, project, serviceManager, container.Push, manifestSha256)
+	builder, err := container.NewRemoteAgentBuildInfoBuilder(image, osb.repo, buildName, buildNumber, project, serviceManager, manifestSha256)
 	if err != nil {
 		return err
 	}

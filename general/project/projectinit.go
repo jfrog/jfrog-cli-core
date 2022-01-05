@@ -95,7 +95,9 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+		"\n\n" +
+		coreutils.GetFeedbackMessage()
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
@@ -109,7 +111,8 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			case coreutils.Gradle:
 				message += "jf gradle artifactoryP\n"
 			case coreutils.Npm:
-				message += "jf npm install publish\n"
+				message += "jf npm install\n"
+				message += "jf npm publish\n"
 			case coreutils.Go:
 				message +=
 					"jf go build\n" +

@@ -86,7 +86,7 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	servicesManager, err := rtUtils.CreateServiceManager(rcc.serverDetails, -1, false)
+	servicesManager, err := rtUtils.CreateServiceManager(rcc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

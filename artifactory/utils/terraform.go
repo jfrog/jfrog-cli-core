@@ -5,12 +5,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory"
 )
 
-func CreateTerraformServiceManager(serverDetails *config.ServerDetails, httpRetries int, dryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManager(serverDetails, httpRetries, dryRun)
-}
-
-type TerraformConfiguration struct {
-	Threads               int
-	MinChecksumDeploySize int64
-	ExplodeArchive        bool
+func CreateTerraformServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, dryRun bool) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManager(serverDetails, httpRetries, httpRetryWaitMilliSecs, dryRun)
 }

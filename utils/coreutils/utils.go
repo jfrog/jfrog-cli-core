@@ -3,11 +3,6 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"os/exec"
@@ -15,6 +10,12 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/errors"
 )
 
 const (

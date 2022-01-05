@@ -76,24 +76,27 @@ func UpdateDepsIdsAndRequestedBy(dependenciesMap map[string]*buildinfo.Dependenc
 	}
 
 	// For each dependency, set the real dependency ID and the requestedBy field
-	for dependencyId := range dependenciesGraph {
-		dependency := dependenciesMap[dependencyId[0:strings.Index(dependencyId, ":")]]
-		if dependency == nil {
-			continue
-		}
-		var requestedBy [][]string
-		parents, parentsExist := requestedByMap[dependencyId]
-		if parentsExist {
-			// Transitive dependency
-			for _, directParent := range parents {
-				requestedBy = append(requestedBy, getPathToModule(requestedByMap, directParent, moduleName))
+	for directDependencyId, dependencies := range dependenciesGraph {
+		for _, dependencyId := range append(dependencies, directDependencyId) {
+			dependency := dependenciesMap[dependencyId[0:strings.Index(dependencyId, ":")]]
+			if dependency == nil || len(dependency.RequestedBy) > 0 {
+				// Dependency wasn't resolved by pip, or the dependency already had been handled
+				continue
 			}
-		} else {
-			// Direct dependency
-			requestedBy = append(requestedBy, []string{moduleName})
+			var requestedBy [][]string
+			parents, parentsExist := requestedByMap[dependencyId]
+			if parentsExist {
+				// Transitive dependency
+				for _, directParent := range parents {
+					requestedBy = append(requestedBy, getPathToModule(requestedByMap, directParent, moduleName))
+				}
+			} else {
+				// Direct dependency
+				requestedBy = append(requestedBy, []string{moduleName})
+			}
+			dependency.Id = dependencyId
+			dependency.RequestedBy = requestedBy
 		}
-		dependency.Id = dependencyId
-		dependency.RequestedBy = requestedBy
 	}
 }
 

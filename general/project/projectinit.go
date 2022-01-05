@@ -93,37 +93,40 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+		"\n\n" +
+		coreutils.GetFeedbackMessage()
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
 func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.Technology]bool) string {
 	message := ""
 	for tech, _ := range technologiesMap {
-		switch tech {
-		case coreutils.Maven:
-			message += "jf mvn install deploy\n"
-		case coreutils.Gradle:
-			message += "jf gradle artifactoryP\n"
-		case coreutils.Npm:
-			message += "jf npm install publish\n"
-		case coreutils.Go:
-			message +=
-				"jf go build\n" +
-					"jf go-publish v1.0.0\n"
-		case coreutils.Pip:
-			message +=
-				"jf pip install\n" +
-					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pip package") +
-					"\n"
-		case coreutils.Pipenv:
-			message +=
-				"jf pipenv install\n" +
-					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pipenv package") +
-					"\n"
-		}
+			switch tech {
+			case coreutils.Maven:
+				message += "jf mvn install deploy\n"
+			case coreutils.Gradle:
+				message += "jf gradle artifactoryP\n"
+			case coreutils.Npm:
+				message += "jf npm install\n"
+				message += "jf npm publish\n"
+			case coreutils.Go:
+				message +=
+					"jf go build\n" +
+						"jf go-publish v1.0.0\n"
+			case coreutils.Pip:
+				message +=
+					"jf pip install\n" +
+						"jf rt u path/to/package/file default-pypi-local" +
+						coreutils.PrintComment(" # Publish your pip package") +
+						"\n"
+			case coreutils.Pipenv:
+				message +=
+					"jf pipenv install\n" +
+						"jf rt u path/to/package/file default-pypi-local" +
+						coreutils.PrintComment(" # Publish your pipenv package") +
+						"\n"
+			}
 	}
 	if message != "" {
 		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +

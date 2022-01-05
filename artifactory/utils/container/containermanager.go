@@ -43,6 +43,7 @@ func (cmt ContainerManagerType) String() string {
 // Container image
 type ContainerManager interface {
 	Push(image *Image) error
+	// Image ID is basically the image's SHA256
 	Id(image *Image) (string, error)
 	OsCompatibility(image *Image) (string, string, error)
 	Pull(image *Image) error
@@ -87,7 +88,7 @@ func (containerManager *containerManager) OsCompatibility(image *Image) (string,
 	content = strings.Trim(content, "\n")
 	firstSeparator := strings.Index(content, ",")
 	if firstSeparator == -1 {
-		return "", "", errorutils.CheckErrorf("couldn't find OS and architecture of image:" + image.tag)
+		return "", "", errorutils.CheckErrorf("couldn't find OS and architecture of image:" + image.name)
 	}
 	return content[:firstSeparator], content[firstSeparator+1:], err
 }
@@ -97,7 +98,7 @@ func (containerManager *containerManager) GetContainerManagerType() ContainerMan
 }
 
 func NewImage(tag string) *Image {
-	return &Image{tag: tag}
+	return &Image{name: tag}
 }
 
 // Image push command
@@ -109,7 +110,7 @@ type pushCmd struct {
 func (pushCmd *pushCmd) GetCmd() *exec.Cmd {
 	var cmd []string
 	cmd = append(cmd, "push")
-	cmd = append(cmd, pushCmd.imageTag.tag)
+	cmd = append(cmd, pushCmd.imageTag.name)
 	return exec.Command(pushCmd.containerManager.String(), cmd[:]...)
 }
 
@@ -131,7 +132,7 @@ func (getImageId *getImageIdCmd) GetCmd() *exec.Cmd {
 	cmd = append(cmd, "images")
 	cmd = append(cmd, "--format", "{{.ID}}")
 	cmd = append(cmd, "--no-trunc")
-	cmd = append(cmd, getImageId.image.tag)
+	cmd = append(cmd, getImageId.image.name)
 	return exec.Command(getImageId.containerManager.String(), cmd[:]...)
 }
 
@@ -144,20 +145,6 @@ func (getImageId *getImageIdCmd) RunCmd() (string, error) {
 	return buffer.String(), err
 }
 
-type FatManifest struct {
-	Manifests []ManifestDetails `json:"manifests"`
-}
-
-type ManifestDetails struct {
-	Digest   string   `json:"digest"`
-	Platform Platform `json:"platform"`
-}
-
-type Platform struct {
-	Architecture string `json:"architecture"`
-	Os           string `json:"os"`
-}
-
 // Get image system compatibility details
 type getImageSystemCompatibilityCmd struct {
 	image            *Image
@@ -168,7 +155,7 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetCmd() *
 	var cmd []string
 	cmd = append(cmd, "image")
 	cmd = append(cmd, "inspect")
-	cmd = append(cmd, getImageSystemCompatibilityCmd.image.tag)
+	cmd = append(cmd, getImageSystemCompatibilityCmd.image.name)
 	cmd = append(cmd, "--format")
 	cmd = append(cmd, "{{ .Os}},{{ .Architecture}}")
 	return exec.Command(getImageSystemCompatibilityCmd.containerManager.String(), cmd[:]...)
@@ -234,7 +221,7 @@ type pullCmd struct {
 func (pullCmd *pullCmd) GetCmd() *exec.Cmd {
 	var cmd []string
 	cmd = append(cmd, "pull")
-	cmd = append(cmd, pullCmd.image.tag)
+	cmd = append(cmd, pullCmd.image.name)
 	return exec.Command(pullCmd.containerManager.String(), cmd[:]...)
 }
 

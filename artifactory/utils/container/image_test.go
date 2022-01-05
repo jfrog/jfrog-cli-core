@@ -20,19 +20,19 @@ func TestGetImagePath(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result, err := NewImage(v.in).Path()
+		result, err := NewImage(v.in).GetPath()
 		assert.NoError(t, err)
 		if result != v.expected {
 			t.Errorf("Path(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
 	// Validate failure upon missing image name
-	_, err := NewImage("domain").Path()
+	_, err := NewImage("domain").GetPath()
 	assert.Error(t, err)
 
 }
 
-func TestGetImageName(t *testing.T) {
+func TestGetImageBaseNameWithTag(t *testing.T) {
 	var imageTags = []struct {
 		in       string
 		expected string
@@ -46,14 +46,14 @@ func TestGetImageName(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result, err := NewImage(v.in).Name()
+		result, err := NewImage(v.in).GetImageBaseNameWithTag()
 		assert.NoError(t, err)
 		if result != v.expected {
 			t.Errorf("Name(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
 	// Validate failure upon missing image name
-	_, err := NewImage("domain").Name()
+	_, err := NewImage("domain").GetImageBaseNameWithTag()
 	assert.Error(t, err)
 }
 

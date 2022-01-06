@@ -16,8 +16,8 @@ var moduleNameTestProvider = []struct {
 	expectedModuleName  string
 	expectedPackageName string
 }{
-	{"setuppyproject", "", "jfrog-python-example", "jfrog-python-example"},
-	{"setuppyproject", "overidden-module", "overidden-module", "jfrog-python-example"},
+	{"setuppyproject", "", "jfrog-python-example:1.0", "jfrog-python-example:1.0"},
+	{"setuppyproject", "overidden-module", "overidden-module", "jfrog-python-example:1.0"},
 	{"requirementsproject", "", "", ""},
 	{"requirementsproject", "overidden-module", "overidden-module", ""},
 }

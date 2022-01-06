@@ -72,11 +72,11 @@ func (pic *PipInstallCommand) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		dependenciesGraph, _, err := piputils.RunPipDepTree(pythonExecutablePath)
+		dependenciesGraph, topLevelPackagesList, err := piputils.RunPipDepTree(pythonExecutablePath)
 		if err != nil {
 			return err
 		}
-		if err := pic.collectBuildInfo(projectsDirPath, pythonExecutablePath, allDependencies, dependenciesGraph); err != nil {
+		if err := pic.collectBuildInfo(projectsDirPath, pythonExecutablePath, allDependencies, dependenciesGraph, topLevelPackagesList); err != nil {
 			return err
 		}
 	}

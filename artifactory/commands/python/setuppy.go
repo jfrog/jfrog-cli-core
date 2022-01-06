@@ -20,25 +20,37 @@ func ExtractPackageNameFromSetupPy(setuppyFilePath, pythonExecutablePath string)
 	}
 
 	// Extract project name from file content.
-	return getProjectNameFromFileContent(content)
+	return getProjectIdFromFileContent(content)
 }
 
-// Get package-name from PKG-INFO file content.
-// If pattern of package-name not found, return an error.
-func getProjectNameFromFileContent(content []byte) (string, error) {
+// Get package ID from PKG-INFO file content.
+// If pattern of package name of version not found, return an error.
+func getProjectIdFromFileContent(content []byte) (string, error) {
 	// Create package-name regexp.
 	packageNameRegexp, err := utils.GetRegExp(`(?m)^Name\:\s(\w[\w-\.]+)`)
 	if err != nil {
 		return "", err
 	}
 
-	// Find first match of packageNameRegexp.
-	match := packageNameRegexp.FindStringSubmatch(string(content))
-	if len(match) < 2 {
+	// Find first nameMatch of packageNameRegexp.
+	nameMatch := packageNameRegexp.FindStringSubmatch(string(content))
+	if len(nameMatch) < 2 {
 		return "", errorutils.CheckErrorf("Failed extracting package name from content.")
 	}
 
-	return match[1], nil
+	// Create package-version regexp.
+	packageVersionRegexp, err := utils.GetRegExp(`(?m)^Version\:\s(\w[\w-\.]+)`)
+	if err != nil {
+		return "", err
+	}
+
+	// Find first match of packageNameRegexp.
+	versionMatch := packageVersionRegexp.FindStringSubmatch(string(content))
+	if len(versionMatch) < 2 {
+		return "", errorutils.CheckErrorf("Failed extracting package version from content.")
+	}
+
+	return nameMatch[1] + ":" + versionMatch[1], nil
 }
 
 // Run egg-info command on setup.py, the command generates metadata files.

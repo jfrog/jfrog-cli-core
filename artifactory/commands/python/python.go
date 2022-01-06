@@ -49,7 +49,7 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 	return pc
 }
 
-func (pc *PythonCommand) collectBuildInfo(cacheDirPath, pythonExecutablePath string, allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) error {
+func (pc *PythonCommand) collectBuildInfo(cacheDirPath, pythonExecutablePath string, allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string, topLevelPackagesList []string) error {
 	err, packageName := pc.determineModuleName(pythonExecutablePath)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (pc *PythonCommand) collectBuildInfo(cacheDirPath, pythonExecutablePath str
 	if err != nil {
 		return err
 	}
-	dependencies.UpdateDepsIdsAndRequestedBy(allDependencies, dependenciesGraph, packageName, pc.buildConfiguration.GetModule())
+	dependencies.UpdateDepsIdsAndRequestedBy(allDependencies, dependenciesGraph, topLevelPackagesList, packageName, pc.buildConfiguration.GetModule())
 
 	err = dependencies.UpdateDependenciesCache(allDependencies, cacheDirPath)
 	if err != nil {
@@ -118,13 +118,14 @@ func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (error
 	if packageName == "" {
 		buildName, err := pc.buildConfiguration.GetBuildName()
 		if err != nil {
-			return err, packageName
+			return err, ""
 		}
-		packageName = buildName
+		pc.buildConfiguration.SetModule(buildName)
 		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
+	} else {
+		pc.buildConfiguration.SetModule(packageName)
 	}
 
-	pc.buildConfiguration.SetModule(packageName)
 	return nil, packageName
 }
 

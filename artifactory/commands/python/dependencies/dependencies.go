@@ -9,7 +9,6 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -60,58 +59,46 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, ca
 
 // Before running this function, dependency IDs may be the file names of the resolved python packages.
 // Update build info dependency IDs and the requestedBy field.
-// dependenciesMap   - Dependency name to Dependency map
-// dependenciesGraph - Dependency graph as built by 'pipdeptree' or 'pipenv graph'
-// packageName       - The resolved package name of the Python project, may be empty if we couldn't resolve it
-// moduleName        - The input module name from the user, or the packageName
-func UpdateDepsIdsAndRequestedBy(dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string, packageName, moduleName string) {
-	// Create a map from dependency to parents
-	requestedByMap := make(map[string][]string)
-	for parent, children := range dependenciesGraph {
-		for _, child := range children {
-			if packageName == "" || !strings.HasPrefix(parent, packageName+":") {
-				requestedByMap[child] = append(requestedByMap[child], parent)
+// allDependencies      - Dependency name to Dependency map
+// dependenciesGraph    - Dependency graph as built by 'pipdeptree' or 'pipenv graph'
+// topLevelPackagesList - The direct dependencies
+// packageName          - The resolved package name of the Python project, may be empty if we couldn't resolve it
+// moduleName           - The input module name from the user, or the packageName
+func UpdateDepsIdsAndRequestedBy(allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string,
+	topLevelPackagesList []string, packageName, moduleName string) {
+	if packageName == "" {
+		// Projects without setup.py
+		for _, directDependencyId := range topLevelPackagesList {
+			if directDependency, ok := allDependencies[directDependencyId[:strings.Index(directDependencyId, ":")]]; ok {
+				directDependency.Id = directDependencyId
+				directDependency.RequestedBy = [][]string{{moduleName}}
+				PopulateRequestedByField(*directDependency, allDependencies, dependenciesGraph)
 			}
 		}
-	}
-
-	// For each dependency, set the real dependency ID and the requestedBy field
-	for directDependencyId, dependencies := range dependenciesGraph {
-		for _, dependencyId := range append(dependencies, directDependencyId) {
-			dependency := dependenciesMap[dependencyId[0:strings.Index(dependencyId, ":")]]
-			if dependency == nil || len(dependency.RequestedBy) > 0 {
-				// Dependency wasn't resolved by pip, or the dependency already had been handled
-				continue
-			}
-			var requestedBy [][]string
-			parents, parentsExist := requestedByMap[dependencyId]
-			if parentsExist {
-				// Transitive dependency
-				for _, directParent := range parents {
-					requestedBy = append(requestedBy, getPathToModule(requestedByMap, directParent, moduleName))
-				}
-			} else {
-				// Direct dependency
-				requestedBy = append(requestedBy, []string{moduleName})
-			}
-			dependency.Id = dependencyId
-			dependency.RequestedBy = requestedBy
-		}
+	} else {
+		// Projects with setup.py
+		rootModule := buildinfo.Dependency{Id: moduleName, RequestedBy: [][]string{{}}}
+		dependenciesGraph[moduleName] = dependenciesGraph[packageName]
+		PopulateRequestedByField(rootModule, allDependencies, dependenciesGraph)
 	}
 }
 
-func getPathToModule(requestedByMap map[string][]string, parentId, moduleName string) []string {
-	pathToModule := []string{}
-	for {
-		pathToModule = append(pathToModule, parentId)
-		parents, exist := requestedByMap[parentId]
-		if !exist || coreutils.StringsSliceContains(pathToModule, parents[0]) {
-			break
+func PopulateRequestedByField(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) {
+	childrenList := dependenciesGraph[parentDependency.Id]
+	for _, childName := range childrenList {
+		childKey := childName[0:strings.Index(childName, ":")]
+		if childDep, ok := dependenciesMap[childKey]; ok {
+			for _, parentRequestedBy := range parentDependency.RequestedBy {
+				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
+				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
+			}
+			childDep.Id = childName
+			// Reassign map entry with new entry copy
+			dependenciesMap[childKey] = childDep
+			// Run recursive call on child dependencies
+			PopulateRequestedByField(*childDep, dependenciesMap, dependenciesGraph)
 		}
-		parentId = parents[0]
 	}
-	pathToModule = append(pathToModule, moduleName)
-	return pathToModule
 }
 
 // Get dependency information.

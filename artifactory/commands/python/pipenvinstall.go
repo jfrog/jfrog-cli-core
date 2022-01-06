@@ -63,7 +63,7 @@ func (peic *PipenvInstallCommand) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		dependenciesGraph, _, err := pipenvutils.GetPipenvDependenciesList("")
+		dependenciesGraph, topLevelPackagesList, err := pipenvutils.GetPipenvDependenciesList("")
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func (peic *PipenvInstallCommand) Run() (err error) {
 			return err
 		}
 		// Collect build-info.
-		if err = peic.collectBuildInfo(venvDirPath, pythonExecutablePath, allDependencies, dependenciesGraph); err != nil {
+		if err = peic.collectBuildInfo(venvDirPath, pythonExecutablePath, allDependencies, dependenciesGraph, topLevelPackagesList); err != nil {
 			return err
 		}
 	}

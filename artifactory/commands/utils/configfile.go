@@ -325,7 +325,7 @@ func (configFile *ConfigFile) readGradleGlobalConfig() {
 }
 
 func (configFile *ConfigFile) configTerraform() error {
-	return configFile.setDeployerResolver()
+	return configFile.setDeployer()
 }
 
 func (configFile *ConfigFile) setDeployer() error {

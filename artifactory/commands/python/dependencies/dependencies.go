@@ -68,22 +68,19 @@ func UpdateDepsIdsAndRequestedBy(allDependencies map[string]*buildinfo.Dependenc
 	topLevelPackagesList []string, packageName, moduleName string) {
 	if packageName == "" {
 		// Projects without setup.py
-		for _, directDependencyId := range topLevelPackagesList {
-			if directDependency, ok := allDependencies[directDependencyId[:strings.Index(directDependencyId, ":")]]; ok {
-				directDependency.Id = directDependencyId
-				directDependency.RequestedBy = [][]string{{moduleName}}
-				PopulateRequestedByField(*directDependency, allDependencies, dependenciesGraph)
-			}
-		}
+		dependenciesGraph[moduleName] = topLevelPackagesList
 	} else {
 		// Projects with setup.py
-		rootModule := buildinfo.Dependency{Id: moduleName, RequestedBy: [][]string{{}}}
 		dependenciesGraph[moduleName] = dependenciesGraph[packageName]
-		PopulateRequestedByField(rootModule, allDependencies, dependenciesGraph)
 	}
+	rootModule := buildinfo.Dependency{Id: moduleName, RequestedBy: [][]string{{}}}
+	updateDepsIdsAndRequestedBy(rootModule, allDependencies, dependenciesGraph)
 }
 
-func PopulateRequestedByField(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) {
+func updateDepsIdsAndRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) {
+	if parentDependency.NodeHasLoop() {
+		return
+	}
 	childrenList := dependenciesGraph[parentDependency.Id]
 	for _, childName := range childrenList {
 		childKey := childName[0:strings.Index(childName, ":")]
@@ -94,7 +91,7 @@ func PopulateRequestedByField(parentDependency buildinfo.Dependency, dependencie
 			}
 			childDep.Id = childName
 			// Run recursive call on child dependencies
-			PopulateRequestedByField(*childDep, dependenciesMap, dependenciesGraph)
+			updateDepsIdsAndRequestedBy(*childDep, dependenciesMap, dependenciesGraph)
 		}
 	}
 }

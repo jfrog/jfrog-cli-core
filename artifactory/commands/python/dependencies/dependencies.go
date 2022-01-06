@@ -93,8 +93,6 @@ func PopulateRequestedByField(parentDependency buildinfo.Dependency, dependencie
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
 			}
 			childDep.Id = childName
-			// Reassign map entry with new entry copy
-			dependenciesMap[childKey] = childDep
 			// Run recursive call on child dependencies
 			PopulateRequestedByField(*childDep, dependenciesMap, dependenciesGraph)
 		}

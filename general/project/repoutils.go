@@ -85,6 +85,12 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		RemoteUrl: NugetRemoteDefaultUrl,
 		Virtual:   NugetVirtualDefaultName,
 	},
+	coreutils.Dotnet: {
+		Local:     NugetLocalDefaultName,
+		Remote:    NugetRemoteDefaultName,
+		RemoteUrl: NugetRemoteDefaultUrl,
+		Virtual:   NugetVirtualDefaultName,
+	},
 }
 
 func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string) error {
@@ -134,7 +140,7 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 		return err
 	}
 	// NuGet specifc case, due to required DownloadContextPath param by Artifactory
-	if technologyType == coreutils.Nuget {
+	if technologyType == coreutils.Nuget || technologyType == coreutils.Dotnet {
 		return createDefaultRemoteNugetRepo(serverId, params)
 	}
 	return servicesManager.CreateRemoteRepositoryWithParams(params)

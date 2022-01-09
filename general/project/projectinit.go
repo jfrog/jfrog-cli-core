@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -115,17 +116,30 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 				"jf go build\n" +
 					"jf go-publish v1.0.0\n"
 		case coreutils.Pip:
-			message +=
-				"jf pip install\n" +
-					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pip package") +
-					"\n"
+			fallthrough
 		case coreutils.Pipenv:
 			message +=
-				"jf pipenv install\n" +
+				"jf " + string(tech) + "install\n" +
 					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pipenv package") +
+					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
 					"\n"
+		case coreutils.Nuget:
+			// Check that nuget exists in path.
+			_, errNotFound := exec.LookPath("nuget")
+			if errNotFound == nil {
+				message +=
+					"jf nuget restore\n" +
+						"jf rt upload '*.nupkg'\n"
+			}
+			fallthrough
+		case coreutils.Dotnet:
+			// Check that dotnet exists in path.
+			_, errNotFound := exec.LookPath("dotnet")
+			if errNotFound == nil {
+				message +=
+					"jf dotnet restore\n" +
+						"jf rt upload '*.nupkg'\n"
+			}
 		}
 	}
 	if message != "" {
@@ -211,6 +225,11 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		configFile.Resolver.SnapshotRepo = MavenVirtualDefaultName
 		configFile.Deployer.ReleaseRepo = MavenVirtualDefaultName
 		configFile.Deployer.SnapshotRepo = MavenVirtualDefaultName
+	case coreutils.Dotnet:
+		fallthrough
+	case coreutils.Nuget:
+		configFile.Resolver.NugetV2 = true
+		fallthrough
 	default:
 		configFile.Resolver.Repo = RepoDefaultName[tech][Virtual]
 		configFile.Deployer.Repo = RepoDefaultName[tech][Virtual]

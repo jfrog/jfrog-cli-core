@@ -16,7 +16,15 @@ import (
 
 func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
-	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildConf.BuildName, buildConf.BuildNumber, buildConf.Project)
+	buildName, err := buildConf.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := buildConf.GetBuildNumber()
+	if err != nil {
+		return  err
+	}
+	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, buildConf.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

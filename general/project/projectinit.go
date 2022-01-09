@@ -211,20 +211,10 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		configFile.Resolver.SnapshotRepo = MavenVirtualDefaultName
 		configFile.Deployer.ReleaseRepo = MavenVirtualDefaultName
 		configFile.Deployer.SnapshotRepo = MavenVirtualDefaultName
-	case coreutils.Gradle:
-		configFile.Resolver.Repo = GradleVirtualDefaultName
-		configFile.Deployer.Repo = GradleVirtualDefaultName
-	case coreutils.Npm:
-		configFile.Resolver.Repo = NpmVirtualDefaultName
-		configFile.Deployer.Repo = NpmVirtualDefaultName
-	case coreutils.Go:
-		configFile.Resolver.Repo = GoVirtualDefaultName
-		configFile.Deployer.Repo = GoVirtualDefaultName
-	case coreutils.Pipenv:
-		fallthrough
-	case coreutils.Pip:
-		configFile.Resolver.Repo = PypiVirtualDefaultName
-		configFile.Deployer.Repo = PypiVirtualDefaultName
+	default:
+		configFile.Resolver.Repo = RepoDefaultName[tech][Virtual]
+		configFile.Deployer.Repo = RepoDefaultName[tech][Virtual]
+
 	}
 	resBytes, err := yaml.Marshal(&configFile)
 	if err != nil {

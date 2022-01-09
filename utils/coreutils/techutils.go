@@ -15,6 +15,7 @@ const (
 	Go     = "go"
 	Pip    = "pip"
 	Pipenv = "pipenv"
+	Nuget  = "nuget"
 )
 
 type TechData struct {

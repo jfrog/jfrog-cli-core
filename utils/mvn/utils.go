@@ -22,7 +22,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	}
 	buildNumber, err := buildConf.GetBuildNumber()
 	if err != nil {
-		return  err
+		return err
 	}
 	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, buildConf.GetProject())
 	if err != nil {
@@ -40,7 +40,10 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	if err != nil {
 		return err
 	}
-	mvnOpts := strings.Split(os.Getenv("MAVEN_OPTS"), " ")
+	var mvnOpts []string
+	if v := os.Getenv("MAVEN_OPTS"); v != "" {
+		mvnOpts = strings.Split(v, " ")
+	}
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}

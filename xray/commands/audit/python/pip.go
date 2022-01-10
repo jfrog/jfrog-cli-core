@@ -4,6 +4,7 @@ import (
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 )
@@ -72,7 +73,6 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 		if err == nil {
 			err = e
 		}
-
 	}()
 
 	err = fileutils.CopyDir(wd, tempDirPath, true, nil)
@@ -89,7 +89,14 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	// 'pip install .'
 	err = piputils.RunPipInstall()
 	if err != nil {
-		return
+		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
+		e := piputils.RunPipInstallRequirements(tempDirPath)
+		if e != nil {
+			log.Error(e)
+			return
+		} else {
+			err = nil
+		}
 	}
 
 	// Run pipdeptree.py to get dependencies tree

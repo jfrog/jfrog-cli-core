@@ -76,7 +76,7 @@ func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, er
 			populateRequestedBy(*directDep, dependencies, childrenMap)
 		}
 
-		// Populate module depdendencies
+		// Populate module dependencies
 		for _, dep := range dependencies {
 			module.Dependencies = append(module.Dependencies, *dep)
 		}

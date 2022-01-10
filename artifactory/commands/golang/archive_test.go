@@ -2,11 +2,12 @@ package golang
 
 import (
 	"bytes"
-	"github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/jfrog/build-info-go/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -33,7 +34,7 @@ func TestArchiveProject(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expected := map[utils.Algorithm]string{utils.MD5: "28617d6e74fce3dd2bab21b1bd65009b", utils.SHA1: "410814fbf21afdfb9c5b550151a51c2e986447fa"}
+	expected := map[utils.Algorithm]string{utils.MD5: "28617d6e74fce3dd2bab21b1bd65009b", utils.SHA1: "410814fbf21afdfb9c5b550151a51c2e986447fa", utils.SHA256: "e877c07315d6d3ad69139035defc08c04b400b36cd069b35ea3c2960424f2dc6"}
 	actual, err := utils.CalcChecksums(buff)
 	if err != nil {
 		t.Error(err)

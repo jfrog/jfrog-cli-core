@@ -25,7 +25,7 @@ func TestTechIndicator(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			detectedTech := detectTechnologiesByFile(test.filePath, false)
-			assert.Equal(t, test.expected, detectedTech)
+			assert.ElementsMatch(t, test.expected, detectedTech)
 		})
 	}
 }

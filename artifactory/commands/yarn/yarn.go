@@ -504,7 +504,6 @@ func printMissingDependencies(missingDependencies []buildinfo.Dependency) {
 	}
 	log.Warn(strings.Join(missingDependenciesText, "\n"))
 	log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
-		"Make sure the dependencies are available in Artifactory for this build.\n" +
 		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 

@@ -2,12 +2,12 @@ package npm
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -139,7 +139,7 @@ func (nic *NpmInstallOrCiCommand) collectDependencies() error {
 	nic.buildInfoModule.SetTypeRestriction(nic.typeRestriction)
 	nic.buildInfoModule.SetNpmArgs(nic.npmArgs)
 
-	serviceManager, err := utils.CreateServiceManager(nic.serverDetails, -1, false)
+	serviceManager, err := utils.CreateServiceManager(nic.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

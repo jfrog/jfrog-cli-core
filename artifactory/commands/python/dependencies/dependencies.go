@@ -3,9 +3,10 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -54,6 +55,45 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, ca
 
 	promptMissingDependencies(missingDeps)
 	return nil
+}
+
+// Before running this function, dependency IDs may be the file names of the resolved python packages.
+// Update build info dependency IDs and the requestedBy field.
+// allDependencies      - Dependency name to Dependency map
+// dependenciesGraph    - Dependency graph as built by 'pipdeptree' or 'pipenv graph'
+// topLevelPackagesList - The direct dependencies
+// packageName          - The resolved package name of the Python project, may be empty if we couldn't resolve it
+// moduleName           - The input module name from the user, or the packageName
+func UpdateDepsIdsAndRequestedBy(allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string,
+	topLevelPackagesList []string, packageName, moduleName string) {
+	if packageName == "" {
+		// Projects without setup.py
+		dependenciesGraph[moduleName] = topLevelPackagesList
+	} else {
+		// Projects with setup.py
+		dependenciesGraph[moduleName] = dependenciesGraph[packageName]
+	}
+	rootModule := buildinfo.Dependency{Id: moduleName, RequestedBy: [][]string{{}}}
+	updateDepsIdsAndRequestedBy(rootModule, allDependencies, dependenciesGraph)
+}
+
+func updateDepsIdsAndRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) {
+	childrenList := dependenciesGraph[parentDependency.Id]
+	for _, childName := range childrenList {
+		childKey := childName[0:strings.Index(childName, ":")]
+		if childDep, ok := dependenciesMap[childKey]; ok {
+			for _, parentRequestedBy := range parentDependency.RequestedBy {
+				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
+				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
+			}
+			if childDep.NodeHasLoop() {
+				continue
+			}
+			childDep.Id = childName
+			// Run recursive call on child dependencies
+			updateDepsIdsAndRequestedBy(*childDep, dependenciesMap, dependenciesGraph)
+		}
+	}
 }
 
 // Get dependency information.

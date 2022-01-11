@@ -42,11 +42,11 @@ func (bdc *BuildDockerCreateCommand) Run() error {
 	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, false)
+	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewBuildInfoBuilderForKanikoOrOpenShift(image, bdc.Repo(), buildName, buildNumber, project, serviceManager, container.Push, bdc.manifestSha256)
+	builder, err := container.NewRemoteAgentBuildInfoBuilder(image, bdc.Repo(), buildName, buildNumber, project, serviceManager, bdc.manifestSha256)
 	if err != nil {
 		return err
 	}

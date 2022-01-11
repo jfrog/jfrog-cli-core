@@ -41,7 +41,7 @@ func (pc *PingCommand) Run() error {
 }
 
 func (pc *PingCommand) Ping() ([]byte, error) {
-	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(pc.serverDetails, -1, 0, false)
 	if err != nil {
 		return nil, err
 	}

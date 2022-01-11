@@ -7,14 +7,15 @@ import (
 )
 
 type GenericCommand struct {
-	serverDetails   *config.ServerDetails
-	spec            *spec.SpecFiles
-	result          *commandsutils.Result
-	dryRun          bool
-	detailedSummary bool
-	syncDeletesPath string
-	quiet           bool
-	retries         int
+	serverDetails          *config.ServerDetails
+	spec                   *spec.SpecFiles
+	result                 *commandsutils.Result
+	dryRun                 bool
+	detailedSummary        bool
+	syncDeletesPath        string
+	quiet                  bool
+	retries                int
+	retryWaitTimeMilliSecs int
 }
 
 func NewGenericCommand() *GenericCommand {
@@ -54,6 +55,11 @@ func (gc *GenericCommand) Retries() int {
 
 func (gc *GenericCommand) SetRetries(retries int) *GenericCommand {
 	gc.retries = retries
+	return gc
+}
+
+func (gc *GenericCommand) SetRetryWaitMilliSecs(retryWaitMilliSecs int) *GenericCommand {
+	gc.retryWaitTimeMilliSecs = retryWaitMilliSecs
 	return gc
 }
 

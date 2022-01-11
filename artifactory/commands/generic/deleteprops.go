@@ -26,7 +26,7 @@ func (dp *DeletePropsCommand) Run() error {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	servicesManager, err := createPropsServiceManager(dp.threads, dp.retries, serverDetails)
+	servicesManager, err := createPropsServiceManager(dp.threads, dp.retries, dp.retryWaitTimeMilliSecs, serverDetails)
 	if err != nil {
 		return err
 	}

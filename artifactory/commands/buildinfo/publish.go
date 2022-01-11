@@ -75,7 +75,7 @@ func (bpc *BuildPublishCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (bpc *BuildPublishCommand) Run() error {
-	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, -1, bpc.config.DryRun)
+	servicesManager, err := utils.CreateServiceManager(bpc.serverDetails, -1, 0, bpc.config.DryRun)
 	if err != nil {
 		return err
 	}

@@ -51,17 +51,15 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return err
 	}
 	// First create repositories for the detected technologies.
-	for tech, detected := range technologiesMap {
-		if detected {
-			// First create repositories for the detected technology.
-			err = createDefaultReposIfNeeded(tech, pic.serverId)
-			if err != nil {
-				return err
-			}
-			err = createProjectBuildConfigs(tech, pic.projectPath, pic.serverId)
-			if err != nil {
-				return err
-			}
+	for techName := range technologiesMap {
+		// First create repositories for the detected technology.
+		err = createDefaultReposIfNeeded(techName, pic.serverId)
+		if err != nil {
+			return err
+		}
+		err = createProjectBuildConfigs(techName, pic.projectPath, pic.serverId)
+		if err != nil {
+			return err
 		}
 	}
 	// Create build config
@@ -95,32 +93,39 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+		"\n\n" +
+		coreutils.GetFeedbackMessage()
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
 func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.Technology]bool) string {
 	message := ""
-	for tech, detected := range technologiesMap {
-		if detected {
-			switch tech {
-			case coreutils.Maven:
-				message += "jf mvn install deploy\n"
-			case coreutils.Gradle:
-				message += "jf gradle artifactoryP\n"
-			case coreutils.Npm:
-				message += "jf npm install publish\n"
-			case coreutils.Go:
-				message +=
-					"jf go build\n" +
-						"jf go-publish v1.0.0\n"
-			case coreutils.Pypi:
-				message +=
-					"jf pip install\n" +
-						"jf rt u path/to/package/file default-pypi-local" +
-						coreutils.PrintComment(" # Publish your pip package") +
-						"\n"
-			}
+	for tech := range technologiesMap {
+		switch tech {
+		case coreutils.Maven:
+			message += "jf mvn install deploy\n"
+		case coreutils.Gradle:
+			message += "jf gradle artifactoryP\n"
+		case coreutils.Npm:
+			message += "jf npm install\n"
+			message += "jf npm publish\n"
+		case coreutils.Go:
+			message +=
+				"jf go build\n" +
+					"jf go-publish v1.0.0\n"
+		case coreutils.Pip:
+			message +=
+				"jf pip install\n" +
+					"jf rt u path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" # Publish your pip package") +
+					"\n"
+		case coreutils.Pipenv:
+			message +=
+				"jf pipenv install\n" +
+					"jf rt u path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" # Publish your pipenv package") +
+					"\n"
 		}
 	}
 	if message != "" {
@@ -143,7 +148,7 @@ func (pic *ProjectInitCommand) detectTechnologies() (technologiesMap map[coreuti
 	if err != nil {
 		return
 	}
-	// In case no technologies were detected in the root diretory, try again recursively.
+	// In case no technologies were detected in the root directory, try again recursively.
 	if len(technologiesMap) == 0 {
 		technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, true)
 		if err != nil {
@@ -193,10 +198,6 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		return errorutils.CheckError(err)
 	}
 	techName := strings.ToLower(string(tech))
-	// Due to cli-artifactory naming mismatch we have to add this line
-	if tech == coreutils.Pypi {
-		techName = "pip"
-	}
 	configFilePath := filepath.Join(jfrogProjectDir, techName+".yaml")
 	configFile := artifactoryCommandsUtils.ConfigFile{
 		Version:    artifactoryCommandsUtils.BuildConfVersion,
@@ -219,7 +220,9 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 	case coreutils.Go:
 		configFile.Resolver.Repo = GoVirtualDefaultName
 		configFile.Deployer.Repo = GoVirtualDefaultName
-	case coreutils.Pypi:
+	case coreutils.Pipenv:
+		fallthrough
+	case coreutils.Pip:
 		configFile.Resolver.Repo = PypiVirtualDefaultName
 		configFile.Deployer.Repo = PypiVirtualDefaultName
 	}

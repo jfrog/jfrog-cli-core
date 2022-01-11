@@ -369,7 +369,7 @@ func (yc *YarnCommand) setDependenciesList() error {
 		}
 	}
 
-	servicesManager, err := utils.CreateServiceManager(yc.serverDetails, -1, false)
+	servicesManager, err := utils.CreateServiceManager(yc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}

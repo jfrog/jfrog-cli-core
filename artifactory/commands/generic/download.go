@@ -70,7 +70,7 @@ func (dc *DownloadCommand) download() error {
 		dc.progress.InitProgressReaders()
 	}
 	// Create Service Manager:
-	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.DryRun(), dc.progress)
+	servicesManager, err := utils.CreateDownloadServiceManager(dc.serverDetails, dc.configuration.Threads, dc.retries, dc.retryWaitTimeMilliSecs, dc.DryRun(), dc.progress)
 	if err != nil {
 		return err
 	}

@@ -6,8 +6,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io"
 )
 
-func CreateUploadServiceManager(serverDetails *config.ServerDetails, threads, httpRetries int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithProgressBar(serverDetails, threads, httpRetries, dryRun, progressBar)
+func CreateUploadServiceManager(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithProgressBar(serverDetails, threads, httpRetries, httpRetryWaitMilliSecs, dryRun, progressBar)
 }
 
 type UploadConfiguration struct {

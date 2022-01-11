@@ -34,7 +34,7 @@ func (cc *CopyCommand) CommandName() string {
 // Copies the artifacts using the specified move pattern.
 func (cc *CopyCommand) Run() error {
 	// Create Service Manager:
-	servicesManager, err := utils.CreateServiceManagerWithThreads(cc.serverDetails, cc.dryRun, cc.threads, cc.retries)
+	servicesManager, err := utils.CreateServiceManagerWithThreads(cc.serverDetails, cc.dryRun, cc.threads, cc.retries, cc.retryWaitTimeMilliSecs)
 	if err != nil {
 		return err
 	}

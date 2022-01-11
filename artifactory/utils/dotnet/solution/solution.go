@@ -99,15 +99,15 @@ func getModuleId(customModuleID, projectName string) string {
 // dependenciesMap  - The input dependencies map
 // childrenMap      - Map from dependency ID to children IDs
 func populateRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, childrenMap map[string][]string) {
-	if parentDependency.NodeHasLoop() {
-		return
-	}
 	childrenList := childrenMap[getDependencyName(parentDependency.Id)]
 	for _, childName := range childrenList {
 		if childDep, ok := dependenciesMap[childName]; ok {
 			for _, parentRequestedBy := range parentDependency.RequestedBy {
 				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
+			}
+			if childDep.NodeHasLoop() {
+				continue
 			}
 			// Run recursive call on child dependencies
 			populateRequestedBy(*childDep, dependenciesMap, childrenMap)

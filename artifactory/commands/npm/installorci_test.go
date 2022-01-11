@@ -1,12 +1,12 @@
 package npm
 
 import (
+	biutils "github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +38,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"registry = http://goodRegistry",
 			"_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
 
-	npmi := InstallCiArgs{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}}
+	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
@@ -59,22 +59,22 @@ func TestPrepareConfigData(t *testing.T) {
 }
 
 func TestPrepareConfigDataTypeRestriction(t *testing.T) {
-	var typeRestrictions = map[string]npmutils.TypeRestriction{
-		"production=\"true\"":          npmutils.ProdOnly,
-		"production=true":              npmutils.ProdOnly,
-		"only = prod":                  npmutils.ProdOnly,
-		"only=production":              npmutils.ProdOnly,
-		"only = development":           npmutils.DevOnly,
-		"only=dev":                     npmutils.DevOnly,
-		"only=":                        npmutils.DefaultRestriction,
-		"omit = [\"dev\"]\ndev = true": npmutils.ProdOnly,
-		"omit = [\"abc\"]\ndev = true": npmutils.All,
-		"only=dev\nomit = [\"abc\"]":   npmutils.All,
-		"dev=true\nomit = [\"dev\"]":   npmutils.ProdOnly,
-		"kuku=true":                    npmutils.DefaultRestriction}
+	var typeRestrictions = map[string]biutils.TypeRestriction{
+		"production=\"true\"":          biutils.ProdOnly,
+		"production=true":              biutils.ProdOnly,
+		"only = prod":                  biutils.ProdOnly,
+		"only=production":              biutils.ProdOnly,
+		"only = development":           biutils.DevOnly,
+		"only=dev":                     biutils.DevOnly,
+		"only=":                        biutils.DefaultRestriction,
+		"omit = [\"dev\"]\ndev = true": biutils.ProdOnly,
+		"omit = [\"abc\"]\ndev = true": biutils.All,
+		"only=dev\nomit = [\"abc\"]":   biutils.All,
+		"dev=true\nomit = [\"dev\"]":   biutils.ProdOnly,
+		"kuku=true":                    biutils.DefaultRestriction}
 
 	for json, typeRestriction := range typeRestrictions {
-		npmi := InstallCiArgs{}
+		npmi := NpmInstallOrCiCommand{}
 		_, err := npmi.prepareConfigData([]byte(json))
 		assert.NoError(t, err)
 		if npmi.typeRestriction != typeRestriction {

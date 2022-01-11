@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/gookit/color"
-	"github.com/mattn/go-shellwords"
-
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -178,26 +176,6 @@ func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format 
 	}
 	RemoveFlagFromCommand(&cleanArgs, flagIndex, valIndex)
 	return
-}
-
-// Iterate over each argument, if env variable is found (e.g $HOME) replace it with env value.
-func ParseArgs(args []string) ([]string, error) {
-	// Escape backslash & space
-	for i := 0; i < len(args); i++ {
-		args[i] = strings.ReplaceAll(args[i], `\`, `\\`)
-		if strings.Index(args[i], ` `) != -1 && !isQuote(args[i]) {
-			args[i] = strings.ReplaceAll(args[i], `"`, ``)
-			args[i] = strings.ReplaceAll(args[i], `'`, ``)
-			args[i] = `"` + args[i] + `"`
-		}
-	}
-	parser := shellwords.NewParser()
-	parser.ParseEnv = true
-	return parser.Parse(strings.Join(args, " "))
-}
-
-func isQuote(s string) bool {
-	return len(s) > 0 && ((s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\''))
 }
 
 // Print the test to the console in green color.

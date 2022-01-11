@@ -2,14 +2,13 @@ package mvnutils
 
 import (
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 

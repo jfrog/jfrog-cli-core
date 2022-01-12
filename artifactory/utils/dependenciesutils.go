@@ -28,15 +28,8 @@ const (
 // By default, the jar is downloaded directly from jfrog releases.
 //
 // downloadPath: Artifactory download path.
-// filename: The local file name.
 // targetPath: The local download path (without the file name).
-func DownloadExtractorIfNeeded(downloadPath, targetPath string) error {
-	// If the file exists locally, we're done.
-	exists, err := fileutils.IsFileExists(targetPath, false)
-	if exists || err != nil {
-		return err
-	}
-	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n You can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
+func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
@@ -50,7 +43,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	if extractorsRemote != "" {
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
-
+	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n You can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
 	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil

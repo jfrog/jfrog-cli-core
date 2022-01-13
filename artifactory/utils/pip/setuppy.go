@@ -56,8 +56,8 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 		}
 	}()
 
-	// Run python 'egg_info --egg-base <eggBase>' command.
-	if err = executeEgginfo(pythonExecutablePath, setuppyFilePath, eggBase); err != nil {
+	// Execute the egg_info command.
+	if err = exec.Command(pythonExecutablePath, setuppyFilePath, "egg_info", "--egg-base", eggBase).Run(); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
 
@@ -88,9 +88,4 @@ func extractPackageNameFromEggBase(eggBase string) ([]byte, error) {
 	}
 
 	return nil, errorutils.CheckError(errors.New("couldn't find pkg info files"))
-}
-
-// Execute egg_info command for setup.py.
-func executeEgginfo(pythonExecutablePath, setuppyFilePath, tempDirPath string) error {
-	return exec.Command(pythonExecutablePath, setuppyFilePath, "egg_info", "--egg-base", tempDirPath).Run()
 }

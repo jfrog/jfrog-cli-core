@@ -13,7 +13,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -134,11 +133,11 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 }
 
 // Download MD5 and SHA1 from the build info artifact.
-func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.ChecksumDetails, error) {
+func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (buildinfo.Checksum, error) {
 	serviceDetails, err := bac.serverDetails.CreateArtAuthConfig()
 	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
-		return fileutils.ChecksumDetails{}, err
+		return buildinfo.Checksum{}, err
 	}
 
 	buildInfoRepo := "artifactory-build-info"
@@ -148,12 +147,12 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (fileutils.Ch
 	buildInfoPath := serviceDetails.GetUrl() + buildInfoRepo + "/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
-		return fileutils.ChecksumDetails{}, err
+		return buildinfo.Checksum{}, err
 	}
 	log.Debug("Artifactory response: ", resp.Status)
 	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
 	if errorutils.CheckError(err) != nil {
-		return fileutils.ChecksumDetails{}, err
+		return buildinfo.Checksum{}, err
 	}
 
 	return details.Checksum, nil

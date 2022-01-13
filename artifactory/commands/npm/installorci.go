@@ -181,7 +181,7 @@ func createCollectChecksumsFunc(previousBuildDependencies map[string]*buildinfo.
 
 		// Get dependency info.
 		checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager)
-		if err != nil || checksum == nil {
+		if err != nil || checksum.IsEmpty() {
 			missingDepsChan <- dependency.Id
 			return false, err
 		}

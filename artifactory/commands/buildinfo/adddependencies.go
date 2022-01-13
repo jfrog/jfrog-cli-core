@@ -299,7 +299,7 @@ func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []bui
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {
 	var buildDependencies []buildinfo.Dependency
 	for filePath, fileInfo := range files {
-		dependency := buildinfo.Dependency{Checksum: buildinfo.Checksum{}}
+		dependency := buildinfo.Dependency{}
 		dependency.Md5 = fileInfo.Checksum.Md5
 		dependency.Sha1 = fileInfo.Checksum.Sha1
 		filename, _ := fileutils.GetFileAndDirFromPath(filePath)

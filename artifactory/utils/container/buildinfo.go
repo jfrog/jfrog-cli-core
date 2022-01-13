@@ -129,17 +129,17 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 
 // Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifact) {
-	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5}, Path: path.Join(manifest.Path, manifest.Name)}
+	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5}, Path: path.Join(manifest.Path, manifest.Name)}
 }
 
 // Return - fat manifest artifacts as buildinfo.Artifact struct.
 func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.Artifact) {
-	return buildinfo.Artifact{Name: "list.manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5}, Path: path.Join(fatManifest.Path, fatManifest.Name)}
+	return buildinfo.Artifact{Name: "list.manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5}, Path: path.Join(fatManifest.Path, fatManifest.Name)}
 }
 
 // Return - manifest dependency as buildinfo.Dependency struct.
 func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinfo.Dependency) {
-	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5}}
+	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5}}
 }
 
 // Read the file which contains the following format: 'IMAGE-TAG-IN-ARTIFACTORY'@sha256'SHA256-OF-THE-IMAGE-MANIFEST'.

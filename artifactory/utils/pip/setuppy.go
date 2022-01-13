@@ -49,12 +49,7 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := fileutils.RemoveTempDir(eggBase)
-		if err == nil {
-			err = e
-		}
-	}()
+	defer fileutils.RemoveTempDir(eggBase)
 
 	// Execute the egg_info command.
 	if err = exec.Command(pythonExecutablePath, setuppyFilePath, "egg_info", "--egg-base", eggBase).Run(); err != nil {

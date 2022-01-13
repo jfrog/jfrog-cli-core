@@ -14,7 +14,7 @@ import (
 
 const (
 	indexerEnvPrefix         = "JFROG_INDEXER_"
-	DockerScanMinXrayVersion = "3.39.0"
+	DockerScanMinXrayVersion = "3.40.0"
 )
 
 type DockerScanCommand struct {

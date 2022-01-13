@@ -2,12 +2,14 @@ package pip
 
 import (
 	"errors"
-	"fmt"
-	gofrogcmd "github.com/jfrog/gofrog/io"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"io/ioutil"
 )
 
 // Get the project-name by running 'egg_info' command on setup.py and extracting it from 'PKG-INFO' file.
@@ -43,57 +45,42 @@ func getProjectNameFromFileContent(content []byte) (string, error) {
 // Run egg-info command on setup.py, the command generates metadata files.
 // Return the content of the 'PKG-INFO' file.
 func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]byte, error) {
-	tempDirPath, err := fileutils.CreateTempDir()
+	eggBase, err := fileutils.CreateTempDir()
 	if err != nil {
 		return nil, err
 	}
-	defer fileutils.RemoveTempDir(tempDirPath)
+	defer fileutils.RemoveTempDir(eggBase)
 
-	// Run python egg_info command.
-	egginfoOutput, err := executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath, tempDirPath)
-	if err != nil {
+	// Execute the egg_info command.
+	if err = exec.Command(pythonExecutablePath, setuppyFilePath, "egg_info", "--egg-base", eggBase).Run(); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
 
-	// Parse egg_info execution output to find PKG-INFO path.
-	pkginfoPath, err := extractPkginfoPathFromCommandOutput(egginfoOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read PKG-INFO file.
-	pkginfoFileExists, err := fileutils.IsFileExists(pkginfoPath, false)
-	if !pkginfoFileExists {
-		return nil, errorutils.CheckError(errors.New(fmt.Sprintf("File 'PKG-INFO' couldn't be found in its designated location: %s", pkginfoPath)))
-	}
-
-	return ioutil.ReadFile(pkginfoPath)
+	// Read PKG_INFO under <eggBase>/*.egg-info/PKG-INFO.
+	return extractPackageNameFromEggBase(eggBase)
 }
 
 // Parse the output of 'python egg_info' command, in order to find the path of generated file 'PKG-INFO'.
-func extractPkginfoPathFromCommandOutput(egginfoOutput string) (string, error) {
-	// Regexp for extracting 'PKG-INFO' file-path from the 'egg_info' command output.
-	pkginfoRegexp, err := utils.GetRegExp(`(?m)writing\s(\S+\.egg\-info[\\\/]PKG-INFO)`)
-	if err != nil {
-		return "", err
+func extractPackageNameFromEggBase(eggBase string) ([]byte, error) {
+	files, err := ioutil.ReadDir(eggBase)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".egg-info") {
+			pkginfoPath := filepath.Join(eggBase, file.Name(), "PKG-INFO")
+			// Read PKG-INFO file.
+			pkginfoFileExists, err := fileutils.IsFileExists(pkginfoPath, false)
+			if errorutils.CheckError(err) != nil {
+				return nil, err
+			}
+			if !pkginfoFileExists {
+				return nil, errorutils.CheckError(errors.New("File 'PKG-INFO' couldn't be found in its designated location: " + pkginfoPath))
+			}
+
+			return ioutil.ReadFile(pkginfoPath)
+		}
 	}
 
-	matchedOutputLines := pkginfoRegexp.FindAllString(egginfoOutput, -1)
-	if len(matchedOutputLines) != 1 {
-		return "", errorutils.CheckError(errors.New("Failed parsing egg_info command, couldn't find PKG-INFO location."))
-	}
-
-	// Extract path from matched line.
-	matchedResults := pkginfoRegexp.FindStringSubmatch(matchedOutputLines[0])
-	return matchedResults[1], nil
-}
-
-// Execute egg_info command for setup.py, return command's output.
-func executeEgginfoCommandWithOutput(pythonExecutablePath, setuppyFilePath, tempDirPath string) (string, error) {
-	pythonEggInfoCmd := &PipCmd{
-		Executable:  pythonExecutablePath,
-		Command:     setuppyFilePath,
-		CommandArgs: []string{"egg_info", "--egg-base", tempDirPath},
-	}
-	return gofrogcmd.RunCmdOutput(pythonEggInfoCmd)
+	return nil, errorutils.CheckError(errors.New("couldn't find pkg info files"))
 }

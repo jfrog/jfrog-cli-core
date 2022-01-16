@@ -18,6 +18,7 @@ type TerraformPublishCommandArgs struct {
 	moduleName string
 	provider   string
 	tag        string
+	exclusions []string
 }
 
 type TerraformPublishCommand struct {
@@ -72,12 +73,19 @@ func (tpc *TerraformPublishCommand) SetTag(tag string) *TerraformPublishCommand 
 	return tpc
 }
 
+func (tpc *TerraformPublishCommand) SetExclusions(exclusions []string) *TerraformPublishCommand {
+	tpc.exclusions = exclusions
+	return tpc
+}
+
 func (tpc *TerraformPublishCommand) Run() error {
 	log.Info("Running Terraform Publish")
-	if err := tpc.preparePrerequisites(); err != nil {
+	err := tpc.preparePrerequisites()
+	if err != nil {
 		return err
 	}
-	if err := tpc.publish(); err != nil {
+	err = tpc.publish()
+	if err != nil {
 		return err
 	}
 	log.Info("Terraform publish finished successfully.")
@@ -85,14 +93,14 @@ func (tpc *TerraformPublishCommand) Run() error {
 }
 
 func (tpc *TerraformPublishCommand) preparePrerequisites() error {
-	namespace, provider, tag, err := ExtractTerraformPublishOptionsFromArgs(tpc.args)
+	namespace, provider, tag, exclusions, err := ExtractTerraformPublishOptionsFromArgs(tpc.args)
 	if err != nil {
 		return err
 	}
 	if namespace == "" || provider == "" || tag == "" {
 		return errorutils.CheckErrorf("Wrong number of arguments. for a terraform publish command please provide --namespace, --provider and --tag.")
 	}
-	tpc.SetNamespace(namespace).SetProvider(provider).SetTag(tag)
+	tpc.SetNamespace(namespace).SetProvider(provider).SetTag(tag).SetExclusions(exclusions)
 	if err := tpc.setRepoFromConfiguration(); err != nil {
 		return err
 	}
@@ -109,7 +117,7 @@ func (tpc *TerraformPublishCommand) publish() error {
 	if err != nil {
 		return err
 	}
-	commonParams := specutils.CommonParams{TargetProps: specutils.NewProperties()}
+	commonParams := specutils.CommonParams{TargetProps: specutils.NewProperties(), Exclusions: tpc.exclusions}
 	terraformParams := services.NewTerraformParams(&commonParams).SetTargetRepo(tpc.repo).SetNamespace(tpc.namespace).SetProvider(tpc.provider).SetTag(tpc.tag)
 	success, failed, err := servicesManager.PublishTerraformModule(*terraformParams)
 	if err != nil {
@@ -120,7 +128,7 @@ func (tpc *TerraformPublishCommand) publish() error {
 	return nil
 }
 
-func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, err error) {
+func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, exclusions []string, err error) {
 	// Extract namespace information from the args.
 	flagIndex, valueIndex, namespace, err := coreutils.FindFlag("--namespace", args)
 	if err != nil {
@@ -135,6 +143,15 @@ func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider,
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	// Extract tag information from the args.
 	flagIndex, valueIndex, tag, err = coreutils.FindFlag("--tag", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	// Extract exclusions information from the args.
+	flagIndex, valueIndex, exclusionsString, err := coreutils.FindFlag("--exclusions", args)
+	for _, singleValue := range strings.Split(exclusionsString, ";") {
+		exclusions = append(exclusions, singleValue)
+	}
 	if err != nil {
 		return
 	}

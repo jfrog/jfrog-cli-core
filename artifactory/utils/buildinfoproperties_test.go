@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -21,14 +20,20 @@ const (
 func TestCreateDefaultPropertiesFile(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy("", t)
-
-	for index := range ProjectTypes {
-		testCreateDefaultPropertiesFile(ProjectType(index), t)
+	data := []struct {
+		projectType   ProjectType
+		expectedProps string
+	}{
+		{Maven, "map[artifactory.buildInfo.agent.name:/ artifactory.buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* artifactory.buildInfoConfig.includeEnvVars:false artifactory.org.jfrog.build.extractor.maven.recorder.activate:true artifactory.publish.artifacts:true artifactory.publish.buildInfo:false artifactory.publish.filterExcludedArtifactsFromBuild:true artifactory.publish.forkCount:3 artifactory.publish.unstable:false buildInfo.agent.name:/ buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* buildInfoConfig.includeEnvVars:false org.jfrog.build.extractor.maven.recorder.activate:true publish.artifacts:true publish.buildInfo:false publish.filterExcludedArtifactsFromBuild:true publish.forkCount:3 publish.unstable:false]"},
+		{Gradle, "map[artifactory.buildInfo.agent.name:/ artifactory.buildInfo.env.extractor.used:true artifactory.buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* artifactory.buildInfoConfig.includeEnvVars:false artifactory.org.jfrog.build.extractor.maven.recorder.activate:true artifactory.publish.artifacts:true artifactory.publish.buildInfo:false artifactory.publish.forkCount:3 artifactory.publish.ivy:false artifactory.publish.maven:false artifactory.publish.unstable:false buildInfo.agent.name:/ buildInfo.env.extractor.used:true buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* buildInfoConfig.includeEnvVars:false org.jfrog.build.extractor.maven.recorder.activate:true publish.artifacts:true publish.buildInfo:false publish.forkCount:3 publish.ivy:false publish.maven:false publish.unstable:false]"},
+	}
+	for _, d := range data {
+		testCreateDefaultPropertiesFile(d.projectType, d.expectedProps, t)
 	}
 	setProxy(proxyOrg, t)
 }
 
-func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
+func testCreateDefaultPropertiesFile(projectType ProjectType, expectedProps string, t *testing.T) {
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
 
@@ -36,30 +41,19 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expectedProps := make(map[string]string)
-	for _, partialMapping := range buildTypeConfigMapping[projectType] {
-		for propertyKey := range *partialMapping {
-			if defaultPropertiesValues[propertyKey] != "" {
-				expectedProps[propertyKey] = defaultPropertiesValues[propertyKey]
-				if strings.HasPrefix(propertyKey, "artifactory.") {
-					expectedProps[strings.TrimPrefix(propertyKey, "artifactory.")] = defaultPropertiesValues[propertyKey]
-				}
-			}
-		}
-	}
-	assert.True(t, fmt.Sprint(props) == fmt.Sprint(expectedProps))
+	assert.True(t, expectedProps == fmt.Sprint(props), "unexpected "+projectType.String()+" props. got:\n"+fmt.Sprint(props)+"\nwant: "+expectedProps+"\n")
 }
 
 func TestCreateSimplePropertiesFileWithProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy(proxy, t)
 	var propertiesFileConfig = map[string]string{
-		"artifactory.resolve.contextUrl": "http://some.url.com",
-		"artifactory.publish.contextUrl": "http://some.other.url.com",
-		"artifactory.proxy.host":         host,
-		"artifactory.proxy.port":         port,
+		"resolve.contextUrl": "http://some.url.com",
+		"publish.contextUrl": "http://some.other.url.com",
+		"proxy.host":         host,
+		"proxy.port":         port,
 	}
-	createSimplePropertiesFile(t, propertiesFileConfig)
+	createSimplePropertiesFile(t, "map[artifactory.buildInfo.agent.name:/ artifactory.buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* artifactory.buildInfoConfig.includeEnvVars:false artifactory.org.jfrog.build.extractor.maven.recorder.activate:true artifactory.proxy.host:localhost artifactory.proxy.port:8888 artifactory.publish.artifacts:true artifactory.publish.buildInfo:false artifactory.publish.contextUrl:http://some.other.url.com artifactory.publish.filterExcludedArtifactsFromBuild:true artifactory.publish.forkCount:3 artifactory.publish.unstable:false artifactory.resolve.contextUrl:http://some.url.com buildInfo.agent.name:/ buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* buildInfoConfig.includeEnvVars:false org.jfrog.build.extractor.maven.recorder.activate:true proxy.host:localhost proxy.port:8888 publish.artifacts:true publish.buildInfo:false publish.contextUrl:http://some.other.url.com publish.filterExcludedArtifactsFromBuild:true publish.forkCount:3 publish.unstable:false resolve.contextUrl:http://some.url.com]", propertiesFileConfig)
 	setProxy(proxyOrg, t)
 }
 
@@ -67,15 +61,15 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy("", t)
 	var propertiesFileConfig = map[string]string{
-		"artifactory.resolve.contextUrl": "http://some.url.com",
-		"artifactory.publish.contextUrl": "http://some.other.url.com",
+		"resolve.contextUrl": "http://some.url.com",
+		"publish.contextUrl": "http://some.other.url.com",
 	}
-	createSimplePropertiesFile(t, propertiesFileConfig)
+	createSimplePropertiesFile(t, "map[artifactory.buildInfo.agent.name:/ artifactory.buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* artifactory.buildInfoConfig.includeEnvVars:false artifactory.org.jfrog.build.extractor.maven.recorder.activate:true artifactory.publish.artifacts:true artifactory.publish.buildInfo:false artifactory.publish.contextUrl:http://some.other.url.com artifactory.publish.filterExcludedArtifactsFromBuild:true artifactory.publish.forkCount:3 artifactory.publish.unstable:false artifactory.resolve.contextUrl:http://some.url.com buildInfo.agent.name:/ buildInfoConfig.envVarsExcludePatterns:*password*,*psw*,*secret*,*key*,*token* buildInfoConfig.includeEnvVars:false org.jfrog.build.extractor.maven.recorder.activate:true publish.artifacts:true publish.buildInfo:false publish.contextUrl:http://some.other.url.com publish.filterExcludedArtifactsFromBuild:true publish.forkCount:3 publish.unstable:false resolve.contextUrl:http://some.url.com]", propertiesFileConfig)
 	setProxy(proxyOrg, t)
 
 }
 
-func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]string) {
+func createSimplePropertiesFile(t *testing.T, expectedProps string, propertiesFileConfig map[string]string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",
@@ -90,24 +84,7 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 	if err != nil {
 		t.Error(err)
 	}
-	expectedProps := make(map[string]string)
-	for _, partialMapping := range buildTypeConfigMapping[Maven] {
-		for propertyKey := range *partialMapping {
-			if defaultPropertiesValues[propertyKey] != "" {
-				expectedProps[propertyKey] = defaultPropertiesValues[propertyKey]
-				if strings.HasPrefix(propertyKey, "artifactory.") {
-					expectedProps[strings.TrimPrefix(propertyKey, "artifactory.")] = defaultPropertiesValues[propertyKey]
-				}
-			}
-		}
-	}
-	for k, v := range propertiesFileConfig {
-		expectedProps[k] = v
-		if strings.HasPrefix(k, "artifactory.") {
-			expectedProps[strings.TrimPrefix(k, "artifactory.")] = v
-		}
-	}
-	assert.True(t, fmt.Sprint(props) == fmt.Sprint(expectedProps))
+	assert.True(t, fmt.Sprint(props) == expectedProps)
 }
 
 func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectType ProjectType) {

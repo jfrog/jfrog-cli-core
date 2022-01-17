@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/solution/project"
@@ -47,7 +48,7 @@ type solution struct {
 	dependenciesSources []string
 }
 
-func (solution *solution) BuildInfo(module string) (*buildinfo.BuildInfo, error) {
+func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, error) {
 	build := &buildinfo.BuildInfo{}
 	var modules []buildinfo.Module
 	for _, project := range solution.projects {
@@ -56,12 +57,30 @@ func (solution *solution) BuildInfo(module string) (*buildinfo.BuildInfo, error)
 		if err != nil {
 			return nil, err
 		}
-		var projectDependencies []buildinfo.Dependency
-
-		for _, dep := range dependencies {
-			projectDependencies = append(projectDependencies, *dep)
+		directDeps, err := project.Extractor().DirectDependencies()
+		if err != nil {
+			return nil, err
 		}
-		module := buildinfo.Module{Id: getModuleId(module, project.Name()), Type: buildinfo.Nuget, Dependencies: projectDependencies}
+		childrenMap, err := project.Extractor().ChildrenMap()
+		if err != nil {
+			return nil, err
+		}
+
+		// Create module
+		module := buildinfo.Module{Id: getModuleId(moduleName, project.Name()), Type: buildinfo.Nuget}
+
+		// Populate requestedBy field
+		for _, directDepName := range directDeps {
+			directDep := dependencies[directDepName]
+			directDep.RequestedBy = [][]string{{module.Id}}
+			populateRequestedBy(*directDep, dependencies, childrenMap)
+		}
+
+		// Populate module dependencies
+		for _, dep := range dependencies {
+			module.Dependencies = append(module.Dependencies, *dep)
+		}
+
 		modules = append(modules, module)
 	}
 	build.Modules = modules
@@ -73,6 +92,32 @@ func getModuleId(customModuleID, projectName string) string {
 		return customModuleID
 	}
 	return projectName
+}
+
+// Populate requested by field for the input dependencies.
+// parentDependency - The parent dependency
+// dependenciesMap  - The input dependencies map
+// childrenMap      - Map from dependency ID to children IDs
+func populateRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, childrenMap map[string][]string) {
+	childrenList := childrenMap[getDependencyName(parentDependency.Id)]
+	for _, childName := range childrenList {
+		if childDep, ok := dependenciesMap[childName]; ok {
+			for _, parentRequestedBy := range parentDependency.RequestedBy {
+				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
+				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
+			}
+			if childDep.NodeHasLoop() {
+				continue
+			}
+			// Run recursive call on child dependencies
+			populateRequestedBy(*childDep, dependenciesMap, childrenMap)
+		}
+	}
+}
+
+func getDependencyName(dependencyKey string) string {
+	dependencyName := dependencyKey[0:strings.Index(dependencyKey, ":")]
+	return strings.ToLower(dependencyName)
 }
 
 func (solution *solution) Marshal() ([]byte, error) {

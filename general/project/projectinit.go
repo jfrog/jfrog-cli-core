@@ -233,3 +233,11 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 
 	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0644))
 }
+
+func (pic *ProjectInitCommand) CommandName() string {
+	return "project_init"
+}
+
+func (pic *ProjectInitCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetSpecificConfig("", true, false)
+}

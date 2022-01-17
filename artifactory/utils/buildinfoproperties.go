@@ -5,8 +5,8 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -108,10 +108,10 @@ var commonConfigMapping = map[string]string{
 	"artifactory.publish.username":           DeployerPrefix + Username,
 	"artifactory.publish.password":           DeployerPrefix + Password,
 	"artifactory.publish.artifacts":          DeployerPrefix + DeployArtifacts,
-	"artifactory.deploy.build.name":          BuildName,
-	"artifactory.deploy.build.number":        BuildNumber,
-	"artifactory.deploy.build.project":       BuildProject,
-	"artifactory.deploy.build.timestamp":     BuildTimestamp,
+	"buildInfo.build.name":                   BuildName,
+	"buildInfo.build.number":                 BuildNumber,
+	"buildInfo.build.project":                BuildProject,
+	"buildInfo.build.timestamp":              BuildTimestamp,
 	"buildInfo.generated.build.info":         GeneratedBuildInfo,
 	"buildInfo.deployable.artifacts.map":     DeployableArtifacts,
 	"artifactory.proxy.host":                 Proxy + Host,
@@ -122,6 +122,7 @@ var commonConfigMapping = map[string]string{
 
 var mavenConfigMapping = map[string]string{
 	"org.jfrog.build.extractor.maven.recorder.activate":    "",
+	"buildInfoConfig.artifactoryResolutionEnabled":         "buildInfoConfig.artifactoryResolutionEnabled",
 	"artifactory.resolve.repoKey":                          ResolverPrefix + ReleaseRepo,
 	"artifactory.resolve.downSnapshotRepoKey":              ResolverPrefix + SnapshotRepo,
 	"artifactory.publish.repoKey":                          DeployerPrefix + ReleaseRepo,
@@ -142,8 +143,6 @@ var gradleConfigMapping = map[string]string{
 	"artifactory.publish.ivy":                           DeployerPrefix + IvyDescriptor,
 	"artifactory.publish.ivy.ivyPattern":                DeployerPrefix + IvyPattern,
 	"artifactory.publish.ivy.artPattern":                DeployerPrefix + ArtifactPattern,
-	"buildInfo.build.name":                              BuildName,
-	"buildInfo.build.number":                            BuildNumber,
 }
 
 func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Viper, err error) {
@@ -176,67 +175,49 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey, deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (string, error) {
+func CreateBuildInfoProps(deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (map[string]string, error) {
 	if config.GetString("type") != projectType.String() {
-		return "", errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
+		return nil, errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
 	}
-
-	propertiesPath := filepath.Join(coreutils.GetCliPersistentTempDirPath(), PropertiesTempPath)
-	err := os.MkdirAll(propertiesPath, 0777)
-	if errorutils.CheckError(err) != nil {
-		return "", err
+	if err := setServerDetailsToConfig(ResolverPrefix, config); err != nil {
+		return nil, err
 	}
-	propertiesFile, err := ioutil.TempFile(propertiesPath, PropertiesTempPrefix)
-	defer propertiesFile.Close()
-	if err != nil {
-		return "", errorutils.CheckError(err)
+	if err := setServerDetailsToConfig(DeployerPrefix, config); err != nil {
+		return nil, err
 	}
-	err = setServerDetailsToConfig(ResolverPrefix, config)
-	if err != nil {
-		return "", err
-	}
-	err = setServerDetailsToConfig(DeployerPrefix, config)
-	if err != nil {
-		return "", err
-	}
-	if buildName != "" || buildNumber != "" {
-		err = SaveBuildGeneralDetails(buildName, buildNumber, projectKey)
-		if err != nil {
-			return "", err
-		}
-		err = setBuildTimestampToConfig(buildName, buildNumber, projectKey, config)
-		if err != nil {
-			return "", err
-		}
-		err = createGeneratedBuildInfoFile(buildName, buildNumber, projectKey, config)
-		if err != nil {
-			return "", err
-		}
-	}
-	err = setProxyIfDefined(config)
-	if err != nil {
-		return "", err
+	if err := setProxyIfDefined(config); err != nil {
+		return nil, err
 	}
 	if deployableArtifactsFile != "" {
 		config.Set(DeployableArtifacts, deployableArtifactsFile)
 	}
+	return createProps(config, projectType), nil
+}
 
+func createProps(config *viper.Viper, projectType ProjectType) map[string]string {
+	props := make(map[string]string)
 	// Iterate over all the required properties keys according to the buildType and create properties file.
 	// If a value is provided by the build config file write it,
 	// otherwise use the default value from defaultPropertiesValues map.
 	for _, partialMapping := range buildTypeConfigMapping[projectType] {
-		for propertyKey, configKey := range *partialMapping {
+		for propKey, configKey := range *partialMapping {
+			var value string
 			if config.IsSet(configKey) {
-				_, err = propertiesFile.WriteString(propertyKey + "=" + config.GetString(configKey) + "\n")
-			} else if defaultVal, ok := defaultPropertiesValues[propertyKey]; ok {
-				_, err = propertiesFile.WriteString(propertyKey + "=" + defaultVal + "\n")
+				value = config.GetString(configKey)
+			} else if defaultVal, ok := defaultPropertiesValues[propKey]; ok {
+				value = defaultVal
 			}
-			if err != nil {
-				return "", errorutils.CheckError(err)
+			if value != "" {
+				props[propKey] = value
+				// Properties that have the 'artifactory.' prefix are deprecated.
+				// For backward compatibility reasons, both will be added to the props map.
+				if strings.HasPrefix(propKey, "artifactory.") {
+					props[strings.TrimPrefix(propKey, "artifactory.")] = value
+				}
 			}
 		}
 	}
-	return propertiesFile.Name(), nil
+	return props
 }
 
 // If the HTTP_PROXY environment variable is set, add to the config proxy details.

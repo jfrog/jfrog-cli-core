@@ -3,6 +3,7 @@ package container
 import (
 	"bytes"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"regexp"
@@ -13,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 // Search for docker API version format pattern e.g. 1.40

@@ -4,31 +4,29 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/build-info-go/build"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
-
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-client-go/utils/version"
-
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
-
+	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -41,7 +39,7 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *npmutils.PackageInfo
+	packageInfo            *biutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
@@ -106,7 +104,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 
 func (npc *NpmPublishCommand) Init() error {
 	var err error
-	npc.npmVersion, npc.executablePath, err = npmutils.GetNpmVersionAndExecPath()
+	npc.npmVersion, npc.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
@@ -137,8 +135,28 @@ func (npc *NpmPublishCommand) Init() error {
 
 func (npc *NpmPublishCommand) Run() error {
 	log.Info("Running npm Publish")
-	if err := npc.preparePrerequisites(); err != nil {
+	err := npc.preparePrerequisites()
+	if err != nil {
 		return err
+	}
+
+	var npmBuild *build.Build
+	var buildName, buildNumber, project string
+	if npc.collectBuildInfo {
+		buildName, err = npc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err = npc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		project = npc.buildConfiguration.GetProject()
+		buildInfoService := utils.CreateBuildInfoService()
+		npmBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	if !npc.tarballProvided {
@@ -166,8 +184,21 @@ func (npc *NpmPublishCommand) Run() error {
 		return nil
 	}
 
-	if err := npc.saveArtifactData(); err != nil {
+	npmModule, err := npmBuild.AddNpmModule("")
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if npc.buildConfiguration.GetModule() != "" {
+		npmModule.SetName(npc.buildConfiguration.GetModule())
+	}
+	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
+	if err != nil {
 		return err
+	}
+	npc.artifactsDetailsReader.Close()
+	err = npmModule.AddArtifacts(buildArtifacts...)
+	if err != nil {
+		return errorutils.CheckError(err)
 	}
 
 	log.Info("npm publish finished successfully.")
@@ -204,7 +235,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 		return err
 	}
 
-	if err = utils.CheckIfRepoExists(npc.repo, artDetails); err != nil {
+	if err = utils.ValidateRepoExists(npc.repo, artDetails); err != nil {
 		return err
 	}
 
@@ -384,7 +415,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
+		npc.packageInfo, err = biutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -420,7 +451,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = npmutils.ReadPackageInfo(packageJson, npc.npmVersion)
+			npc.packageInfo, err = biutils.ReadPackageInfo(packageJson, npc.npmVersion)
 			return err
 		}
 	}

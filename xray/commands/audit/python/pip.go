@@ -1,12 +1,13 @@
 package python
 
 import (
+	"os"
+
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
 )
 
 type AuditPipCommand struct {
@@ -100,7 +101,7 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	}
 
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree()
+	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(piputils.GetVenvPythonExecPath())
 	return
 }
 

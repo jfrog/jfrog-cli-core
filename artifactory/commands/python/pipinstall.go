@@ -3,15 +3,17 @@ package python
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
 )
 
 type PipInstallCommand struct {
@@ -66,7 +68,15 @@ func (pic *PipInstallCommand) Run() (err error) {
 			return err
 		}
 		allDependencies := pic.getAllDependencies(dependencyToFileMap)
-		if err := pic.collectBuildInfo(projectsDirPath, allDependencies); err != nil {
+		pythonExecutablePath, err := getExecutablePath("python")
+		if err != nil {
+			return err
+		}
+		dependenciesGraph, topLevelPackagesList, err := piputils.RunPipDepTree(pythonExecutablePath)
+		if err != nil {
+			return err
+		}
+		if err := pic.collectBuildInfo(projectsDirPath, pythonExecutablePath, allDependencies, dependenciesGraph, topLevelPackagesList); err != nil {
 			return err
 		}
 	}

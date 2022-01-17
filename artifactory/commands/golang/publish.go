@@ -7,6 +7,7 @@ import (
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 // Publish go project to Artifactory.
@@ -171,7 +171,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 
 	// Add mod file as artifact
 	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod"}
-	artifact.Checksum = &buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
+	artifact.Checksum = buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
 	return content, artifact, nil
 }
 
@@ -225,7 +225,7 @@ func archive(moduleName, version, projectPath, tempDir string) (name string, zip
 	}
 
 	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip"}
-	zipArtifact.Checksum = &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
+	zipArtifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return tempFile.Name(), zipArtifact, nil
 }
 
@@ -237,7 +237,7 @@ func createInfoFileArtifact(infoFilePath, packageVersion string) (*buildinfo.Art
 	}
 
 	artifact := &buildinfo.Artifact{Name: packageVersion + ".info", Type: "info"}
-	artifact.Checksum = &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
+	artifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return artifact, nil
 }
 

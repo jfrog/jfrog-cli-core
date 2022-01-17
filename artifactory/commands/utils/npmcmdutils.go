@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -29,7 +29,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 )
 
 const minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
@@ -40,7 +39,7 @@ func GetArtifactoryNpmRepoDetails(repo string, authArtDetails *auth.ServiceDetai
 		return "", "", err
 	}
 
-	if err = utils.CheckIfRepoExists(repo, *authArtDetails); err != nil {
+	if err = utils.ValidateRepoExists(repo, *authArtDetails); err != nil {
 		return "", "", err
 	}
 
@@ -121,36 +120,9 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
-func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildConfiguration, npmVersion *version.Version) (collectBuildInfo bool, packageInfo *npmutils.PackageInfo, err error) {
-	toCollect, err := buildConfiguration.IsCollectBuildInfo()
-	if err != nil {
-		return
-	}
-	if toCollect {
-		collectBuildInfo = true
-		buildName, err := buildConfiguration.GetBuildName()
-		if err != nil {
-			return false, nil, err
-		}
-		buildNumber, err := buildConfiguration.GetBuildNumber()
-		if err != nil {
-			return false, nil, err
-		}
-		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, buildConfiguration.GetProject()); err != nil {
-			return false, nil, err
-		}
-
-		if packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(workingDirectory, npmVersion); err != nil {
-			return false, nil, err
-		}
-	}
-
-	return
-}
-
 // Get dependency's checksum and type.
 func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
-	servicesManager artifactory.ArtifactoryServicesManager, threadId int) (checksum *buildinfo.Checksum, fileType string, err error) {
+	servicesManager artifactory.ArtifactoryServicesManager) (checksum buildinfo.Checksum, fileType string, err error) {
 	id := name + ":" + ver
 	if dep, ok := previousBuildDependencies[id]; ok {
 		// Get checksum from previous build.
@@ -160,7 +132,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 
 	// Get info from Artifactory.
-	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Fetching checksums for", name, ":", ver)
+	log.Debug("Fetching checksums for", id)
 	var stream io.ReadCloser
 	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
 	if err != nil {
@@ -179,20 +151,20 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 	parsedResult := new(aqlResult)
 	if err = json.Unmarshal(result, parsedResult); err != nil {
-		return nil, "", errorutils.CheckError(err)
+		return buildinfo.Checksum{}, "", errorutils.CheckError(err)
 	}
 	if len(parsedResult.Results) == 0 {
-		log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, ":", ver, "could not be found in Artifactory.")
+		log.Debug(id, "could not be found in Artifactory.")
 		return
 	}
 	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
 		fileType = parsedResult.Results[0].Name[i+1:]
 	}
-	log.Debug(clientutils.GetLogMsgPrefix(threadId, false), "Found", parsedResult.Results[0].Name,
-		"sha1:", parsedResult.Results[0].Actual_sha1,
-		"md5", parsedResult.Results[0].Actual_md5)
+	log.Debug(id, "was found in Artifactory. Name:", parsedResult.Results[0].Name,
+		"SHA-1:", parsedResult.Results[0].Actual_sha1,
+		"MD5:", parsedResult.Results[0].Actual_md5)
 
-	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
+	checksum = buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
 	return
 }
 
@@ -215,7 +187,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	for _, module := range previousBuild.BuildInfo.Modules {
 		for _, dependency := range module.Dependencies {
 			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id, Type: dependency.Type,
-				Checksum: &buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
+				Checksum: buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
 		}
 	}
 	return buildDependencies, nil
@@ -263,38 +235,6 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xra
 
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
 	return
-}
-
-func SaveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguration *utils.BuildConfiguration) error {
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Dependencies = dependencies
-		partial.ModuleId = buildConfiguration.GetModule()
-		partial.ModuleType = buildinfo.Npm
-	}
-	buildName, err := buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	buildNumber, err := buildConfiguration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	return utils.SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
-}
-
-func PrintMissingDependencies(missingDependencies []buildinfo.Dependency) {
-	if len(missingDependencies) == 0 {
-		return
-	}
-
-	var missingDependenciesText []string
-	for _, dependency := range missingDependencies {
-		missingDependenciesText = append(missingDependenciesText, dependency.Id)
-	}
-	log.Warn(strings.Join(missingDependenciesText, "\n"))
-	log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
-		"Make sure the dependencies are available in Artifactory for this build.\n" +
-		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
 // BackupFile creates a backup of the file in filePath. The backup will be found at backupPath.

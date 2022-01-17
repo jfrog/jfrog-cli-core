@@ -63,8 +63,8 @@ func GetTechnologyPackageType(techName Technology) string {
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
-// isCiSetup will limit the search of possible techs to Maven, Gradle and npm.
-// recursive will determine if the search will be limit to files in the root path or not.
+// 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.
+// 'recursive' will determine if the search will be limited to files in the root path or not.
 func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]bool, error) {
 	var filesList []string
 	var err error

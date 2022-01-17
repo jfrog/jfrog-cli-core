@@ -4,31 +4,29 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"github.com/jfrog/build-info-go/build"
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	biutils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/gofrog/version"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
-
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
-
+	"github.com/jfrog/build-info-go/build"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
+	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -237,7 +235,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 		return err
 	}
 
-	if err = utils.CheckIfRepoExists(npc.repo, artDetails); err != nil {
+	if err = utils.ValidateRepoExists(npc.repo, artDetails); err != nil {
 		return err
 	}
 

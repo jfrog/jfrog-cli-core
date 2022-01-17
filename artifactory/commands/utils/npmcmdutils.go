@@ -39,7 +39,7 @@ func GetArtifactoryNpmRepoDetails(repo string, authArtDetails *auth.ServiceDetai
 		return "", "", err
 	}
 
-	if err = utils.CheckIfRepoExists(repo, *authArtDetails); err != nil {
+	if err = utils.ValidateRepoExists(repo, *authArtDetails); err != nil {
 		return "", "", err
 	}
 

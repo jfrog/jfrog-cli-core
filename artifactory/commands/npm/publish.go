@@ -4,6 +4,10 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"io"
 	"io/ioutil"
@@ -11,11 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
-
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-client-go/utils/version"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 
@@ -41,7 +41,7 @@ type NpmPublishCommandArgs struct {
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string
-	packageInfo            *npmutils.PackageInfo
+	packageInfo            *biutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
 	artifactsDetailsReader *content.ContentReader
@@ -106,7 +106,7 @@ func (npc *NpmPublishCommand) IsDetailedSummary() bool {
 
 func (npc *NpmPublishCommand) Init() error {
 	var err error
-	npc.npmVersion, npc.executablePath, err = npmutils.GetNpmVersionAndExecPath()
+	npc.npmVersion, npc.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
@@ -137,8 +137,28 @@ func (npc *NpmPublishCommand) Init() error {
 
 func (npc *NpmPublishCommand) Run() error {
 	log.Info("Running npm Publish")
-	if err := npc.preparePrerequisites(); err != nil {
+	err := npc.preparePrerequisites()
+	if err != nil {
 		return err
+	}
+
+	var npmBuild *build.Build
+	var buildName, buildNumber, project string
+	if npc.collectBuildInfo {
+		buildName, err = npc.buildConfiguration.GetBuildName()
+		if err != nil {
+			return err
+		}
+		buildNumber, err = npc.buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return err
+		}
+		project = npc.buildConfiguration.GetProject()
+		buildInfoService := utils.CreateBuildInfoService()
+		npmBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	if !npc.tarballProvided {
@@ -166,8 +186,21 @@ func (npc *NpmPublishCommand) Run() error {
 		return nil
 	}
 
-	if err := npc.saveArtifactData(); err != nil {
+	npmModule, err := npmBuild.AddNpmModule("")
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if npc.buildConfiguration.GetModule() != "" {
+		npmModule.SetName(npc.buildConfiguration.GetModule())
+	}
+	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
+	if err != nil {
 		return err
+	}
+	npc.artifactsDetailsReader.Close()
+	err = npmModule.AddArtifacts(buildArtifacts...)
+	if err != nil {
+		return errorutils.CheckError(err)
 	}
 
 	log.Info("npm publish finished successfully.")
@@ -384,7 +417,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = npmutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
+		npc.packageInfo, err = biutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
@@ -420,7 +453,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 				return errorutils.CheckError(err)
 			}
 
-			npc.packageInfo, err = npmutils.ReadPackageInfo(packageJson, npc.npmVersion)
+			npc.packageInfo, err = biutils.ReadPackageInfo(packageJson, npc.npmVersion)
 			return err
 		}
 	}

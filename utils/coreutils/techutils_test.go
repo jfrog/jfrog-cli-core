@@ -15,21 +15,15 @@ func TestTechIndicator(t *testing.T) {
 		{"simpleMavenTest", "pom.xml", Maven},
 		{"npmTest", "../package.json", Npm},
 		{"windowsGradleTest", "c://users/test/package/build.gradle", Gradle},
-		{"windowsPipTest", "c://users/test/package/setup.py", Pypi},
+		{"windowsPipTest", "c://users/test/package/setup.py", Pip},
+		{"windowsPipenvTest", "c://users/test/package/pipfile", Pipenv},
 		{"windowsGolangTest", "c://users/test/package/go.mod", Go},
 		{"noTechTest", "pomxml", ""},
 	}
-	indicators := GetTechIndicators()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var detectedTech Technology
-			for _, indicator := range indicators {
-				if indicator.Indicates(test.filePath) {
-					detectedTech = indicator.GetTechnology()
-					break
-				}
-			}
+			detectedTech := detectTechnologyByFile(test.filePath, false)
 			assert.Equal(t, test.expected, detectedTech)
 		})
 	}

@@ -36,7 +36,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"email=ddd@dd.dd",
 			"cache-lock-retries=10",
 			"registry = http://goodRegistry",
-			"_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
+			"_auth=$" + jfrogNpmAuthEnv}
 
 	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}}
 	configAfter, err := npmi.prepareConfigData(configBefore)

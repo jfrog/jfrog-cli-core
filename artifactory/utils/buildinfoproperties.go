@@ -87,7 +87,7 @@ var defaultPropertiesValues = map[string]string{
 	"artifactory.publish.maven":                            "false",
 	"artifactory.publish.ivy":                              "false",
 	"buildInfoConfig.includeEnvVars":                       "false",
-	"buildInfoConfig.envVarsExcludePatterns":               "*password*,*psw*,*secret*,*key*,*token*",
+	"buildInfoConfig.envVarsExcludePatterns":               "*password*,*psw*,*secret*,*key*,*token*,*auth*",
 	"buildInfo.agent.name":                                 coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
 	"org.jfrog.build.extractor.maven.recorder.activate":    "true",
 	"buildInfo.env.extractor.used":                         "true",

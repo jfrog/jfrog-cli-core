@@ -2,6 +2,13 @@ package npm
 
 import (
 	"bufio"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
@@ -12,10 +19,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"path/filepath"
-	"strconv"
-	"strings"
+)
+
+const (
+	npmConfigAuthEnv = "npm_config__auth"
+	jfrogNpmAuthEnv  = "JFROG_NPM_AUTH"
 )
 
 type CommonArgs struct {
@@ -94,8 +102,7 @@ func (com *CommonArgs) preparePrerequisites(repo string) error {
 		}
 	}
 
-	com.restoreNpmrcFunc, err = commandUtils.BackupFile(filepath.Join(com.workingDirectory, npmrcFileName), filepath.Join(com.workingDirectory, npmrcBackupFileName))
-	return err
+	return com.setRestoreNpmrcFunc()
 }
 
 func (com *CommonArgs) setJsonOutput() error {
@@ -138,6 +145,26 @@ func (com *CommonArgs) createTempNpmrc() error {
 	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(com.workingDirectory, npmrcFileName), configData, 0600))
 }
 
+// Set npm_config__auth and JFROG_NPM_AUTH environment variables and add _auth=$JFROG_NPM_AUTH value in the '.npmrc'.
+// filteredConf - The target configuration that eventually will be written in the '.npmrc' file
+// token        - Artifactory access token
+func (com *CommonArgs) addAuth(conf *[]string, token string) error {
+	*conf = append(*conf, fmt.Sprintf("_auth=$%s", jfrogNpmAuthEnv), "\n")
+
+	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+	// This env is relevant only for npm 7 and above.
+	if err := os.Setenv(npmConfigAuthEnv, token); err != nil {
+		return errorutils.CheckError(err)
+	}
+	// Set "JFROG_NPM_AUTH" environment variable to allow npm replacing the $JFROG_NPM_AUTH value in the .npmrc file.
+	// npm_config__auth env was introduced on npm 7 and therefore JFROG_NPM_AUTH is harmless for npm 7 and mandatory for npm 6.
+	// Also we may get an extra security by avoiding writing the token in the file system.
+	if err := os.Setenv(jfrogNpmAuthEnv, token); err != nil {
+		return errorutils.CheckError(err)
+	}
+	return nil
+}
+
 func (com *CommonArgs) setTypeRestriction(key string, value string) {
 	// From npm 7, type restriction is determined by 'omit' and 'include' (both appear in 'npm config ls').
 	// Other options (like 'dev', 'production' and 'only') are deprecated, but if they're used anyway - 'omit' and 'include' are automatically calculated.
@@ -172,7 +199,7 @@ func (com *CommonArgs) restoreNpmrcAndError(err error) error {
 // it filters out any nil value key, changes registry and scope registries to Artifactory url and adds Artifactory authentication to the list
 func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 	var filteredConf []string
-	configString := string(data)
+	configString := string(data) + "\n" + com.npmAuth
 	scanner := bufio.NewScanner(strings.NewReader(configString))
 
 	for scanner.Scan() {
@@ -182,7 +209,9 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 			key := strings.TrimSpace(splitOption[0])
 			if len(splitOption) == 2 && isValidKey(key) {
 				value := strings.TrimSpace(splitOption[1])
-				if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+				if key == "_auth" {
+					com.addAuth(&filteredConf, value)
+				} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 					filteredConf = addArrayConfigs(filteredConf, key, value)
 				} else {
 					filteredConf = append(filteredConf, currOption, "\n")
@@ -198,8 +227,24 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 		return nil, errorutils.CheckError(err)
 	}
 
-	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(com.jsonOutput), "\n")
-	filteredConf = append(filteredConf, "registry = ", com.registry, "\n")
-	filteredConf = append(filteredConf, com.npmAuth)
+	filteredConf = append(filteredConf, "json = "+strconv.FormatBool(com.jsonOutput), "\n")
+	filteredConf = append(filteredConf, "registry = "+com.registry, "\n")
 	return []byte(strings.Join(filteredConf, "")), nil
+}
+
+func (com *CommonArgs) setRestoreNpmrcFunc() error {
+	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(com.workingDirectory, npmrcFileName), filepath.Join(com.workingDirectory, npmrcBackupFileName))
+	if err != nil {
+		return err
+	}
+	com.restoreNpmrcFunc = func() error {
+		if unsetEnvErr := os.Unsetenv(npmConfigAuthEnv); unsetEnvErr != nil {
+			log.Warn("Couldn't unset", npmConfigAuthEnv)
+		}
+		if unsetEnvErr := os.Unsetenv(jfrogNpmAuthEnv); unsetEnvErr != nil {
+			log.Warn("Couldn't unset", jfrogNpmAuthEnv)
+		}
+		return restoreNpmrcFunc()
+	}
+	return err
 }

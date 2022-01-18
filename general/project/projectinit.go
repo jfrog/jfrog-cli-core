@@ -3,7 +3,6 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -124,22 +123,13 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
 					"\n"
 		case coreutils.Nuget:
-			// Check that nuget exists in path.
-			_, errNotFound := exec.LookPath("nuget")
-			if errNotFound == nil {
-				message +=
-					"jf nuget restore\n" +
-						"jf rt upload '*.nupkg'\n"
-			}
-			fallthrough
+			// The NuGet case is already covered in the dotent case.
+			break
 		case coreutils.Dotnet:
-			// Check that dotnet exists in path.
-			_, errNotFound := exec.LookPath("dotnet")
-			if errNotFound == nil {
-				message +=
-					"jf dotnet restore\n" +
-						"jf rt upload '*.nupkg'\n"
-			}
+			message +=
+				"jf nuget (OR dotnet) restore\n" +
+					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
+
 		}
 	}
 	if message != "" {

@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -126,8 +127,14 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			// The NuGet case is already covered in the dotent case.
 			break
 		case coreutils.Dotnet:
+			executableName := coreutils.Nuget
+			_, errNotFound := exec.LookPath("dotnet")
+			if errNotFound == nil {
+				// dotnet exists in path, So use it in the instruction message.
+				executableName = coreutils.Dotnet
+			}
 			message +=
-				"jf nuget (OR dotnet) restore\n" +
+				"jf" + string(executableName) + "restore\n" +
 					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
 
 		}

@@ -2,7 +2,6 @@ package npm
 
 import (
 	"bufio"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,7 +22,6 @@ import (
 
 const (
 	npmConfigAuthEnv = "NPM_CONFIG__AUTH"
-	jfrogNpmAuthEnv  = "JFROG_NPM_AUTH"
 )
 
 type CommonArgs struct {
@@ -145,26 +143,6 @@ func (com *CommonArgs) createTempNpmrc() error {
 	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(com.workingDirectory, npmrcFileName), configData, 0600))
 }
 
-// Set NPM_CONFIG__AUTH and JFROG_NPM_AUTH environment variables and add _auth=$JFROG_NPM_AUTH value in the '.npmrc'.
-// filteredConf - The target configuration that eventually will be written in the '.npmrc' file
-// token        - Artifactory access token
-func (com *CommonArgs) addAuth(conf *[]string, token string) error {
-	*conf = append(*conf, fmt.Sprintf("_auth=$%s", jfrogNpmAuthEnv), "\n")
-
-	// Set "NPM_CONFIG__AUTH" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
-	// This env is relevant only for npm 7 and above.
-	if err := os.Setenv(npmConfigAuthEnv, token); err != nil {
-		return errorutils.CheckError(err)
-	}
-	// Set "JFROG_NPM_AUTH" environment variable to allow npm replacing the $JFROG_NPM_AUTH value in the .npmrc file.
-	// NPM_CONFIG__AUTH env was introduced on npm 7 and therefore JFROG_NPM_AUTH is harmless for npm 7 and mandatory for npm 6.
-	// Also we may get an extra security by avoiding writing the token in the file system.
-	if err := os.Setenv(jfrogNpmAuthEnv, token); err != nil {
-		return errorutils.CheckError(err)
-	}
-	return nil
-}
-
 func (com *CommonArgs) setTypeRestriction(key string, value string) {
 	// From npm 7, type restriction is determined by 'omit' and 'include' (both appear in 'npm config ls').
 	// Other options (like 'dev', 'production' and 'only') are deprecated, but if they're used anyway - 'omit' and 'include' are automatically calculated.
@@ -210,7 +188,10 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 			if len(splitOption) == 2 && isValidKey(key) {
 				value := strings.TrimSpace(splitOption[1])
 				if key == "_auth" {
-					com.addAuth(&filteredConf, value)
+					// Set "NPM_CONFIG__AUTH" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+					if err := os.Setenv(npmConfigAuthEnv, value); err != nil {
+						return nil, errorutils.CheckError(err)
+					}
 				} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 					filteredConf = addArrayConfigs(filteredConf, key, value)
 				} else {
@@ -227,8 +208,8 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 		return nil, errorutils.CheckError(err)
 	}
 
-	filteredConf = append(filteredConf, "json = "+strconv.FormatBool(com.jsonOutput), "\n")
-	filteredConf = append(filteredConf, "registry = "+com.registry, "\n")
+	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(com.jsonOutput), "\n")
+	filteredConf = append(filteredConf, "registry = ", com.registry, "\n")
 	return []byte(strings.Join(filteredConf, "")), nil
 }
 
@@ -240,9 +221,6 @@ func (com *CommonArgs) setRestoreNpmrcFunc() error {
 	com.restoreNpmrcFunc = func() error {
 		if unsetEnvErr := os.Unsetenv(npmConfigAuthEnv); unsetEnvErr != nil {
 			log.Warn("Couldn't unset", npmConfigAuthEnv)
-		}
-		if unsetEnvErr := os.Unsetenv(jfrogNpmAuthEnv); unsetEnvErr != nil {
-			log.Warn("Couldn't unset", jfrogNpmAuthEnv)
 		}
 		return restoreNpmrcFunc()
 	}

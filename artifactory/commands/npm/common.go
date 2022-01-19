@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	npmConfigAuthEnv = "npm_config__auth"
+	npmConfigAuthEnv = "NPM_CONFIG__AUTH"
 	jfrogNpmAuthEnv  = "JFROG_NPM_AUTH"
 )
 
@@ -145,19 +145,19 @@ func (com *CommonArgs) createTempNpmrc() error {
 	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(com.workingDirectory, npmrcFileName), configData, 0600))
 }
 
-// Set npm_config__auth and JFROG_NPM_AUTH environment variables and add _auth=$JFROG_NPM_AUTH value in the '.npmrc'.
+// Set NPM_CONFIG__AUTH and JFROG_NPM_AUTH environment variables and add _auth=$JFROG_NPM_AUTH value in the '.npmrc'.
 // filteredConf - The target configuration that eventually will be written in the '.npmrc' file
 // token        - Artifactory access token
 func (com *CommonArgs) addAuth(conf *[]string, token string) error {
 	*conf = append(*conf, fmt.Sprintf("_auth=$%s", jfrogNpmAuthEnv), "\n")
 
-	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+	// Set "NPM_CONFIG__AUTH" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
 	// This env is relevant only for npm 7 and above.
 	if err := os.Setenv(npmConfigAuthEnv, token); err != nil {
 		return errorutils.CheckError(err)
 	}
 	// Set "JFROG_NPM_AUTH" environment variable to allow npm replacing the $JFROG_NPM_AUTH value in the .npmrc file.
-	// npm_config__auth env was introduced on npm 7 and therefore JFROG_NPM_AUTH is harmless for npm 7 and mandatory for npm 6.
+	// NPM_CONFIG__AUTH env was introduced on npm 7 and therefore JFROG_NPM_AUTH is harmless for npm 7 and mandatory for npm 6.
 	// Also we may get an extra security by avoiding writing the token in the file system.
 	if err := os.Setenv(jfrogNpmAuthEnv, token); err != nil {
 		return errorutils.CheckError(err)

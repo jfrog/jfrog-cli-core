@@ -108,7 +108,7 @@ func (tpc *TerraformPublishCommand) preparePrerequisites() error {
 	if err != nil {
 		return err
 	}
-	return utils.CheckIfRepoExists(tpc.repo, artDetails)
+	return utils.ValidateRepoExists(tpc.repo, artDetails)
 }
 
 func (tpc *TerraformPublishCommand) publish() error {

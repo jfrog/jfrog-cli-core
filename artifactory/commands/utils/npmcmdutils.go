@@ -39,7 +39,7 @@ func GetArtifactoryNpmRepoDetails(repo string, authArtDetails *auth.ServiceDetai
 		return "", "", err
 	}
 
-	if err = utils.CheckIfRepoExists(repo, *authArtDetails); err != nil {
+	if err = utils.ValidateRepoExists(repo, *authArtDetails); err != nil {
 		return "", "", err
 	}
 
@@ -122,7 +122,7 @@ func getNpmRepositoryUrl(repo, url string) string {
 
 // Get dependency's checksum and type.
 func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
-	servicesManager artifactory.ArtifactoryServicesManager) (checksum *buildinfo.Checksum, fileType string, err error) {
+	servicesManager artifactory.ArtifactoryServicesManager) (checksum buildinfo.Checksum, fileType string, err error) {
 	id := name + ":" + ver
 	if dep, ok := previousBuildDependencies[id]; ok {
 		// Get checksum from previous build.
@@ -151,7 +151,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 	parsedResult := new(aqlResult)
 	if err = json.Unmarshal(result, parsedResult); err != nil {
-		return nil, "", errorutils.CheckError(err)
+		return buildinfo.Checksum{}, "", errorutils.CheckError(err)
 	}
 	if len(parsedResult.Results) == 0 {
 		log.Debug(id, "could not be found in Artifactory.")
@@ -164,7 +164,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 		"SHA-1:", parsedResult.Results[0].Actual_sha1,
 		"MD5:", parsedResult.Results[0].Actual_md5)
 
-	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
+	checksum = buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
 	return
 }
 
@@ -187,7 +187,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	for _, module := range previousBuild.BuildInfo.Modules {
 		for _, dependency := range module.Dependencies {
 			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id, Type: dependency.Type,
-				Checksum: &buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
+				Checksum: buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
 		}
 	}
 	return buildDependencies, nil

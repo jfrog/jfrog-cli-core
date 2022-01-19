@@ -89,8 +89,12 @@ func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string
 	params := services.NewLocalRepositoryBaseParams()
 	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Local]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
 	}
 	return servicesManager.CreateLocalRepositoryWithParams(params)
 }
@@ -104,8 +108,12 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Remote]
 	params.Url = RepoDefaultName[technologyType][RemoteUrl]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
 	}
 	return servicesManager.CreateRemoteRepositoryWithParams(params)
 }
@@ -120,8 +128,12 @@ func CreateDefaultVirtualRepo(technologyType coreutils.Technology, serverId stri
 	params.Key = RepoDefaultName[technologyType][Virtual]
 	params.Repositories = []string{RepoDefaultName[technologyType][Local], RepoDefaultName[technologyType][Remote]}
 	params.DefaultDeploymentRepo = RepoDefaultName[technologyType][Local]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
 	}
 	return servicesManager.CreateVirtualRepositoryWithParams(params)
 }
@@ -133,11 +145,4 @@ func getServiceManager(serverId string) (artifactory.ArtifactoryServicesManager,
 	}
 	return rtUtils.CreateServiceManager(serviceDetails, -1, 0, false)
 
-}
-
-// Check if default repository is already exists
-func repoExists(servicesManager artifactory.ArtifactoryServicesManager, repoKey string) bool {
-	repo := &services.RepositoryDetails{}
-	servicesManager.GetRepository(repoKey, repo)
-	return repo.Key != ""
 }

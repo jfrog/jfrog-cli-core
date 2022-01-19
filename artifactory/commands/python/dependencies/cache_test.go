@@ -31,13 +31,13 @@ func TestDependenciesCache(t *testing.T) {
 	csA := buildinfo.Checksum{Sha1: "sha1A", Md5: "md5A"}
 	depenA := buildinfo.Dependency{
 		Id:       "depenA-1.0-A.zip",
-		Checksum: &csA,
+		Checksum: csA,
 	}
 	cacheMap["A"] = &depenA
 	csC := buildinfo.Checksum{Sha1: "sha1C", Md5: "md5C"}
 	depenC := buildinfo.Dependency{
 		Id:       "depenC-3.4-C.gzip",
-		Checksum: &csC,
+		Checksum: csC,
 	}
 	cacheMap["C"] = &depenC
 	err = UpdateDependenciesCache(cacheMap, tmpTestPath)
@@ -66,7 +66,7 @@ func TestDependenciesCache(t *testing.T) {
 	csT := buildinfo.Checksum{Sha1: "sha1T", Md5: "md5T"}
 	depenT := buildinfo.Dependency{
 		Id:       "depenT-6.0.68-T.zip",
-		Checksum: &csT,
+		Checksum: csT,
 	}
 	cacheMap["T"] = &depenT
 	err = UpdateDependenciesCache(cacheMap, tmpTestPath)

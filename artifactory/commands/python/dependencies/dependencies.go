@@ -35,7 +35,7 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, ca
 		}
 
 		// Check if info not found.
-		if depFileName == "" || depChecksum == nil {
+		if depFileName == "" || depChecksum.IsEmpty() {
 			// Dependency either wasn't downloaded in this run nor stored in cache.
 			missingDeps = append(missingDeps, depName)
 			// dependenciesMap should contain only dependencies with checksums.
@@ -99,7 +99,7 @@ func updateDepsIdsAndRequestedBy(parentDependency buildinfo.Dependency, dependen
 // Get dependency information.
 // If dependency was downloaded in this pip-install execution, fetch info from Artifactory.
 // Otherwise, fetch info from cache.
-func getDependencyInfo(depName, repository string, dependenciesCache *DependenciesCache, depFileName string, servicesManager artifactory.ArtifactoryServicesManager) (string, *buildinfo.Checksum, error) {
+func getDependencyInfo(depName, repository string, dependenciesCache *DependenciesCache, depFileName string, servicesManager artifactory.ArtifactoryServicesManager) (string, buildinfo.Checksum, error) {
 	// Check if this dependency was updated during this pip-install execution, and we have its file-name.
 	// If updated - fetch checksum from Artifactory, regardless of what was previously stored in cache.
 
@@ -121,20 +121,20 @@ func getDependencyInfo(depName, repository string, dependenciesCache *Dependenci
 		return depFileName, checksum, err
 	}
 
-	return "", nil, nil
+	return "", buildinfo.Checksum{}, nil
 }
 
 // Fetch checksum for file from Artifactory.
 // If the file isn't found, or md5 or sha1 are missing, return nil.
-func getDependencyChecksumFromArtifactory(servicesManager artifactory.ArtifactoryServicesManager, repository, dependencyFile string) (checksum *buildinfo.Checksum, err error) {
+func getDependencyChecksumFromArtifactory(servicesManager artifactory.ArtifactoryServicesManager, repository, dependencyFile string) (checksum buildinfo.Checksum, err error) {
 	log.Debug(fmt.Sprintf("Fetching checksums for: %s", dependencyFile))
 	repository, err = utils.GetRepoNameForDependenciesSearch(repository, servicesManager)
 	if err != nil {
-		return nil, err
+		return
 	}
 	stream, err := servicesManager.Aql(serviceutils.CreateAqlQueryForPypi(repository, dependencyFile))
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer func() {
 		e := stream.Close()
@@ -144,16 +144,16 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	}()
 	result, err := ioutil.ReadAll(stream)
 	if err != nil {
-		return nil, err
+		return
 	}
 	parsedResult := new(aqlResult)
 	err = json.Unmarshal(result, parsedResult)
 	if err = errorutils.CheckError(err); err != nil {
-		return nil, err
+		return
 	}
 	if len(parsedResult.Results) == 0 {
 		log.Debug(fmt.Sprintf("File: %s could not be found in repository: %s", dependencyFile, repository))
-		return nil, nil
+		return
 	}
 
 	// Verify checksum exist.
@@ -162,11 +162,11 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	if sha1 == "" || md5 == "" {
 		// Missing checksum.
 		log.Debug(fmt.Sprintf("Missing checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
-		return nil, nil
+		return
 	}
 
 	// Update checksum.
-	checksum = &buildinfo.Checksum{Sha1: sha1, Md5: md5}
+	checksum = buildinfo.Checksum{Sha1: sha1, Md5: md5}
 	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
 
 	return

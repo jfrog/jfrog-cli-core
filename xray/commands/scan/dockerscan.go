@@ -57,10 +57,6 @@ func (csc *DockerScanCommand) Run() (err error) {
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
-	err = os.Chmod(tempDirPath, 0777)
-	if err != nil {
-		return err
-	}
 	dockerSaveCmd := exec.Command("docker", "save", csc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer
 	dockerSaveCmd.Stderr = &stderr

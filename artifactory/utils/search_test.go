@@ -14,7 +14,7 @@ import (
 )
 
 func TestPrintSearchResults(t *testing.T) {
-	testdataPath, err := getTestDataPath()
+	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
 	reader := content.NewContentReader(filepath.Join(testdataPath, "search_results.json"), content.DefaultKey)
 
@@ -37,7 +37,7 @@ func TestPrintSearchResults(t *testing.T) {
 	assert.Equal(t, 0, compareResult)
 }
 
-func getTestDataPath() (string, error) {
+func GetTestDataPath() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", errorutils.CheckError(err)

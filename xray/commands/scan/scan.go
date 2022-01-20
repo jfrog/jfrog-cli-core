@@ -139,6 +139,17 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	// Create Temp dir for Xray Indexer
+	scanCmd.indexerTempDir, err = fileutils.CreateTempDir()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := fileutils.RemoveTempDir(scanCmd.indexerTempDir)
+		if err == nil {
+			err = e
+		}
+	}()
 	threads := 1
 	if scanCmd.threads > 1 {
 		threads = scanCmd.threads
@@ -150,16 +161,6 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	indexedFileProducerErrorsQueue := clientutils.NewErrorsQueue(1)
 	// Start walking on the filesystem to "produce" files that match the given pattern
 	// while the consumer uses the indexer to index those files.
-	scanCmd.indexerTempDir, err = fileutils.CreateTempDir()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		e := fileutils.RemoveTempDir(scanCmd.indexerTempDir)
-		if err == nil {
-			err = e
-		}
-	}()
 	scanCmd.prepareScanTasks(fileProducerConsumer, indexedFileProducerConsumer, resultsArr, fileProducerErrorsQueue, indexedFileProducerErrorsQueue, xrayVersion)
 	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer)
 

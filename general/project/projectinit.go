@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -51,17 +52,15 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return err
 	}
 	// First create repositories for the detected technologies.
-	for tech, detected := range technologiesMap {
-		if detected {
-			// First create repositories for the detected technology.
-			err = createDefaultReposIfNeeded(tech, pic.serverId)
-			if err != nil {
-				return err
-			}
-			err = createProjectBuildConfigs(tech, pic.projectPath, pic.serverId)
-			if err != nil {
-				return err
-			}
+	for techName := range technologiesMap {
+		// First create repositories for the detected technology.
+		err = createDefaultReposIfNeeded(techName, pic.serverId)
+		if err != nil {
+			return err
+		}
+		err = createProjectBuildConfigs(techName, pic.projectPath, pic.serverId)
+		if err != nil {
+			return err
 		}
 	}
 	// Create build config
@@ -95,32 +94,49 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
+		"\n\n" +
+		coreutils.GetFeedbackMessage()
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
 func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.Technology]bool) string {
 	message := ""
-	for tech, detected := range technologiesMap {
-		if detected {
-			switch tech {
-			case coreutils.Maven:
-				message += "jf mvn install deploy\n"
-			case coreutils.Gradle:
-				message += "jf gradle artifactoryP\n"
-			case coreutils.Npm:
-				message += "jf npm install publish\n"
-			case coreutils.Go:
-				message +=
-					"jf go build\n" +
-						"jf go-publish v1.0.0\n"
-			case coreutils.Pypi:
-				message +=
-					"jf pip install\n" +
-						"jf rt u path/to/package/file default-pypi-local" +
-						coreutils.PrintComment(" # Publish your pip package") +
-						"\n"
+	for tech := range technologiesMap {
+		switch tech {
+		case coreutils.Maven:
+			message += "jf mvn install deploy\n"
+		case coreutils.Gradle:
+			message += "jf gradle artifactoryP\n"
+		case coreutils.Npm:
+			message += "jf npm install\n"
+			message += "jf npm publish\n"
+		case coreutils.Go:
+			message +=
+				"jf go build\n" +
+					"jf go-publish v1.0.0\n"
+		case coreutils.Pip:
+			fallthrough
+		case coreutils.Pipenv:
+			message +=
+				"jf " + string(tech) + "install\n" +
+					"jf rt u path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
+					"\n"
+		case coreutils.Nuget:
+			// The NuGet case is already covered in the dotent case.
+			break
+		case coreutils.Dotnet:
+			executableName := coreutils.Nuget
+			_, errNotFound := exec.LookPath("dotnet")
+			if errNotFound == nil {
+				// dotnet exists in path, So use it in the instruction message.
+				executableName = coreutils.Dotnet
 			}
+			message +=
+				"jf" + string(executableName) + "restore\n" +
+					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
+
 		}
 	}
 	if message != "" {
@@ -143,7 +159,7 @@ func (pic *ProjectInitCommand) detectTechnologies() (technologiesMap map[coreuti
 	if err != nil {
 		return
 	}
-	// In case no technologies were detected in the root diretory, try again recursively.
+	// In case no technologies were detected in the root directory, try again recursively.
 	if len(technologiesMap) == 0 {
 		technologiesMap, err = coreutils.DetectTechnologies(pic.projectPath, false, true)
 		if err != nil {
@@ -193,10 +209,6 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		return errorutils.CheckError(err)
 	}
 	techName := strings.ToLower(string(tech))
-	// Due to cli-artifactory naming mismatch we have to add this line
-	if tech == coreutils.Pypi {
-		techName = "pip"
-	}
 	configFilePath := filepath.Join(jfrogProjectDir, techName+".yaml")
 	configFile := artifactoryCommandsUtils.ConfigFile{
 		Version:    artifactoryCommandsUtils.BuildConfVersion,
@@ -210,18 +222,15 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		configFile.Resolver.SnapshotRepo = MavenVirtualDefaultName
 		configFile.Deployer.ReleaseRepo = MavenVirtualDefaultName
 		configFile.Deployer.SnapshotRepo = MavenVirtualDefaultName
-	case coreutils.Gradle:
-		configFile.Resolver.Repo = GradleVirtualDefaultName
-		configFile.Deployer.Repo = GradleVirtualDefaultName
-	case coreutils.Npm:
-		configFile.Resolver.Repo = NpmVirtualDefaultName
-		configFile.Deployer.Repo = NpmVirtualDefaultName
-	case coreutils.Go:
-		configFile.Resolver.Repo = GoVirtualDefaultName
-		configFile.Deployer.Repo = GoVirtualDefaultName
-	case coreutils.Pypi:
-		configFile.Resolver.Repo = PypiVirtualDefaultName
-		configFile.Deployer.Repo = PypiVirtualDefaultName
+	case coreutils.Dotnet:
+		fallthrough
+	case coreutils.Nuget:
+		configFile.Resolver.NugetV2 = true
+		fallthrough
+	default:
+		configFile.Resolver.Repo = RepoDefaultName[tech][Virtual]
+		configFile.Deployer.Repo = RepoDefaultName[tech][Virtual]
+
 	}
 	resBytes, err := yaml.Marshal(&configFile)
 	if err != nil {
@@ -229,4 +238,12 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 	}
 
 	return errorutils.CheckError(ioutil.WriteFile(configFilePath, resBytes, 0644))
+}
+
+func (pic *ProjectInitCommand) CommandName() string {
+	return "project_init"
+}
+
+func (pic *ProjectInitCommand) ServerDetails() (*config.ServerDetails, error) {
+	return config.GetSpecificConfig("", true, false)
 }

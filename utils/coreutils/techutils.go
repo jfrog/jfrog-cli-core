@@ -13,88 +13,69 @@ const (
 	Gradle = "Gradle"
 	Npm    = "npm"
 	Go     = "go"
-	Pypi   = "pypi"
+	Pip    = "pip"
+	Pipenv = "pipenv"
+	Nuget  = "nuget"
+	Dotnet = "dotnet"
 )
 
-type TechnologyIndicator interface {
-	GetTechnology() Technology
-	Indicates(file string) bool
+type TechData struct {
+	PackageType    string
+	indicators     []string
+	ciSetupSupport bool
 }
 
-type MavenIndicator struct {
+var technologiesData = map[Technology]TechData{
+	Maven: {
+		PackageType:    "Maven",
+		indicators:     []string{"pom.xml"},
+		ciSetupSupport: true,
+	},
+	Gradle: {
+		PackageType:    "Gradle",
+		indicators:     []string{".gradle"},
+		ciSetupSupport: true,
+	},
+	Npm: {
+		PackageType:    "npm",
+		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		ciSetupSupport: true,
+	},
+	Go: {
+		PackageType: "go",
+		indicators:  []string{"go.mod"},
+	},
+	Pip: {
+		PackageType: "pypi",
+		indicators:  []string{"setup.py", "requirements.txt"},
+	},
+	Pipenv: {
+		PackageType: "pypi",
+		indicators:  []string{"pipfile", "pipfile.lock"},
+	},
+	Nuget: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
+	Dotnet: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
 }
 
-func (mi MavenIndicator) GetTechnology() Technology {
-	return Maven
-}
-
-func (mi MavenIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "pom.xml")
-}
-
-type GradleIndicator struct {
-}
-
-func (gi GradleIndicator) GetTechnology() Technology {
-	return Gradle
-}
-
-func (gi GradleIndicator) Indicates(file string) bool {
-	return strings.Contains(file, ".gradle")
-}
-
-type NpmIndicator struct {
-}
-
-func (ni NpmIndicator) GetTechnology() Technology {
-	return Npm
-}
-
-func (ni NpmIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "package.json") || strings.Contains(file, "package-lock.json") || strings.Contains(file, "npm-shrinkwrap.json")
-}
-
-type GoIndicator struct {
-}
-
-func (gi GoIndicator) GetTechnology() Technology {
-	return Go
-}
-
-func (gi GoIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "go.mod")
-}
-
-type PypiIndicator struct {
-}
-
-func (pi PypiIndicator) GetTechnology() Technology {
-	return Pypi
-}
-
-func (pi PypiIndicator) Indicates(file string) bool {
-	return strings.Contains(file, "setup.py") || strings.Contains(file, "requirements.txt")
-}
-
-func GetMinSupportedTechIndicators() []TechnologyIndicator {
-	return []TechnologyIndicator{
-		MavenIndicator{},
-		GradleIndicator{},
-		NpmIndicator{},
-	}
-}
-
-func GetTechIndicators() []TechnologyIndicator {
-	return append(GetMinSupportedTechIndicators(), GoIndicator{}, PypiIndicator{})
-}
-
-func DetectTechnologies(path string, limitTechnologiesSupport, recursive bool) (map[Technology]bool, error) {
-	var indicators []TechnologyIndicator
-	if limitTechnologiesSupport {
-		indicators = GetMinSupportedTechIndicators()
+func GetTechnologyPackageType(techName Technology) string {
+	techData, ok := technologiesData[techName]
+	if ok {
+		return techData.PackageType
 	} else {
-		indicators = GetTechIndicators()
+		return ""
 	}
+}
+
+// DetectTechnologies tries to detect all technologies types according to the files in the given path.
+// 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.
+// 'recursive' will determine if the search will be limited to files in the root path or not.
+func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]bool, error) {
 	var filesList []string
 	var err error
 	if recursive {
@@ -107,13 +88,24 @@ func DetectTechnologies(path string, limitTechnologiesSupport, recursive bool) (
 	}
 	detectedTechnologies := make(map[Technology]bool)
 	for _, file := range filesList {
-		for _, indicator := range indicators {
-			if indicator.Indicates(file) {
-				detectedTechnologies[indicator.GetTechnology()] = true
-				// Same file can't indicate more than one technology.
-				break
-			}
+		techNames := detectTechnologiesByFile(strings.ToLower(file), isCiSetup)
+		for _, techName := range techNames {
+			detectedTechnologies[techName] = true
 		}
 	}
 	return detectedTechnologies, nil
+}
+
+func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
+	detected = []Technology{}
+	for techName, techData := range technologiesData {
+		if isCiSetup == false || (isCiSetup && techData.ciSetupSupport) {
+			for _, indicator := range techData.indicators {
+				if strings.Contains(file, indicator) {
+					detected = append(detected, techName)
+				}
+			}
+		}
+	}
+	return detected
 }

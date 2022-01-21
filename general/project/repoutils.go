@@ -67,11 +67,29 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		RemoteUrl: GoRemoteDefaultUrl,
 		Virtual:   GoVirtualDefaultName,
 	},
-	coreutils.Pypi: {
+	coreutils.Pip: {
 		Local:     PypiLocalDefaultName,
 		Remote:    PypiRemoteDefaultName,
 		RemoteUrl: PypiRemoteDefaultUrl,
 		Virtual:   PypiVirtualDefaultName,
+	},
+	coreutils.Pipenv: {
+		Local:     PypiLocalDefaultName,
+		Remote:    PypiRemoteDefaultName,
+		RemoteUrl: PypiRemoteDefaultUrl,
+		Virtual:   PypiVirtualDefaultName,
+	},
+	coreutils.Nuget: {
+		Local:     NugetLocalDefaultName,
+		Remote:    NugetRemoteDefaultName,
+		RemoteUrl: NugetRemoteDefaultUrl,
+		Virtual:   NugetVirtualDefaultName,
+	},
+	coreutils.Dotnet: {
+		Local:     NugetLocalDefaultName,
+		Remote:    NugetRemoteDefaultName,
+		RemoteUrl: NugetRemoteDefaultUrl,
+		Virtual:   NugetVirtualDefaultName,
 	},
 }
 
@@ -81,12 +99,28 @@ func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string
 		return err
 	}
 	params := services.NewLocalRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Local]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
 	}
 	return servicesManager.CreateLocalRepositoryWithParams(params)
+}
+
+func createDefaultRemoteNugetRepo(serverId string, baseParams services.RemoteRepositoryBaseParams) error {
+	servicesManager, err := getServiceManager(serverId)
+	if err != nil {
+		return err
+	}
+	params := services.NewNugetRemoteRepositoryParams()
+	params.RemoteRepositoryBaseParams = baseParams
+	params.DownloadContextPath = "api/v2/package"
+	params.FeedContextPath = "api/v2"
+	return servicesManager.CreateRemoteRepository().Nuget(params)
 }
 
 func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId string) error {
@@ -95,11 +129,19 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 		return err
 	}
 	params := services.NewRemoteRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Remote]
 	params.Url = RepoDefaultName[technologyType][RemoteUrl]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	// NuGet specifc case, due to required DownloadContextPath param by Artifactory
+	if technologyType == coreutils.Nuget || technologyType == coreutils.Dotnet {
+		return createDefaultRemoteNugetRepo(serverId, params)
 	}
 	return servicesManager.CreateRemoteRepositoryWithParams(params)
 }
@@ -110,12 +152,16 @@ func CreateDefaultVirtualRepo(technologyType coreutils.Technology, serverId stri
 		return err
 	}
 	params := services.NewVirtualRepositoryBaseParams()
-	params.PackageType = string(technologyType)
+	params.PackageType = coreutils.GetTechnologyPackageType(technologyType)
 	params.Key = RepoDefaultName[technologyType][Virtual]
 	params.Repositories = []string{RepoDefaultName[technologyType][Local], RepoDefaultName[technologyType][Remote]}
 	params.DefaultDeploymentRepo = RepoDefaultName[technologyType][Local]
-	if repoExists(servicesManager, params.Key) {
-		return nil
+	// Check if default repository already exists
+	if exists, err := servicesManager.IsRepoExists(params.Key); exists {
+		return err
+	}
+	if err != nil {
+		return err
 	}
 	return servicesManager.CreateVirtualRepositoryWithParams(params)
 }
@@ -127,11 +173,4 @@ func getServiceManager(serverId string) (artifactory.ArtifactoryServicesManager,
 	}
 	return rtUtils.CreateServiceManager(serviceDetails, -1, 0, false)
 
-}
-
-// Check if default repository is allready exists
-func repoExists(servicesManager artifactory.ArtifactoryServicesManager, repoKey string) bool {
-	repo := &services.RepositoryDetails{}
-	servicesManager.GetRepository(repoKey, repo)
-	return repo.Key != ""
 }

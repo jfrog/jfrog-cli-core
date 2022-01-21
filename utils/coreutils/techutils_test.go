@@ -10,27 +10,22 @@ func TestTechIndicator(t *testing.T) {
 	tests := []struct {
 		name     string
 		filePath string
-		expected Technology
+		expected []Technology
 	}{
-		{"simpleMavenTest", "pom.xml", Maven},
-		{"npmTest", "../package.json", Npm},
-		{"windowsGradleTest", "c://users/test/package/build.gradle", Gradle},
-		{"windowsPipTest", "c://users/test/package/setup.py", Pypi},
-		{"windowsGolangTest", "c://users/test/package/go.mod", Go},
-		{"noTechTest", "pomxml", ""},
+		{"simpleMavenTest", "pom.xml", []Technology{Maven}},
+		{"npmTest", "../package.json", []Technology{Npm}},
+		{"windowsGradleTest", "c:\\users\\test\\package\\build.gradle", []Technology{Gradle}},
+		{"windowsPipTest", "c:\\users\\test\\package\\setup.py", []Technology{Pip}},
+		{"windowsPipenvTest", "c:\\users\\test\\package\\pipfile", []Technology{Pipenv}},
+		{"golangTest", "/Users/eco/dev/jfrog-cli-core/go.mod", []Technology{Go}},
+		{"windowsNugetTest", "c:\\users\\test\\package\\project.sln", []Technology{Nuget, Dotnet}},
+		{"noTechTest", "pomxml", []Technology{}},
 	}
-	indicators := GetTechIndicators()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var detectedTech Technology
-			for _, indicator := range indicators {
-				if indicator.Indicates(test.filePath) {
-					detectedTech = indicator.GetTechnology()
-					break
-				}
-			}
-			assert.Equal(t, test.expected, detectedTech)
+			detectedTech := detectTechnologiesByFile(test.filePath, false)
+			assert.ElementsMatch(t, test.expected, detectedTech)
 		})
 	}
 }

@@ -26,8 +26,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const repoDetailsUrl = "api/repositories/"
-
 func GetProjectDir(global bool) (string, error) {
 	configDir, err := getConfigDir(global)
 	if err != nil {
@@ -186,35 +184,6 @@ func CreateAccessServiceManager(serviceDetails *config.ServerDetails, isDryRun b
 	return access.New(serviceConfig)
 }
 
-func isRepoExists(repository string, artDetails auth.ServiceDetails) (bool, error) {
-	artHttpDetails := artDetails.CreateHttpClientDetails()
-	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
-	if err != nil {
-		return false, err
-	}
-	resp, _, _, err := client.SendGet(artDetails.GetUrl()+repoDetailsUrl+repository, true, artHttpDetails, "")
-	if err != nil {
-		return false, errorutils.CheckError(err)
-	}
-
-	if resp.StatusCode != http.StatusBadRequest {
-		return true, nil
-	}
-	return false, nil
-}
-
-func CheckIfRepoExists(repository string, artDetails auth.ServiceDetails) error {
-	repoExists, err := isRepoExists(repository, artDetails)
-	if err != nil {
-		return err
-	}
-
-	if !repoExists {
-		return errorutils.CheckErrorf("The repository '" + repository + "' does not exist.")
-	}
-	return nil
-}
-
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.
 // If Xray failed to scan the build, for example due to a networking issue, a regular error should be returned.
 var buildScanError = errors.New("issues found during xray build scan")
@@ -246,4 +215,34 @@ func CreateBuildInfoService() *build.BuildInfoService {
 	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
 	buildInfoService.SetLogger(log.Logger)
 	return buildInfoService
+}
+
+// Returns an error if the given repo doesn't exist.
+func ValidateRepoExists(repoKey string, serviceDetails auth.ServiceDetails) error {
+	servicesManager, err := createServiceManager(serviceDetails)
+	exists, err := servicesManager.IsRepoExists(repoKey)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return errorutils.CheckErrorf("The repository '" + repoKey + "' does not exist.")
+	}
+	return nil
+}
+
+func createServiceManager(serviceDetails auth.ServiceDetails) (artifactory.ArtifactoryServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	config := clientConfig.NewConfigBuilder().
+		SetServiceDetails(serviceDetails).
+		SetCertificatesPath(certsPath).
+		SetDryRun(false)
+	serviceConfig, err := config.Build()
+	if err != nil {
+		return nil, err
+	}
+	return artifactory.New(serviceConfig)
 }

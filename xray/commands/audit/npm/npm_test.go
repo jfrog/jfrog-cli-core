@@ -2,24 +2,25 @@ package npm
 
 import (
 	"encoding/json"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"io/ioutil"
 	"testing"
 
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestParseNpmDependenciesList(t *testing.T) {
-	dependenciesJson, err := ioutil.ReadFile("../../../../utils/testdata/dependencies.json")
+	dependenciesJson, err := ioutil.ReadFile("../../testdata/dependencies.json")
 	if err != nil {
 		t.Error(err)
 	}
-	dependencies := make(map[string]*npmutils.Dependency)
+	var dependencies []buildinfo.Dependency
 	err = json.Unmarshal(dependenciesJson, &dependencies)
 	if err != nil {
 		t.Error(err)
 	}
-	packageInfo := &npmutils.PackageInfo{Name: "root", Version: "0.0.0"}
+	packageInfo := &biutils.PackageInfo{Name: "root", Version: "0.0.0"}
 	expectedTree := &services.GraphNode{
 		Id: "npm://root:0.0.0",
 		Nodes: []*services.GraphNode{

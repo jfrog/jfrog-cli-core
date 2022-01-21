@@ -8,13 +8,11 @@ import (
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/gofrog/parallel"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -23,24 +21,19 @@ const npmrcFileName = ".npmrc"
 const npmrcBackupFileName = "jfrog.npmrc.backup"
 const minSupportedNpmVersion = "5.4.0"
 
-type InstallCiArgs struct {
-	threads      int
-	dependencies map[string]*npmutils.Dependency
-	CommonArgs
-}
-
 type NpmInstallOrCiCommand struct {
 	configFilePath      string
 	internalCommandName string
-	*InstallCiArgs
+	threads             int
+	CommonArgs
 }
 
 func NewNpmInstallCommand() *NpmInstallOrCiCommand {
-	return &NpmInstallOrCiCommand{InstallCiArgs: NewInstallCiArgs("install"), internalCommandName: "rt_npm_install"}
+	return &NpmInstallOrCiCommand{CommonArgs: CommonArgs{cmdName: "install"}, internalCommandName: "rt_npm_install"}
 }
 
 func NewNpmCiCommand() *NpmInstallOrCiCommand {
-	return &NpmInstallOrCiCommand{InstallCiArgs: NewInstallCiArgs("ci"), internalCommandName: "rt_npm_ci"}
+	return &NpmInstallOrCiCommand{CommonArgs: CommonArgs{cmdName: "ci"}, internalCommandName: "rt_npm_ci"}
 }
 
 func (nic *NpmInstallOrCiCommand) CommandName() string {
@@ -53,13 +46,13 @@ func (nic *NpmInstallOrCiCommand) SetConfigFilePath(configFilePath string) *NpmI
 }
 
 func (nic *NpmInstallOrCiCommand) SetArgs(args []string) *NpmInstallOrCiCommand {
-	nic.InstallCiArgs.npmArgs = args
+	nic.npmArgs = args
 	return nic
 }
 
 func (nic *NpmInstallOrCiCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmInstallOrCiCommand {
 	serverDetails, _ := conf.ServerDetails()
-	nic.InstallCiArgs.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
+	nic.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
 	return nic
 }
 
@@ -84,27 +77,13 @@ func (nic *NpmInstallOrCiCommand) Init() error {
 	return nil
 }
 
-func (ica *InstallCiArgs) SetThreads(threads int) *InstallCiArgs {
-	ica.threads = threads
-	return ica
+func (nic *NpmInstallOrCiCommand) SetThreads(threads int) *NpmInstallOrCiCommand {
+	nic.threads = threads
+	return nic
 }
 
-func (ica *InstallCiArgs) SetTypeRestriction(typeRestriction npmutils.TypeRestriction) *InstallCiArgs {
-	ica.typeRestriction = typeRestriction
-	return ica
-}
-
-func (ica *InstallCiArgs) SetPackageInfo(packageInfo *npmutils.PackageInfo) *InstallCiArgs {
-	ica.packageInfo = packageInfo
-	return ica
-}
-
-func NewInstallCiArgs(npmCommand string) *InstallCiArgs {
-	return &InstallCiArgs{CommonArgs: CommonArgs{cmdName: npmCommand}}
-}
-
-func (ica *InstallCiArgs) ServerDetails() (*config.ServerDetails, error) {
-	return ica.serverDetails, nil
+func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error) {
+	return nic.serverDetails, nil
 }
 
 func (nic *NpmInstallOrCiCommand) Run() error {
@@ -129,15 +108,7 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 		return nil
 	}
 
-	if err := nic.setDependenciesList(); err != nil {
-		return err
-	}
-
-	if err := nic.collectDependenciesChecksums(); err != nil {
-		return err
-	}
-
-	if err := nic.saveDependenciesData(); err != nil {
+	if err := nic.collectDependencies(); err != nil {
 		return err
 	}
 
@@ -145,69 +116,90 @@ func (nic *NpmInstallOrCiCommand) Run() error {
 	return nil
 }
 
-func (ica *InstallCiArgs) runInstallOrCi() error {
-	log.Debug(fmt.Sprintf("Running npm %s command.", ica.cmdName))
-	filteredArgs := filterFlags(ica.npmArgs)
+func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
+	log.Debug(fmt.Sprintf("Running npm %s command.", nic.cmdName))
+	filteredArgs := filterFlags(nic.npmArgs)
 	npmCmdConfig := &npmutils.NpmConfig{
-		Npm:          ica.executablePath,
-		Command:      append([]string{ica.cmdName}, filteredArgs...),
+		Npm:          nic.executablePath,
+		Command:      append([]string{nic.cmdName}, filteredArgs...),
 		CommandFlags: nil,
 		StrWriter:    nil,
 		ErrWriter:    nil,
 	}
 
-	if ica.collectBuildInfo && len(filteredArgs) > 0 {
+	if nic.collectBuildInfo && len(filteredArgs) > 0 {
 		log.Warn("Build info dependencies collection with npm arguments is not supported. Build info creation will be skipped.")
-		ica.collectBuildInfo = false
+		nic.collectBuildInfo = false
 	}
 
 	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))
 }
 
-func (ica *InstallCiArgs) GetDependenciesList() map[string]*npmutils.Dependency {
-	return ica.dependencies
-}
+func (nic *NpmInstallOrCiCommand) collectDependencies() error {
+	nic.buildInfoModule.SetTypeRestriction(nic.typeRestriction)
+	nic.buildInfoModule.SetNpmArgs(nic.npmArgs)
 
-func (ica *InstallCiArgs) collectDependenciesChecksums() error {
+	serviceManager, err := utils.CreateServiceManager(nic.serverDetails, -1, 0, false)
+	if err != nil {
+		return err
+	}
+	buildName, err := nic.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(serviceManager, buildName)
+	if err != nil {
+		return err
+	}
+	missingDepsChan := make(chan string)
+	collectChecksumsFunc := createCollectChecksumsFunc(previousBuildDependencies, serviceManager, missingDepsChan)
+	nic.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
+	nic.buildInfoModule.SetThreads(nic.threads)
+
 	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
-	servicesManager, err := utils.CreateServiceManager(ica.serverDetails, -1, 0, false)
-	if err != nil {
-		return err
-	}
-	buildName, err := ica.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
-	if err != nil {
-		return err
-	}
-	producerConsumer := parallel.NewBounedRunner(ica.threads, false)
-	errorsQueue := clientutils.NewErrorsQueue(1)
-	handlerFunc := ica.createGetDependencyInfoFunc(servicesManager, previousBuildDependencies)
+
+	var missingDependencies []string
 	go func() {
-		defer producerConsumer.Done()
-		for i := range ica.dependencies {
-			producerConsumer.AddTaskWithError(handlerFunc(i), errorsQueue.AddError)
+		for depId := range missingDepsChan {
+			missingDependencies = append(missingDependencies, depId)
 		}
 	}()
-	producerConsumer.Run()
-	return errorsQueue.GetError()
+
+	if err = nic.buildInfoModule.CalcDependencies(); err != nil {
+		return errorutils.CheckError(err)
+	}
+	close(missingDepsChan)
+	printMissingDependencies(missingDependencies)
+	return nil
 }
 
-func (ica *InstallCiArgs) saveDependenciesData() error {
-	log.Debug("Saving data.")
-	if ica.buildConfiguration.GetModule() == "" {
-		ica.buildConfiguration.SetModule(ica.packageInfo.BuildInfoModuleId())
+func createCollectChecksumsFunc(previousBuildDependencies map[string]*buildinfo.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *buildinfo.Dependency) (bool, error) {
+	return func(dependency *buildinfo.Dependency) (bool, error) {
+		splitDepId := strings.SplitN(dependency.Id, ":", 2)
+		name := splitDepId[0]
+		ver := splitDepId[1]
+
+		// Get dependency info.
+		checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager)
+		if err != nil || checksum.IsEmpty() {
+			missingDepsChan <- dependency.Id
+			return false, err
+		}
+
+		// Update dependency.
+		dependency.Type = fileType
+		dependency.Checksum = checksum
+		return true, nil
+	}
+}
+
+func printMissingDependencies(missingDependencies []string) {
+	if len(missingDependencies) == 0 {
+		return
 	}
 
-	dependencies, missingDependencies := ica.transformDependencies()
-	if err := commandUtils.SaveDependenciesData(dependencies, ica.buildConfiguration); err != nil {
-		return err
-	}
-
-	commandUtils.PrintMissingDependencies(missingDependencies)
-	return nil
+	log.Warn(strings.Join(missingDependencies, "\n"), "\nThe npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n"+
+		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
 // Gets a config with value which is an array, and adds it to the conf list
@@ -224,51 +216,6 @@ func addArrayConfigs(conf []string, key, arrayValue string) []string {
 	}
 
 	return conf
-}
-
-func (ica *InstallCiArgs) setDependenciesList() (err error) {
-	ica.dependencies, err = npmutils.CalculateDependenciesList(ica.typeRestriction, ica.npmArgs, ica.executablePath, ica.packageInfo.BuildInfoModuleId())
-	return
-}
-
-// Creates a function that fetches dependency data.
-// If a dependency was included in the previous build, take the checksums information from it.
-// Otherwise, fetch the checksum from Artifactory.
-// Can be applied from a producer-consumer mechanism.
-func (ica *InstallCiArgs) createGetDependencyInfoFunc(servicesManager artifactory.ArtifactoryServicesManager,
-	previousBuildDependencies map[string]*buildinfo.Dependency) getDependencyInfoFunc {
-	return func(dependencyIndex string) parallel.TaskFunc {
-		return func(threadId int) error {
-			name := ica.dependencies[dependencyIndex].Name
-			ver := ica.dependencies[dependencyIndex].Version
-
-			// Get dependency info.
-			checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
-			if err != nil || checksum == nil {
-				return err
-			}
-
-			// Update dependency.
-			ica.dependencies[dependencyIndex].FileType = fileType
-			ica.dependencies[dependencyIndex].Checksum = checksum
-			return nil
-		}
-	}
-}
-
-// Transforms the list of dependencies to buildinfo.Dependencies list and creates a list of dependencies that are missing in Artifactory.
-func (ica *InstallCiArgs) transformDependencies() (dependencies []buildinfo.Dependency, missingDependencies []buildinfo.Dependency) {
-	for _, dependency := range ica.dependencies {
-		biDependency := buildinfo.Dependency{Id: dependency.Name + ":" + dependency.Version, Type: dependency.FileType,
-			Scopes: dependency.Scopes, Checksum: dependency.Checksum, RequestedBy: dependency.PathToRoot}
-		if dependency.Checksum != nil {
-			dependencies = append(dependencies,
-				biDependency)
-		} else {
-			missingDependencies = append(missingDependencies, biDependency)
-		}
-	}
-	return
 }
 
 func removeNpmrcIfExists(workingDirectory string) error {
@@ -302,5 +249,3 @@ func filterFlags(splitArgs []string) []string {
 	}
 	return filteredArgs
 }
-
-type getDependencyInfoFunc func(string) parallel.TaskFunc

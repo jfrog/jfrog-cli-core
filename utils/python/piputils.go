@@ -48,19 +48,38 @@ func venvBinDirByOS() string {
 	return "bin"
 }
 
+func GetVenvPythonExecPath() string {
+	return filepath.Join("venv", venvBinDirByOS(), "python")
+}
+
 // Execute pip install command. "pip install ."
 func RunPipInstall() (err error) {
 	_, err = runPythonCommand(filepath.Join("venv", venvBinDirByOS(), "pip"), []string{"install", "."}, "")
 	return err
 }
 
+// Execute pip install requirements command. "pip install -r requirements.txt"
+func RunPipInstallRequirements(tempDirPath string) (err error) {
+	exist, err := fileutils.IsFileExists(filepath.Join(tempDirPath, " requirements.txt"), false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		_, err = runPythonCommand(filepath.Join("venv", venvBinDirByOS(), "pip"), []string{"install", "-r", "requirements.txt"}, "")
+		if err != nil {
+			return
+		}
+	}
+	return nil
+}
+
 // Executes the pip-dependency-map script and returns a dependency map of all the installed pip packages in the current environment to and another list of the top level dependencies
-func RunPipDepTree() (map[string][]string, []string, error) {
+func RunPipDepTree(pythonExecPath string) (map[string][]string, []string, error) {
 	pipDependencyMapScriptPath, err := GetDepTreeScriptPath()
 	if err != nil {
 		return nil, nil, err
 	}
-	data, err := runPythonCommand(filepath.Join("venv", venvBinDirByOS(), "python"), []string{pipDependencyMapScriptPath, "--json"}, "")
+	data, err := runPythonCommand(pythonExecPath, []string{pipDependencyMapScriptPath, "--json"}, "")
 	if err != nil {
 		return nil, nil, err
 	}

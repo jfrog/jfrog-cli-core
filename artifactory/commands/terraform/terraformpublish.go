@@ -261,11 +261,7 @@ func (ts *TerraformPublishCommand) performTerraformPublishTasks(consumer paralle
 
 func (tp *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, dirPath string) (*services.UploadParams, error) {
 	uploadParams := services.NewUploadParams()
-	target, e := tp.getPublishTarget(moduleName)
-	if e != nil {
-		return nil, e
-	}
-	uploadParams.Target = target
+	uploadParams.Target = tp.getPublishTarget(moduleName)
 	uploadParams.Pattern = dirPath + "/(*)"
 	uploadParams.TargetPathInArchive = "{1}"
 	uploadParams.Archive = "zip"
@@ -277,8 +273,8 @@ func (tp *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, d
 }
 
 // Module's path in terraform repository : namespace/provider/moduleName/tag.zip
-func (tp *TerraformPublishCommand) getPublishTarget(moduleName string) (string, error) {
-	return filepath.ToSlash(filepath.Join(tp.repo, tp.namespace, tp.provider, moduleName, tp.tag+".zip")), nil
+func (tp *TerraformPublishCommand) getPublishTarget(moduleName string) string {
+	return filepath.ToSlash(filepath.Join(tp.repo, tp.namespace, tp.provider, moduleName, tp.tag+".zip"))
 }
 
 // We identify a Terraform module by the existing of a '.tf' file inside the module directory.

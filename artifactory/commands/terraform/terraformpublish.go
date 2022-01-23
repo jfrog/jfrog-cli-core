@@ -240,6 +240,8 @@ func (ts *TerraformPublishCommand) prepareTerraformPublishTasks(producer paralle
 				errorsQueue.AddError(err)
 			}
 			uploadService := services.NewUploadService(serviceManager.Client())
+			uploadService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
+			uploadService.Threads = serviceManager.GetConfig().GetThreads()
 			producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, targetPath, archiveData, errorsQueue), errorsQueue.AddError)
 		}
 	}()

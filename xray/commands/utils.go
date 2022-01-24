@@ -49,7 +49,7 @@ func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params servi
 		// Remove scan type param if Xray version is under minimum supported version
 		params.ScanType = ""
 	}
-	log.Debug("The Xray version is:", xrayVersion)
+	log.Debug("The version of Xray is:", xrayVersion)
 	scanId, err := xrayManager.ScanGraph(params)
 	if err != nil {
 		return nil, err

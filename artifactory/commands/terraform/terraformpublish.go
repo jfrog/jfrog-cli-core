@@ -13,6 +13,7 @@ import (
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"io/fs"
@@ -186,65 +187,96 @@ func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
 func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *clientservicesutils.Result) {
 	go func() {
 		defer producer.Done()
-		toArchive := make(map[string]*services.ArchiveUploadData)
 		pwd, err := os.Getwd()
 		if err != nil {
 			log.Error(err)
 			errorsQueue.AddError(err)
 		}
 		// Walk and upload directories which contain '.tf' files.
-		err = filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			pathInfo, e := os.Lstat(path)
-			if e != nil {
-				return e
-			}
-			// Skip files and check only directories.
-			if !pathInfo.IsDir() {
-				return nil
-			}
-			isTerraformModule, e := checkIfTerraformModule(path)
-			if e != nil {
-				return e
-			}
-			if isTerraformModule {
-				uploadParams := tpc.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
-				dataHandlerFunc := services.GetSaveTaskInContentWriterFunc(toArchive, *uploadParams, errorsQueue)
-				e = services.CollectFilesForUpload(*uploadParams, nil, nil, dataHandlerFunc)
-				if e != nil {
-					return e
-				}
-				// SkipDir will not stop the walk, but will jump to the next directory.
-				return filepath.SkipDir
-			}
-			return nil
-		})
+		err = tpc.walkDirAndUploadTerraformModules(pwd, producer, errorsQueue, uploadSummary)
 		if err != nil && err != io.EOF {
 			log.Error(err)
 			errorsQueue.AddError(err)
 		}
-
-		// Upload modules
-		for targetPath, archiveData := range toArchive {
-			err := archiveData.GetWriter().Close()
-			if err != nil {
-				log.Error(err)
-				errorsQueue.AddError(err)
-			}
-			// Upload module using upload service
-			serviceManager, err := utils.CreateServiceManager(tpc.serverDetails, 0, 0, false)
-			if err != nil {
-				log.Error(err)
-				errorsQueue.AddError(err)
-			}
-			uploadService := services.NewUploadService(serviceManager.Client())
-			uploadService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
-			uploadService.Threads = serviceManager.GetConfig().GetThreads()
-			producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, targetPath, archiveData, errorsQueue), errorsQueue.AddError)
-		}
 	}()
+}
+
+func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *specutils.Result) error {
+	return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		pathInfo, e := os.Lstat(path)
+		if e != nil {
+			return e
+		}
+		// Skip files and check only directories.
+		if !pathInfo.IsDir() {
+			return nil
+		}
+		isTerraformModule, e := checkIfTerraformModule(path)
+		if e != nil {
+			return e
+		}
+		if isTerraformModule {
+			uploadParams := tpc.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
+			archiveData := createTerraformArchiveUploadData(uploadParams, errorsQueue)
+			dataHandlerFunc := GetSaveTaskInContentWriterFunc(archiveData, *uploadParams, errorsQueue)
+			// Collect files that matches uploadParams and write them in archiveData's writer.
+			e = services.CollectFilesForUpload(*uploadParams, nil, nil, dataHandlerFunc)
+			if e != nil {
+				return e
+			}
+			e = archiveData.GetWriter().Close()
+			if e != nil {
+				log.Error(e)
+				errorsQueue.AddError(e)
+			}
+			// In case all files were excluded and no files were written to writer- skip this module.
+			if archiveData.GetWriter().IsEmpty() {
+				return filepath.SkipDir
+			}
+			uploadService := createUploadServiceManager(tpc.serverDetails, errorsQueue)
+			producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, uploadParams.Target, archiveData, errorsQueue), errorsQueue.AddError)
+
+			// SkipDir will not stop the walk, but will jump to the next directory.
+			return filepath.SkipDir
+		}
+		return nil
+	})
+}
+
+func createTerraformArchiveUploadData(uploadParams *services.UploadParams, errorsQueue *clientutils.ErrorsQueue) *services.ArchiveUploadData {
+	archiveData := services.ArchiveUploadData{}
+	var err error
+	archiveData.SetUploadParams(services.DeepCopyUploadParams(uploadParams))
+	//archiveData.SetUploadParams(uploadParams)
+	writer, err := content.NewContentWriter("archive", true, false)
+	if err != nil {
+		log.Error(err)
+		errorsQueue.AddError(err)
+	}
+	archiveData.SetWriter(writer)
+	return &archiveData
+}
+
+func createUploadServiceManager(serverDetails *config.ServerDetails, errorsQueue *clientutils.ErrorsQueue) *services.UploadService {
+	// Upload module using upload service
+	serviceManager, err := utils.CreateServiceManager(serverDetails, 0, 0, false)
+	if err != nil {
+		log.Error(err)
+		errorsQueue.AddError(err)
+	}
+	uploadService := services.NewUploadService(serviceManager.Client())
+	uploadService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
+	uploadService.Threads = serviceManager.GetConfig().GetThreads()
+	return uploadService
+}
+
+func GetSaveTaskInContentWriterFunc(archiveData *services.ArchiveUploadData, uploadParams services.UploadParams, errorsQueue *clientutils.ErrorsQueue) services.UploadDataHandlerFunc {
+	return func(data services.UploadData) {
+		archiveData.GetWriter().Write(data)
+	}
 }
 
 func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *clientservicesutils.Result) (totalUploaded, totalFailed int) {

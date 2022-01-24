@@ -23,6 +23,7 @@ type BuildScanCommand struct {
 	buildConfiguration     *rtutils.BuildConfiguration
 	includeVulnerabilities bool
 	failBuild              bool
+	printExtendedTable     bool
 }
 
 func NewBuildScanCommand() *BuildScanCommand {
@@ -55,6 +56,11 @@ func (bsc *BuildScanCommand) SetIncludeVulnerabilities(include bool) *BuildScanC
 
 func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 	bsc.failBuild = failBuild
+	return bsc
+}
+
+func (bsc *BuildScanCommand) SetPrintExtendedTable(printExtendedTable bool) *BuildScanCommand {
+	bsc.printExtendedTable = printExtendedTable
 	return bsc
 }
 
@@ -121,7 +127,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	}
 	scanResponseArray := []services.ScanResponse{{Violations: buildScanResults.Violations, XrayDataUrl: buildScanResults.MoreDetailsUrl}}
 	fmt.Println("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
-	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false)
+	err = xrutils.PrintScanResults(scanResponseArray, bsc.outputFormat == xrutils.Table, false, false, false, bsc.printExtendedTable)
 	if err != nil {
 		return false, err
 	}
@@ -134,7 +140,7 @@ func (bsc *BuildScanCommand) runBuildSummaryAndPrintResults(xrayManager *xray.Xr
 		return err
 	}
 	scanResponse := services.ScanResponse{Vulnerabilities: convertIssuesToVulnerabilities(summaryResponse.Issues, params)}
-	return xrutils.PrintScanResults([]services.ScanResponse{scanResponse}, bsc.outputFormat == xrutils.Table, true, false, false)
+	return xrutils.PrintScanResults([]services.ScanResponse{scanResponse}, bsc.outputFormat == xrutils.Table, true, false, false, bsc.printExtendedTable)
 }
 
 func convertIssuesToVulnerabilities(issues []services.Issue, params services.XrayBuildParams) []services.Vulnerability {

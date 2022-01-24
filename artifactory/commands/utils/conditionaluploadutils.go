@@ -32,7 +32,7 @@ func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.
 		return nil, nil, err
 	}
 	// Only non pom.xml should be scanned
-	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format)
+	xrScanCmd := xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(binariesSpecFile).SetThreads(threads).SetOutputFormat(format).SetPrintExtendedTable(false)
 	err := xrScanCmd.Run()
 	if err != nil {
 		return nil, nil, err

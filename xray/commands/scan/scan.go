@@ -43,6 +43,7 @@ type ScanCommand struct {
 	includeLicenses        bool
 	scanPassed             bool
 	fail                   bool
+	printExtendedTable     bool
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
@@ -91,6 +92,11 @@ func (scanCmd *ScanCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
 	scanCmd.fail = fail
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetPrintExtendedTable(printExtendedTable bool) *ScanCommand {
+	scanCmd.printExtendedTable = printExtendedTable
 	return scanCmd
 }
 
@@ -164,7 +170,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			}
 		}
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true, scanCmd.printExtendedTable)
 	if err != nil {
 		return err
 	}

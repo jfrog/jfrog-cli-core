@@ -17,6 +17,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,10 +32,13 @@ type TerraformPublishCommandArgs struct {
 }
 
 type TerraformPublishCommand struct {
-	TerraformCommand
 	*TerraformPublishCommandArgs
-	commandName string
-	result      *commandsutils.Result
+	args           []string
+	repo           string
+	configFilePath string
+	serverDetails  *config.ServerDetails
+	commandName    string
+	result         *commandsutils.Result
 }
 
 func NewTerraformPublishCommand() *TerraformPublishCommand {
@@ -45,8 +49,27 @@ func NewTerraformPublishCommandArgs() *TerraformPublishCommandArgs {
 	return &TerraformPublishCommandArgs{}
 }
 
-func (npc *TerraformPublishCommand) ServerDetails() (*config.ServerDetails, error) {
-	return npc.serverDetails, nil
+func (tpc *TerraformPublishCommand) GetArgs() []string {
+	return tpc.args
+}
+
+func (tpc *TerraformPublishCommand) SetArgs(terraformArg []string) *TerraformPublishCommand {
+	tpc.args = terraformArg
+	return tpc
+}
+
+func (tpc *TerraformPublishCommand) SetServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
+	tpc.serverDetails = serverDetails
+	return tpc
+}
+
+func (tpc *TerraformPublishCommand) SetRepo(repo string) *TerraformPublishCommand {
+	tpc.repo = repo
+	return tpc
+}
+
+func (tpc *TerraformPublishCommand) ServerDetails() (*config.ServerDetails, error) {
+	return tpc.serverDetails, nil
 }
 
 func (tpc *TerraformPublishCommand) CommandName() string {
@@ -62,33 +85,13 @@ func (tpc *TerraformPublishCommand) Result() *commandutils.Result {
 	return tpc.result
 }
 
-func (tpc *TerraformPublishCommand) SetNamespace(namespace string) *TerraformPublishCommand {
-	tpc.namespace = namespace
-	return tpc
-}
-
 func (tpc *TerraformPublishCommand) SetModuleName(moduleName string) *TerraformPublishCommand {
 	tpc.moduleName = moduleName
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) SetProvider(provider string) *TerraformPublishCommand {
-	tpc.provider = provider
-	return tpc
-}
-
-func (tpc *TerraformPublishCommand) SetTag(tag string) *TerraformPublishCommand {
-	tpc.tag = tag
-	return tpc
-}
-
-func (tpc *TerraformPublishCommand) SetExclusions(exclusions []string) *TerraformPublishCommand {
-	tpc.exclusions = exclusions
-	return tpc
-}
-
 func (tpc *TerraformPublishCommand) Run() error {
-	log.Info("Running Terraform Publish")
+	log.Info("Running Terraform publish")
 	err := tpc.preparePrerequisites()
 	if err != nil {
 		return err
@@ -102,14 +105,13 @@ func (tpc *TerraformPublishCommand) Run() error {
 }
 
 func (tpc *TerraformPublishCommand) preparePrerequisites() error {
-	namespace, provider, tag, exclusions, err := ExtractTerraformPublishOptionsFromArgs(tpc.args)
+	err := tpc.extractTerraformPublishOptionsFromArgs(tpc.args)
 	if err != nil {
 		return err
 	}
-	if namespace == "" || provider == "" || tag == "" {
+	if tpc.namespace == "" || tpc.provider == "" || tpc.tag == "" {
 		return errorutils.CheckErrorf("Wrong number of arguments. for a terraform publish command please provide --namespace, --provider and --tag.")
 	}
-	tpc.SetNamespace(namespace).SetProvider(provider).SetTag(tag).SetExclusions(exclusions)
 	if err := tpc.setRepoFromConfiguration(); err != nil {
 		return err
 	}
@@ -122,7 +124,7 @@ func (tpc *TerraformPublishCommand) preparePrerequisites() error {
 
 func (tpc *TerraformPublishCommand) publish() error {
 	log.Debug("Deploying terraform module.")
-	success, failed, err := tpc.TerraformPublish()
+	success, failed, err := tpc.terraformPublish()
 	if err != nil {
 		return err
 	}
@@ -131,48 +133,49 @@ func (tpc *TerraformPublishCommand) publish() error {
 	return nil
 }
 
-func ExtractTerraformPublishOptionsFromArgs(args []string) (namespace, provider, tag string, exclusions []string, err error) {
+func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(args []string) (err error) {
 	// Extract namespace information from the args.
-	flagIndex, valueIndex, namespace, err := coreutils.FindFlag("--namespace", args)
+	var flagIndex, valueIndex int
+	flagIndex, valueIndex, tpa.namespace, err = coreutils.FindFlag("--namespace", args)
 	if err != nil {
 		return
 	}
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	// Extract provider information from the args.
-	flagIndex, valueIndex, provider, err = coreutils.FindFlag("--provider", args)
+	flagIndex, valueIndex, tpa.provider, err = coreutils.FindFlag("--provider", args)
 	if err != nil {
 		return
 	}
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	// Extract tag information from the args.
-	flagIndex, valueIndex, tag, err = coreutils.FindFlag("--tag", args)
+	flagIndex, valueIndex, tpa.tag, err = coreutils.FindFlag("--tag", args)
 	if err != nil {
 		return
 	}
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	// Extract exclusions information from the args.
 	flagIndex, valueIndex, exclusionsString, err := coreutils.FindFlag("--exclusions", args)
-	for _, singleValue := range strings.Split(exclusionsString, ";") {
-		exclusions = append(exclusions, singleValue)
-	}
 	if err != nil {
 		return
 	}
+	for _, singleValue := range strings.Split(exclusionsString, ";") {
+		tpa.exclusions = append(tpa.exclusions, singleValue)
+	}
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	if len(args) != 0 {
-		err = errorutils.CheckErrorf("Unknown flag:\"" + strings.Split(args[0], "=")[0] + "\". for a terraform publish command please provide --namespace, --provider and --tag.")
+		err = errorutils.CheckErrorf("Unknown flag:" + strings.Split(args[0], "=")[0] + ". for a terraform publish command please provide --namespace, --provider, --tag and optionally --exclusions.")
 	}
 	return
 }
 
-func (ts *TerraformPublishCommand) TerraformPublish() (int, int, error) {
+func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
 	var e error
 	uploadSummary := clientservicesutils.NewResult(cliutils.Threads)
 	producerConsumer := parallel.NewRunner(cliutils.Threads, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 
-	ts.prepareTerraformPublishTasks(producerConsumer, errorsQueue, uploadSummary)
-	totalUploaded, totalFailed := ts.performTerraformPublishTasks(producerConsumer, uploadSummary)
+	tpc.prepareTerraformPublishTasks(producerConsumer, errorsQueue, uploadSummary)
+	totalUploaded, totalFailed := tpc.performTerraformPublishTasks(producerConsumer, uploadSummary)
 	e = errorsQueue.GetError()
 	if e != nil {
 		return 0, 0, e
@@ -180,7 +183,7 @@ func (ts *TerraformPublishCommand) TerraformPublish() (int, int, error) {
 	return totalUploaded, totalFailed, nil
 }
 
-func (ts *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *clientservicesutils.Result) {
+func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *clientservicesutils.Result) {
 	go func() {
 		defer producer.Done()
 		toArchive := make(map[string]*services.ArchiveUploadData)
@@ -207,10 +210,7 @@ func (ts *TerraformPublishCommand) prepareTerraformPublishTasks(producer paralle
 				return e
 			}
 			if isTerraformModule {
-				uploadParams, e := ts.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
-				if e != nil {
-					return e
-				}
+				uploadParams := tpc.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
 				dataHandlerFunc := services.GetSaveTaskInContentWriterFunc(toArchive, *uploadParams, errorsQueue)
 				e = services.CollectFilesForUpload(*uploadParams, nil, nil, dataHandlerFunc)
 				if e != nil {
@@ -234,7 +234,7 @@ func (ts *TerraformPublishCommand) prepareTerraformPublishTasks(producer paralle
 				errorsQueue.AddError(err)
 			}
 			// Upload module using upload service
-			serviceManager, err := utils.CreateServiceManager(ts.serverDetails, 0, 0, false)
+			serviceManager, err := utils.CreateServiceManager(tpc.serverDetails, 0, 0, false)
 			if err != nil {
 				log.Error(err)
 				errorsQueue.AddError(err)
@@ -247,7 +247,7 @@ func (ts *TerraformPublishCommand) prepareTerraformPublishTasks(producer paralle
 	}()
 }
 
-func (ts *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *clientservicesutils.Result) (totalUploaded, totalFailed int) {
+func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *clientservicesutils.Result) (totalUploaded, totalFailed int) {
 	// Blocking until consuming is finished.
 	consumer.Run()
 	totalUploaded = clientservicesutils.SumIntArray(uploadSummary.SuccessCount)
@@ -261,33 +261,38 @@ func (ts *TerraformPublishCommand) performTerraformPublishTasks(consumer paralle
 	return
 }
 
-func (tp *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, dirPath string) (*services.UploadParams, error) {
+func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, dirPath string) *services.UploadParams {
 	uploadParams := services.NewUploadParams()
-	uploadParams.Target = tp.getPublishTarget(moduleName)
+	uploadParams.Target = tpc.getPublishTarget(moduleName)
 	uploadParams.Pattern = dirPath + "/(*)"
 	uploadParams.TargetPathInArchive = "{1}"
 	uploadParams.Archive = "zip"
 	uploadParams.Recursive = true
 	uploadParams.CommonParams.TargetProps = specutils.NewProperties()
-	uploadParams.CommonParams.Exclusions = append(tp.exclusions, "*.git", "*.DS_Store")
+	uploadParams.CommonParams.Exclusions = append(tpc.exclusions, "*.git", "*.DS_Store")
 
-	return &uploadParams, nil
+	return &uploadParams
 }
 
 // Module's path in terraform repository : namespace/provider/moduleName/tag.zip
-func (tp *TerraformPublishCommand) getPublishTarget(moduleName string) string {
-	return filepath.ToSlash(filepath.Join(tp.repo, tp.namespace, tp.provider, moduleName, tp.tag+".zip"))
+func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) string {
+	return path.Join(tpc.repo, tpc.namespace, tpc.provider, moduleName, tpc.tag+".zip")
 }
 
-// We identify a Terraform module by the existing of a '.tf' file inside the module directory.
-// isTerraformModule search for '.tf' file inside and returns true it founds at least one.
+// We identify a Terraform module by the existence of a file with a ".tf" extension inside the module directory.
+// isTerraformModule search for a file with a ".tf" extension inside and returns true it founds at least one.
 func checkIfTerraformModule(path string) (bool, error) {
 	dirname := path + string(filepath.Separator)
 	d, err := os.Open(dirname)
 	if err != nil {
-		return false, err
+		return false, errorutils.CheckError(err)
 	}
-	defer d.Close()
+	defer func() {
+		err = d.Close()
+		if err == nil {
+			err = errorutils.CheckError(err)
+		}
+	}()
 
 	files, err := d.Readdir(-1)
 	if err != nil {
@@ -301,4 +306,19 @@ func checkIfTerraformModule(path string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (tpc *TerraformPublishCommand) setRepoFromConfiguration() error {
+	// Read config file.
+	log.Debug("Preparing to read the config file", tpc.configFilePath)
+	vConfig, err := utils.ReadConfigFile(tpc.configFilePath, utils.YAML)
+	if err != nil {
+		return err
+	}
+	deployerParams, err := utils.GetRepoConfigByPrefix(tpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	if err != nil {
+		return err
+	}
+	tpc.SetRepo(deployerParams.TargetRepo())
+	return nil
 }

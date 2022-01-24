@@ -36,6 +36,7 @@ type ScanCommand struct {
 	threads       int
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
+	indexerTempDir         string
 	outputFormat           xrutils.OutputFormat
 	projectKey             string
 	watches                []string
@@ -102,7 +103,7 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 	var indexerResults services.GraphNode
 	indexCmd := &coreutils.GeneralExecCmd{
 		ExecPath: scanCmd.indexerPath,
-		Command:  []string{indexingCommand, filePath},
+		Command:  []string{indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir},
 	}
 	output, err := io.RunCmdOutput(indexCmd)
 	if err != nil {
@@ -138,6 +139,17 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	// Create Temp dir for Xray Indexer
+	scanCmd.indexerTempDir, err = fileutils.CreateTempDir()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := fileutils.RemoveTempDir(scanCmd.indexerTempDir)
+		if err == nil {
+			err = e
+		}
+	}()
 	threads := 1
 	if scanCmd.threads > 1 {
 		threads = scanCmd.threads

@@ -1,8 +1,9 @@
 package scan
 
 import (
+	"bytes"
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -54,16 +56,17 @@ func (csc *DockerScanCommand) Run() (err error) {
 	}()
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
-	tarFilePath := filepath.Join(tempDirPath, "image.tar")
-	err = csc.dockerSave(tarFilePath)
+	imageTarPath := filepath.Join(tempDirPath, "image.tar")
+	dockerSaveCmd := exec.Command("docker", "save", csc.imageTag, "-o", imageTarPath)
+	var stderr bytes.Buffer
+	dockerSaveCmd.Stderr = &stderr
+	err = dockerSaveCmd.Run()
 	if err != nil {
-		return errors.New("Failed running docker save command with error: " + err.Error())
+		return errors.New(fmt.Sprintf("Failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String()))
 	}
-	filSpec := spec.NewBuilder().
-		Pattern(tarFilePath).
-		BuildSpec()
-	csc.SetSpec(filSpec).SetThreads(1)
 
+	// Perform scan on image.tar
+	csc.SetSpec(spec.NewBuilder().Pattern(imageTarPath).BuildSpec()).SetThreads(1)
 	err = csc.setCredentialEnvsForIndexerApp()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -74,18 +77,7 @@ func (csc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
-
-	// Perform scan on image.tar
 	return csc.ScanCommand.Run()
-}
-func (csc *DockerScanCommand) dockerSave(tarFilePath string) error {
-	var cmd []string
-	cmd = append(cmd, "save")
-	cmd = append(cmd, csc.imageTag)
-	cmd = append(cmd, "-o")
-	cmd = append(cmd, tarFilePath)
-	saveCmd := exec.Command(container.DockerClient.String(), cmd[:]...)
-	return saveCmd.Run()
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.

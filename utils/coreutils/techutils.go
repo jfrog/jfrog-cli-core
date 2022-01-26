@@ -1,8 +1,9 @@
 package coreutils
 
 import (
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"strings"
+
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 type Technology string
@@ -14,6 +15,8 @@ const (
 	Go     = "go"
 	Pip    = "pip"
 	Pipenv = "pipenv"
+	Nuget  = "nuget"
+	Dotnet = "dotnet"
 )
 
 type TechData struct {
@@ -50,6 +53,14 @@ var technologiesData = map[Technology]TechData{
 		PackageType: "pypi",
 		indicators:  []string{"pipfile", "pipfile.lock"},
 	},
+	Nuget: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
+	Dotnet: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
 }
 
 func GetTechnologyPackageType(techName Technology) string {
@@ -61,6 +72,9 @@ func GetTechnologyPackageType(techName Technology) string {
 	}
 }
 
+// DetectTechnologies tries to detect all technologies types according to the files in the given path.
+// 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.
+// 'recursive' will determine if the search will be limited to files in the root path or not.
 func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]bool, error) {
 	var filesList []string
 	var err error
@@ -74,23 +88,24 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 	}
 	detectedTechnologies := make(map[Technology]bool)
 	for _, file := range filesList {
-		techName := detectTechnologyByFile(strings.ToLower(file), isCiSetup)
-		if techName != "" {
+		techNames := detectTechnologiesByFile(strings.ToLower(file), isCiSetup)
+		for _, techName := range techNames {
 			detectedTechnologies[techName] = true
 		}
 	}
 	return detectedTechnologies, nil
 }
 
-func detectTechnologyByFile(file string, isCiSetup bool) Technology {
+func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
+	detected = []Technology{}
 	for techName, techData := range technologiesData {
 		if isCiSetup == false || (isCiSetup && techData.ciSetupSupport) {
 			for _, indicator := range techData.indicators {
 				if strings.Contains(file, indicator) {
-					return techName
+					detected = append(detected, techName)
 				}
 			}
 		}
 	}
-	return ""
+	return detected
 }

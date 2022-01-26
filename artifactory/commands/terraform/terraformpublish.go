@@ -199,10 +199,14 @@ func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parall
 	}()
 }
 
-//type AddTaskWithErrorFunc func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
-type AddTaskWithErrorFunc func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
+// ProduceTaskFunk Provided as a parameter to 'walkDirAndUploadTerraformModules' function for testing reasons.
+type ProduceTaskFunk func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
 
-func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *specutils.Result, addTaskWithErrorFunc AddTaskWithErrorFunc) error {
+func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
+	return producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, target, archiveData, errorsQueue), errorsQueue.AddError)
+}
+
+func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *specutils.Result, produceTaskFunk ProduceTaskFunk) error {
 	return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -239,22 +243,16 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 				return filepath.SkipDir
 			}
 			uploadService := createUploadServiceManager(tpc.serverDetails, errorsQueue)
-			_, e = addTaskWithErrorFunc(producer, uploadService, uploadSummary, uploadParams.Target, archiveData, errorsQueue)
+			_, e = produceTaskFunk(producer, uploadService, uploadSummary, uploadParams.Target, archiveData, errorsQueue)
 			if e != nil {
-				//log.Error(e)
+				log.Error(e)
 				errorsQueue.AddError(e)
 			}
-			//producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, uploadParams.Target, archiveData, errorsQueue), errorsQueue.AddError)
-
 			// SkipDir will not stop the walk, but will jump to the next directory.
 			return filepath.SkipDir
 		}
 		return nil
 	})
-}
-
-func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
-	return producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, target, archiveData, errorsQueue), errorsQueue.AddError)
 }
 
 func createTerraformArchiveUploadData(uploadParams *services.UploadParams, errorsQueue *clientutils.ErrorsQueue) *services.ArchiveUploadData {

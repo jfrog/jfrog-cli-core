@@ -46,7 +46,7 @@ func TestCheckIfTerraformModule(t *testing.T) {
 type terraformTests struct {
 	name     string
 	path     string
-	testFunc AddTaskWithErrorFunc
+	testFunc ProduceTaskFunk
 }
 
 func TestWalkDirAndUploadTerraformModules(t *testing.T) {
@@ -54,14 +54,16 @@ func TestWalkDirAndUploadTerraformModules(t *testing.T) {
 	tests := []terraformTests{
 		{name: "testEmptyModule", path: filepath.Join(terraformTestDir, "empty"), testFunc: mockEmptyModule},
 		{name: "mockAddTaskWithErrorFunc", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testTerraformModule},
+		{name: "testSpecialChar", path: filepath.Join(terraformTestDir, "terra$+~&^a#"), testFunc: testSpecialChar},
 	}
 	runTerraformTests(t, tests, []string{})
 	// Test exclusions
 	exclusionsTests := []terraformTests{
 		{name: "testExcludeTestDirectory", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testExcludeTestDirectory},
 		{name: "testExcludeTestSubmoduleModule", path: filepath.Join(terraformTestDir, "terraformproject", "test"), testFunc: testExcludeTestSubmoduleModule},
+		{name: "testSpecialChar", path: filepath.Join(terraformTestDir, "terra$+~&^a#"), testFunc: testSpecialCharWithExclusions},
 	}
-	runTerraformTests(t, exclusionsTests, []string{"*test*"})
+	runTerraformTests(t, exclusionsTests, []string{"*test*", "$*"})
 }
 
 func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string) {
@@ -106,6 +108,21 @@ func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *s
 	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
 }
 
+func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	if err != nil {
+		return 0, err
+	}
+	return 0, tests.ValidateListsIdentical([]string{"a.tf", "$+~&^a#.tf"}, paths)
+}
+
+func testSpecialCharWithExclusions(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	if err != nil {
+		return 0, err
+	}
+	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
+}
 func mockAddTaskWithErrorFunc(archiveData *services.ArchiveUploadData) (paths []string, err error) {
 	archiveData.GetWriter().GetFilePath()
 	archiveDataReader := content.NewContentReader(archiveData.GetWriter().GetFilePath(), archiveData.GetWriter().GetArrayKey())

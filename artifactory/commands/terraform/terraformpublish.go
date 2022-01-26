@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientservicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -23,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+const threads = 3
 
 type TerraformPublishCommandArgs struct {
 	namespace  string
@@ -169,9 +170,9 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 }
 
 func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
-	uploadSummary := clientservicesutils.NewResult(cliutils.Threads)
-	producerConsumer := parallel.NewRunner(cliutils.Threads, 20000, false)
-	errorsQueue := clientutils.NewErrorsQueue(1)
+	uploadSummary := clientservicesutils.NewResult(threads)
+	producerConsumer := parallel.NewRunner(3, 20000, false)
+	errorsQueue := clientutils.NewErrorsQueue(threads)
 
 	tpc.prepareTerraformPublishTasks(producerConsumer, errorsQueue, uploadSummary)
 	totalUploaded, totalFailed := tpc.performTerraformPublishTasks(producerConsumer, uploadSummary)

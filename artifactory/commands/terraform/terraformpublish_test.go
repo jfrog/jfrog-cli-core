@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientservicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -70,8 +69,8 @@ func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string
 	terraformPublish := NewTerraformPublishCommand()
 	terraformPublish.SetServerDetails(&config.ServerDetails{})
 	terraformPublish.exclusions = exclusions
-	uploadSummary := clientservicesutils.NewResult(cliutils.Threads)
-	producerConsumer := parallel.NewRunner(cliutils.Threads, 20000, false)
+	uploadSummary := clientservicesutils.NewResult(threads)
+	producerConsumer := parallel.NewRunner(threads, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

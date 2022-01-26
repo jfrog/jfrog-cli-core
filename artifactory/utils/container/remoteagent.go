@@ -86,10 +86,12 @@ func (rabib *remoteAgentbuildInfoBuilder) handleFatManifestImage(results map[str
 
 // Search image manifest or fat-manifest of and image.
 func (rabib *remoteAgentbuildInfoBuilder) searchImage() (resultMap map[string]*utils.ResultItem, path string, err error) {
-	imagePath, err := rabib.buildInfoBuilder.image.GetPath()
+	longimageName, err := rabib.buildInfoBuilder.image.GetImageLongNameWithTag()
 	if err != nil {
 		return nil, "", err
 	}
+	imagePath := strings.Replace(longimageName, ":", "/", 1)
+
 	// Search image's manifest.
 	manifestPathsCandidates := getManifestPaths(imagePath, rabib.buildInfoBuilder.getSearchableRepo(), Push)
 	log.Debug("Start searching for image manifest.json")

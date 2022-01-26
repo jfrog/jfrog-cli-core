@@ -112,22 +112,20 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
+// Remove all the none npm CLI flags from args.
 func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
-	flagIndex, detailedSummary, err := coreutils.FindBooleanFlag("--detailed-summary", args)
+	cleanArgs = append([]string(nil), args...)
+	cleanArgs, detailedSummary, err = coreutils.ExtractDetailedSummaryFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
-	flagIndex, xrayScan, err = coreutils.FindBooleanFlag("--scan", args)
+	cleanArgs, xrayScan, err = coreutils.ExtractXrayScanFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
 
-	flagIndex, valueIndex, format, err := coreutils.FindFlag("--format", args)
+	cleanArgs, format, err := coreutils.ExtractXrayOutputFormatFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
@@ -135,9 +133,7 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
+	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }
 

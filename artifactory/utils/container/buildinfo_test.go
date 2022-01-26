@@ -39,6 +39,6 @@ func TestGetImageWithDigest(t *testing.T) {
 	filePath := filepath.Join("..", "testdata", "container", "imageTagWithDigest")
 	tag, sha256, err := GetImageTagWithDigest(filePath)
 	assert.NoError(t, err)
-	assert.Equal(t, "my-image-tag", tag)
+	assert.Equal(t, "my-image-tag", tag.name)
 	assert.Equal(t, "sha256:12345", sha256)
 }

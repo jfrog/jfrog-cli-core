@@ -1,4 +1,4 @@
-package distribution
+package commands
 
 import (
 	"encoding/json"

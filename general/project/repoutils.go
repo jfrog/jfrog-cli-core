@@ -79,6 +79,18 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		RemoteUrl: PypiRemoteDefaultUrl,
 		Virtual:   PypiVirtualDefaultName,
 	},
+	coreutils.Nuget: {
+		Local:     NugetLocalDefaultName,
+		Remote:    NugetRemoteDefaultName,
+		RemoteUrl: NugetRemoteDefaultUrl,
+		Virtual:   NugetVirtualDefaultName,
+	},
+	coreutils.Dotnet: {
+		Local:     NugetLocalDefaultName,
+		Remote:    NugetRemoteDefaultName,
+		RemoteUrl: NugetRemoteDefaultUrl,
+		Virtual:   NugetVirtualDefaultName,
+	},
 }
 
 func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string) error {
@@ -99,6 +111,18 @@ func CreateDefaultLocalRepo(technologyType coreutils.Technology, serverId string
 	return servicesManager.CreateLocalRepositoryWithParams(params)
 }
 
+func createDefaultRemoteNugetRepo(serverId string, baseParams services.RemoteRepositoryBaseParams) error {
+	servicesManager, err := getServiceManager(serverId)
+	if err != nil {
+		return err
+	}
+	params := services.NewNugetRemoteRepositoryParams()
+	params.RemoteRepositoryBaseParams = baseParams
+	params.DownloadContextPath = "api/v2/package"
+	params.FeedContextPath = "api/v2"
+	return servicesManager.CreateRemoteRepository().Nuget(params)
+}
+
 func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId string) error {
 	servicesManager, err := getServiceManager(serverId)
 	if err != nil {
@@ -114,6 +138,10 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 	}
 	if err != nil {
 		return err
+	}
+	// NuGet specifc case, due to required DownloadContextPath param by Artifactory
+	if technologyType == coreutils.Nuget || technologyType == coreutils.Dotnet {
+		return createDefaultRemoteNugetRepo(serverId, params)
 	}
 	return servicesManager.CreateRemoteRepositoryWithParams(params)
 }

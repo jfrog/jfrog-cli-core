@@ -15,6 +15,8 @@ const (
 	Go     = "go"
 	Pip    = "pip"
 	Pipenv = "pipenv"
+	Nuget  = "nuget"
+	Dotnet = "dotnet"
 )
 
 type TechData struct {
@@ -51,6 +53,14 @@ var technologiesData = map[Technology]TechData{
 		PackageType: "pypi",
 		indicators:  []string{"pipfile", "pipfile.lock"},
 	},
+	Nuget: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
+	Dotnet: {
+		PackageType: "nuget",
+		indicators:  []string{".sln"},
+	},
 }
 
 func GetTechnologyPackageType(techName Technology) string {
@@ -78,23 +88,24 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 	}
 	detectedTechnologies := make(map[Technology]bool)
 	for _, file := range filesList {
-		techName := detectTechnologyByFile(strings.ToLower(file), isCiSetup)
-		if techName != "" {
+		techNames := detectTechnologiesByFile(strings.ToLower(file), isCiSetup)
+		for _, techName := range techNames {
 			detectedTechnologies[techName] = true
 		}
 	}
 	return detectedTechnologies, nil
 }
 
-func detectTechnologyByFile(file string, isCiSetup bool) Technology {
+func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
+	detected = []Technology{}
 	for techName, techData := range technologiesData {
 		if isCiSetup == false || (isCiSetup && techData.ciSetupSupport) {
 			for _, indicator := range techData.indicators {
 				if strings.Contains(file, indicator) {
-					return techName
+					detected = append(detected, techName)
 				}
 			}
 		}
 	}
-	return ""
+	return detected
 }

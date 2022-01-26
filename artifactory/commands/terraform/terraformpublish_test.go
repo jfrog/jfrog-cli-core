@@ -129,13 +129,10 @@ func mockProduceTaskFunk(archiveData *services.ArchiveUploadData) (paths []strin
 	archiveData.GetWriter().GetFilePath()
 	archiveDataReader := content.NewContentReader(archiveData.GetWriter().GetFilePath(), archiveData.GetWriter().GetArrayKey())
 	defer func() {
-		e := archiveDataReader.Close()
-		if e == nil {
-			err = e
-		}
+		err = archiveDataReader.Close()
 	}()
 	for uploadData := new(services.UploadData); archiveDataReader.NextRecord(uploadData) == nil; uploadData = new(services.UploadData) {
 		paths = append(paths, uploadData.Artifact.TargetPathInArchive)
 	}
-	return paths, nil
+	return
 }

@@ -110,7 +110,7 @@ func (tpc *TerraformPublishCommand) preparePrerequisites() error {
 		return err
 	}
 	if tpc.namespace == "" || tpc.provider == "" || tpc.tag == "" {
-		return errorutils.CheckErrorf("Wrong number of arguments. for a terraform publish command please provide --namespace, --provider and --tag.")
+		return errorutils.CheckErrorf("The --namespace, --provider and --tag options are mandatory.")
 	}
 	if err := tpc.setRepoFromConfiguration(); err != nil {
 		return err
@@ -123,7 +123,7 @@ func (tpc *TerraformPublishCommand) preparePrerequisites() error {
 }
 
 func (tpc *TerraformPublishCommand) publish() error {
-	log.Debug("Deploying terraform module.")
+	log.Debug("Deploying terraform module...")
 	success, failed, err := tpc.terraformPublish()
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parall
 	}()
 }
 
-// ProduceTaskFunk Provided as a parameter to 'walkDirAndUploadTerraformModules' function for testing reasons.
+// ProduceTaskFunk is provided as an argument to 'walkDirAndUploadTerraformModules' function for testing purposes.
 type ProduceTaskFunk func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
 
 func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
@@ -213,7 +213,7 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 		}
 		pathInfo, e := os.Lstat(path)
 		if e != nil {
-			return e
+			return errorutils.CheckError(e)
 		}
 		// Skip files and check only directories.
 		if !pathInfo.IsDir() {
@@ -248,7 +248,7 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 				log.Error(e)
 				errorsQueue.AddError(e)
 			}
-			// SkipDir will not stop the walk, but will jump to the next directory.
+			// SkipDir will not stop the walk, but it will make us jump to the next directory.
 			return filepath.SkipDir
 		}
 		return nil
@@ -259,7 +259,6 @@ func createTerraformArchiveUploadData(uploadParams *services.UploadParams, error
 	archiveData := services.ArchiveUploadData{}
 	var err error
 	archiveData.SetUploadParams(services.DeepCopyUploadParams(uploadParams))
-	//archiveData.SetUploadParams(uploadParams)
 	writer, err := content.NewContentWriter("archive", true, false)
 	if err != nil {
 		log.Error(err)
@@ -322,22 +321,22 @@ func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) string {
 
 // We identify a Terraform module by the existence of a file with a ".tf" extension inside the module directory.
 // isTerraformModule search for a file with a ".tf" extension inside and returns true it founds at least one.
-func checkIfTerraformModule(path string) (bool, error) {
+func checkIfTerraformModule(path string) (isModule bool, err error) {
 	dirname := path + string(filepath.Separator)
 	d, err := os.Open(dirname)
 	if err != nil {
 		return false, errorutils.CheckError(err)
 	}
 	defer func() {
-		err = d.Close()
+		e := d.Close()
 		if err == nil {
-			err = errorutils.CheckError(err)
+			err = errorutils.CheckError(e)
 		}
 	}()
 
 	files, err := d.Readdir(-1)
 	if err != nil {
-		return false, err
+		return false, errorutils.CheckError(err)
 	}
 	for _, file := range files {
 		if file.Mode().IsRegular() {

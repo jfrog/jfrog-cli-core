@@ -1,4 +1,4 @@
-package distribution
+package commands
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"

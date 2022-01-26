@@ -53,7 +53,7 @@ func TestWalkDirAndUploadTerraformModules(t *testing.T) {
 	terraformTestDir := filepath.Join("..", "testdata", "terraform")
 	tests := []terraformTests{
 		{name: "testEmptyModule", path: filepath.Join(terraformTestDir, "empty"), testFunc: mockEmptyModule},
-		{name: "mockAddTaskWithErrorFunc", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testTerraformModule},
+		{name: "mockProduceTaskFunk", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testTerraformModule},
 		{name: "testSpecialChar", path: filepath.Join(terraformTestDir, "terra$+~&^a#"), testFunc: testSpecialChar},
 	}
 	runTerraformTests(t, tests, []string{})
@@ -71,7 +71,7 @@ func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string
 	terraformPublish.SetServerDetails(&config.ServerDetails{})
 	terraformPublish.exclusions = exclusions
 	uploadSummary := clientservicesutils.NewResult(cliutils.Threads)
-	producerConsumer := newTestRunner()
+	producerConsumer := parallel.NewRunner(cliutils.Threads, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -80,12 +80,13 @@ func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string
 		})
 	}
 }
+
 func mockEmptyModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, _ *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	return 0, errors.New("Failed: testing empty directory. this function shouldn't be called. ")
 }
 
 func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
 	}
@@ -93,7 +94,7 @@ func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *specut
 }
 
 func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
 	}
@@ -101,7 +102,7 @@ func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService
 }
 
 func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
 	}
@@ -109,7 +110,7 @@ func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *s
 }
 
 func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
 	}
@@ -117,13 +118,14 @@ func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *specutils.
 }
 
 func testSpecialCharWithExclusions(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockAddTaskWithErrorFunc(archiveData)
+	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
 	}
 	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
 }
-func mockAddTaskWithErrorFunc(archiveData *services.ArchiveUploadData) (paths []string, err error) {
+
+func mockProduceTaskFunk(archiveData *services.ArchiveUploadData) (paths []string, err error) {
 	archiveData.GetWriter().GetFilePath()
 	archiveDataReader := content.NewContentReader(archiveData.GetWriter().GetFilePath(), archiveData.GetWriter().GetArrayKey())
 	defer func() {
@@ -136,36 +138,4 @@ func mockAddTaskWithErrorFunc(archiveData *services.ArchiveUploadData) (paths []
 		paths = append(paths, uploadData.Artifact.TargetPathInArchive)
 	}
 	return paths, nil
-}
-
-type testRunner struct {
-	archivesData *[]*services.ArchiveUploadData
-}
-
-func newTestRunner() *testRunner {
-	return &testRunner{archivesData: &[]*services.ArchiveUploadData{}}
-}
-
-func (tr *testRunner) AddTask(tf parallel.TaskFunc) (int, error) {
-	return 0, nil
-}
-
-func (tr *testRunner) AddTaskWithError(tf parallel.TaskFunc, ef parallel.OnErrorFunc) (int, error) {
-	return 0, nil
-}
-
-func (tr *testRunner) Run() {
-
-}
-
-func (tr *testRunner) Done() {
-
-}
-
-func (tr *testRunner) Cancel() {
-
-}
-
-func (tr *testRunner) Errors() map[int]error {
-	return nil
 }

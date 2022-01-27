@@ -283,6 +283,7 @@ func collectPatternMatchingFiles(addDepsParams *specutils.CommonParams, rootPath
 func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []buildinfo.Dependency) error {
 	log.Debug("Saving", strconv.Itoa(len(dependencies)), "dependencies.")
 	populateFunc := func(partial *buildinfo.Partial) {
+		partial.ModuleType = buildinfo.Generic
 		partial.Dependencies = dependencies
 	}
 	buildName, err := badc.buildConfiguration.GetBuildName()

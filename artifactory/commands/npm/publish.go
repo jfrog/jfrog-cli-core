@@ -20,7 +20,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -278,14 +277,16 @@ func (npc *NpmPublishCommand) publish() error {
 		return err
 	}
 	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
-	// If requested, perform an Xray binary scan before deployment.
+
+	// If requested, perform a Xray binary scan before deployment. If a FailBuildError is returned, skip the deployment.
 	if npc.xrayScan {
-		pass, err := npc.scan(npc.packedFilePath, npc.repo+"/", npc.serverDetails)
+		fileSpec := spec.NewBuilder().
+			Pattern(npc.packedFilePath).
+			Target(npc.repo + "/").
+			BuildSpec()
+		err := commandsutils.ConditionalUploadScanFunc(npc.serverDetails, fileSpec, 1, npc.scanOutputFormat)
 		if err != nil {
 			return err
-		}
-		if !pass {
-			return errorutils.CheckErrorf("Violations were found by Xray. No artifacts will be published.")
 		}
 	}
 	return npc.doDeploy(target, npc.serverDetails)
@@ -347,17 +348,6 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
-}
-
-func (npc *NpmPublishCommand) scan(file, target string, serverDetails *config.ServerDetails) (bool, error) {
-	filSpec := spec.NewBuilder().
-		Pattern(file).
-		Target(target).
-		BuildSpec()
-	xrScanCmd := scan.NewScanCommand().SetServerDetails(serverDetails).SetSpec(filSpec).SetThreads(1).SetOutputFormat(npc.scanOutputFormat)
-	err := xrScanCmd.Run()
-
-	return xrScanCmd.IsScanPassed(), err
 }
 
 func (npc *NpmPublishCommand) saveArtifactData() error {

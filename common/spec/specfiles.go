@@ -155,7 +155,7 @@ func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	return params, nil
 }
 
-func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload bool) error {
+func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error {
 	if len(files) == 0 {
 		return errors.New("Spec must include at least one file group")
 	}
@@ -182,6 +182,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		isRegexp := file.Regexp == "true"
 		isAnt := file.Ant == "true"
 		isExplode, _ := file.IsExplode(false)
+		isTransitive, _ := file.IsTransitive(false)
 
 		if isTargetMandatory && !isTarget {
 			return errors.New("Spec must include target.")
@@ -192,25 +193,26 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		if isBuild && isBundle {
 			return fileSpecValidationError("build", "bundle")
 		}
-		if isSearchBasedSpec {
-			if !isAql && !isPattern && !isBuild && !isBundle {
-				return errors.New("Spec must include either aql, pattern, build or bundle.")
+		if isSearchBasedSpec && !isAql && !isPattern && !isBuild && !isBundle {
+			return errors.New("Spec must include either aql, pattern, build or bundle.")
+		}
+		if isOffset {
+			if isBuild {
+				return fileSpecValidationError("build", "offset")
 			}
-			if isOffset {
-				if isBuild {
-					return fileSpecValidationError("build", "offset")
-				}
-				if isBundle {
-					return fileSpecValidationError("bundle", "offset")
-				}
+			if isBundle {
+				return fileSpecValidationError("bundle", "offset")
 			}
-			if isLimit {
-				if isBuild {
-					return fileSpecValidationError("build", "limit")
-				}
-				if isBundle {
-					return fileSpecValidationError("bundle", "limit")
-				}
+		}
+		if isTransitive && isOffset {
+			return fileSpecValidationError("transitive", "offset")
+		}
+		if isLimit {
+			if isBuild {
+				return fileSpecValidationError("build", "limit")
+			}
+			if isBundle {
+				return fileSpecValidationError("bundle", "limit")
 			}
 		}
 		if isAql && isPattern {
@@ -227,6 +229,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 		}
 		if isSortOrder && !isValidSortOrder {
 			return errors.New("The value of 'sort-order' can only be 'asc' or 'desc'.")
+		}
+		if isTransitive && isSortBy {
+			return fileSpecValidationError("transitive", "sort-by")
 		}
 		if !isBuild && (isExcludeArtifacts || isIncludeDeps) {
 			return errors.New("Spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included.")
@@ -248,5 +253,5 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec, isUpload b
 }
 
 func fileSpecValidationError(fieldA, fieldB string) error {
-	return errors.New(fmt.Sprintf("Spec cannot include both '%s' and '%s.'", fieldA, fieldB))
+	return errors.New(fmt.Sprintf("Spec cannot include both '%s' and '%s'.", fieldA, fieldB))
 }

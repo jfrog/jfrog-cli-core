@@ -193,28 +193,26 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		if isBuild && isBundle {
 			return fileSpecValidationError("build", "bundle")
 		}
-		if isSearchBasedSpec {
-			if !isAql && !isPattern && !isBuild && !isBundle {
-				return errors.New("Spec must include either aql, pattern, build or bundle.")
+		if isSearchBasedSpec && !isAql && !isPattern && !isBuild && !isBundle {
+			return errors.New("Spec must include either aql, pattern, build or bundle.")
+		}
+		if isOffset {
+			if isBuild {
+				return fileSpecValidationError("build", "offset")
 			}
-			if isOffset {
-				if isBuild {
-					return fileSpecValidationError("build", "offset")
-				}
-				if isBundle {
-					return fileSpecValidationError("bundle", "offset")
-				}
+			if isBundle {
+				return fileSpecValidationError("bundle", "offset")
 			}
-			if isTransitive && isOffset {
-				return fileSpecValidationError("transitive", "offset")
+		}
+		if isTransitive && isOffset {
+			return fileSpecValidationError("transitive", "offset")
+		}
+		if isLimit {
+			if isBuild {
+				return fileSpecValidationError("build", "limit")
 			}
-			if isLimit {
-				if isBuild {
-					return fileSpecValidationError("build", "limit")
-				}
-				if isBundle {
-					return fileSpecValidationError("bundle", "limit")
-				}
+			if isBundle {
+				return fileSpecValidationError("bundle", "limit")
 			}
 		}
 		if isAql && isPattern {

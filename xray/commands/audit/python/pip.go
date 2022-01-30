@@ -2,6 +2,7 @@ package python
 
 import (
 	"os"
+	"path/filepath"
 
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
@@ -90,13 +91,16 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	// 'pip install .'
 	err = piputils.RunPipInstall()
 	if err != nil {
-		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
-		e := piputils.RunPipInstallRequirements(tempDirPath)
-		if e != nil {
-			log.Error(e)
+		exist, requirementsErr := fileutils.IsFileExists(filepath.Join(tempDirPath, "requirements.txt"), false)
+		if requirementsErr != nil || !exist {
 			return
-		} else {
-			err = nil
+		}
+
+		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
+		requirementsErr = piputils.RunPipInstallRequirements()
+		if requirementsErr != nil {
+			log.Error(requirementsErr)
+			return
 		}
 	}
 

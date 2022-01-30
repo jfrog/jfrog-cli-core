@@ -1,12 +1,15 @@
 package tests
 
 import (
+	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -93,4 +96,26 @@ func CreateTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
 	return tempDirPath, func() {
 		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
 	}
+}
+
+func ValidateListsIdentical(expected, actual []string) error {
+	if len(actual) != len(expected) {
+		return errors.New(fmt.Sprintf("Unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", ")))
+	}
+	err := compare(expected, actual)
+	return err
+}
+
+func compare(expected, actual []string) error {
+	for _, v := range expected {
+		for i, r := range actual {
+			if v == r {
+				break
+			}
+			if i == len(actual)-1 {
+				return errors.New("Missing file : " + v)
+			}
+		}
+	}
+	return nil
 }

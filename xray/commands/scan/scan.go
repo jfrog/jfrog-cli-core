@@ -42,7 +42,6 @@ type ScanCommand struct {
 	watches                []string
 	includeVulnerabilities bool
 	includeLicenses        bool
-	scanPassed             bool
 	fail                   bool
 }
 
@@ -93,10 +92,6 @@ func (scanCmd *ScanCommand) ServerDetails() (*config.ServerDetails, error) {
 func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
 	scanCmd.fail = fail
 	return scanCmd
-}
-
-func (scanCmd *ScanCommand) IsScanPassed() bool {
-	return scanCmd.scanPassed
 }
 
 func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
@@ -165,15 +160,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer)
 
 	// Handle results
-	scanCmd.scanPassed = true
 	flatResults := []services.ScanResponse{}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			flatResults = append(flatResults, *res)
-			if len(res.Violations) > 0 || len(res.Vulnerabilities) > 0 {
-				// A violation or vulnerability was found, the scan failed.
-				scanCmd.scanPassed = false
-			}
 		}
 	}
 	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
@@ -287,7 +277,7 @@ func collectFilesForIndexing(fileData spec.File, dataHandlerFunc indexFileHandle
 
 	fileData.Pattern = clientutils.ReplaceTildeWithUserHome(fileData.Pattern)
 	patternType := fileData.GetPatternType()
-	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, patternType, false)
+	rootPath, err := fspatterns.GetRootPath(fileData.Pattern, fileData.Target, "", patternType, false)
 	if err != nil {
 		return err
 	}

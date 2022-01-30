@@ -17,7 +17,7 @@ type ConditionalUploadScanFuncType func(serverDetails *config.ServerDetails, fil
 var ConditionalUploadScanFunc ConditionalUploadScanFuncType = conditionalUploadDefaultScanFunc
 
 // ScanDeployableArtifacts scans all files founds in the given parsed deployableArtifacts results.
-// If the scan passes, the method returns two file-spec ready for upload, the first one contains all the binaries
+// If the scan passes, the function returns two file-specs ready for upload. The first one contains all the binaries
 // and the second all the "pom.xml"s.
 // If one of the file's scan failed both of the return values will be nil.
 func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format xrutils.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {

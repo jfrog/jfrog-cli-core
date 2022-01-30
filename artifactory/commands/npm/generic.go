@@ -12,37 +12,37 @@ import (
 	"os"
 )
 
-type NativeCommandArgs struct {
+type GenericCommandArgs struct {
 	CommonArgs
 }
 
-// NativeCommand represents any npm command which is not "install", "ci" or "publish".
-type NativeCommand struct {
+// GenericCommand represents any npm command which is not "install", "ci" or "publish".
+type GenericCommand struct {
 	configFilePath string
-	*NativeCommandArgs
+	*GenericCommandArgs
 }
 
-func NewNpmNativeCommand(cmdName string) *NativeCommand {
-	return &NativeCommand{
-		NativeCommandArgs: &NativeCommandArgs{CommonArgs: CommonArgs{cmdName: cmdName}},
+func NewNpmGenericCommand(cmdName string) *GenericCommand {
+	return &GenericCommand{
+		GenericCommandArgs: &GenericCommandArgs{CommonArgs: CommonArgs{cmdName: cmdName}},
 	}
 }
 
-func (nnc *NativeCommand) CommandName() string {
-	return "rt_npm_native"
+func (nnc *GenericCommand) CommandName() string {
+	return "rt_npm_generic"
 }
 
-func (nnc *NativeCommand) SetConfigFilePath(configFilePath string) *NativeCommand {
+func (nnc *GenericCommand) SetConfigFilePath(configFilePath string) *GenericCommand {
 	nnc.configFilePath = configFilePath
 	return nnc
 }
 
-func (nnc *NativeCommand) SetServerDetails(serverDetails *config.ServerDetails) *NativeCommand {
+func (nnc *GenericCommand) SetServerDetails(serverDetails *config.ServerDetails) *GenericCommand {
 	nnc.serverDetails = serverDetails
 	return nnc
 }
 
-func (nnc *NativeCommand) Init() error {
+func (nnc *GenericCommand) Init() error {
 	// Filter out JFrog CLI's specific flags.
 	_, _, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(nnc.npmArgs)
 	if err != nil {
@@ -57,7 +57,7 @@ func (nnc *NativeCommand) Init() error {
 	return nil
 }
 
-func (nnc *NativeCommand) Run() error {
+func (nnc *GenericCommand) Run() error {
 	if err := nnc.preparePrerequisites(nnc.repo); err != nil {
 		return err
 	}
@@ -66,14 +66,14 @@ func (nnc *NativeCommand) Run() error {
 		return nnc.restoreNpmrcAndError(err)
 	}
 
-	if err := nnc.runNpmNativeCommand(); err != nil {
+	if err := nnc.runNpmGenericCommand(); err != nil {
 		return nnc.restoreNpmrcAndError(err)
 	}
 
 	return nnc.restoreNpmrcFunc()
 }
 
-func (nnc *NativeCommand) setServerDetailsAndRepo() error {
+func (nnc *GenericCommand) setServerDetailsAndRepo() error {
 	// Read config file.
 	log.Debug("Preparing to read the config file", nnc.configFilePath)
 	vConfig, err := utils.ReadConfigFile(nnc.configFilePath, utils.YAML)
@@ -100,11 +100,11 @@ func (nnc *NativeCommand) setServerDetailsAndRepo() error {
 	return nil
 }
 
-func (nca *NativeCommandArgs) ServerDetails() (*config.ServerDetails, error) {
+func (nca *GenericCommandArgs) ServerDetails() (*config.ServerDetails, error) {
 	return nca.serverDetails, nil
 }
 
-func (nca *NativeCommandArgs) runNpmNativeCommand() error {
+func (nca *GenericCommandArgs) runNpmGenericCommand() error {
 	log.Debug(fmt.Sprintf("Running npm %s command.", nca.cmdName))
 	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nca.executablePath,

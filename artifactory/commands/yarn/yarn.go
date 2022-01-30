@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	biutils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	biutils "github.com/jfrog/build-info-go/build/utils"
+	"github.com/jfrog/gofrog/version"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 

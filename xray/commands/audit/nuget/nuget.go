@@ -3,6 +3,7 @@ package nuget
 import (
 	"os"
 
+	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/solution"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -25,26 +26,23 @@ func NewAuditNugetCommand(auditCmd audit.AuditCommand) *AuditNugetCommand {
 }
 
 func (anc *AuditNugetCommand) Run() error {
-	dependencyTree, err := anc.buildNugetDependencyTree()
+	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	return anc.ScanDependencyTree(dependencyTree)
-}
-
-func (anc *AuditNugetCommand) buildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
 	sol, err := solution.Load(wd, "")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	buildInfo, err := sol.BuildInfo("")
 	if err != nil {
-		return nil, err
+		return err
 	}
+	dependencyTree := buildNugetDependencyTree(buildInfo)
+	return anc.ScanDependencyTree(dependencyTree)
+}
+
+func buildNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for _, module := range buildInfo.Modules {
 		for _, dependency := range module.Dependencies {
@@ -58,7 +56,6 @@ func (anc *AuditNugetCommand) buildNugetDependencyTree() (nodes []*services.Grap
 		}
 		nodes = append(nodes, audit.BuildXrayDependencyTree(treeMap, nugetPackageTypeIdentifier+module.Id))
 	}
-
 	return
 }
 

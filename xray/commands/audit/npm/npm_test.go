@@ -7,12 +7,13 @@ import (
 
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestParseNpmDependenciesList(t *testing.T) {
-	dependenciesJson, err := ioutil.ReadFile("../../testdata/dependencies.json")
+	dependenciesJson, err := ioutil.ReadFile("../../testdata/npm/dependencies.json")
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,30 +67,9 @@ func TestParseNpmDependenciesList(t *testing.T) {
 
 	xrayDependenciesTree := parseNpmDependenciesList(dependencies, packageInfo)
 
-	equals := compareTree(expectedTree, xrayDependenciesTree)
+	equals := tests.CompareTree(expectedTree, xrayDependenciesTree)
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 	}
 
-}
-
-func compareTree(a, b *services.GraphNode) bool {
-	if a.Id != b.Id {
-		return false
-	}
-	// Make sure all children are equal, when order doesn't matter
-	for _, nodeA := range a.Nodes {
-		found := false
-		for _, nodeB := range b.Nodes {
-			if compareTree(nodeA, nodeB) {
-				found = true
-				break
-			}
-		}
-		// After iterating over all B's nodes, non match nodeA so the tree aren't equals.
-		if !found {
-			return false
-		}
-	}
-	return true
 }

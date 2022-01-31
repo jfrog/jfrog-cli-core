@@ -82,6 +82,9 @@ func (auditCmd *AuditCommand) SetFail(fail bool) *AuditCommand {
 }
 
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
+	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
+		return errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
+	}
 	var results []services.ScanResponse
 	params := auditCmd.createXrayGraphScanParams()
 	// Get Xray version

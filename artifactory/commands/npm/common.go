@@ -2,8 +2,13 @@ package npm
 
 import (
 	"bufio"
+	"io/ioutil"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/build-info-go/build"
-	biutils "github.com/jfrog/build-info-go/utils"
+	biutils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/gofrog/version"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -12,10 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 type CommonArgs struct {

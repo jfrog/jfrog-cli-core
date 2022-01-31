@@ -2,10 +2,11 @@ package npm
 
 import (
 	"encoding/json"
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	biutils "github.com/jfrog/build-info-go/utils"
 	"io/ioutil"
 	"testing"
+
+	biutils "github.com/jfrog/build-info-go/build/utils"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )

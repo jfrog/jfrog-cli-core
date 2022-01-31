@@ -193,7 +193,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 
 	// Get server id
 	if cc.interactive && cc.serverId == "" {
-		ioutils.ScanFromConsole("Server ID", &cc.serverId, cc.defaultDetails.ServerId)
+		ioutils.ScanFromConsole("Choose a server ID", &cc.serverId, cc.defaultDetails.ServerId)
 	}
 	cc.details.ServerId = cc.resolveServerId()
 

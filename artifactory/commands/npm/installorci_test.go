@@ -1,11 +1,12 @@
 package npm
 
 import (
-	biutils "github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	biutils "github.com/jfrog/build-info-go/build/utils"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,6 +57,7 @@ func (csc *DockerScanCommand) Run() (err error) {
 	}()
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
+	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
 	dockerSaveCmd := exec.Command("docker", "save", csc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer

@@ -104,7 +104,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
 	if err != nil {
-		return "", err
+		return "", errorutils.CheckError(err)
 	}
 	indexerVersion, err := getIndexerVersion(indexerPath)
 	if err != nil {

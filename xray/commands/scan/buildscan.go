@@ -113,10 +113,10 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	}}
 
 	if bsc.outputFormat == xrutils.Json {
-		// Print one json file for scan response (both violations and vulnerabilities(if needed))
+		// Print the violations and/or vulnerabilities as part of one JSON.
 		err = xrutils.PrintScanResults(scanResponse, false, false, false, false)
 	} else {
-		// Print two different tables for violations and vulnerabilities(if needed)
+		// Print two different tables for violations and vulnerabilities (if needed)
 
 		// If "No Xray Fail build policy...." error received, no need to print violations
 		if !noFailBuildPolicy {

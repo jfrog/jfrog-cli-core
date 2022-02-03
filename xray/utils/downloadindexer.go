@@ -103,7 +103,9 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	// Add execution permissions to the indexer
 	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
-
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
 	indexerVersion, err := getIndexerVersion(indexerPath)
 	if err != nil {
 		return "", err

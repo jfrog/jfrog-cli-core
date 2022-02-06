@@ -7,9 +7,12 @@ import (
 	"testing"
 
 	biutils "github.com/jfrog/build-info-go/build/utils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/stretchr/testify/assert"
 )
+
+const authToken = "YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"
 
 func TestPrepareConfigData(t *testing.T) {
 	currentDir, err := os.Getwd()
@@ -37,9 +40,9 @@ func TestPrepareConfigData(t *testing.T) {
 			"email=ddd@dd.dd",
 			"cache-lock-retries=10",
 			"registry = http://goodRegistry",
-			"_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}
+		}
 
-	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"}}
+	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken}}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
@@ -57,6 +60,10 @@ func TestPrepareConfigData(t *testing.T) {
 			t.Errorf("The expected config: %s is missing from the actual configuration list:\n %s", eConfig, actualConfigArray)
 		}
 	}
+
+	// Assert that NPM_CONFIG__AUTH environment variable was set
+	assert.Equal(t, authToken, os.Getenv(npmConfigAuthEnv))
+	testsutils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
 }
 
 func TestPrepareConfigDataTypeRestriction(t *testing.T) {

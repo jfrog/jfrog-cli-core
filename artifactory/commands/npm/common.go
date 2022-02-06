@@ -166,13 +166,6 @@ func (com *CommonArgs) setTypeRestriction(key string, value string) {
 	}
 }
 
-func (com *CommonArgs) restoreNpmrcAndError(err error) error {
-	if restoreErr := com.restoreNpmrcFunc(); restoreErr != nil {
-		return errorutils.CheckErrorf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())
-	}
-	return err
-}
-
 // This func transforms "npm config list" result to key=val list of values that can be set to .npmrc file.
 // it filters out any nil value key, changes registry and scope registries to Artifactory url and adds Artifactory authentication to the list
 func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {

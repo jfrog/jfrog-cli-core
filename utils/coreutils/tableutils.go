@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Controls the max col width when printing to a non-terminal. See the PrintTable description for more info.
 var DefaultMaxColWidth = 25
 
 // PrintTable prints a slice of rows in a table.

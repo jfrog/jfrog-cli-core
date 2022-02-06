@@ -53,7 +53,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 		return
 	}
 
-	log.Info("JFrog Xray Indexer is not cached locally. Downloading it now...")
+	log.Info("JFrog Xray Indexer " + xrayVersionStr + " is not cached locally. Downloading it now...")
 	indexerPath, err = downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
 	return
 }
@@ -103,11 +103,14 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	// Add execution permissions to the indexer
 	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
-
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
 	indexerVersion, err := getIndexerVersion(indexerPath)
 	if err != nil {
 		return "", err
 	}
+	log.Info("The downloaded Xray Indexer version is " + indexerVersion)
 	newDirPath := filepath.Join(indexerDirPath, indexerVersion)
 
 	// In case of a hot upgrade of Xray in progress, the version of the downloaded indexer might be different from the Xray version we got above,

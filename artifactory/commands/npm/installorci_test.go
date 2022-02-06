@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	biutils "github.com/jfrog/build-info-go/utils"
+	biutils "github.com/jfrog/build-info-go/build/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/stretchr/testify/assert"

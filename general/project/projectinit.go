@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -115,17 +116,27 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 				"jf go build\n" +
 					"jf go-publish v1.0.0\n"
 		case coreutils.Pip:
-			message +=
-				"jf pip install\n" +
-					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pip package") +
-					"\n"
+			fallthrough
 		case coreutils.Pipenv:
 			message +=
-				"jf pipenv install\n" +
+				"jf " + string(tech) + "install\n" +
 					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your pipenv package") +
+					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
 					"\n"
+		case coreutils.Nuget:
+			// The NuGet case is already covered in the dotent case.
+			break
+		case coreutils.Dotnet:
+			executableName := coreutils.Nuget
+			_, errNotFound := exec.LookPath("dotnet")
+			if errNotFound == nil {
+				// dotnet exists in path, So use it in the instruction message.
+				executableName = coreutils.Dotnet
+			}
+			message +=
+				"jf" + string(executableName) + "restore\n" +
+					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
+
 		}
 	}
 	if message != "" {
@@ -211,20 +222,15 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		configFile.Resolver.SnapshotRepo = MavenVirtualDefaultName
 		configFile.Deployer.ReleaseRepo = MavenVirtualDefaultName
 		configFile.Deployer.SnapshotRepo = MavenVirtualDefaultName
-	case coreutils.Gradle:
-		configFile.Resolver.Repo = GradleVirtualDefaultName
-		configFile.Deployer.Repo = GradleVirtualDefaultName
-	case coreutils.Npm:
-		configFile.Resolver.Repo = NpmVirtualDefaultName
-		configFile.Deployer.Repo = NpmVirtualDefaultName
-	case coreutils.Go:
-		configFile.Resolver.Repo = GoVirtualDefaultName
-		configFile.Deployer.Repo = GoVirtualDefaultName
-	case coreutils.Pipenv:
+	case coreutils.Dotnet:
 		fallthrough
-	case coreutils.Pip:
-		configFile.Resolver.Repo = PypiVirtualDefaultName
-		configFile.Deployer.Repo = PypiVirtualDefaultName
+	case coreutils.Nuget:
+		configFile.Resolver.NugetV2 = true
+		fallthrough
+	default:
+		configFile.Resolver.Repo = RepoDefaultName[tech][Virtual]
+		configFile.Deployer.Repo = RepoDefaultName[tech][Virtual]
+
 	}
 	resBytes, err := yaml.Marshal(&configFile)
 	if err != nil {

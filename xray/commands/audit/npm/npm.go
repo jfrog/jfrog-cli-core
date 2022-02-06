@@ -1,8 +1,8 @@
 package npm
 
 import (
+	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -65,20 +65,7 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 			treeMap[parent] = []string{dependencyId}
 		}
 	}
-	return buildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
-}
-
-func buildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
-	// Initialize the new node
-	xrDependencyTree := &services.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*services.GraphNode{}
-	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[nodeId] {
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, dependency))
-
-	}
-	return xrDependencyTree
+	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
 func (auditCmd *AuditNpmCommand) CommandName() string {

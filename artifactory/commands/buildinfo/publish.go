@@ -120,7 +120,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
 	}
-	if err != nil {
+	if err != nil || bpc.config.DryRun {
 		return err
 	}
 
@@ -128,13 +128,8 @@ func (bpc *BuildPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	log.Info("Build info successfully deployed.")
-	log.Info("Browse it in Artifactory under " + buildLink)
-
-	if !bpc.config.DryRun {
-		return build.Clean()
-	}
-	return nil
+	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
+	return build.Clean()
 }
 
 func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {

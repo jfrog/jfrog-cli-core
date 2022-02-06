@@ -1,0 +1,194 @@
+{
+ "modules": [
+  {
+   "type": "nuget",
+   "id": "MsbuildExample",
+   "dependencies": [
+    {
+     "id": "popper.js:1.14.0",
+     "requestedBy": [
+      [
+       "bootstrap:4.1.1",
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "d5d19f07320da701533fa3312ff9a1ab19226a58",
+     "md5": "ab6c0c4a4115189ec0f98365aa6d5f24"
+    },
+    {
+     "id": "bootstrap:4.1.1",
+     "requestedBy": [
+      [
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "b7ed3361060a0340f320775fd1683bbd99c69a9e",
+     "md5": "0985d5cbfe518b73d0c2c6e1d88f3383"
+    },
+    {
+     "id": "jQuery:3.0.0",
+     "requestedBy": [
+      [
+       "bootstrap:4.1.1",
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "9e33e5144cf5bf44209bf69eb7afd7055be4d084",
+     "md5": "396cfda081aa84129e4a250c4011c183"
+    },
+    {
+     "id": "Microsoft.Bcl:1.1.10",
+     "requestedBy": [
+      [
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "70eee9600a89d2056280636105a385a0f4573737",
+     "md5": "ff7048162a09a686a1515922e28cf75e"
+    },
+    {
+     "id": "Microsoft.Bcl.Build:1.0.14",
+     "requestedBy": [
+      [
+       "Microsoft.Bcl:1.1.10",
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildExample"
+      ],
+      [
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "b8f2886356d67b2010bf3e5b31980270cba8a501",
+     "md5": "4589a330c8ca38a950280c276d566ee1"
+    },
+    {
+     "id": "Microsoft.Net.Http:2.2.29",
+     "requestedBy": [
+      [
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "b4064674a5e08b9cdb8d5fa91b6574c22fe86894",
+     "md5": "6addd47c57094b7d67d5ebc0bf0b1a6f"
+    },
+    {
+     "id": "Newtonsoft.Json:11.0.2",
+     "requestedBy": [
+      [
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "5703f14d06c5de46adc5b4699af3a4dacbb84956",
+     "md5": "cceef905d79cd7cd5d8e22ea68fe7fb6"
+    },
+    {
+     "id": "NUnit:3.10.1",
+     "requestedBy": [
+      [
+       "MsbuildExample"
+      ]
+     ],
+     "sha1": "3023720a81a788cae5996b171be3b352b6e73b26",
+     "md5": "2060d814f22b1b640952674a4870c89a"
+    }
+   ]
+  },
+  {
+   "type": "nuget",
+   "id": "MsbuildLibrary",
+   "dependencies": [
+    {
+     "id": "Microsoft.Bcl.Build:1.0.14",
+     "requestedBy": [
+      [
+       "Microsoft.Bcl:1.1.10",
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildLibrary"
+      ],
+      [
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "b8f2886356d67b2010bf3e5b31980270cba8a501",
+     "md5": "4589a330c8ca38a950280c276d566ee1"
+    },
+    {
+     "id": "Microsoft.Net.Http:2.2.29",
+     "requestedBy": [
+      [
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "b4064674a5e08b9cdb8d5fa91b6574c22fe86894",
+     "md5": "6addd47c57094b7d67d5ebc0bf0b1a6f"
+    },
+    {
+     "id": "Newtonsoft.Json:11.0.2",
+     "requestedBy": [
+      [
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "5703f14d06c5de46adc5b4699af3a4dacbb84956",
+     "md5": "cceef905d79cd7cd5d8e22ea68fe7fb6"
+    },
+    {
+     "id": "NUnit:3.10.1",
+     "requestedBy": [
+      [
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "3023720a81a788cae5996b171be3b352b6e73b26",
+     "md5": "2060d814f22b1b640952674a4870c89a"
+    },
+    {
+     "id": "popper.js:1.14.0",
+     "requestedBy": [
+      [
+       "bootstrap:4.1.1",
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "d5d19f07320da701533fa3312ff9a1ab19226a58",
+     "md5": "ab6c0c4a4115189ec0f98365aa6d5f24"
+    },
+    {
+     "id": "bootstrap:4.1.1",
+     "requestedBy": [
+      [
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "b7ed3361060a0340f320775fd1683bbd99c69a9e",
+     "md5": "0985d5cbfe518b73d0c2c6e1d88f3383"
+    },
+    {
+     "id": "jQuery:3.0.0",
+     "requestedBy": [
+      [
+       "bootstrap:4.1.1",
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "9e33e5144cf5bf44209bf69eb7afd7055be4d084",
+     "md5": "396cfda081aa84129e4a250c4011c183"
+    },
+    {
+     "id": "Microsoft.Bcl:1.1.10",
+     "requestedBy": [
+      [
+       "Microsoft.Net.Http:2.2.29",
+       "MsbuildLibrary"
+      ]
+     ],
+     "sha1": "70eee9600a89d2056280636105a385a0f4573737",
+     "md5": "ff7048162a09a686a1515922e28cf75e"
+    }
+   ]
+  }
+ ]
+}

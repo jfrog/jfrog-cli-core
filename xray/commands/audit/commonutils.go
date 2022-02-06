@@ -2,9 +2,15 @@ package audit
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,10 +20,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 type AuditCommand struct {
@@ -86,6 +88,9 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 }
 
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
+	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
+		return errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
+	}
 	var results []services.ScanResponse
 	params := auditCmd.createXrayGraphScanParams()
 	// Get Xray version
@@ -170,4 +175,17 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 		}
 	}
 	return nil
+}
+
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
+	// Initialize the new node
+	xrDependencyTree := &services.GraphNode{}
+	xrDependencyTree.Id = nodeId
+	xrDependencyTree.Nodes = []*services.GraphNode{}
+	// Recursively create & append all node's dependencies.
+	for _, dependency := range treeHelper[nodeId] {
+		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, BuildXrayDependencyTree(treeHelper, dependency))
+
+	}
+	return xrDependencyTree
 }

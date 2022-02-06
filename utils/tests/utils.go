@@ -1,13 +1,18 @@
 package tests
 
 import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 // Prepare the .git environment for the test. Takes an existing folder and making it .git dir.
@@ -93,4 +98,48 @@ func CreateTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
 	return tempDirPath, func() {
 		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
 	}
+}
+
+func ValidateListsIdentical(expected, actual []string) error {
+	if len(actual) != len(expected) {
+		return errors.New(fmt.Sprintf("Unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", ")))
+	}
+	err := compare(expected, actual)
+	return err
+}
+
+func compare(expected, actual []string) error {
+	for _, v := range expected {
+		for i, r := range actual {
+			if v == r {
+				break
+			}
+			if i == len(actual)-1 {
+				return errors.New("Missing file : " + v)
+			}
+		}
+	}
+	return nil
+}
+
+// CompareTree returns true iff the two trees contain the same nodes (regardless of their order)
+func CompareTree(a, b *services.GraphNode) bool {
+	if a.Id != b.Id {
+		return false
+	}
+	// Make sure all children are equal, when order doesn't matter
+	for _, nodeA := range a.Nodes {
+		found := false
+		for _, nodeB := range b.Nodes {
+			if CompareTree(nodeA, nodeB) {
+				found = true
+				break
+			}
+		}
+		// After iterating over all B's nodes, non match nodeA so the tree aren't equals.
+		if !found {
+			return false
+		}
+	}
+	return true
 }

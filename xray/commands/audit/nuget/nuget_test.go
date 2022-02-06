@@ -7,32 +7,26 @@ import (
 
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestBuildNugetDependencyTree(t *testing.T) {
 	dependenciesJson, err := ioutil.ReadFile("../../testdata/nuget/dependencies.json")
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	var dependencies *entities.BuildInfo
 	err = json.Unmarshal(dependenciesJson, &dependencies)
-	if err != nil {
-		t.Error(err)
-	}
-
+	assert.NoError(t, err)
 	xrayDependenciesTree := buildNugetDependencyTree(dependencies)
 
 	expectedTreeJson, err := ioutil.ReadFile("../../testdata/nuget/expectedTree.json")
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	var expectedTrees *[]services.GraphNode
 	err = json.Unmarshal(expectedTreeJson, &expectedTrees)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	for i, expectedTree := range *expectedTrees {
 		equals := tests.CompareTree(&expectedTree, xrayDependenciesTree[i])
@@ -40,5 +34,4 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 			t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree[i].Nodes)
 		}
 	}
-
 }

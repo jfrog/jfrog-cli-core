@@ -8,20 +8,19 @@ import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestParseNpmDependenciesList(t *testing.T) {
 	dependenciesJson, err := ioutil.ReadFile("../../testdata/npm/dependencies.json")
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	var dependencies []buildinfo.Dependency
 	err = json.Unmarshal(dependenciesJson, &dependencies)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	packageInfo := &biutils.PackageInfo{Name: "root", Version: "0.0.0"}
 	expectedTree := &services.GraphNode{
 		Id: "npm://root:0.0.0",

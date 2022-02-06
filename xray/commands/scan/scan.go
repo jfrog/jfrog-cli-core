@@ -219,7 +219,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
-			log.Info(logMsgPrefix+"Indexing file:", filePath)
+			log.Info(logMsgPrefix+"Indexing file:", filePath+"...")
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err

@@ -109,3 +109,16 @@ func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technolog
 	}
 	return detected
 }
+
+// DetectTechnologiesToString returns a string that includes all the names of the detected technologies separated by a comma.
+func DetectedTechnologiesToString(detected map[Technology]bool) string {
+	detectedTechnologiesString := ""
+	for tech := range detected {
+		detectedTechnologiesString += string(tech) + ", "
+	}
+	if detectedTechnologiesString != "" {
+		detectedTechnologiesString = strings.Trim(detectedTechnologiesString, ", ")
+		detectedTechnologiesString += "."
+	}
+	return detectedTechnologiesString
+}

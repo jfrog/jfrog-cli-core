@@ -1,0 +1,92 @@
+[
+ {
+  "component_id": "nuget://MsbuildExample",
+  "nodes": [
+   {
+    "component_id": "nuget://bootstrap:4.1.1",
+    "nodes": [
+     {
+      "component_id": "nuget://popper.js:1.14.0"
+     },
+     {
+      "component_id": "nuget://jQuery:3.0.0"
+     }
+    ]
+   },
+   {
+    "component_id": "nuget://Microsoft.Net.Http:2.2.29",
+    "nodes": [
+     {
+      "component_id": "nuget://Microsoft.Bcl:1.1.10",
+      "nodes": [
+       {
+        "component_id": "nuget://Microsoft.Bcl.Build:1.0.14"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "component_id": "nuget://Newtonsoft.Json:11.0.2"
+   },
+   {
+    "component_id": "nuget://NUnit:3.10.1"
+   }
+  ]
+ },
+ {
+  "component_id": "nuget://MsbuildLibrary",
+  "nodes": [
+   {
+    "component_id": "nuget://Microsoft.Net.Http:2.2.29",
+    "nodes": [
+     {
+      "component_id": "nuget://Microsoft.Bcl:1.1.10",
+      "nodes": [
+       {
+        "component_id": "nuget://Microsoft.Bcl.Build:1.0.14"
+       },
+       {
+        "component_id": "nuget://Microsoft.Bcl.Build:1.0.14"
+       }
+      ]
+     },
+     {
+      "component_id": "nuget://Microsoft.Bcl:1.1.10",
+      "nodes": [
+       {
+        "component_id": "nuget://Microsoft.Bcl.Build:1.0.14"
+       },
+       {
+        "component_id": "nuget://Microsoft.Bcl.Build:1.0.14"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "component_id": "nuget://Newtonsoft.Json:11.0.2"
+   },
+   {
+    "component_id": "nuget://NUnit:3.10.1"
+   },
+   {
+    "component_id": "nuget://bootstrap:4.1.1",
+    "nodes": [
+     {
+      "component_id": "nuget://popper.js:1.14.0"
+     },
+     {
+      "component_id": "nuget://jQuery:3.0.0"
+     },
+     {
+      "component_id": "nuget://popper.js:1.14.0"
+     },
+     {
+      "component_id": "nuget://jQuery:3.0.0"
+     }
+    ]
+   }
+  ]
+ }
+]

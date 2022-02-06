@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-var MarginFromEdges = 20
 var DefaultMaxColWidth = 25
 
 // PrintTable prints a slice of rows in a table.
@@ -178,11 +177,11 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 
 	// If terminal, calculate the max width.
 	if IsTerminal() {
-		termWidth, err := getTerminalAllowedWidth()
+		colNum := len(columnConfigs)
+		termWidth, err := getTerminalAllowedWidth(colNum)
 		if err != nil {
 			return err
 		}
-		colNum := len(columnConfigs)
 		colMaxWidth = int(math.Floor(float64(termWidth) / float64(colNum)))
 	}
 
@@ -201,10 +200,15 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 	return nil
 }
 
-func getTerminalAllowedWidth() (int, error) {
+func getTerminalAllowedWidth(colNum int) (int, error) {
 	width, _, err := terminal.GetSize(int(os.Stdout.Fd()))
-	// Subtracting from width to avoid the terminal edges and include table edges.
-	return width - MarginFromEdges, err
+	if err != nil {
+		return 0, err
+	}
+	// Subtract the table's grid chars (3 chars between every two columns and 1 char at both edges of the table).
+	subtraction := (colNum-1)*3 + 2
+	width = width - subtraction
+	return width, nil
 }
 
 func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {

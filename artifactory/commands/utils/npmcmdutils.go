@@ -121,7 +121,7 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 // Get dependency's checksum and type.
-func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
+func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
 	servicesManager artifactory.ArtifactoryServicesManager) (checksum buildinfo.Checksum, fileType string, err error) {
 	id := name + ":" + ver
 	if dep, ok := previousBuildDependencies[id]; ok {
@@ -166,6 +166,35 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 
 	checksum = buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
 	return
+}
+
+func CreateCollectChecksumsFunc(previousBuildDependencies map[string]*buildinfo.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *buildinfo.Dependency) (bool, error) {
+	return func(dependency *buildinfo.Dependency) (bool, error) {
+		splitDepId := strings.SplitN(dependency.Id, ":", 2)
+		name := splitDepId[0]
+		ver := splitDepId[1]
+
+		// Get dependency info.
+		checksum, fileType, err := getDependencyInfo(name, ver, previousBuildDependencies, servicesManager)
+		if err != nil || checksum.IsEmpty() {
+			missingDepsChan <- dependency.Id
+			return false, err
+		}
+
+		// Update dependency.
+		dependency.Type = fileType
+		dependency.Checksum = checksum
+		return true, nil
+	}
+}
+
+func PrintMissingDependencies(missingDependencies []string) {
+	if len(missingDependencies) == 0 {
+		return
+	}
+
+	log.Warn(strings.Join(missingDependencies, "\n"), "\nThe npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n"+
+		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
 type aqlResult struct {

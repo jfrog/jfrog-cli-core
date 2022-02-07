@@ -208,8 +208,7 @@ func getTerminalAllowedWidth(colNum int) (int, error) {
 	}
 	// Subtract the table's grid chars (3 chars between every two columns and 1 char at both edges of the table).
 	subtraction := (colNum-1)*3 + 2
-	width = width - subtraction
-	return width, nil
+	return width - subtraction, nil
 }
 
 func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {

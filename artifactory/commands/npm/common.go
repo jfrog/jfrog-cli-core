@@ -3,6 +3,7 @@ package npm
 import (
 	"bufio"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,6 +18,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+)
+
+const (
+	npmConfigAuthEnv = "NPM_CONFIG__AUTH"
 )
 
 type CommonArgs struct {
@@ -95,8 +100,7 @@ func (com *CommonArgs) preparePrerequisites(repo string) error {
 		}
 	}
 
-	com.restoreNpmrcFunc, err = commandUtils.BackupFile(filepath.Join(com.workingDirectory, npmrcFileName), filepath.Join(com.workingDirectory, npmrcBackupFileName))
-	return err
+	return com.setRestoreNpmrcFunc()
 }
 
 func (com *CommonArgs) setJsonOutput() error {
@@ -162,18 +166,11 @@ func (com *CommonArgs) setTypeRestriction(key string, value string) {
 	}
 }
 
-func (com *CommonArgs) restoreNpmrcAndError(err error) error {
-	if restoreErr := com.restoreNpmrcFunc(); restoreErr != nil {
-		return errorutils.CheckErrorf("Two errors occurred:\n %s\n %s", restoreErr.Error(), err.Error())
-	}
-	return err
-}
-
 // This func transforms "npm config list" result to key=val list of values that can be set to .npmrc file.
 // it filters out any nil value key, changes registry and scope registries to Artifactory url and adds Artifactory authentication to the list
 func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 	var filteredConf []string
-	configString := string(data)
+	configString := string(data) + "\n" + com.npmAuth
 	scanner := bufio.NewScanner(strings.NewReader(configString))
 
 	for scanner.Scan() {
@@ -183,7 +180,12 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 			key := strings.TrimSpace(splitOption[0])
 			if len(splitOption) == 2 && isValidKey(key) {
 				value := strings.TrimSpace(splitOption[1])
-				if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+				if key == "_auth" {
+					// Set "NPM_CONFIG__AUTH" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+					if err := os.Setenv(npmConfigAuthEnv, value); err != nil {
+						return nil, errorutils.CheckError(err)
+					}
+				} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 					filteredConf = addArrayConfigs(filteredConf, key, value)
 				} else {
 					filteredConf = append(filteredConf, currOption, "\n")
@@ -201,6 +203,19 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 
 	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(com.jsonOutput), "\n")
 	filteredConf = append(filteredConf, "registry = ", com.registry, "\n")
-	filteredConf = append(filteredConf, com.npmAuth)
 	return []byte(strings.Join(filteredConf, "")), nil
+}
+
+func (com *CommonArgs) setRestoreNpmrcFunc() error {
+	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(com.workingDirectory, npmrcFileName), filepath.Join(com.workingDirectory, npmrcBackupFileName))
+	if err != nil {
+		return err
+	}
+	com.restoreNpmrcFunc = func() error {
+		if unsetEnvErr := os.Unsetenv(npmConfigAuthEnv); unsetEnvErr != nil {
+			log.Warn("Couldn't unset", npmConfigAuthEnv)
+		}
+		return restoreNpmrcFunc()
+	}
+	return err
 }

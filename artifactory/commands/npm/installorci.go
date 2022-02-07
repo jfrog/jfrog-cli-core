@@ -86,34 +86,32 @@ func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error)
 	return nic.serverDetails, nil
 }
 
-func (nic *NpmInstallOrCiCommand) Run() error {
-	if err := nic.preparePrerequisites(nic.repo); err != nil {
-		return err
+func (nic *NpmInstallOrCiCommand) Run() (err error) {
+	if err = nic.preparePrerequisites(nic.repo); err != nil {
+		return
 	}
-
-	if err := nic.createTempNpmrc(); err != nil {
-		return nic.restoreNpmrcAndError(err)
+	defer func() {
+		e := nic.restoreNpmrcFunc()
+		if err == nil {
+			err = e
+		}
+	}()
+	if err = nic.createTempNpmrc(); err != nil {
+		return
 	}
-
-	if err := nic.runInstallOrCi(); err != nil {
-		return nic.restoreNpmrcAndError(err)
-	}
-
-	if err := nic.restoreNpmrcFunc(); err != nil {
-		return err
+	if err = nic.runInstallOrCi(); err != nil {
+		return
 	}
 
 	if !nic.collectBuildInfo {
 		log.Info(fmt.Sprintf("npm %s finished successfully.", nic.cmdName))
-		return nil
+		return
 	}
-
-	if err := nic.collectDependencies(); err != nil {
-		return err
+	if err = nic.collectDependencies(); err != nil {
+		return
 	}
-
 	log.Info(fmt.Sprintf("npm %s finished successfully.", nic.cmdName))
-	return nil
+	return
 }
 
 func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {

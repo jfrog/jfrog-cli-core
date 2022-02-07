@@ -15,7 +15,8 @@ import (
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
-func PrintViolationsTable(violations []services.Violation, multipleRoots bool) error {
+// Set printExtended to true to print fields with 'extended' tag.
+func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
 	var securityViolationsRows []vulnerabilityRow
 	var licenseViolationsRows []licenseViolationRow
 
@@ -74,17 +75,18 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots bool) e
 	})
 
 	// Print tables
-	err := coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found")
+	err := coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found", printExtended)
 	if err != nil {
 		return err
 	}
-	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found")
+	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
 // Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) error {
+// Set printExtended to true to print fields with 'extended' tag.
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
 	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
 		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
 		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
@@ -125,14 +127,15 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		return vulnerabilitiesRows[i].fixedVersions != "" && vulnerabilitiesRows[j].fixedVersions == ""
 	})
 
-	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found")
+	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found", printExtended)
 	return err
 }
 
 // PrintLicensesTable prints the licenses in a table.
 // Set multipleRoots to true in case the given licenses array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
-func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
+// Set printExtended to true to print fields with 'extended' tag.
+func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {
 	var licensesRows []licenseRow
 
 	for _, license := range licenses {
@@ -153,7 +156,7 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 		}
 	}
 
-	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found")
+	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found", printExtended)
 	return err
 }
 
@@ -161,19 +164,19 @@ func PrintLicensesTable(licenses []services.License, multipleRoots bool) error {
 type vulnerabilityRow struct {
 	severity               string         `col-name:"Severity"`
 	severityNumValue       int            // For sorting
-	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
+	impactedPackageName    string         `col-name:"Impacted\nPackage"`
 	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
-	fixedVersions          string         `col-name:"Fixed Versions"`
+	fixedVersions          string         `col-name:"Fixed\nVersions"`
 	components             []componentRow `embed-table:"true"`
 	cves                   []cveRow       `embed-table:"true"`
-	issueId                string         `col-name:"Issue ID"`
+	issueId                string         `col-name:"Issue ID" extended:"true"`
 }
 
 type licenseRow struct {
 	licenseKey             string         `col-name:"License"`
-	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
-	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageName    string         `col-name:"Impacted\nPackage"`
+	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
 	components             []componentRow `embed-table:"true"`
 }
@@ -182,21 +185,21 @@ type licenseViolationRow struct {
 	licenseKey             string         `col-name:"License"`
 	severity               string         `col-name:"Severity"`
 	severityNumValue       int            // For sorting
-	impactedPackageName    string         `col-name:"Impacted Package" col-max-width:"25"`
-	impactedPackageVersion string         `col-name:"Impacted Package\nVersion"`
+	impactedPackageName    string         `col-name:"Impacted\nPackage"`
+	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
 	components             []componentRow `embed-table:"true"`
 }
 
 type componentRow struct {
-	name    string `col-name:"Component" col-max-width:"25"`
+	name    string `col-name:"Component"`
 	version string `col-name:"Component\nVersion"`
 }
 
 type cveRow struct {
 	id     string `col-name:"CVE"`
-	cvssV2 string `col-name:"CVSS\nv2"`
-	cvssV3 string `col-name:"CVSS\nv3"`
+	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
+	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
 
 func convertCves(cves []services.Cve) []cveRow {

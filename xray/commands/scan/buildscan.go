@@ -22,6 +22,7 @@ type BuildScanCommand struct {
 	buildConfiguration     *rtutils.BuildConfiguration
 	includeVulnerabilities bool
 	failBuild              bool
+	printExtendedTable     bool
 }
 
 func NewBuildScanCommand() *BuildScanCommand {
@@ -54,6 +55,11 @@ func (bsc *BuildScanCommand) SetIncludeVulnerabilities(include bool) *BuildScanC
 
 func (bsc *BuildScanCommand) SetFailBuild(failBuild bool) *BuildScanCommand {
 	bsc.failBuild = failBuild
+	return bsc
+}
+
+func (bsc *BuildScanCommand) SetPrintExtendedTable(printExtendedTable bool) *BuildScanCommand {
+	bsc.printExtendedTable = printExtendedTable
 	return bsc
 }
 
@@ -114,19 +120,19 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 
 	if bsc.outputFormat == xrutils.Json {
 		// Print the violations and/or vulnerabilities as part of one JSON.
-		err = xrutils.PrintScanResults(scanResponse, false, false, false, false)
+		err = xrutils.PrintScanResults(scanResponse, false, false, false, false, bsc.printExtendedTable)
 	} else {
 		// Print two different tables for violations and vulnerabilities (if needed)
 
 		// If "No Xray Fail build policy...." error received, no need to print violations
 		if !noFailBuildPolicy {
-			err = xrutils.PrintScanResults(scanResponse, true, false, false, false)
+			err = xrutils.PrintScanResults(scanResponse, true, false, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}
 		}
 		if bsc.includeVulnerabilities {
-			err = xrutils.PrintScanResults(scanResponse, true, true, false, false)
+			err = xrutils.PrintScanResults(scanResponse, true, true, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}

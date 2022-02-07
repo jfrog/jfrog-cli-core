@@ -69,7 +69,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 	}
 
 	fmt.Println()
-	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap))
+	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap), false)
 	fmt.Println()
 
 	return

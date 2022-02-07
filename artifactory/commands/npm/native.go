@@ -57,20 +57,21 @@ func (nnc *NativeCommand) Init() error {
 	return nil
 }
 
-func (nnc *NativeCommand) Run() error {
-	if err := nnc.preparePrerequisites(nnc.repo); err != nil {
-		return err
+func (nnc *NativeCommand) Run() (err error) {
+	if err = nnc.preparePrerequisites(nnc.repo); err != nil {
+		return
 	}
-
-	if err := nnc.createTempNpmrc(); err != nil {
-		return nnc.restoreNpmrcAndError(err)
+	defer func() {
+		e := nnc.restoreNpmrcFunc()
+		if err == nil {
+			err = e
+		}
+	}()
+	if err = nnc.createTempNpmrc(); err != nil {
+		return
 	}
-
-	if err := nnc.runNpmNativeCommand(); err != nil {
-		return nnc.restoreNpmrcAndError(err)
-	}
-
-	return nnc.restoreNpmrcFunc()
+	err = nnc.runNpmNativeCommand()
+	return
 }
 
 func (nnc *NativeCommand) setServerDetailsAndRepo() error {

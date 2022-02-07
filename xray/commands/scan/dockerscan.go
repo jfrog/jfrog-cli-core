@@ -56,7 +56,10 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}()
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
-	dsc.progress.SetHeadlineMsg("Creating image archive")
+	if dsc.progress != nil {
+		dsc.progress.SetHeadlineMsg("Creating image archive")
+	}
+	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
 	dockerSaveCmd := exec.Command("docker", "save", dsc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer

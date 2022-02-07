@@ -44,6 +44,7 @@ type ScanCommand struct {
 	includeVulnerabilities bool
 	includeLicenses        bool
 	fail                   bool
+	printExtendedTable     bool
 	progress               ioUtils.ProgressMgr
 }
 
@@ -100,6 +101,11 @@ func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
 	return scanCmd
 }
 
+func (scanCmd *ScanCommand) SetPrintExtendedTable(printExtendedTable bool) *ScanCommand {
+	scanCmd.printExtendedTable = printExtendedTable
+	return scanCmd
+}
+
 func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
 	var indexerResults services.GraphNode
 	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
@@ -117,16 +123,13 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 		}
 		return nil, errorutils.CheckErrorf("Xray indexer app failed indexing %s with %s: %s", filePath, err, stderr.String())
 	}
-	log.Info()
+	log.Info(stderr.String())
 	err = json.Unmarshal(stdout.Bytes(), &indexerResults)
 	return &indexerResults, errorutils.CheckError(err)
 }
 
 func (scanCmd *ScanCommand) Run() (err error) {
 	defer func() {
-		if scanCmd.progress != nil {
-			scanCmd.progress.Quit()
-		}
 		if err != nil {
 			err = errors.New("Scan command failed. " + err.Error())
 		}

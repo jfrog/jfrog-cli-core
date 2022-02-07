@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -252,7 +253,7 @@ func parseProjectLine(projectLine, path string) (projectName, projFilePath strin
 	projectName = removeQuotes(projectInfo[0])
 	// In case we are running on a non-Windows OS, the solution root path and the relative path to proj file might used different path separators.
 	// We want to make sure we will get a valid path after we join both parts, so we will replace the proj separators.
-	if utils.IsWindows() {
+	if coreutils.IsWindows() {
 		projectInfo[1] = ioutils.UnixToWinPathSeparator(projectInfo[1])
 	} else {
 		projectInfo[1] = ioutils.WinToUnixPathSeparator(projectInfo[1])

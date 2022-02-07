@@ -129,16 +129,13 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 	var err error
 	nic.collectBuildInfo, err = nic.buildConfiguration.IsCollectBuildInfo()
-	if err != nil {
+	if err != nil || !nic.collectBuildInfo {
 		return err
-	}
-	if !nic.collectBuildInfo {
-		return nil
 	}
 
 	// Build-info should not be created when installing a single package (npm install <package name>).
 	if len(nic.filteredArgs) > 0 {
-		log.Warn("Build-info dependencies collection is not supported for installations of single packages. Build-info creation will be skipped.")
+		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
 		nic.collectBuildInfo = false
 		return nil
 	}

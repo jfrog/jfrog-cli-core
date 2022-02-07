@@ -28,55 +28,56 @@ func NewNpmGenericCommand(cmdName string) *GenericCommand {
 	}
 }
 
-func (nnc *GenericCommand) CommandName() string {
+func (gc *GenericCommand) CommandName() string {
 	return "rt_npm_generic"
 }
 
-func (nnc *GenericCommand) SetConfigFilePath(configFilePath string) *GenericCommand {
-	nnc.configFilePath = configFilePath
-	return nnc
+func (gc *GenericCommand) SetConfigFilePath(configFilePath string) *GenericCommand {
+	gc.configFilePath = configFilePath
+	return gc
 }
 
-func (nnc *GenericCommand) SetServerDetails(serverDetails *config.ServerDetails) *GenericCommand {
-	nnc.serverDetails = serverDetails
-	return nnc
+func (gc *GenericCommand) SetServerDetails(serverDetails *config.ServerDetails) *GenericCommand {
+	gc.serverDetails = serverDetails
+	return gc
 }
 
-func (nnc *GenericCommand) Init() error {
+func (gc *GenericCommand) Init() error {
 	// Filter out JFrog CLI's specific flags.
-	_, _, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(nnc.npmArgs)
+	_, _, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(gc.npmArgs)
 	if err != nil {
 		return err
 	}
 
-	err = nnc.setServerDetailsAndRepo()
+	err = gc.setServerDetailsAndRepo()
 	if err != nil {
 		return err
 	}
-	nnc.SetNpmArgs(filteredCmd).SetBuildConfiguration(&utils.BuildConfiguration{})
+	gc.SetNpmArgs(filteredCmd).SetBuildConfiguration(&utils.BuildConfiguration{})
 	return nil
 }
 
-func (nnc *GenericCommand) Run() error {
-	if err := nnc.preparePrerequisites(nnc.repo); err != nil {
-		return err
+func (gc *GenericCommand) Run() (err error) {
+	if err = gc.preparePrerequisites(gc.repo); err != nil {
+		return
 	}
-
-	if err := nnc.createTempNpmrc(); err != nil {
-		return nnc.restoreNpmrcAndError(err)
+	defer func() {
+		e := gc.restoreNpmrcFunc()
+		if err == nil {
+			err = e
+		}
+	}()
+	if err = gc.createTempNpmrc(); err != nil {
+		return
 	}
-
-	if err := nnc.runNpmGenericCommand(); err != nil {
-		return nnc.restoreNpmrcAndError(err)
-	}
-
-	return nnc.restoreNpmrcFunc()
+	err = gc.runNpmGenericCommand()
+	return
 }
 
-func (nnc *GenericCommand) setServerDetailsAndRepo() error {
+func (gc *GenericCommand) setServerDetailsAndRepo() error {
 	// Read config file.
-	log.Debug("Preparing to read the config file", nnc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(nnc.configFilePath, utils.YAML)
+	log.Debug("Preparing to read the config file", gc.configFilePath)
+	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
 	if err != nil {
 		return err
 	}
@@ -84,7 +85,7 @@ func (nnc *GenericCommand) setServerDetailsAndRepo() error {
 	// Set server details if exists, with priority to deployer.
 	for _, prefix := range []string{utils.ProjectConfigDeployerPrefix, utils.ProjectConfigResolverPrefix} {
 		if vConfig.IsSet(prefix) {
-			params, err := utils.GetRepoConfigByPrefix(nnc.configFilePath, prefix, vConfig)
+			params, err := utils.GetRepoConfigByPrefix(gc.configFilePath, prefix, vConfig)
 			if err != nil {
 				return err
 			}
@@ -92,23 +93,23 @@ func (nnc *GenericCommand) setServerDetailsAndRepo() error {
 			if err != nil {
 				return errorutils.CheckError(err)
 			}
-			nnc.SetServerDetails(rtDetails)
-			nnc.repo = params.TargetRepo()
+			gc.SetServerDetails(rtDetails)
+			gc.repo = params.TargetRepo()
 			return nil
 		}
 	}
 	return nil
 }
 
-func (nca *GenericCommandArgs) ServerDetails() (*config.ServerDetails, error) {
-	return nca.serverDetails, nil
+func (gca *GenericCommandArgs) ServerDetails() (*config.ServerDetails, error) {
+	return gca.serverDetails, nil
 }
 
-func (nca *GenericCommandArgs) runNpmGenericCommand() error {
-	log.Debug(fmt.Sprintf("Running npm %s command.", nca.cmdName))
+func (gca *GenericCommandArgs) runNpmGenericCommand() error {
+	log.Debug(fmt.Sprintf("Running npm %s command.", gca.cmdName))
 	npmCmdConfig := &npmutils.NpmConfig{
-		Npm:          nca.executablePath,
-		Command:      nca.npmArgs,
+		Npm:          gca.executablePath,
+		Command:      gca.npmArgs,
 		CommandFlags: nil,
 		StrWriter:    nil,
 		ErrWriter:    nil,

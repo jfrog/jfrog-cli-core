@@ -31,6 +31,7 @@ type AuditCommand struct {
 	includeVulnerabilities bool
 	includeLicenses        bool
 	fail                   bool
+	printExtendedTable     bool
 }
 
 func NewAuditCommand() *AuditCommand {
@@ -81,6 +82,11 @@ func (auditCmd *AuditCommand) SetFail(fail bool) *AuditCommand {
 	return auditCmd
 }
 
+func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *AuditCommand {
+	auditCmd.printExtendedTable = printExtendedTable
+	return auditCmd
+}
+
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
 	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
 		return errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
@@ -109,7 +115,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		// if all scans failed, fail the audit command
 		return errorutils.CheckErrorf("Audit command failed due to Xray internal error")
 	}
-	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1)
+	err = xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1, auditCmd.printExtendedTable)
 	if err != nil {
 		return err
 	}

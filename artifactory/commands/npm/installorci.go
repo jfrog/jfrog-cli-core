@@ -2,6 +2,7 @@ package npm
 
 import (
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,9 @@ type NpmInstallOrCiCommand struct {
 	configFilePath      string
 	internalCommandName string
 	threads             int
+	collectBuildInfo    bool
+	buildInfoModule     *build.NpmModule
+	filteredArgs        []string
 	CommonArgs
 }
 
@@ -90,6 +94,13 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 	if err = nic.preparePrerequisites(nic.repo); err != nil {
 		return
 	}
+
+	nic.filteredArgs = filterFlags(nic.npmArgs)
+
+	if err = nic.prepareBuildInfoModule(); err != nil {
+		return
+	}
+
 	defer func() {
 		e := nic.restoreNpmrcFunc()
 		if err == nil {
@@ -99,6 +110,7 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 	if err = nic.createTempNpmrc(); err != nil {
 		return
 	}
+
 	if err = nic.runInstallOrCi(); err != nil {
 		return
 	}
@@ -114,20 +126,50 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 	return
 }
 
+func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
+	var err error
+	nic.collectBuildInfo, err = nic.buildConfiguration.IsCollectBuildInfo()
+	if err != nil || !nic.collectBuildInfo {
+		return err
+	}
+
+	// Build-info should not be created when installing a single package (npm install <package name>).
+	if len(nic.filteredArgs) > 0 {
+		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
+		nic.collectBuildInfo = false
+		return nil
+	}
+	buildName, err := nic.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := nic.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	buildInfoService := utils.CreateBuildInfoService()
+	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, nic.buildConfiguration.GetProject())
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	nic.buildInfoModule, err = npmBuild.AddNpmModule(nic.workingDirectory)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if nic.buildConfiguration.GetModule() != "" {
+		nic.buildInfoModule.SetName(nic.buildConfiguration.GetModule())
+	}
+	return nil
+}
+
 func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
 	log.Debug(fmt.Sprintf("Running npm %s command.", nic.cmdName))
-	filteredArgs := filterFlags(nic.npmArgs)
 	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nic.executablePath,
-		Command:      append([]string{nic.cmdName}, filteredArgs...),
+		Command:      append([]string{nic.cmdName}, nic.filteredArgs...),
 		CommandFlags: nil,
 		StrWriter:    nil,
 		ErrWriter:    nil,
-	}
-
-	if nic.collectBuildInfo && len(filteredArgs) > 0 {
-		log.Warn("Build info dependencies collection with npm arguments is not supported. Build info creation will be skipped.")
-		nic.collectBuildInfo = false
 	}
 
 	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))

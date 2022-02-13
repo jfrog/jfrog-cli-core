@@ -48,8 +48,8 @@ type ScanCommand struct {
 	progress               ioUtils.ProgressMgr
 }
 
-func (dsc *DockerScanCommand) SetProgress(progress ioUtils.ProgressMgr) {
-	dsc.progress = progress
+func (scanCmd *ScanCommand) SetProgress(progress ioUtils.ProgressMgr) {
+	scanCmd.progress = progress
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {

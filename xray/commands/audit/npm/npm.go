@@ -49,7 +49,6 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 	}
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
-
 	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 

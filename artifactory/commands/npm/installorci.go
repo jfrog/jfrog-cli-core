@@ -7,13 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -192,7 +190,7 @@ func (nic *NpmInstallOrCiCommand) collectDependencies() error {
 		return err
 	}
 	missingDepsChan := make(chan string)
-	collectChecksumsFunc := createCollectChecksumsFunc(previousBuildDependencies, serviceManager, missingDepsChan)
+	collectChecksumsFunc := commandUtils.CreateCollectChecksumsFunc(previousBuildDependencies, serviceManager, missingDepsChan)
 	nic.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
 	nic.buildInfoModule.SetThreads(nic.threads)
 
@@ -209,37 +207,8 @@ func (nic *NpmInstallOrCiCommand) collectDependencies() error {
 		return errorutils.CheckError(err)
 	}
 	close(missingDepsChan)
-	printMissingDependencies(missingDependencies)
+	commandUtils.PrintMissingDependencies(missingDependencies)
 	return nil
-}
-
-func createCollectChecksumsFunc(previousBuildDependencies map[string]*buildinfo.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *buildinfo.Dependency) (bool, error) {
-	return func(dependency *buildinfo.Dependency) (bool, error) {
-		splitDepId := strings.SplitN(dependency.Id, ":", 2)
-		name := splitDepId[0]
-		ver := splitDepId[1]
-
-		// Get dependency info.
-		checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager)
-		if err != nil || checksum.IsEmpty() {
-			missingDepsChan <- dependency.Id
-			return false, err
-		}
-
-		// Update dependency.
-		dependency.Type = fileType
-		dependency.Checksum = checksum
-		return true, nil
-	}
-}
-
-func printMissingDependencies(missingDependencies []string) {
-	if len(missingDependencies) == 0 {
-		return
-	}
-
-	log.Warn(strings.Join(missingDependencies, "\n"), "\nThe npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n"+
-		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
 // Gets a config with value which is an array, and adds it to the conf list

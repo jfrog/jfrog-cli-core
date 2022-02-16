@@ -55,11 +55,11 @@ var technologiesData = map[Technology]TechData{
 	},
 	Nuget: {
 		PackageType: "nuget",
-		indicators:  []string{".sln"},
+		indicators:  []string{".sln", ".csproj"},
 	},
 	Dotnet: {
 		PackageType: "nuget",
-		indicators:  []string{".sln"},
+		indicators:  []string{".sln", ".csproj"},
 	},
 }
 

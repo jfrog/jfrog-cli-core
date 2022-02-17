@@ -223,8 +223,6 @@ github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i
 github.com/jedib0t/go-pretty/v6 v6.2.2 h1:o3McN0rQ4X+IU+HduppSp9TwRdGLRW2rhJXy9CJaCRw=
 github.com/jedib0t/go-pretty/v6 v6.2.2/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoMwqZnuiK2r2a0=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
-github.com/jfrog/build-info-go v1.0.2-0.20220217145709-bae559785602 h1:2LTMt06506x8PJLATIku0n0PW/gDfUq0q+Ad+eYMaL0=
-github.com/jfrog/build-info-go v1.0.2-0.20220217145709-bae559785602/go.mod h1:QyeMfNGt4W0eWazrd7j6uZVN5KTpB05nxF/MwvGnTqs=
 github.com/jfrog/gofrog v1.1.1 h1:uRjeZWidQl4FmKP4Zpj5hSKJp3gSIWW9VUwbQdVEVRU=
 github.com/jfrog/gofrog v1.1.1/go.mod h1:9YN5v4LlsCfLIXpwQnzSf1wVtgjdHM20FzuIu58RMI4=
 github.com/jfrog/jfrog-client-go v1.9.1-0.20220217145821-3e29721b7973 h1:I7SjLz11lxp6EYlmHHOXku4i0RpZQwXrZOmvY+5MLKM=
@@ -355,6 +353,8 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
+github.com/talarian1/build-info-go v1.0.2-0.20220217165752-a97ee34dc4b8 h1:Yt3FsHuHXOEf+ld0xwhvdF/TBcOdIExrtG2XX3y8SN8=
+github.com/talarian1/build-info-go v1.0.2-0.20220217165752-a97ee34dc4b8/go.mod h1:QyeMfNGt4W0eWazrd7j6uZVN5KTpB05nxF/MwvGnTqs=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.9 h1:RsKRIA2MO8x56wkkcd3LbtcE/uMszhb6DpRf+3uwa3I=
 github.com/ulikunitz/xz v0.5.9/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

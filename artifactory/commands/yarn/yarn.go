@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/build-info-go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/build-info-go/build"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
@@ -72,7 +73,7 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractYarnOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return err
 	}

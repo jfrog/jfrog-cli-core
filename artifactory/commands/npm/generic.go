@@ -44,7 +44,7 @@ func (gc *GenericCommand) SetServerDetails(serverDetails *config.ServerDetails) 
 
 func (gc *GenericCommand) Init() error {
 	// Filter out JFrog CLI's specific flags.
-	_, _, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(gc.npmArgs)
+	_, _, _, filteredCmd, _, err := commandUtils.ExtractNpmOptionsFromArgs(gc.npmArgs)
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,11 @@ package npm
 
 import (
 	"fmt"
-	"github.com/jfrog/build-info-go/build"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/build-info-go/build"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -23,7 +23,6 @@ const minSupportedNpmVersion = "5.4.0"
 type NpmInstallOrCiCommand struct {
 	configFilePath      string
 	internalCommandName string
-	threads             int
 	collectBuildInfo    bool
 	buildInfoModule     *build.NpmModule
 	filteredArgs        []string
@@ -71,17 +70,12 @@ func (nic *NpmInstallOrCiCommand) Init() error {
 	if err != nil {
 		return err
 	}
-	threads, _, _, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
+	_, _, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nic.npmArgs)
 	if err != nil {
 		return err
 	}
-	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetThreads(threads).SetBuildConfiguration(buildConfiguration)
+	nic.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetBuildConfiguration(buildConfiguration)
 	return nil
-}
-
-func (nic *NpmInstallOrCiCommand) SetThreads(threads int) *NpmInstallOrCiCommand {
-	nic.threads = threads
-	return nic
 }
 
 func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -174,41 +168,8 @@ func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
 }
 
 func (nic *NpmInstallOrCiCommand) collectDependencies() error {
-	nic.buildInfoModule.SetTypeRestriction(nic.typeRestriction)
 	nic.buildInfoModule.SetNpmArgs(nic.npmArgs)
-
-	serviceManager, err := utils.CreateServiceManager(nic.serverDetails, -1, 0, false)
-	if err != nil {
-		return err
-	}
-	buildName, err := nic.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(serviceManager, buildName)
-	if err != nil {
-		return err
-	}
-	missingDepsChan := make(chan string)
-	collectChecksumsFunc := commandUtils.CreateCollectChecksumsFunc(previousBuildDependencies, serviceManager, missingDepsChan)
-	nic.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
-	nic.buildInfoModule.SetThreads(nic.threads)
-
-	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
-
-	var missingDependencies []string
-	go func() {
-		for depId := range missingDepsChan {
-			missingDependencies = append(missingDependencies, depId)
-		}
-	}()
-
-	if err = nic.buildInfoModule.CalcDependencies(); err != nil {
-		return errorutils.CheckError(err)
-	}
-	close(missingDepsChan)
-	commandUtils.PrintMissingDependencies(missingDependencies)
-	return nil
+	return errorutils.CheckError(nic.buildInfoModule.CalcDependencies())
 }
 
 // Gets a config with value which is an array, and adds it to the conf list

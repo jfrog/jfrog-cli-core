@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	biutils "github.com/jfrog/build-info-go/build/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/stretchr/testify/assert"
@@ -64,29 +63,4 @@ func TestPrepareConfigData(t *testing.T) {
 	// Assert that NPM_CONFIG__AUTH environment variable was set
 	assert.Equal(t, authToken, os.Getenv(npmConfigAuthEnv))
 	testsutils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
-}
-
-func TestPrepareConfigDataTypeRestriction(t *testing.T) {
-	var typeRestrictions = map[string]biutils.TypeRestriction{
-		"production=\"true\"":          biutils.ProdOnly,
-		"production=true":              biutils.ProdOnly,
-		"only = prod":                  biutils.ProdOnly,
-		"only=production":              biutils.ProdOnly,
-		"only = development":           biutils.DevOnly,
-		"only=dev":                     biutils.DevOnly,
-		"only=":                        biutils.DefaultRestriction,
-		"omit = [\"dev\"]\ndev = true": biutils.ProdOnly,
-		"omit = [\"abc\"]\ndev = true": biutils.All,
-		"only=dev\nomit = [\"abc\"]":   biutils.All,
-		"dev=true\nomit = [\"dev\"]":   biutils.ProdOnly,
-		"kuku=true":                    biutils.DefaultRestriction}
-
-	for json, typeRestriction := range typeRestrictions {
-		npmi := NpmInstallOrCiCommand{}
-		_, err := npmi.prepareConfigData([]byte(json))
-		assert.NoError(t, err)
-		if npmi.typeRestriction != typeRestriction {
-			t.Errorf("Type restriction was supposed to be %d but set to: %d when using the json:\n%s", typeRestriction, npmi.typeRestriction, json)
-		}
-	}
 }

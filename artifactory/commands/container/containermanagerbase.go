@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// Artifactory 'RtMinVersion' version and above, returns the image's repository in Artifactory.
-	minRtVersionForRepoFetching = "7.33.3"
+	// Artifactory 'MinRtVersionForRepoFetching' version and above, returns the image's repository in Artifactory.
+	MinRtVersionForRepoFetching = "7.33.3"
 )
 
 type ContainerCommandBase struct {
@@ -59,7 +59,7 @@ func (ccb *ContainerCommandBase) IsGetRepoSupported() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if !version.NewVersion(currentVersion).AtLeast(minRtVersionForRepoFetching) {
+	if !version.NewVersion(currentVersion).AtLeast(MinRtVersionForRepoFetching) {
 		return false, nil
 	}
 	return true, nil
@@ -97,7 +97,7 @@ func (ccb *ContainerCommandBase) init() error {
 		return err
 	}
 	if !ok {
-		return errorutils.CheckErrorf("Collecting docker build-info with this command requires Artifactory version %s or higher", minRtVersionForRepoFetching)
+		return errorutils.CheckErrorf("Collecting docker build-info with this command requires Artifactory version %s or higher", MinRtVersionForRepoFetching)
 	}
 	return nil
 }

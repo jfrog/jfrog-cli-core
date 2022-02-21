@@ -189,6 +189,56 @@ func ExtractSkipLoginFromArgs(args []string) (cleanArgs []string, skipLogin bool
 	return
 }
 
+// Used by docker
+func ExtractFailFromArgs(args []string) (cleanArgs []string, fail bool, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, fail, err := FindBooleanFlag("--fail", cleanArgs)
+	if err != nil {
+		return
+	}
+	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
+}
+
+// Used by docker  scan (Xray)
+func ExtractLicensesFromArgs(args []string) (cleanArgs []string,  licenses bool, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, licenses, err := FindBooleanFlag("--licenses", cleanArgs)
+	if err != nil {
+		return
+	}
+	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, flagIndex)
+	return
+}
+
+// Used by docker scan (Xray)
+func ExtractRepoPathFromArgs(args []string) (cleanArgs []string,  repoPath string, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, valIndex, repoPath, err := FindFlag("--repo-path", cleanArgs)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valIndex)
+	return
+}
+
+// Used by docker scan (Xray)
+func ExtractWatchesFromArgs(args []string) (cleanArgs []string,  watches string, err error) {
+	cleanArgs = append([]string(nil), args...)
+
+	flagIndex, valIndex, watches, err := FindFlag("--watches", cleanArgs)
+	if err != nil {
+		return
+	}
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valIndex)
+	return
+}
+
 func ExtractDetailedSummaryFromArgs(args []string) (cleanArgs []string, detailedSummary bool, err error) {
 	cleanArgs = append([]string(nil), args...)
 

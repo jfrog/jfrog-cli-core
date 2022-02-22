@@ -8,7 +8,7 @@
     "publish.artifacts": "true",
     "artifactory.publish.buildInfo": "false",
     "artifactory.publish.unstable": "false",
-    "artifactory.buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*",
+    "artifactory.buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*,*auth*",
     "resolve.contextUrl": "http://some.url.com",
     "artifactory.publish.filterExcludedArtifactsFromBuild": "true",
     "publish.contextUrl": "http://some.other.url.com",
@@ -20,5 +20,5 @@
     "publish.forkCount": "3",
     "artifactory.publish.artifacts": "true",
     "publish.unstable": "false",
-    "buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*"
+    "buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*,*auth*"
 }

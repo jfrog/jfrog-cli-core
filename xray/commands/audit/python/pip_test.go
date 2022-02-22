@@ -14,8 +14,7 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipCommand()
 	dependencyTree, err := auditCmd.buildPipDependencyTree()
-	assert.NoError(t, err)
-	if assert.NotNil(t, dependencyTree) {
+	if assert.NoError(t, err) && assert.NotNil(t, dependencyTree) {
 		assert.NotEmpty(t, dependencyTree.Nodes)
 		// Test root module
 		rootNode := audit.GetAndAssertNode(t, dependencyTree.Nodes, "pip-example:1.2.3")
@@ -33,12 +32,12 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipCommand()
 	rootNodes, err := auditCmd.buildPipDependencyTree()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, rootNodes)
-	if rootNodes != nil {
-		// Test root module
-		rootNode := audit.GetAndAssertNode(t, rootNodes.Nodes, "pexpect:4.8.0")
-		// Test child module
-		audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+		if rootNodes != nil {
+			// Test root module
+			rootNode := audit.GetAndAssertNode(t, rootNodes.Nodes, "pexpect:4.8.0")
+			// Test child module
+			audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+		}
 	}
 }

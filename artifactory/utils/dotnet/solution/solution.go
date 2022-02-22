@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
@@ -103,12 +104,12 @@ func populateRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap 
 	childrenList := childrenMap[getDependencyName(parentDependency.Id)]
 	for _, childName := range childrenList {
 		if childDep, ok := dependenciesMap[childName]; ok {
+			if childDep.NodeHasLoop() || len(childDep.RequestedBy) >= buildinfo.RequestedByMaxLength {
+				continue
+			}
 			for _, parentRequestedBy := range parentDependency.RequestedBy {
 				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
-			}
-			if childDep.NodeHasLoop() {
-				continue
 			}
 			// Run recursive call on child dependencies
 			populateRequestedBy(*childDep, dependenciesMap, childrenMap)

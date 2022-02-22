@@ -88,6 +88,7 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	var stderr bytes.Buffer
 	pipInstall := exec.Command(pipVenvPath, "install", ".")
 	pipInstall.Stderr = &stderr
+	pipInstall.Stdout = &stderr
 	err = pipInstall.Run()
 	if err != nil {
 		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), stderr.String())

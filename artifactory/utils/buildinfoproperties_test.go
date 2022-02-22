@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jfrog/build-info-go/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/spf13/viper"
@@ -40,7 +41,7 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFileP
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
 	expectedProps := map[string]string{}
-	assert.NoError(t, unmarshal(expectedPropsFilePath, &expectedProps))
+	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))
 	props, err := CreateBuildInfoProps("", providedConfig, projectType)
 	if err != nil {
 		t.Error(err)
@@ -83,7 +84,7 @@ func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, prop
 		DeployerPrefix + Url: "http://some.other.url.com",
 	}
 	var expectedProps map[string]interface{}
-	assert.NoError(t, unmarshal(expectedPropsFilePath, &expectedProps))
+	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))
 	vConfig := viper.New()
 	vConfig.Set("type", Maven.String())
 	for k, v := range yamlConfig {

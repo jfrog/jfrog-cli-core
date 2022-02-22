@@ -139,7 +139,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 		// docker exists in path.
 		message += "\n" + coreutils.PrintTitle("Pull and Push any docker image using Artifactory") +
 			"\n" +
-			"1. jf docker tag <image> my.artifactory.url/<image>:<tag>\n" +
+			"1. jf docker tag <image>:<tag> my.artifactory.url/<image>:<tag>\n" +
 			"2. jf docker pull my.artifactory.url/<image>:<tag>\n" +
 			"3. jf docker push my.artifactory.url/<image>:<tag>\n"
 	}

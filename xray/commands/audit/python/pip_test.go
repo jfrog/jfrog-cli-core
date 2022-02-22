@@ -15,7 +15,7 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	auditCmd := NewEmptyAuditPipCommand()
 	dependencyTree, err := auditCmd.buildPipDependencyTree()
 	assert.NoError(t, err)
-	if !assert.NotNil(t, dependencyTree) {
+	if assert.NotNil(t, dependencyTree) {
 		assert.NotEmpty(t, dependencyTree.Nodes)
 		// Test root module
 		rootNode := audit.GetAndAssertNode(t, dependencyTree.Nodes, "pip-example:1.2.3")

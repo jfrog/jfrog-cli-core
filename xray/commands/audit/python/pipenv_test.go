@@ -14,7 +14,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	auditCmd := NewEmptyAuditPipenvCommand()
 	dependencyTree, err := auditCmd.buildPipenvDependencyTree()
 	assert.NoError(t, err)
-	if !assert.NotNil(t, dependencyTree) {
+	if assert.NotNil(t, dependencyTree) {
 		assert.NotEmpty(t, dependencyTree.Nodes)
 		// Test child module
 		audit.GetAndAssertNode(t, dependencyTree.Nodes, "toml:0.10.2")

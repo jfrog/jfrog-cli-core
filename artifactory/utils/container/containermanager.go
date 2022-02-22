@@ -60,7 +60,7 @@ type ContainerManagerLoginConfig struct {
 
 // Run native command of the container buildtool
 func (containerManager *containerManager) RunNativeCmd(cmdParams []string) error {
-	cmd := &nativeCmd{cmdParams: cmdParams}
+	cmd := &nativeCmd{cmdParams: cmdParams,containerManager: containerManager.Type}
 	return cmd.RunCmd()
 }
 

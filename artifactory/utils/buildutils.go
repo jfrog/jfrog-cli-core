@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jfrog/build-info-go/build"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -28,6 +28,40 @@ const (
 	BuildTempPath             = "jfrog/builds/"
 	ProjectConfigBuildNameKey = "name"
 )
+
+func PrepareBuildPrerequisites(args []string) (filteredArgs []string, build *build.Build, moduleName string, err error) {
+	log.Debug("Preparing build prerequisites...")
+	filteredArgs, buildConfiguration, err := ExtractBuildDetailsFromArgs(args)
+	if err != nil {
+		return
+	}
+	moduleName = buildConfiguration.GetModule()
+	// Prepare build-info.
+	toCollect, err := buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return
+	}
+	if toCollect {
+		var buildName, buildNumber string
+		buildName, err = buildConfiguration.GetBuildName()
+		if err != nil {
+			return
+		}
+		buildNumber, err = buildConfiguration.GetBuildNumber()
+		if err != nil {
+			return
+		}
+		projectKey := buildConfiguration.GetProject()
+		buildInfoService := CreateBuildInfoService()
+		build, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
+		if err != nil {
+			err = errorutils.CheckError(err)
+			return
+		}
+	}
+
+	return
+}
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
 	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))

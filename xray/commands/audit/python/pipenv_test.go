@@ -12,14 +12,17 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	auditCmd := NewEmptyAuditPipenvCommand()
-	rootNode, err := auditCmd.buildPipenvDependencyTree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotEmpty(t, rootNode)
+	dependencyTree, err := auditCmd.buildPipenvDependencyTree()
+	assert.NoError(t, err)
+	if !assert.NotNil(t, dependencyTree) {
+		assert.NotEmpty(t, dependencyTree.Nodes)
+		// Test child module
+		audit.GetAndAssertNode(t, dependencyTree.Nodes, "toml:0.10.2")
 
-	// Test child module
-	childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
-	// Test sub child module
-	audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+		// Test child module
+		childNode := audit.GetAndAssertNode(t, dependencyTree.Nodes, "pexpect:4.8.0")
+		// Test sub child module
+		audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+
+	}
 }

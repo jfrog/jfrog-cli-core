@@ -1,14 +1,18 @@
 package python
 
 import (
-	"os"
-	"path/filepath"
-
-	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
+	"bytes"
+	"fmt"
+	"github.com/jfrog/build-info-go/utils/pythonutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
+	"os/exec"
+	"path/filepath"
 )
 
 type AuditPipCommand struct {
@@ -28,24 +32,15 @@ func (apc *AuditPipCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return apc.ScanDependencyTree(dependencyTree)
+	return apc.ScanDependencyTree([]*services.GraphNode{dependencyTree})
 }
 
-func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
+func (apc *AuditPipCommand) buildPipDependencyTree() (*services.GraphNode, error) {
 	dependenciesGraph, rootDependenciesList, err := apc.getDependencies()
 	if err != nil {
 		return nil, err
 	}
-	var dependencyTree []*services.GraphNode
-	for _, rootDep := range rootDependenciesList {
-		parentNode := &services.GraphNode{
-			Id:    pythonPackageTypeIdentifier + rootDep,
-			Nodes: []*services.GraphNode{},
-		}
-		populatePythonDependencyTree(parentNode, dependenciesGraph)
-		dependencyTree = append(dependencyTree, parentNode)
-	}
-	return dependencyTree, nil
+	return CreateDependencyTree(dependenciesGraph, rootDependenciesList)
 }
 
 func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
@@ -83,29 +78,43 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	}
 
 	// 'virtualenv venv'
-	err = piputils.RunVirtualEnv()
+	venvPath, err := pythonutils.RunVirtualEnv()
 	if err != nil {
 		return
 	}
+	pipVenvPath := filepath.Join(venvPath, "pip")
 
-	// 'pip install .'
-	err = piputils.RunPipInstall()
+	// Run pip install
+	var stderr bytes.Buffer
+	pipInstall := exec.Command(pipVenvPath, "install", ".")
+	pipInstall.Stderr = &stderr
+	err = pipInstall.Run()
 	if err != nil {
+		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), stderr.String())
+
 		exist, requirementsErr := fileutils.IsFileExists(filepath.Join(tempDirPath, "requirements.txt"), false)
 		if requirementsErr != nil || !exist {
 			return
 		}
-
 		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
-		requirementsErr = piputils.RunPipInstallRequirements()
+		// Run pip install -r requirements
+		var stderr bytes.Buffer
+		pipRequirements := exec.Command(pipVenvPath, "install", "-r", "requirements.txt")
+		pipRequirements.Stderr = &stderr
+		requirementsErr = pipRequirements.Run()
 		if requirementsErr != nil {
-			log.Error(requirementsErr)
+			log.Error(fmt.Sprintf("pip install -r requirements.txt command failed: %s - %s", err.Error(), stderr.String()))
 			return
 		}
 	}
 
 	// Run pipdeptree.py to get dependencies tree
-	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(piputils.GetVenvPythonExecPath())
+	localDependenciesPath, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return
+	}
+	pythonVenvPath := filepath.Join(venvPath, "python")
+	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonutils.Pip, pythonVenvPath, localDependenciesPath)
 	return
 }
 

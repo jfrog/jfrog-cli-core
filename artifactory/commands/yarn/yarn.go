@@ -10,27 +10,22 @@ import (
 	"path/filepath"
 	"strings"
 
-	biutils "github.com/jfrog/build-info-go/build/utils"
-	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/build-info-go/build"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
-	"github.com/jfrog/gofrog/parallel"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const yarnrcFileName = ".yarnrc.yml"
 const yarnrcBackupFileName = "jfrog.yarnrc.backup"
-const minSupportedYarnVersion = "2.4.0"
 const npmScopesConfigName = "npmScopes"
 
 type YarnCommand struct {
@@ -44,12 +39,12 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	restoreYarnrcFunc  func() error
-	packageInfo        *biutils.PackageInfo
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
 	dependencies       map[string]*buildinfo.Dependency
 	envVarsBackup      map[string]*string
+	buildInfoModule    *build.YarnModule
 }
 
 func NewYarnCommand() *YarnCommand {
@@ -78,13 +73,27 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractNpmOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractYarnOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return err
 	}
 
 	if err = yc.preparePrerequisites(); err != nil {
 		return err
+	}
+
+	var missingDepsChan chan string
+	var missingDependencies []string
+	if yc.collectBuildInfo {
+		missingDepsChan, err = yc.prepareBuildInfo()
+		if err != nil {
+			return err
+		}
+		go func() {
+			for depId := range missingDepsChan {
+				missingDependencies = append(missingDependencies, depId)
+			}
+		}()
 	}
 
 	yc.restoreYarnrcFunc, err = commandUtils.BackupFile(filepath.Join(yc.workingDirectory, yarnrcFileName), filepath.Join(yc.workingDirectory, yarnrcBackupFileName))
@@ -96,22 +105,18 @@ func (yc *YarnCommand) Run() error {
 		return yc.restoreConfigurationsAndError(err)
 	}
 
-	if err = yarn.RunCustomCmd(filteredYarnArgs, yc.executablePath); err != nil {
+	yc.buildInfoModule.SetArgs(filteredYarnArgs)
+	if err = yc.buildInfoModule.Build(); err != nil {
 		return yc.restoreConfigurationsAndError(err)
+	}
+
+	if yc.collectBuildInfo {
+		close(missingDepsChan)
+		commandUtils.PrintMissingDependencies(missingDependencies)
 	}
 
 	if err = yc.restoreConfigurationsFromBackup(); err != nil {
 		return err
-	}
-
-	if yc.collectBuildInfo {
-		if err = yc.setDependenciesList(); err != nil {
-			return err
-		}
-
-		if err := yc.saveDependenciesData(); err != nil {
-			return err
-		}
 	}
 
 	log.Info(fmt.Sprintf("Yarn finished successfully."))
@@ -167,15 +172,38 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	if err = yc.validateYarnVersion(); err != nil {
-		return err
-	}
-
 	yc.workingDirectory, err = coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
 	log.Debug("Working directory set to:", yc.workingDirectory)
+
+	yc.collectBuildInfo, err = yc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+
+	buildName, err := yc.buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := yc.buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+
+	buildInfoService := utils.CreateBuildInfoService()
+	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, yc.buildConfiguration.GetProject())
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	yc.buildInfoModule, err = npmBuild.AddYarnModule(yc.workingDirectory)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if yc.buildConfiguration.GetModule() != "" {
+		yc.buildInfoModule.SetName(yc.buildConfiguration.GetModule())
+	}
 
 	if err = yc.setArtifactoryAuth(); err != nil {
 		return err
@@ -190,31 +218,6 @@ func (yc *YarnCommand) preparePrerequisites() error {
 	if err != nil {
 		return err
 	}
-
-	yc.collectBuildInfo, err = yc.buildConfiguration.IsCollectBuildInfo()
-	if err != nil {
-		return err
-	}
-	if !yc.collectBuildInfo {
-		return nil
-	}
-
-	buildName, err := yc.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	buildNumber, err := yc.buildConfiguration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, yc.buildConfiguration.GetProject()); err != nil {
-		return err
-	}
-
-	if yc.packageInfo, err = biutils.ReadPackageInfoFromPackageJson(yc.workingDirectory, nil); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -226,19 +229,6 @@ func (yc *YarnCommand) setYarnExecutable() error {
 
 	yc.executablePath = yarnExecPath
 	log.Debug("Found Yarn executable at:", yc.executablePath)
-	return nil
-}
-
-func (yc *YarnCommand) validateYarnVersion() error {
-	yarnVersionStr, err := yarn.Version(yc.executablePath)
-	if err != nil {
-		return err
-	}
-	yarnVersion := version.NewVersion(yarnVersionStr)
-	if yarnVersion.Compare(minSupportedYarnVersion) > 0 {
-		return errorutils.CheckErrorf(
-			"JFrog CLI yarn command requires Yarn version " + minSupportedYarnVersion + " or higher")
-	}
 	return nil
 }
 
@@ -338,205 +328,27 @@ func (yc *YarnCommand) backupAndSetEnvironmentVariable(key, value string) error 
 	return errorutils.CheckError(os.Setenv(key, value))
 }
 
-// Run 'yarn info' and parse the returned JSON
-func (yc *YarnCommand) setDependenciesList() error {
-	// Run 'yarn info'
-	responseStr, err := yarn.Info(yc.executablePath)
-	if err != nil {
-		log.Warn("An error was thrown while collecting dependencies info:", err.Error())
-		// A returned error doesn't necessarily mean that the operation totally failed. If, in addition, the response is empty, then it probably does.
-		if responseStr == "" {
-			return err
-		}
-	}
-
-	dependenciesMap := make(map[string]*YarnDependency)
-	scanner := bufio.NewScanner(strings.NewReader(responseStr))
-	packageName := yc.packageInfo.FullName()
-	var root *YarnDependency
-
-	for scanner.Scan() {
-		var currDependency YarnDependency
-		currDepBytes := scanner.Bytes()
-		err = json.Unmarshal(currDepBytes, &currDependency)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-		dependenciesMap[currDependency.Value] = &currDependency
-
-		// Check whether this dependency's name starts with the package name (which means this is the root)
-		if strings.HasPrefix(currDependency.Value, packageName+"@") {
-			root = &currDependency
-		}
-	}
-
+func (yc *YarnCommand) prepareBuildInfo() (missingDepsChan chan string, err error) {
+	log.Info("Preparing for dependencies information collection... For the first run of the build, the dependencies collection may take a few minutes. Subsequent runs should be faster.")
 	servicesManager, err := utils.CreateServiceManager(yc.serverDetails, -1, 0, false)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Collect checksums from last build to decrease requests to Artifactory
 	buildName, err := yc.buildConfiguration.GetBuildName()
 	if err != nil {
-		return err
+		return
 	}
 	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
 	if err != nil {
-		return err
-	}
-	yc.dependencies = make(map[string]*buildinfo.Dependency)
-
-	log.Info("Collecting dependencies information... For the first run of the build, this may take a few minutes. Subsequent runs should be faster.")
-	producerConsumer := parallel.NewBounedRunner(yc.threads, false)
-	errorsQueue := clientutils.NewErrorsQueue(1)
-
-	go func() {
-		defer producerConsumer.Done()
-		yc.appendDependencyRecursively(root, []string{}, dependenciesMap, previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
-	}()
-
-	producerConsumer.Run()
-	return errorsQueue.GetError()
-}
-
-func (yc *YarnCommand) appendDependencyRecursively(yarnDependency *YarnDependency, pathToRoot []string, dependenciesMap map[string]*YarnDependency,
-	previousBuildDependencies map[string]*buildinfo.Dependency, servicesManager artifactory.ArtifactoryServicesManager,
-	producerConsumer parallel.Runner, errorsQueue *clientutils.ErrorsQueue) error {
-	name := yarnDependency.Name()
-	var version string
-	if len(pathToRoot) == 0 {
-		// The version of the local project returned from 'yarn info' is '0.0.0-use.local', but we need the version mentioned in package.json
-		version = yc.packageInfo.Version
-	} else {
-		version = yarnDependency.Details.Version
-	}
-	id := name + ":" + version
-
-	// To avoid infinite loops in case of circular dependencies, the dependency won't be added if it's already in pathToRoot
-	if coreutils.StringsSliceContains(pathToRoot, id) {
-		return nil
-	}
-
-	for _, dependencyPtr := range yarnDependency.Details.Dependencies {
-		innerDepKey := getYarnDependencyKeyFromLocator(dependencyPtr.Locator)
-		innerYarnDep, exist := dependenciesMap[innerDepKey]
-		if !exist {
-			return errorutils.CheckErrorf("An error occurred while creating dependencies tree: dependency %s was not found.", dependencyPtr.Locator)
-		}
-		yc.appendDependencyRecursively(innerYarnDep, append([]string{id}, pathToRoot...), dependenciesMap,
-			previousBuildDependencies, servicesManager, producerConsumer, errorsQueue)
-	}
-
-	// The root project should not be added to the dependencies list
-	if len(pathToRoot) == 0 {
-		return nil
-	}
-
-	buildinfoDependency, exist := yc.dependencies[id]
-	if !exist {
-		buildinfoDependency = &buildinfo.Dependency{Id: id}
-		yc.dependencies[id] = buildinfoDependency
-		taskFunc := func(threadId int) error {
-			checksum, fileType, err := commandUtils.GetDependencyInfo(name, version, previousBuildDependencies, servicesManager)
-			if err != nil {
-				return err
-			}
-			buildinfoDependency.Type = fileType
-			buildinfoDependency.Checksum = checksum
-			return nil
-		}
-		producerConsumer.AddTaskWithError(taskFunc, errorsQueue.AddError)
-	}
-
-	buildinfoDependency.RequestedBy = append(buildinfoDependency.RequestedBy, pathToRoot)
-	return nil
-}
-
-func (yc *YarnCommand) saveDependenciesData() error {
-	log.Debug("Saving data...")
-
-	// Convert map to slice
-	var dependenciesSlice, missingDependencies []buildinfo.Dependency
-	for _, dependency := range yc.dependencies {
-		if !dependency.Checksum.IsEmpty() {
-			dependenciesSlice = append(dependenciesSlice, *dependency)
-		} else {
-			missingDependencies = append(missingDependencies, *dependency)
-		}
-	}
-
-	if yc.buildConfiguration.GetModule() == "" {
-		yc.buildConfiguration.SetModule(yc.packageInfo.BuildInfoModuleId())
-	}
-
-	if err := saveDependenciesData(dependenciesSlice, yc.buildConfiguration); err != nil {
-		return err
-	}
-
-	printMissingDependencies(missingDependencies)
-	return nil
-}
-
-func saveDependenciesData(dependencies []buildinfo.Dependency, buildConfiguration *utils.BuildConfiguration) error {
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Dependencies = dependencies
-		partial.ModuleId = buildConfiguration.GetModule()
-		partial.ModuleType = buildinfo.Npm
-	}
-	buildName, err := buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	buildNumber, err := buildConfiguration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	return utils.SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
-}
-
-func printMissingDependencies(missingDependencies []buildinfo.Dependency) {
-	if len(missingDependencies) == 0 {
 		return
 	}
-
-	var missingDependenciesText []string
-	for _, dependency := range missingDependencies {
-		missingDependenciesText = append(missingDependenciesText, dependency.Id)
-	}
-	log.Warn(strings.Join(missingDependenciesText, "\n"))
-	log.Warn("The npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n" +
-		"Deleting the local cache will force populating Artifactory with these dependencies.")
-}
-
-type YarnDependency struct {
-	// The value is usually in this structure: @scope/package-name@npm:1.0.0
-	Value   string         `json:"value,omitempty"`
-	Details YarnDepDetails `json:"children,omitempty"`
-}
-
-func (yd *YarnDependency) Name() string {
-	// Find the first index of '@', starting from position 1. In scoped dependencies (like '@jfrog/package-name@npm:1.2.3') we want to keep the first '@' as part of the name.
-	atSignIndex := strings.Index(yd.Value[1:], "@") + 1
-	return yd.Value[:atSignIndex]
-}
-
-type YarnDepDetails struct {
-	Version      string                  `json:"Version,omitempty"`
-	Dependencies []YarnDependencyPointer `json:"Dependencies,omitempty"`
-}
-
-type YarnDependencyPointer struct {
-	Descriptor string `json:"descriptor,omitempty"`
-	Locator    string `json:"locator,omitempty"`
-}
-
-func createRestoreErrorPrefix(workingDirectory string) string {
-	return fmt.Sprintf("Error occurred while restoring the project's %s file. "+
-		"To restore the project: delete %s and change the name of the backup file at %s (if exists) to '%s'.\nFailure cause: ",
-		yarnrcFileName,
-		filepath.Join(workingDirectory, yarnrcFileName),
-		filepath.Join(workingDirectory, yarnrcBackupFileName),
-		yarnrcFileName)
+	missingDepsChan = make(chan string)
+	collectChecksumsFunc := commandUtils.CreateCollectChecksumsFunc(previousBuildDependencies, servicesManager, missingDepsChan)
+	yc.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
+	yc.buildInfoModule.SetThreads(yc.threads)
+	return
 }
 
 // npmAuth we get back from Artifactory includes several fields, but we need only the field '_auth'
@@ -558,17 +370,4 @@ func extractAuthIdentFromNpmAuth(npmAuth string) (string, error) {
 	}
 
 	return "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
-}
-
-// Yarn dependency locator usually looks like this: package-name@npm:1.2.3, which is used as the key in the dependencies map.
-// But sometimes it points to a virtual package, so it looks different: package-name@virtual:[ID of virtual package]#npm:1.2.3.
-// In this case we need to omit the part of the virtual package ID, to get the key as it is found in the dependencies map.
-func getYarnDependencyKeyFromLocator(yarnDepLocator string) string {
-	virutalIndex := strings.Index(yarnDepLocator, "@virtual:")
-	if virutalIndex == -1 {
-		return yarnDepLocator
-	}
-
-	hashSignIndex := strings.LastIndex(yarnDepLocator, "#")
-	return yarnDepLocator[:virutalIndex+1] + yarnDepLocator[hashSignIndex+1:]
 }

@@ -355,15 +355,6 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 	return false, false
 }
 
-func StringsSliceContains(slice []string, str string) bool {
-	for _, element := range slice {
-		if element == str {
-			return true
-		}
-	}
-	return false
-}
-
 func GetCliUserAgent() string {
 	if cliUserAgentVersion == "" {
 		return cliUserAgentName

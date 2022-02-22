@@ -6,33 +6,83 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetImagePath(t *testing.T) {
+func TestGetImageLongName(t *testing.T) {
 	var imageTags = []struct {
 		in       string
 		expected string
 	}{
-		{"domain:8080/path:1.0", "/path/1.0"},
-		{"domain:8080/path/in/artifactory:1.0", "/path/in/artifactory/1.0"},
-		{"domain:8080/path/in/artifactory", "/path/in/artifactory/latest"},
-		{"domain/path:1.0", "/path/1.0"},
-		{"domain/path/in/artifactory:1.0", "/path/in/artifactory/1.0"},
-		{"domain/path/in/artifactory", "/path/in/artifactory/latest"},
+		{"domain:8080/path:1.0", "path"},
+		{"domain:8080/path/in/artifactory:1.0", "path/in/artifactory"},
+		{"domain:8080/path/in/artifactory", "path/in/artifactory"},
+		{"domain/path:1.0", "path"},
+		{"domain/path/in/artifactory:1.0", "path/in/artifactory"},
+		{"domain/path/in/artifactory", "path/in/artifactory"},
 	}
 
 	for _, v := range imageTags {
-		result, err := NewImage(v.in).GetPath()
+		result, err := NewImage(v.in).GetImageLongName()
 		assert.NoError(t, err)
 		if result != v.expected {
-			t.Errorf("Path(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
+			t.Errorf("GetImageLongName(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
 	// Validate failure upon missing image name
-	_, err := NewImage("domain").GetPath()
+	_, err := NewImage("domain").GetImageLongName()
 	assert.Error(t, err)
 
 }
 
-func TestGetImageBaseNameWithTag(t *testing.T) {
+func TestGetImageShortName(t *testing.T) {
+	var imageTags = []struct {
+		in       string
+		expected string
+	}{
+		{"domain:8080/path:1.0", "path"},
+		{"domain:8080/path/in/artifactory:1.0", "artifactory"},
+		{"domain:8080/path/in/artifactory", "artifactory"},
+		{"domain/path:1.0", "path"},
+		{"domain/path/in/artifactory:1.0", "artifactory"},
+		{"domain/path/in/artifactory", "artifactory"},
+	}
+
+	for _, v := range imageTags {
+		result, err := NewImage(v.in).GetImageShortName()
+		assert.NoError(t, err)
+		if result != v.expected {
+			t.Errorf("GetImageShortName(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
+		}
+	}
+	// Validate failure upon missing image name
+	_, err := NewImage("domain").GetImageShortName()
+	assert.Error(t, err)
+
+}
+
+func TestGetImageLongNameWithTag(t *testing.T) {
+	var imageTags = []struct {
+		in       string
+		expected string
+	}{
+		{"domain:8080/path:1.0", "path:1.0"},
+		{"domain:8080/path/in/artifactory:1.0", "path/in/artifactory:1.0"},
+		{"domain:8080/path/in/artifactory", "path/in/artifactory:latest"},
+		{"domain/path:1.0", "path:1.0"},
+		{"domain/path/in/artifactory:1.0", "path/in/artifactory:1.0"},
+		{"domain/path/in/artifactory", "path/in/artifactory:latest"},
+	}
+
+	for _, v := range imageTags {
+		result, err := NewImage(v.in).GetImageLongNameWithTag()
+		assert.NoError(t, err)
+		if result != v.expected {
+			t.Errorf("GetImageLongNameWithTag(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
+		}
+	}
+	// Validate failure upon missing image name
+	_, err := NewImage("domain").GetImageLongNameWithTag()
+	assert.Error(t, err)
+}
+func TestGetImageShortNameWithTag(t *testing.T) {
 	var imageTags = []struct {
 		in       string
 		expected string
@@ -46,14 +96,14 @@ func TestGetImageBaseNameWithTag(t *testing.T) {
 	}
 
 	for _, v := range imageTags {
-		result, err := NewImage(v.in).GetImageBaseNameWithTag()
+		result, err := NewImage(v.in).GetImageShortNameWithTag()
 		assert.NoError(t, err)
 		if result != v.expected {
-			t.Errorf("Name(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
+			t.Errorf("GetImageShortNameWithTag(\"%s\") => '%s', want '%s'", v.in, result, v.expected)
 		}
 	}
 	// Validate failure upon missing image name
-	_, err := NewImage("domain").GetImageBaseNameWithTag()
+	_, err := NewImage("domain").GetImageLongNameWithTag()
 	assert.Error(t, err)
 }
 
@@ -64,16 +114,16 @@ func TestResolveRegistryFromTag(t *testing.T) {
 		expectingError bool
 	}{
 		{"domain:8080/path:1.0", "domain:8080", false},
-		{"domain:8080/path/in/artifactory:1.0", "domain:8080/path", false},
-		{"domain:8080/path/in/artifactory", "domain:8080/path", false},
+		{"domain:8080/path/in/artifactory:1.0", "domain:8080", false},
+		{"domain:8080/path/in/artifactory", "domain:8080", false},
 		{"domain/path:1.0", "domain", false},
-		{"domain/path/in/artifactory:1.0", "domain/path", false},
-		{"domain/path/in/artifactory", "domain/path", false},
+		{"domain/path/in/artifactory:1.0", "domain", false},
+		{"domain/path/in/artifactory", "domain", false},
 		{"domain:8081", "", true},
 	}
 
 	for _, v := range imageTags {
-		result, err := ResolveRegistryFromTag(v.in)
+		result, err := NewImage(v.in).GetRegistry()
 		if err != nil && !v.expectingError {
 			t.Error(err.Error())
 		}
@@ -102,5 +152,35 @@ func TestDockerClientApiVersionRegex(t *testing.T) {
 		if result != v.expected {
 			t.Errorf("Version(\"%s\") => '%v', want '%v'", v.in, result, v.expected)
 		}
+	}
+}
+
+func TestBuildRemoteRepoUrl(t *testing.T) {
+	var data = []struct {
+		image        string
+		isSecure     bool
+		expectedRepo string
+	}{
+		{"localhost:8082/docker-local/hello-world:123", true, "https://localhost:8082/v2/docker-local/hello-world/manifests/123"},
+		{"localhost:8082/docker-local/hello-world:latest", true, "https://localhost:8082/v2/docker-local/hello-world/manifests/latest"},
+		{"localhost:8082/docker-local/hello-world:latest", false, "http://localhost:8082/v2/docker-local/hello-world/manifests/latest"},
+		// With proxy
+		{"jfrog-docker-local.jfrog.io/hello-world:123", true, "https://jfrog-docker-local.jfrog.io/v2/hello-world/manifests/123"},
+		{"jfrog-docker-local.jfrog.io/hello-world:latest", true, "https://jfrog-docker-local.jfrog.io/v2/hello-world/manifests/latest"},
+		{"jfrog-docker-local.jfrog.io/hello-world:123", false, "http://jfrog-docker-local.jfrog.io/v2/hello-world/manifests/123"},
+	}
+	for _, v := range data {
+		testImae := NewImage(v.image)
+		containerRegistryUrl, err := testImae.GetRegistry()
+		assert.NoError(t, err)
+
+		longImageName, err := testImae.GetImageLongName()
+		assert.NoError(t, err)
+
+		imageTag, err := testImae.GetImageTag()
+		assert.NoError(t, err)
+
+		actualRepo := buildRequestUrl(longImageName, imageTag, containerRegistryUrl, v.isSecure)
+		assert.Equal(t, v.expectedRepo, actualRepo)
 	}
 }

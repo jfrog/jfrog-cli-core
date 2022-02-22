@@ -19,16 +19,15 @@ func NewAuditNpmCommand(auditCmd audit.AuditCommand) *AuditNpmCommand {
 
 type AuditNpmCommand struct {
 	audit.AuditCommand
-	typeRestriction biutils.TypeRestriction
+	npmArgs []string
 }
 
-func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction biutils.TypeRestriction) *AuditNpmCommand {
-	auditCmd.typeRestriction = typeRestriction
+func (auditCmd *AuditNpmCommand) SetNpmArgs(npmArgs []string) *AuditNpmCommand {
+	auditCmd.npmArgs = npmArgs
 	return auditCmd
 }
 
 func (auditCmd *AuditNpmCommand) Run() (err error) {
-	typeRestriction := auditCmd.typeRestriction
 
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
@@ -43,13 +42,12 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateDependenciesList(typeRestriction, npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), []string{}, nil, 1, log.Logger)
+	dependenciesList, err := biutils.CalculateDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), auditCmd.npmArgs, log.Logger)
 	if err != nil {
 		return err
 	}
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
-
 	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 

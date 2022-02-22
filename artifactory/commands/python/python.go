@@ -32,7 +32,12 @@ func NewPythonCommand(projectType utils.ProjectType) *PythonCommand {
 
 func (pc *PythonCommand) Run() (err error) {
 	log.Info(fmt.Sprintf("Running %s %s.", utils.ProjectTypes[pc.projectType], pc.commandName))
-	filteredArgs, pythonBuildInfo, moduleName, err := utils.PrepareBuildPrerequisites(pc.args)
+	var buildConfiguration *utils.BuildConfiguration
+	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
+	if err != nil {
+		return err
+	}
+	pythonBuildInfo, err := utils.PrepareBuildPrerequisites(buildConfiguration)
 	if err != nil {
 		return
 	}
@@ -44,7 +49,6 @@ func (pc *PythonCommand) Run() (err error) {
 			}
 		}
 	}()
-	pc.SetArgs(filteredArgs)
 	err = pc.setPypiRepoUrlWithCredentials()
 	if err != nil {
 		return nil
@@ -65,7 +69,7 @@ func (pc *PythonCommand) Run() (err error) {
 			err = errorutils.CheckError(err)
 			return
 		}
-		pythonModule.SetName(moduleName)
+		pythonModule.SetName(buildConfiguration.GetModule())
 		var localDependenciesPath string
 		localDependenciesPath, err = config.GetJfrogDependenciesPath()
 		if err != nil {

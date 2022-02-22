@@ -137,11 +137,10 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	filteredArgs, goBuildInfo, moduleName, err := utils.PrepareBuildPrerequisites(gc.goArg)
+	goBuildInfo, err := utils.PrepareBuildPrerequisites(gc.buildConfiguration)
 	if err != nil {
 		return err
 	}
-	gc.goArg = filteredArgs
 	defer func() {
 		if goBuildInfo != nil && err != nil {
 			e := goBuildInfo.Clean()
@@ -195,7 +194,7 @@ func (gc *GoCommand) run() error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		goModule.SetName(moduleName)
+		goModule.SetName(gc.buildConfiguration.GetModule())
 		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 

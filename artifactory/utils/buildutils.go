@@ -29,13 +29,8 @@ const (
 	ProjectConfigBuildNameKey = "name"
 )
 
-func PrepareBuildPrerequisites(args []string) (filteredArgs []string, build *build.Build, moduleName string, err error) {
+func PrepareBuildPrerequisites(buildConfiguration *BuildConfiguration) (build *build.Build, err error) {
 	log.Debug("Preparing build prerequisites...")
-	filteredArgs, buildConfiguration, err := ExtractBuildDetailsFromArgs(args)
-	if err != nil {
-		return
-	}
-	moduleName = buildConfiguration.GetModule()
 	// Prepare build-info.
 	toCollect, err := buildConfiguration.IsCollectBuildInfo()
 	if err != nil {

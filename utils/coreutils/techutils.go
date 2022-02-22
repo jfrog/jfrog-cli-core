@@ -17,6 +17,7 @@ const (
 	Pipenv = "pipenv"
 	Nuget  = "nuget"
 	Dotnet = "dotnet"
+	Docker = "docker"
 )
 
 type TechData struct {

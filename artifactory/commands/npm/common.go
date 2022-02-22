@@ -38,14 +38,16 @@ type CommonArgs struct {
 	NpmCommand
 }
 
-func (com *CommonArgs) preparePrerequisites(repo string) error {
+func (com *CommonArgs) preparePrerequisites(repo string, overrideNpmrc bool) error {
 	log.Debug("Preparing prerequisites...")
 	var err error
 	com.npmVersion, com.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
-
+	if !overrideNpmrc {
+		return nil
+	}
 	if com.npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckErrorf(
 			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. The Current version is: %s", com.cmdName, com.npmVersion.GetVersion())
@@ -60,7 +62,6 @@ func (com *CommonArgs) preparePrerequisites(repo string) error {
 		return err
 	}
 	log.Debug("Working directory set to:", com.workingDirectory)
-
 	if err = com.setArtifactoryAuth(); err != nil {
 		return err
 	}

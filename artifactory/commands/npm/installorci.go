@@ -83,7 +83,7 @@ func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error)
 }
 
 func (nic *NpmInstallOrCiCommand) Run() (err error) {
-	if err = nic.preparePrerequisites(nic.repo); err != nil {
+	if err = nic.preparePrerequisites(nic.repo, true); err != nil {
 		return
 	}
 

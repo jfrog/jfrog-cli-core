@@ -3,11 +3,12 @@ package container
 import (
 	"bytes"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/jfrog/gofrog/version"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -42,11 +43,10 @@ func (cmt ContainerManagerType) String() string {
 
 // Container image
 type ContainerManager interface {
-	Push(image *Image) error
 	// Image ID is basically the image's SHA256
 	Id(image *Image) (string, error)
 	OsCompatibility(image *Image) (string, string, error)
-	Pull(image *Image) error
+	RunNativeCmd(cmdParams []string) error
 	GetContainerManagerType() ContainerManagerType
 }
 
@@ -58,9 +58,9 @@ type ContainerManagerLoginConfig struct {
 	ServerDetails *config.ServerDetails
 }
 
-// Push image
-func (containerManager *containerManager) Push(image *Image) error {
-	cmd := &pushCmd{imageTag: image, containerManager: containerManager.Type}
+// Run native command of the container buildtool
+func (containerManager *containerManager) RunNativeCmd(cmdParams []string) error {
+	cmd := &nativeCmd{cmdParams: cmdParams,containerManager: containerManager.Type}
 	return cmd.RunCmd()
 }
 
@@ -69,12 +69,6 @@ func (containerManager *containerManager) Id(image *Image) (string, error) {
 	cmd := &getImageIdCmd{image: image, containerManager: containerManager.Type}
 	content, err := cmd.RunCmd()
 	return content[:strings.Index(content, "\n")], err
-}
-
-// Pull image
-func (containerManager *containerManager) Pull(image *Image) error {
-	cmd := &pullCmd{image: image, containerManager: containerManager.Type}
-	return cmd.RunCmd()
 }
 
 // Return the OS and architecture on which the image runs e.g. (linux, amd64, nil).
@@ -97,24 +91,17 @@ func (containerManager *containerManager) GetContainerManagerType() ContainerMan
 	return containerManager.Type
 }
 
-func NewImage(tag string) *Image {
-	return &Image{name: tag}
-}
-
 // Image push command
-type pushCmd struct {
-	imageTag         *Image
+type nativeCmd struct {
+	cmdParams        []string
 	containerManager ContainerManagerType
 }
 
-func (pushCmd *pushCmd) GetCmd() *exec.Cmd {
-	var cmd []string
-	cmd = append(cmd, "push")
-	cmd = append(cmd, pushCmd.imageTag.name)
-	return exec.Command(pushCmd.containerManager.String(), cmd[:]...)
+func (nc *nativeCmd) GetCmd() *exec.Cmd {
+	return exec.Command(nc.containerManager.String(), nc.cmdParams...)
 }
 
-func (pushCmd *pushCmd) RunCmd() error {
+func (pushCmd *nativeCmd) RunCmd() error {
 	command := pushCmd.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
@@ -170,23 +157,6 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) RunCmd() (
 	return buffer.String(), err
 }
 
-// Get registry from tag
-func ResolveRegistryFromTag(imageTag string) (string, error) {
-	indexOfFirstSlash := strings.Index(imageTag, "/")
-	if indexOfFirstSlash < 0 {
-		err := errorutils.CheckErrorf("Invalid image tag received for pushing to Artifactory - tag does not include a slash.")
-		return "", err
-	}
-	indexOfSecondSlash := strings.Index(imageTag[indexOfFirstSlash+1:], "/")
-	// Reverse proxy Artifactory
-	if indexOfSecondSlash < 0 {
-		return imageTag[:indexOfFirstSlash], nil
-	}
-	// Can be reverse proxy or proxy-less Artifactory
-	indexOfSecondSlash += indexOfFirstSlash + 1
-	return imageTag[:indexOfSecondSlash], nil
-}
-
 // Login command
 type LoginCmd struct {
 	DockerRegistry   string
@@ -234,8 +204,8 @@ func (pullCmd *pullCmd) RunCmd() error {
 
 // First we'll try to login assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
 // If fails, we will try assuming a reverse proxy tag (e.g. "registry-address-docker-repo/image:ver").
-func ContainerManagerLogin(imageTag string, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
-	imageRegistry, err := ResolveRegistryFromTag(imageTag)
+func ContainerManagerLogin(image *Image, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
+	imageRegistry, err := image.GetRegistry()
 	if err != nil {
 		return err
 	}
@@ -301,6 +271,7 @@ func ValidateClientApiVersion() error {
 	content = strings.TrimSpace(content)
 	if !ApiVersionRegex.Match([]byte(content)) {
 		// The Api version is expected to be 'major.minor'. Anything else should return an error.
+		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:" + content)
 		return errorutils.CheckError(err)
 	}
 	if !IsCompatibleApiVersion(content) {

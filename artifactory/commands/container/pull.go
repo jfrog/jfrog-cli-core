@@ -8,16 +8,21 @@ import (
 )
 
 type PullCommand struct {
-	ContainerManagerCommand
-	containerManagerType container.ContainerManagerType
+	ContainerCommand
 }
 
 func NewPullCommand(containerManagerType container.ContainerManagerType) *PullCommand {
-	return &PullCommand{containerManagerType: containerManagerType}
+	return &PullCommand{
+		ContainerCommand: ContainerCommand{
+			containerManagerType: containerManagerType,
+		},
+	}
 }
 
-// Pull image and create build info if needed
 func (pc *PullCommand) Run() error {
+	if err := pc.init(); err != nil {
+		return err
+	}
 	if pc.containerManagerType == container.DockerClient {
 		err := container.ValidateClientApiVersion()
 		if err != nil {
@@ -34,9 +39,12 @@ func (pc *PullCommand) Run() error {
 	}
 	// Perform pull.
 	cm := container.NewManager(pc.containerManagerType)
-	image := container.NewImage(pc.imageTag)
-	err = cm.Pull(image)
+	err = cm.RunNativeCmd(pc.cmdParams)
 	if err != nil {
+		return err
+	}
+	toCollect, err := pc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil || !toCollect {
 		return err
 	}
 	buildName, err := pc.buildConfiguration.GetBuildName()
@@ -48,26 +56,26 @@ func (pc *PullCommand) Run() error {
 		return err
 	}
 	project := pc.BuildConfiguration().GetProject()
-	// Return if no build name and number was provided
-	if buildName == "" || buildNumber == "" {
-		return nil
-	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
-		return err
-	}
 	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewLocalAgentBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, project, serviceManager, container.Pull, cm)
+	repo, err := pc.GetRepo()
 	if err != nil {
 		return err
 	}
-	buildInfo, err := builder.Build(pc.BuildConfiguration().GetModule())
+	builder, err := container.NewLocalAgentBuildInfoBuilder(pc.image, repo, buildName, buildNumber, project, serviceManager, container.Pull, cm)
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
+	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
+		return err
+	}
+	buildInfoModule, err := builder.Build(pc.BuildConfiguration().GetModule())
+	if err != nil || buildInfoModule == nil {
+		return err
+	}
+	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfoModule)
 }
 
 func (pc *PullCommand) CommandName() string {

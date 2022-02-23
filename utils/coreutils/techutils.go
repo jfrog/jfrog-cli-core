@@ -17,6 +17,7 @@ const (
 	Pipenv = "pipenv"
 	Nuget  = "nuget"
 	Dotnet = "dotnet"
+	Docker = "docker"
 )
 
 type TechData struct {
@@ -68,7 +69,7 @@ func GetTechnologyPackageType(techName Technology) string {
 	if ok {
 		return techData.PackageType
 	} else {
-		return ""
+		return string(techName)
 	}
 }
 

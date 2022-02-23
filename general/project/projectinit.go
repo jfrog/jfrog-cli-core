@@ -1,9 +1,9 @@
 package project
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -23,6 +23,7 @@ const (
 type ProjectInitCommand struct {
 	projectPath string
 	serverId    string
+	serverUrl   string
 }
 
 func NewProjectInitCommand() *ProjectInitCommand {
@@ -46,10 +47,14 @@ func (pic *ProjectInitCommand) Run() (err error) {
 			return err
 		}
 		pic.serverId = defaultServer.ServerId
+		pic.serverUrl = defaultServer.Url
 	}
 	technologiesMap, err := pic.detectTechnologies()
 	if err != nil {
 		return err
+	}
+	if _, errNotFound := exec.LookPath("docker"); errNotFound == nil {
+		technologiesMap[coreutils.Docker] = true
 	}
 	// First create repositories for the detected technologies.
 	for techName := range technologiesMap {
@@ -68,10 +73,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return
 	}
 
-	fmt.Println()
 	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap), false)
-	fmt.Println()
-
 	return
 }
 
@@ -136,9 +138,18 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			message +=
 				"jf" + string(executableName) + "restore\n" +
 					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
-
+		case coreutils.Docker:
+			baseurl := strings.TrimLeft(pic.serverUrl, "https://")
+			baseurl = strings.TrimLeft(baseurl, "http://")
+			imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
+			message += "\n" + coreutils.PrintTitle("Pull and Push any docker image using Artifactory") +
+				"\n" +
+				"1. jf docker tag <image>:<tag> " + imageUrl + "\n" +
+				"2. jf docker pull " + imageUrl + "\n" +
+				"3. jf docker push " + imageUrl + "\n"
 		}
 	}
+
 	if message != "" {
 		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
 			"\n" +

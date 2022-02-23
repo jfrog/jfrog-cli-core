@@ -40,6 +40,10 @@ const (
 	NugetRemoteDefaultName   = "default-nuget-remote"
 	NugetRemoteDefaultUrl    = "https://www.nuget.org/"
 	NugetVirtualDefaultName  = "default-nuget-virtual"
+	DockerLocalDefaultName   = "default-docker-local"
+	DockerRemoteDefaultName  = "default-docker-remote"
+	DockerRemoteDefaultUrl   = "https://registry-1.docker.io"
+	DockerVirtualDefaultName = "default-docker-virtual"
 )
 
 var RepoDefaultName = map[coreutils.Technology]map[string]string{
@@ -90,6 +94,12 @@ var RepoDefaultName = map[coreutils.Technology]map[string]string{
 		Remote:    NugetRemoteDefaultName,
 		RemoteUrl: NugetRemoteDefaultUrl,
 		Virtual:   NugetVirtualDefaultName,
+	},
+	coreutils.Docker: {
+		Local:     DockerLocalDefaultName,
+		Remote:    DockerRemoteDefaultName,
+		RemoteUrl: DockerRemoteDefaultUrl,
+		Virtual:   DockerVirtualDefaultName,
 	},
 }
 

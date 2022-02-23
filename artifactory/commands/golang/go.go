@@ -194,7 +194,9 @@ func (gc *GoCommand) run() error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		goModule.SetName(gc.buildConfiguration.GetModule())
+		if gc.buildConfiguration.GetModule() != "" {
+			goModule.SetName(gc.buildConfiguration.GetModule())
+		}
 		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 

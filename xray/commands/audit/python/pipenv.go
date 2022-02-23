@@ -1,7 +1,6 @@
 package python
 
 import (
-	"bytes"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -51,12 +50,9 @@ func (apec *AuditPipenvCommand) getDependencies() (dependenciesGraph map[string]
 		}
 	}()
 	// Run pipenv install
-	var stderr bytes.Buffer
-	pipenvInstall := exec.Command("pipenv", "install")
-	pipenvInstall.Stderr = &stderr
-	err = pipenvInstall.Run()
+	output, err := exec.Command("pipenv", "install").CombinedOutput()
 	if err != nil {
-		return nil, nil, errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), stderr.String())
+		return nil, nil, errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
 	}
 	// Run pipenv graph to get dependencies tree
 	return pythonutils.GetPythonDependencies(pythonutils.Pipenv, "", "")

@@ -3,9 +3,10 @@ package utils
 import (
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
+	"github.com/jfrog/build-info-go/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/spf13/viper"
@@ -21,45 +22,45 @@ const (
 func TestCreateDefaultPropertiesFile(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy("", t)
-
-	for index := range ProjectTypes {
-		testCreateDefaultPropertiesFile(ProjectType(index), t)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+	data := []struct {
+		projectType   ProjectType
+		expectedProps string
+	}{
+		{Maven, filepath.Join(testdataPath, "expected_maven_test_create_default_properties_file.json")},
+		{Gradle, filepath.Join(testdataPath, "expected_gradle_test_create_default_properties_file.json")},
+	}
+	for _, d := range data {
+		testCreateDefaultPropertiesFile(d.projectType, d.expectedProps, t)
 	}
 	setProxy(proxyOrg, t)
 }
 
-func testCreateDefaultPropertiesFile(projectType ProjectType, t *testing.T) {
+func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFilePath string, t *testing.T) {
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
-
+	expectedProps := map[string]string{}
+	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))
 	props, err := CreateBuildInfoProps("", providedConfig, projectType)
 	if err != nil {
 		t.Error(err)
 	}
-	expectedProps := make(map[string]string)
-	for _, partialMapping := range buildTypeConfigMapping[projectType] {
-		for propertyKey := range *partialMapping {
-			if defaultPropertiesValues[propertyKey] != "" {
-				expectedProps[propertyKey] = defaultPropertiesValues[propertyKey]
-				if strings.HasPrefix(propertyKey, "artifactory.") {
-					expectedProps[strings.TrimPrefix(propertyKey, "artifactory.")] = defaultPropertiesValues[propertyKey]
-				}
-			}
-		}
-	}
-	assert.True(t, fmt.Sprint(props) == fmt.Sprint(expectedProps))
+	assert.True(t, fmt.Sprint(expectedProps) == fmt.Sprint(props), "unexpected "+projectType.String()+" props. got:\n"+fmt.Sprint(props)+"\nwant: "+fmt.Sprint(expectedProps)+"\n")
 }
 
 func TestCreateSimplePropertiesFileWithProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy(proxy, t)
 	var propertiesFileConfig = map[string]string{
-		"artifactory.resolve.contextUrl": "http://some.url.com",
-		"artifactory.publish.contextUrl": "http://some.other.url.com",
-		"artifactory.proxy.host":         host,
-		"artifactory.proxy.port":         port,
+		"resolve.contextUrl": "http://some.url.com",
+		"publish.contextUrl": "http://some.other.url.com",
+		"proxy.host":         host,
+		"proxy.port":         port,
 	}
-	createSimplePropertiesFile(t, propertiesFileConfig)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_proxy.json"), propertiesFileConfig)
 	setProxy(proxyOrg, t)
 }
 
@@ -67,20 +68,23 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy("", t)
 	var propertiesFileConfig = map[string]string{
-		"artifactory.resolve.contextUrl": "http://some.url.com",
-		"artifactory.publish.contextUrl": "http://some.other.url.com",
+		"resolve.contextUrl": "http://some.url.com",
+		"publish.contextUrl": "http://some.other.url.com",
 	}
-	createSimplePropertiesFile(t, propertiesFileConfig)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"), propertiesFileConfig)
 	setProxy(proxyOrg, t)
 
 }
 
-func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]string) {
+func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, propertiesFileConfig map[string]string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",
 	}
-
+	var expectedProps map[string]interface{}
+	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))
 	vConfig := viper.New()
 	vConfig.Set("type", Maven.String())
 	for k, v := range yamlConfig {
@@ -89,23 +93,6 @@ func createSimplePropertiesFile(t *testing.T, propertiesFileConfig map[string]st
 	props, err := CreateBuildInfoProps("", vConfig, Maven)
 	if err != nil {
 		t.Error(err)
-	}
-	expectedProps := make(map[string]string)
-	for _, partialMapping := range buildTypeConfigMapping[Maven] {
-		for propertyKey := range *partialMapping {
-			if defaultPropertiesValues[propertyKey] != "" {
-				expectedProps[propertyKey] = defaultPropertiesValues[propertyKey]
-				if strings.HasPrefix(propertyKey, "artifactory.") {
-					expectedProps[strings.TrimPrefix(propertyKey, "artifactory.")] = defaultPropertiesValues[propertyKey]
-				}
-			}
-		}
-	}
-	for k, v := range propertiesFileConfig {
-		expectedProps[k] = v
-		if strings.HasPrefix(k, "artifactory.") {
-			expectedProps[strings.TrimPrefix(k, "artifactory.")] = v
-		}
 	}
 	assert.True(t, fmt.Sprint(props) == fmt.Sprint(expectedProps))
 }

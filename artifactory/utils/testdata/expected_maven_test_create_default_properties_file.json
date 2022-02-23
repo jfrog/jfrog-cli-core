@@ -1,0 +1,20 @@
+{
+    "artifactory.publish.unstable": "false",
+    "publish.forkCount": "3",
+    "buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*,*auth*",
+    "artifactory.buildInfoConfig.envVarsExcludePatterns": "*password*,*psw*,*secret*,*key*,*token*,*auth*",
+    "publish.buildInfo": "false",
+    "org.jfrog.build.extractor.maven.recorder.activate": "true",
+    "buildInfo.agent.name": "/",
+    "artifactory.buildInfo.agent.name": "/",
+    "buildInfoConfig.includeEnvVars": "false",
+    "artifactory.buildInfoConfig.includeEnvVars": "false",
+    "publish.filterExcludedArtifactsFromBuild": "true",
+    "artifactory.publish.filterExcludedArtifactsFromBuild": "true",
+    "publish.artifacts": "true",
+    "artifactory.publish.buildInfo": "false",
+    "artifactory.org.jfrog.build.extractor.maven.recorder.activate": "true",
+    "publish.unstable": "false",
+    "artifactory.publish.artifacts": "true",
+    "artifactory.publish.forkCount": "3"
+}

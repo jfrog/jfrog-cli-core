@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetHomeDir(t *testing.T) {

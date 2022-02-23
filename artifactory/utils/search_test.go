@@ -2,19 +2,18 @@ package utils
 
 import (
 	"bytes"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPrintSearchResults(t *testing.T) {
-	testdataPath, err := getTestDataPath()
+	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
 	reader := content.NewContentReader(filepath.Join(testdataPath, "search_results.json"), content.DefaultKey)
 
@@ -35,14 +34,6 @@ func TestPrintSearchResults(t *testing.T) {
 	logOutput := buffer.Bytes()
 	compareResult := bytes.Compare(logOutput, []byte(expectedLogOutput))
 	assert.Equal(t, 0, compareResult)
-}
-
-func getTestDataPath() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return filepath.Join(dir, "testdata"), nil
 }
 
 const expectedLogOutput = `[

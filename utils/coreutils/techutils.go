@@ -69,7 +69,7 @@ func GetTechnologyPackageType(techName Technology) string {
 	if ok {
 		return techData.PackageType
 	} else {
-		return ""
+		return string(techName)
 	}
 }
 

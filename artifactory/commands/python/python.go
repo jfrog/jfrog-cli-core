@@ -3,6 +3,7 @@ package python
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	gofrogcmd "github.com/jfrog/gofrog/io"
@@ -69,7 +70,8 @@ func (pc *PythonCommand) Run() (err error) {
 			err = errorutils.CheckError(err)
 			return
 		}
-		pythonModule, err := pythonBuildInfo.AddPythonModule("", pythonTool)
+		var pythonModule *build.PythonModule
+		pythonModule, err = pythonBuildInfo.AddPythonModule("", pythonTool)
 		if buildConfiguration.GetModule() != "" {
 			pythonModule.SetName(buildConfiguration.GetModule())
 		}
@@ -80,9 +82,8 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 		pythonModule.SetLocalDependenciesPath(localDependenciesPath)
 		pythonModule.SetUpdateDepsChecksumInfoFunc(pc.UpdateDepsChecksumInfoFunc)
-		err = pythonModule.RunInstallAndCollectDependencies(pc.args)
+		err = errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
 		if err != nil {
-			err = errorutils.CheckError(err)
 			return
 		}
 	} else {
@@ -93,7 +94,7 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 		err = gofrogcmd.RunCmd(pc)
 		if err != nil {
-			return err
+			return
 		}
 	}
 	return

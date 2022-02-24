@@ -43,13 +43,6 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]buildinfo.Dependency, src
 
 			continue
 		}
-		// Update dependency info.
-		depInfo.Id = depFileName
-		fileType := ""
-		if i := strings.LastIndex(depFileName, "."); i != -1 {
-			fileType = depFileName[i+1:]
-		}
-		depInfo.Type = fileType
 		depInfo.Checksum = depChecksum
 		dependenciesMap[depName] = depInfo
 	}

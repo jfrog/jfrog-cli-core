@@ -1,7 +1,6 @@
 package python
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -85,13 +84,9 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	pipVenvPath := filepath.Join(venvPath, "pip")
 
 	// Run pip install
-	var stderr bytes.Buffer
-	pipInstall := exec.Command(pipVenvPath, "install", ".")
-	pipInstall.Stderr = &stderr
-	pipInstall.Stdout = &stderr
-	err = pipInstall.Run()
+	output, err := exec.Command(pipVenvPath, "install", ".").CombinedOutput()
 	if err != nil {
-		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), stderr.String())
+		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
 
 		exist, requirementsErr := fileutils.IsFileExists(filepath.Join(tempDirPath, "requirements.txt"), false)
 		if requirementsErr != nil || !exist {
@@ -99,12 +94,9 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 		}
 		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
 		// Run pip install -r requirements
-		var stderr bytes.Buffer
-		pipRequirements := exec.Command(pipVenvPath, "install", "-r", "requirements.txt")
-		pipRequirements.Stderr = &stderr
-		requirementsErr = pipRequirements.Run()
+		output, requirementsErr = exec.Command(pipVenvPath, "install", "-r", "requirements.txt").CombinedOutput()
 		if requirementsErr != nil {
-			log.Error(fmt.Sprintf("pip install -r requirements.txt command failed: %s - %s", err.Error(), stderr.String()))
+			log.Error(fmt.Sprintf("pip install -r requirements.txt command failed: %s - %s", err.Error(), output))
 			return
 		}
 	}

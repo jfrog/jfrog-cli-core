@@ -3,8 +3,8 @@ package python
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -54,14 +54,14 @@ func (pc *PythonCommand) Run() (err error) {
 		return nil
 	}
 
-	if pythonBuildInfo != nil {
+	if pythonBuildInfo != nil && pc.commandName == "install" {
 		// Need to collect build info
-		var pythonModule *build.PythonModule
+		var pythonTool pythonutils.PythonTool
 		switch pc.projectType {
 		case utils.Pip:
-			pythonModule, err = pythonBuildInfo.AddPipModule("")
+			pythonTool = pythonutils.Pip
 		case utils.Pipenv:
-			pythonModule, err = pythonBuildInfo.AddPipenvModule("")
+			pythonTool = pythonutils.Pipenv
 		default:
 			return errors.New(fmt.Sprintf("Build info dependencies collection for %s commands is not supported.", utils.ProjectTypes[pc.projectType]))
 		}
@@ -69,6 +69,7 @@ func (pc *PythonCommand) Run() (err error) {
 			err = errorutils.CheckError(err)
 			return
 		}
+		pythonModule, err := pythonBuildInfo.AddPythonModule("", pythonTool)
 		if buildConfiguration.GetModule() != "" {
 			pythonModule.SetName(buildConfiguration.GetModule())
 		}
@@ -79,7 +80,7 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 		pythonModule.SetLocalDependenciesPath(localDependenciesPath)
 		pythonModule.SetUpdateDepsChecksumInfoFunc(pc.UpdateDepsChecksumInfoFunc)
-		err = pythonModule.RunCommandAndCollectDependencies(pc.commandName, pc.args)
+		err = pythonModule.RunInstallAndCollectDependencies(pc.args)
 		if err != nil {
 			err = errorutils.CheckError(err)
 			return

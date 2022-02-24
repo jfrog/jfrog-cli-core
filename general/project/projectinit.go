@@ -142,11 +142,11 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			baseurl := strings.TrimLeft(pic.serverUrl, "https://")
 			baseurl = strings.TrimLeft(baseurl, "http://")
 			imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
-			message += "\n" + coreutils.PrintTitle("Pull and Push any docker image using Artifactory") +
+			message += "\n" + coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
 				"\n" +
-				"1. jf docker tag <image>:<tag> " + imageUrl + "\n" +
-				"2. jf docker pull " + imageUrl + "\n" +
-				"3. jf docker push " + imageUrl + "\n"
+				"jf docker tag <image>:<tag> " + imageUrl + "\n" +
+				"jf docker push " + imageUrl + "\n" +
+				"jf docker pull " + imageUrl + "\n"
 		}
 	}
 

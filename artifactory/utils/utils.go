@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/jfrog/build-info-go/build"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/jfrog/jfrog-client-go/utils/io"
@@ -80,7 +81,7 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 		return "", errorutils.CheckErrorf(message)
 	}
 
-	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status)
+	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body))
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {

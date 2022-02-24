@@ -57,7 +57,7 @@ func (bac *BuildAppendCommand) Run() error {
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.ModuleType = buildinfo.Build
 		partial.ModuleId = bac.buildNameToAppend + "/" + bac.buildNumberToAppend
-		partial.Checksum = &buildinfo.Checksum{
+		partial.Checksum = buildinfo.Checksum{
 			Sha1: checksumDetails.Sha1,
 			Md5:  checksumDetails.Md5,
 		}

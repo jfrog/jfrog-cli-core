@@ -290,7 +290,7 @@ func dependenciesMapToList(dependenciesMap map[string]buildinfo.Dependency) []bu
 	return dependencies
 }
 
-func createModule(moduleId string, moduleType buildinfo.ModuleType, checksum *buildinfo.Checksum, artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency) *buildinfo.Module {
+func createModule(moduleId string, moduleType buildinfo.ModuleType, checksum buildinfo.Checksum, artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency) *buildinfo.Module {
 	module := createDefaultModule(moduleId)
 	module.Type = moduleType
 	module.Checksum = checksum
@@ -316,5 +316,5 @@ type partialModule struct {
 	moduleType   buildinfo.ModuleType
 	artifacts    map[string]buildinfo.Artifact
 	dependencies map[string]buildinfo.Dependency
-	checksum     *buildinfo.Checksum
+	checksum     buildinfo.Checksum
 }

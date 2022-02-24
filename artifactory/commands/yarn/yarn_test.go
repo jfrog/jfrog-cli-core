@@ -120,7 +120,7 @@ func TestAppendDependencyRecursively(t *testing.T) {
 		"pack6@npm:1.0.0": {Value: "pack6@npm:1.0.0", Details: YarnDepDetails{Version: "1.0.0", Dependencies: []YarnDependencyPointer{{Locator: "pack4@npm:1.0.0"}}}},
 	}
 	// Build a previousBuildDependencies map to avoid fetching checksums from Artifactory
-	prevDependency := &buildinfo.Dependency{Checksum: &buildinfo.Checksum{}}
+	prevDependency := &buildinfo.Dependency{Checksum: buildinfo.Checksum{}}
 	previousBuildDependencies := map[string]*buildinfo.Dependency{"pack1:1.0.0": prevDependency, "pack2:1.0.0": prevDependency, "pack3:1.0.0": prevDependency, "pack4:1.0.0": prevDependency, "pack5:1.0.0": prevDependency, "pack6:1.0.0": prevDependency}
 	yarnCmd := &YarnCommand{dependencies: make(map[string]*buildinfo.Dependency)}
 
@@ -131,16 +131,16 @@ func TestAppendDependencyRecursively(t *testing.T) {
 		{
 			dependenciesMap["pack3@npm:1.0.0"],
 			map[string]*buildinfo.Dependency{
-				"pack1:1.0.0": {Id: "pack1:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"pack3:1.0.0", "rootpack:1.0.0"}}},
-				"pack2:1.0.0": {Id: "pack2:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"pack3:1.0.0", "rootpack:1.0.0"}}},
-				"pack3:1.0.0": {Id: "pack3:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"rootpack:1.0.0"}}},
+				"pack1:1.0.0": {Id: "pack1:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"pack3:1.0.0", "rootpack:1.0.0"}}},
+				"pack2:1.0.0": {Id: "pack2:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"pack3:1.0.0", "rootpack:1.0.0"}}},
+				"pack3:1.0.0": {Id: "pack3:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"rootpack:1.0.0"}}},
 			},
 		}, {
 			dependenciesMap["pack6@npm:1.0.0"],
 			map[string]*buildinfo.Dependency{
-				"pack4:1.0.0": {Id: "pack4:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"pack6:1.0.0", "rootpack:1.0.0"}}},
-				"pack5:1.0.0": {Id: "pack5:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"pack4:1.0.0", "pack6:1.0.0", "rootpack:1.0.0"}}},
-				"pack6:1.0.0": {Id: "pack6:1.0.0", Checksum: &buildinfo.Checksum{}, RequestedBy: [][]string{{"rootpack:1.0.0"}}},
+				"pack4:1.0.0": {Id: "pack4:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"pack6:1.0.0", "rootpack:1.0.0"}}},
+				"pack5:1.0.0": {Id: "pack5:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"pack4:1.0.0", "pack6:1.0.0", "rootpack:1.0.0"}}},
+				"pack6:1.0.0": {Id: "pack6:1.0.0", Checksum: buildinfo.Checksum{}, RequestedBy: [][]string{{"rootpack:1.0.0"}}},
 			},
 		},
 	}

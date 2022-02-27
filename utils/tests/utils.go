@@ -79,7 +79,7 @@ func cleanUpUnitTestsJfrogHome(homeDir string) {
 		os.Exit(1)
 	}
 	errorOccurred := false
-	if err := os.RemoveAll(homePath); err != nil {
+	if err := fileutils.RemoveTempDir(homePath); err != nil {
 		errorOccurred = true
 		log.Error(err)
 	}

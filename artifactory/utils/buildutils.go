@@ -293,7 +293,7 @@ func RemoveBuildDir(buildName, buildNumber, projectKey string) error {
 		return err
 	}
 	if exists {
-		return errorutils.CheckError(os.RemoveAll(tempDirPath))
+		return errorutils.CheckError(fileutils.RemoveTempDir(tempDirPath))
 	}
 	return nil
 }

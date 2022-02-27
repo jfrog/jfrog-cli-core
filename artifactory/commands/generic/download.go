@@ -309,7 +309,7 @@ func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 		log.Info("Deleting:", path)
 		if info.IsDir() {
 			// If current path is a dir - remove all content and return SkipDir to stop walking this path
-			err = os.RemoveAll(path)
+			err = fileutils.RemoveTempDir(path)
 			if err == nil {
 				return fileutils.SkipDir
 			}

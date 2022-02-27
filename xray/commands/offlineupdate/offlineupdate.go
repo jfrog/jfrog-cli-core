@@ -134,7 +134,7 @@ func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []
 		return err
 	}
 	defer func() {
-		if cerr := os.RemoveAll(dataDir); cerr != nil && err == nil {
+		if cerr := fileutils.RemoveTempDir(dataDir); cerr != nil && err == nil {
 			err = cerr
 		}
 	}()

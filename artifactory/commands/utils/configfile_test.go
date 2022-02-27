@@ -104,7 +104,7 @@ func TestPipenvConfigFile(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
 	tempDirPath := createTempEnv(t)
 	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath))
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath))
 	}()
 
 	// Create build config

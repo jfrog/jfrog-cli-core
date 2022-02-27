@@ -27,8 +27,8 @@ type AuditPythonCommand struct {
 	audit.AuditCommand
 }
 
-func NewAuditPythonCommand(pythonTool pythonutils.PythonTool) *AuditPythonCommand {
-	return &AuditPythonCommand{AuditCommand: *audit.NewAuditCommand(), pythonTool: pythonTool}
+func NewAuditPythonCommand(auditCmd audit.AuditCommand, pythonTool pythonutils.PythonTool) *AuditPythonCommand {
+	return &AuditPythonCommand{AuditCommand: auditCmd, pythonTool: pythonTool}
 }
 
 func (apc *AuditPythonCommand) Run() error {

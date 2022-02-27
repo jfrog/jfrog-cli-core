@@ -20,7 +20,7 @@ import (
 
 type PythonCommand struct {
 	serverDetails *config.ServerDetails
-	projectType   utils.ProjectType
+	pythonTool    pythonutils.PythonTool
 	executable    string
 	commandName   string
 	args          []string
@@ -28,11 +28,11 @@ type PythonCommand struct {
 }
 
 func NewPythonCommand(projectType utils.ProjectType) *PythonCommand {
-	return &PythonCommand{projectType: projectType}
+	return &PythonCommand{pythonTool: GetPythonTool(projectType), executable: string(GetPythonTool(projectType))}
 }
 
 func (pc *PythonCommand) Run() (err error) {
-	log.Info(fmt.Sprintf("Running %s %s.", utils.ProjectTypes[pc.projectType], pc.commandName))
+	log.Info(fmt.Sprintf("Running %s %s.", string(pc.pythonTool), pc.commandName))
 	var buildConfiguration *utils.BuildConfiguration
 	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {
@@ -50,28 +50,15 @@ func (pc *PythonCommand) Run() (err error) {
 			}
 		}
 	}()
-	err = pc.setPypiRepoUrlWithCredentials()
+	err = pc.SetPypiRepoUrlWithCredentials()
 	if err != nil {
 		return nil
 	}
 
 	if pythonBuildInfo != nil && pc.commandName == "install" {
 		// Need to collect build info
-		var pythonTool pythonutils.PythonTool
-		switch pc.projectType {
-		case utils.Pip:
-			pythonTool = pythonutils.Pip
-		case utils.Pipenv:
-			pythonTool = pythonutils.Pipenv
-		default:
-			return errors.New(fmt.Sprintf("Build info dependencies collection for %s commands is not supported.", utils.ProjectTypes[pc.projectType]))
-		}
-		if err != nil {
-			err = errorutils.CheckError(err)
-			return
-		}
 		var pythonModule *build.PythonModule
-		pythonModule, err = pythonBuildInfo.AddPythonModule("", pythonTool)
+		pythonModule, err = pythonBuildInfo.AddPythonModule("", pc.pythonTool)
 		if buildConfiguration.GetModule() != "" {
 			pythonModule.SetName(buildConfiguration.GetModule())
 		}
@@ -88,10 +75,6 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 	} else {
 		// Python native command
-		err = pc.SetExecutablePath()
-		if err != nil {
-			return nil
-		}
 		err = gofrogcmd.RunCmd(pc)
 		if err != nil {
 			return
@@ -123,20 +106,7 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 	return pc
 }
 
-func (pc *PythonCommand) SetExecutablePath() error {
-
-	executablePath, err := exec.LookPath(utils.ProjectTypes[pc.projectType])
-	if err != nil {
-		return err
-	}
-	if executablePath == "" {
-		return errorutils.CheckError(errors.New("Could not find the" + utils.ProjectTypes[pc.projectType] + " executable in the system PATH"))
-	}
-	pc.executable = executablePath
-	return nil
-}
-
-func (pc *PythonCommand) setPypiRepoUrlWithCredentials() error {
+func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -159,9 +129,9 @@ func (pc *PythonCommand) setPypiRepoUrlWithCredentials() error {
 	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
 
-	if pc.projectType == utils.Pip {
+	if pc.pythonTool == pythonutils.Pip {
 		pc.args = append(pc.args, "-i")
-	} else if pc.projectType == utils.Pipenv {
+	} else if pc.pythonTool == pythonutils.Pipenv {
 		pc.args = append(pc.args, "--pypi-mirror")
 	}
 	pc.args = append(pc.args, rtUrl.String())
@@ -179,6 +149,16 @@ func (pc *PythonCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (pc *PythonCommand) ServerDetails() (*config.ServerDetails, error) {
 	return pc.serverDetails, nil
+}
+
+func GetPythonTool(projectType utils.ProjectType) pythonutils.PythonTool {
+	switch projectType {
+	case utils.Pip:
+		return pythonutils.Pip
+	case utils.Pipenv:
+		return pythonutils.Pipenv
+	}
+	return ""
 }
 
 func (pc *PythonCommand) GetCmd() *exec.Cmd {

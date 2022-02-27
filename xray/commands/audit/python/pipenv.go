@@ -17,10 +17,6 @@ func NewEmptyAuditPipenvCommand() *AuditPipenvCommand {
 	return &AuditPipenvCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditPipenvCommand(auditCmd audit.AuditCommand) *AuditPipenvCommand {
-	return &AuditPipenvCommand{AuditCommand: auditCmd}
-}
-
 func (apec *AuditPipenvCommand) Run() (err error) {
 	rootNode, err := apec.buildPipenvDependencyTree()
 	if err != nil {

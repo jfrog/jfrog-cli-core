@@ -22,10 +22,6 @@ func NewEmptyAuditPipCommand() *AuditPipCommand {
 	return &AuditPipCommand{AuditCommand: *audit.NewAuditCommand()}
 }
 
-func NewAuditPipCommand(auditCmd audit.AuditCommand) *AuditPipCommand {
-	return &AuditPipCommand{AuditCommand: auditCmd}
-}
-
 func (apc *AuditPipCommand) Run() error {
 	dependencyTree, err := apc.buildPipDependencyTree()
 	if err != nil {
@@ -77,14 +73,13 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	}
 
 	// 'virtualenv venv'
-	venvPath, err := pythonutils.RunVirtualEnv()
-	if err != nil {
-		return
-	}
-	pipVenvPath := filepath.Join(venvPath, "pip")
-
+	//venvPath, err := pythonutils.RunVirtualEnv()
+	//if err != nil {
+	//	return
+	//}
+	//pipVenvPath := filepath.Join(tempDirPath, venvPath, "pip")
 	// Run pip install
-	output, err := exec.Command(pipVenvPath, "install", ".").CombinedOutput()
+	output, err := exec.Command("pip", "install", ".", "--no-cache-dir", "--force-reinstall").CombinedOutput()
 	if err != nil {
 		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
 
@@ -94,7 +89,7 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 		}
 		log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
 		// Run pip install -r requirements
-		output, requirementsErr = exec.Command(pipVenvPath, "install", "-r", "requirements.txt").CombinedOutput()
+		output, requirementsErr = exec.Command("pip", "install", "-r", "requirements.txt").CombinedOutput()
 		if requirementsErr != nil {
 			log.Error(fmt.Sprintf("pip install -r requirements.txt command failed: %s - %s", err.Error(), output))
 			return
@@ -106,8 +101,8 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	if err != nil {
 		return
 	}
-	pythonVenvPath := filepath.Join(venvPath, "python")
-	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonutils.Pip, pythonVenvPath, localDependenciesPath)
+	//	pythonVenvPath := filepath.Join(venvPath, "python")
+	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonutils.Pip, tempDirPath, localDependenciesPath)
 	return
 }
 

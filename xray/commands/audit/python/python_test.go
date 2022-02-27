@@ -1,7 +1,7 @@
 package python
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/stretchr/testify/assert"
 	"path/filepath"
@@ -13,7 +13,7 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPythonCommand(utils.Pip)
+	auditCmd := NewEmptyPythonCommand(pythonutils.Pip)
 	dependencyTree, err := auditCmd.buildDependencyTree()
 	if assert.NoError(t, err) && assert.NotNil(t, dependencyTree) {
 		assert.NotEmpty(t, dependencyTree.Nodes)
@@ -31,7 +31,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPythonCommand(utils.Pip)
+	auditCmd := NewEmptyPythonCommand(pythonutils.Pip)
 	rootNodes, err := auditCmd.buildDependencyTree()
 	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
 		if rootNodes != nil {
@@ -48,7 +48,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPythonCommand(utils.Pipenv)
+	auditCmd := NewEmptyPythonCommand(pythonutils.Pipenv)
 	dependencyTree, err := auditCmd.buildDependencyTree()
 	if assert.NoError(t, err) && assert.NotNil(t, dependencyTree) {
 		assert.NotEmpty(t, dependencyTree.Nodes)

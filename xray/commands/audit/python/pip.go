@@ -71,15 +71,18 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	if err != nil {
 		return
 	}
-
-	// 'virtualenv venv'
-	//venvPath, err := pythonutils.RunVirtualEnv()
-	//if err != nil {
-	//	return
-	//}
-	//pipVenvPath := filepath.Join(tempDirPath, venvPath, "pip")
+	restorePathEnv, err := pythonutils.SetVirtualEnvPath()
+	if err != nil {
+		return
+	}
+	defer func() {
+		e := restorePathEnv()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	// Run pip install
-	output, err := exec.Command("pip", "install", ".", "--no-cache-dir", "--force-reinstall").CombinedOutput()
+	output, err := exec.Command("pip", "install", ".").CombinedOutput()
 	if err != nil {
 		err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
 

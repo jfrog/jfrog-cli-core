@@ -21,14 +21,13 @@ import (
 type PythonCommand struct {
 	serverDetails *config.ServerDetails
 	pythonTool    pythonutils.PythonTool
-	executable    string
 	commandName   string
 	args          []string
 	repository    string
 }
 
-func NewPythonCommand(projectType utils.ProjectType) *PythonCommand {
-	return &PythonCommand{pythonTool: GetPythonTool(projectType), executable: string(GetPythonTool(projectType))}
+func NewPythonCommand(pythonTool pythonutils.PythonTool) *PythonCommand {
+	return &PythonCommand{pythonTool: pythonTool}
 }
 
 func (pc *PythonCommand) Run() (err error) {
@@ -151,19 +150,9 @@ func (pc *PythonCommand) ServerDetails() (*config.ServerDetails, error) {
 	return pc.serverDetails, nil
 }
 
-func GetPythonTool(projectType utils.ProjectType) pythonutils.PythonTool {
-	switch projectType {
-	case utils.Pip:
-		return pythonutils.Pip
-	case utils.Pipenv:
-		return pythonutils.Pipenv
-	}
-	return ""
-}
-
 func (pc *PythonCommand) GetCmd() *exec.Cmd {
 	var cmd []string
-	cmd = append(cmd, pc.executable)
+	cmd = append(cmd, string(pc.pythonTool))
 	cmd = append(cmd, pc.commandName)
 	cmd = append(cmd, pc.args...)
 	return exec.Command(cmd[0], cmd[1:]...)

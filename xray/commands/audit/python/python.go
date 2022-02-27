@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -29,8 +27,8 @@ type AuditPythonCommand struct {
 	audit.AuditCommand
 }
 
-func NewEmptyAuditPythonCommand(projectType utils.ProjectType) *AuditPythonCommand {
-	return &AuditPythonCommand{AuditCommand: *audit.NewAuditCommand(), pythonTool: python.GetPythonTool(projectType)}
+func NewAuditPythonCommand(pythonTool pythonutils.PythonTool) *AuditPythonCommand {
+	return &AuditPythonCommand{AuditCommand: *audit.NewAuditCommand(), pythonTool: pythonTool}
 }
 
 func (apc *AuditPythonCommand) Run() error {

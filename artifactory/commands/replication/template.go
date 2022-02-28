@@ -33,8 +33,10 @@ const (
 	SyncDeletes            = "syncDeletes"
 	SyncProperties         = "syncProperties"
 	SyncStatistics         = "syncStatistics"
-	PathPrefix             = "pathPrefix"
-	SocketTimeoutMillis    = "socketTimeoutMillis"
+	// Deprecated
+	PathPrefix               = "pathPrefix"
+	IncludePathPrefixPattern = "includePathPrefixPattern"
+	SocketTimeoutMillis      = "socketTimeoutMillis"
 )
 
 type ReplicationTemplateCommand struct {
@@ -159,12 +161,12 @@ var questionMap = map[string]utils.QuestionInfo{
 	SyncDeletes:            BoolToStringQuestionInfo,
 	SyncProperties:         BoolToStringQuestionInfo,
 	SyncStatistics:         BoolToStringQuestionInfo,
-	PathPrefix: {
+	IncludePathPrefixPattern: {
 		Msg:          "",
-		PromptPrefix: "Enter path prefix >",
+		PromptPrefix: "Enter include path prefix pattern >",
 		AllowVars:    true,
 		Writer:       utils.WriteStringAnswer,
-		MapKey:       PathPrefix,
+		MapKey:       IncludePathPrefixPattern,
 		Callback:     nil,
 	},
 	SocketTimeoutMillis: {
@@ -188,7 +190,7 @@ func jobTypeCallback(iq *utils.InteractiveQuestionnaire, jobType string) (string
 }
 
 func getAllPossibleOptionalRepoConfKeys(values ...string) []prompt.Suggest {
-	optionalKeys := []string{utils.SaveAndExit, Enabled, SyncDeletes, SyncProperties, SyncStatistics, PathPrefix, EnableEventReplication, SocketTimeoutMillis}
+	optionalKeys := []string{utils.SaveAndExit, Enabled, SyncDeletes, SyncProperties, SyncStatistics, PathPrefix, IncludePathPrefixPattern, EnableEventReplication, SocketTimeoutMillis}
 	if len(values) > 0 {
 		optionalKeys = append(optionalKeys, values...)
 	}
@@ -203,16 +205,17 @@ var BoolToStringQuestionInfo = utils.QuestionInfo{
 }
 
 var suggestionMap = map[string]prompt.Suggest{
-	utils.SaveAndExit:      {Text: utils.SaveAndExit},
-	ServerId:               {Text: ServerId},
-	RepoKey:                {Text: RepoKey},
-	TargetRepoKey:          {Text: TargetRepoKey},
-	CronExp:                {Text: CronExp},
-	EnableEventReplication: {Text: EnableEventReplication},
-	Enabled:                {Text: Enabled},
-	SyncDeletes:            {Text: SyncDeletes},
-	SyncProperties:         {Text: SyncProperties},
-	SyncStatistics:         {Text: SyncStatistics},
-	PathPrefix:             {Text: PathPrefix},
-	SocketTimeoutMillis:    {Text: SocketTimeoutMillis},
+	utils.SaveAndExit:        {Text: utils.SaveAndExit},
+	ServerId:                 {Text: ServerId},
+	RepoKey:                  {Text: RepoKey},
+	TargetRepoKey:            {Text: TargetRepoKey},
+	CronExp:                  {Text: CronExp},
+	EnableEventReplication:   {Text: EnableEventReplication},
+	Enabled:                  {Text: Enabled},
+	SyncDeletes:              {Text: SyncDeletes},
+	SyncProperties:           {Text: SyncProperties},
+	SyncStatistics:           {Text: SyncStatistics},
+	PathPrefix:               {Text: PathPrefix},
+	IncludePathPrefixPattern: {Text: IncludePathPrefixPattern},
+	SocketTimeoutMillis:      {Text: SocketTimeoutMillis},
 }

@@ -203,7 +203,7 @@ func ExtractFailFromArgs(args []string) (cleanArgs []string, fail bool, err erro
 }
 
 // Used by docker  scan (Xray)
-func ExtractLicensesFromArgs(args []string) (cleanArgs []string,  licenses bool, err error) {
+func ExtractLicensesFromArgs(args []string) (cleanArgs []string, licenses bool, err error) {
 	cleanArgs = append([]string(nil), args...)
 
 	flagIndex, licenses, err := FindBooleanFlag("--licenses", cleanArgs)
@@ -216,7 +216,7 @@ func ExtractLicensesFromArgs(args []string) (cleanArgs []string,  licenses bool,
 }
 
 // Used by docker scan (Xray)
-func ExtractRepoPathFromArgs(args []string) (cleanArgs []string,  repoPath string, err error) {
+func ExtractRepoPathFromArgs(args []string) (cleanArgs []string, repoPath string, err error) {
 	cleanArgs = append([]string(nil), args...)
 
 	flagIndex, valIndex, repoPath, err := FindFlag("--repo-path", cleanArgs)
@@ -228,7 +228,7 @@ func ExtractRepoPathFromArgs(args []string) (cleanArgs []string,  repoPath strin
 }
 
 // Used by docker scan (Xray)
-func ExtractWatchesFromArgs(args []string) (cleanArgs []string,  watches string, err error) {
+func ExtractWatchesFromArgs(args []string) (cleanArgs []string, watches string, err error) {
 	cleanArgs = append([]string(nil), args...)
 
 	flagIndex, valIndex, watches, err := FindFlag("--watches", cleanArgs)

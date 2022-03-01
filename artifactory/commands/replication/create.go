@@ -114,7 +114,7 @@ func fillMissingDefaultValue(replicationConfigMap map[string]interface{}) {
 	}
 }
 
-// Make the pathPrefix parameter equals the includePathPrefixPattern to support Artifactory < 7.27.4
+// Make the pathPrefix parameter equals to the includePathPrefixPattern to support Artifactory < 7.27.4
 func setPathPrefixBackwardCompatibility(params *services.CreateReplicationParams) {
 	if params.IncludePathPrefixPattern == "" {
 		params.IncludePathPrefixPattern = params.PathPrefix

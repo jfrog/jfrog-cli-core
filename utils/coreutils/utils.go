@@ -403,7 +403,7 @@ func GetCliExecutableName() string {
 }
 
 func GetFeedbackMessage() string {
-	return PrintBold("Your feedback is important.") + "\n" +
+	return PrintBold("📣 Your feedback is important.") + "\n" +
 		"We'd love to get your feedback and answer any questions you may have.\n" +
 		"Communicate with us by opening a GitHub issue -\n" +
 		PrintLink(GitHubIssuesUrl)

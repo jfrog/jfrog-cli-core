@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/dependencies"
@@ -102,12 +104,12 @@ func populateRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap 
 	childrenList := childrenMap[getDependencyName(parentDependency.Id)]
 	for _, childName := range childrenList {
 		if childDep, ok := dependenciesMap[childName]; ok {
+			if childDep.NodeHasLoop() || len(childDep.RequestedBy) >= buildinfo.RequestedByMaxLength {
+				continue
+			}
 			for _, parentRequestedBy := range parentDependency.RequestedBy {
 				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
-			}
-			if childDep.NodeHasLoop() {
-				continue
 			}
 			// Run recursive call on child dependencies
 			populateRequestedBy(*childDep, dependenciesMap, childrenMap)
@@ -252,7 +254,7 @@ func parseProjectLine(projectLine, path string) (projectName, projFilePath strin
 	projectName = removeQuotes(projectInfo[0])
 	// In case we are running on a non-Windows OS, the solution root path and the relative path to proj file might used different path separators.
 	// We want to make sure we will get a valid path after we join both parts, so we will replace the proj separators.
-	if utils.IsWindows() {
+	if coreutils.IsWindows() {
 		projectInfo[1] = ioutils.UnixToWinPathSeparator(projectInfo[1])
 	} else {
 		projectInfo[1] = ioutils.WinToUnixPathSeparator(projectInfo[1])

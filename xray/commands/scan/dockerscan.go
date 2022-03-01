@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,14 +29,14 @@ func NewDockerScanCommand() *DockerScanCommand {
 	return &DockerScanCommand{ScanCommand: *NewScanCommand()}
 }
 
-func (csc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
-	csc.imageTag = imageTag
-	return csc
+func (dsc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
+	dsc.imageTag = imageTag
+	return dsc
 }
 
-func (csc *DockerScanCommand) Run() (err error) {
+func (dsc *DockerScanCommand) Run() (err error) {
 	// Validate Xray minimum version
-	_, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(csc.ScanCommand.serverDetails)
+	_, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(dsc.ScanCommand.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -56,8 +57,12 @@ func (csc *DockerScanCommand) Run() (err error) {
 	}()
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
+	if dsc.progress != nil {
+		dsc.progress.SetHeadlineMsg("Creating image archive")
+	}
+	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
-	dockerSaveCmd := exec.Command("docker", "save", csc.imageTag, "-o", imageTarPath)
+	dockerSaveCmd := exec.Command("docker", "save", dsc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer
 	dockerSaveCmd.Stderr = &stderr
 	err = dockerSaveCmd.Run()
@@ -66,38 +71,38 @@ func (csc *DockerScanCommand) Run() (err error) {
 	}
 
 	// Perform scan on image.tar
-	csc.SetSpec(spec.NewBuilder().Pattern(imageTarPath).BuildSpec()).SetThreads(1)
-	err = csc.setCredentialEnvsForIndexerApp()
+	dsc.SetSpec(spec.NewBuilder().Pattern(imageTarPath).BuildSpec()).SetThreads(1)
+	err = dsc.setCredentialEnvsForIndexerApp()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		e := csc.unsetCredentialEnvsForIndexerApp()
+		e := dsc.unsetCredentialEnvsForIndexerApp()
 		if err == nil {
 			err = errorutils.CheckError(e)
 		}
 	}()
-	return csc.ScanCommand.Run()
+	return dsc.ScanCommand.Run()
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.
 // This is because RPM indexing is performed on the server side. This method therefore sets the Xray credentials as env vars to be read and used by the indexer-app.
-func (csc *DockerScanCommand) setCredentialEnvsForIndexerApp() error {
-	err := os.Setenv(indexerEnvPrefix+"XRAY_URL", csc.serverDetails.XrayUrl)
+func (dsc *DockerScanCommand) setCredentialEnvsForIndexerApp() error {
+	err := os.Setenv(indexerEnvPrefix+"XRAY_URL", dsc.serverDetails.XrayUrl)
 	if err != nil {
 		return err
 	}
-	if csc.serverDetails.AccessToken != "" {
-		err = os.Setenv(indexerEnvPrefix+"XRAY_ACCESS_TOKEN", csc.serverDetails.AccessToken)
+	if dsc.serverDetails.AccessToken != "" {
+		err = os.Setenv(indexerEnvPrefix+"XRAY_ACCESS_TOKEN", dsc.serverDetails.AccessToken)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = os.Setenv(indexerEnvPrefix+"XRAY_USER", csc.serverDetails.User)
+		err = os.Setenv(indexerEnvPrefix+"XRAY_USER", dsc.serverDetails.User)
 		if err != nil {
 			return err
 		}
-		err = os.Setenv(indexerEnvPrefix+"XRAY_PASSWORD", csc.serverDetails.Password)
+		err = os.Setenv(indexerEnvPrefix+"XRAY_PASSWORD", dsc.serverDetails.Password)
 		if err != nil {
 			return err
 		}
@@ -105,7 +110,7 @@ func (csc *DockerScanCommand) setCredentialEnvsForIndexerApp() error {
 	return nil
 }
 
-func (csc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
+func (dsc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 	err := os.Unsetenv(indexerEnvPrefix + "XRAY_URL")
 	if err != nil {
 		return err
@@ -126,6 +131,6 @@ func (csc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 	return nil
 }
 
-func (csc *DockerScanCommand) CommandName() string {
+func (dsc *DockerScanCommand) CommandName() string {
 	return "xr_docker_scan"
 }

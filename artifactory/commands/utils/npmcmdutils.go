@@ -2,28 +2,20 @@ package utils
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
-	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/gofrog/version"
+
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -120,110 +112,20 @@ func getNpmRepositoryUrl(repo, url string) string {
 	return url
 }
 
-// Get dependency's checksum and type.
-func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
-	servicesManager artifactory.ArtifactoryServicesManager) (checksum buildinfo.Checksum, fileType string, err error) {
-	id := name + ":" + ver
-	if dep, ok := previousBuildDependencies[id]; ok {
-		// Get checksum from previous build.
-		checksum = dep.Checksum
-		fileType = dep.Type
-		return
-	}
-
-	// Get info from Artifactory.
-	log.Debug("Fetching checksums for", id)
-	var stream io.ReadCloser
-	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForNpm(name, ver))
+// Remove all the none npm CLI flags from args.
+func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+	cleanArgs = append([]string(nil), args...)
+	cleanArgs, detailedSummary, err = coreutils.ExtractDetailedSummaryFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
-	defer func() {
-		e := stream.Close()
-		if err == nil {
-			err = e
-		}
-	}()
-	var result []byte
-	result, err = ioutil.ReadAll(stream)
+
+	cleanArgs, xrayScan, err = coreutils.ExtractXrayScanFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
-	parsedResult := new(aqlResult)
-	if err = json.Unmarshal(result, parsedResult); err != nil {
-		return buildinfo.Checksum{}, "", errorutils.CheckError(err)
-	}
-	if len(parsedResult.Results) == 0 {
-		log.Debug(id, "could not be found in Artifactory.")
-		return
-	}
-	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
-		fileType = parsedResult.Results[0].Name[i+1:]
-	}
-	log.Debug(id, "was found in Artifactory. Name:", parsedResult.Results[0].Name,
-		"SHA-1:", parsedResult.Results[0].Actual_sha1,
-		"MD5:", parsedResult.Results[0].Actual_md5)
 
-	checksum = buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
-	return
-}
-
-type aqlResult struct {
-	Results []*results `json:"results,omitempty"`
-}
-
-type results struct {
-	Name        string `json:"name,omitempty"`
-	Actual_md5  string `json:"actual_md5,omitempty"`
-	Actual_sha1 string `json:"actual_sha1,omitempty"`
-}
-
-func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*buildinfo.Dependency, error) {
-	buildDependencies := make(map[string]*buildinfo.Dependency)
-	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey})
-	if err != nil || !found {
-		return buildDependencies, err
-	}
-	for _, module := range previousBuild.BuildInfo.Modules {
-		for _, dependency := range module.Dependencies {
-			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id, Type: dependency.Type,
-				Checksum: buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
-		}
-	}
-	return buildDependencies, nil
-}
-
-func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
-	threads = 3
-	// Extract threads information from the args.
-	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
-	if err != nil {
-		return
-	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	if numOfThreads != "" {
-		threads, err = strconv.Atoi(numOfThreads)
-		if err != nil {
-			err = errorutils.CheckError(err)
-			return
-		}
-	}
-
-	flagIndex, detailedSummary, err = coreutils.FindBooleanFlag("--detailed-summary", args)
-	if err != nil {
-		return
-	}
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
-
-	flagIndex, xrayScan, err = coreutils.FindBooleanFlag("--scan", args)
-	if err != nil {
-		return
-	}
-	// Since boolean flag might appear as --flag or --flag=value, the value index is the same as the flag index.
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, flagIndex)
-
-	flagIndex, valueIndex, format, err := coreutils.FindFlag("--format", args)
+	cleanArgs, format, err := coreutils.ExtractXrayOutputFormatFromArgs(cleanArgs)
 	if err != nil {
 		return
 	}
@@ -231,9 +133,7 @@ func ExtractNpmOptionsFromArgs(args []string) (threads int, detailedSummary, xra
 	if err != nil {
 		return
 	}
-	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(args)
+	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }
 

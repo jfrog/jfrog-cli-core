@@ -17,6 +17,7 @@ const (
 	Pipenv = "pipenv"
 	Nuget  = "nuget"
 	Dotnet = "dotnet"
+	Docker = "docker"
 )
 
 type TechData struct {
@@ -55,11 +56,11 @@ var technologiesData = map[Technology]TechData{
 	},
 	Nuget: {
 		PackageType: "nuget",
-		indicators:  []string{".sln"},
+		indicators:  []string{".sln", ".csproj"},
 	},
 	Dotnet: {
 		PackageType: "nuget",
-		indicators:  []string{".sln"},
+		indicators:  []string{".sln", ".csproj"},
 	},
 }
 
@@ -68,7 +69,7 @@ func GetTechnologyPackageType(techName Technology) string {
 	if ok {
 		return techData.PackageType
 	} else {
-		return ""
+		return string(techName)
 	}
 }
 
@@ -108,4 +109,17 @@ func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technolog
 		}
 	}
 	return detected
+}
+
+// DetectTechnologiesToString returns a string that includes all the names of the detected technologies separated by a comma.
+func DetectedTechnologiesToString(detected map[Technology]bool) string {
+	detectedTechnologiesString := ""
+	for tech := range detected {
+		detectedTechnologiesString += string(tech) + ", "
+	}
+	if detectedTechnologiesString != "" {
+		detectedTechnologiesString = strings.Trim(detectedTechnologiesString, ", ")
+		detectedTechnologiesString += "."
+	}
+	return detectedTechnologiesString
 }

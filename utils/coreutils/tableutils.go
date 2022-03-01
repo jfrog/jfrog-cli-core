@@ -3,12 +3,15 @@ package coreutils
 import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"golang.org/x/crypto/ssh/terminal"
+	"math"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 )
+
+// Controls the max col width when printing to a non-terminal. See the PrintTable description for more info.
+var DefaultMaxColWidth = 25
 
 // PrintTable prints a slice of rows in a table.
 // The parameter rows MUST be a slice, otherwise the method panics.
@@ -16,10 +19,12 @@ import (
 // The fields of the struct must have one of the tags: 'col-name' or 'embed-table' in order to be printed.
 // Fields without any of these tags will be skipped.
 // The tag 'col-name' can be set on string fields only. The column name is the 'col-name' tag value.
-// If the cell content exceeds the defined col-max-width, the content will be broken into two (or more) lines.
-// If you would like to limit the width of the column, you can use the 'col-max-width' tag.
+// On terminal, the maximum column width is calculated (terminal width equally divided between columns),
+// while on non-terminal the value of the DefaultMaxColWidth variable is used.
+// If the cell content exceeds the defined max column width, the content will be broken into two (or more) lines.
 // In case the struct you want to print contains a field that is a slice of other structs,
 // you can print it in the table too with the 'embed-table' tag which can be set on slices of structs only.
+// Fields with the 'extended' tag will be printed iff the 'printExtended' bool input is true.
 //
 // Example:
 // These are the structs Customer and Product:
@@ -31,32 +36,50 @@ import (
 // }
 //
 // type Product struct {
-//     title string `col-name:"Product Title" col-max-width:"15"`
+//     title string `col-name:"Product Title"`
 //     CatNumber string `col-name:"Product\nCatalog #"`
+//     Color string `col-name:"Color" extended:"true"`
 // }
 //
-// We'll use it, and run these commands:
+// We'll use it, and run these commands (var DefaultMaxColWidth = 25):
 //
 // customersSlice := []Customer{
-//     {name: "Gai", age: "350", products: []Product{{title: "SpiderFrog Shirt - Medium", CatNumber: "123456"}, {title: "Floral Bottle", CatNumber: "147585"}}},
-//     {name: "Noah", age: "21", products: []Product{{title: "Pouch", CatNumber: "456789"}, {title: "Ching Ching", CatNumber: "963852"}}},
+//     {name: "Gai", age: "350", products: []Product{{title: "SpiderFrog Shirt - Medium", CatNumber: "123456", Color: "Green"}, {title: "Floral Bottle", CatNumber: "147585", Color: "Blue"}}},
+//     {name: "Noah", age: "21", products: []Product{{title: "Pouch", CatNumber: "456789", Color: "Red"}, {title: "Ching Ching", CatNumber: "963852", Color: "Gold"}}},
 // }
-// err := coreutils.PrintTable(customersSlice, "Customers", "No customers were found")
+// err := coreutils.PrintTable(customersSlice, "Customers", "No customers were found", false)
 //
 // That's the table printed:
 //
 // Customers
-// ┌──────┬─────┬─────────────────┬───────────┐
-// │ NAME │ AGE │ PRODUCT TITLE   │ PRODUCT   │
-// │      │     │                 │ CATALOG # │
-// ├──────┼─────┼─────────────────┼───────────┤
-// │ Gai  │ 350 │ SpiderFrog Shir │ 123456    │
-// │      │     │ t - Medium      │           │
-// │      │     │ Floral Bottle   │ 147585    │
-// ├──────┼─────┼─────────────────┼───────────┤
-// │ Noah │ 21  │ Pouch           │ 456789    │
-// │      │     │ Ching Ching     │ 963852    │
-// └──────┴─────┴─────────────────┴───────────┘
+// ┌──────┬─────┬─────────────────────────┬───────────┐
+// │ NAME │ AGE │ PRODUCT TITLE           │ PRODUCT   │
+// │      │     │                         │ CATALOG # │
+// ├──────┼─────┼─────────────────────────┼───────────┤
+// │ Gai  │ 350 │ SpiderFrog Shirt - Medi │ 123456    │
+// │      │     │ um                      │           │
+// │      │     │ Floral Bottle           │ 147585    │
+// ├──────┼─────┼─────────────────────────┼───────────┤
+// │ Noah │ 21  │ Pouch                   │ 456789    │
+// │      │     │ Ching Ching             │ 963852    │
+// └──────┴─────┴─────────────────────────┴───────────┘
+//
+// If printExtended=true:
+//
+// err := coreutils.PrintTable(customersSlice, "Customers", "No customers were found", true)
+//
+// Customers
+// ┌──────┬─────┬─────────────────────────┬───────────┬───────────┐
+// │ NAME │ AGE │ PRODUCT TITLE           │ PRODUCT   │ Color     │
+// │      │     │                         │ CATALOG # │           │
+// ├──────┼─────┼─────────────────────────┼───────────┼───────────┤
+// │ Gai  │ 350 │ SpiderFrog Shirt - Medi │ 123456    │ Green     │
+// │      │     │ um                      │           │           │
+// │      │     │ Floral Bottle           │ 147585    │ Blue      │
+// ├──────┼─────┼─────────────────────────┼───────────┼───────────┤
+// │ Noah │ 21  │ Pouch                   │ 456789    │ Red       │
+// │      │     │ Ching Ching             │ 963852    │ Gold      │
+// └──────┴─────┴─────────────────────────┴───────────┴───────────┘
 //
 // If customersSlice was empty, emptyTableMessage would have been printed instead:
 //
@@ -64,7 +87,7 @@ import (
 // ┌─────────────────────────┐
 // │ No customers were found │
 // └─────────────────────────┘
-func PrintTable(rows interface{}, title string, emptyTableMessage string) error {
+func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) error {
 	if title != "" {
 		fmt.Println(title)
 	}
@@ -93,15 +116,18 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string) error 
 		field := rowType.Field(i)
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
+		extended, extendedExist := field.Tag.Lookup("extended")
+		if !printExtended && extendedExist && extended == "true" {
+			continue
+		}
 		if !columnNameExist && !embedTableExist {
 			continue
 		}
-		embedTableValue := embedTable == "true"
 
-		if embedTableValue {
+		if embedTable == "true" {
 			var subfieldsProperties []subfieldProperties
 			var err error
-			columnsNames, columnConfigs, subfieldsProperties, err = appendEmbeddedTableFields(columnsNames, columnConfigs, field)
+			columnsNames, columnConfigs, subfieldsProperties, err = appendEmbeddedTableFields(columnsNames, columnConfigs, field, printExtended)
 			if err != nil {
 				return err
 			}
@@ -109,17 +135,14 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string) error 
 		} else {
 			columnsNames = append(columnsNames, columnName)
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i})
-			columnMaxWidth, columnMaxWidthExist := field.Tag.Lookup("col-max-width")
-			if columnMaxWidthExist {
-				columnMaxWidthValue, err := strconv.Atoi(columnMaxWidth)
-				if err != nil {
-					return errorutils.CheckError(err)
-				}
-				columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, WidthMax: columnMaxWidthValue})
-			}
+			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
 		}
 	}
 	tableWriter.AppendHeader(columnsNames)
+	err := setColMaxWidth(columnConfigs, fieldsProperties)
+	if err != nil {
+		return err
+	}
 	tableWriter.SetColumnConfigs(columnConfigs)
 
 	for i := 0; i < rowsSliceValue.Len(); i++ {
@@ -150,28 +173,61 @@ type subfieldProperties struct {
 	maxWidth int
 }
 
-func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {
+func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []fieldProperties) error {
+	colMaxWidth := DefaultMaxColWidth
+
+	// If terminal, calculate the max width.
+	if IsTerminal() {
+		colNum := len(columnConfigs)
+		termWidth, err := getTerminalAllowedWidth(colNum)
+		if err != nil {
+			return err
+		}
+		colMaxWidth = int(math.Floor(float64(termWidth) / float64(colNum)))
+	}
+
+	// Set the max width on every column and cell.
+	for i := range columnConfigs {
+		columnConfigs[i].WidthMax = colMaxWidth
+	}
+	for i := range fieldsProperties {
+		subfields := fieldsProperties[i].subfields
+		if subfields != nil {
+			for j := range subfields {
+				subfields[j].maxWidth = colMaxWidth
+			}
+		}
+	}
+	return nil
+}
+
+func getTerminalAllowedWidth(colNum int) (int, error) {
+	width, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 0, err
+	}
+	// Subtract the table's grid chars (3 chars between every two columns and 1 char at both edges of the table).
+	subtraction := (colNum-1)*3 + 2
+	return width - subtraction, nil
+}
+
+func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {
 	rowType := field.Type.Elem()
 	fieldsCount := rowType.NumField()
 	var subfieldsProperties []subfieldProperties
 	for i := 0; i < fieldsCount; i++ {
 		innerField := rowType.Field(i)
 		columnName, columnNameExist := innerField.Tag.Lookup("col-name")
+		extended, extendedExist := innerField.Tag.Lookup("extended")
+		if !printExtended && extendedExist && extended == "true" {
+			continue
+		}
 		if !columnNameExist {
 			continue
 		}
 		columnsNames = append(columnsNames, columnName)
-		columnMaxWidth, columnMaxWidthExist := innerField.Tag.Lookup("col-max-width")
-		var columnMaxWidthValue int
-		var err error
-		if columnMaxWidthExist {
-			columnMaxWidthValue, err = strconv.Atoi(columnMaxWidth)
-			if err != nil {
-				return nil, nil, nil, errorutils.CheckError(err)
-			}
-			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, WidthMax: columnMaxWidthValue})
-		}
-		subfieldsProperties = append(subfieldsProperties, subfieldProperties{index: i, maxWidth: columnMaxWidthValue})
+		columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
+		subfieldsProperties = append(subfieldsProperties, subfieldProperties{index: i})
 	}
 	return columnsNames, columnConfigs, subfieldsProperties, nil
 }
@@ -184,6 +240,20 @@ func appendEmbeddedTableStrings(rowValues []interface{}, fieldValue reflect.Valu
 	for rowIndex := 0; rowIndex < sliceLen; rowIndex++ {
 		currRowCells := make([]embeddedTableCell, numberOfColumns)
 		maxNumberOfLines := 0
+
+		// Check if all elements in the row are empty.
+		shouldSkip := true
+		for _, subfieldProps := range subfieldsProperties {
+			currCellContent := fieldValue.Index(rowIndex).Field(subfieldProps.index).String()
+			if currCellContent != "" {
+				shouldSkip = false
+				break
+			}
+		}
+		// Skip row if no non-empty cell was found.
+		if shouldSkip {
+			continue
+		}
 
 		// Find the highest number of lines in the row
 		for subfieldIndex, subfieldProps := range subfieldsProperties {
@@ -230,7 +300,7 @@ type embeddedTableCell struct {
 	numberOfLines int
 }
 
-// PrintMessage prints message in a frame (which is actaully a table with a single table).
+// PrintMessage prints message in a frame (which is actually a table with a single table).
 // For example:
 // ┌─────────────────────────────────────────┐
 // │ An example of a message in a nice frame │

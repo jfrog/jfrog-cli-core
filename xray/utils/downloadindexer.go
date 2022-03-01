@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/version"
 	"io/ioutil"
@@ -55,6 +56,9 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 
 	log.Info("JFrog Xray Indexer " + xrayVersionStr + " is not cached locally. Downloading it now...")
 	indexerPath, err = downloadIndexer(xrayManager, indexerDirPath, indexerBinaryName)
+	if err != nil {
+		err = errors.New("failed while attempting to download Xray indexer: " + err.Error())
+	}
 	return
 }
 
@@ -103,7 +107,9 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	// Add execution permissions to the indexer
 	indexerPath := filepath.Join(tempDirPath, indexerBinaryName)
 	err = os.Chmod(indexerPath, 0777)
-
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
 	indexerVersion, err := getIndexerVersion(indexerPath)
 	if err != nil {
 		return "", err

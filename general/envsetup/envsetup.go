@@ -73,7 +73,7 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 			"\n\n" +
 			coreutils.GetFeedbackMessage()
 
-	err = coreutils.PrintTable("", "", message)
+	err = coreutils.PrintTable("", "", message, false)
 	return
 }
 

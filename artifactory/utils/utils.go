@@ -246,3 +246,11 @@ func createServiceManager(serviceDetails auth.ServiceDetails) (artifactory.Artif
 	}
 	return artifactory.New(serviceConfig)
 }
+
+func GetTestDataPath() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return filepath.Join(dir, "testdata"), nil
+}

@@ -12,15 +12,18 @@ import (
 )
 
 type PushCommand struct {
-	ContainerManagerCommand
-	threads              int
-	containerManagerType container.ContainerManagerType
-	detailedSummary      bool
-	result               *commandsutils.Result
+	ContainerCommand
+	threads         int
+	detailedSummary bool
+	result          *commandsutils.Result
 }
 
-func NewPushCommand(containerManager container.ContainerManagerType) *PushCommand {
-	return &PushCommand{containerManagerType: containerManager}
+func NewPushCommand(containerManagerType container.ContainerManagerType) *PushCommand {
+	return &PushCommand{
+		ContainerCommand: ContainerCommand{
+			containerManagerType: containerManagerType,
+		},
+	}
 }
 
 func (pc *PushCommand) Threads() int {
@@ -50,8 +53,10 @@ func (pc *PushCommand) SetResult(result *commandsutils.Result) *PushCommand {
 	return pc
 }
 
-// Push image and create build info if needed
 func (pc *PushCommand) Run() error {
+	if err := pc.init(); err != nil {
+		return err
+	}
 	if pc.containerManagerType == container.DockerClient {
 		err := container.ValidateClientApiVersion()
 		if err != nil {
@@ -68,12 +73,10 @@ func (pc *PushCommand) Run() error {
 	}
 	// Perform push.
 	cm := container.NewManager(pc.containerManagerType)
-	image := container.NewImage(pc.imageTag)
-	err = cm.Push(image)
+	err = cm.RunNativeCmd(pc.cmdParams)
 	if err != nil {
 		return err
 	}
-	// Return if build-info and detailed summary were not requested.
 	toCollect, err := pc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
 		return err
@@ -89,29 +92,30 @@ func (pc *PushCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
-		return err
-	}
 	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, false, pc.threads, -1, 0)
 	if err != nil {
 		return err
 	}
-	builder, err := container.NewLocalAgentBuildInfoBuilder(image, pc.Repo(), buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
+	repo, err := pc.GetRepo()
 	if err != nil {
 		return err
 	}
-	// Save buildinfo if needed
+	builder, err := container.NewLocalAgentBuildInfoBuilder(pc.image, repo, buildName, buildNumber, pc.BuildConfiguration().GetProject(), serviceManager, container.Push, cm)
+	if err != nil {
+		return err
+	}
 	if toCollect {
-		buildInfo, err := builder.Build(pc.BuildConfiguration().GetModule())
-		if err != nil {
+		if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, pc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
-		err = utils.SaveBuildInfo(buildName, buildNumber, pc.BuildConfiguration().GetProject(), buildInfo)
-		if err != nil {
+		buildInfoModule, err := builder.Build(pc.BuildConfiguration().GetModule())
+		if err != nil || buildInfoModule == nil {
+			return err
+		}
+		if err = utils.SaveBuildInfo(buildName, buildNumber, pc.BuildConfiguration().GetProject(), buildInfoModule); err != nil {
 			return err
 		}
 	}
-	// Save detailed summary if needed
 	if pc.IsDetailedSummary() {
 		if !toCollect {
 			// Collect build-info wasn't trigger at this point and we do need it to print the detailed summary.

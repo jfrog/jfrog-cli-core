@@ -1,23 +1,24 @@
 package scan
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -43,6 +44,12 @@ type ScanCommand struct {
 	includeVulnerabilities bool
 	includeLicenses        bool
 	fail                   bool
+	printExtendedTable     bool
+	progress               ioUtils.ProgressMgr
+}
+
+func (scanCmd *ScanCommand) SetProgress(progress ioUtils.ProgressMgr) {
+	scanCmd.progress = progress
 }
 
 func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
@@ -94,13 +101,19 @@ func (scanCmd *ScanCommand) SetFail(fail bool) *ScanCommand {
 	return scanCmd
 }
 
+func (scanCmd *ScanCommand) SetPrintExtendedTable(printExtendedTable bool) *ScanCommand {
+	scanCmd.printExtendedTable = printExtendedTable
+	return scanCmd
+}
+
 func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
 	var indexerResults services.GraphNode
-	indexCmd := &coreutils.GeneralExecCmd{
-		ExecPath: scanCmd.indexerPath,
-		Command:  []string{indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir},
-	}
-	output, err := io.RunCmdOutput(indexCmd)
+	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	indexerCmd.Stdout = &stdout
+	indexerCmd.Stderr = &stderr
+	err := indexerCmd.Run()
 	if err != nil {
 		if e, ok := err.(*exec.ExitError); ok {
 			if e.ExitCode() == fileNotSupportedExitCode {
@@ -108,9 +121,10 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 				return &indexerResults, nil
 			}
 		}
-		return nil, errorutils.CheckErrorf("Xray indexer app failed indexing %s with %s: %s", filePath, err, output)
+		return nil, errorutils.CheckErrorf("Xray indexer app failed indexing %s with %s: %s", filePath, err, stderr.String())
 	}
-	err = json.Unmarshal([]byte(output), &indexerResults)
+	log.Info(stderr.String())
+	err = json.Unmarshal(stdout.Bytes(), &indexerResults)
 	return &indexerResults, errorutils.CheckError(err)
 }
 
@@ -166,7 +180,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			flatResults = append(flatResults, *res)
 		}
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true)
+	if scanCmd.progress != nil {
+		scanCmd.progress.ClearHeadlineMsg()
+	}
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true, scanCmd.printExtendedTable)
 	if err != nil {
 		return err
 	}
@@ -220,6 +237,9 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 		return func(threadId int) (err error) {
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
 			log.Info(logMsgPrefix+"Indexing file:", filePath)
+			if scanCmd.progress != nil {
+				scanCmd.progress.SetHeadlineMsg("Indexing file: " + filepath.Base(filePath))
+			}
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
 				return err
@@ -239,6 +259,9 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					Watches:    scanCmd.watches,
 					ProjectKey: scanCmd.projectKey,
 					ScanType:   services.Binary,
+				}
+				if scanCmd.progress != nil {
+					scanCmd.progress.SetHeadlineMsg("Scanning")
 				}
 				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
 				if err != nil {

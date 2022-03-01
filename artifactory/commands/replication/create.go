@@ -86,6 +86,8 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
+
+	setPathPrefixBackwardCompatibility(&params)
 	servicesManager, err := rtUtils.CreateServiceManager(rcc.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
@@ -112,6 +114,17 @@ func fillMissingDefaultValue(replicationConfigMap map[string]interface{}) {
 	}
 }
 
+// Make the pathPrefix parameter equals to the includePathPrefixPattern to support Artifactory < 7.27.4
+func setPathPrefixBackwardCompatibility(params *services.CreateReplicationParams) {
+	if params.IncludePathPrefixPattern == "" {
+		params.IncludePathPrefixPattern = params.PathPrefix
+		return
+	}
+	if params.PathPrefix == "" {
+		params.PathPrefix = params.IncludePathPrefixPattern
+	}
+}
+
 func updateArtifactoryInfo(param *services.CreateReplicationParams, serverId, targetRepo string) error {
 	singleConfig, err := config.GetSpecificConfig(serverId, true, false)
 	if err != nil {
@@ -122,15 +135,16 @@ func updateArtifactoryInfo(param *services.CreateReplicationParams, serverId, ta
 }
 
 var writersMap = map[string]utils.AnswerWriter{
-	ServerId:               utils.WriteStringAnswer,
-	RepoKey:                utils.WriteStringAnswer,
-	TargetRepoKey:          utils.WriteStringAnswer,
-	CronExp:                utils.WriteStringAnswer,
-	EnableEventReplication: utils.WriteBoolAnswer,
-	Enabled:                utils.WriteBoolAnswer,
-	SyncDeletes:            utils.WriteBoolAnswer,
-	SyncProperties:         utils.WriteBoolAnswer,
-	SyncStatistics:         utils.WriteBoolAnswer,
-	PathPrefix:             utils.WriteStringAnswer,
-	SocketTimeoutMillis:    utils.WriteIntAnswer,
+	ServerId:                 utils.WriteStringAnswer,
+	RepoKey:                  utils.WriteStringAnswer,
+	TargetRepoKey:            utils.WriteStringAnswer,
+	CronExp:                  utils.WriteStringAnswer,
+	EnableEventReplication:   utils.WriteBoolAnswer,
+	Enabled:                  utils.WriteBoolAnswer,
+	SyncDeletes:              utils.WriteBoolAnswer,
+	SyncProperties:           utils.WriteBoolAnswer,
+	SyncStatistics:           utils.WriteBoolAnswer,
+	PathPrefix:               utils.WriteStringAnswer,
+	IncludePathPrefixPattern: utils.WriteStringAnswer,
+	SocketTimeoutMillis:      utils.WriteIntAnswer,
 }

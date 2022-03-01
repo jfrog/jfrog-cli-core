@@ -138,24 +138,27 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			message +=
 				"jf" + string(executableName) + "restore\n" +
 					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
-		case coreutils.Docker:
-			baseurl := strings.TrimLeft(pic.serverUrl, "https://")
-			baseurl = strings.TrimLeft(baseurl, "http://")
-			imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
-			message += "\n" + coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
-				"\n" +
-				"jf docker tag <image>:<tag> " + imageUrl + "\n" +
-				"jf docker push " + imageUrl + "\n" +
-				"jf docker pull " + imageUrl + "\n"
 		}
 	}
-
 	if message != "" {
 		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
 			"\n" +
 			message +
+			"\n"
+	}
+	if ok := technologiesMap[coreutils.Docker]; ok {
+		baseurl := strings.TrimLeft(pic.serverUrl, "https://")
+		baseurl = strings.TrimLeft(baseurl, "http://")
+		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
+		message += coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
 			"\n" +
-			coreutils.PrintTitle("Publish the build-info to Artifactory") +
+			"jf docker tag <image>:<tag> " + imageUrl + "\n" +
+			"jf docker push " + imageUrl + "\n" +
+			"jf docker pull " + imageUrl + "\n\n"
+	}
+
+	if message != "" {
+		message += coreutils.PrintTitle("Publish the build-info to Artifactory") +
 			"\n" +
 			"jf rt bp\n\n"
 	}

@@ -351,10 +351,10 @@ func (s *severity) printableTitle(colored bool) string {
 }
 
 var severities = map[string]*severity{
-	"Critical": {title: "Critical", numValue: 4, style: color.New(color.LightRed, color.Bold)},
-	"High":     {title: "High", numValue: 3, style: color.New(color.Red, color.Bold)},
-	"Medium":   {title: "Medium", numValue: 2, style: color.New(color.Yellow, color.Bold)},
-	"Low":      {title: "Low", numValue: 1},
+	"Critical": {title: "💀Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+	"High":     {title: "🔥High", numValue: 3, style: color.New(color.Red)},
+	"Medium":   {title: "🎃Medium", numValue: 2, style: color.New(color.Yellow)},
+	"Low":      {title: "👻Low", numValue: 1},
 }
 
 func getSeverity(severityTitle string) *severity {

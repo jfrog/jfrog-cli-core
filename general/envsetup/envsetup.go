@@ -50,7 +50,7 @@ func NewEnvSetupCommand(url string) *EnvSetupCommand {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
+	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser 📝")
 	time.Sleep(5 * time.Second)
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
@@ -130,7 +130,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
-			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment")
+			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment 🛠️")
 			statusResponse := myJfrogGetStatusResponse{}
 			if err = json.Unmarshal(body, &statusResponse); err != nil {
 				return true, nil, err

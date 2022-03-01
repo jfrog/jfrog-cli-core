@@ -81,17 +81,15 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 	return coreutils.PrintBold("This project is initialized!\n") +
 		coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
 		"\n\n" +
-		coreutils.PrintTitle("Audit your project for security vulnerabilities by running") +
+		coreutils.PrintTitle("🕵️‍  Audit your project for security vulnerabilities by running") +
 		"\n" +
 		"jf audit\n\n" +
-		coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
+		coreutils.PrintTitle("🔍 Scan any software package on this machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
-		coreutils.PrintTitle("If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		coreutils.PrintTitle("💻 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
 		"\n" +
-		"1. Open the IDE\n" +
-		"2. Install the JFrog extension or plugin\n" +
-		"3. View the JFrog panel" +
+		"Open the IDE ➡️  Install the JFrog extension or plugin ➡️  View the JFrog panel" +
 		"\n\n" +
 		pic.createBuildMessage(technologiesMap) +
 		coreutils.PrintTitle("Read more using this link:") +
@@ -121,12 +119,12 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			fallthrough
 		case coreutils.Pipenv:
 			message +=
-				"jf " + string(tech) + "install\n" +
+				"jf " + string(tech) + " install\n" +
 					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
+					coreutils.PrintComment(" #Publish your "+string(tech)+" package") +
 					"\n"
 		case coreutils.Nuget:
-			// The NuGet case is already covered in the dotent case.
+			// The NuGet case is already covered in the dotnet case.
 			break
 		case coreutils.Dotnet:
 			executableName := coreutils.Nuget
@@ -150,7 +148,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 		baseurl := strings.TrimLeft(pic.serverUrl, "https://")
 		baseurl = strings.TrimLeft(baseurl, "http://")
 		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
-		message += coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
+		message += coreutils.PrintTitle("🐳 Pull and push any docker image using Artifactory") +
 			"\n" +
 			"jf docker tag <image>:<tag> " + imageUrl + "\n" +
 			"jf docker push " + imageUrl + "\n" +
@@ -158,7 +156,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 	}
 
 	if message != "" {
-		message += coreutils.PrintTitle("Publish the build-info to Artifactory") +
+		message += coreutils.PrintTitle("📤 Publish the build-info to Artifactory") +
 			"\n" +
 			"jf rt bp\n\n"
 	}

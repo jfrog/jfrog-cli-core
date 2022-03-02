@@ -1,11 +1,12 @@
 package python
 
 import (
+	"os"
+	"path/filepath"
+
 	pipenvutils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
-	"path/filepath"
 )
 
 type AuditPipenvCommand struct {
@@ -21,14 +22,14 @@ func NewAuditPipenvCommand(auditCmd audit.AuditCommand) *AuditPipenvCommand {
 }
 
 func (apec *AuditPipenvCommand) Run() (err error) {
-	rootNode, err := apec.buildPipenvDependencyTree()
+	rootNode, err := BuildPipenvDependencyTree()
 	if err != nil {
 		return err
 	}
 	return apec.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 
-func (apec *AuditPipenvCommand) buildPipenvDependencyTree() (*services.GraphNode, error) {
+func BuildPipenvDependencyTree() (*services.GraphNode, error) {
 	// Run pipenv graph to get dependencies tree
 	dependenciesGraph, rootDependencies, err := pipenvutils.GetPipenvDependenciesGraph(".jfrog")
 	if err != nil {

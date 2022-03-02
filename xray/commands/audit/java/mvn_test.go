@@ -1,8 +1,9 @@
 package java
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -13,8 +14,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditMavenCommand()
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildMvnDependencyTree(false)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, modulesDependencyTrees)
 

@@ -1,9 +1,10 @@
 package python
 
 import (
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBuildPipenvDependencyList(t *testing.T) {
@@ -11,8 +12,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPipenvCommand()
-	rootNode, err := auditCmd.buildPipenvDependencyTree()
+	rootNode, err := BuildPipenvDependencyTree()
 	if err != nil {
 		t.Fatal(err)
 	}

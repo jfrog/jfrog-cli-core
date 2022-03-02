@@ -1,10 +1,11 @@
 package _go
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"strings"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,8 +23,7 @@ func TestBuildGoDependencyList(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditGoCommand()
-	rootNode, err := auditCmd.buildGoDependencyTree()
+	rootNode, err := BuildGoDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNode)
 

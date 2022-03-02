@@ -1,11 +1,12 @@
 package _go
 
 import (
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"strings"
 )
 
 const (
@@ -25,14 +26,14 @@ func NewAuditGoCommand(auditCmd audit.AuditCommand) *AuditGoCommand {
 }
 
 func (auditCmd *AuditGoCommand) Run() (err error) {
-	rootNode, err := auditCmd.buildGoDependencyTree()
+	rootNode, err := BuildGoDependencyTree()
 	if err != nil {
 		return err
 	}
 	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 
-func (auditCmd *AuditGoCommand) buildGoDependencyTree() (*services.GraphNode, error) {
+func BuildGoDependencyTree() (*services.GraphNode, error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return nil, err

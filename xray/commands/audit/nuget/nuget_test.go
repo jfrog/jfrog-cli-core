@@ -19,7 +19,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	var dependencies *entities.BuildInfo
 	err = json.Unmarshal(dependenciesJson, &dependencies)
 	assert.NoError(t, err)
-	xrayDependenciesTree := buildNugetDependencyTree(dependencies)
+	xrayDependenciesTree := parseNugetDependencyTree(dependencies)
 
 	expectedTreeJson, err := ioutil.ReadFile("../../testdata/nuget/expectedTree.json")
 	assert.NoError(t, err)

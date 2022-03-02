@@ -24,15 +24,15 @@ func NewAuditPipCommand(auditCmd audit.AuditCommand) *AuditPipCommand {
 }
 
 func (apc *AuditPipCommand) Run() error {
-	dependencyTree, err := apc.buildPipDependencyTree()
+	dependencyTree, err := BuildPipDependencyTree()
 	if err != nil {
 		return err
 	}
 	return apc.ScanDependencyTree(dependencyTree)
 }
 
-func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := apc.getDependencies()
+func BuildPipDependencyTree() ([]*services.GraphNode, error) {
+	dependenciesGraph, rootDependenciesList, err := getDependencies()
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 	return dependencyTree, nil
 }
 
-func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return

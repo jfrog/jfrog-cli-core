@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -30,7 +31,7 @@ func (auditCmd *AuditMavenCommand) SetInsecureTls(insecureTls bool) *AuditMavenC
 
 func (auditCmd *AuditMavenCommand) Run() (err error) {
 	// Parse the dependencies into an Xray dependency tree format
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildMvnDependencyTree(auditCmd.insecureTls)
 	if err != nil {
 		return
 	}
@@ -38,11 +39,11 @@ func (auditCmd *AuditMavenCommand) Run() (err error) {
 	return auditCmd.ScanDependencyTree(modulesDependencyTrees)
 }
 
-func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
+func BuildMvnDependencyTree(insecureTls bool) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
-	err = auditCmd.runMvn(buildConfiguration)
+	err = runMvn(buildConfiguration, insecureTls)
 	if err != nil {
 		return
 	}
@@ -50,7 +51,7 @@ func (auditCmd *AuditMavenCommand) getModulesDependencyTrees() (modules []*servi
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfiguration) error {
+func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls bool) error {
 	goals := []string{"-B", "compile", "test-compile"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Maven)
@@ -62,7 +63,7 @@ func (auditCmd *AuditMavenCommand) runMvn(buildConfiguration *utils.BuildConfigu
 	} else {
 		configFilePath = ""
 	}
-	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, auditCmd.insecureTls, true)
+	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, insecureTls, true)
 }
 
 func (auditCmd *AuditMavenCommand) CommandName() string {

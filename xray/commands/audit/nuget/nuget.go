@@ -26,23 +26,30 @@ func NewAuditNugetCommand(auditCmd audit.AuditCommand) *AuditNugetCommand {
 }
 
 func (anc *AuditNugetCommand) Run() error {
-	wd, err := os.Getwd()
+	dependencyTree, err := BuildNugetDependencyTree()
 	if err != nil {
 		return err
 	}
-	sol, err := solution.Load(wd, "")
-	if err != nil {
-		return err
-	}
-	buildInfo, err := sol.BuildInfo("")
-	if err != nil {
-		return err
-	}
-	dependencyTree := buildNugetDependencyTree(buildInfo)
 	return anc.ScanDependencyTree(dependencyTree)
 }
 
-func buildNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.GraphNode) {
+func BuildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	sol, err := solution.Load(wd, "")
+	if err != nil {
+		return
+	}
+	buildInfo, err := sol.BuildInfo("")
+	if err != nil {
+		return
+	}
+	return parseNugetDependencyTree(buildInfo), nil
+}
+
+func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.GraphNode) {
 	treeMap := make(map[string][]string)
 	for _, module := range buildInfo.Modules {
 		for _, dependency := range module.Dependencies {

@@ -28,27 +28,35 @@ func (auditCmd *AuditNpmCommand) SetNpmArgs(npmArgs []string) *AuditNpmCommand {
 }
 
 func (auditCmd *AuditNpmCommand) Run() (err error) {
+	rootNode, err := BuildNpmDependencyTree(auditCmd.npmArgs)
+	if err != nil {
+		return err
+	}
+	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
+}
+
+func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err error) {
 
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
-		return err
+		return
 	}
 	npmVersion, npmExecutablePath, err := biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
-		return err
+		return
 	}
 	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
 	if err != nil {
-		return err
+		return
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), auditCmd.npmArgs, false, log.Logger)
+	dependenciesList, err := biutils.CalculateDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
 	if err != nil {
-		return err
+		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
-	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
+	rootNode = parseNpmDependenciesList(dependenciesList, packageInfo)
+	return
 }
 
 // Parse the dependencies into an Xray dependency tree format

@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -36,7 +37,7 @@ func (auditCmd *AuditGradleCommand) SetUseWrapper(useWrapper bool) *AuditGradleC
 
 func (auditCmd *AuditGradleCommand) Run() (err error) {
 	// Parse the dependencies into an Xray dependency tree format
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildGradleDependencyTree(auditCmd.excludeTestDeps, auditCmd.useWrapper)
 	if err != nil {
 		return
 	}
@@ -44,11 +45,11 @@ func (auditCmd *AuditGradleCommand) Run() (err error) {
 	return auditCmd.ScanDependencyTree(modulesDependencyTrees)
 }
 
-func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*services.GraphNode, err error) {
+func BuildGradleDependencyTree(excludeTestDeps, useWrapper bool) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 
-	err = auditCmd.runGradle(buildConfiguration)
+	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper)
 	if err != nil {
 		return
 	}
@@ -56,9 +57,9 @@ func (auditCmd *AuditGradleCommand) getModulesDependencyTrees() (modules []*serv
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func (auditCmd *AuditGradleCommand) runGradle(buildConfiguration *utils.BuildConfiguration) error {
+func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, useWrapper bool) error {
 	tasks := "clean compileJava "
-	if !auditCmd.excludeTestDeps {
+	if !excludeTestDeps {
 		tasks += "compileTestJava "
 	}
 	tasks += "artifactoryPublish"
@@ -72,7 +73,7 @@ func (auditCmd *AuditGradleCommand) runGradle(buildConfiguration *utils.BuildCon
 	} else {
 		configFilePath = ""
 	}
-	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, auditCmd.useWrapper, true)
+	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, useWrapper, true)
 }
 
 func (auditCmd *AuditGradleCommand) CommandName() string {

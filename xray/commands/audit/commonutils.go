@@ -2,11 +2,6 @@ package audit
 
 import (
 	"fmt"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,10 +9,13 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 )
@@ -93,29 +91,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 	}
 	var results []services.ScanResponse
 	params := auditCmd.createXrayGraphScanParams()
-	// Get Xray version
-	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	for _, moduleDependencyTree := range modulesDependencyTrees {
-		params.Graph = moduleDependencyTree
-		// Log the scanned module ID
-		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
-		log.Info("Scanning module " + moduleName + "...")
-
-		scanResults, err := xraycommands.RunScanGraphAndGetResults(auditCmd.serverDetails, params, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, xrayVersion)
-		if err != nil {
-			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
-			break
-		}
-		results = append(results, *scanResults)
-	}
-	if results == nil || len(results) < 1 {
-		// if all scans failed, fail the audit command
-		return errorutils.CheckErrorf("Audit command failed due to Xray internal error")
-	}
-	err = xrutils.PrintScanResults(results, auditCmd.outputFormat, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1, auditCmd.printExtendedTable)
+	results, err := Scan(modulesDependencyTrees, params, auditCmd.serverDetails)
 	if err != nil {
 		return err
 	}
@@ -126,8 +102,7 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 			return xrutils.NewFailBuildError()
 		}
 	}
-
-	return nil
+	return xrutils.PrintScanResults(results, auditCmd.outputFormat == xrutils.Table, auditCmd.includeVulnerabilities, auditCmd.includeLicenses, len(modulesDependencyTrees) > 1, auditCmd.printExtendedTable)
 }
 
 func (auditCmd *AuditCommand) createXrayGraphScanParams() services.XrayGraphScanParams {
@@ -141,6 +116,8 @@ func (auditCmd *AuditCommand) createXrayGraphScanParams() services.XrayGraphScan
 	} else {
 		params.ProjectKey = auditCmd.projectKey
 	}
+	params.IncludeVulnerabilities = auditCmd.includeVulnerabilities
+	params.IncludeLicenses = auditCmd.includeLicenses
 	return params
 }
 
@@ -188,4 +165,34 @@ func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *ser
 
 	}
 	return xrDependencyTree
+}
+
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
+	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
+		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
+	}
+
+	// Get Xray version
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
+		return results, err
+	}
+	for _, moduleDependencyTree := range modulesDependencyTrees {
+		xrayGraphScanPrams.Graph = moduleDependencyTree
+		// Log the scanned module ID
+		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
+		log.Info("Scanning module " + moduleName + "...")
+
+		scanResults, err := xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
+		if err != nil {
+			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
+			break
+		}
+		results = append(results, *scanResults)
+	}
+	if results == nil || len(results) < 1 {
+		// if all scans failed, fail the audit command
+		return results, errorutils.CheckErrorf("Audit command failed due to Xray internal error")
+	}
+	return results, nil
 }

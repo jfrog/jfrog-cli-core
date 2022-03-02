@@ -127,12 +127,12 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		return vulnerabilitiesRows[i].fixedVersions != "" && vulnerabilitiesRows[j].fixedVersions == ""
 	})
 
-	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found", printExtended)
+	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
 	return err
 }
 
 // PrintLicensesTable prints the licenses in a table.
-// Set multipleRoots to true in case the given licenses array contains (or may contain) results of several different projects or files (like in binary scan).
+// Set multipleRoots to true in case the given licenses array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {

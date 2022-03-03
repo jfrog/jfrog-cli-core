@@ -121,9 +121,9 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			fallthrough
 		case coreutils.Pipenv:
 			message +=
-				"jf " + string(tech) + "install\n" +
+				"jf " + string(tech) + " install\n" +
 					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
+					coreutils.PrintComment(" # Publish your "+string(tech)+" package") +
 					"\n"
 		case coreutils.Nuget:
 			// The NuGet case is already covered in the dotent case.
@@ -136,7 +136,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 				executableName = coreutils.Dotnet
 			}
 			message +=
-				"jf" + string(executableName) + "restore\n" +
+				"jf " + string(executableName) + " restore\n" +
 					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
 		}
 	}

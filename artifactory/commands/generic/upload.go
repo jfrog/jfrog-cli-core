@@ -2,7 +2,10 @@ package generic
 
 import (
 	"errors"
-	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+
+	buildinfo "github.com/jfrog/build-info-go/entities"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -79,15 +82,15 @@ func (uc *UploadCommand) upload() (err error) {
 	// Create Service Manager:
 	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
 	if err != nil {
-		return err
+		return
 	}
 	serverDetails, err := uc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
-		return err
+		return
 	}
 	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.retries, uc.retryWaitTimeMilliSecs, uc.DryRun(), uc.progress)
 	if err != nil {
-		return err
+		return
 	}
 
 	addVcsProps := false
@@ -95,7 +98,7 @@ func (uc *UploadCommand) upload() (err error) {
 	// Build Info Collection:
 	toCollect, err := uc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
-		return err
+		return
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
@@ -138,7 +141,8 @@ func (uc *UploadCommand) upload() (err error) {
 	// otherwise we use the upload service which provides only general counters.
 	var successCount, failCount int
 	var artifactsDetailsReader *content.ContentReader = nil
-	if uc.DetailedSummary() || toCollect {
+	isTerminal := coreutils.IsTerminal()
+	if isTerminal || uc.DetailedSummary() || toCollect {
 		var summary *rtServicesUtils.OperationSummary
 		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
 		if err != nil {
@@ -166,6 +170,14 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
+			if isTerminal {
+				tree := utils.NewFileTree()
+				tree.AddFilesFromArtifactsDetailsReader(artifactsDetailsReader)
+				treeOutput := tree.String()
+				if len(treeOutput) > 0 {
+					uc.result.SetOutput(tree.String())
+				}
+			}
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
@@ -177,18 +189,18 @@ func (uc *UploadCommand) upload() (err error) {
 	uc.result.SetSuccessCount(successCount)
 	uc.result.SetFailCount(failCount)
 	if errorOccurred {
-		err = errors.New("upload finished with errors, Please review the logs")
-		return err
+		err = errors.New("upload finished with errors. Review the logs for more information")
+		return
 	}
 	if failCount > 0 {
-		return err
+		return
 	}
 
 	// Handle sync-deletes
 	if uc.syncDelete() {
 		err = uc.handleSyncDeletes(syncDeletesProp)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
@@ -197,7 +209,7 @@ func (uc *UploadCommand) upload() (err error) {
 		var buildArtifacts []buildInfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
-			return err
+			return
 		}
 		populateFunc := func(partial *buildInfo.Partial) {
 			partial.Artifacts = buildArtifacts
@@ -214,7 +226,7 @@ func (uc *UploadCommand) upload() (err error) {
 		}
 		return utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
 	}
-	return err
+	return
 }
 
 func getMinChecksumDeploySize() (int64, error) {

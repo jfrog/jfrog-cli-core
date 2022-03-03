@@ -2,6 +2,7 @@ package golang
 
 import (
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os/exec"
 
 	"github.com/jfrog/build-info-go/build"
@@ -73,8 +74,8 @@ func (gpc *GoPublishCommand) Run() error {
 		return err
 	}
 
-	version := version.NewVersion(artifactoryVersion)
-	if !version.AtLeast(minSupportedArtifactoryVersion) {
+	rtVersion := version.NewVersion(artifactoryVersion)
+	if !rtVersion.AtLeast(minSupportedArtifactoryVersion) {
 		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
 	}
 	var goBuild *build.Build
@@ -105,11 +106,27 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
+	if summary != nil {
+		defer func() {
+			e := summary.ArtifactsDetailsReader.Close()
+			if err == nil {
+				err = e
+			}
+		}()
+	}
 	result := gpc.Result()
 	result.SetSuccessCount(summary.TotalSucceeded)
 	result.SetFailCount(summary.TotalFailed)
 	if gpc.detailedSummary {
 		result.SetReader(summary.TransferDetailsReader)
+	}
+	if coreutils.IsTerminal() {
+		tree := utils.NewFileTree()
+		tree.AddFilesFromArtifactsDetailsReader(summary.ArtifactsDetailsReader)
+		treeOutput := tree.String()
+		if len(treeOutput) > 0 {
+			result.SetOutput(tree.String())
+		}
 	}
 	// Publish the build-info to Artifactory
 	if toCollect {

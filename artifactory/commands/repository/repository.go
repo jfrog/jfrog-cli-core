@@ -55,17 +55,22 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	}
 	// Rclass and packageType are mandatory keys in our templates
 	// Using their values we'll pick the suitable handler from one of the handler maps to create/update a repository
+	var handlerFunc func(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error
+	packageType := repoConfigMap[PackageType].(string)
 	switch repoConfigMap[Rclass] {
 	case Local:
-		err = localRepoHandlers[repoConfigMap[PackageType].(string)](servicesManager, content, isUpdate)
+		handlerFunc = localRepoHandlers[packageType]
 	case Remote:
-		err = remoteRepoHandlers[repoConfigMap[PackageType].(string)](servicesManager, content, isUpdate)
+		handlerFunc = remoteRepoHandlers[packageType]
 	case Virtual:
-		err = virtualRepoHandlers[repoConfigMap[PackageType].(string)](servicesManager, content, isUpdate)
+		handlerFunc = virtualRepoHandlers[packageType]
 	default:
-		return errorutils.CheckErrorf("unsupported rclass")
+		return errorutils.CheckErrorf("unsupported rclass: " + repoConfigMap[Rclass].(string))
 	}
-	return err
+	if handlerFunc == nil {
+		return errors.New("unsupported package type: " + packageType)
+	}
+	return handlerFunc(servicesManager, content, isUpdate)
 }
 
 var writersMap = map[string]utils.AnswerWriter{

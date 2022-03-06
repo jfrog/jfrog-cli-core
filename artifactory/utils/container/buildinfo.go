@@ -71,10 +71,6 @@ func (builder *buildInfoBuilder) setImageSha2(imageSha2 string) {
 	builder.imageSha2 = imageSha2
 }
 
-func (builder *buildInfoBuilder) setskipTaggingLayers(skipTaggingLayers bool) {
-	builder.skipTaggingLayers = skipTaggingLayers
-}
-
 func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
 	return &builder.imageLayers
 }

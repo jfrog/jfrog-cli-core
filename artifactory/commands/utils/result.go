@@ -80,6 +80,9 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath
 		}
 	}
 	err = clientutils.SaveFileTransferDetailsInFile(deployableArtifactsFilePath, &artifactsArray)
+	if err != nil {
+		return nil, err
+	}
 	// Return result
 	result := new(Result)
 	result.SetSuccessCount(succeeded)

@@ -103,7 +103,7 @@ func TestReplaceSpecVars(t *testing.T) {
 }
 
 func assertVariablesMap(expected, actual []byte, t *testing.T) {
-	if 0 != bytes.Compare(expected, actual) {
+	if bytes.Compare(expected, actual) != 0 {
 		t.Error("Wrong matching expected: `" + string(expected) + "` Got `" + string(actual) + "`")
 	}
 }

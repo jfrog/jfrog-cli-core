@@ -7,16 +7,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"strconv"
-	"syscall"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
+	"io"
+	"os"
+	"strconv"
+	"syscall"
 )
 
 type SecurityConf struct {
@@ -142,7 +141,7 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 
 func readMasterKeyFromConsole() (string, error) {
 	print("Please enter the master key: ")
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

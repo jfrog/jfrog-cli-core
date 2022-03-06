@@ -155,6 +155,9 @@ func TestExtractDependencies(t *testing.T) {
 
 	expectedAllDependencies := []string{"id1", "id2"}
 	allDependencies, err := extractor.AllDependencies()
+	if err != nil {
+		t.Error(err)
+	}
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {
 			t.Error("Expecting", v, "dependency")

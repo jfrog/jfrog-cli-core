@@ -45,7 +45,7 @@ func TestGoConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -83,7 +83,7 @@ func TestPipConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -123,7 +123,7 @@ func TestPipenvConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -161,7 +161,7 @@ func TestNpmConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -198,7 +198,7 @@ func TestNugetConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -241,7 +241,7 @@ func TestMavenConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 
@@ -289,7 +289,7 @@ func TestGradleConfigFile(t *testing.T) {
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable
-	err, cleanUp := tests.ConfigTestServer(t)
+	cleanUp, err := tests.ConfigTestServer(t)
 	assert.NoError(t, err)
 	defer cleanUp()
 

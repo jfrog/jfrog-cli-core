@@ -199,7 +199,7 @@ func TestGetValueForStringFlag(t *testing.T) {
 
 	// Not received, no default but mandatory.
 	f.Mandatory = true
-	finalValue, err = getValueForStringFlag(f, "")
+	_, err = getValueForStringFlag(f, "")
 	assert.Error(t, err)
 
 	// Not received, verify default is taken.

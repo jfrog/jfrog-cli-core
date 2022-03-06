@@ -99,6 +99,9 @@ func TestNewAssetsExtractor(t *testing.T) {
 	}
 
 	allDependencies, err := extractor.AllDependencies()
+	if err != nil {
+		t.Error(err)
+	}
 	expectedAllDependencies := []string{"dep1", "dep2"}
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {

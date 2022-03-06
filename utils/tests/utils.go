@@ -102,7 +102,7 @@ func CreateTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
 
 func ValidateListsIdentical(expected, actual []string) error {
 	if len(actual) != len(expected) {
-		return errors.New(fmt.Sprintf("Unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", ")))
+		return fmt.Errorf("unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", "))
 	}
 	err := compare(expected, actual)
 	return err

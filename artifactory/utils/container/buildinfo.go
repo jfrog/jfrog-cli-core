@@ -163,7 +163,7 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	if tag == "" || sha256 == "" {
 		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "` + filePath + `"`)
 	}
-	return NewImage(tag), sha256, nil
+	return NewImage(tag), sha256, err
 }
 
 type buildxMetaData struct {
@@ -305,6 +305,9 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 	switch commandType {
 	case Pull:
 		dependencies, err = builder.createPullBuildProperties(manifest, candidateLayers)
+		if err != nil {
+			return nil, err
+		}
 	case Push:
 		artifacts, dependencies, builder.imageLayers, err = builder.createPushBuildProperties(manifest, candidateLayers)
 		if err != nil {

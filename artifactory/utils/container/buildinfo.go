@@ -162,8 +162,11 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	tag, sha256 := splittedData[0], strings.Trim(splittedData[1], "\n")
 	if tag == "" || sha256 == "" {
 		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "` + filePath + `"`)
+		if err != nil {
+			return nil, "", err
+		}
 	}
-	return NewImage(tag), sha256, err
+	return NewImage(tag), sha256, nil
 }
 
 type buildxMetaData struct {

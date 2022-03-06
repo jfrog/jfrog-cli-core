@@ -2,8 +2,7 @@ package terraform
 
 import (
 	"github.com/jfrog/gofrog/parallel"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -39,11 +38,11 @@ type TerraformPublishCommand struct {
 	repo           string
 	configFilePath string
 	serverDetails  *config.ServerDetails
-	result         *commandsutils.Result
+	result         *commandsUtils.Result
 }
 
 func NewTerraformPublishCommand() *TerraformPublishCommand {
-	return &TerraformPublishCommand{TerraformPublishCommandArgs: NewTerraformPublishCommandArgs(), result: new(commandsutils.Result)}
+	return &TerraformPublishCommand{TerraformPublishCommandArgs: NewTerraformPublishCommandArgs(), result: new(commandsUtils.Result)}
 }
 
 func NewTerraformPublishCommandArgs() *TerraformPublishCommandArgs {
@@ -82,7 +81,7 @@ func (tpc *TerraformPublishCommand) SetConfigFilePath(configFilePath string) *Te
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) Result() *commandutils.Result {
+func (tpc *TerraformPublishCommand) Result() *commandsUtils.Result {
 	return tpc.result
 }
 

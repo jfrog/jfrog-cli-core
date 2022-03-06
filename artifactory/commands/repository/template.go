@@ -383,10 +383,6 @@ var vcsRemoteRepoConfKeys = []string{
 	VcsGitProvider, VcsType, MaxUniqueSnapshots, VcsGitDownloadUrl, ListRemoteFolderItems,
 }
 
-var genericRemoteRepoConfKeys = []string{
-	ListRemoteFolderItems,
-}
-
 var baseVirtualRepoConfKeys = []string{
 	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
 	DefaultDeploymentRepo,

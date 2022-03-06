@@ -12,7 +12,6 @@ import (
 
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/build/utils"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/version"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -44,7 +43,6 @@ type NpmPublishCommandArgs struct {
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
 	scanOutputFormat       xrutils.OutputFormat
-	packDestination        string
 }
 
 type NpmPublishCommand struct {
@@ -359,36 +357,6 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
-}
-
-func (npc *NpmPublishCommand) saveArtifactData() error {
-	log.Debug("Saving npm package artifact build info data.")
-	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
-	if err != nil {
-		return err
-	}
-	err = npc.artifactsDetailsReader.Close()
-	if err != nil {
-		return err
-	}
-
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Artifacts = buildArtifacts
-		if npc.buildConfiguration.GetModule() == "" {
-			npc.buildConfiguration.SetModule(npc.packageInfo.BuildInfoModuleId())
-		}
-		partial.ModuleId = npc.buildConfiguration.GetModule()
-		partial.ModuleType = buildinfo.Npm
-	}
-	buildName, err := npc.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	buildNumber, err := npc.buildConfiguration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	return utils.SavePartialBuildInfo(buildName, buildNumber, npc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {

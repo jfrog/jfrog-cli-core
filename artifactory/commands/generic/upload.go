@@ -212,8 +212,7 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return err
 		}
-		err = utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
-
+		return utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
 	}
 	return err
 }

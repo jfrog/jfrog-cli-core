@@ -348,7 +348,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		if isDir {
 			continue
 		}
-		if matches != nil && len(matches) > 0 {
+		if len(matches) > 0 {
 			dataHandlerFunc(path)
 		}
 	}

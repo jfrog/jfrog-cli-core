@@ -22,6 +22,7 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	defer cleanUpJfrogHome()
 	// DeployableArtifact file is changed at runtime so a copy needs to be created.
 	tempDeployableArtifacts, err := createTempDeployableArtifactFile()
+	assert.NoError(t, err)
 	// Delete DeployableArtifacts tempDir
 	defer testsutils.RemoveAllAndAssert(t, filepath.Dir(tempDeployableArtifacts))
 	gradleConfigFile := path.Join(getTestsDataGradlePath(), "config", "gradle.yaml")

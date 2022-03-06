@@ -58,7 +58,7 @@ func (mc *MoveCommand) Run() error {
 	mc.result.SetFailCount(totalFailed)
 
 	if errorOccurred {
-		return errors.New("Move finished with errors, please review the logs.")
+		return errors.New("move finished with errors, please review the logs")
 	}
 	return err
 }

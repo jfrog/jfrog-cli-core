@@ -150,7 +150,10 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
 		return nil, "", err
 	}
-	json.Unmarshal(data, &buildxMetaData)
+	err = json.Unmarshal(data, &buildxMetaData)
+	if err != nil {
+		return nil, "", err
+	}
 	// Try to read buildx metadata file.
 	if buildxMetaData.ImageName != "" && buildxMetaData.ImageSha256 != "" {
 		return NewImage(buildxMetaData.ImageName), buildxMetaData.ImageSha256, nil

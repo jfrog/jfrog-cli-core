@@ -132,9 +132,9 @@ func (npc *NpmPublishCommand) Init() error {
 	return nil
 }
 
-func (npc *NpmPublishCommand) Run() error {
+func (npc *NpmPublishCommand) Run() (err error) {
 	log.Info("Running npm Publish")
-	err := npc.preparePrerequisites()
+	err = npc.preparePrerequisites()
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,12 @@ func (npc *NpmPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	npc.artifactsDetailsReader.Close()
+	defer func() {
+		e := npc.artifactsDetailsReader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -327,14 +332,20 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		if npc.collectBuildInfo {
 			npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
 		} else {
-			summary.ArtifactsDetailsReader.Close()
+			err = summary.ArtifactsDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 		if npc.detailedSummary {
 			npc.result.SetReader(summary.TransferDetailsReader)
 			npc.result.SetFailCount(totalFailed)
 			npc.result.SetSuccessCount(summary.TotalSucceeded)
 		} else {
-			summary.TransferDetailsReader.Close()
+			err = summary.TransferDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		_, totalFailed, err = servicesManager.UploadFiles(up)
@@ -343,7 +354,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		}
 	}
 
-	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
+	// We are deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
@@ -414,13 +425,18 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	return npc.readPackageInfoFromTarball()
 }
 
-func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
+func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 	log.Debug("Extracting info from npm package:", npc.packedFilePath)
 	tarball, err := os.Open(npc.packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer tarball.Close()
+	defer func() {
+		e := tarball.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {
 		return errorutils.CheckError(err)

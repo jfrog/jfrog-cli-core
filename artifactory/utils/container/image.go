@@ -95,7 +95,7 @@ func (image *Image) GetImageTag() (string, error) {
 	}
 	tagIndex := strings.Index(imageName, ":")
 	if tagIndex == -1 {
-		errorutils.CheckErrorf("unexpected image name '%s'. Failed to get image tag.", image.Name())
+		return "", errorutils.CheckErrorf("unexpected image name '%s'. Failed to get image tag.", image.Name())
 	}
 	return imageName[tagIndex+1:], nil
 }
@@ -106,7 +106,7 @@ func (image *Image) GetRegistry() (string, error) {
 	}
 	indexOfLastSlash := strings.Index(image.name, "/")
 	if indexOfLastSlash == -1 {
-		errorutils.CheckErrorf("unexpected image name '%s'. Failed to get registry.", image.Name())
+		return "", errorutils.CheckErrorf("unexpected image name '%s'. Failed to get registry.", image.Name())
 	}
 	return image.name[:indexOfLastSlash], nil
 }

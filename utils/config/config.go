@@ -432,7 +432,10 @@ func getConfFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	os.MkdirAll(confPath, 0777)
+	err = os.MkdirAll(confPath, 0777)
+	if err != nil {
+		return "", err
+	}
 
 	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
 	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile+versionString)

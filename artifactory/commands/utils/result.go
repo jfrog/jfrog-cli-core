@@ -125,7 +125,12 @@ func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifac
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
 	jsonFile, err := os.Open(filesPath)
-	defer jsonFile.Close()
+	defer func() {
+		e := jsonFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

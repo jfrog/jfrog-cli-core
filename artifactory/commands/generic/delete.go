@@ -108,6 +108,9 @@ func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCoun
 		return 0, 0, err
 	}
 	deletedCount, err := servicesManager.DeleteFiles(reader)
+	if err != nil {
+		return 0, 0, err
+	}
 	length, err := reader.Length()
 	if err != nil {
 		return 0, 0, err

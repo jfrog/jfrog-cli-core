@@ -152,7 +152,7 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	}
 	err = json.Unmarshal(data, &buildxMetaData)
 	if err != nil {
-		return nil, "", err
+		log.Debug("failed unmarshalling buildxMetaData file with error: " + err.Error() + ". falling back to Kanico/OC file format...")
 	}
 	// Try to read buildx metadata file.
 	if buildxMetaData.ImageName != "" && buildxMetaData.ImageSha256 != "" {

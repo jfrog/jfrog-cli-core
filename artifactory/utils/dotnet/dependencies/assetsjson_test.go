@@ -2,6 +2,7 @@ package dependencies
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -56,10 +57,7 @@ func TestJson(t *testing.T) {
 }`)
 
 	var assetsObj assets
-	err := json.Unmarshal(content, &assetsObj)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, json.Unmarshal(content, &assetsObj))
 
 	expected := assets{
 		Version: 3,
@@ -84,14 +82,10 @@ func TestJson(t *testing.T) {
 func TestNewAssetsExtractor(t *testing.T) {
 	assets := assetsExtractor{}
 	extractor, err := assets.new(filepath.Join("testdata", "assetsproject", "obj", "project.assets.json"))
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	directDependencies, err := extractor.DirectDependencies()
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	expectedDirectDependencies := []string{"dep1"}
 	if !reflect.DeepEqual(expectedDirectDependencies, directDependencies) {
@@ -99,9 +93,7 @@ func TestNewAssetsExtractor(t *testing.T) {
 	}
 
 	allDependencies, err := extractor.AllDependencies()
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	expectedAllDependencies := []string{"dep1", "dep2"}
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {
@@ -110,17 +102,9 @@ func TestNewAssetsExtractor(t *testing.T) {
 	}
 
 	childrenMap, err := extractor.ChildrenMap()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(childrenMap["dep1"]) != 0 {
-		t.Error("Expected: []string{} got :", childrenMap["dep1"])
-	}
-
-	if len(childrenMap["dep2"]) != 1 {
-		t.Error("Expected: []string{\"dep1\"} got :", childrenMap["dep2"])
-	}
+	assert.NoError(t, err)
+	assert.Len(t, childrenMap["dep1"], 0)
+	assert.Len(t, childrenMap["dep2"], 1)
 }
 
 func TestGetDependencyIdForBuildInfo(t *testing.T) {
@@ -138,8 +122,6 @@ func TestGetDependencyIdForBuildInfo(t *testing.T) {
 
 	for index, test := range args {
 		actualId := getDependencyIdForBuildInfo(test)
-		if actualId != expected[index] {
-			t.Errorf("Expected dependency name to be: %s, got: %s.", expected[index], actualId)
-		}
+		assert.Equal(t, expected[index], actualId)
 	}
 }

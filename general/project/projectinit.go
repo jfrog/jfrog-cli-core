@@ -146,8 +146,8 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			"\n"
 	}
 	if ok := technologiesMap[coreutils.Docker]; ok {
-		baseurl := strings.TrimSuffix(strings.TrimSpace(pic.serverUrl), "https://")
-		baseurl = strings.TrimSuffix(baseurl, "http://")
+		baseurl := strings.TrimPrefix(strings.TrimSpace(pic.serverUrl), "https://")
+		baseurl = strings.TrimPrefix(baseurl, "http://")
 		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
 		message += coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
 			"\n" +

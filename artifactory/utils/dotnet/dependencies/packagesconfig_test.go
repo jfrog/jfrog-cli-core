@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -83,9 +84,7 @@ func TestLoadPackagesConfig(t *testing.T) {
 
 	packagesObj := &packagesConfig{}
 	err := xml.Unmarshal(xmlContent, packagesObj)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	expected := &packagesConfig{
 		XMLName: xml.Name{Local: "packages"},
@@ -117,9 +116,7 @@ func TestLoadNuspec(t *testing.T) {
 
 	nuspecObj := &nuspec{}
 	err := xml.Unmarshal(xmlContent, nuspecObj)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	expected := &nuspec{
 		XMLName: xml.Name{Local: "package"},
@@ -149,15 +146,12 @@ func TestLoadNuspec(t *testing.T) {
 
 func TestExtractDependencies(t *testing.T) {
 	extractor, err := extractDependencies(filepath.Join("testdata", "packagesproject", "localcache"))
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	expectedAllDependencies := []string{"id1", "id2"}
 	allDependencies, err := extractor.AllDependencies()
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	for _, v := range expectedAllDependencies {
 		if _, ok := allDependencies[v]; !ok {
 			t.Error("Expecting", v, "dependency")
@@ -166,9 +160,7 @@ func TestExtractDependencies(t *testing.T) {
 
 	expectedChildrenMap := map[string][]string{"id1": {"id2"}, "id2": {"id1"}}
 	childrenMap, err := extractor.ChildrenMap()
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	if !reflect.DeepEqual(expectedChildrenMap, childrenMap) {
 		t.Errorf("Expected: %s, Got: %s", expectedChildrenMap, childrenMap)
@@ -176,9 +168,7 @@ func TestExtractDependencies(t *testing.T) {
 
 	expectedDirectDependencies := []string{"id1", "id2"}
 	directDependencies, err := extractor.DirectDependencies()
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	sort.Strings(directDependencies)
 	sort.Strings(expectedDirectDependencies)
@@ -190,9 +180,7 @@ func TestExtractDependencies(t *testing.T) {
 func TestPackageNotFoundWithoutFailure(t *testing.T) {
 	log.SetDefaultLogger()
 	_, err := extractDependencies(filepath.Join("testdata", "packagesproject", "localcachenotexists"))
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 }
 
 func extractDependencies(globalPackagePath string) (Extractor, error) {

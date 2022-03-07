@@ -126,8 +126,7 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 					coreutils.PrintComment(" # Publish your "+string(tech)+" package") +
 					"\n"
 		case coreutils.Nuget:
-			// The NuGet case is already covered in the dotent case.
-			break
+			// The NuGet case is already covered in the dotnet case.
 		case coreutils.Dotnet:
 			executableName := coreutils.Nuget
 			_, errNotFound := exec.LookPath("dotnet")
@@ -147,8 +146,8 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			"\n"
 	}
 	if ok := technologiesMap[coreutils.Docker]; ok {
-		baseurl := strings.TrimLeft(pic.serverUrl, "https://")
-		baseurl = strings.TrimLeft(baseurl, "http://")
+		baseurl := strings.TrimPrefix(strings.TrimSpace(pic.serverUrl), "https://")
+		baseurl = strings.TrimPrefix(baseurl, "http://")
 		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
 		message += coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
 			"\n" +

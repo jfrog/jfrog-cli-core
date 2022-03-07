@@ -206,7 +206,6 @@ func (solution *solution) loadSingleProject(projectName, projFilePath string) {
 	if proj.Extractor() != nil {
 		solution.projects = append(solution.projects, proj)
 	}
-	return
 }
 
 // Finds all the projects by reading the content of the sln files.

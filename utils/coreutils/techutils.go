@@ -100,7 +100,7 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
 	detected = []Technology{}
 	for techName, techData := range technologiesData {
-		if isCiSetup == false || (isCiSetup && techData.ciSetupSupport) {
+		if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
 			for _, indicator := range techData.indicators {
 				if strings.Contains(file, indicator) {
 					detected = append(detected, techName)

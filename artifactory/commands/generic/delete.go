@@ -54,7 +54,7 @@ func (dc *DeleteCommand) Run() error {
 	return nil
 }
 
-func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
+func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReader, err error) {
 	serverDetails, err := dc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -63,10 +63,13 @@ func (dc *DeleteCommand) GetPathsToDelete() (*content.ContentReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	temp := []*content.ContentReader{}
+	var temp []*content.ContentReader
 	defer func() {
 		for _, reader := range temp {
-			reader.Close()
+			e := reader.Close()
+			if err == nil {
+				err = e
+			}
 		}
 	}()
 	for i := 0; i < len(dc.Spec().Files); i++ {
@@ -105,6 +108,9 @@ func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCoun
 		return 0, 0, err
 	}
 	deletedCount, err := servicesManager.DeleteFiles(reader)
+	if err != nil {
+		return 0, 0, err
+	}
 	length, err := reader.Length()
 	if err != nil {
 		return 0, 0, err

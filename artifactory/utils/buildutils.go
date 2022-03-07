@@ -7,20 +7,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	artClientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -65,7 +63,7 @@ func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, err
 	return buildDir, nil
 }
 
-func saveBuildData(action interface{}, buildName, buildNumber, projectKey string) error {
+func saveBuildData(action interface{}, buildName, buildNumber, projectKey string) (err error) {
 	b, err := json.Marshal(&action)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -84,12 +82,17 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 	if err != nil {
 		return err
 	}
-	defer tempFile.Close()
-	_, err = tempFile.Write([]byte(content.String()))
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
+	_, err = tempFile.Write(content.Bytes())
 	return err
 }
 
-func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildinfo.BuildInfo) error {
+func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildInfo.BuildInfo) (err error) {
 	b, err := json.Marshal(buildInfo)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -108,8 +111,13 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildin
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	defer tempFile.Close()
-	_, err = tempFile.Write([]byte(content.String()))
+	defer func() {
+		e := tempFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
+	_, err = tempFile.Write(content.Bytes())
 	return errorutils.CheckError(err)
 }
 
@@ -128,7 +136,7 @@ func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
 	if exists {
 		return nil
 	}
-	meta := buildinfo.General{
+	meta := buildInfo.General{
 		Timestamp: time.Now(),
 	}
 	b, err := json.Marshal(&meta)
@@ -140,20 +148,20 @@ func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(detailsFilePath, []byte(content.String()), 0600)
+	err = ioutil.WriteFile(detailsFilePath, content.Bytes(), 0600)
 	return errorutils.CheckError(err)
 }
 
-type populatePartialBuildInfo func(partial *buildinfo.Partial)
+type populatePartialBuildInfo func(partial *buildInfo.Partial)
 
 func SavePartialBuildInfo(buildName, buildNumber, projectKey string, populatePartialBuildInfoFunc populatePartialBuildInfo) error {
-	partialBuildInfo := new(buildinfo.Partial)
+	partialBuildInfo := new(buildInfo.Partial)
 	partialBuildInfo.Timestamp = time.Now().UnixNano() / int64(time.Millisecond)
 	populatePartialBuildInfoFunc(partialBuildInfo)
 	return saveBuildData(partialBuildInfo, buildName, buildNumber, projectKey)
 }
 
-func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*buildinfo.BuildInfo, error) {
+func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*buildInfo.BuildInfo, error) {
 	buildDir, err := GetBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
@@ -163,7 +171,7 @@ func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*build
 		return nil, err
 	}
 
-	var generatedBuildsInfo []*buildinfo.BuildInfo
+	var generatedBuildsInfo []*buildInfo.BuildInfo
 	for _, buildFile := range buildFiles {
 		dir, err := fileutils.IsDirExists(buildFile, false)
 		if err != nil {
@@ -176,7 +184,7 @@ func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*build
 		if err != nil {
 			return nil, err
 		}
-		buildInfo := new(buildinfo.BuildInfo)
+		buildInfo := new(buildInfo.BuildInfo)
 		err = json.Unmarshal(content, &buildInfo)
 		if errorutils.CheckError(err) != nil {
 			return nil, err
@@ -186,8 +194,8 @@ func GetGeneratedBuildsInfo(buildName, buildNumber, projectKey string) ([]*build
 	return generatedBuildsInfo, nil
 }
 
-func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (buildinfo.Partials, error) {
-	var partials buildinfo.Partials
+func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (buildInfo.Partials, error) {
+	var partials buildInfo.Partials
 	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
@@ -211,7 +219,7 @@ func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (build
 		if err != nil {
 			return nil, err
 		}
-		partial := new(buildinfo.Partial)
+		partial := new(buildInfo.Partial)
 		err = json.Unmarshal(content, &partial)
 		if errorutils.CheckError(err) != nil {
 			return nil, err
@@ -222,7 +230,7 @@ func ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey string) (build
 	return partials, nil
 }
 
-func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*buildinfo.General, error) {
+func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*buildInfo.General, error) {
 	partialsBuildDir, err := getPartialsBuildDir(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, err
@@ -232,7 +240,7 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*bu
 	if err != nil {
 		return nil, err
 	}
-	if fileExists == false {
+	if !fileExists {
 		var buildString string
 		if projectKey != "" {
 			buildString = fmt.Sprintf("build-name: <%s>, build-number: <%s> and project: <%s>", buildName, buildNumber, projectKey)
@@ -246,7 +254,7 @@ func ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey string) (*bu
 	if err != nil {
 		return nil, err
 	}
-	details := new(buildinfo.General)
+	details := new(buildInfo.General)
 	err = json.Unmarshal(content, &details)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -339,7 +347,7 @@ func (bc *BuildConfiguration) GetBuildNumber() (string, error) {
 		return "", err
 	}
 	if buildName != "" && bc.loadedFromConfigFile {
-		bc.buildNumber = artclientutils.LatestBuildNumberKey
+		bc.buildNumber = artClientUtils.LatestBuildNumberKey
 	}
 	return bc.buildNumber, nil
 }
@@ -358,7 +366,7 @@ func (bc *BuildConfiguration) GetModule() string {
 }
 
 // Validates:
-// 1. If the build number exists, the build name also exists (and And vice versa).
+// 1. If the build number exists, the build name also exists (and vice versa).
 // 2. If the modules exists, the build name/number are also exist (and vice versa).
 func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	buildName, err := bc.GetBuildName()
@@ -380,7 +388,7 @@ func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	return nil
 }
 
-// Validates that if the build number exists, the build name also exists (and And vice versa).
+// Validates that if the build number exists, the build name also exists (and vice versa).
 func (bc *BuildConfiguration) ValidateBuildParams() error {
 	buildName, err := bc.GetBuildName()
 	if err != nil {

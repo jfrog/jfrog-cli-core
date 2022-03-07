@@ -59,6 +59,6 @@ func buildNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.
 	return
 }
 
-func (apc *AuditNugetCommand) CommandName() string {
+func (anc *AuditNugetCommand) CommandName() string {
 	return "xr_audit_nuget"
 }

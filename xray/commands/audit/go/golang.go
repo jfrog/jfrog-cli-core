@@ -68,7 +68,7 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, goPackageTypeIdentifier)]
 	// Recursively create & append all node's dependencies.
 	for _, childName := range currDepChildren {
-		if dependenciesList[childName] == false {
+		if !dependenciesList[childName] {
 			// 'go list all' is more accurate than 'go graph' so we filter out deps that don't exist in go list
 			continue
 		}

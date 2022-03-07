@@ -24,9 +24,8 @@ func init() {
 
 // packages.config dependency extractor
 type packagesExtractor struct {
-	allDependencies  map[string]*buildinfo.Dependency
-	childrenMap      map[string][]string
-	rootDependencies []string
+	allDependencies map[string]*buildinfo.Dependency
+	childrenMap     map[string][]string
 }
 
 func (extractor *packagesExtractor) IsCompatible(projectName, dependenciesSource string) bool {

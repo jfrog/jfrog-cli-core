@@ -222,7 +222,10 @@ func (iq *InteractiveQuestionnaire) AskQuestion(question QuestionInfo) (value st
 func (iq *InteractiveQuestionnaire) Perform() error {
 	iq.AnswersMap = make(map[string]interface{})
 	for i := 0; i < len(iq.MandatoryQuestionsKeys); i++ {
-		iq.AskQuestion(iq.QuestionsMap[iq.MandatoryQuestionsKeys[i]])
+		_, err := iq.AskQuestion(iq.QuestionsMap[iq.MandatoryQuestionsKeys[i]])
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Println("You can type \":x\" at any time to save and exit.")
 	OptionalKeyQuestion := iq.QuestionsMap[OptionalKey]

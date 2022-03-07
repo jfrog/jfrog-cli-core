@@ -306,16 +306,6 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	}
 }
 
-func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
-	if !cc.useBasicAuthOnly && (cc.details.Password != "" && cc.details.AccessToken == "") {
-		useRefreshableToken := coreutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
-			"JFrog CLI supports replacing the configured username and password/API key with automatically created access token that's refreshed hourly. "+
-			"Enable this setting?", true)
-		cc.useBasicAuthOnly = !useRefreshableToken
-	}
-	return
-}
-
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
 	if err == nil {
@@ -504,14 +494,14 @@ func Use(serverId string) error {
 	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", serverId)
 }
 
-func ClearConfig(interactive bool) {
+func ClearConfig(interactive bool) error {
 	if interactive {
 		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
 		if !confirmed {
-			return
+			return nil
 		}
 	}
-	config.SaveServersConf(make([]*config.ServerDetails, 0))
+	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {

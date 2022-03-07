@@ -2,14 +2,12 @@ package terraform
 
 import (
 	"github.com/jfrog/gofrog/parallel"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientservicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -39,11 +37,11 @@ type TerraformPublishCommand struct {
 	repo           string
 	configFilePath string
 	serverDetails  *config.ServerDetails
-	result         *commandsutils.Result
+	result         *commandsUtils.Result
 }
 
 func NewTerraformPublishCommand() *TerraformPublishCommand {
-	return &TerraformPublishCommand{TerraformPublishCommandArgs: NewTerraformPublishCommandArgs(), result: new(commandsutils.Result)}
+	return &TerraformPublishCommand{TerraformPublishCommandArgs: NewTerraformPublishCommandArgs(), result: new(commandsUtils.Result)}
 }
 
 func NewTerraformPublishCommandArgs() *TerraformPublishCommandArgs {
@@ -82,7 +80,7 @@ func (tpc *TerraformPublishCommand) SetConfigFilePath(configFilePath string) *Te
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) Result() *commandutils.Result {
+func (tpc *TerraformPublishCommand) Result() *commandsUtils.Result {
 	return tpc.result
 }
 
@@ -159,9 +157,7 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 	if err != nil {
 		return
 	}
-	for _, singleValue := range strings.Split(exclusionsString, ";") {
-		tpa.exclusions = append(tpa.exclusions, singleValue)
-	}
+	tpa.exclusions = append(tpa.exclusions, strings.Split(exclusionsString, ";")...)
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
 	if len(args) != 0 {
 		err = errorutils.CheckErrorf("Unknown flag:" + strings.Split(args[0], "=")[0] + ". for a terraform publish command please provide --namespace, --provider, --tag and optionally --exclusions.")
@@ -170,7 +166,7 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 }
 
 func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
-	uploadSummary := clientservicesutils.NewResult(threads)
+	uploadSummary := servicesUtils.NewResult(threads)
 	producerConsumer := parallel.NewRunner(3, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(threads)
 
@@ -183,7 +179,7 @@ func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
 	return totalUploaded, totalFailed, nil
 }
 
-func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *clientservicesutils.Result) {
+func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *servicesUtils.Result) {
 	go func() {
 		defer producer.Done()
 		pwd, err := os.Getwd()
@@ -201,13 +197,13 @@ func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parall
 }
 
 // ProduceTaskFunk is provided as an argument to 'walkDirAndUploadTerraformModules' function for testing purposes.
-type ProduceTaskFunk func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
+type ProduceTaskFunk func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *servicesUtils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
 
-func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *specutils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
+func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *servicesUtils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
 	return producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, target, archiveData, errorsQueue), errorsQueue.AddError)
 }
 
-func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *specutils.Result, produceTaskFunk ProduceTaskFunk) error {
+func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *servicesUtils.Result, produceTaskFunk ProduceTaskFunk) error {
 	return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -288,11 +284,11 @@ func GetSaveTaskInContentWriterFunc(archiveData *services.ArchiveUploadData, upl
 	}
 }
 
-func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *clientservicesutils.Result) (totalUploaded, totalFailed int) {
+func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *servicesUtils.Result) (totalUploaded, totalFailed int) {
 	// Blocking until consuming is finished.
 	consumer.Run()
-	totalUploaded = clientservicesutils.SumIntArray(uploadSummary.SuccessCount)
-	totalUploadAttempted := clientservicesutils.SumIntArray(uploadSummary.TotalCount)
+	totalUploaded = servicesUtils.SumIntArray(uploadSummary.SuccessCount)
+	totalUploadAttempted := servicesUtils.SumIntArray(uploadSummary.TotalCount)
 
 	log.Debug("Uploaded", strconv.Itoa(totalUploaded), "artifacts.")
 	totalFailed = totalUploadAttempted - totalUploaded
@@ -309,7 +305,7 @@ func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, 
 	uploadParams.TargetPathInArchive = "{1}"
 	uploadParams.Archive = "zip"
 	uploadParams.Recursive = true
-	uploadParams.CommonParams.TargetProps = specutils.NewProperties()
+	uploadParams.CommonParams.TargetProps = servicesUtils.NewProperties()
 	uploadParams.CommonParams.Exclusions = append(tpc.exclusions, "*.git", "*.DS_Store")
 
 	return &uploadParams

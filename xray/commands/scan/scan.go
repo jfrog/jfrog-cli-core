@@ -189,7 +189,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
 	// If user provided --fail=false, don't fail the build.
-	if scanCmd.fail && scanCmd.includeVulnerabilities == false {
+	if scanCmd.fail && !scanCmd.includeVulnerabilities {
 		if xrutils.CheckIfFailBuild(flatResults) {
 			return xrutils.NewFailBuildError()
 		}
@@ -219,11 +219,12 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
 		// When encountering an error, log and move to next group.
-		for _, fileGroup := range scanCmd.spec.Files {
-			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&fileGroup, indexedFileProducer, resultsArr, indexedFileErrorsQueue, xrayVersion)
+		specFiles := scanCmd.spec.Files
+		for i := range specFiles {
+			artifactHandlerFunc := scanCmd.createIndexerHandlerFunc(&specFiles[i], indexedFileProducer, resultsArr, indexedFileErrorsQueue, xrayVersion)
 			taskHandler := getAddTaskToProducerFunc(fileProducer, fileErrorsQueue, artifactHandlerFunc)
 
-			err := collectFilesForIndexing(fileGroup, taskHandler)
+			err := collectFilesForIndexing(specFiles[i], taskHandler)
 			if err != nil {
 				log.Error(err)
 				fileErrorsQueue.AddError(err)
@@ -272,7 +273,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				return
 			}
 
-			indexedFileProducer.AddTaskWithError(taskFunc, errorsQueue.AddError)
+			_, _ = indexedFileProducer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 			return
 		}
 	}
@@ -281,7 +282,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 func getAddTaskToProducerFunc(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, fileHandlerFunc FileContext) indexFileHandlerFunc {
 	return func(filePath string) {
 		taskFunc := fileHandlerFunc(filePath)
-		producer.AddTaskWithError(taskFunc, errorsQueue.AddError)
+		_, _ = producer.AddTaskWithError(taskFunc, errorsQueue.AddError)
 	}
 }
 
@@ -347,7 +348,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		if isDir {
 			continue
 		}
-		if matches != nil && len(matches) > 0 {
+		if len(matches) > 0 {
 			dataHandlerFunc(path)
 		}
 	}

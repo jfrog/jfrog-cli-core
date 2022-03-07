@@ -33,7 +33,7 @@ func TestDetermineModuleName(t *testing.T) {
 			restoreCwd := changeToProjectDir(t, test.projectName)
 
 			// Determine module name
-			err, packageName := command.determineModuleName(pythonExecutablePath)
+			packageName, err := command.determineModuleName(pythonExecutablePath)
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedModuleName, command.buildConfiguration.GetModule())
 			assert.Equal(t, test.expectedPackageName, packageName)

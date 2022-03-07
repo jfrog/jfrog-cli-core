@@ -102,6 +102,9 @@ func (com *CommonArgs) setArtifactoryAuth() error {
 func (com *CommonArgs) createTempNpmrc() error {
 	log.Debug("Creating project .npmrc file.")
 	data, err := npm.GetConfigList(com.npmArgs, com.executablePath)
+	if err != nil {
+		return err
+	}
 	configData, err := com.prepareConfigData(data)
 	if err != nil {
 		return errorutils.CheckError(err)

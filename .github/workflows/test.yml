@@ -14,7 +14,6 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
       - name: Install pipenv
         run: pip install pipenv
       - name: Install Go

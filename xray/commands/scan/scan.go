@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
@@ -131,7 +132,11 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 func (scanCmd *ScanCommand) Run() (err error) {
 	defer func() {
 		if err != nil {
-			err = errors.New("Scan command failed. " + err.Error())
+			if e, ok := err.(*exec.ExitError); ok {
+				if e.ExitCode() != coreutils.ExitCodeVulnerableBuild.Code {
+					err = errors.New("Scan command failed. " + err.Error())
+				}
+			}
 		}
 	}()
 	// Validate Xray minimum version

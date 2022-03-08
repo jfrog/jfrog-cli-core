@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install pipenv
-        run: pip install pipenv
+        run: pip3 install pipenv
       - name: Install Go
         uses: actions/setup-go@v2
         with:

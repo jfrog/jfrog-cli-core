@@ -104,7 +104,7 @@ func (lock *Lock) lock() error {
 		}
 		i++
 	}
-	return errors.New("Lock hasn't been acquired.")
+	return errors.New("lock hasn't been acquired")
 }
 
 // Checks if other lock file still exists.
@@ -137,6 +137,9 @@ func (lock *Lock) removeOtherLockOrWait(otherLock Lock, filesList *[]string) err
 	if !running {
 		log.Debug(fmt.Sprintf("Removing lock file %s since the creating process is no longer running", otherLock.fileName))
 		err := otherLock.Unlock()
+		if err != nil {
+			return err
+		}
 		// Update list of files
 		*filesList, err = lock.getListOfFiles()
 		return err

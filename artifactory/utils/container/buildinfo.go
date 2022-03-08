@@ -71,10 +71,6 @@ func (builder *buildInfoBuilder) setImageSha2(imageSha2 string) {
 	builder.imageSha2 = imageSha2
 }
 
-func (builder *buildInfoBuilder) setskipTaggingLayers(skipTaggingLayers bool) {
-	builder.skipTaggingLayers = skipTaggingLayers
-}
-
 func (builder *buildInfoBuilder) GetLayers() *[]utils.ResultItem {
 	return &builder.imageLayers
 }
@@ -150,7 +146,10 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
 		return nil, "", err
 	}
-	json.Unmarshal(data, &buildxMetaData)
+	err = json.Unmarshal(data, &buildxMetaData)
+	if err != nil {
+		log.Debug("failed unmarshalling buildxMetaData file with error: " + err.Error() + ". falling back to Kanico/OC file format...")
+	}
 	// Try to read buildx metadata file.
 	if buildxMetaData.ImageName != "" && buildxMetaData.ImageSha256 != "" {
 		return NewImage(buildxMetaData.ImageName), buildxMetaData.ImageSha256, nil
@@ -163,6 +162,9 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	tag, sha256 := splittedData[0], strings.Trim(splittedData[1], "\n")
 	if tag == "" || sha256 == "" {
 		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "` + filePath + `"`)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 	return NewImage(tag), sha256, nil
 }
@@ -306,6 +308,9 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 	switch commandType {
 	case Pull:
 		dependencies, err = builder.createPullBuildProperties(manifest, candidateLayers)
+		if err != nil {
+			return nil, err
+		}
 	case Push:
 		artifacts, dependencies, builder.imageLayers, err = builder.createPushBuildProperties(manifest, candidateLayers)
 		if err != nil {

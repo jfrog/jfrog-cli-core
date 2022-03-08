@@ -3,7 +3,7 @@ package coreutils
 import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"math"
 	"os"
 	"reflect"
@@ -192,17 +192,15 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 	}
 	for i := range fieldsProperties {
 		subfields := fieldsProperties[i].subfields
-		if subfields != nil {
-			for j := range subfields {
-				subfields[j].maxWidth = colMaxWidth
-			}
+		for j := range subfields {
+			subfields[j].maxWidth = colMaxWidth
 		}
 	}
 	return nil
 }
 
 func getTerminalAllowedWidth(colNum int) (int, error) {
-	width, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		return 0, err
 	}

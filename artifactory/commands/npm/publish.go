@@ -12,7 +12,6 @@ import (
 
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/build/utils"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/version"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -44,7 +43,6 @@ type NpmPublishCommandArgs struct {
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
 	scanOutputFormat       xrutils.OutputFormat
-	packDestination        string
 }
 
 type NpmPublishCommand struct {
@@ -132,9 +130,9 @@ func (npc *NpmPublishCommand) Init() error {
 	return nil
 }
 
-func (npc *NpmPublishCommand) Run() error {
+func (npc *NpmPublishCommand) Run() (err error) {
 	log.Info("Running npm Publish")
-	err := npc.preparePrerequisites()
+	err = npc.preparePrerequisites()
 	if err != nil {
 		return err
 	}
@@ -194,7 +192,12 @@ func (npc *NpmPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	npc.artifactsDetailsReader.Close()
+	defer func() {
+		e := npc.artifactsDetailsReader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -327,14 +330,20 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		if npc.collectBuildInfo {
 			npc.artifactsDetailsReader = summary.ArtifactsDetailsReader
 		} else {
-			summary.ArtifactsDetailsReader.Close()
+			err = summary.ArtifactsDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 		if npc.detailedSummary {
 			npc.result.SetReader(summary.TransferDetailsReader)
 			npc.result.SetFailCount(totalFailed)
 			npc.result.SetSuccessCount(summary.TotalSucceeded)
 		} else {
-			summary.TransferDetailsReader.Close()
+			err = summary.TransferDetailsReader.Close()
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		_, totalFailed, err = servicesManager.UploadFiles(up)
@@ -343,41 +352,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		}
 	}
 
-	// We deploying only one Artifact which have to be deployed, in case of failure we should fail
+	// We are deploying only one Artifact which have to be deployed, in case of failure we should fail
 	if totalFailed > 0 {
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
-}
-
-func (npc *NpmPublishCommand) saveArtifactData() error {
-	log.Debug("Saving npm package artifact build info data.")
-	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
-	if err != nil {
-		return err
-	}
-	err = npc.artifactsDetailsReader.Close()
-	if err != nil {
-		return err
-	}
-
-	populateFunc := func(partial *buildinfo.Partial) {
-		partial.Artifacts = buildArtifacts
-		if npc.buildConfiguration.GetModule() == "" {
-			npc.buildConfiguration.SetModule(npc.packageInfo.BuildInfoModuleId())
-		}
-		partial.ModuleId = npc.buildConfiguration.GetModule()
-		partial.ModuleType = buildinfo.Npm
-	}
-	buildName, err := npc.buildConfiguration.GetBuildName()
-	if err != nil {
-		return err
-	}
-	buildNumber, err := npc.buildConfiguration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	return utils.SavePartialBuildInfo(buildName, buildNumber, npc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func (npc *NpmPublishCommand) setPublishPath() error {
@@ -414,13 +393,18 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	return npc.readPackageInfoFromTarball()
 }
 
-func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
+func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 	log.Debug("Extracting info from npm package:", npc.packedFilePath)
 	tarball, err := os.Open(npc.packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer tarball.Close()
+	defer func() {
+		e := tarball.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {
 		return errorutils.CheckError(err)

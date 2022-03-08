@@ -2,12 +2,7 @@ package generic
 
 import (
 	"errors"
-	"os"
-	"strconv"
-	"time"
-
-	buildinfo "github.com/jfrog/build-info-go/entities"
-
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -17,6 +12,9 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
+	"strconv"
+	"time"
 )
 
 type UploadCommand struct {
@@ -66,7 +64,7 @@ func (uc *UploadCommand) Run() error {
 
 // Uploads the artifacts in the specified local path pattern to the specified target path.
 // Returns the total number of artifacts successfully uploaded.
-func (uc *UploadCommand) upload() error {
+func (uc *UploadCommand) upload() (err error) {
 	// Init progress bar if needed
 	if uc.progress != nil {
 		uc.progress.InitProgressReaders()
@@ -79,7 +77,6 @@ func (uc *UploadCommand) upload() error {
 	}
 
 	// Create Service Manager:
-	var err error
 	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
 	if err != nil {
 		return err
@@ -150,13 +147,22 @@ func (uc *UploadCommand) upload() error {
 		}
 		if summary != nil {
 			artifactsDetailsReader = summary.ArtifactsDetailsReader
-			defer artifactsDetailsReader.Close()
+			defer func() {
+				e := artifactsDetailsReader.Close()
+				if err == nil {
+					err = e
+				}
+			}()
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if uc.DetailedSummary() {
 				uc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				summary.TransferDetailsReader.Close()
+				err = summary.TransferDetailsReader.Close()
+				if err != nil {
+					errorOccurred = true
+					log.Error(err)
+				}
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
@@ -171,7 +177,7 @@ func (uc *UploadCommand) upload() error {
 	uc.result.SetSuccessCount(successCount)
 	uc.result.SetFailCount(failCount)
 	if errorOccurred {
-		err = errors.New("Upload finished with errors, Please review the logs.")
+		err = errors.New("upload finished with errors, Please review the logs")
 		return err
 	}
 	if failCount > 0 {
@@ -188,15 +194,15 @@ func (uc *UploadCommand) upload() error {
 
 	// Build info
 	if !uc.DryRun() && toCollect {
-		var buildArtifacts []buildinfo.Artifact
+		var buildArtifacts []buildInfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
 			return err
 		}
-		populateFunc := func(partial *buildinfo.Partial) {
+		populateFunc := func(partial *buildInfo.Partial) {
 			partial.Artifacts = buildArtifacts
 			partial.ModuleId = uc.buildConfiguration.GetModule()
-			partial.ModuleType = buildinfo.Generic
+			partial.ModuleType = buildInfo.Generic
 		}
 		buildName, err := uc.buildConfiguration.GetBuildName()
 		if err != nil {
@@ -206,8 +212,7 @@ func (uc *UploadCommand) upload() error {
 		if err != nil {
 			return err
 		}
-		err = utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
-
+		return utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
 	}
 	return err
 }
@@ -225,7 +230,7 @@ func getMinChecksumDeploySize() (int64, error) {
 	return minSize * 1000, nil
 }
 
-func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bulidProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
+func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
 	uploadParams = services.NewUploadParams()
 	uploadParams.CommonParams, err = f.ToCommonParams()
 	if err != nil {
@@ -234,7 +239,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	uploadParams.Deb = configuration.Deb
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
 	uploadParams.AddVcsProps = addVcsProps
-	uploadParams.BuildProps = bulidProps
+	uploadParams.BuildProps = buildProps
 	uploadParams.Archive = f.Archive
 
 	uploadParams.Recursive, err = f.IsRecursive(true)
@@ -275,7 +280,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bul
 	return
 }
 
-func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) error {
+func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) (err error) {
 	servicesManager, err := utils.CreateServiceManager(uc.serverDetails, uc.retries, uc.retryWaitTimeMilliSecs, false)
 	if err != nil {
 		return err
@@ -289,7 +294,12 @@ func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) error {
 	if err != nil {
 		return err
 	}
-	defer resultItems.Close()
+	defer func() {
+		e := resultItems.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	_, err = servicesManager.DeleteFiles(resultItems)
 	return err
 }

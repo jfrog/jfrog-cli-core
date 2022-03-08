@@ -50,7 +50,7 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 }
 
 func (pc *PythonCommand) collectBuildInfo(cacheDirPath, pythonExecutablePath string, allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string, topLevelPackagesList []string) error {
-	err, packageName := pc.determineModuleName(pythonExecutablePath)
+	packageName, err := pc.determineModuleName(pythonExecutablePath)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (pc *PythonCommand) saveBuildInfo(allDependencies map[string]*buildinfo.Dep
 }
 
 // Determine the module name and return the package name
-func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (error, string) {
+func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (string, error) {
 	// Get package-name.
 	packageName, pkgNameErr := getPackageName(pythonExecutablePath)
 
@@ -107,18 +107,18 @@ func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (error
 		if pkgNameErr != nil {
 			log.Debug("Couldn't retrieve the package name. Using module name '"+pc.buildConfiguration.GetModule()+"'. Reason: ", pkgNameErr.Error())
 		}
-		return nil, packageName
+		return packageName, nil
 	}
 
 	if pkgNameErr != nil {
-		return pkgNameErr, ""
+		return "", pkgNameErr
 	}
 
 	// If the package name is unknown, set the module name to be the build name.
 	if packageName == "" {
 		buildName, err := pc.buildConfiguration.GetBuildName()
 		if err != nil {
-			return err, ""
+			return "", err
 		}
 		pc.buildConfiguration.SetModule(buildName)
 		log.Debug(fmt.Sprintf("Using build name: %s as module name.", buildName))
@@ -126,7 +126,7 @@ func (pc *PythonCommand) determineModuleName(pythonExecutablePath string) (error
 		pc.buildConfiguration.SetModule(packageName)
 	}
 
-	return nil, packageName
+	return packageName, nil
 }
 
 func (pc *PythonCommand) prepareBuildPrerequisites() (err error) {

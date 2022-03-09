@@ -38,7 +38,6 @@ func (locks Locks) Less(i, j int) bool {
 
 // Creating a new lock object.
 func (lock *Lock) createNewLockFile(lockDirPath string) error {
-	lock.currentTime = time.Now().UnixNano()
 	err := fileutils.CreateDirIfNotExist(lockDirPath)
 	if err != nil {
 		return err
@@ -50,13 +49,17 @@ func (lock *Lock) createNewLockFile(lockDirPath string) error {
 
 func (lock *Lock) createFile(folderName string, pid int) error {
 	// We are creating an empty file with the pid and current time part of the name
-	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
+	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(time.Now().UnixNano(), 10))
 	log.Debug("Creating lock file: ", lock.fileName)
 	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	lock.currentTime = fileInfo.ModTime().UnixNano()
 	if err = file.Close(); err != nil {
 		return errorutils.CheckError(err)
 	}

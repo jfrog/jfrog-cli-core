@@ -88,7 +88,7 @@ func (lock *Lock) lock() error {
 		// If the first timestamp in the sorted locks slice is equal to this timestamp
 		// means that the lock can be acquired
 		if locks[0].currentTime == lock.currentTime {
-			// Edge case, if at the same time (by the nano seconds) two different process created two files.
+			// Edge case, if at the same time (by the nanoseconds) two different process created two files.
 			// We are checking the PID to know which process can run.
 			if locks[0].pid != lock.pid {
 				err := lock.removeOtherLockOrWait(locks[0], &filesList)

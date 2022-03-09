@@ -163,23 +163,20 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 	// Slice of all the timestamps that currently the lock directory has
 	var files Locks
 	for _, path := range filesList {
-		fileName := filepath.Base(path)
-		splitted := strings.Split(fileName, ".")
-
-		if len(splitted) != 5 {
-			return nil, errorutils.CheckErrorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileName, path)
-		}
-		// Last element is the timestamp.
-		time, err := strconv.ParseInt(splitted[4], 10, 64)
+		fileInfo, err := os.Stat(path)
 		if err != nil {
 			return nil, errorutils.CheckError(err)
+		}
+		splitted := strings.Split(fileInfo.Name(), ".")
+		if len(splitted) != 5 {
+			return nil, errorutils.CheckErrorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileInfo.Name(), path)
 		}
 		pid, err := strconv.Atoi(splitted[3])
 		if err != nil {
 			return nil, errorutils.CheckError(err)
 		}
 		file := Lock{
-			currentTime: time,
+			currentTime: fileInfo.ModTime().UnixNano(),
 			pid:         pid,
 			fileName:    path,
 		}

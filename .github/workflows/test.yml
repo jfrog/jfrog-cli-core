@@ -31,10 +31,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Go Lint
         run: go vet ./...
-      - name: Check go mod
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod
+
   tests:
     runs-on: ${{ matrix.os }}
     strategy:

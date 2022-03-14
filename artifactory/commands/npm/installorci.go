@@ -489,7 +489,7 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 	for _, dependency := range nca.dependencies {
 		biDependency := buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
 			Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot}
-		if dependency.checksum.IsEmpty() {
+		if !dependency.checksum.IsEmpty() {
 			dependencies = append(dependencies,
 				biDependency)
 		} else {

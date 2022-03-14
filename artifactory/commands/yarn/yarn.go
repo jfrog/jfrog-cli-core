@@ -432,7 +432,7 @@ func (yc *YarnCommand) saveDependenciesData() error {
 	// Convert map to slice
 	var dependenciesSlice, missingDependencies []buildinfo.Dependency
 	for _, dependency := range yc.dependencies {
-		if dependency.Checksum.IsEmpty() {
+		if !dependency.Checksum.IsEmpty() {
 			dependenciesSlice = append(dependenciesSlice, *dependency)
 		} else {
 			missingDependencies = append(missingDependencies, *dependency)

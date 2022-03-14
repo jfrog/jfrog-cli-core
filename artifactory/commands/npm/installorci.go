@@ -472,7 +472,7 @@ func (nca *NpmCommandArgs) createGetDependencyInfoFunc(servicesManager artifacto
 
 			// Get dependency info.
 			checksum, fileType, err := commandUtils.GetDependencyInfo(name, ver, previousBuildDependencies, servicesManager, threadId)
-			if err != nil || checksum == nil {
+			if err != nil || checksum.IsEmpty() {
 				return err
 			}
 
@@ -489,7 +489,7 @@ func (nca *NpmCommandArgs) transformDependencies() (dependencies []buildinfo.Dep
 	for _, dependency := range nca.dependencies {
 		biDependency := buildinfo.Dependency{Id: dependency.name + ":" + dependency.version, Type: dependency.fileType,
 			Scopes: dependency.scopes, Checksum: dependency.checksum, RequestedBy: dependency.pathToRoot}
-		if dependency.checksum != nil {
+		if !dependency.checksum.IsEmpty() {
 			dependencies = append(dependencies,
 				biDependency)
 		} else {
@@ -580,6 +580,6 @@ type dependency struct {
 	version    string
 	scopes     []string
 	fileType   string
-	checksum   *buildinfo.Checksum
+	checksum   buildinfo.Checksum
 	pathToRoot [][]string
 }

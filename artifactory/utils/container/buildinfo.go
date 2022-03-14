@@ -305,13 +305,13 @@ func (builder *buildInfoBuilder) createBuildInfo(module string) (*buildinfo.Buil
 // Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(searchResults map[string]*utils.ResultItem) (artifact buildinfo.Artifact) {
 	item := searchResults["manifest.json"]
-	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
+	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
 }
 
 // Return - manifest dependency as buildinfo.Dependency struct.
 func getManifestDependency(searchResults map[string]*utils.ResultItem) (dependency buildinfo.Dependency) {
 	item := searchResults["manifest.json"]
-	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
+	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
 }
 
 // Download and read the config layer from Artifactory.
@@ -325,8 +325,8 @@ func (builder *buildInfoBuilder) getConfigLayer(searchResults map[string]*utils.
 	if err := builder.downloadLayer(*item, &configurationLayer); err != nil {
 		return nil, buildinfo.Artifact{}, buildinfo.Dependency{}, err
 	}
-	artifact = buildinfo.Artifact{Name: digestToLayer(builder.imageId), Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
-	dependency = buildinfo.Dependency{Id: digestToLayer(builder.imageId), Checksum: &buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
+	artifact = buildinfo.Artifact{Name: digestToLayer(builder.imageId), Checksum: buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}, Path: path.Join(item.Repo, item.Path, item.Name)}
+	dependency = buildinfo.Dependency{Id: digestToLayer(builder.imageId), Checksum: buildinfo.Checksum{Sha1: item.Actual_Sha1, Md5: item.Actual_Md5}}
 	return
 }
 

@@ -122,7 +122,7 @@ func (assets *assets) getAllDependencies() (map[string]*buildinfo.Dependency, er
 		}
 
 		dependencyName := getDependencyName(dependencyId)
-		dependencies[dependencyName] = &buildinfo.Dependency{Id: getDependencyIdForBuildInfo(dependencyId), Checksum: &buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}}
+		dependencies[dependencyName] = &buildinfo.Dependency{Id: getDependencyIdForBuildInfo(dependencyId), Checksum: buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}}
 	}
 
 	return dependencies, nil

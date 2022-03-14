@@ -148,7 +148,7 @@ func PrepareBuildInfo(workingDirectory string, buildConfiguration *utils.BuildCo
 
 // Get dependency's checksum and type.
 func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*buildinfo.Dependency,
-	servicesManager artifactory.ArtifactoryServicesManager, threadId int) (checksum *buildinfo.Checksum, fileType string, err error) {
+	servicesManager artifactory.ArtifactoryServicesManager, threadId int) (checksum buildinfo.Checksum, fileType string, err error) {
 	id := name + ":" + ver
 	if dep, ok := previousBuildDependencies[id]; ok {
 		// Get checksum from previous build.
@@ -172,7 +172,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 	parsedResult := new(aqlResult)
 	if err = json.Unmarshal(result, parsedResult); err != nil {
-		return nil, "", errorutils.CheckError(err)
+		return buildinfo.Checksum{}, "", errorutils.CheckError(err)
 	}
 	if len(parsedResult.Results) == 0 {
 		log.Debug(clientutils.GetLogMsgPrefix(threadId, false), name, ":", ver, "could not be found in Artifactory.")
@@ -185,7 +185,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 		"sha1:", parsedResult.Results[0].Actual_sha1,
 		"md5", parsedResult.Results[0].Actual_md5)
 
-	checksum = &buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
+	checksum = buildinfo.Checksum{Sha1: parsedResult.Results[0].Actual_sha1, Md5: parsedResult.Results[0].Actual_md5}
 	return
 }
 
@@ -208,7 +208,7 @@ func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServi
 	for _, module := range previousBuild.BuildInfo.Modules {
 		for _, dependency := range module.Dependencies {
 			buildDependencies[dependency.Id] = &buildinfo.Dependency{Id: dependency.Id, Type: dependency.Type,
-				Checksum: &buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
+				Checksum: buildinfo.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
 		}
 	}
 	return buildDependencies, nil

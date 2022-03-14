@@ -2,28 +2,31 @@ package commands
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-// Internal golang locking for the same process.
-var mutex sync.Mutex
+type CmdType string
+
+const (
+	AddOrEdit CmdType = "AddOrEdit"
+	Delete    CmdType = "Delete"
+	Use       CmdType = "Use"
+	Clear     CmdType = "Clear"
+)
 
 type ConfigCommand struct {
 	details          *config.ServerDetails
@@ -34,10 +37,11 @@ type ConfigCommand struct {
 	serverId         string
 	// For unit tests
 	disablePromptUrls bool
+	cmdType           CmdType
 }
 
-func NewConfigCommand() *ConfigCommand {
-	return &ConfigCommand{}
+func NewConfigCommand(cmdType CmdType, serverId string) *ConfigCommand {
+	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
 }
 
 func (cc *ConfigCommand) SetServerId(serverId string) *ConfigCommand {
@@ -71,7 +75,27 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 }
 
 func (cc *ConfigCommand) Run() error {
-	return cc.Config()
+	var configFunc func() error
+	switch cc.cmdType {
+	case AddOrEdit:
+		configFunc = cc.config
+	case Delete:
+		configFunc = cc.delete
+	case Use:
+		configFunc = cc.use
+	case Clear:
+		if cc.interactive {
+			confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
+			if !confirmed {
+				return nil
+			}
+		}
+		configFunc = cc.clear
+	default:
+		return fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
+	}
+	// Run atomic config func with process mutex on the config file
+	return config.RunAtomicConfig(configFunc)
 }
 
 func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -90,20 +114,7 @@ func (cc *ConfigCommand) CommandName() string {
 	return "config"
 }
 
-func (cc *ConfigCommand) Config() error {
-	mutex.Lock()
-	defer mutex.Unlock()
-	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
-	if err != nil {
-		return err
-	}
-	lockFile, err := lock.CreateLock(lockDirPath)
-	defer lockFile.Unlock()
-
-	if err != nil {
-		return err
-	}
-
+func (cc *ConfigCommand) config() error {
 	configurations, err := cc.prepareConfigurationData()
 	if err != nil {
 		return err
@@ -134,7 +145,7 @@ func (cc *ConfigCommand) Config() error {
 
 	// Artifactory expects the username to be lower-cased. In case it is not,
 	// Artifactory will silently save it lower-cased, but the token creation
-	// REST API will fail with a non lower-cased username.
+	// REST API will fail with a non-lower-cased username.
 	cc.details.User = strings.ToLower(cc.details.User)
 
 	if len(configurations) == 1 {
@@ -158,6 +169,69 @@ func (cc *ConfigCommand) Config() error {
 	}
 
 	return config.SaveServersConf(configurations)
+}
+
+func (cc *ConfigCommand) delete() error {
+	configurations, err := config.GetAllServersConfigs()
+	if err != nil {
+		return err
+	}
+	var isDefault, isFoundName bool
+	for i, config := range configurations {
+		if config.ServerId == cc.serverId {
+			isDefault = config.IsDefault
+			configurations = append(configurations[:i], configurations[i+1:]...)
+			isFoundName = true
+			break
+		}
+
+	}
+	if isDefault && len(configurations) > 0 {
+		configurations[0].IsDefault = true
+	}
+	if isFoundName {
+		return config.SaveServersConf(configurations)
+	}
+	log.Info("\"" + cc.serverId + "\" configuration could not be found.\n")
+	return nil
+}
+
+// Set the default configuration
+func (cc *ConfigCommand) use() error {
+	configurations, err := config.GetAllServersConfigs()
+	if err != nil {
+		return err
+	}
+	var serverFound *config.ServerDetails
+	newDefaultServer := true
+	for _, config := range configurations {
+		if config.ServerId == cc.serverId {
+			serverFound = config
+			if config.IsDefault {
+				newDefaultServer = false
+				break
+			}
+			config.IsDefault = true
+		} else {
+			config.IsDefault = false
+		}
+	}
+	// Need to save only if we found a server with the serverId
+	if serverFound != nil {
+		if newDefaultServer {
+			err = config.SaveServersConf(configurations)
+			if err != nil {
+				return err
+			}
+		}
+		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
+		return nil
+	}
+	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", cc.serverId)
+}
+
+func (cc *ConfigCommand) clear() error {
+	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
@@ -211,7 +285,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 	return configurations, err
 }
 
-/// Returning the first non empty value:
+/// Returning the first non-empty value:
 // 1. The serverId argument sent.
 // 2. details.ServerId
 // 3. defaultDetails.ServerId
@@ -388,7 +462,7 @@ func Import(serverToken string) error {
 		details:  serverDetails,
 		serverId: serverDetails.ServerId,
 	}
-	return configCommand.Config()
+	return configCommand.config()
 }
 
 func Export(serverName string) error {
@@ -433,75 +507,6 @@ func logIfNotEmpty(value, prefix string, mask bool) {
 		}
 		log.Output(prefix + value)
 	}
-}
-
-func DeleteConfig(serverName string) error {
-	configurations, err := config.GetAllServersConfigs()
-	if err != nil {
-		return err
-	}
-	var isDefault, isFoundName bool
-	for i, config := range configurations {
-		if config.ServerId == serverName {
-			isDefault = config.IsDefault
-			configurations = append(configurations[:i], configurations[i+1:]...)
-			isFoundName = true
-			break
-		}
-
-	}
-	if isDefault && len(configurations) > 0 {
-		configurations[0].IsDefault = true
-	}
-	if isFoundName {
-		return config.SaveServersConf(configurations)
-	}
-	log.Info("\"" + serverName + "\" configuration could not be found.\n")
-	return nil
-}
-
-// Set the default configuration
-func Use(serverId string) error {
-	configurations, err := config.GetAllServersConfigs()
-	if err != nil {
-		return err
-	}
-	var serverFound *config.ServerDetails
-	newDefaultServer := true
-	for _, config := range configurations {
-		if config.ServerId == serverId {
-			serverFound = config
-			if config.IsDefault {
-				newDefaultServer = false
-				break
-			}
-			config.IsDefault = true
-		} else {
-			config.IsDefault = false
-		}
-	}
-	// Need to save only if we found a server with the serverId
-	if serverFound != nil {
-		if newDefaultServer {
-			err = config.SaveServersConf(configurations)
-			if err != nil {
-				return err
-			}
-		}
-		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
-		return nil
-	}
-	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", serverId)
-}
-
-func ClearConfig(interactive bool) error {
-	if interactive {
-		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
-		if !confirmed {
-			return nil
-		}
-	}
-	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {

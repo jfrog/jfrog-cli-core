@@ -175,11 +175,11 @@ func configServer(server *config.ServerDetails) error {
 	}
 	// Take the server name from host name: https://myjfrog.jfrog.com/ -> myjfrog
 	serverId := strings.Split(u.Host, ".")[0]
-	configCmd := commands.NewConfigCommand().SetInteractive(false).SetServerId(serverId).SetDetails(server)
-	if err = configCmd.Config(); err != nil {
+	configCmd := commands.NewConfigCommand(commands.AddOrEdit, serverId).SetInteractive(false).SetDetails(server)
+	if err = configCmd.Run(); err != nil {
 		return err
 	}
-	return commands.Use(serverId)
+	return commands.NewConfigCommand(commands.Use, serverId).SetInteractive(false).SetDetails(server).Run()
 }
 
 type myJfrogGetStatusRequest struct {

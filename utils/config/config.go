@@ -17,7 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
-	"github.com/rogpeppe/go-internal/lockedfile"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -432,25 +431,6 @@ func GetJfrogDependenciesPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(jfrogHome, coreutils.JfrogDependenciesDirName), nil
-}
-
-func RunAtomicConfig(configFunc func() error) error {
-	confFilePath, err := getConfFilePath()
-	if err != nil {
-		return err
-	}
-	exists, err := fileutils.IsFileExists(confFilePath, false)
-	if err != nil {
-		return err
-	}
-	if exists {
-		unlock, err := lockedfile.MutexAt(confFilePath).Lock()
-		if err != nil {
-			return errorutils.CheckErrorf("Failed to lock config file: " + err.Error())
-		}
-		defer unlock()
-	}
-	return configFunc()
 }
 
 func getConfFilePath() (string, error) {

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
@@ -27,6 +29,9 @@ const (
 	Use       CmdType = "Use"
 	Clear     CmdType = "Clear"
 )
+
+// Internal golang locking for the same process.
+var mutex sync.Mutex
 
 type ConfigCommand struct {
 	details          *config.ServerDetails
@@ -75,27 +80,34 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 }
 
 func (cc *ConfigCommand) Run() error {
-	var configFunc func() error
+	mutex.Lock()
+	defer mutex.Unlock()
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
+	if err != nil {
+		return err
+	}
+	lockFile, err := lock.CreateLock(lockDirPath)
+	defer func() {
+		e := lockFile.Unlock()
+		if err == nil {
+			err = e
+		}
+	}()
+	if err != nil {
+		return err
+	}
 	switch cc.cmdType {
 	case AddOrEdit:
-		configFunc = cc.config
+		return cc.config()
 	case Delete:
-		configFunc = cc.delete
+		return cc.delete()
 	case Use:
-		configFunc = cc.use
+		return cc.use()
 	case Clear:
-		if cc.interactive {
-			confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
-			if !confirmed {
-				return nil
-			}
-		}
-		configFunc = cc.clear
+		return cc.clear()
 	default:
 		return fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
 	}
-	// Run atomic config func with process mutex on the config file
-	return config.RunAtomicConfig(configFunc)
 }
 
 func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -231,6 +243,12 @@ func (cc *ConfigCommand) use() error {
 }
 
 func (cc *ConfigCommand) clear() error {
+	if cc.interactive {
+		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
+		if !confirmed {
+			return nil
+		}
+	}
 	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 

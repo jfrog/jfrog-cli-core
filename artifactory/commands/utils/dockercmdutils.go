@@ -62,7 +62,7 @@ func ExtractDockerScanOptionsFromArgs(args []string) (fail, licenses bool, forma
 		return
 	}
 	var buildConfig *utils.BuildConfiguration
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
+	_, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
 	project = buildConfig.GetProject()
 	return
 }

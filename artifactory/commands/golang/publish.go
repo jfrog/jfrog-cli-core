@@ -154,7 +154,12 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	if err != nil {
 		return nil, nil, err
 	}
-	defer modFile.Close()
+	defer func() {
+		e := modFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	content, err := ioutil.ReadAll(modFile)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)

@@ -3,7 +3,6 @@ package yarn
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/jfrog/build-info-go/build"
-
-	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -42,7 +39,6 @@ type YarnCommand struct {
 	serverDetails      *config.ServerDetails
 	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
-	dependencies       map[string]*buildinfo.Dependency
 	envVarsBackup      map[string]*string
 	buildInfoModule    *build.YarnModule
 }
@@ -119,7 +115,7 @@ func (yc *YarnCommand) Run() error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("Yarn finished successfully."))
+	log.Info("Yarn finished successfully.")
 	return nil
 }
 
@@ -253,7 +249,7 @@ func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
 
 func (yc *YarnCommand) restoreConfigurationsAndError(err error) error {
 	if restoreErr := yc.restoreConfigurationsFromBackup(); restoreErr != nil {
-		return errors.New(fmt.Sprintf("Two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error()))
+		return fmt.Errorf("two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
 	}
 	return err
 }

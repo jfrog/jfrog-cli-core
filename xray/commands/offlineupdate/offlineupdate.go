@@ -109,11 +109,11 @@ func buildUpdatesUrl(flags *OfflineUpdatesFlags) (string, error) {
 
 func validateDates(from, to int64) error {
 	if from < 0 || to < 0 {
-		err := errors.New("Invalid dates")
+		err := errors.New("invalid dates")
 		return errorutils.CheckError(err)
 	}
 	if from > to {
-		err := errors.New("Invalid dates range.")
+		err := errors.New("invalid dates range")
 		return errorutils.CheckError(err)
 	}
 	return nil
@@ -122,8 +122,7 @@ func validateDates(from, to int64) error {
 func getXrayTempDir() (string, error) {
 	xrayDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), "jfrog", "xray")
 	if err := os.MkdirAll(xrayDir, 0777); err != nil {
-		errorutils.CheckError(err)
-		return "", nil
+		return "", errorutils.CheckError(err)
 	}
 	return xrayDir, nil
 }

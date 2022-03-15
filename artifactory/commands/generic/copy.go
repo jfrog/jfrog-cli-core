@@ -62,7 +62,7 @@ func (cc *CopyCommand) Run() error {
 	cc.result.SetFailCount(totalFailed)
 
 	if errorOccurred {
-		return errors.New("Copy finished with errors, please review the logs.")
+		return errors.New("copy finished with errors, please review the logs")
 	}
 	return err
 }

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/jfrog/gofrog/version"
 	"io"
 	"os"
@@ -96,7 +95,7 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("oc start-build finished successfully."))
+	log.Info("oc start-build finished successfully.")
 	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 

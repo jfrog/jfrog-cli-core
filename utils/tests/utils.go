@@ -52,7 +52,7 @@ func RenamePath(oldPath, newPath string, t *testing.T) {
 
 // Set HomeDir to desired location.
 // Caller is responsible to set the old home location back.
-func SetJfrogHome() (err error, cleanUp func()) {
+func SetJfrogHome() (cleanUp func(), err error) {
 	homePath, err := fileutils.CreateTempDir()
 	if err != nil {
 		log.Error(err)
@@ -61,15 +61,15 @@ func SetJfrogHome() (err error, cleanUp func()) {
 
 	homePath, err = filepath.Abs(homePath)
 	if err != nil {
-		return err, func() {}
+		return func() {}, err
 	}
 
 	err = os.Setenv(coreutils.HomeDir, homePath)
 	if err != nil {
-		return err, func() {}
+		return func() {}, err
 	}
 
-	return nil, func() { cleanUpUnitTestsJfrogHome(homePath) }
+	return func() { cleanUpUnitTestsJfrogHome(homePath) }, nil
 }
 
 func cleanUpUnitTestsJfrogHome(homeDir string) {
@@ -102,7 +102,7 @@ func CreateTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
 
 func ValidateListsIdentical(expected, actual []string) error {
 	if len(actual) != len(expected) {
-		return errors.New(fmt.Sprintf("Unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", ")))
+		return fmt.Errorf("unexpected behavior, \nexpected: [%s], \nfound:    [%s]", strings.Join(expected, ", "), strings.Join(actual, ", "))
 	}
 	err := compare(expected, actual)
 	return err

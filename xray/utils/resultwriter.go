@@ -80,7 +80,7 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 		err = errorutils.CheckError(err)
 		return
 	}
-	_, err = out.Write([]byte(content.String()))
+	_, err = out.Write(content.Bytes())
 	if err != nil {
 		err = errorutils.CheckError(err)
 		return
@@ -101,7 +101,7 @@ func printJson(jsonRes []services.ScanResponse) error {
 func CheckIfFailBuild(results []services.ScanResponse) bool {
 	for _, result := range results {
 		for _, violation := range result.Violations {
-			if violation.FailBuild == true {
+			if violation.FailBuild {
 				return true
 			}
 		}

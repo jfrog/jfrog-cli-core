@@ -88,7 +88,7 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 }
 
 func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
-	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
+	if len(modulesDependencyTrees) == 0 {
 		return errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
 	}
 	var results []services.ScanResponse

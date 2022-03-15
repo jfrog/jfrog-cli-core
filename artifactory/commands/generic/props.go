@@ -58,7 +58,9 @@ func createPropsServiceManager(threads, httpRetries, retryWaitMilliSecs int, ser
 		SetHttpRetries(httpRetries).
 		SetHttpRetryWaitMilliSecs(retryWaitMilliSecs).
 		Build()
-
+	if err != nil {
+		return nil, err
+	}
 	return artifactory.New(serviceConfig)
 }
 

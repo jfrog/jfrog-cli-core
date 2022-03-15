@@ -63,7 +63,7 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 		return
 	}
 	// All the values in the template are strings
-	// Go over the the confMap and write the values with the correct type using the writersMap
+	// Go over the confMap and write the values with the correct type using the writersMap
 	serverId := ""
 	for key, value := range replicationConfigMap {
 		if err = utils.ValidateMapEntry(key, value, writersMap); err != nil {
@@ -72,10 +72,16 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 		if key == "serverId" {
 			serverId = value.(string)
 		} else {
-			writersMap[key](&replicationConfigMap, key, value.(string))
+			err := writersMap[key](&replicationConfigMap, key, value.(string))
+			if err != nil {
+				return err
+			}
 		}
 	}
-	fillMissingDefaultValue(replicationConfigMap)
+	err = fillMissingDefaultValue(replicationConfigMap)
+	if err != nil {
+		return err
+	}
 	// Write a JSON with the correct values
 	content, err = json.Marshal(replicationConfigMap)
 	if errorutils.CheckError(err) != nil {
@@ -105,13 +111,20 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	return servicesManager.CreateReplication(params)
 }
 
-func fillMissingDefaultValue(replicationConfigMap map[string]interface{}) {
+func fillMissingDefaultValue(replicationConfigMap map[string]interface{}) error {
 	if _, ok := replicationConfigMap["socketTimeoutMillis"]; !ok {
-		writersMap["socketTimeoutMillis"](&replicationConfigMap, "socketTimeoutMillis", "15000")
+		err := writersMap["socketTimeoutMillis"](&replicationConfigMap, "socketTimeoutMillis", "15000")
+		if err != nil {
+			return err
+		}
 	}
 	if _, ok := replicationConfigMap["syncProperties"]; !ok {
-		writersMap["syncProperties"](&replicationConfigMap, "syncProperties", "true")
+		err := writersMap["syncProperties"](&replicationConfigMap, "syncProperties", "true")
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Make the pathPrefix parameter equals to the includePathPrefixPattern to support Artifactory < 7.27.4

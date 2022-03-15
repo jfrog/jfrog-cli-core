@@ -23,7 +23,7 @@ func createConfigGetCmdConfig(executablePath, confName string, splitFlags []stri
 	return &npmutils.NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"config", "get", confName},
-		CommandFlags: append(splitFlags),
+		CommandFlags: splitFlags,
 		StrWriter:    nil,
 		ErrWriter:    nil,
 	}

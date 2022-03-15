@@ -183,75 +183,6 @@ func (cc *ConfigCommand) config() error {
 	return config.SaveServersConf(configurations)
 }
 
-func (cc *ConfigCommand) delete() error {
-	configurations, err := config.GetAllServersConfigs()
-	if err != nil {
-		return err
-	}
-	var isDefault, isFoundName bool
-	for i, config := range configurations {
-		if config.ServerId == cc.serverId {
-			isDefault = config.IsDefault
-			configurations = append(configurations[:i], configurations[i+1:]...)
-			isFoundName = true
-			break
-		}
-
-	}
-	if isDefault && len(configurations) > 0 {
-		configurations[0].IsDefault = true
-	}
-	if isFoundName {
-		return config.SaveServersConf(configurations)
-	}
-	log.Info("\"" + cc.serverId + "\" configuration could not be found.\n")
-	return nil
-}
-
-// Set the default configuration
-func (cc *ConfigCommand) use() error {
-	configurations, err := config.GetAllServersConfigs()
-	if err != nil {
-		return err
-	}
-	var serverFound *config.ServerDetails
-	newDefaultServer := true
-	for _, config := range configurations {
-		if config.ServerId == cc.serverId {
-			serverFound = config
-			if config.IsDefault {
-				newDefaultServer = false
-				break
-			}
-			config.IsDefault = true
-		} else {
-			config.IsDefault = false
-		}
-	}
-	// Need to save only if we found a server with the serverId
-	if serverFound != nil {
-		if newDefaultServer {
-			err = config.SaveServersConf(configurations)
-			if err != nil {
-				return err
-			}
-		}
-		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
-		return nil
-	}
-	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", cc.serverId)
-}
-
-func (cc *ConfigCommand) clear() error {
-	if cc.interactive {
-		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
-		if !confirmed {
-			return nil
-		}
-	}
-	return config.SaveServersConf(make([]*config.ServerDetails, 0))
-}
-
 func (cc *ConfigCommand) configRefreshableToken() {
 	if cc.details.User == "" || cc.details.Password == "" {
 		return
@@ -525,6 +456,75 @@ func logIfNotEmpty(value, prefix string, mask bool) {
 		}
 		log.Output(prefix + value)
 	}
+}
+
+func (cc *ConfigCommand) delete() error {
+	configurations, err := config.GetAllServersConfigs()
+	if err != nil {
+		return err
+	}
+	var isDefault, isFoundName bool
+	for i, config := range configurations {
+		if config.ServerId == cc.serverId {
+			isDefault = config.IsDefault
+			configurations = append(configurations[:i], configurations[i+1:]...)
+			isFoundName = true
+			break
+		}
+
+	}
+	if isDefault && len(configurations) > 0 {
+		configurations[0].IsDefault = true
+	}
+	if isFoundName {
+		return config.SaveServersConf(configurations)
+	}
+	log.Info("\"" + cc.serverId + "\" configuration could not be found.\n")
+	return nil
+}
+
+// Set the default configuration
+func (cc *ConfigCommand) use() error {
+	configurations, err := config.GetAllServersConfigs()
+	if err != nil {
+		return err
+	}
+	var serverFound *config.ServerDetails
+	newDefaultServer := true
+	for _, config := range configurations {
+		if config.ServerId == cc.serverId {
+			serverFound = config
+			if config.IsDefault {
+				newDefaultServer = false
+				break
+			}
+			config.IsDefault = true
+		} else {
+			config.IsDefault = false
+		}
+	}
+	// Need to save only if we found a server with the serverId
+	if serverFound != nil {
+		if newDefaultServer {
+			err = config.SaveServersConf(configurations)
+			if err != nil {
+				return err
+			}
+		}
+		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
+		return nil
+	}
+	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", cc.serverId)
+}
+
+func (cc *ConfigCommand) clear() error {
+	if cc.interactive {
+		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
+		if !confirmed {
+			return nil
+		}
+	}
+	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {

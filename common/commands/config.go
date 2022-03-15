@@ -396,6 +396,9 @@ func Export(serverName string) error {
 	if err != nil {
 		return err
 	}
+	if serverDetails.ServerId == "" {
+		return errorutils.CheckErrorf("couldn't find default server")
+	}
 	serverToken, err := config.Export(serverDetails)
 	if err != nil {
 		return err

@@ -3,6 +3,8 @@ package commands
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"os"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -129,6 +131,22 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.TokenRefreshInterval, "expected refreshable token to be enabled")
 	assert.NoError(t, DeleteConfig("test"))
+}
+
+func TestExportNoDefaultServer(t *testing.T) {
+	cliHome, exist := os.LookupEnv(coreutils.HomeDir)
+	defer func() {
+		if exist {
+			assert.NoError(t, os.Setenv(coreutils.HomeDir, cliHome))
+		} else {
+			assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
+		}
+	}()
+	tempDirPath, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	defer assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	assert.NoError(t, os.Setenv(coreutils.HomeDir, tempDirPath))
+	assert.Error(t, Export(""))
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {

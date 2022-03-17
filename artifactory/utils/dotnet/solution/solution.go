@@ -73,9 +73,11 @@ func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, er
 
 		// Populate requestedBy field
 		for _, directDepName := range directDeps {
-			directDep := dependencies[directDepName]
-			directDep.RequestedBy = [][]string{{module.Id}}
-			populateRequestedBy(*directDep, dependencies, childrenMap)
+			// Populate the direct dependency requested by only if the dependency exist in the cache
+			if directDep, exist := dependencies[directDepName]; exist {
+				directDep.RequestedBy = [][]string{{module.Id}}
+				populateRequestedBy(*directDep, dependencies, childrenMap)
+			}
 		}
 
 		// Populate module dependencies

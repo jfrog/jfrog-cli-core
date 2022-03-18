@@ -69,9 +69,7 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 			"1. CD into your code project directory\n" +
 			"2. Run \"jf project init\"\n" +
 			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
-			"\n\n" +
-			coreutils.GetFeedbackMessage()
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 
 	err = coreutils.PrintTable("", "", message, false)
 	return

@@ -37,6 +37,7 @@ func TestGetPackageFilesPath(t *testing.T) {
 	version := "v1.4.1"
 	expectedPackagePath := filepath.Join(packageCachePath, "github.com/golang/mock@"+version)
 	err = os.MkdirAll(expectedPackagePath, os.ModePerm)
+	assert.NoError(t, err)
 	defer testsutils.RemoveAllAndAssert(t, expectedPackagePath)
 	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
 	assert.NoError(t, err)

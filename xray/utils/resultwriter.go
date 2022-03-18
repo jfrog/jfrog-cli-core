@@ -19,7 +19,7 @@ const (
 	Json  OutputFormat = "json"
 )
 
-func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVulnerabilities, includeLicenses, isMultipleRoots bool) (err error) {
+func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) (err error) {
 	if isTableFormat {
 		var violations []services.Violation
 		var vulnerabilities []services.Vulnerability
@@ -38,15 +38,15 @@ func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVul
 			fmt.Println("The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
-			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots)
+			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended)
 		} else {
-			err = PrintViolationsTable(violations, isMultipleRoots)
+			err = PrintViolationsTable(violations, isMultipleRoots, printExtended)
 		}
 		if err != nil {
 			return err
 		}
 		if includeLicenses {
-			err = PrintLicensesTable(licenses, isMultipleRoots)
+			err = PrintLicensesTable(licenses, isMultipleRoots, printExtended)
 		}
 		if err != nil {
 			return err
@@ -80,7 +80,7 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 		err = errorutils.CheckError(err)
 		return
 	}
-	_, err = out.Write([]byte(content.String()))
+	_, err = out.Write(content.Bytes())
 	if err != nil {
 		err = errorutils.CheckError(err)
 		return
@@ -101,7 +101,7 @@ func printJson(jsonRes []services.ScanResponse) error {
 func CheckIfFailBuild(results []services.ScanResponse) bool {
 	for _, result := range results {
 		for _, violation := range result.Violations {
-			if violation.FailBuild == true {
+			if violation.FailBuild {
 				return true
 			}
 		}

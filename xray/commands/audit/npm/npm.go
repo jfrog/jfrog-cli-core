@@ -1,8 +1,8 @@
 package npm
 
 import (
+	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -19,16 +19,15 @@ func NewAuditNpmCommand(auditCmd audit.AuditCommand) *AuditNpmCommand {
 
 type AuditNpmCommand struct {
 	audit.AuditCommand
-	typeRestriction biutils.TypeRestriction
+	npmArgs []string
 }
 
-func (auditCmd *AuditNpmCommand) SetNpmTypeRestriction(typeRestriction biutils.TypeRestriction) *AuditNpmCommand {
-	auditCmd.typeRestriction = typeRestriction
+func (auditCmd *AuditNpmCommand) SetNpmArgs(npmArgs []string) *AuditNpmCommand {
+	auditCmd.npmArgs = npmArgs
 	return auditCmd
 }
 
 func (auditCmd *AuditNpmCommand) Run() (err error) {
-	typeRestriction := auditCmd.typeRestriction
 
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
@@ -43,13 +42,12 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateDependenciesList(typeRestriction, npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), []string{}, nil, 1, log.Logger)
+	dependenciesList, err := biutils.CalculateDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), auditCmd.npmArgs, log.Logger)
 	if err != nil {
 		return err
 	}
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := parseNpmDependenciesList(dependenciesList, packageInfo)
-
 	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
 }
 
@@ -65,20 +63,7 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 			treeMap[parent] = []string{dependencyId}
 		}
 	}
-	return buildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
-}
-
-func buildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
-	// Initialize the new node
-	xrDependencyTree := &services.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*services.GraphNode{}
-	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[nodeId] {
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, dependency))
-
-	}
-	return xrDependencyTree
+	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
 func (auditCmd *AuditNpmCommand) CommandName() string {

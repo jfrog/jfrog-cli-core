@@ -38,6 +38,9 @@ func (gc *GradleCommand) ServerDetails() (*config.ServerDetails, error) {
 			return nil, err
 		}
 		gc.serverDetails, err = utils.GetServerDetails(vConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return gc.serverDetails, err
 }

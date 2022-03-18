@@ -1,15 +1,10 @@
 package utils
 
 import (
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
-	"time"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -81,68 +76,68 @@ const Port = "port"
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
 var defaultPropertiesValues = map[string]string{
-	"artifactory.publish.artifacts":                        "true",
-	"artifactory.publish.buildInfo":                        "false",
-	"artifactory.publish.unstable":                         "false",
-	"artifactory.publish.maven":                            "false",
-	"artifactory.publish.ivy":                              "false",
-	"buildInfoConfig.includeEnvVars":                       "false",
-	"buildInfoConfig.envVarsExcludePatterns":               "*password*,*psw*,*secret*,*key*,*token*",
-	"buildInfo.agent.name":                                 coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
-	"org.jfrog.build.extractor.maven.recorder.activate":    "true",
-	"buildInfo.env.extractor.used":                         "true",
-	"artifactory.publish.forkCount":                        "3",
-	"artifactory.publish.filterExcludedArtifactsFromBuild": "true",
+	"publish.artifacts":                                 "true",
+	"publish.buildInfo":                                 "false",
+	"publish.unstable":                                  "false",
+	"publish.maven":                                     "false",
+	"publish.ivy":                                       "false",
+	"buildInfoConfig.includeEnvVars":                    "false",
+	"buildInfoConfig.envVarsExcludePatterns":            "*password*,*psw*,*secret*,*key*,*token*,*auth*",
+	"buildInfo.agent.name":                              coreutils.GetClientAgentName() + "/" + coreutils.GetClientAgentVersion(),
+	"org.jfrog.build.extractor.maven.recorder.activate": "true",
+	"buildInfo.env.extractor.used":                      "true",
+	"publish.forkCount":                                 "3",
+	"publish.filterExcludedArtifactsFromBuild":          "true",
 }
 
 var commonConfigMapping = map[string]string{
-	"artifactory.publish.buildInfo":          "",
-	"artifactory.publish.unstable":           "",
+	"publish.buildInfo":                      "",
+	"publish.unstable":                       "",
 	"buildInfoConfig.includeEnvVars":         "",
 	"buildInfoConfig.envVarsExcludePatterns": "",
 	"buildInfo.agent.name":                   "",
-	"artifactory.resolve.contextUrl":         ResolverPrefix + Url,
-	"artifactory.resolve.username":           ResolverPrefix + Username,
-	"artifactory.resolve.password":           ResolverPrefix + Password,
-	"artifactory.publish.contextUrl":         DeployerPrefix + Url,
-	"artifactory.publish.username":           DeployerPrefix + Username,
-	"artifactory.publish.password":           DeployerPrefix + Password,
-	"artifactory.publish.artifacts":          DeployerPrefix + DeployArtifacts,
-	"buildInfo.build.name":                   BuildName,
-	"buildInfo.build.number":                 BuildNumber,
-	"buildInfo.build.project":                BuildProject,
-	"buildInfo.build.timestamp":              BuildTimestamp,
+	"resolve.contextUrl":                     ResolverPrefix + Url,
+	"resolve.username":                       ResolverPrefix + Username,
+	"resolve.password":                       ResolverPrefix + Password,
+	"publish.contextUrl":                     DeployerPrefix + Url,
+	"publish.username":                       DeployerPrefix + Username,
+	"publish.password":                       DeployerPrefix + Password,
+	"publish.artifacts":                      DeployerPrefix + DeployArtifacts,
+	"deploy.build.name":                      BuildName,
+	"deploy.build.number":                    BuildNumber,
+	"deploy.build.project":                   BuildProject,
+	"deploy.build.timestamp":                 BuildTimestamp,
 	"buildInfo.generated.build.info":         GeneratedBuildInfo,
 	"buildInfo.deployable.artifacts.map":     DeployableArtifacts,
-	"artifactory.proxy.host":                 Proxy + Host,
-	"artifactory.proxy.port":                 Proxy + Port,
-	"artifactory.publish.forkCount":          ForkCount,
-	"artifactory.insecureTls":                InsecureTls,
+	"proxy.host":                             Proxy + Host,
+	"proxy.port":                             Proxy + Port,
+	"publish.forkCount":                      ForkCount,
+	"insecureTls":                            InsecureTls,
 }
 
 var mavenConfigMapping = map[string]string{
-	"org.jfrog.build.extractor.maven.recorder.activate":    "",
-	"buildInfoConfig.artifactoryResolutionEnabled":         "buildInfoConfig.artifactoryResolutionEnabled",
-	"artifactory.resolve.repoKey":                          ResolverPrefix + ReleaseRepo,
-	"artifactory.resolve.downSnapshotRepoKey":              ResolverPrefix + SnapshotRepo,
-	"artifactory.publish.repoKey":                          DeployerPrefix + ReleaseRepo,
-	"artifactory.publish.snapshot.repoKey":                 DeployerPrefix + SnapshotRepo,
-	"artifactory.publish.includePatterns":                  DeployerPrefix + IncludePatterns,
-	"artifactory.publish.excludePatterns":                  DeployerPrefix + ExcludePatterns,
-	"artifactory.publish.filterExcludedArtifactsFromBuild": DeployerPrefix + FilterExcludedArtifactsFromBuild,
+	"org.jfrog.build.extractor.maven.recorder.activate": "",
+	"buildInfoConfig.artifactoryResolutionEnabled":      "buildInfoConfig.artifactoryResolutionEnabled",
+	"resolve.repoKey":                          ResolverPrefix + ReleaseRepo,
+	"resolve.downSnapshotRepoKey":              ResolverPrefix + SnapshotRepo,
+	"publish.repoKey":                          DeployerPrefix + ReleaseRepo,
+	"publish.snapshot.repoKey":                 DeployerPrefix + SnapshotRepo,
+	"publish.includePatterns":                  DeployerPrefix + IncludePatterns,
+	"publish.excludePatterns":                  DeployerPrefix + ExcludePatterns,
+	"publish.filterExcludedArtifactsFromBuild": DeployerPrefix + FilterExcludedArtifactsFromBuild,
 }
 
 var gradleConfigMapping = map[string]string{
 	"buildInfo.env.extractor.used":                      "",
 	"org.jfrog.build.extractor.maven.recorder.activate": "",
-	"artifactory.resolve.repoKey":                       ResolverPrefix + Repo,
-	"artifactory.resolve.downSnapshotRepoKey":           ResolverPrefix + Repo,
-	"artifactory.publish.repoKey":                       DeployerPrefix + Repo,
-	"artifactory.publish.snapshot.repoKey":              DeployerPrefix + Repo,
-	"artifactory.publish.maven":                         DeployerPrefix + MavenDescriptor,
-	"artifactory.publish.ivy":                           DeployerPrefix + IvyDescriptor,
-	"artifactory.publish.ivy.ivyPattern":                DeployerPrefix + IvyPattern,
-	"artifactory.publish.ivy.artPattern":                DeployerPrefix + ArtifactPattern,
+	"resolve.repoKey":                                   ResolverPrefix + Repo,
+	"resolve.downSnapshotRepoKey":                       ResolverPrefix + Repo,
+	"publish.repoKey":                                   DeployerPrefix + Repo,
+	"publish.snapshot.repoKey":                          DeployerPrefix + Repo,
+	"publish.maven":                                     DeployerPrefix + MavenDescriptor,
+	"publish.ivy":                                       DeployerPrefix + IvyDescriptor,
+	"publish.ivy.ivyPattern":                            DeployerPrefix + IvyPattern,
+	"publish.ivy.artPattern":                            DeployerPrefix + ArtifactPattern,
 }
 
 func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Viper, err error) {
@@ -211,8 +206,8 @@ func createProps(config *viper.Viper, projectType ProjectType) map[string]string
 				props[propKey] = value
 				// Properties that have the 'artifactory.' prefix are deprecated.
 				// For backward compatibility reasons, both will be added to the props map.
-				if strings.HasPrefix(propKey, "artifactory.") {
-					props[strings.TrimPrefix(propKey, "artifactory.")] = value
+				if !strings.HasPrefix(propKey, "artifactory.") {
+					props["artifactory."+propKey] = value
 				}
 			}
 		}
@@ -268,38 +263,5 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 		vConfig.Set(contextPrefix+Username, artDetails.GetUser())
 		vConfig.Set(contextPrefix+Password, artDetails.GetPassword())
 	}
-	return nil
-}
-
-// Generated build info file is template file where build-info will be written to during the
-// Maven or Gradle build.
-// Creating this file only if build name and number is provided.
-func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, config *viper.Viper) error {
-	config.Set(BuildName, buildName)
-	config.Set(BuildNumber, buildNumber)
-	config.Set(BuildProject, projectKey)
-
-	buildPath, err := GetBuildDir(buildName, buildNumber, projectKey)
-	if err != nil {
-		return err
-	}
-	var tempFile *os.File
-	tempFile, err = ioutil.TempFile(buildPath, GeneratedBuildInfoTempPrefix)
-	defer tempFile.Close()
-	if err != nil {
-		return err
-	}
-	// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
-	path := ioutils.DoubleWinPathSeparator(tempFile.Name())
-	config.Set(GeneratedBuildInfo, path)
-	return nil
-}
-
-func setBuildTimestampToConfig(buildName, buildNumber, projectKey string, config *viper.Viper) error {
-	buildGeneralDetails, err := ReadBuildInfoGeneralDetails(buildName, buildNumber, projectKey)
-	if err != nil {
-		return err
-	}
-	config.Set(BuildTimestamp, strconv.FormatInt(buildGeneralDetails.Timestamp.UnixNano()/int64(time.Millisecond), 10))
 	return nil
 }

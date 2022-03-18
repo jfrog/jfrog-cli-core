@@ -3,7 +3,7 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -208,7 +208,7 @@ func GetWorkingDirectory() (string, error) {
 
 // IsTerminal checks whether stdout is a terminal.
 func IsTerminal() bool {
-	return terminal.IsTerminal(int(os.Stdout.Fd()))
+	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 type Credentials interface {
@@ -353,15 +353,6 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 		return false, true
 	}
 	return false, false
-}
-
-func StringsSliceContains(slice []string, str string) bool {
-	for _, element := range slice {
-		if element == str {
-			return true
-		}
-	}
-	return false
 }
 
 func GetCliUserAgent() string {

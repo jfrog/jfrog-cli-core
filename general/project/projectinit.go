@@ -1,9 +1,9 @@
 package project
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -23,6 +23,7 @@ const (
 type ProjectInitCommand struct {
 	projectPath string
 	serverId    string
+	serverUrl   string
 }
 
 func NewProjectInitCommand() *ProjectInitCommand {
@@ -46,10 +47,14 @@ func (pic *ProjectInitCommand) Run() (err error) {
 			return err
 		}
 		pic.serverId = defaultServer.ServerId
+		pic.serverUrl = defaultServer.Url
 	}
 	technologiesMap, err := pic.detectTechnologies()
 	if err != nil {
 		return err
+	}
+	if _, errNotFound := exec.LookPath("docker"); errNotFound == nil {
+		technologiesMap[coreutils.Docker] = true
 	}
 	// First create repositories for the detected technologies.
 	for techName := range technologiesMap {
@@ -68,10 +73,7 @@ func (pic *ProjectInitCommand) Run() (err error) {
 		return
 	}
 
-	fmt.Println()
-	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap))
-	fmt.Println()
-
+	err = coreutils.PrintTable("", "", pic.createSummarizeMessage(technologiesMap), false)
 	return
 }
 
@@ -119,13 +121,12 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			fallthrough
 		case coreutils.Pipenv:
 			message +=
-				"jf " + string(tech) + "install\n" +
+				"jf " + string(tech) + " install\n" +
 					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
+					coreutils.PrintComment(" # Publish your "+string(tech)+" package") +
 					"\n"
 		case coreutils.Nuget:
-			// The NuGet case is already covered in the dotent case.
-			break
+			// The NuGet case is already covered in the dotnet case.
 		case coreutils.Dotnet:
 			executableName := coreutils.Nuget
 			_, errNotFound := exec.LookPath("dotnet")
@@ -134,17 +135,29 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 				executableName = coreutils.Dotnet
 			}
 			message +=
-				"jf" + string(executableName) + "restore\n" +
+				"jf " + string(executableName) + " restore\n" +
 					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
-
 		}
 	}
 	if message != "" {
 		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
 			"\n" +
 			message +
+			"\n"
+	}
+	if ok := technologiesMap[coreutils.Docker]; ok {
+		baseurl := strings.TrimPrefix(strings.TrimSpace(pic.serverUrl), "https://")
+		baseurl = strings.TrimPrefix(baseurl, "http://")
+		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
+		message += coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
 			"\n" +
-			coreutils.PrintTitle("Publish the build-info to Artifactory") +
+			"jf docker tag <image>:<tag> " + imageUrl + "\n" +
+			"jf docker push " + imageUrl + "\n" +
+			"jf docker pull " + imageUrl + "\n\n"
+	}
+
+	if message != "" {
+		message += coreutils.PrintTitle("Publish the build-info to Artifactory") +
 			"\n" +
 			"jf rt bp\n\n"
 	}

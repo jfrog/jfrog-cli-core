@@ -22,7 +22,7 @@ func init() {
 }
 
 func TestUnitTests(t *testing.T) {
-	err, cleanUpJfrogHome := tests.SetJfrogHome()
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
 	if err != nil {
 		clientLog.Error(err)
 		os.Exit(1)

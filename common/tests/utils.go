@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func ConfigTestServer(t *testing.T) (err error, cleanUp func()) {
+func ConfigTestServer(t *testing.T) (cleanUp func(), err error) {
 	cleanUp = testsutils.CreateTempEnv(t, false)
 	serverDetails := CreateTestServerDetails()
 	err = config.SaveServersConf([]*config.ServerDetails{serverDetails})

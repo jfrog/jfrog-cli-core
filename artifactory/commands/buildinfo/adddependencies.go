@@ -135,7 +135,7 @@ func (badc *BuildAddDependenciesCommand) collectLocalDependencies() (success, fa
 	}
 	success = len(dependenciesDetails)
 	if errorOccurred || fail > 0 {
-		err = errors.New("Build Add Dependencies command finished with errors. Please review the logs.")
+		err = errors.New("build Add Dependencies command finished with errors. Please review the logs")
 	}
 	return
 }

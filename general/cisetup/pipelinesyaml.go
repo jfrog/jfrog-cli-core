@@ -2,13 +2,11 @@ package cisetup
 
 import (
 	"encoding/json"
-	"strconv"
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"gopkg.in/yaml.v2"
+	"strconv"
 )
 
 const addRunFilesCmd = "add_run_files /tmp/jfrog/. jfrog"
@@ -151,12 +149,6 @@ func (yg *JFrogPipelinesYamlGenerator) createMavenStep(gitResourceName string) P
 			OnFailure: yg.getOnFailureCommands(),
 		},
 	}
-}
-
-func (yg *JFrogPipelinesYamlGenerator) getBuildCmdForNativeStep(tech coreutils.Technology) string {
-	cmd := yg.SetupData.BuiltTechnology.BuildCmd
-	// Remove exec name.
-	return strings.TrimPrefix(strings.TrimSpace(cmd), execNames[tech]+" ")
 }
 
 func (yg *JFrogPipelinesYamlGenerator) getDefaultNativeStepConfiguration(gitResourceName string) NativeStepConfiguration {
@@ -356,10 +348,10 @@ type StepType string
 
 const (
 	MvnBuild         StepType = "MvnBuild"
-	GradleBuild               = "GradleBuild"
-	NpmBuild                  = "NpmBuild"
-	Bash                      = "Bash"
-	PublishBuildInfo          = "PublishBuildInfo"
+	GradleBuild      StepType = "GradleBuild"
+	NpmBuild         StepType = "NpmBuild"
+	Bash             StepType = "Bash"
+	PublishBuildInfo StepType = "PublishBuildInfo"
 )
 
 type PipelineStep struct {

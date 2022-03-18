@@ -52,10 +52,6 @@ func (f StringFlag) GetDefault() string {
 	return f.DefaultValue
 }
 
-func (f StringFlag) isMandatory() bool {
-	return f.Mandatory
-}
-
 type BoolFlag struct {
 	Name         string
 	Description  string

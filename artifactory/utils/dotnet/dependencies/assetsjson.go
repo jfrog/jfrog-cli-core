@@ -12,8 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-var assetsFilePath = filepath.Join(AssetDirName, AssetFileName)
-
 const (
 	AssetFileName = "project.assets.json"
 	AssetDirName  = "obj"

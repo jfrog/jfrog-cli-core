@@ -82,12 +82,12 @@ func updateDepsIdsAndRequestedBy(parentDependency buildinfo.Dependency, dependen
 	for _, childName := range childrenList {
 		childKey := childName[0:strings.Index(childName, ":")]
 		if childDep, ok := dependenciesMap[childKey]; ok {
+			if childDep.NodeHasLoop() || len(childDep.RequestedBy) >= buildinfo.RequestedByMaxLength {
+				continue
+			}
 			for _, parentRequestedBy := range parentDependency.RequestedBy {
 				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
-			}
-			if childDep.NodeHasLoop() {
-				continue
 			}
 			childDep.Id = childName
 			// Run recursive call on child dependencies

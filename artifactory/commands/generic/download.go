@@ -138,7 +138,7 @@ func (dc *DownloadCommand) download() error {
 	dc.result.SetFailCount(totalFailed)
 	// Check for errors.
 	if errorOccurred {
-		return errors.New("Download finished with errors, please review the logs.")
+		return errors.New("download finished with errors, please review the logs")
 	}
 	if dc.DryRun() {
 		dc.result.SetSuccessCount(totalDownloaded)
@@ -187,7 +187,7 @@ func (dc *DownloadCommand) download() error {
 			partial.ModuleId = dc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		err = utils.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
+		return utils.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
 	}
 
 	return err
@@ -308,10 +308,10 @@ func createSyncDeletesWalkFunction(tempRoot string) fileutils.WalkFunc {
 		}
 		log.Info("Deleting:", path)
 		if info.IsDir() {
-			// If current path is a dir - remove all content and return SkipDir to stop walking this path
+			// If current path is a dir - remove all content and return ErrSkipDir to stop walking this path
 			err = os.RemoveAll(path)
 			if err == nil {
-				return fileutils.SkipDir
+				return fileutils.ErrSkipDir
 			}
 		} else {
 			// Path is a file

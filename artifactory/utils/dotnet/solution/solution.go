@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/dependencies"
@@ -71,9 +73,11 @@ func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, er
 
 		// Populate requestedBy field
 		for _, directDepName := range directDeps {
-			directDep := dependencies[directDepName]
-			directDep.RequestedBy = [][]string{{module.Id}}
-			populateRequestedBy(*directDep, dependencies, childrenMap)
+			// Populate the direct dependency requested by only if the dependency exist in the cache
+			if directDep, exist := dependencies[directDepName]; exist {
+				directDep.RequestedBy = [][]string{{module.Id}}
+				populateRequestedBy(*directDep, dependencies, childrenMap)
+			}
 		}
 
 		// Populate module dependencies
@@ -102,12 +106,12 @@ func populateRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap 
 	childrenList := childrenMap[getDependencyName(parentDependency.Id)]
 	for _, childName := range childrenList {
 		if childDep, ok := dependenciesMap[childName]; ok {
+			if childDep.NodeHasLoop() || len(childDep.RequestedBy) >= buildinfo.RequestedByMaxLength {
+				continue
+			}
 			for _, parentRequestedBy := range parentDependency.RequestedBy {
 				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
 				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
-			}
-			if childDep.NodeHasLoop() {
-				continue
 			}
 			// Run recursive call on child dependencies
 			populateRequestedBy(*childDep, dependenciesMap, childrenMap)
@@ -204,7 +208,6 @@ func (solution *solution) loadSingleProject(projectName, projFilePath string) {
 	if proj.Extractor() != nil {
 		solution.projects = append(solution.projects, proj)
 	}
-	return
 }
 
 // Finds all the projects by reading the content of the sln files.
@@ -252,7 +255,7 @@ func parseProjectLine(projectLine, path string) (projectName, projFilePath strin
 	projectName = removeQuotes(projectInfo[0])
 	// In case we are running on a non-Windows OS, the solution root path and the relative path to proj file might used different path separators.
 	// We want to make sure we will get a valid path after we join both parts, so we will replace the proj separators.
-	if utils.IsWindows() {
+	if coreutils.IsWindows() {
 		projectInfo[1] = ioutils.UnixToWinPathSeparator(projectInfo[1])
 	} else {
 		projectInfo[1] = ioutils.WinToUnixPathSeparator(projectInfo[1])

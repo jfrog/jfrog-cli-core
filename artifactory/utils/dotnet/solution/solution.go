@@ -80,7 +80,11 @@ func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, er
 
 		// Populate module dependencies
 		for _, dep := range dependencies {
-			module.Dependencies = append(module.Dependencies, *dep)
+			// If dependnecy has no RequestedBy field, it is not accessible in the current project -
+			// It is expected to be under a sub project.
+			if len(dep.RequestedBy) > 0 {
+				module.Dependencies = append(module.Dependencies, *dep)
+			}
 		}
 
 		modules = append(modules, module)

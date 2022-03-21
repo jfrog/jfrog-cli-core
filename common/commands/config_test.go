@@ -133,7 +133,7 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	assert.NoError(t, DeleteConfig("test"))
 }
 
-func TestExportNoDefaultServer(t *testing.T) {
+func TestExportEmptyConfig(t *testing.T) {
 	cliHome, exist := os.LookupEnv(coreutils.HomeDir)
 	defer func() {
 		if exist {

@@ -1,6 +1,7 @@
 package envsetup
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/browser"
@@ -28,10 +29,21 @@ const (
 )
 
 type EnvSetupCommand struct {
-	registrationURL string
-	id              uuid.UUID
-	serverDetails   *config.ServerDetails
-	progress        ioUtils.ProgressMgr
+	registrationURL   string
+	base64Credentials string
+	id                uuid.UUID
+	serverDetails     *config.ServerDetails
+	progress          ioUtils.ProgressMgr
+}
+
+func (ftc *EnvSetupCommand) SetRegistrationURL(registrationURL string) *EnvSetupCommand {
+	ftc.registrationURL = registrationURL
+	return ftc
+}
+
+func (ftc *EnvSetupCommand) SetBase64Credentials(base64Credentials string) *EnvSetupCommand {
+	ftc.base64Credentials = base64Credentials
+	return ftc
 }
 
 func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -42,21 +54,19 @@ func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	ftc.progress = progress
 }
 
-func NewEnvSetupCommand(url string) *EnvSetupCommand {
+func NewEnvSetupCommand() *EnvSetupCommand {
 	return &EnvSetupCommand{
-		registrationURL: url,
-		id:              uuid.New(),
+		id: uuid.New(),
 	}
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
-	time.Sleep(5 * time.Second)
-	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
-	if err != nil {
-		return
+	var server *config.ServerDetails
+	if ftc.base64Credentials == "" {
+		server, err = ftc.setupNewUser()
+	} else {
+		server, err = ftc.setupInvitedUser()
 	}
-	server, err := ftc.getNewServerDetails()
 	if err != nil {
 		return
 	}
@@ -74,6 +84,35 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 			coreutils.GetFeedbackMessage()
 
 	err = coreutils.PrintTable("", "", message, false)
+	return
+}
+
+func (ftc *EnvSetupCommand) setupNewUser() (*config.ServerDetails, error) {
+	ftc.progress.SetHeadlineMsg("To complete your JFrog environment setup, please fill out the details in your browser")
+	time.Sleep(5 * time.Second)
+	err := browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
+	if err != nil {
+		return nil, err
+	}
+	return ftc.getNewServerDetails()
+}
+
+func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, err error) {
+	server, err = ftc.decodeBase64Credentials()
+	if err != nil {
+		return
+	}
+	// generate accesss
+	return
+}
+
+func (ftc *EnvSetupCommand) decodeBase64Credentials() (server *config.ServerDetails, err error) {
+	rawDecodedText, err := base64.StdEncoding.DecodeString(ftc.base64Credentials)
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	err = json.Unmarshal(rawDecodedText, &server)
+	errorutils.CheckError(err)
 	return
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/solution"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -13,24 +14,14 @@ const (
 	nugetPackageTypeIdentifier = "nuget://"
 )
 
-type AuditNugetCommand struct {
-	audit.AuditCommand
-}
-
-func NewEmptyAuditNugetCommand() *AuditNugetCommand {
-	return &AuditNugetCommand{AuditCommand: *audit.NewAuditCommand()}
-}
-
-func NewAuditNugetCommand(auditCmd audit.AuditCommand) *AuditNugetCommand {
-	return &AuditNugetCommand{AuditCommand: auditCmd}
-}
-
-func (anc *AuditNugetCommand) Run() error {
-	dependencyTree, err := BuildNugetDependencyTree()
+func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildNugetDependencyTree()
 	if err != nil {
-		return err
+		return
 	}
-	return anc.ScanDependencyTree(dependencyTree)
+	isMultipleRootProject = len(graph) > 1
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	return
 }
 
 func BuildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
@@ -64,8 +55,4 @@ func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.
 		nodes = append(nodes, audit.BuildXrayDependencyTree(treeMap, nugetPackageTypeIdentifier+module.Id))
 	}
 	return
-}
-
-func (anc *AuditNugetCommand) CommandName() string {
-	return "xr_audit_nuget"
 }

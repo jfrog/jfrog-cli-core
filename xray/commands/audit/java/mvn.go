@@ -3,40 +3,22 @@ package java
 import (
 	"fmt"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-type AuditMavenCommand struct {
-	audit.AuditCommand
-	insecureTls bool
-}
-
-func NewEmptyAuditMavenCommand() *AuditMavenCommand {
-	return &AuditMavenCommand{AuditCommand: *audit.NewAuditCommand()}
-}
-
-func NewAuditMavenCommand(auditCmd audit.AuditCommand) *AuditMavenCommand {
-	return &AuditMavenCommand{AuditCommand: auditCmd}
-}
-
-func (auditCmd *AuditMavenCommand) SetInsecureTls(insecureTls bool) *AuditMavenCommand {
-	auditCmd.insecureTls = insecureTls
-	return auditCmd
-}
-
-func (auditCmd *AuditMavenCommand) Run() (err error) {
-	// Parse the dependencies into an Xray dependency tree format
-	modulesDependencyTrees, err := BuildMvnDependencyTree(auditCmd.insecureTls)
+func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls bool) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildMvnDependencyTree(insecureTls)
 	if err != nil {
 		return
 	}
-
-	return auditCmd.ScanDependencyTree(modulesDependencyTrees)
+	isMultipleRootProject = len(graph) > 1
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	return
 }
 
 func BuildMvnDependencyTree(insecureTls bool) (modules []*services.GraphNode, err error) {
@@ -64,8 +46,4 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls bool) erro
 		configFilePath = ""
 	}
 	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, insecureTls, true)
-}
-
-func (auditCmd *AuditMavenCommand) CommandName() string {
-	return "xr_audit_mvn"
 }

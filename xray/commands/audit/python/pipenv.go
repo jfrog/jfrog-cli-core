@@ -4,29 +4,20 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	pipenvutils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-type AuditPipenvCommand struct {
-	audit.AuditCommand
-}
-
-func NewEmptyAuditPipenvCommand() *AuditPipenvCommand {
-	return &AuditPipenvCommand{AuditCommand: *audit.NewAuditCommand()}
-}
-
-func NewAuditPipenvCommand(auditCmd audit.AuditCommand) *AuditPipenvCommand {
-	return &AuditPipenvCommand{AuditCommand: auditCmd}
-}
-
-func (apec *AuditPipenvCommand) Run() (err error) {
-	rootNode, err := BuildPipenvDependencyTree()
+func AuditPipenv(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildPipenvDependencyTree()
 	if err != nil {
-		return err
+		return
 	}
-	return apec.ScanDependencyTree([]*services.GraphNode{rootNode})
+	isMultipleRootProject = false
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
+	return
 }
 
 func BuildPipenvDependencyTree() (*services.GraphNode, error) {
@@ -53,8 +44,4 @@ func BuildPipenvDependencyTree() (*services.GraphNode, error) {
 		rootNode.Nodes = append(rootNode.Nodes, subDep)
 	}
 	return rootNode, nil
-}
-
-func (apec *AuditPipenvCommand) CommandName() string {
-	return "xr_audit_pipenv"
 }

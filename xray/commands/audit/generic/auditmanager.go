@@ -5,17 +5,52 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/npm"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string) (results []services.ScanResponse, err error) {
+func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+
+	if len(technologies) == 0 {
+		technologies, err = detectedTechnologies()
+		if err != nil {
+			return
+		}
+	}
+
+	for _, tech := range coreutils.ToTechnologies(technologies) {
+		switch tech {
+		case coreutils.Maven:
+			results, isMultipleRootProject, err = java.AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls)
+		case coreutils.Gradle:
+			results, isMultipleRootProject, err = java.AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper)
+		case coreutils.Npm:
+			results, isMultipleRootProject, err = npm.AuditNpm(xrayGraphScanPrams, serverDetails, args)
+		case coreutils.Go:
+			results, isMultipleRootProject, err = _go.AuditGo(xrayGraphScanPrams, serverDetails)
+		case coreutils.Pip:
+			results, isMultipleRootProject, err = python.AuditPip(xrayGraphScanPrams, serverDetails)
+		case coreutils.Pipenv:
+			results, isMultipleRootProject, err = python.AuditPipenv(xrayGraphScanPrams, serverDetails)
+		case coreutils.Dotnet:
+			break
+		case coreutils.Nuget:
+			results, isMultipleRootProject, err = nuget.AuditNuget(xrayGraphScanPrams, serverDetails)
+		default:
+			log.Info(string(tech), " is currently not supported")
+		}
+	}
+	return
+
+}
+
+func detectedTechnologies() (technologies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -30,81 +65,5 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 		return
 	}
 	log.Info("Detected: " + detectedTechnologiesString)
-	//var failBuildErr error
-	for tech := range detectedTechnologies {
-		switch tech {
-		case coreutils.Maven:
-			results, err = AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls)
-		case coreutils.Gradle:
-			results, err = AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper)
-		case coreutils.Npm:
-			results, err = AuditNpm(xrayGraphScanPrams, serverDetails, args)
-		case coreutils.Go:
-			results, err = AuditGo(xrayGraphScanPrams, serverDetails)
-		case coreutils.Pip:
-			results, err = AuditPip(xrayGraphScanPrams, serverDetails)
-		case coreutils.Pipenv:
-			results, err = AuditPipenv(xrayGraphScanPrams, serverDetails)
-		case coreutils.Dotnet:
-			break
-		case coreutils.Nuget:
-			results, err = AuditNuget(xrayGraphScanPrams, serverDetails)
-		default:
-			log.Info(string(tech), " is currently not supported")
-		}
-	}
-	return
-
-}
-
-func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls bool) (results []services.ScanResponse, err error) {
-	graph, err := java.BuildMvnDependencyTree(insecureTls)
-	if err != nil {
-		return
-	}
-	return audit.Scan(graph, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper bool) (results []services.ScanResponse, err error) {
-	graph, err := java.BuildGradleDependencyTree(excludeTestDeps, useWrapper)
-	if err != nil {
-		return
-	}
-	return audit.Scan(graph, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, args []string) (results []services.ScanResponse, err error) {
-	graph, err := npm.BuildNpmDependencyTree(args)
-	if err != nil {
-		return
-	}
-	return audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
-	graph, err := _go.BuildGoDependencyTree()
-	if err != nil {
-		return
-	}
-	return audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditPip(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
-	graph, err := python.BuildPipDependencyTree()
-	if err != nil {
-		return
-	}
-	return audit.Scan(graph, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditPipenv(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
-	graph, err := python.BuildPipenvDependencyTree()
-	if err != nil {
-		return
-	}
-	return audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
-}
-
-func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
-	return
+	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
 }

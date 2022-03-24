@@ -3,6 +3,7 @@ package npm
 import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -13,26 +14,14 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func NewAuditNpmCommand(auditCmd audit.AuditCommand) *AuditNpmCommand {
-	return &AuditNpmCommand{AuditCommand: auditCmd}
-}
-
-type AuditNpmCommand struct {
-	audit.AuditCommand
-	npmArgs []string
-}
-
-func (auditCmd *AuditNpmCommand) SetNpmArgs(npmArgs []string) *AuditNpmCommand {
-	auditCmd.npmArgs = npmArgs
-	return auditCmd
-}
-
-func (auditCmd *AuditNpmCommand) Run() (err error) {
-	rootNode, err := BuildNpmDependencyTree(auditCmd.npmArgs)
+func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, args []string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildNpmDependencyTree(args)
 	if err != nil {
-		return err
+		return
 	}
-	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
+	isMultipleRootProject = false
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
+	return
 }
 
 func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err error) {
@@ -72,8 +61,4 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 		}
 	}
 	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
-}
-
-func (auditCmd *AuditNpmCommand) CommandName() string {
-	return "xr_audit_npm"
 }

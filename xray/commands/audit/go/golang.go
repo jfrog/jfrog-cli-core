@@ -3,6 +3,7 @@ package _go
 import (
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
@@ -13,24 +14,14 @@ const (
 	goPackageTypeIdentifier = "go://"
 )
 
-type AuditGoCommand struct {
-	audit.AuditCommand
-}
-
-func NewEmptyAuditGoCommand() *AuditGoCommand {
-	return &AuditGoCommand{AuditCommand: *audit.NewAuditCommand()}
-}
-
-func NewAuditGoCommand(auditCmd audit.AuditCommand) *AuditGoCommand {
-	return &AuditGoCommand{AuditCommand: auditCmd}
-}
-
-func (auditCmd *AuditGoCommand) Run() (err error) {
-	rootNode, err := BuildGoDependencyTree()
+func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildGoDependencyTree()
 	if err != nil {
-		return err
+		return
 	}
-	return auditCmd.ScanDependencyTree([]*services.GraphNode{rootNode})
+	isMultipleRootProject = false
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
+	return
 }
 
 func BuildGoDependencyTree() (*services.GraphNode, error) {
@@ -81,8 +72,4 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 		currNode.Nodes = append(currNode.Nodes, childNode)
 		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
 	}
-}
-
-func (auditCmd *AuditGoCommand) CommandName() string {
-	return "xr_audit_go"
 }

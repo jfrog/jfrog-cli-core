@@ -156,3 +156,9 @@ func TestParseYesNo(t *testing.T) {
 		})
 	}
 }
+
+func TestGetExplicitListByNumber(t *testing.T) {
+	assert.Equal(t, GetExplicitListByNumber([]string{"one"}), "one")
+	assert.Equal(t, GetExplicitListByNumber([]string{"one", "two"}), "one and two")
+	assert.Equal(t, GetExplicitListByNumber([]string{"one", "two", "three"}), "one, two and three")
+}

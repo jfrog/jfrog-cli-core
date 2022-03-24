@@ -96,6 +96,9 @@ func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*servi
 		return err
 	}
 	err = xrutils.PrintScanResults(results, auditCmd.OutputFormat == xrutils.Table, auditCmd.IncludeVulnerabilities, auditCmd.IncludeLicenses, len(modulesDependencyTrees) > 1, auditCmd.PrintExtendedTable)
+	if err != nil {
+		return err
+	}
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
 	// If user provided --fail=false, don't fail the build.
 	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities {
@@ -169,7 +172,7 @@ func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *ser
 }
 
 func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
-	if modulesDependencyTrees == nil || len(modulesDependencyTrees) == 0 {
+	if len(modulesDependencyTrees) == 0 {
 		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
 	}
 

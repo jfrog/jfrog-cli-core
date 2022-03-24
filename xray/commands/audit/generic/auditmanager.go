@@ -39,7 +39,7 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 		case coreutils.Pipenv:
 			results, isMultipleRootProject, err = python.AuditPipenv(xrayGraphScanPrams, serverDetails)
 		case coreutils.Dotnet:
-			break
+			continue
 		case coreutils.Nuget:
 			results, isMultipleRootProject, err = nuget.AuditNuget(xrayGraphScanPrams, serverDetails)
 		default:

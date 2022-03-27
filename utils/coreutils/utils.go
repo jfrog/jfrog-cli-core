@@ -400,3 +400,17 @@ func SetCliExecutableName(executableName string) {
 func GetCliExecutableName() string {
 	return cliExecutableName
 }
+
+// Turn a list of strings into a sentence.
+// For example, turn ["one", "two", "three"] into "one, two and three".
+// For a single element: "one".
+func ListToText(list []string) string {
+	if len(list) == 1 {
+		return list[0]
+	}
+	return strings.Join(list[0:len(list)-1], ", ") + " and " + list[len(list)-1]
+}
+
+func RemoveAllWhiteSpaces(input string) string {
+	return strings.Join(strings.Fields(input), "")
+}

@@ -87,10 +87,10 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		coreutils.PrintTitle("🔍 Scan any software package on you machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
-		coreutils.PrintTitle("💻 Scan any local docker image on you machine for security vulnerabilities by running") +
+		coreutils.PrintTitle("🐳 Scan any local docker image on you machine for security vulnerabilities by running") +
 		"\n" +
 		"jf docker scan <image name>:<image tag>\n\n" +
-		coreutils.PrintTitle("If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		coreutils.PrintTitle("💻 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
 		"\n" +
 		"Open the IDE 👉 Install the JFrog extension or plugin 👉 View the JFrog panel" +
 		"\n\n" +

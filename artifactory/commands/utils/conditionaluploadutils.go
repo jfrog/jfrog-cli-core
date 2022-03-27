@@ -61,10 +61,10 @@ func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err
 			format = xrutils.Table
 		case string(xrutils.Json):
 			format = xrutils.Json
-		case string(xrutils.Pretty):
-			format = xrutils.Pretty
+		case string(xrutils.SimpleJson):
+			format = xrutils.SimpleJson
 		default:
-			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.GetExplicitListByNumber(xrutils.OutputFormats))
+			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.OutputFormats))
 		}
 	}
 	return

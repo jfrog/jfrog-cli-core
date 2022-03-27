@@ -401,10 +401,10 @@ func GetCliExecutableName() string {
 	return cliExecutableName
 }
 
-// Get the explicit list by number of elements.
-// For example for multiple elements: "one, two and three".
+// Turn a list of strings into a sentence.
+// For example, turn ["one", "two", "three"] into "one, two and three".
 // For a single element: "one".
-func GetExplicitListByNumber(list []string) string {
+func ListToText(list []string) string {
 	if len(list) == 1 {
 		return list[0]
 	}

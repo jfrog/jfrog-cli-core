@@ -16,12 +16,12 @@ type OutputFormat string
 
 const (
 	// OutputFormat values
-	Table  OutputFormat = "table"
-	Json   OutputFormat = "json"
-	Pretty OutputFormat = "pretty-json"
+	Table      OutputFormat = "table"
+	Json       OutputFormat = "json"
+	SimpleJson OutputFormat = "simple-json"
 )
 
-var OutputFormats = []string{string(Table), string(Json), string(Pretty)}
+var OutputFormats = []string{string(Table), string(Json), string(SimpleJson)}
 
 func PrintScanResults(results []services.ScanResponse, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
 	switch format {
@@ -48,9 +48,9 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 			err = PrintLicensesTable(licenses, isMultipleRoots, printExtended)
 		}
 		return err
-	case Pretty:
+	case SimpleJson:
 		violations, vulnerabilities, licenses := splitScanResults(results)
-		jsonTable := ResultsJsonTable{}
+		jsonTable := ResultsSimpleJson{}
 		if includeVulnerabilities {
 			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
 			vulJsonTable, err := CreateJsonVulnerabilitiesTable(vulnerabilities, isMultipleRoots)
@@ -81,6 +81,7 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 	return nil
 }
 
+// Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
 func splitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability

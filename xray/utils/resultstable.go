@@ -258,7 +258,8 @@ type cveRow struct {
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
 
-type ResultsJsonTable struct {
+// This struct holds the sorted results of the simple-json output.
+type ResultsSimpleJson struct {
 	Vulnerabilities    []map[string]interface{}
 	SecurityViolations []map[string]interface{}
 	LicensesViolations []map[string]interface{}

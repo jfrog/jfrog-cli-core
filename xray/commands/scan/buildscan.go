@@ -118,7 +118,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	if bsc.outputFormat == xrutils.Json || bsc.outputFormat == xrutils.Pretty {
+	if bsc.outputFormat == xrutils.Json || bsc.outputFormat == xrutils.SimpleJson {
 		// Print the violations and/or vulnerabilities as part of one JSON.
 		err = xrutils.PrintScanResults(scanResponse, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
 	} else {

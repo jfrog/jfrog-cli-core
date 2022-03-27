@@ -85,30 +85,6 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) ScanDependencyTree(modulesDependencyTrees []*services.GraphNode) error {
-	if len(modulesDependencyTrees) == 0 {
-		return errorutils.CheckErrorf("No dependencies were found. Please try to build you project and re-run the audit command.")
-	}
-	var results []services.ScanResponse
-	params := auditCmd.CreateXrayGraphScanParams()
-	results, err := Scan(modulesDependencyTrees, params, auditCmd.serverDetails)
-	if err != nil {
-		return err
-	}
-	err = xrutils.PrintScanResults(results, auditCmd.OutputFormat == xrutils.Table, auditCmd.IncludeVulnerabilities, auditCmd.IncludeLicenses, len(modulesDependencyTrees) > 1, auditCmd.PrintExtendedTable)
-	if err != nil {
-		return err
-	}
-	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
-	// If user provided --fail=false, don't fail the build.
-	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities {
-		if xrutils.CheckIfFailBuild(results) {
-			return xrutils.NewFailBuildError()
-		}
-	}
-	return nil
-}
-
 func (auditCmd *AuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
 	params := services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,

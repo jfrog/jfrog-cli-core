@@ -172,8 +172,8 @@ func CreateJsonVulnerabilitiesTable(vulnerabilities []services.Vulnerability, mu
 	return coreutils.CreateJsonTable(vulnerabilitiesRows)
 }
 
-func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, error) {
-	var vulnerabilitiesRows []vulnerabilityRow
+func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, error) {
+	var vulnerabilitiesRows []VulnerabilityRow
 
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
@@ -231,8 +231,8 @@ func CreateJsonLicensesTable(licenses []services.License, multipleRoots bool) ([
 	return coreutils.CreateJsonTable(licensesRows)
 }
 
-func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]licenseRow, error) {
-	var licensesRows []licenseRow
+func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]LicenseRow, error) {
+	var licensesRows []LicenseRow
 
 	for _, license := range licenses {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
@@ -323,12 +323,12 @@ type ResultsSimpleJson struct {
 	Licenses                  []map[string]interface{}
 }
 
-func convertCves(cves []services.Cve) []cveRow {
-	var cveRows []cveRow
+func convertCves(cves []services.Cve) []CveRow {
+	var cveRows []CveRow
 	for _, cveObj := range cves {
-		CveRows = append(CveRows, CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
+		cveRows = append(cveRows, CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
 	}
-	return CveRows
+	return cveRows
 }
 
 func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]ComponentRow, error) {

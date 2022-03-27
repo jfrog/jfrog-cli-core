@@ -117,6 +117,7 @@ func DetectedTechnologiesToString(detected map[Technology]bool) string {
 	if len(keys) > 0 {
 		detectedTechnologiesString := strings.Join(keys, ", ")
 		detectedTechnologiesString += "."
+		return detectedTechnologiesString
 	}
 	return ""
 }
@@ -127,6 +128,7 @@ func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
 	i := 0
 	for tech := range detected {
 		keys[i] = string(tech)
+		i++
 	}
 	return keys
 }

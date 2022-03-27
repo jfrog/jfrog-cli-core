@@ -39,7 +39,7 @@ func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err
 		return
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
+	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
 	if err != nil {
 		return
 	}

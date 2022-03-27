@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
@@ -62,10 +64,15 @@ func NewEnvSetupCommand() *EnvSetupCommand {
 
 func (ftc *EnvSetupCommand) Run() (err error) {
 	var server *config.ServerDetails
+	var welcomingMessage string
+	// In case credentials were provided - user that were invited to an existing platform.
+	// Otherwise, new user that needs to register and setup a new platform.
 	if ftc.base64Credentials == "" {
 		server, err = ftc.setupNewUser()
+		welcomingMessage = "Your new JFrog environment is ready!"
 	} else {
 		server, err = ftc.setupInvitedUser()
+		welcomingMessage = "JFrog environment is ready!"
 	}
 	if err != nil {
 		return
@@ -75,7 +82,7 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		return err
 	}
 	message :=
-		coreutils.PrintBold("Your new JFrog environment is ready!") + "\n" +
+		coreutils.PrintBold(welcomingMessage) + "\n" +
 			"1. CD into your code project directory\n" +
 			"2. Run \"jf project init\"\n" +
 			"3. Read more about how to get started at -\n" +
@@ -102,7 +109,14 @@ func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, er
 	if err != nil {
 		return
 	}
-	// generate accesss
+	accessManager, err := utils.CreateAccessServiceManager(server, false)
+	if err != nil {
+		return
+	}
+	params := services.TokenParams{}
+	params.ExpiresIn = 0
+	token, err := accessManager.CreateAccessToken(params)
+	server.AccessToken = token.AccessToken
 	return
 }
 

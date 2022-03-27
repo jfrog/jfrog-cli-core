@@ -646,7 +646,7 @@ func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDet
 
 func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetails, error) {
 	pAuth := accessAuth.NewAccessDetails()
-	pAuth.SetUrl(serverDetails.AccessUrl)
+	pAuth.SetUrl(utils.AddTrailingSlashIfNeeded(serverDetails.Url) + "access/")
 	return serverDetails.createAuthConfig(pAuth)
 }
 

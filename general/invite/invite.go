@@ -3,6 +3,7 @@ package invite
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
@@ -10,8 +11,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
-const (
-	cliSourceName = "cli"
+var (
+	trueValue  = true
+	falseValue = false
 )
 
 type InviteCommand struct {
@@ -41,6 +43,8 @@ func NewInviteCommand() *InviteCommand {
 	return &InviteCommand{}
 }
 
+// Inviting new user - send a 'CreateUser' request to artifactory with a parameter "shouldInvite=true".
+// Re-inviting the same user - send an "Invite" request to access.
 func (ic *InviteCommand) Run() (err error) {
 	servicesManager, err := utils.CreateServiceManager(ic.serverDetails, -1, 0, false)
 	if err != nil {
@@ -56,7 +60,12 @@ func (ic *InviteCommand) Run() (err error) {
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "already exists") {
 			log.Info(fmt.Sprintf("Re-sending invitation email to: %s...", userDetails.Name))
-			err = servicesManager.InviteUser(params.UserDetails.Email)
+			var accessManager *access.AccessServicesManager
+			accessManager, err = utils.CreateAccessServiceManager(ic.serverDetails, false)
+			if err != nil {
+				return
+			}
+			err = accessManager.InviteUser(params.UserDetails.Email)
 			if err != nil {
 				return
 			}
@@ -66,14 +75,17 @@ func (ic *InviteCommand) Run() (err error) {
 }
 
 func (ic *InviteCommand) createNewInvitedUser() *services.User {
-	trueValue := true
 	userDetails := services.User{}
 	userDetails.Email = ic.invitedEmail
 	userDetails.Name = ic.invitedEmail
 	userDetails.Password = "Password1!"
 	userDetails.Admin = &trueValue
 	userDetails.ShouldInvite = &trueValue
-	userDetails.Source = cliSourceName
+	userDetails.Source = services.InviteCliSourceName
+
+	userDetails.ProfileUpdatable = &trueValue
+	userDetails.DisableUIAccess = &falseValue
+	userDetails.InternalPasswordDisabled = &falseValue
 	return &userDetails
 }
 

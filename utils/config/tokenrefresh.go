@@ -138,10 +138,10 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 	return SaveServersConf(configurations)
 }
 
-func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (services.CreateTokenResponseData, error) {
+func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
 	servicesManager, err := createTokensServiceManager(serverDetails)
 	if err != nil {
-		return services.CreateTokenResponseData{}, err
+		return auth.CreateTokenResponseData{}, err
 	}
 
 	createTokenParams := services.NewCreateTokenParams()
@@ -153,7 +153,7 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (ser
 
 	newToken, err := servicesManager.CreateToken(createTokenParams)
 	if err != nil {
-		return services.CreateTokenResponseData{}, err
+		return auth.CreateTokenResponseData{}, err
 	}
 	return newToken, nil
 }
@@ -188,7 +188,7 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	return writeNewTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
 }
 
-func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (services.CreateTokenResponseData, error) {
+func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
 	// The tokens passed as parameters are also used for authentication
 	noCredsDetails := new(ServerDetails)
 	noCredsDetails.ArtifactoryUrl = serverDetails.ArtifactoryUrl
@@ -199,7 +199,7 @@ func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string
 
 	servicesManager, err := createTokensServiceManager(noCredsDetails)
 	if err != nil {
-		return services.CreateTokenResponseData{}, err
+		return auth.CreateTokenResponseData{}, err
 	}
 
 	refreshTokenParams := services.NewRefreshTokenParams()

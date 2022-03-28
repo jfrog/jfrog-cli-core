@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gookit/color"
@@ -15,13 +16,13 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 	"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
 	"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
 
-// PrintViolationsTable prints the violations in 3 tables: security violations, license compliance violations and ignore rule URLs.
+// PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, coreutils.IsTerminal())
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, coreutils.IsTerminal())
 	if err != nil {
 		return err
 	}
@@ -31,35 +32,45 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 	if err != nil {
 		return err
 	}
-	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
+	err = coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
+	if err != nil {
+		return err
+	}
+	return coreutils.PrintTable(operationalRiskViolationsRows, "Operational Risk Violations", "No operational risk violations were found", printExtended)
 }
 
 // Same as PrintViolationsTable, but table is returned as a json map array.
-func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bool) ([]map[string]interface{}, []map[string]interface{}, error) {
-	securityViolationsRows, licenseViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, false)
+func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bool) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	secViolationsJsonTable, err := coreutils.CreateJsonTable(securityViolationsRows)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	licViolationsJsonTable, err := coreutils.CreateJsonTable(licenseViolationsRows)
-	return secViolationsJsonTable, licViolationsJsonTable, err
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	operationalRiskViolationsJsonTable, err := coreutils.CreateJsonTable(operationalRiskViolationsRows)
+	return secViolationsJsonTable, licViolationsJsonTable, operationalRiskViolationsJsonTable, err
 }
 
-func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, []licenseViolationRow, error) {
+func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, []licenseViolationRow, []operationalRiskViolationRow, error) {
 	var securityViolationsRows []vulnerabilityRow
 	var licenseViolationsRows []licenseViolationRow
+	var operationalRiskViolationsRows []operationalRiskViolationRow
 
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		currSeverity := getSeverity(violation.Severity)
-		if violation.ViolationType == "security" {
+		switch violation.ViolationType {
+		case "security":
 			cves := convertCves(violation.Cves)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
@@ -76,9 +87,9 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 					},
 				)
 			}
-		} else {
-			// License compliance violation
+		case "license":
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
+
 				licenseViolationsRows = append(licenseViolationsRows,
 					licenseViolationRow{
 						licenseKey:             violation.LicenseKey,
@@ -91,6 +102,21 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 					},
 				)
 			}
+		case "operational_risk":
+			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
+				operationalRiskViolationsRow := &operationalRiskViolationRow{
+					severity:               currSeverity.printableTitle(coloredOutput),
+					severityNumValue:       currSeverity.numValue,
+					impactedPackageName:    impactedPackagesNames[compIndex],
+					impactedPackageVersion: impactedPackagesVersions[compIndex],
+					impactedPackageType:    impactedPackagesTypes[compIndex],
+					component:              components[compIndex],
+				}
+				populateOperationalRiskRowData(operationalRiskViolationsRow, &violation)
+				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
+			}
+		default:
+			// Unsupported type, ignore
 		}
 	}
 
@@ -104,8 +130,11 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 	sort.Slice(licenseViolationsRows, func(i, j int) bool {
 		return licenseViolationsRows[i].severityNumValue > licenseViolationsRows[j].severityNumValue
 	})
+	sort.Slice(operationalRiskViolationsRows, func(i, j int) bool {
+		return operationalRiskViolationsRows[i].severityNumValue > operationalRiskViolationsRows[j].severityNumValue
+	})
 
-	return securityViolationsRows, licenseViolationsRows, nil
+	return securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, nil
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
@@ -247,6 +276,23 @@ type licenseViolationRow struct {
 	components             []componentRow `embed-table:"true"`
 }
 
+type operationalRiskViolationRow struct {
+	severity               string         `col-name:"Severity"`
+	severityNumValue       int            // For sorting
+	impactedPackageName    string         `col-name:"Impacted\nPackage"`
+	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
+	impactedPackageType    string         `col-name:"Type"`
+	component              []componentRow `embed-table:"true"`
+	riskReason             string         `col-name:"Risk\nReason"`
+	isEol                  string         `col-name:"Is End\nOf Life" extended:"true"`
+	eolMessage             string         `col-name:"End Of\nLife Message" extended:"true"`
+	cadence                string         `col-name:"Cadence"  extended:"true"`
+	commits                string         `col-name:"Commits"  extended:"true"`
+	committers             string         `col-name:"Committers"  extended:"true"`
+	newerVersions          string         `col-name:"Newer\nVersions" extended:"true"`
+	latestVersion          string         `col-name:"Latest\nVersion" extended:"true"`
+}
+
 type componentRow struct {
 	name    string `col-name:"Component"`
 	version string `col-name:"Component\nVersion"`
@@ -260,10 +306,11 @@ type cveRow struct {
 
 // This struct holds the sorted results of the simple-json output.
 type ResultsSimpleJson struct {
-	Vulnerabilities    []map[string]interface{}
-	SecurityViolations []map[string]interface{}
-	LicensesViolations []map[string]interface{}
-	Licenses           []map[string]interface{}
+	Vulnerabilities           []map[string]interface{}
+	SecurityViolations        []map[string]interface{}
+	LicensesViolations        []map[string]interface{}
+	OperationalRiskViolations []map[string]interface{}
+	Licenses                  []map[string]interface{}
 }
 
 func convertCves(cves []services.Cve) []cveRow {
@@ -426,4 +473,40 @@ func getSeverity(severityTitle string) *severity {
 		return &severity{title: severityTitle}
 	}
 	return severities[severityTitle]
+}
+
+func populateOperationalRiskRowData(row *operationalRiskViolationRow, violation *services.Violation) {
+	isEol, cadence, commits, committers, newerVersions, latestVersion := getOperationalRiskReadableData(violation)
+	row.isEol = isEol
+	row.cadence = cadence
+	row.commits = commits
+	row.committers = committers
+	row.newerVersions = newerVersions
+	row.latestVersion = latestVersion
+	row.riskReason = violation.RiskReason
+	row.eolMessage = violation.EolMessage
+	return
+}
+
+func getOperationalRiskReadableData(violation *services.Violation) (isEol, cadence, commits, committers, newerVersions, latestVersion string) {
+	isEol, cadence, commits, committers, newerVersions, latestVersion = "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
+	if violation.IsEol != nil {
+		isEol = strconv.FormatBool(*violation.IsEol)
+	}
+	if violation.Cadence != nil {
+		cadence = strconv.FormatFloat(*violation.Cadence, 'f', -1, 64)
+	}
+	if violation.Committers != nil {
+		committers = strconv.FormatInt(int64(*violation.Committers), 10)
+	}
+	if violation.Commits != nil {
+		commits = strconv.FormatInt(*violation.Commits, 10)
+	}
+	if violation.NewerVersions != nil {
+		newerVersions = strconv.FormatInt(int64(*violation.NewerVersions), 10)
+	}
+	if violation.LatestVersion != "" {
+		latestVersion = violation.LatestVersion
+	}
+	return
 }

@@ -77,3 +77,43 @@ func TestGetDirectComponents(t *testing.T) {
 		assert.ElementsMatch(t, test.expectedRows, actualRows)
 	}
 }
+
+func TestGetOperationalRiskReadableData(t *testing.T) {
+	tests := []struct {
+		violation       *services.Violation
+		expectedResults []string
+	}{
+		{
+			&services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
+				Cadence: nil, Commits: nil, Committers: nil},
+			[]string{"N/A", "N/A", "N/A", "N/A", "N/A", "N/A"},
+		},
+		{
+			&services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
+				Cadence: newFloat64Ptr(3.5), Commits: newInt64Ptr(55), Committers: newIntPtr(10)},
+			[]string{"true", "3.5", "55", "10", "5", "1.2.3"},
+		},
+	}
+
+	for _, test := range tests {
+		isEol, cadence, commits, committers, newerVersions, latestVersion := getOperationalRiskReadableData(test.violation)
+		resultsArray := []string{isEol, cadence, commits, committers, newerVersions, latestVersion}
+		assert.ElementsMatch(t, resultsArray, test.expectedResults)
+	}
+}
+
+func newBoolPtr(v bool) *bool {
+	return &v
+}
+
+func newIntPtr(v int) *int {
+	return &v
+}
+
+func newInt64Ptr(v int64) *int64 {
+	return &v
+}
+
+func newFloat64Ptr(v float64) *float64 {
+	return &v
+}

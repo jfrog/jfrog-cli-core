@@ -31,7 +31,8 @@ const (
 )
 
 type EnvSetupCommand struct {
-	registrationURL   string
+	registrationURL string
+	// In case base64Credentials were provided - we have a registered user that was invited to the platform.
 	base64Credentials string
 	id                uuid.UUID
 	serverDetails     *config.ServerDetails

@@ -112,7 +112,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 					impactedPackageType:    impactedPackagesTypes[compIndex],
 					component:              components[compIndex],
 				}
-				populateOperationalRiskRowData(operationalRiskViolationsRow, &violation)
+				populateOperationalRiskRowData(operationalRiskViolationsRow, violation)
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
 		default:
@@ -475,7 +475,7 @@ func getSeverity(severityTitle string) *severity {
 	return severities[severityTitle]
 }
 
-func populateOperationalRiskRowData(row *operationalRiskViolationRow, violation *services.Violation) {
+func populateOperationalRiskRowData(row *operationalRiskViolationRow, violation services.Violation) {
 	isEol, cadence, commits, committers, newerVersions, latestVersion := getOperationalRiskReadableData(violation)
 	row.isEol = isEol
 	row.cadence = cadence
@@ -485,10 +485,9 @@ func populateOperationalRiskRowData(row *operationalRiskViolationRow, violation 
 	row.latestVersion = latestVersion
 	row.riskReason = violation.RiskReason
 	row.eolMessage = violation.EolMessage
-	return
 }
 
-func getOperationalRiskReadableData(violation *services.Violation) (isEol, cadence, commits, committers, newerVersions, latestVersion string) {
+func getOperationalRiskReadableData(violation services.Violation) (isEol, cadence, commits, committers, newerVersions, latestVersion string) {
 	isEol, cadence, commits, committers, newerVersions, latestVersion = "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
 	if violation.IsEol != nil {
 		isEol = strconv.FormatBool(*violation.IsEol)

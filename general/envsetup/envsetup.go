@@ -127,7 +127,9 @@ func (ftc *EnvSetupCommand) decodeBase64Credentials() (server *config.ServerDeta
 		return
 	}
 	err = json.Unmarshal(rawDecodedText, &server)
-	errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
 	return
 }
 

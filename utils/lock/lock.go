@@ -38,6 +38,7 @@ func (locks Locks) Less(i, j int) bool {
 
 // Creating a new lock object.
 func (lock *Lock) createNewLockFile(lockDirPath string) error {
+	lock.currentTime = time.Now().UnixNano()
 	err := fileutils.CreateDirIfNotExist(lockDirPath)
 	if err != nil {
 		return err
@@ -49,17 +50,11 @@ func (lock *Lock) createNewLockFile(lockDirPath string) error {
 
 func (lock *Lock) createFile(folderName string, pid int) error {
 	// We are creating an empty file with the pid and current time part of the name
-	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(time.Now().UnixNano(), 10))
-	log.Debug("Creating lock file: ", lock.fileName)
+	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
 	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	lock.currentTime = fileInfo.ModTime().UnixNano()
 	if err = file.Close(); err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -166,7 +161,14 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 	// Slice of all the timestamps that currently the lock directory has
 	var files Locks
 	for _, path := range filesList {
-		fileInfo, err := os.Stat(path)
+		fileName := filepath.Base(path)
+		splitted := strings.Split(fileName, ".")
+
+		if len(splitted) != 5 {
+			return nil, errorutils.CheckErrorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileName, path)
+		}
+		// Last element is the timestamp.
+		time, err := strconv.ParseInt(splitted[4], 10, 64)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// If file doesn't exist, then lock already deleted
@@ -174,16 +176,12 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 			}
 			return nil, errorutils.CheckError(err)
 		}
-		splitted := strings.Split(fileInfo.Name(), ".")
-		if len(splitted) != 5 {
-			return nil, errorutils.CheckErrorf("Failed while parsing the file name: %s located at: %s. Expecting a different format.", fileInfo.Name(), path)
-		}
 		pid, err := strconv.Atoi(splitted[3])
 		if err != nil {
 			return nil, errorutils.CheckError(err)
 		}
 		file := Lock{
-			currentTime: fileInfo.ModTime().UnixNano(),
+			currentTime: time,
 			pid:         pid,
 			fileName:    path,
 		}

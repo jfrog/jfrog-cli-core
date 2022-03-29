@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var testLockDirPath string
@@ -179,7 +180,11 @@ func TestCreateFile(t *testing.T) {
 }
 
 func getLock(pid int, t *testing.T) (Lock, string) {
-	lock := Lock{pid: pid}
+	currentTime := time.Now().UnixNano()
+	lock := Lock{
+		pid:         pid,
+		currentTime: currentTime,
+	}
 	assert.NotZero(t, testLockDirPath, "An error occurred while initializing testLockDirPath")
 	assert.NoError(t, fileutils.CreateDirIfNotExist(testLockDirPath))
 	err := lock.createFile(testLockDirPath, pid)

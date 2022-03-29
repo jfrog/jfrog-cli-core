@@ -73,14 +73,21 @@ func (solution *solution) BuildInfo(moduleName string) (*buildinfo.BuildInfo, er
 
 		// Populate requestedBy field
 		for _, directDepName := range directDeps {
-			directDep := dependencies[directDepName]
-			directDep.RequestedBy = [][]string{{module.Id}}
-			populateRequestedBy(*directDep, dependencies, childrenMap)
+			// Populate the direct dependency requested by only if the dependency exist in the cache
+			if directDep, exist := dependencies[directDepName]; exist {
+				directDep.RequestedBy = [][]string{{module.Id}}
+				populateRequestedBy(*directDep, dependencies, childrenMap)
+			}
 		}
 
 		// Populate module dependencies
 		for _, dep := range dependencies {
-			module.Dependencies = append(module.Dependencies, *dep)
+			// If dependency has no RequestedBy field, it means that the depedency not accessible in the current project.
+			// In that case, the dependency is assumed to be under a project which is referenced by this project.
+			// We therefore don't include the dependency in the build-info.
+			if len(dep.RequestedBy) > 0 {
+				module.Dependencies = append(module.Dependencies, *dep)
+			}
 		}
 
 		modules = append(modules, module)

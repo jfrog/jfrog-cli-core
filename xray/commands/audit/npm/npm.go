@@ -42,7 +42,7 @@ func (auditCmd *AuditNpmCommand) Run() (err error) {
 		return err
 	}
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), auditCmd.npmArgs, log.Logger)
+	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), auditCmd.npmArgs, false, log.Logger)
 	if err != nil {
 		return err
 	}

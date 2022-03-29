@@ -20,7 +20,6 @@ import (
 
 const (
 	GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"
-	GitHubIssuesUrl        = "https://github.com/jfrog/jfrog-cli/issues"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -402,9 +401,16 @@ func GetCliExecutableName() string {
 	return cliExecutableName
 }
 
-func GetFeedbackMessage() string {
-	return PrintBold("Your feedback is important.") + "\n" +
-		"We'd love to get your feedback and answer any questions you may have.\n" +
-		"Communicate with us by opening a GitHub issue -\n" +
-		PrintLink(GitHubIssuesUrl)
+// Turn a list of strings into a sentence.
+// For example, turn ["one", "two", "three"] into "one, two and three".
+// For a single element: "one".
+func ListToText(list []string) string {
+	if len(list) == 1 {
+		return list[0]
+	}
+	return strings.Join(list[0:len(list)-1], ", ") + " and " + list[len(list)-1]
+}
+
+func RemoveAllWhiteSpaces(input string) string {
+	return strings.Join(strings.Fields(input), "")
 }

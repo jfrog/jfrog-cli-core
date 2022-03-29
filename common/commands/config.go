@@ -419,6 +419,9 @@ func Export(serverName string) error {
 	if err != nil {
 		return err
 	}
+	if serverDetails.ServerId == "" {
+		return errorutils.CheckErrorf("cannot export config, because it is empty. Run 'jf c add' and then export again")
+	}
 	serverToken, err := config.Export(serverDetails)
 	if err != nil {
 		return err
@@ -464,9 +467,9 @@ func (cc *ConfigCommand) delete() error {
 		return err
 	}
 	var isDefault, isFoundName bool
-	for i, config := range configurations {
-		if config.ServerId == cc.serverId {
-			isDefault = config.IsDefault
+	for i, serverDetails := range configurations {
+		if serverDetails.ServerId == cc.serverId {
+			isDefault = serverDetails.IsDefault
 			configurations = append(configurations[:i], configurations[i+1:]...)
 			isFoundName = true
 			break
@@ -491,16 +494,16 @@ func (cc *ConfigCommand) use() error {
 	}
 	var serverFound *config.ServerDetails
 	newDefaultServer := true
-	for _, config := range configurations {
-		if config.ServerId == cc.serverId {
-			serverFound = config
-			if config.IsDefault {
+	for _, serverDetails := range configurations {
+		if serverDetails.ServerId == cc.serverId {
+			serverFound = serverDetails
+			if serverDetails.IsDefault {
 				newDefaultServer = false
 				break
 			}
-			config.IsDefault = true
+			serverDetails.IsDefault = true
 		} else {
-			config.IsDefault = false
+			serverDetails.IsDefault = false
 		}
 	}
 	// Need to save only if we found a server with the serverId

@@ -185,7 +185,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isTransitive, _ := file.IsTransitive(false)
 
 		if isTargetMandatory && !isTarget {
-			return errors.New("apec must include target")
+			return errors.New("spec must include target")
 		}
 		if !isSearchBasedSpec && !isPattern {
 			return errors.New("spec must include a pattern")

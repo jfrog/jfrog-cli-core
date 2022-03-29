@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"strings"
@@ -60,8 +61,10 @@ func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err
 			format = xrutils.Table
 		case string(xrutils.Json):
 			format = xrutils.Json
+		case string(xrutils.SimpleJson):
+			format = xrutils.SimpleJson
 		default:
-			err = errorutils.CheckErrorf("only the following output formats are supported: table or json")
+			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.OutputFormats))
 		}
 	}
 	return

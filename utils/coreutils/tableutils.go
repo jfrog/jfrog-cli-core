@@ -1,8 +1,10 @@
 package coreutils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"golang.org/x/term"
 	"math"
 	"os"
@@ -88,28 +90,58 @@ var DefaultMaxColWidth = 25
 // │ No customers were found │
 // └─────────────────────────┘
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) error {
+	tableWriter, _, err := PrepareTable(rows, emptyTableMessage, printExtended)
+	if err != nil || tableWriter == nil {
+		return err
+	}
+
 	if title != "" {
 		fmt.Println(title)
 	}
 
-	tableWriter := table.NewWriter()
-	tableWriter.SetOutputMirror(os.Stdout)
-
 	if IsTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
-
 	tableWriter.Style().Options.SeparateRows = true
+	tableWriter.SetOutputMirror(os.Stdout)
+	tableWriter.Render()
+	return nil
+}
+
+// Creates a table similar to PrintTable, but returns it as a slice of rows.
+// Each row is represented as a key:value where key is the column name and value is the corresponding value in the table.
+// For example, the following table:
+// ┌──────┬─────┐
+// │ Name │ Age │
+// ├──────┼─────┤
+// │ Gai  │ 350 │
+// ├──────┼─────┤
+// │ Noah │ 21  │
+// └──────┴─────┘
+// Becomes:
+// {[{"Name": "Gai", "Age": "350"}, {"Name": "Noah", "Age": "21"}]}
+func CreateJsonTable(rows interface{}) ([]map[string]interface{}, error) {
+	_, jsonTable, err := PrepareTable(rows, "", true)
+	return jsonTable, err
+}
+
+// Creates table following the logic described in PrintTable.
+// Returns:
+// Table Writer (table.Writer) - Can be used to adjust style, output mirror, render type, etc.
+// Table represented as JSON ([]map[string]interface{}) - As described in CreateJsonTable.
+// Error if occurred.
+func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool) (table.Writer, []map[string]interface{}, error) {
+	tableWriter := table.NewWriter()
 
 	rowsSliceValue := reflect.ValueOf(rows)
 	if rowsSliceValue.Len() == 0 && emptyTableMessage != "" {
 		PrintMessage(emptyTableMessage)
-		return nil
+		return nil, nil, nil
 	}
 
 	rowType := reflect.TypeOf(rows).Elem()
 	fieldsCount := rowType.NumField()
-	var columnsNames []interface{}
+	var columnsNames []string
 	var fieldsProperties []fieldProperties
 	var columnConfigs []table.ColumnConfig
 	for i := 0; i < fieldsCount; i++ {
@@ -129,7 +161,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 			var err error
 			columnsNames, columnConfigs, subfieldsProperties, err = appendEmbeddedTableFields(columnsNames, columnConfigs, field, printExtended)
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i, subfields: subfieldsProperties})
 		} else {
@@ -138,15 +170,16 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
 		}
 	}
-	tableWriter.AppendHeader(columnsNames)
+	tableWriter.AppendHeader(convertStringSliceToRow(columnsNames))
 	err := setColMaxWidth(columnConfigs, fieldsProperties)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	tableWriter.SetColumnConfigs(columnConfigs)
 
+	jsonTable := make([]map[string]interface{}, 0)
 	for i := 0; i < rowsSliceValue.Len(); i++ {
-		var rowValues []interface{}
+		var rowValues []string
 		currRowValue := rowsSliceValue.Index(i)
 		for _, fieldProps := range fieldsProperties {
 			currField := currRowValue.Field(fieldProps.index)
@@ -156,11 +189,38 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 				rowValues = append(rowValues, currField.String())
 			}
 		}
-		tableWriter.AppendRow(rowValues)
+		tableWriter.AppendRow(convertStringSliceToRow(rowValues))
+		rowObj, err := convertRowToObj(columnsNames, rowValues)
+		if err != nil {
+			return nil, nil, err
+		}
+		jsonTable = append(jsonTable, rowObj)
 	}
 
-	tableWriter.Render()
-	return nil
+	return tableWriter, jsonTable, nil
+}
+
+func convertStringSliceToRow(rowStr []string) table.Row {
+	row := make(table.Row, len(rowStr))
+	for i := range rowStr {
+		row[i] = rowStr[i]
+	}
+	return row
+}
+
+// Convert row to a slice of key:value objects where key is the column name.
+// {[{"Name": "Gai", "Age": "350"}, {"Name": "Noah", "Age": "21"}]}
+func convertRowToObj(cols []string, row []string) (map[string]interface{}, error) {
+	rowObj := make(map[string]interface{})
+	if len(cols) != len(row) {
+		return nil, errorutils.CheckError(errors.New("unexpected row size when creating table"))
+	}
+	for i := range row {
+		// Column names should be json keys, thus no spaces at all.
+		colName := RemoveAllWhiteSpaces(cols[i])
+		rowObj[colName] = strings.TrimSpace(row[i])
+	}
+	return rowObj, nil
 }
 
 type fieldProperties struct {
@@ -209,7 +269,7 @@ func getTerminalAllowedWidth(colNum int) (int, error) {
 	return width - subtraction, nil
 }
 
-func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {
+func appendEmbeddedTableFields(columnsNames []string, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]string, []table.ColumnConfig, []subfieldProperties, error) {
 	rowType := field.Type.Elem()
 	fieldsCount := rowType.NumField()
 	var subfieldsProperties []subfieldProperties
@@ -230,7 +290,7 @@ func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table
 	return columnsNames, columnConfigs, subfieldsProperties, nil
 }
 
-func appendEmbeddedTableStrings(rowValues []interface{}, fieldValue reflect.Value, subfieldsProperties []subfieldProperties) []interface{} {
+func appendEmbeddedTableStrings(rowValues []string, fieldValue reflect.Value, subfieldsProperties []subfieldProperties) []string {
 	sliceLen := fieldValue.Len()
 	numberOfColumns := len(subfieldsProperties)
 	tableStrings := make([]string, numberOfColumns)

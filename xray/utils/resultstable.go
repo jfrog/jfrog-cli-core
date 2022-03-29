@@ -11,21 +11,52 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
+const noContextMessage = "Note: no context was provided, so no policy could be determined to scan against.\n" +
+	"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
+	"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
+
 // PrintViolationsTable prints the violations in 3 tables: security violations, license compliance violations and ignore rule URLs.
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several different projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
+	securityViolationsRows, licenseViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, coreutils.IsTerminal())
+	if err != nil {
+		return err
+	}
+
+	// Print tables
+	err = coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found", printExtended)
+	if err != nil {
+		return err
+	}
+	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
+}
+
+// Same as PrintViolationsTable, but table is returned as a json map array.
+func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bool) ([]map[string]interface{}, []map[string]interface{}, error) {
+	securityViolationsRows, licenseViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	secViolationsJsonTable, err := coreutils.CreateJsonTable(securityViolationsRows)
+	if err != nil {
+		return nil, nil, err
+	}
+	licViolationsJsonTable, err := coreutils.CreateJsonTable(licenseViolationsRows)
+	return secViolationsJsonTable, licViolationsJsonTable, err
+}
+
+func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, []licenseViolationRow, error) {
 	var securityViolationsRows []vulnerabilityRow
 	var licenseViolationsRows []licenseViolationRow
-
-	coloredOutput := coreutils.IsTerminal()
 
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		currSeverity := getSeverity(violation.Severity)
 		if violation.ViolationType == "security" {
@@ -74,12 +105,7 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 		return licenseViolationsRows[i].severityNumValue > licenseViolationsRows[j].severityNumValue
 	})
 
-	// Print tables
-	err := coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found", printExtended)
-	if err != nil {
-		return err
-	}
-	return coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
+	return securityViolationsRows, licenseViolationsRows, nil
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
@@ -87,19 +113,33 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
-	fmt.Println("Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
-		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n" +
-		"Below are all vulnerabilities detected.")
+	fmt.Println(noContextMessage + "Below are all vulnerabilities detected.")
 
-	coloredOutput := coreutils.IsTerminal()
+	vulnerabilitiesRows, err := PrepareVulnerabilitiesTable(vulnerabilities, multipleRoots, coreutils.IsTerminal())
+	if err != nil {
+		return err
+	}
 
+	return coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found", printExtended)
+}
+
+// Same as PrintVulnerabilitiesTable, but table is returned as a json map array.
+func CreateJsonVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) ([]map[string]interface{}, error) {
+	vulnerabilitiesRows, err := PrepareVulnerabilitiesTable(vulnerabilities, multipleRoots, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return coreutils.CreateJsonTable(vulnerabilitiesRows)
+}
+
+func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, error) {
 	var vulnerabilitiesRows []vulnerabilityRow
 
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
 		currSeverity := getSeverity(vulnerability.Severity)
@@ -126,9 +166,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		}
 		return vulnerabilitiesRows[i].fixedVersions != "" && vulnerabilitiesRows[j].fixedVersions == ""
 	})
-
-	err := coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found", printExtended)
-	return err
+	return vulnerabilitiesRows, nil
 }
 
 // PrintLicensesTable prints the licenses in a table.
@@ -136,12 +174,31 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {
+	licensesRows, err := PrepareJsonLicensesTable(licenses, multipleRoots)
+	if err != nil {
+		return err
+	}
+
+	return coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found", printExtended)
+}
+
+// Same as PrintLicensesTable, but table is returned as a json map array.
+func CreateJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]map[string]interface{}, error) {
+	licensesRows, err := PrepareJsonLicensesTable(licenses, multipleRoots)
+	if err != nil {
+		return nil, err
+	}
+
+	return coreutils.CreateJsonTable(licensesRows)
+}
+
+func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]licenseRow, error) {
 	var licensesRows []licenseRow
 
 	for _, license := range licenses {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
@@ -156,8 +213,7 @@ func PrintLicensesTable(licenses []services.License, multipleRoots, printExtende
 		}
 	}
 
-	err := coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found", printExtended)
-	return err
+	return licensesRows, nil
 }
 
 // Used for vulnerabilities and security violations
@@ -200,6 +256,14 @@ type cveRow struct {
 	id     string `col-name:"CVE"`
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
+}
+
+// This struct holds the sorted results of the simple-json output.
+type ResultsSimpleJson struct {
+	Vulnerabilities    []map[string]interface{}
+	SecurityViolations []map[string]interface{}
+	LicensesViolations []map[string]interface{}
+	Licenses           []map[string]interface{}
 }
 
 func convertCves(cves []services.Cve) []cveRow {

@@ -21,13 +21,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-type CmdType string
+type ConfigAction string
 
 const (
-	AddOrEdit CmdType = "AddOrEdit"
-	Delete    CmdType = "Delete"
-	Use       CmdType = "Use"
-	Clear     CmdType = "Clear"
+	AddOrEdit ConfigAction = "AddOrEdit"
+	Delete    ConfigAction = "Delete"
+	Use       ConfigAction = "Use"
+	Clear     ConfigAction = "Clear"
 )
 
 // Internal golang locking for the same process.
@@ -42,10 +42,10 @@ type ConfigCommand struct {
 	serverId         string
 	// For unit tests
 	disablePromptUrls bool
-	cmdType           CmdType
+	cmdType           ConfigAction
 }
 
-func NewConfigCommand(cmdType CmdType, serverId string) *ConfigCommand {
+func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
 	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
 }
 

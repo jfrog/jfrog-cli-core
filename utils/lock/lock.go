@@ -168,6 +168,10 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 	for _, path := range filesList {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
+			if os.IsNotExist(err) {
+				// If file doesn't exist, then lock already deleted
+				continue
+			}
 			return nil, errorutils.CheckError(err)
 		}
 		splitted := strings.Split(fileInfo.Name(), ".")

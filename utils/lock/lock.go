@@ -170,10 +170,6 @@ func (lock *Lock) getLocks(filesList []string) (Locks, error) {
 		// Last element is the timestamp.
 		time, err := strconv.ParseInt(splitted[4], 10, 64)
 		if err != nil {
-			if os.IsNotExist(err) {
-				// If file doesn't exist, then lock already deleted
-				continue
-			}
 			return nil, errorutils.CheckError(err)
 		}
 		pid, err := strconv.Atoi(splitted[3])

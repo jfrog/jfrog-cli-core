@@ -90,7 +90,3 @@ func (ic *InviteCommand) createNewInvitedUser() *services.User {
 	userDetails.InternalPasswordDisabled = &falseValue
 	return &userDetails
 }
-
-type InvitedUser struct {
-	Email string `json:"invitedEmail,omitempty" csv:"invitedEmail,omitempty"`
-}

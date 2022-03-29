@@ -84,7 +84,7 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 		coreutils.PrintTitle("🔍 Scan the dependencies of this project for security vulnerabilities by running") +
 		"\n" +
 		"jf audit\n\n" +
-		coreutils.PrintTitle("🔍 Scan any software package on you machine for security vulnerabilities by running") +
+		coreutils.PrintTitle("📦 Scan any software package on you machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
 		coreutils.PrintTitle("🐳 Scan any local docker image on you machine for security vulnerabilities by running") +

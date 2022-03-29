@@ -8,6 +8,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -15,20 +16,18 @@ type OutputFormat string
 
 const (
 	// OutputFormat values
-	Table OutputFormat = "table"
-	Json  OutputFormat = "json"
+	Table      OutputFormat = "table"
+	Json       OutputFormat = "json"
+	SimpleJson OutputFormat = "simple-json"
 )
 
-func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) (err error) {
-	if isTableFormat {
-		var violations []services.Violation
-		var vulnerabilities []services.Vulnerability
-		var licenses []services.License
-		for _, result := range results {
-			violations = append(violations, result.Violations...)
-			vulnerabilities = append(vulnerabilities, result.Vulnerabilities...)
-			licenses = append(licenses, result.Licenses...)
-		}
+var OutputFormats = []string{string(Table), string(Json), string(SimpleJson)}
+
+func PrintScanResults(results []services.ScanResponse, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
+	switch format {
+	case Table:
+		var err error
+		violations, vulnerabilities, licenses := splitScanResults(results)
 
 		if len(results) > 0 {
 			resultsPath, err := writeJsonResults(results)
@@ -48,13 +47,51 @@ func PrintScanResults(results []services.ScanResponse, isTableFormat, includeVul
 		if includeLicenses {
 			err = PrintLicensesTable(licenses, isMultipleRoots, printExtended)
 		}
-		if err != nil {
-			return err
+		return err
+	case SimpleJson:
+		violations, vulnerabilities, licenses := splitScanResults(results)
+		jsonTable := ResultsSimpleJson{}
+		if includeVulnerabilities {
+			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
+			vulJsonTable, err := CreateJsonVulnerabilitiesTable(vulnerabilities, isMultipleRoots)
+			if err != nil {
+				return err
+			}
+			jsonTable.Vulnerabilities = vulJsonTable
+		} else {
+			secViolationsJsonTable, licViolationsJsonTable, err := CreateJsonViolationsTable(violations, isMultipleRoots)
+			if err != nil {
+				return err
+			}
+			jsonTable.SecurityViolations = secViolationsJsonTable
+			jsonTable.LicensesViolations = licViolationsJsonTable
 		}
-	} else {
-		err = printJson(results)
+
+		if includeLicenses {
+			licJsonTable, err := CreateJsonLicensesTable(licenses, isMultipleRoots)
+			if err != nil {
+				return err
+			}
+			jsonTable.Licenses = licJsonTable
+		}
+		return printJson(jsonTable)
+	case Json:
+		return printJson(results)
 	}
-	return err
+	return nil
+}
+
+// Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
+func splitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
+	var violations []services.Violation
+	var vulnerabilities []services.Vulnerability
+	var licenses []services.License
+	for _, result := range results {
+		violations = append(violations, result.Violations...)
+		vulnerabilities = append(vulnerabilities, result.Vulnerabilities...)
+		licenses = append(licenses, result.Licenses...)
+	}
+	return violations, vulnerabilities, licenses
 }
 
 func writeJsonResults(results []services.ScanResponse) (resultsPath string, err error) {
@@ -89,8 +126,8 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 	return
 }
 
-func printJson(jsonRes []services.ScanResponse) error {
-	results, err := json.Marshal(&jsonRes)
+func printJson(output interface{}) error {
+	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

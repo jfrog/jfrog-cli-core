@@ -188,7 +188,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	if scanCmd.progress != nil {
 		scanCmd.progress.ClearHeadlineMsg()
 	}
-	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat == xrutils.Table, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true, scanCmd.printExtendedTable)
+	err = xrutils.PrintScanResults(flatResults, scanCmd.outputFormat, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true, scanCmd.printExtendedTable)
 	if err != nil {
 		return err
 	}

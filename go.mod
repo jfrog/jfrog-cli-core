@@ -9,9 +9,9 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.3.0
-	github.com/jfrog/build-info-go v1.2.0
+	github.com/jfrog/build-info-go v1.2.1
 	github.com/jfrog/gofrog v1.1.1
-	github.com/jfrog/jfrog-client-go v1.11.1
+	github.com/jfrog/jfrog-client-go v1.11.3
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -38,7 +38,7 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
-	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70 // indirect
+	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -83,7 +83,13 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.10.1-0.20220307134618-940f00d5517b
+// Exclude vulnerable dependencies
+exclude (
+	github.com/miekg/dns v1.0.14
+	github.com/pkg/sftp v1.10.1
+)
+
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.11.4-0.20220329110253-39892f2a323d
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.1.2-0.20220320172359-114c9ce2e4b4
 

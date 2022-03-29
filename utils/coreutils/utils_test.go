@@ -156,3 +156,9 @@ func TestParseYesNo(t *testing.T) {
 		})
 	}
 }
+
+func TestListToText(t *testing.T) {
+	assert.Equal(t, ListToText([]string{"one"}), "one")
+	assert.Equal(t, ListToText([]string{"one", "two"}), "one and two")
+	assert.Equal(t, ListToText([]string{"one", "two", "three"}), "one, two and three")
+}

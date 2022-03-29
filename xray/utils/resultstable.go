@@ -89,7 +89,6 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 			}
 		case "license":
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-
 				licenseViolationsRows = append(licenseViolationsRows,
 					licenseViolationRow{
 						licenseKey:             violation.LicenseKey,
@@ -103,6 +102,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 				)
 			}
 		case "operational_risk":
+			violationOpRiskData := getOperationalRiskViolationReadableData(&violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &operationalRiskViolationRow{
 					severity:               currSeverity.printableTitle(coloredOutput),
@@ -111,8 +111,15 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 					impactedPackageVersion: impactedPackagesVersions[compIndex],
 					impactedPackageType:    impactedPackagesTypes[compIndex],
 					component:              components[compIndex],
+					isEol:                  violationOpRiskData.isEol,
+					cadence:                violationOpRiskData.cadence,
+					commits:                violationOpRiskData.commits,
+					committers:             violationOpRiskData.committers,
+					newerVersions:          violationOpRiskData.newerVersions,
+					latestVersion:          violationOpRiskData.latestVersion,
+					riskReason:             violationOpRiskData.riskReason,
+					eolMessage:             violationOpRiskData.eolMessage,
 				}
-				populateOperationalRiskRowData(operationalRiskViolationsRow, violation)
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
 		default:
@@ -284,8 +291,8 @@ type operationalRiskViolationRow struct {
 	impactedPackageType    string         `col-name:"Type"`
 	component              []componentRow `embed-table:"true"`
 	riskReason             string         `col-name:"Risk\nReason"`
-	isEol                  string         `col-name:"Is End\nOf Life" extended:"true"`
-	eolMessage             string         `col-name:"End Of\nLife Message" extended:"true"`
+	isEol                  string         `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
+	eolMessage             string         `col-name:"End\nOf\nLife\nMessage" extended:"true"`
 	cadence                string         `col-name:"Cadence"  extended:"true"`
 	commits                string         `col-name:"Commits"  extended:"true"`
 	committers             string         `col-name:"Committers"  extended:"true"`
@@ -475,20 +482,19 @@ func getSeverity(severityTitle string) *severity {
 	return severities[severityTitle]
 }
 
-func populateOperationalRiskRowData(row *operationalRiskViolationRow, violation services.Violation) {
-	isEol, cadence, commits, committers, newerVersions, latestVersion := getOperationalRiskReadableData(violation)
-	row.isEol = isEol
-	row.cadence = cadence
-	row.commits = commits
-	row.committers = committers
-	row.newerVersions = newerVersions
-	row.latestVersion = latestVersion
-	row.riskReason = violation.RiskReason
-	row.eolMessage = violation.EolMessage
+type operationalRiskViolationReadableData struct {
+	isEol         string
+	cadence       string
+	commits       string
+	committers    string
+	eolMessage    string
+	riskReason    string
+	latestVersion string
+	newerVersions string
 }
 
-func getOperationalRiskReadableData(violation services.Violation) (isEol, cadence, commits, committers, newerVersions, latestVersion string) {
-	isEol, cadence, commits, committers, newerVersions, latestVersion = "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
+func getOperationalRiskViolationReadableData(violation *services.Violation) *operationalRiskViolationReadableData {
+	isEol, cadence, commits, committers, newerVersions, latestVersion := "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
 	if violation.IsEol != nil {
 		isEol = strconv.FormatBool(*violation.IsEol)
 	}
@@ -507,5 +513,14 @@ func getOperationalRiskReadableData(violation services.Violation) (isEol, cadenc
 	if violation.LatestVersion != "" {
 		latestVersion = violation.LatestVersion
 	}
-	return
+	return &operationalRiskViolationReadableData{
+		isEol:         isEol,
+		cadence:       cadence,
+		commits:       commits,
+		committers:    committers,
+		eolMessage:    violation.EolMessage,
+		riskReason:    violation.RiskReason,
+		latestVersion: latestVersion,
+		newerVersions: newerVersions,
+	}
 }

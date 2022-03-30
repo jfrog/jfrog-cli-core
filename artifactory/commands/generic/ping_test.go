@@ -21,12 +21,12 @@ func TestPingSuccess(t *testing.T) {
 	defer ts.Close()
 	responseBytes, err := new(PingCommand).SetServerDetails(&config.ServerDetails{ArtifactoryUrl: ts.URL + "/"}).Ping()
 	if err != nil {
-		t.Log(fmt.Sprintf("Error received from Artifactory following ping request: %s", err))
+		t.Logf("Error received from Artifactory following ping request: %s", err)
 		t.Fail()
 	}
 	responseString := string(responseBytes)
 	if responseString != "OK" {
-		t.Log(fmt.Sprintf("Non 'OK' response received from Artifactory following ping request:: %s", responseString))
+		t.Logf("Non 'OK' response received from Artifactory following ping request:: %s", responseString)
 		t.Fail()
 	}
 }

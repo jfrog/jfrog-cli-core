@@ -36,7 +36,10 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 	if err != nil {
 		return err
 	}
-	return coreutils.PrintTable(operationalRiskViolationsRows, "Operational Risk Violations", "No operational risk violations were found", printExtended)
+	if len(operationalRiskViolationsRows) > 0 {
+		return coreutils.PrintTable(operationalRiskViolationsRows, "Operational Risk Violations", "No operational risk violations were found", printExtended)
+	}
+	return nil
 }
 
 // Same as PrintViolationsTable, but table is returned as a json map array.

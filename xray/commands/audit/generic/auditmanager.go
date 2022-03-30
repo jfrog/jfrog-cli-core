@@ -5,18 +5,20 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	_go "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/go"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/java"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/npm"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/nuget"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/python"
+	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/npm"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
+// GenericAudit audits the project found in the current directory using Xray.
 func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-
+	// If no technologies were given, try to detect all types of technologies that in used.
+	// Otherwise run audit for requested technologies only.
 	if len(technologies) == 0 {
 		technologies, err = detectedTechnologies()
 		if err != nil {
@@ -47,7 +49,6 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 		}
 	}
 	return
-
 }
 
 func detectedTechnologies() (technologies []string, err error) {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"

@@ -17,7 +17,7 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 	"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
-// Set multipleRoots to true in case the given violations array contains (or may contain) results of several different projects or files (like in binary scan).
+// Set multipleRoots to true in case the given violations array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
@@ -148,7 +148,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 }
 
 // PrintVulnerabilitiesTable prints the vulnerabilities in a table.
-// Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several different projects or files (like in binary scan).
+// Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {

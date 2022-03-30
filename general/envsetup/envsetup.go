@@ -71,7 +71,7 @@ func (ftc *EnvSetupCommand) clearHeadlineMsg() {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.setHeadlineMsg("Just fill out its details in your browser")
+	ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
 	time.Sleep(8 * time.Second)
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
@@ -155,7 +155,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		if resp.StatusCode == http.StatusOK {
 			if !readyMessageDisplayed {
 				ftc.clearHeadlineMsg()
-				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup")
+				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
 				readyMessageDisplayed = true
 			}
 			statusResponse := myJfrogGetStatusResponse{}

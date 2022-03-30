@@ -59,12 +59,13 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 			}
 			jsonTable.Vulnerabilities = vulJsonTable
 		} else {
-			secViolationsJsonTable, licViolationsJsonTable, err := CreateJsonViolationsTable(violations, isMultipleRoots)
+			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := CreateJsonViolationsTable(violations, isMultipleRoots)
 			if err != nil {
 				return err
 			}
 			jsonTable.SecurityViolations = secViolationsJsonTable
 			jsonTable.LicensesViolations = licViolationsJsonTable
+			jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 		}
 
 		if includeLicenses {

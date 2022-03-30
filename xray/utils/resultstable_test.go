@@ -77,3 +77,42 @@ func TestGetDirectComponents(t *testing.T) {
 		assert.ElementsMatch(t, test.expectedRows, actualRows)
 	}
 }
+
+func TestGetOperationalRiskReadableData(t *testing.T) {
+	tests := []struct {
+		violation       services.Violation
+		expectedResults *operationalRiskViolationReadableData
+	}{
+		{
+			services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
+				Cadence: nil, Commits: nil, Committers: nil, RiskReason: "", EolMessage: ""},
+			&operationalRiskViolationReadableData{"N/A", "N/A", "N/A", "N/A", "", "", "N/A", "N/A"},
+		},
+		{
+			services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
+				Cadence: newFloat64Ptr(3.5), Commits: newInt64Ptr(55), Committers: newIntPtr(10), EolMessage: "no maintainers", RiskReason: "EOL"},
+			&operationalRiskViolationReadableData{"true", "3.5", "55", "10", "no maintainers", "EOL", "1.2.3", "5"},
+		},
+	}
+
+	for _, test := range tests {
+		results := getOperationalRiskViolationReadableData(test.violation)
+		assert.Equal(t, test.expectedResults, results)
+	}
+}
+
+func newBoolPtr(v bool) *bool {
+	return &v
+}
+
+func newIntPtr(v int) *int {
+	return &v
+}
+
+func newInt64Ptr(v int64) *int64 {
+	return &v
+}
+
+func newFloat64Ptr(v float64) *float64 {
+	return &v
+}

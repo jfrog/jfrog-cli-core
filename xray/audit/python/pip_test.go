@@ -1,10 +1,11 @@
 package python
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildPipDependencyListSetuppy(t *testing.T) {
@@ -12,8 +13,7 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPipCommand()
-	rootNodes, err := auditCmd.buildPipDependencyTree()
+	rootNodes, err := BuildPipDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNodes)
 	if rootNodes != nil {
@@ -31,8 +31,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditPipCommand()
-	rootNodes, err := auditCmd.buildPipDependencyTree()
+	rootNodes, err := BuildPipDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNodes)
 	if rootNodes != nil {

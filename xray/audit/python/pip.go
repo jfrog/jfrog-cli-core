@@ -4,35 +4,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	piputils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-type AuditPipCommand struct {
-	audit.AuditCommand
-}
-
-func NewEmptyAuditPipCommand() *AuditPipCommand {
-	return &AuditPipCommand{AuditCommand: *audit.NewAuditCommand()}
-}
-
-func NewAuditPipCommand(auditCmd audit.AuditCommand) *AuditPipCommand {
-	return &AuditPipCommand{AuditCommand: auditCmd}
-}
-
-func (apc *AuditPipCommand) Run() error {
-	dependencyTree, err := apc.buildPipDependencyTree()
+func AuditPip(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildPipDependencyTree()
 	if err != nil {
-		return err
+		return
 	}
-	return apc.ScanDependencyTree(dependencyTree)
+	isMultipleRootProject = len(graph) > 1
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	return
 }
 
-func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := apc.getDependencies()
+func BuildPipDependencyTree() ([]*services.GraphNode, error) {
+	dependenciesGraph, rootDependenciesList, err := getDependencies()
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +39,7 @@ func (apc *AuditPipCommand) buildPipDependencyTree() ([]*services.GraphNode, err
 	return dependencyTree, nil
 }
 
-func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return
@@ -107,8 +98,4 @@ func (apc *AuditPipCommand) getDependencies() (dependenciesGraph map[string][]st
 	// Run pipdeptree.py to get dependencies tree
 	dependenciesGraph, rootDependencies, err = piputils.RunPipDepTree(piputils.GetVenvPythonExecPath())
 	return
-}
-
-func (apc *AuditPipCommand) CommandName() string {
-	return "xr_audit_pip"
 }

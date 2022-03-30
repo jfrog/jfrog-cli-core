@@ -61,9 +61,9 @@ func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bo
 	return secViolationsJsonTable, licViolationsJsonTable, operationalRiskViolationsJsonTable, err
 }
 
-func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, []licenseViolationRow, []operationalRiskViolationRow, error) {
-	var securityViolationsRows []vulnerabilityRow
-	var licenseViolationsRows []licenseViolationRow
+func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, []LicenseViolationRow, []operationalRiskViolationRow, error) {
+	var securityViolationsRows []VulnerabilityRow
+	var licenseViolationsRows []LicenseViolationRow
 	var operationalRiskViolationsRows []operationalRiskViolationRow
 
 	for _, violation := range violations {
@@ -77,30 +77,30 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 			cves := convertCves(violation.Cves)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
-					vulnerabilityRow{
-						severity:               currSeverity.printableTitle(coloredOutput),
-						severityNumValue:       currSeverity.numValue,
-						impactedPackageName:    impactedPackagesNames[compIndex],
-						impactedPackageVersion: impactedPackagesVersions[compIndex],
-						impactedPackageType:    impactedPackagesTypes[compIndex],
-						fixedVersions:          fixedVersions[compIndex],
-						components:             components[compIndex],
-						cves:                   cves,
-						issueId:                violation.IssueId,
+					VulnerabilityRow{
+						Severity:               currSeverity.printableTitle(coloredOutput),
+						SeverityNumValue:       currSeverity.numValue,
+						ImpactedPackageName:    impactedPackagesNames[compIndex],
+						ImpactedPackageVersion: impactedPackagesVersions[compIndex],
+						ImpactedPackageType:    impactedPackagesTypes[compIndex],
+						FixedVersions:          fixedVersions[compIndex],
+						Components:             components[compIndex],
+						Cves:                   cves,
+						IssueId:                violation.IssueId,
 					},
 				)
 			}
 		case "license":
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
-					licenseViolationRow{
-						licenseKey:             violation.LicenseKey,
-						severity:               currSeverity.printableTitle(coloredOutput),
-						severityNumValue:       currSeverity.numValue,
-						impactedPackageName:    impactedPackagesNames[compIndex],
-						impactedPackageVersion: impactedPackagesVersions[compIndex],
-						impactedPackageType:    impactedPackagesTypes[compIndex],
-						components:             components[compIndex],
+					LicenseViolationRow{
+						LicenseKey:             violation.LicenseKey,
+						Severity:               currSeverity.printableTitle(coloredOutput),
+						SeverityNumValue:       currSeverity.numValue,
+						ImpactedPackageName:    impactedPackagesNames[compIndex],
+						ImpactedPackageVersion: impactedPackagesVersions[compIndex],
+						ImpactedPackageType:    impactedPackagesTypes[compIndex],
+						Components:             components[compIndex],
 					},
 				)
 			}
@@ -132,13 +132,13 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 
 	// Sort the rows by severity and whether the row contains fixed versions
 	sort.Slice(securityViolationsRows, func(i, j int) bool {
-		if securityViolationsRows[i].severityNumValue != securityViolationsRows[j].severityNumValue {
-			return securityViolationsRows[i].severityNumValue > securityViolationsRows[j].severityNumValue
+		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
+			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
 		}
-		return securityViolationsRows[i].fixedVersions != "" && securityViolationsRows[j].fixedVersions == ""
+		return securityViolationsRows[i].FixedVersions != "" && securityViolationsRows[j].FixedVersions == ""
 	})
 	sort.Slice(licenseViolationsRows, func(i, j int) bool {
-		return licenseViolationsRows[i].severityNumValue > licenseViolationsRows[j].severityNumValue
+		return licenseViolationsRows[i].SeverityNumValue > licenseViolationsRows[j].SeverityNumValue
 	})
 	sort.Slice(operationalRiskViolationsRows, func(i, j int) bool {
 		return operationalRiskViolationsRows[i].severityNumValue > operationalRiskViolationsRows[j].severityNumValue
@@ -172,8 +172,8 @@ func CreateJsonVulnerabilitiesTable(vulnerabilities []services.Vulnerability, mu
 	return coreutils.CreateJsonTable(vulnerabilitiesRows)
 }
 
-func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, error) {
-	var vulnerabilitiesRows []vulnerabilityRow
+func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, error) {
+	var vulnerabilitiesRows []VulnerabilityRow
 
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
@@ -184,26 +184,26 @@ func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multi
 		currSeverity := getSeverity(vulnerability.Severity)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
-				vulnerabilityRow{
-					severity:               currSeverity.printableTitle(coloredOutput),
-					severityNumValue:       currSeverity.numValue,
-					impactedPackageName:    impactedPackagesNames[compIndex],
-					impactedPackageVersion: impactedPackagesVersions[compIndex],
-					impactedPackageType:    impactedPackagesTypes[compIndex],
-					fixedVersions:          fixedVersions[compIndex],
-					components:             components[compIndex],
-					cves:                   cves,
-					issueId:                vulnerability.IssueId,
+				VulnerabilityRow{
+					Severity:               currSeverity.printableTitle(coloredOutput),
+					SeverityNumValue:       currSeverity.numValue,
+					ImpactedPackageName:    impactedPackagesNames[compIndex],
+					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
+					ImpactedPackageType:    impactedPackagesTypes[compIndex],
+					FixedVersions:          fixedVersions[compIndex],
+					Components:             components[compIndex],
+					Cves:                   cves,
+					IssueId:                vulnerability.IssueId,
 				},
 			)
 		}
 	}
 
 	sort.Slice(vulnerabilitiesRows, func(i, j int) bool {
-		if vulnerabilitiesRows[i].severityNumValue != vulnerabilitiesRows[j].severityNumValue {
-			return vulnerabilitiesRows[i].severityNumValue > vulnerabilitiesRows[j].severityNumValue
+		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
+			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
 		}
-		return vulnerabilitiesRows[i].fixedVersions != "" && vulnerabilitiesRows[j].fixedVersions == ""
+		return vulnerabilitiesRows[i].FixedVersions != "" && vulnerabilitiesRows[j].FixedVersions == ""
 	})
 	return vulnerabilitiesRows, nil
 }
@@ -231,8 +231,8 @@ func CreateJsonLicensesTable(licenses []services.License, multipleRoots bool) ([
 	return coreutils.CreateJsonTable(licensesRows)
 }
 
-func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]licenseRow, error) {
-	var licensesRows []licenseRow
+func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]LicenseRow, error) {
+	var licensesRows []LicenseRow
 
 	for _, license := range licenses {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
@@ -241,12 +241,12 @@ func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) (
 		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
-				licenseRow{
-					licenseKey:             license.Key,
-					impactedPackageName:    impactedPackagesNames[compIndex],
-					impactedPackageVersion: impactedPackagesVersions[compIndex],
-					impactedPackageType:    impactedPackagesTypes[compIndex],
-					components:             components[compIndex],
+				LicenseRow{
+					LicenseKey:             license.Key,
+					ImpactedPackageName:    impactedPackagesNames[compIndex],
+					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
+					ImpactedPackageType:    impactedPackagesTypes[compIndex],
+					Components:             components[compIndex],
 				},
 			)
 		}
@@ -256,34 +256,34 @@ func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) (
 }
 
 // Used for vulnerabilities and security violations
-type vulnerabilityRow struct {
-	severity               string         `col-name:"Severity"`
-	severityNumValue       int            // For sorting
-	impactedPackageName    string         `col-name:"Impacted\nPackage"`
-	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	impactedPackageType    string         `col-name:"Type"`
-	fixedVersions          string         `col-name:"Fixed\nVersions"`
-	components             []componentRow `embed-table:"true"`
-	cves                   []cveRow       `embed-table:"true"`
-	issueId                string         `col-name:"Issue ID" extended:"true"`
+type VulnerabilityRow struct {
+	Severity               string         `col-name:"Severity"`
+	SeverityNumValue       int            // For sorting
+	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedPackageType    string         `col-name:"Type"`
+	FixedVersions          string         `col-name:"Fixed\nVersions"`
+	Components             []ComponentRow `embed-table:"true"`
+	Cves                   []CveRow       `embed-table:"true"`
+	IssueId                string         `col-name:"Issue ID" extended:"true"`
 }
 
-type licenseRow struct {
-	licenseKey             string         `col-name:"License"`
-	impactedPackageName    string         `col-name:"Impacted\nPackage"`
-	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	impactedPackageType    string         `col-name:"Type"`
-	components             []componentRow `embed-table:"true"`
+type LicenseRow struct {
+	LicenseKey             string         `col-name:"License"`
+	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedPackageType    string         `col-name:"Type"`
+	Components             []ComponentRow `embed-table:"true"`
 }
 
-type licenseViolationRow struct {
-	licenseKey             string         `col-name:"License"`
-	severity               string         `col-name:"Severity"`
-	severityNumValue       int            // For sorting
-	impactedPackageName    string         `col-name:"Impacted\nPackage"`
-	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	impactedPackageType    string         `col-name:"Type"`
-	components             []componentRow `embed-table:"true"`
+type LicenseViolationRow struct {
+	LicenseKey             string         `col-name:"License"`
+	Severity               string         `col-name:"Severity"`
+	SeverityNumValue       int            // For sorting
+	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedPackageType    string         `col-name:"Type"`
+	Components             []ComponentRow `embed-table:"true"`
 }
 
 type operationalRiskViolationRow struct {
@@ -292,7 +292,7 @@ type operationalRiskViolationRow struct {
 	impactedPackageName    string         `col-name:"Impacted\nPackage"`
 	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
-	component              []componentRow `embed-table:"true"`
+	component              []ComponentRow `embed-table:"true"`
 	riskReason             string         `col-name:"Risk\nReason"`
 	isEol                  string         `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
 	eolMessage             string         `col-name:"End\nOf\nLife\nMessage" extended:"true"`
@@ -303,15 +303,15 @@ type operationalRiskViolationRow struct {
 	latestVersion          string         `col-name:"Latest\nVersion" extended:"true"`
 }
 
-type componentRow struct {
-	name    string `col-name:"Component"`
-	version string `col-name:"Component\nVersion"`
+type ComponentRow struct {
+	Name    string `col-name:"Component"`
+	Version string `col-name:"Component\nVersion"`
 }
 
-type cveRow struct {
-	id     string `col-name:"CVE"`
-	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
-	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
+type CveRow struct {
+	Id     string `col-name:"CVE"`
+	CvssV2 string `col-name:"CVSS\nv2" extended:"true"`
+	CvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
 
 // This struct holds the sorted results of the simple-json output.
@@ -323,20 +323,20 @@ type ResultsSimpleJson struct {
 	Licenses                  []map[string]interface{}
 }
 
-func convertCves(cves []services.Cve) []cveRow {
-	var cveRows []cveRow
+func convertCves(cves []services.Cve) []CveRow {
+	var cveRows []CveRow
 	for _, cveObj := range cves {
-		cveRows = append(cveRows, cveRow{id: cveObj.Id, cvssV2: cveObj.CvssV2Score, cvssV3: cveObj.CvssV3Score})
+		cveRows = append(cveRows, CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
 	}
 	return cveRows
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]componentRow, error) {
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]ComponentRow, error) {
 	if len(impactedPackages) == 0 {
 		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 	}
 	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
-	var directComponents [][]componentRow
+	var directComponents [][]ComponentRow
 	for currCompId, currComp := range impactedPackages {
 		currCompName, currCompVersion, currCompType := splitComponentId(currCompId)
 		impactedPackagesNames = append(impactedPackagesNames, currCompName)
@@ -430,9 +430,9 @@ func splitComponentId(componentId string) (string, string, string) {
 }
 
 // Gets a string of the direct dependencies or packages of the scanned component, that depends on the vulnerable package
-func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []componentRow {
-	var components []componentRow
-	componentsMap := make(map[string]componentRow)
+func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []ComponentRow {
+	var components []ComponentRow
+	componentsMap := make(map[string]ComponentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
 	impactPathLevel := 1
@@ -448,7 +448,7 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		componentId := impactPath[impactPathIndex].ComponentId
 		if _, exist := componentsMap[componentId]; !exist {
 			compName, compVersion, _ := splitComponentId(componentId)
-			componentsMap[componentId] = componentRow{name: compName, version: compVersion}
+			componentsMap[componentId] = ComponentRow{Name: compName, Version: compVersion}
 		}
 	}
 

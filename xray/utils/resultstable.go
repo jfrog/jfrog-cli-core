@@ -105,7 +105,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 				)
 			}
 		case "operational_risk":
-			violationOpRiskData := getOperationalRiskViolationReadableData(&violation)
+			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &operationalRiskViolationRow{
 					severity:               currSeverity.printableTitle(coloredOutput),
@@ -496,7 +496,7 @@ type operationalRiskViolationReadableData struct {
 	newerVersions string
 }
 
-func getOperationalRiskViolationReadableData(violation *services.Violation) *operationalRiskViolationReadableData {
+func getOperationalRiskViolationReadableData(violation services.Violation) *operationalRiskViolationReadableData {
 	isEol, cadence, commits, committers, newerVersions, latestVersion := "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
 	if violation.IsEol != nil {
 		isEol = strconv.FormatBool(*violation.IsEol)

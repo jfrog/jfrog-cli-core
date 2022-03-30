@@ -80,16 +80,16 @@ func TestGetDirectComponents(t *testing.T) {
 
 func TestGetOperationalRiskReadableData(t *testing.T) {
 	tests := []struct {
-		violation       *services.Violation
+		violation       services.Violation
 		expectedResults *operationalRiskViolationReadableData
 	}{
 		{
-			&services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
+			services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
 				Cadence: nil, Commits: nil, Committers: nil, RiskReason: "", EolMessage: ""},
 			&operationalRiskViolationReadableData{"N/A", "N/A", "N/A", "N/A", "", "", "N/A", "N/A"},
 		},
 		{
-			&services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
+			services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
 				Cadence: newFloat64Ptr(3.5), Commits: newInt64Ptr(55), Committers: newIntPtr(10), EolMessage: "no maintainers", RiskReason: "EOL"},
 			&operationalRiskViolationReadableData{"true", "3.5", "55", "10", "no maintainers", "EOL", "1.2.3", "5"},
 		},

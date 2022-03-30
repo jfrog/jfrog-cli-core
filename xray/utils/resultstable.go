@@ -61,9 +61,9 @@ func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bo
 	return secViolationsJsonTable, licViolationsJsonTable, operationalRiskViolationsJsonTable, err
 }
 
-func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]vulnerabilityRow, []licenseViolationRow, []operationalRiskViolationRow, error) {
-	var securityViolationsRows []vulnerabilityRow
-	var licenseViolationsRows []licenseViolationRow
+func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, []LicenseViolationRow, []operationalRiskViolationRow, error) {
+	var securityViolationsRows []VulnerabilityRow
+	var licenseViolationsRows []LicenseViolationRow
 	var operationalRiskViolationsRows []operationalRiskViolationRow
 
 	for _, violation := range violations {
@@ -292,7 +292,7 @@ type operationalRiskViolationRow struct {
 	impactedPackageName    string         `col-name:"Impacted\nPackage"`
 	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
 	impactedPackageType    string         `col-name:"Type"`
-	component              []componentRow `embed-table:"true"`
+	component              []ComponentRow `embed-table:"true"`
 	riskReason             string         `col-name:"Risk\nReason"`
 	isEol                  string         `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
 	eolMessage             string         `col-name:"End\nOf\nLife\nMessage" extended:"true"`

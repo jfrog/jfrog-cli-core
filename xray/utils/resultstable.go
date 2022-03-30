@@ -159,7 +159,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 		return err
 	}
 
-	return coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "No vulnerabilities were found", printExtended)
+	return coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
 }
 
 // Same as PrintVulnerabilitiesTable, but table is returned as a json map array.
@@ -209,7 +209,7 @@ func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multi
 }
 
 // PrintLicensesTable prints the licenses in a table.
-// Set multipleRoots to true in case the given licenses array contains (or may contain) results of several different projects or files (like in binary scan).
+// Set multipleRoots to true in case the given licenses array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {
@@ -472,10 +472,10 @@ func (s *severity) printableTitle(colored bool) string {
 }
 
 var severities = map[string]*severity{
-	"Critical": {title: "Critical", numValue: 4, style: color.New(color.LightRed, color.Bold)},
-	"High":     {title: "High", numValue: 3, style: color.New(color.Red, color.Bold)},
-	"Medium":   {title: "Medium", numValue: 2, style: color.New(color.Yellow, color.Bold)},
-	"Low":      {title: "Low", numValue: 1},
+	"Critical": {title: "💀Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+	"High":     {title: "🔥High", numValue: 3, style: color.New(color.Red)},
+	"Medium":   {title: "🎃Medium", numValue: 2, style: color.New(color.Yellow)},
+	"Low":      {title: "👻Low", numValue: 1},
 }
 
 func getSeverity(severityTitle string) *severity {

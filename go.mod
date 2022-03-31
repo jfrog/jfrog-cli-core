@@ -9,9 +9,9 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.3.0
-	github.com/jfrog/build-info-go v1.2.1
+	github.com/jfrog/build-info-go v1.2.2
 	github.com/jfrog/gofrog v1.1.1
-	github.com/jfrog/jfrog-client-go v1.11.3
+	github.com/jfrog/jfrog-client-go v1.11.4
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -89,7 +89,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.11.4-0.20220330080802-5386ccb93d01
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.11.4-0.20220330080802-5386ccb93d01
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.1.2-0.20220320172359-114c9ce2e4b4
 

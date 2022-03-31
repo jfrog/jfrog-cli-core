@@ -293,6 +293,14 @@ func GetJfrogPluginsDir() (string, error) {
 	return filepath.Join(homeDir, JfrogPluginsDirName), nil
 }
 
+func GetJfrogPluginsResourcesDir(pluginsName string) (string, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pluginsDir, pluginsName, PluginsResourcesDirName), nil
+}
+
 func GetJfrogLocksDir() (string, error) {
 	homeDir, err := GetJfrogHomeDir()
 	if err != nil {

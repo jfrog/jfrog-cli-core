@@ -462,20 +462,24 @@ type severity struct {
 	title    string
 	numValue int
 	style    color.Style
+	emoji    string
 }
 
 func (s *severity) printableTitle(colored bool) string {
-	if !colored || len(s.style) == 0 {
+	if !colored {
 		return s.title
 	}
-	return s.style.Render(s.title)
+	if len(s.style) == 0 {
+		return s.emoji + s.title
+	}
+	return s.style.Render(s.emoji + s.title)
 }
 
 var severities = map[string]*severity{
-	"Critical": {title: "💀Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
-	"High":     {title: "🔥High", numValue: 3, style: color.New(color.Red)},
-	"Medium":   {title: "🎃Medium", numValue: 2, style: color.New(color.Yellow)},
-	"Low":      {title: "👻Low", numValue: 1},
+	"Critical": {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+	"High":     {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
+	"Medium":   {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
+	"Low":      {emoji: "👻", title: "Low", numValue: 1},
 }
 
 func getSeverity(severityTitle string) *severity {

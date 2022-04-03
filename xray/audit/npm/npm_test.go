@@ -8,13 +8,17 @@ import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestParseNpmDependenciesList(t *testing.T) {
-	dependenciesJson, err := ioutil.ReadFile("../../testdata/npm/dependencies.json")
+	// Create and change directory to test workspace
+	_, cleanUp := audit.CreateTestWorkspace(t, "npm")
+	defer cleanUp()
+	dependenciesJson, err := ioutil.ReadFile("dependencies.json")
 	assert.NoError(t, err)
 
 	var dependencies []buildinfo.Dependency

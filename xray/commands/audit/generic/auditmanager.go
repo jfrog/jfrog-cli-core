@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -37,9 +38,9 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 		case coreutils.Go:
 			results, isMultipleRootProject, err = _go.AuditGo(xrayGraphScanPrams, serverDetails)
 		case coreutils.Pip:
-			results, isMultipleRootProject, err = python.AuditPip(xrayGraphScanPrams, serverDetails)
+			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip)
 		case coreutils.Pipenv:
-			results, isMultipleRootProject, err = python.AuditPipenv(xrayGraphScanPrams, serverDetails)
+			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:

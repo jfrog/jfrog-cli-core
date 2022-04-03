@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -22,36 +22,34 @@ const (
 	pythonPackageTypeIdentifier = "pypi://"
 )
 
-type AuditPythonCommand struct {
-	pythonTool pythonutils.PythonTool
-	audit.AuditCommand
-}
-
-func NewEmptyPythonCommand(pythonTool pythonutils.PythonTool) *AuditPythonCommand {
-	return &AuditPythonCommand{AuditCommand: *audit.NewAuditCommand(), pythonTool: pythonTool}
-}
-
-func NewAuditPythonCommand(auditCmd audit.AuditCommand, pythonTool pythonutils.PythonTool) *AuditPythonCommand {
-	return &AuditPythonCommand{AuditCommand: auditCmd, pythonTool: pythonTool}
-}
-
-func (apc *AuditPythonCommand) Run() error {
-	dependencyTree, err := apc.buildDependencyTree()
+func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, pythonTool pythonutils.PythonTool) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildDependencyTree(pythonTool)
 	if err != nil {
-		return err
+		return
 	}
-	return apc.ScanDependencyTree([]*services.GraphNode{dependencyTree})
+	isMultipleRootProject = len(graph) > 1
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	return
 }
 
-func (apc *AuditPythonCommand) buildDependencyTree() (*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := apc.getDependencies()
+func BuildDependencyTree(pythonTool pythonutils.PythonTool) ([]*services.GraphNode, error) {
+	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool)
 	if err != nil {
 		return nil, err
 	}
-	return createDependencyTree(dependenciesGraph, rootDependenciesList)
+	var dependencyTree []*services.GraphNode
+	for _, rootDep := range rootDependenciesList {
+		parentNode := &services.GraphNode{
+			Id:    pythonPackageTypeIdentifier + rootDep,
+			Nodes: []*services.GraphNode{},
+		}
+		populatePythonDependencyTree(parentNode, dependenciesGraph)
+		dependencyTree = append(dependencyTree, parentNode)
+	}
+	return dependencyTree, nil
 }
 
-func (apc *AuditPythonCommand) getDependencies() (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return
@@ -85,7 +83,7 @@ func (apc *AuditPythonCommand) getDependencies() (dependenciesGraph map[string][
 		return
 	}
 
-	restoreEnv, err := apc.RunPythonInstall(tempDirPath)
+	restoreEnv, err := RunPythonInstall(tempDirPath, pythonTool)
 	if err != nil {
 		return
 	}
@@ -100,12 +98,12 @@ func (apc *AuditPythonCommand) getDependencies() (dependenciesGraph map[string][
 	if err != nil {
 		return
 	}
-	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(apc.pythonTool, tempDirPath, localDependenciesPath)
+	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	return
 }
 
-func (apc *AuditPythonCommand) RunPythonInstall(tempDirPath string) (restoreEnv func() error, err error) {
-	switch apc.pythonTool {
+func RunPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (restoreEnv func() error, err error) {
+	switch pythonTool {
 	case pythonutils.Pip:
 		restoreEnv, err = SetPipVirtualEnvPath()
 		if err != nil {
@@ -205,21 +203,6 @@ func SetPipVirtualEnvPath() (func() error, error) {
 	}, nil
 }
 
-func createDependencyTree(dependenciesGraph map[string][]string, rootDependencies []string) (*services.GraphNode, error) {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	rootNode := &services.GraphNode{
-		Id:    pythonPackageTypeIdentifier + filepath.Base(workingDir),
-		Nodes: []*services.GraphNode{},
-	}
-	dependenciesGraph[filepath.Base(workingDir)] = rootDependencies
-	populatePythonDependencyTree(rootNode, dependenciesGraph)
-
-	return rootNode, nil
-}
-
 func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {
 	if currNode.NodeHasLoop() {
 		return
@@ -235,8 +218,4 @@ func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGrap
 		currNode.Nodes = append(currNode.Nodes, childNode)
 		populatePythonDependencyTree(childNode, dependenciesGraph)
 	}
-}
-
-func (apc *AuditPythonCommand) CommandName() string {
-	return "xr_audit_python"
 }

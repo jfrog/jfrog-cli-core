@@ -1,10 +1,11 @@
 package java
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,9 +18,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditGradleCommand()
-	auditCmd.useWrapper = true
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildGradleDependencyTree(false, true)
 	assert.NoError(t, err)
 	assert.Len(t, modulesDependencyTrees, 5)
 	if modulesDependencyTrees == nil {
@@ -45,8 +44,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditGradleCommand()
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildGradleDependencyTree(false, false)
 	assert.NoError(t, err)
 	assert.Len(t, modulesDependencyTrees, 3)
 	if modulesDependencyTrees == nil {
@@ -72,10 +70,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	auditCmd := NewEmptyAuditGradleCommand()
-	auditCmd.useWrapper = true
-	auditCmd.excludeTestDeps = true
-	modulesDependencyTrees, err := auditCmd.getModulesDependencyTrees()
+	modulesDependencyTrees, err := BuildGradleDependencyTree(true, true)
 	assert.NoError(t, err)
 	assert.Len(t, modulesDependencyTrees, 5)
 	if modulesDependencyTrees == nil {

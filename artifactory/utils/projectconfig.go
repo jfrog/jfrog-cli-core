@@ -110,11 +110,11 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		return nil, fmt.Errorf("Missing repository for %s within %s", prefix, configFilePath)
+		return nil, fmt.Errorf("missing repository for %s within %s", prefix, configFilePath)
 	}
 	serverId := vConfig.GetString(prefix + "." + ProjectConfigServerId)
 	if serverId == "" {
-		return nil, fmt.Errorf("Missing server ID for %s within %s", prefix, configFilePath)
+		return nil, fmt.Errorf("missing server ID for %s within %s", prefix, configFilePath)
 	}
 	rtDetails, err := config.GetSpecificConfig(serverId, false, true)
 	if err != nil {

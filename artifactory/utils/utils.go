@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/jfrog/build-info-go/build"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/jfrog/jfrog-client-go/utils/io"
@@ -80,7 +81,7 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 		return "", errorutils.CheckErrorf(message)
 	}
 
-	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status)
+	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body))
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
@@ -186,10 +187,10 @@ func CreateAccessServiceManager(serviceDetails *config.ServerDetails, isDryRun b
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.
 // If Xray failed to scan the build, for example due to a networking issue, a regular error should be returned.
-var buildScanError = errors.New("issues found during xray build scan")
+var errBuildScan = errors.New("issues found during xray build scan")
 
 func GetBuildScanError() error {
-	return buildScanError
+	return errBuildScan
 }
 
 // Download and unmarshal a file from artifactory.
@@ -220,6 +221,9 @@ func CreateBuildInfoService() *build.BuildInfoService {
 // Returns an error if the given repo doesn't exist.
 func ValidateRepoExists(repoKey string, serviceDetails auth.ServiceDetails) error {
 	servicesManager, err := createServiceManager(serviceDetails)
+	if err != nil {
+		return err
+	}
 	exists, err := servicesManager.IsRepoExists(repoKey)
 	if err != nil {
 		return err

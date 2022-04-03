@@ -170,7 +170,7 @@ func readConfFromFile(t *testing.T) *ConfigV5 {
 }
 
 func TestGetArtifactoriesFromConfig(t *testing.T) {
-	err, cleanUpJfrogHome := tests.SetJfrogHome()
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
@@ -216,12 +216,13 @@ func TestGetJfrogDependenciesPath(t *testing.T) {
 	expectedDependenciesPath := filepath.Join(jfrogHomeDir, coreutils.JfrogDependenciesDirName)
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 
-	// Check dependencies path when JFROG_DEPENDENCIES_DIR is set, should be JFROG_DEPENDENCIES_DIR/
+	// Check dependencies' path when JFROG_DEPENDENCIES_DIR is set, should be JFROG_DEPENDENCIES_DIR/
 	previousDependenciesDirEnv := os.Getenv(coreutils.DependenciesDir)
 	expectedDependenciesPath = "/tmp/my-dependencies/"
 	testsutils.SetEnvAndAssert(t, coreutils.DependenciesDir, expectedDependenciesPath)
 	defer testsutils.SetEnvAndAssert(t, coreutils.DependenciesDir, previousDependenciesDirEnv)
 	dependenciesPath, err = GetJfrogDependenciesPath()
+	assert.NoError(t, err)
 	assert.Equal(t, expectedDependenciesPath, dependenciesPath)
 }
 

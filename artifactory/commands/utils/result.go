@@ -49,10 +49,10 @@ func (r *Result) SetReader(reader *content.ContentReader) {
 }
 
 // UnmarshalDeployableArtifacts reads and parses the deployed artifacts details from the provided file.
-// The details were written by Buildinfo project while deploying artifacts to maven and gradle repositories.
-// deployableArtifactsFilePath - path to deployableArtifacts file written by buildinfo project.
+// The details were written by Build-info project while deploying artifacts to maven and gradle repositories.
+// deployableArtifactsFilePath - path to deployableArtifacts file written by Build-info project.
 // projectConfigPath - path to gradle/maven config yaml path.
-// lateDeploy - boolean indicates if the artifcats was expected to be deployed.
+// lateDeploy - boolean indicates if the artifacts was expected to be deployed.
 func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath string, lateDeploy bool) (*Result, error) {
 	modulesMap, err := unmarshalDeployableArtifactsJson(deployableArtifactsFilePath)
 	if err != nil {
@@ -80,6 +80,9 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath
 		}
 	}
 	err = clientutils.SaveFileTransferDetailsInFile(deployableArtifactsFilePath, &artifactsArray)
+	if err != nil {
+		return nil, err
+	}
 	// Return result
 	result := new(Result)
 	result.SetSuccessCount(succeeded)
@@ -99,7 +102,7 @@ func getDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifa
 	if err != nil {
 		return "", "", err
 	}
-	// The relevant deployment repository will be written by the buildinfo project to the diplyableArtifacts file starting from version 2.24.12 of build-info-extractor-gradle.
+	// The relevant deployment repository will be written by the build-info project to the deployableArtifacts file starting from version 2.24.12 of build-info-extractor-gradle.
 	// In case of a gradle project with a configuration of 'usePlugin=true' it's possible that an old build-info-extractor-gradle version is being used.
 	// In this case, the value of "repo" will be empty, and the deployment repository will be therefore read from the local project configuration file.
 	if repo == "" {
@@ -125,7 +128,12 @@ func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifac
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
 	jsonFile, err := os.Open(filesPath)
-	defer jsonFile.Close()
+	defer func() {
+		e := jsonFile.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

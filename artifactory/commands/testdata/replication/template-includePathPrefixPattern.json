@@ -1,0 +1,11 @@
+{
+  "cronExp": "repl-cronExp",
+  "repoKey": "repl-RepoKey",
+  "enableEventReplication": "true",
+  "socketTimeoutMillis": "123",
+  "enabled": "true",
+  "syncDeletes": "true",
+  "syncProperties": "true",
+  "syncStatistics": "true",
+  "includePathPrefixPattern": "repl-pathprefix"
+}

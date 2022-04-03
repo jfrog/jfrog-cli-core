@@ -139,6 +139,9 @@ func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 			return nil, err
 		}
 		mc.serverDetails, err = utils.GetServerDetails(vConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return mc.serverDetails, err
 }

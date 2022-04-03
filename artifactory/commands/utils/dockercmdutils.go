@@ -34,7 +34,7 @@ func ExtractDockerOptionsFromArgs(args []string) (threads int, serverDetails *co
 	return
 }
 
-func ExtractDockerScanOptionsFromArgs(args []string) (fail, licenses bool, format, project,  watches string, serverDetails *config.ServerDetails, err error) {
+func ExtractDockerScanOptionsFromArgs(args []string) (fail, licenses bool, format, project, watches string, serverDetails *config.ServerDetails, err error) {
 	cleanArgs := append([]string(nil), args...)
 	var serverId string
 	cleanArgs, serverId, err = coreutils.ExtractServerIdFromCommand(cleanArgs)
@@ -62,7 +62,7 @@ func ExtractDockerScanOptionsFromArgs(args []string) (fail, licenses bool, forma
 		return
 	}
 	var buildConfig *utils.BuildConfiguration
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
+	_, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
 	project = buildConfig.GetProject()
 	return
 }

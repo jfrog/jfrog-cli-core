@@ -81,24 +81,23 @@ func (pic *ProjectInitCommand) createSummarizeMessage(technologiesMap map[coreut
 	return coreutils.PrintBold("This project is initialized!\n") +
 		coreutils.PrintBold("The project config is stored inside the .jfrog directory.") +
 		"\n\n" +
-		coreutils.PrintTitle("Audit your project for security vulnerabilities by running") +
+		coreutils.PrintTitle("🔍 Scan the dependencies of this project for security vulnerabilities by running") +
 		"\n" +
 		"jf audit\n\n" +
-		coreutils.PrintTitle("Scan any software package on this machine for security vulnerabilities by running") +
+		coreutils.PrintTitle("📦 Scan any software package on you machine for security vulnerabilities by running") +
 		"\n" +
 		"jf scan path/to/dir/or/package\n\n" +
-		coreutils.PrintTitle("If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		coreutils.PrintTitle("🐳 Scan any local docker image on you machine for security vulnerabilities by running") +
 		"\n" +
-		"1. Open the IDE\n" +
-		"2. Install the JFrog extension or plugin\n" +
-		"3. View the JFrog panel" +
+		"jf docker scan <image name>:<image tag>\n\n" +
+		coreutils.PrintTitle("💻 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand") +
+		"\n" +
+		"Open the IDE 👉 Install the JFrog extension or plugin 👉 View the JFrog panel" +
 		"\n\n" +
 		pic.createBuildMessage(technologiesMap) +
-		coreutils.PrintTitle("Read more using this link:") +
+		coreutils.PrintTitle("📚 Read more using this link:") +
 		"\n" +
-		coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
-		"\n\n" +
-		coreutils.GetFeedbackMessage()
+		coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 }
 
 // Return a string message, which includes all the build and deployment commands, matching the technologiesMap sent.
@@ -117,17 +116,12 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 			message +=
 				"jf go build\n" +
 					"jf go-publish v1.0.0\n"
-		case coreutils.Pip:
-			fallthrough
-		case coreutils.Pipenv:
+		case coreutils.Pip, coreutils.Pipenv:
 			message +=
-				"jf " + string(tech) + "install\n" +
-					"jf rt u path/to/package/file default-pypi-local" +
-					coreutils.PrintComment(" # Publish your "+string(tech)+"package") +
+				"jf " + string(tech) + " install\n" +
+					"jf rt upload path/to/package/file default-pypi-local" +
+					coreutils.PrintComment(" #Publish your "+string(tech)+" package") +
 					"\n"
-		case coreutils.Nuget:
-			// The NuGet case is already covered in the dotent case.
-			break
 		case coreutils.Dotnet:
 			executableName := coreutils.Nuget
 			_, errNotFound := exec.LookPath("dotnet")
@@ -136,28 +130,31 @@ func (pic *ProjectInitCommand) createBuildMessage(technologiesMap map[coreutils.
 				executableName = coreutils.Dotnet
 			}
 			message +=
-				"jf" + string(executableName) + "restore\n" +
-					"jf rt u '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
-		case coreutils.Docker:
-			baseurl := strings.TrimLeft(pic.serverUrl, "https://")
-			baseurl = strings.TrimLeft(baseurl, "http://")
-			imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
-			message += "\n" + coreutils.PrintTitle("Pull and push any docker image using Artifactory") +
-				"\n" +
-				"jf docker tag <image>:<tag> " + imageUrl + "\n" +
-				"jf docker push " + imageUrl + "\n" +
-				"jf docker pull " + imageUrl + "\n"
+				"jf " + string(executableName) + " restore\n" +
+					"jf rt upload '*.nupkg'" + RepoDefaultName[tech][Virtual] + "\n"
 		}
+	}
+	if message != "" {
+		message = coreutils.PrintTitle("🚧 Build the code & deploy the packages by running") +
+			"\n" +
+			message +
+			"\n"
+	}
+	if ok := technologiesMap[coreutils.Docker]; ok {
+		baseurl := strings.TrimPrefix(strings.TrimSpace(pic.serverUrl), "https://")
+		baseurl = strings.TrimPrefix(baseurl, "http://")
+		imageUrl := path.Join(baseurl, DockerVirtualDefaultName, "<image>:<tag>")
+		message += coreutils.PrintTitle("🐳 Pull and push any docker image using Artifactory") +
+			"\n" +
+			"jf docker tag <image>:<tag> " + imageUrl + "\n" +
+			"jf docker push " + imageUrl + "\n" +
+			"jf docker pull " + imageUrl + "\n\n"
 	}
 
 	if message != "" {
-		message = coreutils.PrintTitle("Build the code & deploy the packages by running") +
+		message += coreutils.PrintTitle("📤 Publish the build-info to Artifactory") +
 			"\n" +
-			message +
-			"\n" +
-			coreutils.PrintTitle("Publish the build-info to Artifactory") +
-			"\n" +
-			"jf rt bp\n\n"
+			"jf rt build-publish\n\n"
 	}
 	return message
 }

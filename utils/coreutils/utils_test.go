@@ -103,7 +103,7 @@ func TestReplaceSpecVars(t *testing.T) {
 }
 
 func assertVariablesMap(expected, actual []byte, t *testing.T) {
-	if 0 != bytes.Compare(expected, actual) {
+	if !bytes.Equal(expected, actual) {
 		t.Error("Wrong matching expected: `" + string(expected) + "` Got `" + string(actual) + "`")
 	}
 }
@@ -155,4 +155,10 @@ func TestParseYesNo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListToText(t *testing.T) {
+	assert.Equal(t, ListToText([]string{"one"}), "one")
+	assert.Equal(t, ListToText([]string{"one", "two"}), "one and two")
+	assert.Equal(t, ListToText([]string{"one", "two", "three"}), "one, two and three")
 }

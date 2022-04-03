@@ -116,7 +116,7 @@ func convertByType(flag Flag) (cli.Flag, error) {
 	if f, ok := flag.(BoolFlag); ok {
 		return convertBoolFlag(f), nil
 	}
-	return nil, errors.New(fmt.Sprintf("Flag '%s' does not match any known flag type.", flag.GetName()))
+	return nil, fmt.Errorf("flag '%s' does not match any known flag type", flag.GetName())
 }
 
 func convertStringFlag(f StringFlag) cli.Flag {

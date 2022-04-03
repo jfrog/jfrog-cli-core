@@ -60,7 +60,7 @@ type ContainerManagerLoginConfig struct {
 
 // Run native command of the container buildtool
 func (containerManager *containerManager) RunNativeCmd(cmdParams []string) error {
-	cmd := &nativeCmd{cmdParams: cmdParams,containerManager: containerManager.Type}
+	cmd := &nativeCmd{cmdParams: cmdParams, containerManager: containerManager.Type}
 	return cmd.RunCmd()
 }
 
@@ -101,8 +101,8 @@ func (nc *nativeCmd) GetCmd() *exec.Cmd {
 	return exec.Command(nc.containerManager.String(), nc.cmdParams...)
 }
 
-func (pushCmd *nativeCmd) RunCmd() error {
-	command := pushCmd.GetCmd()
+func (nc *nativeCmd) RunCmd() error {
+	command := nc.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
 	return command.Run()
@@ -182,27 +182,7 @@ func (loginCmd *LoginCmd) RunCmd() error {
 	return command.Run()
 }
 
-// Image pull command
-type pullCmd struct {
-	image            *Image
-	containerManager ContainerManagerType
-}
-
-func (pullCmd *pullCmd) GetCmd() *exec.Cmd {
-	var cmd []string
-	cmd = append(cmd, "pull")
-	cmd = append(cmd, pullCmd.image.name)
-	return exec.Command(pullCmd.containerManager.String(), cmd[:]...)
-}
-
-func (pullCmd *pullCmd) RunCmd() error {
-	command := pullCmd.GetCmd()
-	command.Stderr = os.Stderr
-	command.Stdout = os.Stderr
-	return command.Run()
-}
-
-// First we'll try to login assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
+// First we'll try to log in assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
 // If fails, we will try assuming a reverse proxy tag (e.g. "registry-address-docker-repo/image:ver").
 func ContainerManagerLogin(image *Image, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
 	imageRegistry, err := image.GetRegistry()

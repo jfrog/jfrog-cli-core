@@ -100,7 +100,7 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
 	detected = []Technology{}
 	for techName, techData := range technologiesData {
-		if isCiSetup == false || (isCiSetup && techData.ciSetupSupport) {
+		if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
 			for _, indicator := range techData.indicators {
 				if strings.Contains(file, indicator) {
 					detected = append(detected, techName)
@@ -113,13 +113,29 @@ func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technolog
 
 // DetectTechnologiesToString returns a string that includes all the names of the detected technologies separated by a comma.
 func DetectedTechnologiesToString(detected map[Technology]bool) string {
-	detectedTechnologiesString := ""
-	for tech := range detected {
-		detectedTechnologiesString += string(tech) + ", "
-	}
-	if detectedTechnologiesString != "" {
-		detectedTechnologiesString = strings.Trim(detectedTechnologiesString, ", ")
+	keys := DetectedTechnologiesToSlice(detected)
+	if len(keys) > 0 {
+		detectedTechnologiesString := strings.Join(keys, ", ")
 		detectedTechnologiesString += "."
+		return detectedTechnologiesString
 	}
-	return detectedTechnologiesString
+	return ""
+}
+
+// DetectedTechnologiesToSlice returns a string slice that includes all the names of the detected technologies.
+func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
+	keys := make([]string, len(detected))
+	i := 0
+	for tech := range detected {
+		keys[i] = string(tech)
+		i++
+	}
+	return keys
+}
+
+func ToTechnologies(args []string) (technologies []Technology) {
+	for _, argument := range args {
+		technologies = append(technologies, Technology(argument))
+	}
+	return
 }

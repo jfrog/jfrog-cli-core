@@ -306,16 +306,6 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	}
 }
 
-func (cc *ConfigCommand) readRefreshableTokenFromConsole() {
-	if !cc.useBasicAuthOnly && (cc.details.Password != "" && cc.details.AccessToken == "") {
-		useRefreshableToken := coreutils.AskYesNo("For commands which don't use external tools or the JFrog Distribution service, "+
-			"JFrog CLI supports replacing the configured username and password/API key with automatically created access token that's refreshed hourly. "+
-			"Enable this setting?", true)
-		cc.useBasicAuthOnly = !useRefreshableToken
-	}
-	return
-}
-
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
 	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
 	if err == nil {
@@ -406,6 +396,9 @@ func Export(serverName string) error {
 	if err != nil {
 		return err
 	}
+	if serverDetails.ServerId == "" {
+		return errorutils.CheckErrorf("cannot export config, because it is empty. Run 'jf c add' and then export again")
+	}
 	serverToken, err := config.Export(serverDetails)
 	if err != nil {
 		return err
@@ -451,9 +444,9 @@ func DeleteConfig(serverName string) error {
 		return err
 	}
 	var isDefault, isFoundName bool
-	for i, config := range configurations {
-		if config.ServerId == serverName {
-			isDefault = config.IsDefault
+	for i, serverDetails := range configurations {
+		if serverDetails.ServerId == serverName {
+			isDefault = serverDetails.IsDefault
 			configurations = append(configurations[:i], configurations[i+1:]...)
 			isFoundName = true
 			break
@@ -478,16 +471,16 @@ func Use(serverId string) error {
 	}
 	var serverFound *config.ServerDetails
 	newDefaultServer := true
-	for _, config := range configurations {
-		if config.ServerId == serverId {
-			serverFound = config
-			if config.IsDefault {
+	for _, serverDetails := range configurations {
+		if serverDetails.ServerId == serverId {
+			serverFound = serverDetails
+			if serverDetails.IsDefault {
 				newDefaultServer = false
 				break
 			}
-			config.IsDefault = true
+			serverDetails.IsDefault = true
 		} else {
-			config.IsDefault = false
+			serverDetails.IsDefault = false
 		}
 	}
 	// Need to save only if we found a server with the serverId
@@ -504,14 +497,14 @@ func Use(serverId string) error {
 	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", serverId)
 }
 
-func ClearConfig(interactive bool) {
+func ClearConfig(interactive bool) error {
 	if interactive {
 		confirmed := coreutils.AskYesNo("Are you sure you want to delete all the configurations?", false)
 		if !confirmed {
-			return
+			return nil
 		}
 	}
-	config.SaveServersConf(make([]*config.ServerDetails, 0))
+	return config.SaveServersConf(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {

@@ -2,7 +2,6 @@ package scan
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
@@ -58,7 +57,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
 	if dsc.progress != nil {
-		dsc.progress.SetHeadlineMsg("Creating image archive")
+		dsc.progress.SetHeadlineMsg("Creating image archive 📦")
 	}
 	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
@@ -67,7 +66,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	dockerSaveCmd.Stderr = &stderr
 	err = dockerSaveCmd.Run()
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String()))
+		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
 	// Perform scan on image.tar

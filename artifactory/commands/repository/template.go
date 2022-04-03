@@ -383,10 +383,6 @@ var vcsRemoteRepoConfKeys = []string{
 	VcsGitProvider, VcsType, MaxUniqueSnapshots, VcsGitDownloadUrl, ListRemoteFolderItems,
 }
 
-var genericRemoteRepoConfKeys = []string{
-	ListRemoteFolderItems,
-}
-
 var baseVirtualRepoConfKeys = []string{
 	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
 	DefaultDeploymentRepo,
@@ -517,7 +513,10 @@ func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, 
 			return "", errors.New("package type is missing in configuration map")
 		}
 		if iq.AnswersMap[TemplateType] == Create {
-			iq.AskQuestion(iq.QuestionsMap[MandatoryUrl])
+			_, err := iq.AskQuestion(iq.QuestionsMap[MandatoryUrl])
+			if err != nil {
+				return "", err
+			}
 		}
 		pkgTypes = append(commonPkgTypes, remoteRepoAdditionalPkgTypes...)
 	case Local:

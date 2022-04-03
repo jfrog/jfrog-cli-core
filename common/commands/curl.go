@@ -74,6 +74,9 @@ func (curlCmd *CurlCommand) Run() error {
 	cmdWithoutCreds := strings.Join(curlCmd.arguments, " ")
 	// Add credentials to curl command.
 	credentialsMessage, err := curlCmd.addCommandCredentials()
+	if err != nil {
+		return err
+	}
 
 	// Run curl.
 	log.Debug(fmt.Sprintf("Executing curl command: '%s %s'", cmdWithoutCreds, credentialsMessage))
@@ -121,9 +124,7 @@ func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue 
 	}
 
 	// Trim '/' prefix if exists.
-	if strings.HasPrefix(uriValue, "/") {
-		uriValue = strings.TrimPrefix(uriValue, "/")
-	}
+	uriValue = strings.TrimPrefix(uriValue, "/")
 
 	// Attach url to the api.
 	uriValue = url + uriValue

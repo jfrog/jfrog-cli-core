@@ -2,22 +2,19 @@ package utils
 
 import (
 	"encoding/json"
-	"io"
-	"io/ioutil"
-	"strconv"
-	"strings"
-
 	"github.com/jfrog/build-info-go/entities"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"io/ioutil"
+	"strconv"
+	"strings"
 )
 
 type aqlResult struct {
@@ -32,7 +29,7 @@ type results struct {
 
 func GetDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*entities.Dependency, error) {
 	buildDependencies := make(map[string]*entities.Dependency)
-	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: artclientutils.LatestBuildNumberKey})
+	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: servicesUtils.LatestBuildNumberKey})
 	if err != nil || !found {
 		return buildDependencies, err
 	}
@@ -59,7 +56,7 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*e
 	// Get info from Artifactory.
 	log.Debug("Fetching checksums for", id)
 	var stream io.ReadCloser
-	stream, err = servicesManager.Aql(serviceutils.CreateAqlQueryForYarn(name, ver))
+	stream, err = servicesManager.Aql(servicesUtils.CreateAqlQueryForYarn(name, ver))
 	if err != nil {
 		return
 	}
@@ -121,8 +118,8 @@ func PrintMissingDependencies(missingDependencies []string) {
 		"Deleting the local cache will force populating Artifactory with these dependencies.")
 }
 
-func CreateCollectChecksumsFunc(previousBuildDependencies map[string]*buildinfo.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *buildinfo.Dependency) (bool, error) {
-	return func(dependency *buildinfo.Dependency) (bool, error) {
+func CreateCollectChecksumsFunc(previousBuildDependencies map[string]*entities.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *entities.Dependency) (bool, error) {
+	return func(dependency *entities.Dependency) (bool, error) {
 		splitDepId := strings.SplitN(dependency.Id, ":", 2)
 		name := splitDepId[0]
 		ver := splitDepId[1]

@@ -91,11 +91,11 @@ func GetDefaultConfiguredConf(configs []*ServerDetails) (*ServerDetails, error) 
 		return details, nil
 	}
 	for _, conf := range configs {
-		if conf.IsDefault == true {
+		if conf.IsDefault {
 			return conf, nil
 		}
 	}
-	return nil, errors.New("Couldn't find default server.")
+	return nil, errors.New("couldn't find default server")
 }
 
 // Returns default artifactory conf. Returns nil if default server doesn't exists.
@@ -222,7 +222,11 @@ func getConfigFile() (content []byte, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if exists, err := fileutils.IsFileExists(versionedConfigPath, false); exists {
+		exists, err := fileutils.IsFileExists(versionedConfigPath, false)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
 			// If an old config file was found returns its content or an error.
 			content, err = fileutils.ReadFile(versionedConfigPath)
 			return content, err
@@ -245,7 +249,7 @@ func (config *ConfigV5) getContent() ([]byte, error) {
 	if err != nil {
 		return []byte{}, errorutils.CheckError(err)
 	}
-	return []byte(content.String()), nil
+	return content.Bytes(), nil
 }
 
 // Move SSL certificates from the old location in security dir to certs dir.
@@ -328,6 +332,9 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		fallthrough
 	case "3", "4":
 		content, err = convertConfigV4toV5(content)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Save config after all conversions (also updates version).
@@ -432,7 +439,10 @@ func getConfFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	os.MkdirAll(confPath, 0777)
+	err = os.MkdirAll(confPath, 0777)
+	if err != nil {
+		return "", err
+	}
 
 	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
 	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile+versionString)

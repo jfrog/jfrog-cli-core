@@ -6,14 +6,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientservicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
+	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPreparePrerequisites(t *testing.T) {
@@ -69,7 +67,7 @@ func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string
 	terraformPublish := NewTerraformPublishCommand()
 	terraformPublish.SetServerDetails(&config.ServerDetails{})
 	terraformPublish.exclusions = exclusions
-	uploadSummary := clientservicesutils.NewResult(threads)
+	uploadSummary := clientServicesUtils.NewResult(threads)
 	producerConsumer := parallel.NewRunner(threads, 20000, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 	for _, test := range tests {
@@ -80,11 +78,11 @@ func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string
 	}
 }
 
-func mockEmptyModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, _ *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func mockEmptyModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, _ *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	return 0, errors.New("Failed: testing empty directory. this function shouldn't be called. ")
 }
 
-func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
@@ -92,7 +90,7 @@ func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *specut
 	return 0, tests.ValidateListsIdentical([]string{"a.tf", "test/b.tf", "test/submodules/testSubmodule/c.tf"}, paths)
 }
 
-func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
@@ -100,7 +98,7 @@ func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService
 	return 0, tests.ValidateListsIdentical([]string{"b/file.tf"}, paths)
 }
 
-func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
@@ -108,7 +106,7 @@ func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *s
 	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
 }
 
-func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err
@@ -116,7 +114,7 @@ func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *specutils.
 	return 0, tests.ValidateListsIdentical([]string{"a.tf", "$+~&^a#.tf"}, paths)
 }
 
-func testSpecialCharWithExclusions(_ parallel.Runner, _ *services.UploadService, _ *specutils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
+func testSpecialCharWithExclusions(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
 	paths, err := mockProduceTaskFunk(archiveData)
 	if err != nil {
 		return 0, err

@@ -167,7 +167,7 @@ func SetPipVirtualEnvPath() (func() error, error) {
 			return nil, err
 		}
 		if execPath == "" {
-			return nil, errors.New("Could not find python3 or virtualenv executable in PATH")
+			return nil, errors.New("could not find python3 or virtualenv executable in PATH")
 		}
 	}
 	cmdArgs = append(cmdArgs, "venvdir")
@@ -176,13 +176,13 @@ func SetPipVirtualEnvPath() (func() error, error) {
 	pipVenv.Stderr = &stderr
 	err = pipVenv.Run()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("pipenv install command failed: %s - %s", err.Error(), stderr.String()))
+		return nil, fmt.Errorf("pipenv install command failed: %s - %s", err.Error(), stderr.String())
 	}
 
 	// Keep original value of 'PATH'.
 	pathValue, exists := os.LookupEnv("PATH")
 	if !exists {
-		return nil, errors.New(fmt.Sprintf("couldn't find PATH variable."))
+		return nil, errors.New("couldn't find PATH variable.")
 	}
 	var newPathValue string
 	var virtualEnvPath string

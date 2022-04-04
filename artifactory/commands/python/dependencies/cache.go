@@ -83,7 +83,7 @@ func UpdateDependenciesCache(updatedMap map[string]buildinfo.Dependency, cacheDi
 // If dependency does not exist, return nil.
 // dependencyName - Name of dependency (lowercase package name).
 func (cache DependenciesCache) GetDependency(dependencyName string) (dependency buildinfo.Dependency) {
-	dependency, _ = cache.DepsMap[dependencyName]
+	dependency = cache.DepsMap[dependencyName]
 	return
 }
 

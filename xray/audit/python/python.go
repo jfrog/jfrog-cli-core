@@ -182,7 +182,7 @@ func SetPipVirtualEnvPath() (func() error, error) {
 	// Keep original value of 'PATH'.
 	pathValue, exists := os.LookupEnv("PATH")
 	if !exists {
-		return nil, errors.New("couldn't find PATH variable.")
+		return nil, errors.New("couldn't find PATH variable")
 	}
 	var newPathValue string
 	var virtualEnvPath string

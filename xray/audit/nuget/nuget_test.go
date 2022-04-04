@@ -7,13 +7,17 @@ import (
 
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestBuildNugetDependencyTree(t *testing.T) {
-	dependenciesJson, err := ioutil.ReadFile("../../testdata/nuget/dependencies.json")
+	// Create and change directory to test workspace
+	_, cleanUp := audit.CreateTestWorkspace(t, "nuget")
+	defer cleanUp()
+	dependenciesJson, err := ioutil.ReadFile("dependencies.json")
 	assert.NoError(t, err)
 
 	var dependencies *entities.BuildInfo
@@ -21,7 +25,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	assert.NoError(t, err)
 	xrayDependenciesTree := parseNugetDependencyTree(dependencies)
 
-	expectedTreeJson, err := ioutil.ReadFile("../../testdata/nuget/expectedTree.json")
+	expectedTreeJson, err := ioutil.ReadFile("expectedTree.json")
 	assert.NoError(t, err)
 
 	var expectedTrees *[]services.GraphNode

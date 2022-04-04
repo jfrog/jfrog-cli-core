@@ -52,6 +52,7 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool) ([]*services.GraphNo
 func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
+		err = errorutils.CheckError(err)
 		return
 	}
 
@@ -63,13 +64,14 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 
 	err = os.Chdir(tempDirPath)
 	if err != nil {
+		err = errorutils.CheckError(err)
 		return
 	}
 
 	defer func() {
 		e := os.Chdir(wd)
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 
 		e = fileutils.RemoveTempDir(tempDirPath)
@@ -83,7 +85,7 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 		return
 	}
 
-	restoreEnv, err := RunPythonInstall(tempDirPath, pythonTool)
+	restoreEnv, err := runPythonInstall(tempDirPath, pythonTool)
 	if err != nil {
 		return
 	}
@@ -102,10 +104,10 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 	return
 }
 
-func RunPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (restoreEnv func() error, err error) {
+func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (restoreEnv func() error, err error) {
 	switch pythonTool {
 	case pythonutils.Pip:
-		restoreEnv, err = SetPipVirtualEnvPath()
+		restoreEnv, err = setPipVirtualEnvPath()
 		if err != nil {
 			return
 		}
@@ -147,7 +149,7 @@ func RunPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (re
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
-func SetPipVirtualEnvPath() (func() error, error) {
+func setPipVirtualEnvPath() (func() error, error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
 	if err != nil || execPath == "" {

@@ -83,12 +83,8 @@ func UpdateDependenciesCache(updatedMap map[string]buildinfo.Dependency, cacheDi
 // If dependency does not exist, return nil.
 // dependencyName - Name of dependency (lowercase package name).
 func (cache DependenciesCache) GetDependency(dependencyName string) (dependency buildinfo.Dependency) {
-	dependency, ok := cache.DepsMap[dependencyName]
-	if ok {
-		return
-	}
-
-	return dependency
+	dependency, _ = cache.DepsMap[dependencyName]
+	return
 }
 
 // Cache file will be located in the ./.jfrog/projects/deps.cache.json

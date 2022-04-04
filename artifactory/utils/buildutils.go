@@ -50,7 +50,6 @@ func PrepareBuildPrerequisites(buildConfiguration *BuildConfiguration) (build *b
 		build, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
 			err = errorutils.CheckError(err)
-			return
 		}
 	}
 

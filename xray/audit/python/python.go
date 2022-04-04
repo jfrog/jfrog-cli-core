@@ -107,7 +107,7 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (restoreEnv func() error, err error) {
 	switch pythonTool {
 	case pythonutils.Pip:
-		restoreEnv, err = setPipVirtualEnvPath()
+		restoreEnv, err = SetPipVirtualEnvPath()
 		if err != nil {
 			return
 		}
@@ -149,7 +149,7 @@ func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (re
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
-func setPipVirtualEnvPath() (func() error, error) {
+func SetPipVirtualEnvPath() (func() error, error) {
 	var cmdArgs []string
 	execPath, err := exec.LookPath("virtualenv")
 	if err != nil || execPath == "" {

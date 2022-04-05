@@ -1,9 +1,7 @@
 package formats
 
-/*
-Structs in this file should NOT be changed!
-The structs are used as an API for the simple-json format, thus changing their structure or the 'json' annotation will break the API.
-*/
+// Structs in this file should NOT be changed!
+// The structs are used as an API for the simple-json format, thus changing their structure or the 'json' annotation will break the API.
 
 // This struct holds the sorted results of the simple-json output.
 type SimpleJsonResults struct {

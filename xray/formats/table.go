@@ -1,5 +1,9 @@
 package formats
 
+// Structs in this file are used for the 'table' format output of scan/audit commands.
+// Annotations are as described in the tableutils.PrintTable description.
+// Use the conversion methods in this package to convert from the API structs to the table structs.
+
 // Used for vulnerabilities and security violations
 type VulnerabilityTableRow struct {
 	Severity               string              `col-name:"Severity"`

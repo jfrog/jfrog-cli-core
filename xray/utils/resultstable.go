@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,49 +23,30 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, coreutils.IsTerminal())
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolations(violations, multipleRoots, coreutils.IsTerminal())
 	if err != nil {
 		return err
 	}
 
 	// Print tables
-	err = coreutils.PrintTable(securityViolationsRows, "Security Violations", "No security violations were found", printExtended)
+	err = coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 	if err != nil {
 		return err
 	}
-	err = coreutils.PrintTable(licenseViolationsRows, "License Compliance Violations", "No license compliance violations were found", printExtended)
+	err = coreutils.PrintTable(formats.ConvertToLicenseViolationTableRow(licenseViolationsRows), "License Compliance Violations", "No license compliance violations were found", printExtended)
 	if err != nil {
 		return err
 	}
 	if len(operationalRiskViolationsRows) > 0 {
-		return coreutils.PrintTable(operationalRiskViolationsRows, "Operational Risk Violations", "No operational risk violations were found", printExtended)
+		return coreutils.PrintTable(formats.ConvertToOperationalRiskViolationTableRow(operationalRiskViolationsRows), "Operational Risk Violations", "No operational risk violations were found", printExtended)
 	}
 	return nil
 }
 
-// Same as PrintViolationsTable, but table is returned as a json map array.
-func CreateJsonViolationsTable(violations []services.Violation, multipleRoots bool) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolationsTable(violations, multipleRoots, false)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	secViolationsJsonTable, err := coreutils.CreateJsonTable(securityViolationsRows)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	licViolationsJsonTable, err := coreutils.CreateJsonTable(licenseViolationsRows)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	operationalRiskViolationsJsonTable, err := coreutils.CreateJsonTable(operationalRiskViolationsRows)
-	return secViolationsJsonTable, licViolationsJsonTable, operationalRiskViolationsJsonTable, err
-}
-
-func PrepareViolationsTable(violations []services.Violation, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, []LicenseViolationRow, []operationalRiskViolationRow, error) {
-	var securityViolationsRows []VulnerabilityRow
-	var licenseViolationsRows []LicenseViolationRow
-	var operationalRiskViolationsRows []operationalRiskViolationRow
+func PrepareViolations(violations []services.Violation, multipleRoots, coloredOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+	var securityViolationsRows []formats.VulnerabilityOrViolationRow
+	var licenseViolationsRows []formats.LicenseViolationRow
+	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
 
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
@@ -77,7 +59,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 			cves := convertCves(violation.Cves)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
-					VulnerabilityRow{
+					formats.VulnerabilityOrViolationRow{
 						Severity:               currSeverity.printableTitle(coloredOutput),
 						SeverityNumValue:       currSeverity.numValue,
 						ImpactedPackageName:    impactedPackagesNames[compIndex],
@@ -93,7 +75,7 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 		case "license":
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
-					LicenseViolationRow{
+					formats.LicenseViolationRow{
 						LicenseKey:             violation.LicenseKey,
 						Severity:               currSeverity.printableTitle(coloredOutput),
 						SeverityNumValue:       currSeverity.numValue,
@@ -107,21 +89,21 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 		case "operational_risk":
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
-				operationalRiskViolationsRow := &operationalRiskViolationRow{
-					severity:               currSeverity.printableTitle(coloredOutput),
-					severityNumValue:       currSeverity.numValue,
-					impactedPackageName:    impactedPackagesNames[compIndex],
-					impactedPackageVersion: impactedPackagesVersions[compIndex],
-					impactedPackageType:    impactedPackagesTypes[compIndex],
-					component:              components[compIndex],
-					isEol:                  violationOpRiskData.isEol,
-					cadence:                violationOpRiskData.cadence,
-					commits:                violationOpRiskData.commits,
-					committers:             violationOpRiskData.committers,
-					newerVersions:          violationOpRiskData.newerVersions,
-					latestVersion:          violationOpRiskData.latestVersion,
-					riskReason:             violationOpRiskData.riskReason,
-					eolMessage:             violationOpRiskData.eolMessage,
+				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
+					Severity:               currSeverity.printableTitle(coloredOutput),
+					SeverityNumValue:       currSeverity.numValue,
+					ImpactedPackageName:    impactedPackagesNames[compIndex],
+					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
+					ImpactedPackageType:    impactedPackagesTypes[compIndex],
+					Components:             components[compIndex],
+					IsEol:                  violationOpRiskData.isEol,
+					Cadence:                violationOpRiskData.cadence,
+					Commits:                violationOpRiskData.commits,
+					Committers:             violationOpRiskData.committers,
+					NewerVersions:          violationOpRiskData.newerVersions,
+					LatestVersion:          violationOpRiskData.latestVersion,
+					RiskReason:             violationOpRiskData.riskReason,
+					EolMessage:             violationOpRiskData.eolMessage,
 				}
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
@@ -135,13 +117,13 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
 			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
 		}
-		return securityViolationsRows[i].FixedVersions != "" && securityViolationsRows[j].FixedVersions == ""
+		return len(securityViolationsRows[i].FixedVersions) > 0 && len(securityViolationsRows[j].FixedVersions) > 0
 	})
 	sort.Slice(licenseViolationsRows, func(i, j int) bool {
 		return licenseViolationsRows[i].SeverityNumValue > licenseViolationsRows[j].SeverityNumValue
 	})
 	sort.Slice(operationalRiskViolationsRows, func(i, j int) bool {
-		return operationalRiskViolationsRows[i].severityNumValue > operationalRiskViolationsRows[j].severityNumValue
+		return operationalRiskViolationsRows[i].SeverityNumValue > operationalRiskViolationsRows[j].SeverityNumValue
 	})
 
 	return securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, nil
@@ -154,26 +136,16 @@ func PrepareViolationsTable(violations []services.Violation, multipleRoots, colo
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
 	fmt.Println(noContextMessage + "Below are all vulnerabilities detected.")
 
-	vulnerabilitiesRows, err := PrepareVulnerabilitiesTable(vulnerabilities, multipleRoots, coreutils.IsTerminal())
+	vulnerabilitiesRows, err := PrepareVulnerabilities(vulnerabilities, multipleRoots, coreutils.IsTerminal())
 	if err != nil {
 		return err
 	}
 
-	return coreutils.PrintTable(vulnerabilitiesRows, "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
+	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
 }
 
-// Same as PrintVulnerabilitiesTable, but table is returned as a json map array.
-func CreateJsonVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots bool) ([]map[string]interface{}, error) {
-	vulnerabilitiesRows, err := PrepareVulnerabilitiesTable(vulnerabilities, multipleRoots, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return coreutils.CreateJsonTable(vulnerabilitiesRows)
-}
-
-func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]VulnerabilityRow, error) {
-	var vulnerabilitiesRows []VulnerabilityRow
+func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, coloredOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
 
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
@@ -184,7 +156,7 @@ func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multi
 		currSeverity := getSeverity(vulnerability.Severity)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
-				VulnerabilityRow{
+				formats.VulnerabilityOrViolationRow{
 					Severity:               currSeverity.printableTitle(coloredOutput),
 					SeverityNumValue:       currSeverity.numValue,
 					ImpactedPackageName:    impactedPackagesNames[compIndex],
@@ -203,7 +175,7 @@ func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multi
 		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
 			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
 		}
-		return vulnerabilitiesRows[i].FixedVersions != "" && vulnerabilitiesRows[j].FixedVersions == ""
+		return len(vulnerabilitiesRows[i].FixedVersions) > 0 && len(vulnerabilitiesRows[j].FixedVersions) > 0
 	})
 	return vulnerabilitiesRows, nil
 }
@@ -213,26 +185,16 @@ func PrepareVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multi
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {
-	licensesRows, err := PrepareJsonLicensesTable(licenses, multipleRoots)
+	licensesRows, err := PrepareLicenses(licenses, multipleRoots)
 	if err != nil {
 		return err
 	}
 
-	return coreutils.PrintTable(licensesRows, "Licenses", "No licenses were found", printExtended)
+	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 }
 
-// Same as PrintLicensesTable, but table is returned as a json map array.
-func CreateJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]map[string]interface{}, error) {
-	licensesRows, err := PrepareJsonLicensesTable(licenses, multipleRoots)
-	if err != nil {
-		return nil, err
-	}
-
-	return coreutils.CreateJsonTable(licensesRows)
-}
-
-func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) ([]LicenseRow, error) {
-	var licensesRows []LicenseRow
+func PrepareLicenses(licenses []services.License, multipleRoots bool) ([]formats.LicenseRow, error) {
+	var licensesRows []formats.LicenseRow
 
 	for _, license := range licenses {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
@@ -241,7 +203,7 @@ func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) (
 		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
-				LicenseRow{
+				formats.LicenseRow{
 					LicenseKey:             license.Key,
 					ImpactedPackageName:    impactedPackagesNames[compIndex],
 					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -255,94 +217,27 @@ func PrepareJsonLicensesTable(licenses []services.License, multipleRoots bool) (
 	return licensesRows, nil
 }
 
-// Used for vulnerabilities and security violations
-type VulnerabilityRow struct {
-	Severity               string         `col-name:"Severity"`
-	SeverityNumValue       int            // For sorting
-	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
-	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	ImpactedPackageType    string         `col-name:"Type"`
-	FixedVersions          string         `col-name:"Fixed\nVersions"`
-	Components             []ComponentRow `embed-table:"true"`
-	Cves                   []CveRow       `embed-table:"true"`
-	IssueId                string         `col-name:"Issue ID" extended:"true"`
-}
-
-type LicenseRow struct {
-	LicenseKey             string         `col-name:"License"`
-	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
-	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	ImpactedPackageType    string         `col-name:"Type"`
-	Components             []ComponentRow `embed-table:"true"`
-}
-
-type LicenseViolationRow struct {
-	LicenseKey             string         `col-name:"License"`
-	Severity               string         `col-name:"Severity"`
-	SeverityNumValue       int            // For sorting
-	ImpactedPackageName    string         `col-name:"Impacted\nPackage"`
-	ImpactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	ImpactedPackageType    string         `col-name:"Type"`
-	Components             []ComponentRow `embed-table:"true"`
-}
-
-type operationalRiskViolationRow struct {
-	severity               string         `col-name:"Severity"`
-	severityNumValue       int            // For sorting
-	impactedPackageName    string         `col-name:"Impacted\nPackage"`
-	impactedPackageVersion string         `col-name:"Impacted\nPackage\nVersion"`
-	impactedPackageType    string         `col-name:"Type"`
-	component              []ComponentRow `embed-table:"true"`
-	riskReason             string         `col-name:"Risk\nReason"`
-	isEol                  string         `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
-	eolMessage             string         `col-name:"End\nOf\nLife\nMessage" extended:"true"`
-	cadence                string         `col-name:"Cadence"  extended:"true"`
-	commits                string         `col-name:"Commits"  extended:"true"`
-	committers             string         `col-name:"Committers"  extended:"true"`
-	newerVersions          string         `col-name:"Newer\nVersions" extended:"true"`
-	latestVersion          string         `col-name:"Latest\nVersion" extended:"true"`
-}
-
-type ComponentRow struct {
-	Name    string `col-name:"Component"`
-	Version string `col-name:"Component\nVersion"`
-}
-
-type CveRow struct {
-	Id     string `col-name:"CVE"`
-	CvssV2 string `col-name:"CVSS\nv2" extended:"true"`
-	CvssV3 string `col-name:"CVSS\nv3" extended:"true"`
-}
-
-// This struct holds the sorted results of the simple-json output.
-type ResultsSimpleJson struct {
-	Vulnerabilities           []map[string]interface{}
-	SecurityViolations        []map[string]interface{}
-	LicensesViolations        []map[string]interface{}
-	OperationalRiskViolations []map[string]interface{}
-	Licenses                  []map[string]interface{}
-}
-
-func convertCves(cves []services.Cve) []CveRow {
-	var cveRows []CveRow
+func convertCves(cves []services.Cve) []formats.CveRow {
+	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
-		cveRows = append(cveRows, CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
+		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
 	}
 	return cveRows
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, []string, [][]ComponentRow, error) {
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, [][]string, [][]formats.ComponentRow, error) {
 	if len(impactedPackages) == 0 {
 		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 	}
-	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions []string
-	var directComponents [][]ComponentRow
+	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string
+	var fixedVersions [][]string
+	var directComponents [][]formats.ComponentRow
 	for currCompId, currComp := range impactedPackages {
 		currCompName, currCompVersion, currCompType := splitComponentId(currCompId)
 		impactedPackagesNames = append(impactedPackagesNames, currCompName)
 		impactedPackagesVersions = append(impactedPackagesVersions, currCompVersion)
 		impactedPackagesTypes = append(impactedPackagesTypes, currCompType)
-		fixedVersions = append(fixedVersions, strings.Join(currComp.FixedVersions, "\n"))
+		fixedVersions = append(fixedVersions, currComp.FixedVersions)
 		currComponents := getDirectComponents(currComp.ImpactPaths, multipleRoots)
 		directComponents = append(directComponents, currComponents)
 	}
@@ -364,7 +259,7 @@ var packageTypes = map[string]string{
 	"alpine":   "Alpine",
 }
 
-// splitComponentId splits an Xray component ID to the component name, version and package type.
+// splitComponentId splits a Xray component ID to the component name, version and package type.
 // In case componentId doesn't contain a version, the returned version will be an empty string.
 // In case componentId's format is invalid, it will be returned as the component name
 // and empty strings will be returned instead of the version and the package type.
@@ -405,10 +300,10 @@ func splitComponentId(componentId string) (string, string, string) {
 	case "rpm":
 		// RPM identifier structure: rpm://os-version:package:epoch-version:version
 		// os-version is optional.
-		splitComponentId := strings.Split(packageId, ":")
-		if len(splitComponentId) >= 3 {
-			compName = splitComponentId[len(splitComponentId)-3]
-			compVersion = fmt.Sprintf("%s:%s", splitComponentId[len(splitComponentId)-2], splitComponentId[len(splitComponentId)-1])
+		splitCompId := strings.Split(packageId, ":")
+		if len(splitCompId) >= 3 {
+			compName = splitCompId[len(splitCompId)-3]
+			compVersion = fmt.Sprintf("%s:%s", splitCompId[len(splitCompId)-2], splitCompId[len(splitCompId)-1])
 		}
 	default:
 		// All other identifiers look like this: package-type://package-name:version.
@@ -430,9 +325,9 @@ func splitComponentId(componentId string) (string, string, string) {
 }
 
 // Gets a string of the direct dependencies or packages of the scanned component, that depends on the vulnerable package
-func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []ComponentRow {
-	var components []ComponentRow
-	componentsMap := make(map[string]ComponentRow)
+func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []formats.ComponentRow {
+	var components []formats.ComponentRow
+	componentsMap := make(map[string]formats.ComponentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
 	impactPathLevel := 1
@@ -448,7 +343,7 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 		componentId := impactPath[impactPathIndex].ComponentId
 		if _, exist := componentsMap[componentId]; !exist {
 			compName, compVersion, _ := splitComponentId(componentId)
-			componentsMap[componentId] = ComponentRow{Name: compName, Version: compVersion}
+			componentsMap[componentId] = formats.ComponentRow{Name: compName, Version: compVersion}
 		}
 	}
 

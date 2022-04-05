@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -50,16 +51,16 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 		return err
 	case SimpleJson:
 		violations, vulnerabilities, licenses := splitScanResults(results)
-		jsonTable := ResultsSimpleJson{}
+		jsonTable := formats.SimpleJsonResults{}
 		if includeVulnerabilities {
 			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
-			vulJsonTable, err := CreateJsonVulnerabilitiesTable(vulnerabilities, isMultipleRoots)
+			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, false)
 			if err != nil {
 				return err
 			}
 			jsonTable.Vulnerabilities = vulJsonTable
 		} else {
-			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := CreateJsonViolationsTable(violations, isMultipleRoots)
+			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, false)
 			if err != nil {
 				return err
 			}
@@ -69,7 +70,7 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 		}
 
 		if includeLicenses {
-			licJsonTable, err := CreateJsonLicensesTable(licenses, isMultipleRoots)
+			licJsonTable, err := PrepareLicenses(licenses, isMultipleRoots)
 			if err != nil {
 				return err
 			}
@@ -132,7 +133,7 @@ func printJson(output interface{}) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	fmt.Println(clientutils.IndentJson(results))
+	fmt.Println(clientUtils.IndentJson(results))
 	return nil
 }
 

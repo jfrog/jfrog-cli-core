@@ -62,8 +62,7 @@ func detectedTechnologies() (technologies []string, err error) {
 	}
 	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
 	if detectedTechnologiesString == "" {
-		log.Info("Could not determine the package manager / build tool used by this project.")
-		return
+		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
 	}
 	log.Info("Detected: " + detectedTechnologiesString)
 	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil

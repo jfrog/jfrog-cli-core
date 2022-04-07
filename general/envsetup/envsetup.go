@@ -114,11 +114,40 @@ func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, er
 	if err != nil {
 		return
 	}
-	params := services.TokenParams{}
-	params.ExpiresIn = 0
-	token, err := accessManager.CreateAccessToken(params)
+	params := createRefreshableTokenParams()
+	token, err := accessManager.CreateAccessToken(*params)
+	if err != nil {
+		return nil, err
+	}
 	server.AccessToken = token.AccessToken
+	server.RefreshToken = token.RefreshToken
+	// TODO: refresh, you put it here for now, but should be an API with refresh
+	accessManager, err = utils.CreateAccessServiceManager(server, false)
+	params = createRefreshTokenRequestParams(server.RefreshToken)
+	token, err = accessManager.CreateAccessToken(*params)
+	if err != nil {
+		return nil, err
+	}
 	return
+}
+
+func createRefreshableTokenParams() *services.TokenParams {
+	trueValue := true
+	params := services.TokenParams{}
+	params.ExpiresIn = 60
+	params.Refreshable = &trueValue
+	params.Scope = "applied-permissions/user"
+	params.Audience = "*@*"
+	return &params
+}
+
+func createRefreshTokenRequestParams(refreshToken string) *services.TokenParams {
+	trueValue := true
+	params := services.TokenParams{}
+	params.GrantType = "refresh_token"
+	params.Refreshable = &trueValue
+	params.RefreshToken = refreshToken
+	return &params
 }
 
 func (ftc *EnvSetupCommand) decodeBase64Credentials() (server *config.ServerDetails, err error) {

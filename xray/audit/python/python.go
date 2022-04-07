@@ -140,7 +140,7 @@ func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (re
 		}
 		// Run pipenv install
 		var output []byte
-		output, err = exec.Command("pipenv", "install").CombinedOutput()
+		output, err = exec.Command("pipenv", "install", "-d").CombinedOutput()
 		if err != nil {
 			err = errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
 		}

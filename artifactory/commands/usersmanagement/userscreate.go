@@ -68,7 +68,7 @@ func (ucc *UsersCreateCommand) Run() error {
 
 	for _, user := range ucc.users {
 		log.Info(fmt.Sprintf("Creating user %s...", user.Name))
-		user.Groups = ucc.usersGroups
+		user.Groups = &ucc.usersGroups
 		params := new(services.UserParams)
 		params.UserDetails = user
 		params.ReplaceIfExists = ucc.ReplaceIfExists()

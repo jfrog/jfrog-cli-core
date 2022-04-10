@@ -71,7 +71,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 		return "", err
 	}
 	if tempDirExists {
-		err = os.RemoveAll(tempDirPath)
+		err = fileutils.RemoveTempDir(tempDirPath)
 		if err != nil {
 			return "", errorutils.CheckErrorf("Temporary download directory already exists, and can't be removed: %s\nRemove this directory manually and try again: %s", err.Error(), tempDirPath)
 		}
@@ -124,7 +124,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 		return "", err
 	}
 	if newDirExists {
-		err = os.RemoveAll(tempDirPath)
+		err = fileutils.RemoveTempDir(tempDirPath)
 	} else {
 		err = fileutils.MoveDir(tempDirPath, newDirPath)
 	}

@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -18,7 +19,7 @@ import (
 // GenericAudit audits the project found in the current directory using Xray.
 func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	// If no technologies were given, try to detect all types of technologies that in used.
-	// Otherwise run audit for requested technologies only.
+	// Otherwise, run audit for requested technologies only.
 	if len(technologies) == 0 {
 		technologies, err = detectedTechnologies()
 		if err != nil {
@@ -37,9 +38,9 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 		case coreutils.Go:
 			results, isMultipleRootProject, err = _go.AuditGo(xrayGraphScanPrams, serverDetails)
 		case coreutils.Pip:
-			results, isMultipleRootProject, err = python.AuditPip(xrayGraphScanPrams, serverDetails)
+			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip)
 		case coreutils.Pipenv:
-			results, isMultipleRootProject, err = python.AuditPipenv(xrayGraphScanPrams, serverDetails)
+			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:

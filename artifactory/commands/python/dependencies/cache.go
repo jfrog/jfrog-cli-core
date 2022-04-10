@@ -13,8 +13,8 @@ import (
 const cacheLatestVersion = 1
 
 type DependenciesCache struct {
-	Version int                              `json:"version,omitempty"`
-	DepsMap map[string]*buildinfo.Dependency `json:"dependencies,omitempty"`
+	Version int                             `json:"version,omitempty"`
+	DepsMap map[string]buildinfo.Dependency `json:"dependencies,omitempty"`
 }
 
 // Reads the json cache file of recent used project's dependencies,  and converts it into a map of
@@ -51,7 +51,7 @@ func GetProjectDependenciesCache(cacheDir string) (cache *DependenciesCache, err
 // Receives map of all current project's dependencies information.
 // The map contains the dependencies retrieved from Artifactory as well as those read from cache.
 // Writes the updated project's dependencies cache with all current dependencies.
-func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheDir string) (err error) {
+func UpdateDependenciesCache(updatedMap map[string]buildinfo.Dependency, cacheDir string) (err error) {
 	updatedCache := DependenciesCache{Version: cacheLatestVersion, DepsMap: updatedMap}
 	content, err := json.Marshal(&updatedCache)
 	if err != nil {
@@ -82,13 +82,9 @@ func UpdateDependenciesCache(updatedMap map[string]*buildinfo.Dependency, cacheD
 // Return required dependency from cache.
 // If dependency does not exist, return nil.
 // dependencyName - Name of dependency (lowercase package name).
-func (cache DependenciesCache) GetDependency(dependencyName string) *buildinfo.Dependency {
-	dependency, ok := cache.DepsMap[dependencyName]
-	if !ok {
-		return nil
-	}
-
-	return dependency
+func (cache DependenciesCache) GetDependency(dependencyName string) (dependency buildinfo.Dependency) {
+	dependency = cache.DepsMap[dependencyName]
+	return
 }
 
 // Cache file will be located in the ./.jfrog/projects/deps.cache.json

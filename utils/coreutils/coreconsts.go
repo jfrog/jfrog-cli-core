@@ -12,6 +12,7 @@ const (
 	// Home Dir
 	JfrogCertsDirName        = "certs"
 	JfrogConfigFile          = "jfrog-cli.conf"
+	JfrogPluginsFile         = "plugins.yaml"
 	JfrogDependenciesDirName = "dependencies"
 	JfrogSecurityDirName     = "security"
 	JfrogSecurityConfFile    = "security.yaml"

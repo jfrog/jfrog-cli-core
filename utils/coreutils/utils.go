@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"golang.org/x/term"
+	"io/fs"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -135,6 +137,10 @@ func ConvertExitCodeError(err error) error {
 
 func GetConfigVersion() int {
 	return 5
+}
+
+func GetPluginsVersion() int {
+	return 1
 }
 
 func SumTrueValues(boolArr []bool) int {
@@ -299,6 +305,19 @@ func GetJfrogPluginsResourcesDir(pluginsName string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(pluginsDir, pluginsName, PluginsResourcesDirName), nil
+}
+
+func GetPluginsDirectoryContent() ([]fs.FileInfo, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return nil, err
+	}
+	exists, err := fileutils.IsDirExists(pluginsDir, false)
+	if err != nil || !exists {
+		return nil, err
+	}
+
+	return ioutil.ReadDir(pluginsDir)
 }
 
 func GetJfrogLocksDir() (string, error) {

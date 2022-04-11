@@ -1,7 +1,6 @@
 package buildinfo
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -209,11 +208,11 @@ func TestPopulateIssuesConfigurations(t *testing.T) {
 	err := ic.populateIssuesConfigsFromSpec(filepath.Join("..", "testdata", "buildissues", "issuesconfig_success.yaml"))
 	// Check they are equal
 	if err != nil {
-		t.Error(fmt.Sprintf("Reading configurations file ended with error: %s", err.Error()))
+		t.Errorf("Reading configurations file ended with error: %s", err.Error())
 		t.FailNow()
 	}
 	if *ic != *expectedIssuesConfiguration {
-		t.Error(fmt.Sprintf("Failed reading configurations file. Expected: %+v Received: %+v", *expectedIssuesConfiguration, *ic))
+		t.Errorf("Failed reading configurations file. Expected: %+v Received: %+v", *expectedIssuesConfiguration, *ic)
 		t.FailNow()
 	}
 
@@ -227,7 +226,7 @@ func TestPopulateIssuesConfigurations(t *testing.T) {
 	for _, config := range failing {
 		err = ic.populateIssuesConfigsFromSpec(config)
 		if err == nil {
-			t.Error(fmt.Sprintf("Reading configurations file was supposed to end with error: %s", config))
+			t.Errorf("Reading configurations file was supposed to end with error: %s", config)
 			t.FailNow()
 		}
 	}
@@ -311,10 +310,10 @@ func TestServerDetailsFromConfigFile(t *testing.T) {
 	}
 
 	if details.ArtifactoryUrl != expectedUrl {
-		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl))
+		t.Errorf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl)
 	}
 	if details.User != expectedUser {
-		t.Error(fmt.Sprintf("Expected %s, got %s", details.User, expectedUser))
+		t.Errorf("Expected %s, got %s", details.User, expectedUser)
 	}
 }
 
@@ -336,10 +335,10 @@ func TestServerDetailsWithoutConfigFile(t *testing.T) {
 	}
 
 	if details.ArtifactoryUrl != expectedUrl {
-		t.Error(fmt.Sprintf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl))
+		t.Errorf("Expected %s, got %s", expectedUrl, details.ArtifactoryUrl)
 	}
 
 	if details.User != expectedUser {
-		t.Error(fmt.Sprintf("Expected %s, got %s", details.User, expectedUser))
+		t.Errorf("Expected %s, got %s", details.User, expectedUser)
 	}
 }

@@ -49,8 +49,29 @@ func NewEnvSetupCommand(url string) *EnvSetupCommand {
 	}
 }
 
+// This function is a wrapper around the 'ftc.progress.SetHeadlineMsg(msg)' API,
+// to make sure that ftc.progress isn't nil. It can be nil in case the CI environment variable is set.
+// In case ftc.progress is nil, the message sent will be prompted to the screen
+// without the progress indication.
+func (ftc *EnvSetupCommand) setHeadlineMsg(msg string) {
+	if ftc.progress != nil {
+		ftc.progress.SetHeadlineMsg(msg)
+	} else {
+		log.Output(msg + "...")
+	}
+}
+
+// This function is a wrapper around the 'ftc.progress.clearHeadlineMsg()' API,
+// to make sure that ftc.progress isn't nil before clearing it.
+// It can be nil in case the CI environment variable is set.
+func (ftc *EnvSetupCommand) clearHeadlineMsg() {
+	if ftc.progress != nil {
+		ftc.progress.ClearHeadlineMsg()
+	}
+}
+
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.progress.SetHeadlineMsg("Just fill out its details in your browser")
+	ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
 	time.Sleep(8 * time.Second)
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
@@ -133,8 +154,8 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
 			if !readyMessageDisplayed {
-				ftc.progress.ClearHeadlineMsg()
-				ftc.progress.SetHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup")
+				ftc.clearHeadlineMsg()
+				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
 				readyMessageDisplayed = true
 			}
 			statusResponse := myJfrogGetStatusResponse{}
@@ -164,7 +185,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 	if err = json.Unmarshal(body, &statusResponse); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	ftc.progress.ClearHeadlineMsg()
+	ftc.clearHeadlineMsg()
 	serverDetails = &config.ServerDetails{
 		Url:         statusResponse.PlatformUrl,
 		AccessToken: statusResponse.AccessToken,

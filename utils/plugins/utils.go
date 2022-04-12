@@ -134,14 +134,32 @@ func migrateFileSystemLayout() error {
 			log.Error("unexpected directory in plugins directory")
 			break
 		}
+		// Verify that the file is an executable file
+		if !IsExecAny(p.Mode()) {
+			log.Error("unexpected file in plugins directory: " + p.Name())
+			continue
+		}
+		// We want to move plugins exec inside a directory with thw same name.
+		// For that we will create a directory with the same name+"_dir" extension, move the file and change directory name back.
 		pluginsName := getPluginsNameFromExec(p.Name())
-		// TODO: check
-		err = fileutils.CopyFile(p.Name(), filepath.Join(pluginsDir, pluginsName, coreutils.PluginsExecDirName, p.Name()))
+		err = os.MkdirAll(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName), 0777)
+		if err != nil {
+			return err
+		}
+		err = fileutils.MoveFile(filepath.Join(pluginsDir, p.Name()), filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName, p.Name()))
+		if err != nil {
+			return err
+		}
+		err = os.Rename(filepath.Join(pluginsDir, pluginsName+"_dir"), filepath.Join(pluginsDir, pluginsName))
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func IsExecAny(mode os.FileMode) bool {
+	return mode&0111 != 0
 }
 
 func getPluginsNameFromExec(execName string) string {
@@ -167,14 +185,14 @@ func createPluginsYamlFile() (*PluginsV1, error) {
 }
 
 func getPluginsFilePath() (string, error) {
-	confPath, err := coreutils.GetJfrogHomeDir()
+	pluginsFilePath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
 		return "", err
 	}
-	err = os.MkdirAll(confPath, 0777)
+	err = os.MkdirAll(pluginsFilePath, 0777)
 	if err != nil {
 		return "", err
 	}
-	confPath = filepath.Join(confPath, coreutils.JfrogPluginsFile)
-	return confPath, nil
+	pluginsFilePath = filepath.Join(pluginsFilePath, coreutils.JfrogPluginsDirName, coreutils.JfrogPluginsFile)
+	return pluginsFilePath, nil
 }

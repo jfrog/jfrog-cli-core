@@ -338,12 +338,12 @@ func GetJfrogConfigLockDir() (string, error) {
 }
 
 func GetJfrogPluginsLockDir() (string, error) {
-	configLockDirName := "plugins"
+	pluginsLockDirName := "plugins"
 	locksDirPath, err := GetJfrogLocksDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(locksDirPath, configLockDirName), nil
+	return filepath.Join(locksDirPath, pluginsLockDirName), nil
 }
 
 // Ask a yes or no question, with a default answer.

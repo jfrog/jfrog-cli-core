@@ -33,6 +33,7 @@ type PluginsV1 struct {
 }
 
 func CheckPluginsVersionAndConvertIfNeeded() error {
+	// Locking mechanism
 	mutex.Lock()
 	defer mutex.Unlock()
 	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
@@ -41,10 +42,22 @@ func CheckPluginsVersionAndConvertIfNeeded() error {
 	}
 	lockFile, err := lock.CreateLock(lockDirPath)
 	defer lockFile.Unlock()
-
 	if err != nil {
 		return err
 	}
+	// Check if 'plugins' directory exists in .jfrog
+	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
+	if err != nil {
+		return err
+	}
+	exists, err := fileutils.IsDirExists(filepath.Join(jfrogHomeDir, coreutils.JfrogPluginsDirName), false)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
 	plugins, err := readPluginsYaml()
 	if err != nil {
 		return err
@@ -190,7 +203,7 @@ func createPluginsYamlFile() (*PluginsV1, error) {
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(pluginsFilePath, content, 0600)
+	err = ioutil.WriteFile(pluginsFilePath, content, 0777)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

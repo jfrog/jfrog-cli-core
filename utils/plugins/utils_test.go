@@ -2,10 +2,11 @@ package plugins
 
 import (
 	"fmt"
-	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,7 @@ const pluginName = "rt-fs"
 
 func TestConvertPluginsV0ToV1(t *testing.T) {
 	// Setup testing env
-	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	cleanUpTempEnv := CreateTempEnvForPluginsTests(t)
 	defer cleanUpTempEnv()
 	testHomeDir := setupPluginsTestingEnv(t, "v0")
 	// Migration- v0 to v1
@@ -36,7 +37,7 @@ func TestConvertPluginsV0ToV1(t *testing.T) {
 // Plugins directory is empty - only 'plugins.yaml' should be created.
 func TestConvertPluginsV0ToV1EmptyDir(t *testing.T) {
 	// Setup testing env
-	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	cleanUpTempEnv := CreateTempEnvForPluginsTests(t)
 	defer cleanUpTempEnv()
 	testHomeDir := setupPluginsTestingEnv(t, "empty")
 	// Migration- v0 to v1
@@ -53,7 +54,7 @@ func TestConvertPluginsV0ToV1EmptyDir(t *testing.T) {
 // Plugins directory contains unexpected file (non executable)
 func TestConvertPluginsV0ToV1WithUnexpectedFiles(t *testing.T) {
 	// Setup testing env
-	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	cleanUpTempEnv := CreateTempEnvForPluginsTests(t)
 	defer cleanUpTempEnv()
 	testHomeDir := setupPluginsTestingEnv(t, "unexpectedFiles")
 	// Migration- v0 to v1
@@ -87,4 +88,16 @@ func setupPluginsTestingEnv(t *testing.T, pluginsDirName string) string {
 		assert.NoError(t, err)
 	}
 	return testHomeDir
+}
+
+// Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory
+func CreateTempEnvForPluginsTests(t *testing.T) (cleanUp func()) {
+	tmpDir, err := ioutil.TempDir("", "plugins_test")
+	assert.NoError(t, err)
+	oldHome := os.Getenv(coreutils.HomeDir)
+	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, tmpDir)
+	return func() {
+		testsutils.RemoveAllAndAssert(t, tmpDir)
+		testsutils.SetEnvAndAssert(t, coreutils.HomeDir, oldHome)
+	}
 }

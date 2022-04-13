@@ -1,10 +1,8 @@
 package plugins
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -15,10 +13,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Internal golang locking for the same process.
@@ -102,36 +98,6 @@ func getPluginsYamlFile() (content []byte, err error) {
 	return
 }
 
-// Creating a homedir backup prior to converting.
-func createHomeDirBackup() error {
-	homeDir, err := coreutils.GetJfrogHomeDir()
-	if err != nil {
-		return err
-	}
-	backupDir, err := coreutils.GetJfrogBackupDir()
-	if err != nil {
-		return err
-	}
-
-	// Copy homedir contents to backup dir, excluding redundant dirs and the backup dir itself.
-	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
-	curBackupPath := filepath.Join(backupDir, backupName)
-	log.Debug("Creating a homedir backup at: " + curBackupPath)
-	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
-	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
-}
-
-// Version key doesn't exist in version 0
-// Version key is "Version" in version 1
-// Version key is "version" in version 2 and above
-func getVersion(content []byte) (value string, err error) {
-	value, err = jsonparser.GetString(bytes.ToLower(content), "version")
-	if err != nil && err.Error() == "Key path not found" {
-		return "0", nil
-	}
-	return value, errorutils.CheckError(err)
-}
-
 // V0: in plugins directory there was no 'plugins.yaml' file. all executable files were in the same directory.
 // V1: create 'plugins.yaml' file inside 'plugins' directory. change the file's hierarchy inside 'plugins' directory.
 func convertPluginsV0ToV1() (*PluginsV1, error) {
@@ -139,7 +105,7 @@ func convertPluginsV0ToV1() (*PluginsV1, error) {
 	if err != nil {
 		return nil, err
 	}
-	return createPluginsYamlFile()
+	return CreatePluginsYamlFile()
 }
 
 // Change the file's hierarchy inside 'plugins' directory to:
@@ -156,6 +122,10 @@ func migrateFileSystemLayoutV0ToV1() error {
 	}
 	pluginsDir, err := coreutils.GetJfrogPluginsDir()
 	for _, p := range plugins {
+		// Skip 'plugins.yaml'
+		if p.Name() == coreutils.JfrogPluginsFile {
+			continue
+		}
 		if p.IsDir() {
 			log.Error("unexpected directory in plugins directory")
 			break
@@ -192,7 +162,7 @@ func getPluginsNameFromExec(execName string) string {
 	return strings.Split(execName, ".")[0]
 }
 
-func createPluginsYamlFile() (*PluginsV1, error) {
+func CreatePluginsYamlFile() (*PluginsV1, error) {
 	pluginsFilePath, err := getPluginsFilePath()
 	if err != nil {
 		return nil, err

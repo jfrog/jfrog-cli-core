@@ -60,6 +60,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
+						Summary:                violation.Summary,
 						Severity:               currSeverity.printableTitle(coloredOutput),
 						SeverityNumValue:       currSeverity.numValue,
 						ImpactedPackageName:    impactedPackagesNames[compIndex],
@@ -69,6 +70,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 						Components:             components[compIndex],
 						Cves:                   cves,
 						IssueId:                violation.IssueId,
+						References:             violation.References,
 					},
 				)
 			}
@@ -157,6 +159,7 @@ func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
+					Summary:                vulnerability.Summary,
 					Severity:               currSeverity.printableTitle(coloredOutput),
 					SeverityNumValue:       currSeverity.numValue,
 					ImpactedPackageName:    impactedPackagesNames[compIndex],
@@ -166,6 +169,7 @@ func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 					Components:             components[compIndex],
 					Cves:                   cves,
 					IssueId:                vulnerability.IssueId,
+					References:             vulnerability.References,
 				},
 			)
 		}

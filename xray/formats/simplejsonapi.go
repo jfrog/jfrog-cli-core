@@ -14,6 +14,7 @@ type SimpleJsonResults struct {
 
 // Used for vulnerabilities and security violations
 type VulnerabilityOrViolationRow struct {
+	Summary                string         `json:"summary"`
 	Severity               string         `json:"severity"`
 	SeverityNumValue       int            `json:"-"` // For sorting
 	ImpactedPackageName    string         `json:"impactedPackageName"`
@@ -23,6 +24,7 @@ type VulnerabilityOrViolationRow struct {
 	Components             []ComponentRow `json:"components"`
 	Cves                   []CveRow       `json:"cves"`
 	IssueId                string         `json:"issueId"`
+	References             []string       `json:"references"`
 }
 
 type LicenseRow struct {

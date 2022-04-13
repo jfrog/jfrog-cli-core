@@ -11,17 +11,17 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.0
 	github.com/jfrog/build-info-go v1.2.3
 	github.com/jfrog/gofrog v1.1.1
-	github.com/jfrog/jfrog-client-go v1.12.0
-	github.com/magiconair/properties v1.8.6
-	github.com/manifoldco/promptui v0.9.0
+	github.com/jfrog/jfrog-client-go v0.22.3
+	github.com/magiconair/properties v1.8.1
+	github.com/manifoldco/promptui v0.8.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/viper v1.10.1
+	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.1
 	github.com/urfave/cli v1.22.5
-	golang.org/x/mod v0.5.1
+	golang.org/x/mod v0.3.0
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v2 v2.3.0
 )
 
 require (
@@ -43,10 +43,12 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
 	github.com/klauspost/compress v1.11.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/lunixbochs/vtclean v0.0.0-20180621232353-2d01aacdc34a // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
@@ -88,7 +90,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-//replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.11.5-0.20220410150852-866709518452
+replace github.com/jfrog/jfrog-client-go => github.com/asafgabai/jfrog-client-go v0.18.1-0.20220413142659-0b6f2539febd
 
 //replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.2.3-0.20220410150009-b76583c09a30
 

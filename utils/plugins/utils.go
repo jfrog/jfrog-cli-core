@@ -3,8 +3,10 @@ package plugins
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -15,8 +17,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// Internal golang locking for the same process.
+var mutex sync.Mutex
 
 func init() {
 	cliLog.SetDefaultLogger()
@@ -27,12 +33,24 @@ type PluginsV1 struct {
 }
 
 func CheckPluginsVersionAndConvertIfNeeded() error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
+	if err != nil {
+		return err
+	}
+	lockFile, err := lock.CreateLock(lockDirPath)
+	defer lockFile.Unlock()
+
+	if err != nil {
+		return err
+	}
 	plugins, err := readPluginsYaml()
 	if err != nil {
 		return err
 	}
 	if plugins.Version != coreutils.GetPluginsVersion() {
-		return errorutils.CheckError(errors.New("Expected plugins version in 'plugins.yaml is " + string(coreutils.GetPluginsVersion()) + " but the actual value is" + string(plugins.Version)))
+		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d  but the actual value is %d", coreutils.GetPluginsVersion(), plugins.Version)))
 	}
 	return nil
 }
@@ -104,26 +122,21 @@ func getVersion(content []byte) (value string, err error) {
 // V0: in plugins directory there was no 'plugins.yaml' file. all executable files were in the same directory.
 // V1: create 'plugins.yaml' file inside 'plugins' directory. change the file's hierarchy inside 'plugins' directory.
 func convertPluginsV0ToV1() (*PluginsV1, error) {
-	// TODO: what to do after migration fails?
-	err := createHomeDirBackup()
-	if err != nil {
-		return nil, err
-	}
-	err = migrateFileSystemLayout()
+	err := migrateFileSystemLayoutV0ToV1()
 	if err != nil {
 		return nil, err
 	}
 	return createPluginsYamlFile()
 }
 
-//change the file's hierarchy inside 'plugins' directory to:
-//	plugins:
-//		<plugin-name>:
-//			bin:
-//				<plugin-exec>
-//			resources:(optional)
-//				<resource-name>
-func migrateFileSystemLayout() error {
+// Change the file's hierarchy inside 'plugins' directory to:
+//	plugins (dir)
+//		plugin-name (dir)
+//			bin (dir)
+//				plugin-executable (file)
+//			resources:(optional dir)
+//				... (directories/files)
+func migrateFileSystemLayoutV0ToV1() error {
 	plugins, err := coreutils.GetPluginsDirectoryContent()
 	if err != nil {
 		return err
@@ -195,4 +208,11 @@ func getPluginsFilePath() (string, error) {
 	}
 	pluginsFilePath = filepath.Join(pluginsFilePath, coreutils.JfrogPluginsDirName, coreutils.JfrogPluginsFile)
 	return pluginsFilePath, nil
+}
+
+func GetLocalPluginExecutableName(pluginName string) string {
+	if coreutils.IsWindows() {
+		return pluginName + ".exe"
+	}
+	return pluginName
 }

@@ -337,6 +337,15 @@ func GetJfrogConfigLockDir() (string, error) {
 	return filepath.Join(locksDirPath, configLockDirName), nil
 }
 
+func GetJfrogPluginsLockDir() (string, error) {
+	configLockDirName := "plugins"
+	locksDirPath, err := GetJfrogLocksDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(locksDirPath, configLockDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"

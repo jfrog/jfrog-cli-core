@@ -141,6 +141,10 @@ func migrateFileSystemLayoutV0ToV1() error {
 		// Move plugins exec files inside a directory with the plugin's name.
 		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
 		pluginsName := getPluginsNameFromExec(p.Name())
+		// For example case of ".DS_Store" files
+		if pluginsName == "" {
+			continue
+		}
 		err = os.MkdirAll(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName), 0777)
 		if err != nil {
 			return err

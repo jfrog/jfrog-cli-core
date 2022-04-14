@@ -320,6 +320,24 @@ func GetPluginsDirectoryContent() ([]fs.FileInfo, error) {
 	return ioutil.ReadDir(pluginsDir)
 }
 
+func ChmodPluginsDirectoryContent() error {
+	plugins, err := GetPluginsDirectoryContent()
+	if err != nil || plugins == nil {
+		return err
+	}
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return err
+	}
+	for _, p := range plugins {
+		err = os.Chmod(filepath.Join(pluginsDir, p.Name()), 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GetJfrogLocksDir() (string, error) {
 	homeDir, err := GetJfrogHomeDir()
 	if err != nil {

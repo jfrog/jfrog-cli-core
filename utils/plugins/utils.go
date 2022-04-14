@@ -146,6 +146,10 @@ func migrateFileSystemLayoutV0ToV1() error {
 		if err != nil {
 			return err
 		}
+		err = os.Chmod(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName, p.Name()), 0777)
+		if err != nil {
+			return err
+		}
 		err = os.Rename(filepath.Join(pluginsDir, pluginsName+"_dir"), filepath.Join(pluginsDir, pluginsName))
 		if err != nil {
 			return err

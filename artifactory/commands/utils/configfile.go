@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -284,7 +283,7 @@ func (configFile *ConfigFile) setIncludeExcludePatterns() {
 	if !coreutils.AskYesNo("Would you like to filter out some of the deployed artifacts?", false) {
 		return
 	}
-	fmt.Println("You may set multiple wildcard patterns, to match the artifacts' names you'd like to include and/or exclude from being deployed.")
+	log.Output("You may set multiple wildcard patterns, to match the artifacts' names you'd like to include and/or exclude from being deployed.")
 	includePatterns := getIncludeExcludePatterns("include")
 	if includePatterns != "" {
 		configFile.Deployer.IncludePatterns = includePatterns

@@ -10,6 +10,7 @@ type SimpleJsonResults struct {
 	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
+	Errors                    []SimpleJsonError             `json:"errors"`
 }
 
 // Used for vulnerabilities and security violations
@@ -69,4 +70,9 @@ type CveRow struct {
 	Id     string `json:"id"`
 	CvssV2 string `json:"cvssV2"`
 	CvssV3 string `json:"cvssV3"`
+}
+
+type SimpleJsonError struct {
+	FilePath     string `json:"filePath"`
+	ErrorMessage string `json:"errorMessage"`
 }

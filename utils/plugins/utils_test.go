@@ -83,6 +83,7 @@ func setupPluginsTestingEnv(t *testing.T, pluginsDirName string) string {
 	assert.NoError(t, err)
 	pluginsExecName := filepath.Join(testHomeDir, coreutils.JfrogPluginsDirName, pluginName)
 	exists, err := fileutils.IsFileExists(pluginsExecName, false)
+	assert.NoError(t, err)
 	if exists {
 		err = os.Chmod(pluginsExecName, 0777)
 		assert.NoError(t, err)

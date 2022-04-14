@@ -121,6 +121,9 @@ func migrateFileSystemLayoutV0ToV1() error {
 		return err
 	}
 	pluginsDir, err := coreutils.GetJfrogPluginsDir()
+	if err != nil {
+		return err
+	}
 	for _, p := range plugins {
 		// Skip 'plugins.yaml'
 		if p.Name() == coreutils.JfrogPluginsFile {

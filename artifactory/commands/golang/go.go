@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -138,28 +137,18 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-
-	var goBuild *build.Build
-	toCollect, err := gc.buildConfiguration.IsCollectBuildInfo()
+	goBuildInfo, err := utils.PrepareBuildPrerequisites(gc.buildConfiguration)
 	if err != nil {
 		return err
 	}
-	if toCollect {
-		buildName, err := gc.buildConfiguration.GetBuildName()
-		if err != nil {
-			return err
+	defer func() {
+		if goBuildInfo != nil && err != nil {
+			e := goBuildInfo.Clean()
+			if e != nil {
+				err = errors.New(err.Error() + "\n" + e.Error())
+			}
 		}
-		buildNumber, err := gc.buildConfiguration.GetBuildNumber()
-		if err != nil {
-			return err
-		}
-		projectKey := gc.buildConfiguration.GetProject()
-		buildInfoService := utils.CreateBuildInfoService()
-		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-	}
+	}()
 
 	resolverDetails, err := gc.resolverParams.ServerDetails()
 	if err != nil {
@@ -182,7 +171,8 @@ func (gc *GoCommand) run() error {
 		return coreutils.ConvertExitCodeError(errorutils.CheckError(err))
 	}
 
-	if toCollect {
+	if goBuildInfo != nil {
+		// Need to collect build info
 		tempDirPath := ""
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
@@ -200,7 +190,7 @@ func (gc *GoCommand) run() error {
 				return err
 			}
 		}
-		goModule, err := goBuild.AddGoModule(tempDirPath)
+		goModule, err := goBuildInfo.AddGoModule(tempDirPath)
 		if err != nil {
 			return errorutils.CheckError(err)
 		}

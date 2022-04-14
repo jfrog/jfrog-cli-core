@@ -244,7 +244,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
 			log.Info(logMsgPrefix+"Indexing file:", filePath)
 			if scanCmd.progress != nil {
-				scanCmd.progress.SetHeadlineMsg("Indexing file: " + filepath.Base(filePath))
+				scanCmd.progress.SetHeadlineMsg("Indexing file: " + filepath.Base(filePath) + " 🗄")
 			}
 			graph, err := scanCmd.indexFile(filePath)
 			if err != nil {
@@ -267,7 +267,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 					ScanType:   services.Binary,
 				}
 				if scanCmd.progress != nil {
-					scanCmd.progress.SetHeadlineMsg("Scanning")
+					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")
 				}
 				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
 				if err != nil {

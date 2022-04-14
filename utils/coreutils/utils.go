@@ -139,7 +139,7 @@ func GetConfigVersion() int {
 	return 5
 }
 
-func GetPluginsVersion() int {
+func GetPluginsYamlVersion() int {
 	return 1
 }
 

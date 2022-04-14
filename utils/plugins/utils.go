@@ -58,8 +58,8 @@ func CheckPluginsVersionAndConvertIfNeeded() error {
 	if err != nil {
 		return err
 	}
-	if plugins.Version != coreutils.GetPluginsVersion() {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d  but the actual value is %d", coreutils.GetPluginsVersion(), plugins.Version)))
+	if plugins.Version != coreutils.GetPluginsYamlVersion() {
+		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d  but the actual value is %d", coreutils.GetPluginsYamlVersion(), plugins.Version)))
 	}
 	return nil
 }
@@ -71,7 +71,7 @@ func readPluginsYaml() (*PluginsV1, error) {
 		return nil, err
 	}
 	if len(content) == 0 {
-		// No plugins.yaml file was found, that meant that we are in V0.
+		// No plugins.yaml file was found, that means that we are in v0.
 		// Convert plugins layout to the latest version.
 		return convertPluginsV0ToV1()
 	}
@@ -131,12 +131,12 @@ func migrateFileSystemLayoutV0ToV1() error {
 			break
 		}
 		// Verify that the file is an executable file
-		if !IsExecAny(p.Mode()) {
+		if !IsExec(p.Mode()) {
 			log.Error("unexpected file in plugins directory: " + p.Name())
 			continue
 		}
-		// We want to move plugins exec inside a directory with thw same name.
-		// For that we will create a directory with the same name+"_dir" extension, move the file and change directory name back.
+		// Move plugins exec files inside a directory with the plugin's name.
+		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
 		pluginsName := getPluginsNameFromExec(p.Name())
 		err = os.MkdirAll(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName), 0777)
 		if err != nil {
@@ -154,7 +154,8 @@ func migrateFileSystemLayoutV0ToV1() error {
 	return nil
 }
 
-func IsExecAny(mode os.FileMode) bool {
+// IsExec Check if file's type is executable
+func IsExec(mode os.FileMode) bool {
 	return mode&0111 != 0
 }
 

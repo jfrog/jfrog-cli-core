@@ -12,7 +12,6 @@ const (
 	// Home Dir
 	JfrogCertsDirName        = "certs"
 	JfrogConfigFile          = "jfrog-cli.conf"
-	JfrogPluginsFile         = "plugins.yaml"
 	JfrogDependenciesDirName = "dependencies"
 	JfrogSecurityDirName     = "security"
 	JfrogSecurityConfFile    = "security.yaml"
@@ -22,6 +21,7 @@ const (
 	JfrogPluginsDirName      = "plugins"
 	PluginsExecDirName       = "bin"
 	PluginsResourcesDirName  = "resources"
+	JfrogPluginsFile         = "plugins.yaml"
 
 	// Env
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"

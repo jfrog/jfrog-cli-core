@@ -17,7 +17,8 @@ import (
 	"sync"
 )
 
-// Internal golang locking for the same process.
+// Internal golang locking
+// In case the 2 threads in the same needs to check plugins.yml file or migrate the fileSystem files to the latest version.
 var mutex sync.Mutex
 
 func init() {
@@ -28,10 +29,13 @@ type PluginsV1 struct {
 	Version int `json:"version,omitempty"`
 }
 
+// CheckPluginsVersionAndConvertIfNeeded In case the latest plugin's layout version isn't match to the local plugins hierarchy at '.jfrog/plugins' -
+// Migrate to the latest version.
 func CheckPluginsVersionAndConvertIfNeeded() error {
-	// Locking mechanism
+	// Locking mechanism - two threads in the same process.
 	mutex.Lock()
 	defer mutex.Unlock()
+	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
 	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
 	if err != nil {
 		return err
@@ -54,24 +58,24 @@ func CheckPluginsVersionAndConvertIfNeeded() error {
 		return nil
 	}
 
-	plugins, err := readPluginsYaml()
+	plugins, err := readPluginsConfig()
 	if err != nil {
 		return err
 	}
-	if plugins.Version != coreutils.GetPluginsYamlVersion() {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d  but the actual value is %d", coreutils.GetPluginsYamlVersion(), plugins.Version)))
+	if plugins.Version != coreutils.GetPluginsConfigVersion() {
+		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)))
 	}
 	return nil
 }
 
-func readPluginsYaml() (*PluginsV1, error) {
+func readPluginsConfig() (*PluginsV1, error) {
 	plugins := new(PluginsV1)
-	content, err := getPluginsYamlFile()
+	content, err := getPluginsConfigFileContent()
 	if err != nil {
 		return nil, err
 	}
 	if len(content) == 0 {
-		// No plugins.yaml file was found, that means that we are in v0.
+		// No plugins.yaml file was found. This means that we are in v0.
 		// Convert plugins layout to the latest version.
 		return convertPluginsV0ToV1()
 	}
@@ -83,7 +87,7 @@ func readPluginsYaml() (*PluginsV1, error) {
 	return plugins, err
 }
 
-func getPluginsYamlFile() (content []byte, err error) {
+func getPluginsConfigFileContent() (content []byte, err error) {
 	pluginsFilePath, err := getPluginsFilePath()
 	if err != nil {
 		return
@@ -98,14 +102,14 @@ func getPluginsYamlFile() (content []byte, err error) {
 	return
 }
 
-// V0: in plugins directory there was no 'plugins.yaml' file. all executable files were in the same directory.
-// V1: create 'plugins.yaml' file inside 'plugins' directory. change the file's hierarchy inside 'plugins' directory.
+// V0: in the plugins directory there was no 'plugins.yaml' file. This means that all executable files are in the same directory.
+// V1: We should create a 'plugins.yml' file inside the 'plugins' directory, and also modify the files' hierarchy inside 'plugins' directory.
 func convertPluginsV0ToV1() (*PluginsV1, error) {
-	err := migrateFileSystemLayoutV0ToV1()
+	err := convertFileSystemLayoutV0ToV1()
 	if err != nil {
 		return nil, err
 	}
-	return CreatePluginsYamlFile()
+	return CreatePluginsConfigFile()
 }
 
 // Change the file's hierarchy inside 'plugins' directory to:
@@ -115,8 +119,8 @@ func convertPluginsV0ToV1() (*PluginsV1, error) {
 //				plugin-executable (file)
 //			resources:(optional dir)
 //				... (directories/files)
-func migrateFileSystemLayoutV0ToV1() error {
-	plugins, err := coreutils.GetPluginsDirectoryContent()
+func convertFileSystemLayoutV0ToV1() error {
+	plugins, err := coreutils.GetPluginsDirContent()
 	if err != nil {
 		return err
 	}
@@ -126,21 +130,22 @@ func migrateFileSystemLayoutV0ToV1() error {
 	}
 	for _, p := range plugins {
 		// Skip 'plugins.yaml'
-		if p.Name() == coreutils.JfrogPluginsFile {
+		if p.Name() == coreutils.JfrogPluginsFileName {
 			continue
 		}
 		if p.IsDir() {
-			log.Error("unexpected directory in plugins directory")
-			break
-		}
-		// Verify that the file is an executable file
-		if !IsExec(p.Mode()) {
-			log.Error("unexpected file in plugins directory: " + p.Name())
+			log.Error("unexpected directory in plugins directory: " + p.Name())
 			continue
 		}
-		// Move plugins exec files inside a directory with the plugin's name.
+		// TODO:
+		// Verify that the file is an executable file
+		//if !IsExec(p.Type()) {
+		//	log.Error("unexpected (non-executable) file in plugins directory: " + p.Name())
+		//	continue
+		//}
+		// Move plugins exec files inside a directory, which has the plugin's name.
 		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
-		pluginsName := getPluginsNameFromExec(p.Name())
+		pluginsName := removeFileExtension(p.Name())
 		// For example case of ".DS_Store" files
 		if pluginsName == "" {
 			continue
@@ -157,7 +162,7 @@ func migrateFileSystemLayoutV0ToV1() error {
 		if err != nil {
 			return err
 		}
-		err = os.Rename(filepath.Join(pluginsDir, pluginsName+"_dir"), filepath.Join(pluginsDir, pluginsName))
+		err = fileutils.MoveFile(filepath.Join(pluginsDir, pluginsName+"_dir"), filepath.Join(pluginsDir, pluginsName))
 		if err != nil {
 			return err
 		}
@@ -170,11 +175,11 @@ func IsExec(mode os.FileMode) bool {
 	return mode&0111 != 0
 }
 
-func getPluginsNameFromExec(execName string) string {
-	return strings.Split(execName, ".")[0]
+func removeFileExtension(fileName string) string {
+	return strings.Split(fileName, ".")[0]
 }
 
-func CreatePluginsYamlFile() (*PluginsV1, error) {
+func CreatePluginsConfigFile() (*PluginsV1, error) {
 	pluginsFilePath, err := getPluginsFilePath()
 	if err != nil {
 		return nil, err
@@ -185,7 +190,7 @@ func CreatePluginsYamlFile() (*PluginsV1, error) {
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(pluginsFilePath, content, 0777)
+	err = ioutil.WriteFile(pluginsFilePath, content, 0600)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
@@ -201,7 +206,7 @@ func getPluginsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pluginsFilePath = filepath.Join(pluginsFilePath, coreutils.JfrogPluginsDirName, coreutils.JfrogPluginsFile)
+	pluginsFilePath = filepath.Join(pluginsFilePath, coreutils.JfrogPluginsDirName, coreutils.JfrogPluginsFileName)
 	return pluginsFilePath, nil
 }
 

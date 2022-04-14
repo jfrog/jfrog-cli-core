@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"golang.org/x/term"
-	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -135,11 +133,13 @@ func ConvertExitCodeError(err error) error {
 	return err
 }
 
-func GetConfigVersion() int {
+// GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
+func GetCliConfigVersion() int {
 	return 5
 }
 
-func GetPluginsYamlVersion() int {
+// GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').
+func GetPluginsConfigVersion() int {
 	return 1
 }
 
@@ -307,7 +307,7 @@ func GetJfrogPluginsResourcesDir(pluginsName string) (string, error) {
 	return filepath.Join(pluginsDir, pluginsName, PluginsResourcesDirName), nil
 }
 
-func GetPluginsDirectoryContent() ([]fs.FileInfo, error) {
+func GetPluginsDirContent() ([]os.DirEntry, error) {
 	pluginsDir, err := GetJfrogPluginsDir()
 	if err != nil {
 		return nil, err
@@ -317,11 +317,11 @@ func GetPluginsDirectoryContent() ([]fs.FileInfo, error) {
 		return nil, err
 	}
 
-	return ioutil.ReadDir(pluginsDir)
+	return os.ReadDir(pluginsDir)
 }
 
 func ChmodPluginsDirectoryContent() error {
-	plugins, err := GetPluginsDirectoryContent()
+	plugins, err := GetPluginsDirContent()
 	if err != nil || plugins == nil {
 		return err
 	}

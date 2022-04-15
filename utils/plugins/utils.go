@@ -137,42 +137,37 @@ func convertFileSystemLayoutV0ToV1() error {
 			log.Error("unexpected directory in plugins directory: " + p.Name())
 			continue
 		}
-		// TODO:
-		// Verify that the file is an executable file
-		//if !IsExec(p.Type()) {
-		//	log.Error("unexpected (non-executable) file in plugins directory: " + p.Name())
-		//	continue
-		//}
-		// Move plugins exec files inside a directory, which has the plugin's name.
-		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
+
 		pluginsName := removeFileExtension(p.Name())
 		// For example case of ".DS_Store" files
 		if pluginsName == "" {
 			continue
 		}
-		err = os.MkdirAll(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName), 0777)
+		// Move plugins exec files inside a directory, which has the plugin's name.
+		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
+		pluginDirPathWithExtension := filepath.Join(pluginsDir, pluginsName+"_dir")
+		err = os.MkdirAll(filepath.Join(pluginDirPathWithExtension, coreutils.PluginsExecDirName), 0777)
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
+		err = fileutils.MoveFile(filepath.Join(pluginsDir, p.Name()), filepath.Join(pluginDirPathWithExtension, coreutils.PluginsExecDirName, p.Name()))
 		if err != nil {
 			return err
 		}
-		err = fileutils.MoveFile(filepath.Join(pluginsDir, p.Name()), filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName, p.Name()))
+		err = fileutils.MoveDir(pluginDirPathWithExtension, filepath.Join(pluginsDir, pluginsName))
 		if err != nil {
 			return err
 		}
-		err = os.Chmod(filepath.Join(pluginsDir, pluginsName+"_dir", coreutils.PluginsExecDirName, p.Name()), 0777)
+		err = os.RemoveAll(pluginDirPathWithExtension)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
-		err = fileutils.MoveFile(filepath.Join(pluginsDir, pluginsName+"_dir"), filepath.Join(pluginsDir, pluginsName))
+		err = coreutils.ChmodPluginsDirectoryContent()
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// IsExec Check if file's type is executable
-func IsExec(mode os.FileMode) bool {
-	return mode&0111 != 0
 }
 
 func removeFileExtension(fileName string) string {

@@ -316,8 +316,8 @@ func GetPluginsDirContent() ([]os.DirEntry, error) {
 	if err != nil || !exists {
 		return nil, err
 	}
-
-	return os.ReadDir(pluginsDir)
+	content, err := os.ReadDir(pluginsDir)
+	return content, errorutils.CheckError(err)
 }
 
 func ChmodPluginsDirectoryContent() error {

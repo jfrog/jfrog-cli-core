@@ -162,7 +162,7 @@ func convertFileSystemLayoutV0ToV1() error {
 		if err != nil {
 			return err
 		}
-		coreutils.ChmodPluginsDirectoryContent()
+		err = coreutils.ChmodPluginsDirectoryContent()
 		if err != nil {
 			return err
 		}

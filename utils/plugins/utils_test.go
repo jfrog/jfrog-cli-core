@@ -91,7 +91,8 @@ func setupPluginsTestingEnv(t *testing.T, pluginsDirName string) string {
 	assert.NoError(t, err)
 	err = fileutils.CopyDir(filepath.Join(wd, "testdata", coreutils.JfrogPluginsDirName, pluginsDirName), filepath.Join(testHomeDir, coreutils.JfrogPluginsDirName), true, nil)
 	assert.NoError(t, err)
-	coreutils.ChmodPluginsDirectoryContent()
+	err = coreutils.ChmodPluginsDirectoryContent()
+	assert.NoError(t, err)
 	return testHomeDir
 }
 

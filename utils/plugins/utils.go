@@ -148,7 +148,7 @@ func convertFileSystemLayoutV0ToV1() error {
 		pluginDirPathWithExtension := filepath.Join(pluginsDir, pluginsName+"_dir")
 		err = os.MkdirAll(filepath.Join(pluginDirPathWithExtension, coreutils.PluginsExecDirName), 0777)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 		err = fileutils.MoveFile(filepath.Join(pluginsDir, p.Name()), filepath.Join(pluginDirPathWithExtension, coreutils.PluginsExecDirName, p.Name()))
 		if err != nil {
@@ -160,7 +160,7 @@ func convertFileSystemLayoutV0ToV1() error {
 		}
 		err = os.RemoveAll(pluginDirPathWithExtension)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 		err = coreutils.ChmodPluginsDirectoryContent()
 		if err != nil {

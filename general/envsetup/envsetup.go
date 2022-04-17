@@ -63,17 +63,35 @@ func NewEnvSetupCommand() *EnvSetupCommand {
 	}
 }
 
+// This function is a wrapper around the 'ftc.progress.SetHeadlineMsg(msg)' API,
+// to make sure that ftc.progress isn't nil. It can be nil in case the CI environment variable is set.
+// In case ftc.progress is nil, the message sent will be prompted to the screen
+// without the progress indication.
+func (ftc *EnvSetupCommand) setHeadlineMsg(msg string) {
+	if ftc.progress != nil {
+		ftc.progress.SetHeadlineMsg(msg)
+	} else {
+		log.Output(msg + "...")
+	}
+}
+
+// This function is a wrapper around the 'ftc.progress.clearHeadlineMsg()' API,
+// to make sure that ftc.progress isn't nil before clearing it.
+// It can be nil in case the CI environment variable is set.
+func (ftc *EnvSetupCommand) clearHeadlineMsg() {
+	if ftc.progress != nil {
+		ftc.progress.ClearHeadlineMsg()
+	}
+}
+
 func (ftc *EnvSetupCommand) Run() (err error) {
 	var server *config.ServerDetails
-	var welcomingMessage string
 	// In case credentials were provided - user that were invited to an existing platform.
 	// Otherwise, new user that needs to register and setup a new platform.
 	if ftc.base64Credentials == "" {
 		server, err = ftc.setupNewUser()
-		welcomingMessage = "Your new JFrog environment is ready!"
 	} else {
 		server, err = ftc.setupInvitedUser()
-		welcomingMessage = "JFrog environment is ready!"
 	}
 	if err != nil {
 		return
@@ -82,14 +100,15 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	fmt.Println()
+	fmt.Println(coreutils.PrintBold("Congrats! You're all set"))
 	message :=
-		coreutils.PrintBold(welcomingMessage) + "\n" +
-			"1. CD into your code project directory\n" +
+		coreutils.PrintTitle("So what's next?") + "\n" +
+			"1. 'cd' into your code project directory\n" +
 			"2. Run \"jf project init\"\n" +
 			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) +
-			"\n\n" +
-			coreutils.GetFeedbackMessage()
+			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
+			"4. We've just sent you an email message. Please use it to verify your email address"
 
 	err = coreutils.PrintTable("", "", message, false)
 	return
@@ -188,6 +207,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 	// The max consecutive polling errors allowed, before completely failing the setup action.
 	const maxConsecutiveErrors = 6
 	errorsCount := 0
+	readyMessageDisplayed := false
 	pollingAction := func() (shouldStop bool, responseBody []byte, err error) {
 		log.Debug(pollingMessage)
 		// Send request to MyJFrog.
@@ -215,7 +235,11 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
-			ftc.progress.SetHeadlineMsg("Ready for your DevOps journey? Please hang on while we create your environment")
+			if !readyMessageDisplayed {
+				ftc.clearHeadlineMsg()
+				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
+				readyMessageDisplayed = true
+			}
 			statusResponse := myJfrogGetStatusResponse{}
 			if err = json.Unmarshal(body, &statusResponse); err != nil {
 				return true, nil, err
@@ -225,7 +249,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 				return true, body, nil
 			}
 		}
-		// The expected 404 response.
+		// The expected 404 response or 200 response without 'Ready'
 		return false, nil, nil
 	}
 
@@ -243,7 +267,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 	if err = json.Unmarshal(body, &statusResponse); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	ftc.progress.ClearHeadlineMsg()
+	ftc.clearHeadlineMsg()
 	serverDetails = &config.ServerDetails{
 		Url:         statusResponse.PlatformUrl,
 		AccessToken: statusResponse.AccessToken,

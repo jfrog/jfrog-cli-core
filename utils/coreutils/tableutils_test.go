@@ -7,9 +7,9 @@ import (
 
 func TestCountLinesInCell(t *testing.T) {
 	tests := []struct {
-		content                string
-		maxWidth               int
-		expenctedNumberOfLines int
+		content               string
+		maxWidth              int
+		expectedNumberOfLines int
 	}{
 		{
 			"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -33,6 +33,6 @@ func TestCountLinesInCell(t *testing.T) {
 	}
 	for _, test := range tests {
 		actualNumberOfLines := countLinesInCell(test.content, test.maxWidth)
-		assert.Equal(t, test.expenctedNumberOfLines, actualNumberOfLines)
+		assert.Equal(t, test.expectedNumberOfLines, actualNumberOfLines)
 	}
 }

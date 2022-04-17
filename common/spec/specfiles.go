@@ -42,34 +42,35 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 }
 
 type File struct {
-	Aql              utils.Aql
-	Pattern          string
-	Exclusions       []string
-	Target           string
-	Explode          string
-	Props            string
-	TargetProps      string
-	ExcludeProps     string
-	SortOrder        string
-	SortBy           []string
-	Offset           int
-	Limit            int
-	Build            string
-	Project          string
-	ExcludeArtifacts string
-	IncludeDeps      string
-	Bundle           string
-	PublicGpgKey     string `json:"gpg-key,omitempty"`
-	Recursive        string
-	Flat             string
-	Regexp           string
-	Ant              string
-	IncludeDirs      string
-	ArchiveEntries   string
-	ValidateSymlinks string
-	Archive          string
-	Symlinks         string
-	Transitive       string
+	Aql                 utils.Aql
+	Pattern             string
+	Exclusions          []string
+	Target              string
+	Explode             string
+	Props               string
+	TargetProps         string
+	ExcludeProps        string
+	SortOrder           string
+	SortBy              []string
+	Offset              int
+	Limit               int
+	Build               string
+	Project             string
+	ExcludeArtifacts    string
+	IncludeDeps         string
+	Bundle              string
+	PublicGpgKey        string `json:"gpg-key,omitempty"`
+	Recursive           string
+	Flat                string
+	Regexp              string
+	Ant                 string
+	IncludeDirs         string
+	ArchiveEntries      string
+	ValidateSymlinks    string
+	Archive             string
+	Symlinks            string
+	Transitive          string
+	TargetPathInArchive string
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {
@@ -185,7 +186,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isTransitive, _ := file.IsTransitive(false)
 
 		if isTargetMandatory && !isTarget {
-			return errors.New("apec must include target")
+			return errors.New("spec must include target")
 		}
 		if !isSearchBasedSpec && !isPattern {
 			return errors.New("spec must include a pattern")

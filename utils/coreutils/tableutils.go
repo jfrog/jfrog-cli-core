@@ -88,23 +88,35 @@ var DefaultMaxColWidth = 25
 // │ No customers were found │
 // └─────────────────────────┘
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) error {
+	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)
+	if err != nil || tableWriter == nil {
+		return err
+	}
+
 	if title != "" {
 		fmt.Println(title)
 	}
 
-	tableWriter := table.NewWriter()
-	tableWriter.SetOutputMirror(os.Stdout)
-
 	if IsTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
-
 	tableWriter.Style().Options.SeparateRows = true
+	tableWriter.SetOutputMirror(os.Stdout)
+	tableWriter.Render()
+	return nil
+}
+
+// Creates table following the logic described in PrintTable.
+// Returns:
+// Table Writer (table.Writer) - Can be used to adjust style, output mirror, render type, etc.
+// Error if occurred.
+func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool) (table.Writer, error) {
+	tableWriter := table.NewWriter()
 
 	rowsSliceValue := reflect.ValueOf(rows)
 	if rowsSliceValue.Len() == 0 && emptyTableMessage != "" {
 		PrintMessage(emptyTableMessage)
-		return nil
+		return nil, nil
 	}
 
 	rowType := reflect.TypeOf(rows).Elem()
@@ -129,7 +141,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 			var err error
 			columnsNames, columnConfigs, subfieldsProperties, err = appendEmbeddedTableFields(columnsNames, columnConfigs, field, printExtended)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i, subfields: subfieldsProperties})
 		} else {
@@ -141,7 +153,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 	tableWriter.AppendHeader(columnsNames)
 	err := setColMaxWidth(columnConfigs, fieldsProperties)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tableWriter.SetColumnConfigs(columnConfigs)
 
@@ -159,8 +171,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 		tableWriter.AppendRow(rowValues)
 	}
 
-	tableWriter.Render()
-	return nil
+	return tableWriter, nil
 }
 
 type fieldProperties struct {

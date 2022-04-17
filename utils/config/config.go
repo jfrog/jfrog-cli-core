@@ -155,7 +155,7 @@ func SaveServersConf(details []*ServerDetails) error {
 }
 
 func saveConfig(config *ConfigV5) error {
-	config.Version = strconv.Itoa(coreutils.GetConfigVersion())
+	config.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	err := config.encrypt()
 	if err != nil {
 		return err
@@ -217,7 +217,7 @@ func getConfigFile() (content []byte, err error) {
 
 	}
 	// Try to look for older config files
-	for i := coreutils.GetConfigVersion() - 1; i >= 3; i-- {
+	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {
 		versionedConfigPath, err := getLegacyConfigFilePath(i)
 		if err != nil {
 			return nil, err
@@ -306,7 +306,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 
 	// Switch contains FALLTHROUGH to convert from a certain version to the latest.
 	switch version {
-	case strconv.Itoa(coreutils.GetConfigVersion()):
+	case strconv.Itoa(coreutils.GetCliConfigVersion()):
 		return content, nil
 	case "0":
 		content, err = convertConfigV0toV1(content)
@@ -444,7 +444,7 @@ func getConfFilePath() (string, error) {
 		return "", err
 	}
 
-	versionString := ".v" + strconv.Itoa(coreutils.GetConfigVersion())
+	versionString := ".v" + strconv.Itoa(coreutils.GetCliConfigVersion())
 	confPath = filepath.Join(confPath, coreutils.JfrogConfigFile+versionString)
 	return confPath, nil
 }

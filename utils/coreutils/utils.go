@@ -20,7 +20,6 @@ import (
 
 const (
 	GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"
-	GitHubIssuesUrl        = "https://github.com/jfrog/jfrog-cli/issues"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -134,8 +133,14 @@ func ConvertExitCodeError(err error) error {
 	return err
 }
 
-func GetConfigVersion() int {
+// GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
+func GetCliConfigVersion() int {
 	return 5
+}
+
+// GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').
+func GetPluginsConfigVersion() int {
+	return 1
 }
 
 func SumTrueValues(boolArr []bool) int {
@@ -294,6 +299,45 @@ func GetJfrogPluginsDir() (string, error) {
 	return filepath.Join(homeDir, JfrogPluginsDirName), nil
 }
 
+func GetJfrogPluginsResourcesDir(pluginsName string) (string, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pluginsDir, pluginsName, PluginsResourcesDirName), nil
+}
+
+func GetPluginsDirContent() ([]os.DirEntry, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return nil, err
+	}
+	exists, err := fileutils.IsDirExists(pluginsDir, false)
+	if err != nil || !exists {
+		return nil, err
+	}
+	content, err := os.ReadDir(pluginsDir)
+	return content, errorutils.CheckError(err)
+}
+
+func ChmodPluginsDirectoryContent() error {
+	plugins, err := GetPluginsDirContent()
+	if err != nil || plugins == nil {
+		return err
+	}
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return err
+	}
+	for _, p := range plugins {
+		err = os.Chmod(filepath.Join(pluginsDir, p.Name()), 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GetJfrogLocksDir() (string, error) {
 	homeDir, err := GetJfrogHomeDir()
 	if err != nil {
@@ -309,6 +353,15 @@ func GetJfrogConfigLockDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(locksDirPath, configLockDirName), nil
+}
+
+func GetJfrogPluginsLockDir() (string, error) {
+	pluginsLockDirName := "plugins"
+	locksDirPath, err := GetJfrogLocksDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(locksDirPath, pluginsLockDirName), nil
 }
 
 // Ask a yes or no question, with a default answer.
@@ -402,9 +455,16 @@ func GetCliExecutableName() string {
 	return cliExecutableName
 }
 
-func GetFeedbackMessage() string {
-	return PrintBold("Your feedback is important.") + "\n" +
-		"We'd love to get your feedback and answer any questions you may have.\n" +
-		"Communicate with us by opening a GitHub issue -\n" +
-		PrintLink(GitHubIssuesUrl)
+// Turn a list of strings into a sentence.
+// For example, turn ["one", "two", "three"] into "one, two and three".
+// For a single element: "one".
+func ListToText(list []string) string {
+	if len(list) == 1 {
+		return list[0]
+	}
+	return strings.Join(list[0:len(list)-1], ", ") + " and " + list[len(list)-1]
+}
+
+func RemoveAllWhiteSpaces(input string) string {
+	return strings.Join(strings.Fields(input), "")
 }

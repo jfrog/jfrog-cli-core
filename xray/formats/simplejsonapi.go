@@ -93,4 +93,5 @@ type JfrogResearchInformation struct {
 type JfrogResearchSeverityReason struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+	IsPositive  bool   `json:"isPositive,omitempty"`
 }

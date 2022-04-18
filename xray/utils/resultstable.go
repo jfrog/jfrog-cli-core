@@ -245,6 +245,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 		severityReasons = append(severityReasons, formats.JfrogResearchSeverityReason{
 			Name:        severityReason.Name,
 			Description: severityReason.Description,
+			IsPositive:  severityReason.IsPositive,
 		})
 	}
 	return &formats.JfrogResearchInformation{

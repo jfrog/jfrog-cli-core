@@ -97,7 +97,10 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		return err
 	}
 	// Closes the progress manger and reset the log prints.
-	ftc.quitProgress()
+	err = ftc.quitProgress()
+	if err != nil {
+		return err
+	}
 	log.Output()
 	log.Output(coreutils.PrintBold("Congrats! You're all set"))
 	message :=

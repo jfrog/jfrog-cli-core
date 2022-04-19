@@ -128,20 +128,21 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	buildLink, err := bpc.constructBuildInfoUiUrl(servicesManager, buildInfo.Started)
-	if err != nil {
-		return err
-	}
-	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
-	err = logJsonOutput(buildLink)
+	log.Info("Build info successfully deployed.")
+	err = bpc.logJsonOutput(servicesManager, buildInfo.Started)
 	if err != nil {
 		return err
 	}
 	return build.Clean()
 }
 
-func logJsonOutput(buildInfoUiUrl string) error {
-	output := utils.BuildPublishOutput{BuildInfoUiUrl: buildInfoUiUrl}
+func (bpc *BuildPublishCommand) logJsonOutput(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) error {
+	buildLink, err := bpc.constructBuildInfoUiUrl(servicesManager, buildInfoStarted)
+	if err != nil {
+		return err
+	}
+
+	output := utils.BuildPublishOutput{BuildInfoUiUrl: buildLink}
 	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)

@@ -1,6 +1,7 @@
 package buildinfo
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -132,7 +133,21 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 	log.Info("Build info successfully deployed. Browse it in Artifactory under " + buildLink)
+	err = logJsonOutput(buildLink)
+	if err != nil {
+		return err
+	}
 	return build.Clean()
+}
+
+func logJsonOutput(buildInfoUiUrl string) error {
+	output := utils.BuildPublishOutput{BuildInfoUiUrl: buildInfoUiUrl}
+	results, err := json.Marshal(output)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Output(clientutils.IndentJson(results))
+	return nil
 }
 
 func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {

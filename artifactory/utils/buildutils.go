@@ -451,7 +451,3 @@ func (bc *BuildConfiguration) IsCollectBuildInfo() (bool, error) {
 func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {
 	return bc.loadedFromConfigFile
 }
-
-type BuildPublishOutput struct {
-	BuildInfoUiUrl string `json:"buildInfoUiUrl,omitempty"`
-}

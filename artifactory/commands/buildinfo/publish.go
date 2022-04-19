@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
 	"strconv"
 	"strings"
 	"time"
@@ -142,7 +143,7 @@ func (bpc *BuildPublishCommand) logJsonOutput(servicesManager artifactory.Artifa
 		return err
 	}
 
-	output := utils.BuildPublishOutput{BuildInfoUiUrl: buildLink}
+	output := formats.BuildPublishOutput{BuildInfoUiUrl: buildLink}
 	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)

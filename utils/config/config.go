@@ -154,7 +154,7 @@ func SaveServersConf(details []*ServerDetails) error {
 	return saveConfig(conf)
 }
 
-func saveConfig(config *ConfigV5) error {
+func saveConfig(config *Config) error {
 	config.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	err := config.encrypt()
 	if err != nil {
@@ -178,8 +178,8 @@ func saveConfig(config *ConfigV5) error {
 	return nil
 }
 
-func readConf() (*ConfigV5, error) {
-	config := new(ConfigV5)
+func readConf() (*Config, error) {
+	config := new(Config)
 	content, err := getConfigFile()
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func getConfigFile() (content []byte, err error) {
 	return content, nil
 }
 
-func (config *ConfigV5) getContent() ([]byte, error) {
+func (config *Config) getContent() ([]byte, error) {
 	b, err := json.Marshal(&config)
 	if err != nil {
 		return []byte{}, errorutils.CheckError(err)
@@ -332,13 +332,19 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 		fallthrough
 	case "3", "4":
 		content, err = convertConfigV4toV5(content)
+		if err != nil {
+			return nil, err
+		}
+		fallthrough
+	case "5":
+		content, err = convertConfigV5toV6(content)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Save config after all conversions (also updates version).
-	result := new(ConfigV5)
+	result := new(Config)
 	err = json.Unmarshal(content, &result)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -422,6 +428,18 @@ func convertConfigV4toV5(content []byte) ([]byte, error) {
 	return content, errorutils.CheckError(err)
 }
 
+func convertConfigV5toV6(content []byte) ([]byte, error) {
+	config := new(ConfigV5)
+	err := json.Unmarshal(content, &config)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+
+	result := config.Convert()
+	content, err = json.Marshal(&result)
+	return content, errorutils.CheckError(err)
+}
+
 func GetJfrogDependenciesPath() (string, error) {
 	dependenciesDir := os.Getenv(coreutils.DependenciesDir)
 	if dependenciesDir != "" {
@@ -463,6 +481,17 @@ func getLegacyConfigFilePath(version int) (string, error) {
 
 }
 
+// Config represents the CLI latest config version.
+type Config struct {
+	ConfigV6
+}
+
+type ConfigV6 struct {
+	Servers []*ServerDetails `json:"servers"`
+	Version string           `json:"version,omitempty"`
+	Enc     bool             `json:"enc,omitempty"`
+}
+
 type ConfigV5 struct {
 	Servers []*ServerDetails `json:"servers"`
 	Version string           `json:"version,omitempty"`
@@ -475,6 +504,16 @@ type ConfigV4 struct {
 	MissionControl *MissionControlDetails `json:"missionControl,omitempty"`
 	Version        string                 `json:"version,omitempty"`
 	Enc            bool                   `json:"enc,omitempty"`
+}
+
+func (o *ConfigV5) Convert() *ConfigV6 {
+	config := new(ConfigV6)
+	config.Servers = o.Servers
+	for _, server := range config.Servers {
+		server.ArtifactoryRefreshToken = server.RefreshToken
+		server.RefreshToken = ""
+	}
+	return config
 }
 
 func (o *ConfigV4) Convert() *ConfigV5 {
@@ -508,26 +547,27 @@ func (o *ConfigV0) Convert() *ConfigV4 {
 }
 
 type ServerDetails struct {
-	Url                  string `json:"url,omitempty"`
-	SshUrl               string `json:"-"`
-	ArtifactoryUrl       string `json:"artifactoryUrl,omitempty"`
-	DistributionUrl      string `json:"distributionUrl,omitempty"`
-	XrayUrl              string `json:"xrayUrl,omitempty"`
-	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
-	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
-	AccessUrl            string `json:"accessUrl,omitempty"`
-	User                 string `json:"user,omitempty"`
-	Password             string `json:"password,omitempty"`
-	SshKeyPath           string `json:"sshKeyPath,omitempty"`
-	SshPassphrase        string `json:"sshPassphrase,omitempty"`
-	AccessToken          string `json:"accessToken,omitempty"`
-	RefreshToken         string `json:"refreshToken,omitempty"`
-	TokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
-	ClientCertPath       string `json:"clientCertPath,omitempty"`
-	ClientCertKeyPath    string `json:"clientCertKeyPath,omitempty"`
-	ServerId             string `json:"serverId,omitempty"`
-	IsDefault            bool   `json:"isDefault,omitempty"`
-	InsecureTls          bool   `json:"-"`
+	Url                     string `json:"url,omitempty"`
+	SshUrl                  string `json:"-"`
+	ArtifactoryUrl          string `json:"artifactoryUrl,omitempty"`
+	DistributionUrl         string `json:"distributionUrl,omitempty"`
+	XrayUrl                 string `json:"xrayUrl,omitempty"`
+	MissionControlUrl       string `json:"missionControlUrl,omitempty"`
+	PipelinesUrl            string `json:"pipelinesUrl,omitempty"`
+	AccessUrl               string `json:"accessUrl,omitempty"`
+	User                    string `json:"user,omitempty"`
+	Password                string `json:"password,omitempty"`
+	SshKeyPath              string `json:"sshKeyPath,omitempty"`
+	SshPassphrase           string `json:"sshPassphrase,omitempty"`
+	AccessToken             string `json:"accessToken,omitempty"`
+	RefreshToken            string `json:"refreshToken,omitempty"`
+	ArtifactoryRefreshToken string `json:"artifactoryRefreshToken,omitempty"`
+	TokenRefreshInterval    int    `json:"tokenRefreshInterval,omitempty"`
+	ClientCertPath          string `json:"clientCertPath,omitempty"`
+	ClientCertKeyPath       string `json:"clientCertKeyPath,omitempty"`
+	ServerId                string `json:"serverId,omitempty"`
+	IsDefault               bool   `json:"isDefault,omitempty"`
+	InsecureTls             bool   `json:"-"`
 }
 
 // Deprecated

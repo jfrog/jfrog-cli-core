@@ -1,7 +1,6 @@
 package buildinfo
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
@@ -151,7 +150,7 @@ func (bpc *BuildPublishCommand) Run() error {
 
 func logJsonOutput(buildInfoUiUrl string) error {
 	output := formats.BuildPublishOutput{BuildInfoUiUrl: buildInfoUiUrl}
-	results, err := json.Marshal(output)
+	results, err := output.JSON()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -185,17 +184,25 @@ func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime ti
 	if err != nil {
 		return "", err
 	}
+
+	baseUrl := bpc.serverDetails.GetUrl()
+	if baseUrl == "" {
+		baseUrl = strings.TrimSuffix(strings.TrimSuffix(bpc.serverDetails.GetArtifactoryUrl(), "/"), "artifactory")
+	}
+	baseUrl = clientutils.AddTrailingSlashIfNeeded(baseUrl)
+
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
-			bpc.serverDetails.GetUrl(), buildName, buildNumber), nil
-	} else if bpc.buildConfiguration.GetProject() != "" {
+			baseUrl, buildName, buildNumber), nil
+	}
+	if bpc.buildConfiguration.GetProject() != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
+			baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
-		bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10)), nil
+		baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10)), nil
 }
 
 // Return the next build number based on the previously published build.

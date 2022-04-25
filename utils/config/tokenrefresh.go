@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-client-go/access"
 	accessservices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"sync"
@@ -189,7 +189,7 @@ func writeNewArtifactoryTokens(serverConfiguration *ServerDetails, serverId, acc
 }
 
 func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
-	servicesManager, err := createTokensServiceManager(serverDetails)
+	servicesManager, err := createArtifactoryTokensServiceManager(serverDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}
@@ -247,7 +247,7 @@ func refreshArtifactoryExpiredToken(serverDetails *ServerDetails, currentAccessT
 	noCredsDetails.ServerId = serverDetails.ServerId
 	noCredsDetails.IsDefault = serverDetails.IsDefault
 
-	servicesManager, err := createTokensServiceManager(noCredsDetails)
+	servicesManager, err := createArtifactoryTokensServiceManager(noCredsDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}
@@ -267,7 +267,7 @@ func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken 
 	noCredsDetails.ServerId = serverDetails.ServerId
 	noCredsDetails.IsDefault = serverDetails.IsDefault
 
-	servicesManager, err := utils.CreateAccessServiceManager(noCredsDetails, false)
+	servicesManager, err := createAccessTokensServiceManager(noCredsDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}
@@ -278,7 +278,7 @@ func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken 
 	return servicesManager.RefreshToken(refreshTokenParams)
 }
 
-func createTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+func createArtifactoryTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -297,4 +297,25 @@ func createTokensServiceManager(artDetails *ServerDetails) (artifactory.Artifact
 		return nil, err
 	}
 	return artifactory.New(serviceConfig)
+}
+
+func createAccessTokensServiceManager(serviceDetails *ServerDetails) (*access.AccessServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	accessAuth, err := serviceDetails.CreateAccessAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := config.NewConfigBuilder().
+		SetServiceDetails(accessAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(false).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return access.New(serviceConfig)
 }

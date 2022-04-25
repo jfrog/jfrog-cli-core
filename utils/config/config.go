@@ -592,6 +592,10 @@ func (serverDetails *ServerDetails) SetAccessToken(accessToken string) {
 	serverDetails.AccessToken = accessToken
 }
 
+func (serverDetails *ServerDetails) SetArtifactoryRefreshToken(refreshToken string) {
+	serverDetails.ArtifactoryRefreshToken = refreshToken
+}
+
 func (serverDetails *ServerDetails) SetRefreshToken(refreshToken string) {
 	serverDetails.RefreshToken = refreshToken
 }
@@ -694,10 +698,15 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	details.SetSshUrl(serverDetails.SshUrl)
 	details.SetAccessToken(serverDetails.AccessToken)
 	// If refresh token is not empty, set a refresh handler and skip other credentials.
+	// First we check access's token, if empty we check artifactory's token (will be deprecated).
 	if serverDetails.RefreshToken != "" {
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)
+	} else if serverDetails.ArtifactoryRefreshToken != "" {
+		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
+		tokenRefreshServerId = serverDetails.ServerId
+		details.AppendPreRequestFunction(ArtifactoryTokenRefreshPreRequestInterceptor)
 	} else {
 		details.SetUser(serverDetails.User)
 		details.SetPassword(serverDetails.Password)

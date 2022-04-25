@@ -1,6 +1,10 @@
 package config
 
 import (
+	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	accessservices "github.com/jfrog/jfrog-client-go/access/services"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"sync"
 	"time"
 
@@ -20,13 +24,28 @@ var mutex sync.Mutex
 // The serverId used for authentication. Use for reading and writing tokens from/to the config file, and for reading the credentials if needed.
 var tokenRefreshServerId string
 
+const (
+	ArtifactoryToken TokenType = "artifactory"
+	AccessToken      TokenType = "access"
+)
+
+type TokenType string
+
 func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken)
+}
+
+func ArtifactoryTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken)
+}
+
+func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType) (err error) {
 	if fields.GetAccessToken() == "" || httpClientDetails.AccessToken == "" {
 		return nil
 	}
 
-	timeLeft, err := auth.GetTokenMinutesLeft(httpClientDetails.AccessToken)
-	if err != nil || timeLeft > auth.RefreshBeforeExpiryMinutes {
+	timePassed, err := auth.GetTokenMinutesPassed(httpClientDetails.AccessToken)
+	if err != nil || timePassed < auth.RefreshAfterExpiryMinutes {
 		return err
 	}
 
@@ -35,7 +54,7 @@ func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, ht
 	defer mutex.Unlock()
 	// Refresh only if a new token wasn't acquired (by another thread) while waiting at mutex.
 	if fields.AccessToken == httpClientDetails.AccessToken {
-		newAccessToken, err := tokenRefreshHandler(httpClientDetails.AccessToken)
+		newAccessToken, err := tokenRefreshHandler(httpClientDetails.AccessToken, tokenType)
 		if err != nil {
 			return err
 		}
@@ -48,7 +67,7 @@ func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, ht
 	return nil
 }
 
-func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err error) {
+func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAccessToken string, err error) {
 	log.Debug("Refreshing token...")
 	// Lock config to prevent access from different processes
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
@@ -88,12 +107,23 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 		time.Sleep(auth.WaitBeforeRefreshSeconds * time.Second)
 	}
 
-	refreshToken := serverConfiguration.RefreshToken
+	if tokenType == ArtifactoryToken {
+		return refreshArtifactoryTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+	}
+	if tokenType == AccessToken {
+		return refreshAccessTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+	}
+	return "", errorutils.CheckError(errors.New("unsupported refreshable token type: " + string(tokenType)))
+
+}
+
+func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
+	refreshToken := serverConfiguration.ArtifactoryRefreshToken
 	// Remove previous tokens
 	serverConfiguration.AccessToken = ""
-	serverConfiguration.RefreshToken = ""
+	serverConfiguration.ArtifactoryRefreshToken = ""
 	// Try refreshing tokens
-	newToken, err := refreshExpiredToken(serverConfiguration, currentAccessToken, refreshToken)
+	newToken, err := refreshArtifactoryExpiredToken(serverConfiguration, currentAccessToken, refreshToken)
 
 	if err != nil {
 		log.Debug("Refresh token failed: " + err.Error())
@@ -113,14 +143,34 @@ func tokenRefreshHandler(currentAccessToken string) (newAccessToken string, err 
 		log.Debug("Token refreshed successfully.")
 	}
 
-	err = writeNewTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
+	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
 	if err != nil {
 		log.Error("Failed writing new tokens to config after handling access token expiry: " + err.Error())
 	}
 	return newToken.AccessToken, nil
 }
 
-func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
+func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
+	refreshToken := serverConfiguration.RefreshToken
+	// Remove previous tokens
+	serverConfiguration.AccessToken = ""
+	serverConfiguration.RefreshToken = ""
+	// Try refreshing tokens
+	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, refreshToken)
+
+	if err != nil {
+		log.Debug("Refresh token failed: " + err.Error())
+		return "", err
+	}
+
+	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
+	if err != nil {
+		log.Error("Failed writing new tokens to config after handling access token expiry: " + err.Error())
+	}
+	return newToken.AccessToken, nil
+}
+
+func writeNewArtifactoryTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
 	serverConfiguration.SetAccessToken(accessToken)
 	serverConfiguration.SetRefreshToken(refreshToken)
 
@@ -185,10 +235,10 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	}
 	// Remove initializing value.
 	serverDetails.TokenRefreshInterval = 0
-	return writeNewTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
+	return writeNewArtifactoryTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
 }
 
-func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
+func refreshArtifactoryExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
 	// The tokens passed as parameters are also used for authentication
 	noCredsDetails := new(ServerDetails)
 	noCredsDetails.ArtifactoryUrl = serverDetails.ArtifactoryUrl
@@ -202,7 +252,27 @@ func refreshExpiredToken(serverDetails *ServerDetails, currentAccessToken string
 		return auth.CreateTokenResponseData{}, err
 	}
 
-	refreshTokenParams := services.NewRefreshTokenParams()
+	refreshTokenParams := services.NewArtifactoryRefreshTokenParams()
+	refreshTokenParams.AccessToken = currentAccessToken
+	refreshTokenParams.RefreshToken = refreshToken
+	return servicesManager.RefreshToken(refreshTokenParams)
+}
+
+func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
+	// The tokens passed as parameters are also used for authentication
+	noCredsDetails := new(ServerDetails)
+	noCredsDetails.Url = serverDetails.Url
+	noCredsDetails.ClientCertPath = serverDetails.ClientCertPath
+	noCredsDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
+	noCredsDetails.ServerId = serverDetails.ServerId
+	noCredsDetails.IsDefault = serverDetails.IsDefault
+
+	servicesManager, err := utils.CreateAccessServiceManager(noCredsDetails, false)
+	if err != nil {
+		return auth.CreateTokenResponseData{}, err
+	}
+
+	refreshTokenParams := accessservices.NewTokenParams()
 	refreshTokenParams.AccessToken = currentAccessToken
 	refreshTokenParams.RefreshToken = refreshToken
 	return servicesManager.RefreshToken(refreshTokenParams)

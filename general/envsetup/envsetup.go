@@ -21,10 +21,16 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+type OutputFormat string
+
 const (
 	myJfrogEndPoint   = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
 	syncSleepInterval = 5 * time.Second  // 5 seconds
 	maxWaitMinutes    = 30 * time.Minute // 30 minutes
+
+	// OutputFormat values
+	Human   OutputFormat = "human"
+	Machine OutputFormat = "machine"
 )
 
 type EnvSetupCommand struct {
@@ -32,6 +38,7 @@ type EnvSetupCommand struct {
 	id              uuid.UUID
 	serverDetails   *config.ServerDetails
 	progress        ioUtils.ProgressMgr
+	outputFormat    OutputFormat
 }
 
 func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -40,6 +47,11 @@ func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	ftc.progress = progress
+}
+
+func (ftc *EnvSetupCommand) SetOutputFormat(format OutputFormat) *EnvSetupCommand {
+	ftc.outputFormat = format
+	return ftc
 }
 
 func NewEnvSetupCommand(url string) *EnvSetupCommand {
@@ -71,8 +83,15 @@ func (ftc *EnvSetupCommand) clearHeadlineMsg() {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
-	time.Sleep(8 * time.Second)
+	if ftc.outputFormat == Human {
+		fmt.Println()
+		fmt.Println()
+		fmt.Println(coreutils.PrintTitle("Thank you for installing JFrog CLI! 🐸"))
+		fmt.Println(coreutils.PrintTitle("We'll now set up a FREE JFrog environment in the cloud for you, and configure your local machine to use it."))
+		fmt.Println("Your environment will be ready in less than a minute.")
+		ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
+		time.Sleep(8 * time.Second)
+	}
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
 		return
@@ -85,17 +104,18 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println()
-	fmt.Println(coreutils.PrintBold("Congrats! You're all set"))
-	message :=
-		coreutils.PrintTitle("So what's next?") + "\n" +
-			"1. 'cd' into your code project directory\n" +
-			"2. Run \"jf project init\"\n" +
-			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
-			"4. We've just sent you an email message. Please use it to verify your email address"
-
-	err = coreutils.PrintTable("", "", message, false)
+	if ftc.outputFormat == Human {
+		fmt.Println()
+		fmt.Println(coreutils.PrintBold("Congrats! You're all set"))
+		message :=
+			coreutils.PrintTitle("So what's next?") + "\n" +
+				"1. 'cd' into your code project directory\n" +
+				"2. Run \"jf project init\"\n" +
+				"3. Read more about how to get started at -\n" +
+				coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
+				"4. We've just sent you an email message. Please use it to verify your email address"
+		err = coreutils.PrintTable("", "", message, false)
+	}
 	return
 }
 
@@ -130,7 +150,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		log.Debug(pollingMessage)
 		// Send request to MyJFrog.
 		resp, body, err := client.SendPost(myJfrogEndPoint, requestContent, httpClientDetails, "")
-		// If an HTTP error occured.
+		// If an HTTP error occurred.
 		if err != nil {
 			errorsCount++
 			log.Debug(fmt.Sprintf(pollingErrorMessage, errorsCount, err.Error()))
@@ -154,8 +174,12 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
 			if !readyMessageDisplayed {
-				ftc.clearHeadlineMsg()
-				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
+				if ftc.outputFormat == Machine {
+					fmt.Println("PREPARING_ENV")
+				} else {
+					ftc.clearHeadlineMsg()
+					ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
+				}
 				readyMessageDisplayed = true
 			}
 			statusResponse := myJfrogGetStatusResponse{}

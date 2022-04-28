@@ -89,7 +89,7 @@ func (ftc *EnvSetupCommand) clearHeadlineMsg() {
 
 func (ftc *EnvSetupCommand) Run() (err error) {
 	var server *config.ServerDetails
-	// In case credentials were provided - user that were invited to an existing platform.
+	// In case credentials were provided - user that was invited to an existing platform.
 	// Otherwise, new user that needs to register and setup a new platform.
 	if ftc.base64Credentials == "" {
 		server, err = ftc.setupNewUser()
@@ -153,8 +153,8 @@ func generateNewLongTermAccessToken(server *config.ServerDetails) (err error) {
 	return
 }
 
-func createUnexpiredRefreshableTokenParams() *services.TokenParams {
-	params := services.TokenParams{}
+func createUnexpiredRefreshableTokenParams() *services.CreateTokenParams {
+	params := services.CreateTokenParams{}
 	params.ExpiresIn = nonExpiredTokenValue
 	params.Refreshable = &trueValue
 	params.Audience = "*@*"

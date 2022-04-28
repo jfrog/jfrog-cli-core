@@ -59,7 +59,7 @@ func (ic *InviteCommand) Run() (err error) {
 	err = servicesManager.CreateUser(*params)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "already exists") {
-			log.Info(fmt.Sprintf("Re-sending invitation email to: %s...", userDetails.Name))
+			log.Debug(fmt.Sprintf("Re-sending invitation email to: %s...", userDetails.Name))
 			var accessManager *access.AccessServicesManager
 			accessManager, err = utils.CreateAccessServiceManager(ic.serverDetails, false)
 			if err != nil {

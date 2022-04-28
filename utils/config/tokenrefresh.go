@@ -159,7 +159,7 @@ func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, curr
 	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, refreshToken)
 
 	if err != nil {
-		log.Debug("Refresh token failed: " + err.Error())
+		log.Debug("Refresh access token failed: " + err.Error())
 		return "", err
 	}
 
@@ -273,10 +273,10 @@ func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken 
 		return auth.CreateTokenResponseData{}, err
 	}
 
-	refreshTokenParams := accessservices.NewTokenParams(auth.CommonTokenParams{})
+	refreshTokenParams := accessservices.NewCreateTokenParams(auth.CommonTokenParams{})
 	refreshTokenParams.AccessToken = currentAccessToken
 	refreshTokenParams.RefreshToken = refreshToken
-	return servicesManager.RefreshToken(refreshTokenParams.CommonTokenParams)
+	return servicesManager.RefreshAccessToken(refreshTokenParams.CommonTokenParams)
 }
 
 func createArtifactoryTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {

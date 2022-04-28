@@ -25,10 +25,13 @@ import (
 )
 
 const (
-	myJfrogEndPoint   = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
-	syncSleepInterval = 5 * time.Second  // 5 seconds
-	maxWaitMinutes    = 30 * time.Minute // 30 minutes
+	myJfrogEndPoint      = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
+	syncSleepInterval    = 5 * time.Second  // 5 seconds
+	maxWaitMinutes       = 30 * time.Minute // 30 minutes
+	nonExpiredTokenValue = 0                // accessToken generated in Access can be valid for 1 year maximum.
 )
+
+var trueValue = true
 
 type EnvSetupCommand struct {
 	registrationURL string
@@ -129,43 +132,32 @@ func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, er
 	if err != nil {
 		return
 	}
+	err = generateNewLongTermAccessToken(server)
+	return
+}
+
+// Take the short-lived token and generate a long term (1 year expiry) refreshable accessToken.
+func generateNewLongTermAccessToken(server *config.ServerDetails) (err error) {
 	accessManager, err := utils.CreateAccessServiceManager(server, false)
 	if err != nil {
 		return
 	}
-	params := createRefreshableTokenParams()
+	// Create refreshable accessToken with 1 year expiry from the given short expiry token.
+	params := createUnexpiredRefreshableTokenParams()
 	token, err := accessManager.CreateAccessToken(*params)
 	if err != nil {
-		return nil, err
+		return
 	}
 	server.AccessToken = token.AccessToken
 	server.RefreshToken = token.RefreshToken
-	// TODO: refresh, you put it here for now, but should be an API with refresh
-	accessManager, err = utils.CreateAccessServiceManager(server, false)
-	params = createRefreshTokenRequestParams(server.RefreshToken)
-	token, err = accessManager.CreateAccessToken(*params)
-	if err != nil {
-		return nil, err
-	}
 	return
 }
 
-func createRefreshableTokenParams() *services.TokenParams {
-	trueValue := true
+func createUnexpiredRefreshableTokenParams() *services.TokenParams {
 	params := services.TokenParams{}
-	params.ExpiresIn = 60
+	params.ExpiresIn = nonExpiredTokenValue
 	params.Refreshable = &trueValue
-	params.Scope = "applied-permissions/user"
 	params.Audience = "*@*"
-	return &params
-}
-
-func createRefreshTokenRequestParams(refreshToken string) *services.TokenParams {
-	trueValue := true
-	params := services.TokenParams{}
-	params.GrantType = "refresh_token"
-	params.Refreshable = &trueValue
-	params.RefreshToken = refreshToken
 	return &params
 }
 

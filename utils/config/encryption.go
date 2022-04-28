@@ -105,6 +105,10 @@ func handleSecrets(config *Config, handler secretHandler, key string) error {
 		if err != nil {
 			return err
 		}
+		serverDetails.ArtifactoryRefreshToken, err = handler(serverDetails.ArtifactoryRefreshToken, key)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

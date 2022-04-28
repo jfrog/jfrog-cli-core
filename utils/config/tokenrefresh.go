@@ -32,20 +32,20 @@ const (
 type TokenType string
 
 func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken, auth.InviteRefreshBeforeExpiryMinutes)
 }
 
 func ArtifactoryTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken, auth.RefreshBeforeExpiryMinutes)
 }
 
-func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType) (err error) {
+func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType, refreshBeforeExpiryMinutes int64) (err error) {
 	if fields.GetAccessToken() == "" || httpClientDetails.AccessToken == "" {
 		return nil
 	}
 
-	timePassed, err := auth.GetTokenMinutesPassed(httpClientDetails.AccessToken)
-	if err != nil || timePassed < auth.RefreshAfterExpiryMinutes {
+	timeLeft, err := auth.GetTokenMinutesLeft(httpClientDetails.AccessToken)
+	if err != nil || timeLeft > refreshBeforeExpiryMinutes {
 		return err
 	}
 
@@ -172,7 +172,7 @@ func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, curr
 
 func writeNewArtifactoryTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
 	serverConfiguration.SetAccessToken(accessToken)
-	serverConfiguration.SetRefreshToken(refreshToken)
+	serverConfiguration.SetArtifactoryRefreshToken(refreshToken)
 
 	// Get configurations list
 	configurations, err := GetAllServersConfigs()
@@ -209,7 +209,8 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
-	if !(serverDetails.TokenRefreshInterval > 0 && serverDetails.RefreshToken == "" && serverDetails.AccessToken == "") {
+	if !(serverDetails.ArtifactoryTokenRefreshInterval > 0 && serverDetails.RefreshToken == "" && serverDetails.AccessToken == "") ||
+		(serverDetails.ArtifactoryRefreshToken != "" && serverDetails.AccessToken != "") {
 		return nil
 	}
 	mutex.Lock()
@@ -229,12 +230,12 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return err
 	}
 
-	newToken, err := createTokensForConfig(serverDetails, serverDetails.TokenRefreshInterval*60)
+	newToken, err := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
 	if err != nil {
 		return err
 	}
 	// Remove initializing value.
-	serverDetails.TokenRefreshInterval = 0
+	serverDetails.ArtifactoryTokenRefreshInterval = 0
 	return writeNewArtifactoryTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
 }
 
@@ -272,10 +273,10 @@ func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken 
 		return auth.CreateTokenResponseData{}, err
 	}
 
-	refreshTokenParams := accessservices.NewTokenParams()
+	refreshTokenParams := accessservices.NewTokenParams(auth.CommonTokenParams{})
 	refreshTokenParams.AccessToken = currentAccessToken
 	refreshTokenParams.RefreshToken = refreshToken
-	return servicesManager.RefreshToken(refreshTokenParams)
+	return servicesManager.RefreshToken(refreshTokenParams.CommonTokenParams)
 }
 
 func createArtifactoryTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {

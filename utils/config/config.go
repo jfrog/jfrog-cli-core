@@ -75,11 +75,13 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 
 // Disables refreshable tokens if set in details.
 func excludeRefreshableTokensFromDetails(details *ServerDetails) {
-	if details.AccessToken != "" && details.RefreshToken != "" {
+	if details.AccessToken != "" && details.ArtifactoryRefreshToken != "" ||
+		details.AccessToken != "" && details.RefreshToken != "" {
 		details.AccessToken = ""
+		details.ArtifactoryRefreshToken = ""
 		details.RefreshToken = ""
 	}
-	details.TokenRefreshInterval = coreutils.TokenRefreshDisabled
+	details.ArtifactoryTokenRefreshInterval = coreutils.TokenRefreshDisabled
 }
 
 // Returns the default server configuration or error if not found.
@@ -547,27 +549,27 @@ func (o *ConfigV0) Convert() *ConfigV4 {
 }
 
 type ServerDetails struct {
-	Url                     string `json:"url,omitempty"`
-	SshUrl                  string `json:"-"`
-	ArtifactoryUrl          string `json:"artifactoryUrl,omitempty"`
-	DistributionUrl         string `json:"distributionUrl,omitempty"`
-	XrayUrl                 string `json:"xrayUrl,omitempty"`
-	MissionControlUrl       string `json:"missionControlUrl,omitempty"`
-	PipelinesUrl            string `json:"pipelinesUrl,omitempty"`
-	AccessUrl               string `json:"accessUrl,omitempty"`
-	User                    string `json:"user,omitempty"`
-	Password                string `json:"password,omitempty"`
-	SshKeyPath              string `json:"sshKeyPath,omitempty"`
-	SshPassphrase           string `json:"sshPassphrase,omitempty"`
-	AccessToken             string `json:"accessToken,omitempty"`
-	RefreshToken            string `json:"refreshToken,omitempty"`
-	ArtifactoryRefreshToken string `json:"artifactoryRefreshToken,omitempty"`
-	TokenRefreshInterval    int    `json:"tokenRefreshInterval,omitempty"`
-	ClientCertPath          string `json:"clientCertPath,omitempty"`
-	ClientCertKeyPath       string `json:"clientCertKeyPath,omitempty"`
-	ServerId                string `json:"serverId,omitempty"`
-	IsDefault               bool   `json:"isDefault,omitempty"`
-	InsecureTls             bool   `json:"-"`
+	Url                             string `json:"url,omitempty"`
+	SshUrl                          string `json:"-"`
+	ArtifactoryUrl                  string `json:"artifactoryUrl,omitempty"`
+	DistributionUrl                 string `json:"distributionUrl,omitempty"`
+	XrayUrl                         string `json:"xrayUrl,omitempty"`
+	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
+	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
+	AccessUrl                       string `json:"accessUrl,omitempty"`
+	User                            string `json:"user,omitempty"`
+	Password                        string `json:"password,omitempty"`
+	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
+	SshPassphrase                   string `json:"sshPassphrase,omitempty"`
+	AccessToken                     string `json:"accessToken,omitempty"`
+	RefreshToken                    string `json:"refreshToken,omitempty"`
+	ArtifactoryRefreshToken         string `json:"artifactoryRefreshToken,omitempty"`
+	ArtifactoryTokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
+	ClientCertPath                  string `json:"clientCertPath,omitempty"`
+	ClientCertKeyPath               string `json:"clientCertKeyPath,omitempty"`
+	ServerId                        string `json:"serverId,omitempty"`
+	IsDefault                       bool   `json:"isDefault,omitempty"`
+	InsecureTls                     bool   `json:"-"`
 }
 
 // Deprecated

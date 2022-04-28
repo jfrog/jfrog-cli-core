@@ -24,7 +24,9 @@ const (
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson)}
 
-func PrintScanResults(results []services.ScanResponse, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
+// PrintScanResults prints Xray scan results in the given format.
+// Note that errors are printed only on SimpleJson format.
+func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
 	switch format {
 	case Table:
 		var err error
@@ -76,6 +78,7 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 			}
 			jsonTable.Licenses = licJsonTable
 		}
+		jsonTable.Errors = errors
 		return printJson(jsonTable)
 	case Json:
 		return printJson(results)

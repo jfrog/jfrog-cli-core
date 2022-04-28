@@ -49,7 +49,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
 
 	for _, violation := range violations {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(violation.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components, multipleRoots)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -57,20 +57,23 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 		switch violation.ViolationType {
 		case "security":
 			cves := convertCves(violation.Cves)
+			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
-						Summary:                violation.Summary,
-						Severity:               currSeverity.printableTitle(coloredOutput),
-						SeverityNumValue:       currSeverity.numValue,
-						ImpactedPackageName:    impactedPackagesNames[compIndex],
-						ImpactedPackageVersion: impactedPackagesVersions[compIndex],
-						ImpactedPackageType:    impactedPackagesTypes[compIndex],
-						FixedVersions:          fixedVersions[compIndex],
-						Components:             components[compIndex],
-						Cves:                   cves,
-						IssueId:                violation.IssueId,
-						References:             violation.References,
+						Summary:                  violation.Summary,
+						Severity:                 currSeverity.printableTitle(coloredOutput),
+						SeverityNumValue:         currSeverity.numValue,
+						ImpactedPackageName:      impactedPackagesNames[compIndex],
+						ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
+						ImpactedPackageType:      impactedPackagesTypes[compIndex],
+						FixedVersions:            fixedVersions[compIndex],
+						Components:               components[compIndex],
+						Cves:                     cves,
+						IssueId:                  violation.IssueId,
+						References:               violation.References,
+						JfrogResearchInformation: jfrogResearchInfo,
+						ImpactPaths:              impactPaths[compIndex],
 					},
 				)
 			}
@@ -150,26 +153,29 @@ func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
 
 	for _, vulnerability := range vulnerabilities {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, err := splitComponents(vulnerability.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components, multipleRoots)
 		if err != nil {
 			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
 		currSeverity := getSeverity(vulnerability.Severity)
+		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
-					Summary:                vulnerability.Summary,
-					Severity:               currSeverity.printableTitle(coloredOutput),
-					SeverityNumValue:       currSeverity.numValue,
-					ImpactedPackageName:    impactedPackagesNames[compIndex],
-					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
-					ImpactedPackageType:    impactedPackagesTypes[compIndex],
-					FixedVersions:          fixedVersions[compIndex],
-					Components:             components[compIndex],
-					Cves:                   cves,
-					IssueId:                vulnerability.IssueId,
-					References:             vulnerability.References,
+					Summary:                  vulnerability.Summary,
+					Severity:                 currSeverity.printableTitle(coloredOutput),
+					SeverityNumValue:         currSeverity.numValue,
+					ImpactedPackageName:      impactedPackagesNames[compIndex],
+					ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
+					ImpactedPackageType:      impactedPackagesTypes[compIndex],
+					FixedVersions:            fixedVersions[compIndex],
+					Components:               components[compIndex],
+					Cves:                     cves,
+					IssueId:                  vulnerability.IssueId,
+					References:               vulnerability.References,
+					JfrogResearchInformation: jfrogResearchInfo,
+					ImpactPaths:              impactPaths[compIndex],
 				},
 			)
 		}
@@ -201,7 +207,7 @@ func PrepareLicenses(licenses []services.License, multipleRoots bool) ([]formats
 	var licensesRows []formats.LicenseRow
 
 	for _, license := range licenses {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, err := splitComponents(license.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, impactPaths, err := splitComponents(license.Components, multipleRoots)
 		if err != nil {
 			return nil, err
 		}
@@ -213,6 +219,7 @@ func PrepareLicenses(licenses []services.License, multipleRoots bool) ([]formats
 					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
 					ImpactedPackageType:    impactedPackagesTypes[compIndex],
 					Components:             components[compIndex],
+					ImpactPaths:            impactPaths[compIndex],
 				},
 			)
 		}
@@ -229,23 +236,43 @@ func convertCves(cves []services.Cve) []formats.CveRow {
 	return cveRows
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) ([]string, []string, []string, [][]string, [][]formats.ComponentRow, error) {
-	if len(impactedPackages) == 0 {
-		return nil, nil, nil, nil, nil, errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
+func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation) *formats.JfrogResearchInformation {
+	if extendedInfo == nil {
+		return nil
 	}
-	var impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string
-	var fixedVersions [][]string
-	var directComponents [][]formats.ComponentRow
+	var severityReasons []formats.JfrogResearchSeverityReason
+	for _, severityReason := range extendedInfo.JfrogResearchSeverityReasons {
+		severityReasons = append(severityReasons, formats.JfrogResearchSeverityReason{
+			Name:        severityReason.Name,
+			Description: severityReason.Description,
+			IsPositive:  severityReason.IsPositive,
+		})
+	}
+	return &formats.JfrogResearchInformation{
+		Summary:         extendedInfo.ShortDescription,
+		Details:         extendedInfo.FullDescription,
+		Severity:        extendedInfo.JfrogResearchSeverity,
+		SeverityReasons: severityReasons,
+		Remediation:     extendedInfo.Remediation,
+	}
+}
+
+func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) (impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string, fixedVersions [][]string, directComponents [][]formats.ComponentRow, impactPaths [][][]formats.ComponentRow, err error) {
+	if len(impactedPackages) == 0 {
+		err = errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
+		return
+	}
 	for currCompId, currComp := range impactedPackages {
 		currCompName, currCompVersion, currCompType := splitComponentId(currCompId)
 		impactedPackagesNames = append(impactedPackagesNames, currCompName)
 		impactedPackagesVersions = append(impactedPackagesVersions, currCompVersion)
 		impactedPackagesTypes = append(impactedPackagesTypes, currCompType)
 		fixedVersions = append(fixedVersions, currComp.FixedVersions)
-		currComponents := getDirectComponents(currComp.ImpactPaths, multipleRoots)
-		directComponents = append(directComponents, currComponents)
+		currDirectComponents, currImpactPaths := getDirectComponentsAndImpactPaths(currComp.ImpactPaths, multipleRoots)
+		directComponents = append(directComponents, currDirectComponents)
+		impactPaths = append(impactPaths, currImpactPaths)
 	}
-	return impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, directComponents, nil
+	return
 }
 
 var packageTypes = map[string]string{
@@ -328,9 +355,8 @@ func splitComponentId(componentId string) (string, string, string) {
 	return compName, compVersion, packageTypes[packageType]
 }
 
-// Gets a string of the direct dependencies or packages of the scanned component, that depends on the vulnerable package
-func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots bool) []formats.ComponentRow {
-	var components []formats.ComponentRow
+// Gets a slice of the direct dependencies or packages of the scanned component, that depends on the vulnerable package, and converts the impact paths.
+func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode, multipleRoots bool) (components []formats.ComponentRow, impactPathsRows [][]formats.ComponentRow) {
 	componentsMap := make(map[string]formats.ComponentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
@@ -349,12 +375,23 @@ func getDirectComponents(impactPaths [][]services.ImpactPathNode, multipleRoots 
 			compName, compVersion, _ := splitComponentId(componentId)
 			componentsMap[componentId] = formats.ComponentRow{Name: compName, Version: compVersion}
 		}
+
+		// Convert the impact path
+		var compImpactPathRows []formats.ComponentRow
+		for _, pathNode := range impactPath {
+			nodeCompName, nodeCompVersion, _ := splitComponentId(pathNode.ComponentId)
+			compImpactPathRows = append(compImpactPathRows, formats.ComponentRow{
+				Name:    nodeCompName,
+				Version: nodeCompVersion,
+			})
+		}
+		impactPathsRows = append(impactPathsRows, compImpactPathRows)
 	}
 
 	for _, row := range componentsMap {
 		components = append(components, row)
 	}
-	return components
+	return
 }
 
 type severity struct {

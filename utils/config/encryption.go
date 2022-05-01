@@ -6,16 +6,17 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/spf13/viper"
-	"golang.org/x/term"
 	"io"
 	"os"
 	"strconv"
 	"syscall"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 type SecurityConf struct {
@@ -140,13 +141,13 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 }
 
 func readMasterKeyFromConsole() (string, error) {
-	print("Please enter the master key: ")
+	log.Output("Please enter the master key: ")
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	// New-line required after the input:
-	fmt.Println()
+	log.Output()
 	return string(bytePassword), nil
 }
 

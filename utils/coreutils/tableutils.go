@@ -3,12 +3,14 @@ package coreutils
 import (
 	"bufio"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"golang.org/x/term"
 	"math"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 )
 
 // Controls the max col width when printing to a non-terminal. See the PrintTable description for more info.
@@ -95,7 +97,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 	}
 
 	if title != "" {
-		fmt.Println(title)
+		log.Output(title)
 	}
 
 	if IsTerminal() {

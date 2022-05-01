@@ -57,9 +57,9 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(configV0))
 	assert.NoError(t, err)
-	configV5 := new(ConfigV5)
-	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, 5, false)
+	configV6 := new(ConfigV6)
+	assert.NoError(t, json.Unmarshal(content, &configV6))
+	assertionHelper(t, configV6, 0, false)
 	assertCertsMigrationAndBackupCreation(t)
 }
 
@@ -88,11 +88,11 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(config))
 	assert.NoError(t, err)
-	configV5 := new(ConfigV5)
-	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, 5, false)
+	configV6 := new(ConfigV6)
+	assert.NoError(t, json.Unmarshal(content, &configV6))
+	assertionHelper(t, configV6, 1, false)
 
-	assert.Equal(t, "user", configV5.Servers[0].User, "The config conversion to version 3 is supposed to save the username as lowercase")
+	assert.Equal(t, "user", configV6.Servers[0].User, "The config conversion to version 3 is supposed to save the username as lowercase")
 
 	assertCertsMigrationAndBackupCreation(t)
 }
@@ -127,9 +127,9 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 	defer cleanUpTempEnv()
 	content, err := convertIfNeeded([]byte(configV4))
 	assert.NoError(t, err)
-	configV5 := new(ConfigV5)
-	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, 5, false)
+	configV6 := new(ConfigV6)
+	assert.NoError(t, json.Unmarshal(content, &configV6))
+	assertionHelper(t, configV6, 4, false)
 }
 
 func TestConvertConfigV5ToV6(t *testing.T) {
@@ -143,6 +143,8 @@ func TestConvertConfigV5ToV6(t *testing.T) {
 					  "xrayUrl": "http://localhost:8080/xray/",
 					  "missionControlUrl": "http://localhost:8080/mc/",
 					  "pipelinesUrl": "http://localhost:8080/pipelines/",
+					  "user": "user",
+			          "password": "password",
 					  "accessToken": "M9Zi1FY_lpA5dR01ev6EU6Tx_qRVsm2mSYWqobz",
 					  "RefreshToken": "a476324f-856c-41d7-b87e-3162e7d6jk91",
 					  "serverId": "Default-Server",
@@ -159,7 +161,7 @@ func TestConvertConfigV5ToV6(t *testing.T) {
 	assert.NoError(t, err)
 	configV6 := new(ConfigV6)
 	assert.NoError(t, json.Unmarshal(content, &configV6))
-	assertionV6Helper(t, configV6, coreutils.GetCliConfigVersion(), false)
+	assertionHelper(t, configV6, 5, false)
 }
 
 func TestConfigEncryption(t *testing.T) {
@@ -275,28 +277,8 @@ func assertionV4Helper(t *testing.T, convertedConfig *ConfigV4, expectedVersion 
 	assert.Equal(t, "password", rtConverted[0].Password)
 }
 
-func assertionV5Helper(t *testing.T, convertedConfig *ConfigV5, expectedVersion int, expectedEnc bool) {
-	assert.Equal(t, strconv.Itoa(expectedVersion), convertedConfig.Version)
-	assert.Equal(t, expectedEnc, convertedConfig.Enc)
-
-	rtConverted := convertedConfig.Servers
-	if rtConverted == nil {
-		assert.Fail(t, "empty servers config!")
-		return
-	}
-	assert.Len(t, rtConverted, 1)
-	rtConfigType := reflect.TypeOf(rtConverted)
-	assert.Equal(t, "[]*config.ServerDetails", rtConfigType.String())
-	assert.True(t, rtConverted[0].IsDefault)
-	assert.Equal(t, DefaultServerId, rtConverted[0].ServerId)
-	assert.Equal(t, "http://localhost:8080/artifactory/", rtConverted[0].ArtifactoryUrl)
-	assert.Equal(t, "http://localhost:8080/mc/", rtConverted[0].MissionControlUrl)
-	assert.Equal(t, "user", rtConverted[0].User)
-	assert.Equal(t, "password", rtConverted[0].Password)
-}
-
-func assertionV6Helper(t *testing.T, convertedConfig *ConfigV6, expectedVersion int, expectedEnc bool) {
-	assert.Equal(t, strconv.Itoa(expectedVersion), convertedConfig.Version)
+func assertionHelper(t *testing.T, convertedConfig *ConfigV6, previousVersion int, expectedEnc bool) {
+	assert.Equal(t, "6", convertedConfig.Version)
 	assert.Equal(t, expectedEnc, convertedConfig.Enc)
 
 	serversConverted := convertedConfig.Servers
@@ -311,11 +293,15 @@ func assertionV6Helper(t *testing.T, convertedConfig *ConfigV6, expectedVersion 
 	assert.Equal(t, DefaultServerId, serversConverted[0].ServerId)
 	assert.Equal(t, "http://localhost:8080/artifactory/", serversConverted[0].ArtifactoryUrl)
 	assert.Equal(t, "http://localhost:8080/mc/", serversConverted[0].MissionControlUrl)
-	assert.Equal(t, "http://localhost:8080/xray/", serversConverted[0].XrayUrl)
-	assert.Equal(t, "http://localhost:8080/distribution/", serversConverted[0].DistributionUrl)
-	assert.Equal(t, "M9Zi1FY_lpA5dR01ev6EU6Tx_qRVsm2mSYWqobz", serversConverted[0].AccessToken)
-	assert.Equal(t, "a476324f-856c-41d7-b87e-3162e7d6jk91", serversConverted[0].ArtifactoryRefreshToken)
-	assert.Equal(t, "", serversConverted[0].RefreshToken)
+	assert.Equal(t, "user", serversConverted[0].User)
+	assert.Equal(t, "password", serversConverted[0].Password)
+	if previousVersion >= 5 {
+		assert.Equal(t, "http://localhost:8080/xray/", serversConverted[0].XrayUrl)
+		assert.Equal(t, "http://localhost:8080/distribution/", serversConverted[0].DistributionUrl)
+		assert.Equal(t, "M9Zi1FY_lpA5dR01ev6EU6Tx_qRVsm2mSYWqobz", serversConverted[0].AccessToken)
+		assert.Equal(t, "a476324f-856c-41d7-b87e-3162e7d6jk91", serversConverted[0].ArtifactoryRefreshToken)
+		assert.Equal(t, "", serversConverted[0].RefreshToken)
+	}
 }
 
 func TestHandleSecrets(t *testing.T) {

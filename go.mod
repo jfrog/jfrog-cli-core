@@ -12,7 +12,7 @@ require (
 	github.com/jfrog/build-info-go v1.2.5
 	github.com/jfrog/gofrog v1.1.1
 	github.com/jfrog/jfrog-client-go v1.12.3
-	github.com/magiconair/properties v1.8.1
+	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
@@ -43,10 +43,12 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
 	github.com/klauspost/compress v1.11.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/lunixbochs/vtclean v0.0.0-20180621232353-2d01aacdc34a // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
@@ -88,11 +90,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-<<<<<<< HEAD
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.12.3-0.20220426141451-6878e1a67227
-=======
-replace github.com/jfrog/jfrog-client-go => github.com/talarian1/jfrog-client-go v0.13.4-0.20220417134520-6906fdf0652c
->>>>>>> 22002583 (Update go.mod & go.sum)
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.12.4-0.20220501124454-828ef3d9d677
 
 replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.2.6-0.20220501062728-3ce03e0924b3
 

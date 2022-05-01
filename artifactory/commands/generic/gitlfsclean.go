@@ -1,8 +1,6 @@
 package generic
 
 import (
-	"fmt"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -92,7 +90,7 @@ func getGitLfsCleanParams(configuration *GitLfsCleanConfiguration) (gitLfsCleanP
 
 func (glc *GitLfsCommand) interactiveDeleteLfsFiles(filesToDelete *content.ContentReader) error {
 	for resultItem := new(clientutils.ResultItem); filesToDelete.NextRecord(resultItem) == nil; resultItem = new(clientutils.ResultItem) {
-		fmt.Println("  " + resultItem.Name)
+		log.Output("  " + resultItem.Name)
 	}
 	if err := filesToDelete.GetError(); err != nil {
 		return err

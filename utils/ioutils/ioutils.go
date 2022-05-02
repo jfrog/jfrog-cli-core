@@ -2,15 +2,16 @@ package ioutils
 
 import (
 	"bufio"
-	"fmt"
-	"golang.org/x/term"
 	"io"
 	"os"
 	"strings"
 	"syscall"
 
+	"golang.org/x/term"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -36,21 +37,21 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 }
 
 func ScanPasswordFromConsole(message string) (string, error) {
-	print(message)
+	log.Output(message)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	// New-line required after the password input:
-	fmt.Println()
+	log.Output()
 	return string(bytePassword), nil
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	if defaultValue != "" {
-		print(caption + " [" + defaultValue + "]: ")
+		log.Output(caption + " [" + defaultValue + "]: ")
 	} else {
-		print(caption + ": ")
+		log.Output(caption + ": ")
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)

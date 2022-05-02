@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/browser"
+
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -87,6 +89,16 @@ func (ftc *EnvSetupCommand) clearHeadlineMsg() {
 	}
 }
 
+// This function is a wrapper around the 'ftc.progress.Quit()' API,
+// to make sure that ftc.progress isn't nil before clearing it.
+// It can be nil in case the CI environment variable is set.
+func (ftc *EnvSetupCommand) quitProgress() error {
+	if ftc.progress != nil {
+		return ftc.progress.Quit()
+	}
+	return nil
+}
+
 func (ftc *EnvSetupCommand) Run() (err error) {
 	var server *config.ServerDetails
 	// In case credentials were provided - user that was invited to an existing platform.
@@ -103,8 +115,13 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println()
-	fmt.Println(coreutils.PrintBold("Congrats! You're all set"))
+	// Closes the progress manger and reset the log prints.
+	err = ftc.quitProgress()
+	if err != nil {
+		return err
+	}
+	log.Output()
+	log.Output(coreutils.PrintBold("Congrats! You're all set"))
 	message :=
 		coreutils.PrintTitle("So what's next?") + "\n" +
 			"1. 'cd' into your code project directory\n" +

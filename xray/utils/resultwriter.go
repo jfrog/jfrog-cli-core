@@ -3,7 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -37,7 +37,7 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 			if err != nil {
 				return err
 			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
+			log.Output("The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
 			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended)
@@ -136,7 +136,7 @@ func printJson(output interface{}) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	fmt.Println(clientUtils.IndentJson(results))
+	log.Output(clientUtils.IndentJson(results))
 	return nil
 }
 

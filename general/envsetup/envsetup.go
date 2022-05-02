@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/access/services"
-	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"

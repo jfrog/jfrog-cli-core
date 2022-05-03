@@ -3,6 +3,7 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -161,13 +162,15 @@ func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime ti
 	if err != nil {
 		return "", err
 	}
+	project := bpc.buildConfiguration.GetProject()
+	buildName, buildNumber, project = url.PathEscape(buildName), url.PathEscape(buildNumber), url.QueryEscape(project)
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
 			bpc.serverDetails.GetUrl(), buildName, buildNumber), nil
-	} else if bpc.buildConfiguration.GetProject() != "" {
+	} else if project != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
+			bpc.serverDetails.GetUrl(), buildName, buildNumber, strconv.FormatInt(timestamp, 10), project, project), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",

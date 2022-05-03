@@ -19,8 +19,8 @@ import (
 // If the dependency was downloaded in this pip-install execution, checksum will be fetched from Artifactory.
 // Otherwise, check if exists in cache.
 // Return dependency-names of all dependencies which its information could not be obtained.
-func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, cacheDirPath string, servicesManager artifactory.ArtifactoryServicesManager, repository string) error {
-	dependenciesCache, err := GetProjectDependenciesCache(cacheDirPath)
+func UpdateDepsChecksumInfo(dependenciesMap map[string]buildinfo.Dependency, srcPath string, servicesManager artifactory.ArtifactoryServicesManager, repository string) error {
+	dependenciesCache, err := GetProjectDependenciesCache(srcPath)
 	if err != nil {
 		return err
 	}
@@ -43,57 +43,17 @@ func UpdateDepsChecksumInfo(dependenciesMap map[string]*buildinfo.Dependency, ca
 
 			continue
 		}
-		fileType := ""
-		// Update dependency info.
-		dependenciesMap[depName].Id = depFileName
-		if i := strings.LastIndex(depFileName, "."); i != -1 {
-			fileType = depFileName[i+1:]
-		}
-		dependenciesMap[depName].Type = fileType
-		dependenciesMap[depName].Checksum = depChecksum
+		depInfo.Checksum = depChecksum
+		dependenciesMap[depName] = depInfo
 	}
 
 	promptMissingDependencies(missingDeps)
+
+	err = UpdateDependenciesCache(dependenciesMap, srcPath)
+	if err != nil {
+		return err
+	}
 	return nil
-}
-
-// Before running this function, dependency IDs may be the file names of the resolved python packages.
-// Update build info dependency IDs and the requestedBy field.
-// allDependencies      - Dependency name to Dependency map
-// dependenciesGraph    - Dependency graph as built by 'pipdeptree' or 'pipenv graph'
-// topLevelPackagesList - The direct dependencies
-// packageName          - The resolved package name of the Python project, may be empty if we couldn't resolve it
-// moduleName           - The input module name from the user, or the packageName
-func UpdateDepsIdsAndRequestedBy(allDependencies map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string,
-	topLevelPackagesList []string, packageName, moduleName string) {
-	if packageName == "" {
-		// Projects without setup.py
-		dependenciesGraph[moduleName] = topLevelPackagesList
-	} else {
-		// Projects with setup.py
-		dependenciesGraph[moduleName] = dependenciesGraph[packageName]
-	}
-	rootModule := buildinfo.Dependency{Id: moduleName, RequestedBy: [][]string{{}}}
-	updateDepsIdsAndRequestedBy(rootModule, allDependencies, dependenciesGraph)
-}
-
-func updateDepsIdsAndRequestedBy(parentDependency buildinfo.Dependency, dependenciesMap map[string]*buildinfo.Dependency, dependenciesGraph map[string][]string) {
-	childrenList := dependenciesGraph[parentDependency.Id]
-	for _, childName := range childrenList {
-		childKey := childName[0:strings.Index(childName, ":")]
-		if childDep, ok := dependenciesMap[childKey]; ok {
-			if childDep.NodeHasLoop() || len(childDep.RequestedBy) >= buildinfo.RequestedByMaxLength {
-				continue
-			}
-			for _, parentRequestedBy := range parentDependency.RequestedBy {
-				childRequestedBy := append([]string{parentDependency.Id}, parentRequestedBy...)
-				childDep.RequestedBy = append(childDep.RequestedBy, childRequestedBy)
-			}
-			childDep.Id = childName
-			// Run recursive call on child dependencies
-			updateDepsIdsAndRequestedBy(*childDep, dependenciesMap, dependenciesGraph)
-		}
-	}
 }
 
 // Get dependency information.
@@ -105,7 +65,7 @@ func getDependencyInfo(depName, repository string, dependenciesCache *Dependenci
 
 	if dependenciesCache != nil {
 		depFromCache := dependenciesCache.GetDependency(depName)
-		if depFromCache != nil {
+		if depFromCache.Id != "" {
 			// Cached dependencies are used in the following cases:
 			// 	1. When file name is empty and therefore the dependency is cached
 			// 	2. When file name is identical to the cached file name
@@ -157,17 +117,18 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 	}
 
 	// Verify checksum exist.
+	sha256 := parsedResult.Results[0].Sha256
 	sha1 := parsedResult.Results[0].Actual_sha1
 	md5 := parsedResult.Results[0].Actual_md5
 	if sha1 == "" || md5 == "" {
 		// Missing checksum.
-		log.Debug(fmt.Sprintf("Missing checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
+		log.Debug(fmt.Sprintf("Missing checksums for file: %s, sha256: '%s', sha1: '%s', md5: '%s'", dependencyFile, sha256, sha1, md5))
 		return
 	}
 
 	// Update checksum.
-	checksum = buildinfo.Checksum{Sha1: sha1, Md5: md5}
-	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha1: '%s', md5: '%s'", dependencyFile, sha1, md5))
+	checksum = buildinfo.Checksum{Sha256: sha256, Sha1: sha1, Md5: md5}
+	log.Debug(fmt.Sprintf("Found checksums for file: %s, sha256: '%s', sha1: '%s', md5: '%s'", dependencyFile, sha256, sha1, md5))
 
 	return
 }
@@ -187,4 +148,5 @@ type aqlResult struct {
 type results struct {
 	Actual_md5  string `json:"actual_md5,omitempty"`
 	Actual_sha1 string `json:"actual_sha1,omitempty"`
+	Sha256      string `json:"sha256,omitempty"`
 }

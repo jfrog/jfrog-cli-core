@@ -12,7 +12,7 @@ import (
 type UsersCreateCommand struct {
 	serverDetails   *config.ServerDetails
 	users           []services.User
-	usersGroups     []string
+	usersGroups     *[]string
 	replaceIfExists bool
 }
 
@@ -38,13 +38,9 @@ func (ucc *UsersCreateCommand) SetServerDetails(serverDetails *config.ServerDeta
 	return ucc
 }
 
-func (ucc *UsersCreateCommand) SetUsersGroups(usersGroups []string) *UsersCreateCommand {
+func (ucc *UsersCreateCommand) SetUsersGroups(usersGroups *[]string) *UsersCreateCommand {
 	ucc.usersGroups = usersGroups
 	return ucc
-}
-
-func (ucc *UsersCreateCommand) UsersGroups() []string {
-	return ucc.usersGroups
 }
 
 func (ucc *UsersCreateCommand) SetReplaceIfExists(replaceIfExists bool) *UsersCreateCommand {

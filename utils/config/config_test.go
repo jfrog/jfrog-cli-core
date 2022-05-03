@@ -59,7 +59,7 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, coreutils.GetConfigVersion(), false)
+	assertionV5Helper(t, configV5, coreutils.GetCliConfigVersion(), false)
 	assertCertsMigrationAndBackupCreation(t)
 }
 
@@ -90,7 +90,7 @@ func TestConvertConfigV1ToV5(t *testing.T) {
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, coreutils.GetConfigVersion(), false)
+	assertionV5Helper(t, configV5, coreutils.GetCliConfigVersion(), false)
 
 	assert.Equal(t, "user", configV5.Servers[0].User, "The config conversion to version 3 is supposed to save the username as lowercase")
 
@@ -129,7 +129,7 @@ func TestConvertConfigV4ToV5(t *testing.T) {
 	assert.NoError(t, err)
 	configV5 := new(ConfigV5)
 	assert.NoError(t, json.Unmarshal(content, &configV5))
-	assertionV5Helper(t, configV5, coreutils.GetConfigVersion(), false)
+	assertionV5Helper(t, configV5, coreutils.GetCliConfigVersion(), false)
 }
 
 func TestConfigEncryption(t *testing.T) {

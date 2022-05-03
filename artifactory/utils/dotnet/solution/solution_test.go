@@ -2,7 +2,6 @@ package solution
 
 import (
 	"encoding/json"
-	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"os"
 	"path/filepath"
@@ -59,7 +58,7 @@ EndProject`}},
 			replaceCarriageSign(results)
 
 			if !reflect.DeepEqual(test.expected, results) {
-				t.Error(fmt.Sprintf("Expected %s, got %s", test.expected, results))
+				t.Errorf("Expected %s, got %s", test.expected, results)
 			}
 		})
 	}
@@ -90,10 +89,10 @@ EndProject`, filepath.Join("jfrog", "path", "test", "packagesconfig", "packagesc
 				t.Error(err)
 			}
 			if projFilePath != test.expectedProjFilePath {
-				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedProjFilePath, projFilePath))
+				t.Errorf("Expected %s, got %s", test.expectedProjFilePath, projFilePath)
 			}
 			if projectName != test.expectedProjectName {
-				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedProjectName, projectName))
+				t.Errorf("Expected %s, got %s", test.expectedProjectName, projectName)
 			}
 		})
 	}
@@ -130,7 +129,7 @@ EndProject`},
 			replaceCarriageSign(results)
 
 			if !reflect.DeepEqual(test.expectedProjects, results) {
-				t.Error(fmt.Sprintf("Expected %s, got %s", test.expectedProjects, results))
+				t.Errorf("Expected %s, got %s", test.expectedProjects, results)
 			}
 		})
 	}

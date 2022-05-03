@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"testing"
+
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // The test only checks cases of returning an error in case of a violation with FailBuild == true
@@ -60,20 +62,61 @@ func TestSplitComponentId(t *testing.T) {
 
 func TestGetDirectComponents(t *testing.T) {
 	tests := []struct {
-		impactPaths   [][]services.ImpactPathNode
-		multipleRoots bool
-		expectedRows  []componentRow
+		impactPaths             [][]services.ImpactPathNode
+		multipleRoots           bool
+		expectedComponentRows   []formats.ComponentRow
+		expectedConvImpactPaths [][]formats.ComponentRow
 	}{
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack", version: "1.2.3"}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack", version: "1.2.3"}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack2", version: "1.2.3"}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack1", version: "1.2.3"}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, false, []componentRow{{name: "jfrog:pack21", version: "1.2.3"}, {name: "jfrog:pack22", version: "1.2.3"}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, true, []componentRow{{name: "jfrog:pack1", version: "1.2.3"}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack2", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack1", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack1", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
 	}
 
 	for _, test := range tests {
-		actualRows := getDirectComponents(test.impactPaths, test.multipleRoots)
-		assert.ElementsMatch(t, test.expectedRows, actualRows)
+		actualComponentRows, actualConvImpactPaths := getDirectComponentsAndImpactPaths(test.impactPaths, test.multipleRoots)
+		assert.ElementsMatch(t, test.expectedComponentRows, actualComponentRows)
+		assert.ElementsMatch(t, test.expectedConvImpactPaths, actualConvImpactPaths)
 	}
+}
+
+func TestGetOperationalRiskReadableData(t *testing.T) {
+	tests := []struct {
+		violation       services.Violation
+		expectedResults *operationalRiskViolationReadableData
+	}{
+		{
+			services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
+				Cadence: nil, Commits: nil, Committers: nil, RiskReason: "", EolMessage: ""},
+			&operationalRiskViolationReadableData{"N/A", "N/A", "N/A", "N/A", "", "", "N/A", "N/A"},
+		},
+		{
+			services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
+				Cadence: newFloat64Ptr(3.5), Commits: newInt64Ptr(55), Committers: newIntPtr(10), EolMessage: "no maintainers", RiskReason: "EOL"},
+			&operationalRiskViolationReadableData{"true", "3.5", "55", "10", "no maintainers", "EOL", "1.2.3", "5"},
+		},
+	}
+
+	for _, test := range tests {
+		results := getOperationalRiskViolationReadableData(test.violation)
+		assert.Equal(t, test.expectedResults, results)
+	}
+}
+
+func newBoolPtr(v bool) *bool {
+	return &v
+}
+
+func newIntPtr(v int) *int {
+	return &v
+}
+
+func newInt64Ptr(v int64) *int64 {
+	return &v
+}
+
+func newFloat64Ptr(v float64) *float64 {
+	return &v
 }

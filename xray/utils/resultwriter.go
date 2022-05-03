@@ -3,9 +3,10 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -23,7 +24,9 @@ const (
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson)}
 
-func PrintScanResults(results []services.ScanResponse, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
+// PrintScanResults prints Xray scan results in the given format.
+// Note that errors are printed only on SimpleJson format.
+func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
 	switch format {
 	case Table:
 		var err error
@@ -34,7 +37,7 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 			if err != nil {
 				return err
 			}
-			fmt.Println("The full scan results are available here: " + resultsPath)
+			log.Output("The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
 			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended)
@@ -50,30 +53,32 @@ func PrintScanResults(results []services.ScanResponse, format OutputFormat, incl
 		return err
 	case SimpleJson:
 		violations, vulnerabilities, licenses := splitScanResults(results)
-		jsonTable := ResultsSimpleJson{}
+		jsonTable := formats.SimpleJsonResults{}
 		if includeVulnerabilities {
 			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
-			vulJsonTable, err := CreateJsonVulnerabilitiesTable(vulnerabilities, isMultipleRoots)
+			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, false)
 			if err != nil {
 				return err
 			}
 			jsonTable.Vulnerabilities = vulJsonTable
 		} else {
-			secViolationsJsonTable, licViolationsJsonTable, err := CreateJsonViolationsTable(violations, isMultipleRoots)
+			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, false)
 			if err != nil {
 				return err
 			}
 			jsonTable.SecurityViolations = secViolationsJsonTable
 			jsonTable.LicensesViolations = licViolationsJsonTable
+			jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 		}
 
 		if includeLicenses {
-			licJsonTable, err := CreateJsonLicensesTable(licenses, isMultipleRoots)
+			licJsonTable, err := PrepareLicenses(licenses, isMultipleRoots)
 			if err != nil {
 				return err
 			}
 			jsonTable.Licenses = licJsonTable
 		}
+		jsonTable.Errors = errors
 		return printJson(jsonTable)
 	case Json:
 		return printJson(results)
@@ -131,7 +136,7 @@ func printJson(output interface{}) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	fmt.Println(clientutils.IndentJson(results))
+	log.Output(clientUtils.IndentJson(results))
 	return nil
 }
 

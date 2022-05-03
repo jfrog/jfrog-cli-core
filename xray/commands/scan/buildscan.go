@@ -2,11 +2,11 @@ package scan
 
 import (
 	"errors"
-	"fmt"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -109,7 +109,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 	if err != nil {
 		return false, err
 	}
-	fmt.Println("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
+	log.Info("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
 	isFailBuildResponse = buildScanResults.FailBuild
 
 	scanResponse := []services.ScanResponse{{
@@ -120,19 +120,19 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 
 	if bsc.outputFormat == xrutils.Json || bsc.outputFormat == xrutils.SimpleJson {
 		// Print the violations and/or vulnerabilities as part of one JSON.
-		err = xrutils.PrintScanResults(scanResponse, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
+		err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
 	} else {
 		// Print two different tables for violations and vulnerabilities (if needed)
 
 		// If "No Xray Fail build policy...." error received, no need to print violations
 		if !noFailBuildPolicy {
-			err = xrutils.PrintScanResults(scanResponse, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
+			err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}
 		}
 		if bsc.includeVulnerabilities {
-			err = xrutils.PrintScanResults(scanResponse, bsc.outputFormat, true, false, false, bsc.printExtendedTable)
+			err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, true, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}

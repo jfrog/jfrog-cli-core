@@ -27,19 +27,19 @@ func TestDependenciesCache(t *testing.T) {
 		testsutils.RemoveAllAndAssert(t, tmpTestPath)
 	}()
 
-	cacheMap := make(map[string]*buildinfo.Dependency)
+	cacheMap := make(map[string]buildinfo.Dependency)
 	csA := buildinfo.Checksum{Sha1: "sha1A", Md5: "md5A"}
 	depenA := buildinfo.Dependency{
 		Id:       "depenA-1.0-A.zip",
 		Checksum: csA,
 	}
-	cacheMap["A"] = &depenA
+	cacheMap["A"] = depenA
 	csC := buildinfo.Checksum{Sha1: "sha1C", Md5: "md5C"}
 	depenC := buildinfo.Dependency{
 		Id:       "depenC-3.4-C.gzip",
 		Checksum: csC,
 	}
-	cacheMap["C"] = &depenC
+	cacheMap["C"] = depenC
 	err = UpdateDependenciesCache(cacheMap, tmpTestPath)
 	if err != nil {
 		t.Error("Failed creating dependencies cache: " + err.Error())
@@ -49,16 +49,16 @@ func TestDependenciesCache(t *testing.T) {
 		t.Error("Failed reading dependencies cache: " + err.Error())
 	}
 
-	if !reflect.DeepEqual(*cache.GetDependency("A"), depenA) {
+	if !reflect.DeepEqual(cache.GetDependency("A"), depenA) {
 		t.Error("Failed retrieving dependency A!!!")
 	}
-	if cache.GetDependency("B") != nil {
+	if cache.GetDependency("B").Id != "" {
 		t.Error("Retrieving non-existing dependency B should return nil.")
 	}
-	if !reflect.DeepEqual(*cache.GetDependency("C"), depenC) {
+	if !reflect.DeepEqual(cache.GetDependency("C"), depenC) {
 		t.Error("Failed retrieving dependency C!!!")
 	}
-	if cache.GetDependency("T") != nil {
+	if cache.GetDependency("T").Id != "" {
 		t.Error("Retrieving non-existing dependency T should return nil checksum.")
 	}
 
@@ -68,7 +68,7 @@ func TestDependenciesCache(t *testing.T) {
 		Id:       "depenT-6.0.68-T.zip",
 		Checksum: csT,
 	}
-	cacheMap["T"] = &depenT
+	cacheMap["T"] = depenT
 	err = UpdateDependenciesCache(cacheMap, tmpTestPath)
 	if err != nil {
 		t.Error("Failed creating dependencies cache: " + err.Error())
@@ -78,13 +78,13 @@ func TestDependenciesCache(t *testing.T) {
 	if err != nil {
 		t.Error("Failed reading dependencies cache: " + err.Error())
 	}
-	if cache.GetDependency("A") != nil {
+	if cache.GetDependency("A").Id != "" {
 		t.Error("Retrieving non-existing dependency T should return nil checksum.")
 	}
-	if !reflect.DeepEqual(*cache.GetDependency("T"), depenT) {
+	if !reflect.DeepEqual(cache.GetDependency("T"), depenT) {
 		t.Error("Failed retrieving dependency T.")
 	}
-	if !reflect.DeepEqual(*cache.GetDependency("C"), depenC) {
+	if !reflect.DeepEqual(cache.GetDependency("C"), depenC) {
 		t.Error("Failed retrieving dependency C.")
 	}
 }

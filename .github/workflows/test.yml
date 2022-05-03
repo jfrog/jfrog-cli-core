@@ -14,24 +14,30 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Setup Python3
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+          
       - name: Install pipenv
         run: pip3 install pipenv
+        
       - name: Install Go
         uses: actions/setup-go@v3
         with:
           go-version: 1.17.x
+          
       - name: Go Cache
         uses: actions/cache@v3
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-            ~\AppData\Local\go-build
+          path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+            
       - name: Lint
         run: go vet ./...
+        
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0

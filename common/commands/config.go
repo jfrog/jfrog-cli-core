@@ -80,6 +80,8 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 }
 
 func (cc *ConfigCommand) Run() error {
+	log.Info("locking config file to atomically run " + cc.cmdType + " command.")
+	defer log.Info(cc.cmdType + " command completed successfully. config file is released.")
 	mutex.Lock()
 	defer mutex.Unlock()
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
@@ -92,6 +94,7 @@ func (cc *ConfigCommand) Run() error {
 		if err == nil {
 			err = e
 		}
+
 	}()
 	if err != nil {
 		return err

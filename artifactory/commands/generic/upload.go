@@ -174,6 +174,7 @@ func (uc *UploadCommand) upload() (err error) {
 			log.Error(err)
 		}
 	}
+	log.Info("Uploaded successfully!")
 	uc.result.SetSuccessCount(successCount)
 	uc.result.SetFailCount(failCount)
 	if errorOccurred {

@@ -39,7 +39,7 @@ func TestCovertConfigV0ToV1(t *testing.T) {
 	assertionV4Helper(t, configV1, 1, false)
 }
 
-func TestConvertConfigV0ToV5(t *testing.T) {
+func TestConvertConfigV0ToLatest(t *testing.T) {
 	configV0 := `
 		{
 		  "artifactory": {
@@ -63,7 +63,7 @@ func TestConvertConfigV0ToV5(t *testing.T) {
 	assertCertsMigrationAndBackupCreation(t)
 }
 
-func TestConvertConfigV1ToV5(t *testing.T) {
+func TestConvertConfigV1ToLatest(t *testing.T) {
 	// The Artifactory username is uppercase intentionally,
 	// to test the lowercase conversion to version 3.
 	config := `
@@ -104,7 +104,7 @@ func assertCertsMigrationAndBackupCreation(t *testing.T) {
 	assert.DirExists(t, backupDir)
 }
 
-func TestConvertConfigV4ToV5(t *testing.T) {
+func TestConvertConfigV4ToLatest(t *testing.T) {
 	configV4 := `
 		{
 		  "artifactory": [

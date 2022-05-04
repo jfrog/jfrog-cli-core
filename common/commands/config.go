@@ -161,7 +161,7 @@ func (cc *ConfigCommand) Config() error {
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
-	// If username and password weren't provided - artifactoryToken refresh mechanism isn't needed.
+	// If username and password weren't provided, then the artifactoryToken refresh mechanism isn't set.
 	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
@@ -534,7 +534,8 @@ func checkSingleAuthMethod(details *config.ServerDetails) error {
 		details.User != "" && details.Password != "",
 		details.AccessToken != "" && details.ArtifactoryRefreshToken == "",
 		details.SshKeyPath != "",
-		// Internal case (for example 'invitation flow')- the user can't provide refreshToken as a parameter to 'config' command.
+		// Internal case - User can't provide refreshToken as a parameter to 'config' command.
+		// For example: When inviting a new user to the platform using 'invite'&'setup' commands we generate refreshable accessToken and set 'details.RefreshToken' manually.
 		details.AccessToken != "" && details.RefreshToken != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
 		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token")

@@ -144,10 +144,7 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 	}
 
 	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
-	if err != nil {
-		log.Error("Failed writing new tokens to config after handling access token expiry: " + err.Error())
-	}
-	return newToken.AccessToken, nil
+	return newToken.AccessToken, err
 }
 
 func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
@@ -159,15 +156,11 @@ func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, curr
 	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, refreshToken)
 
 	if err != nil {
-		log.Debug("Refresh access token failed: " + err.Error())
-		return "", err
+		return "", errorutils.CheckError(errors.New("Refresh access token failed: " + err.Error()))
 	}
 
 	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
-	if err != nil {
-		log.Error("Failed writing new tokens to config after handling access token expiry: " + err.Error())
-	}
-	return newToken.AccessToken, nil
+	return newToken.AccessToken, err
 }
 
 func writeNewArtifactoryTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
@@ -209,8 +202,8 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
-	if !(serverDetails.ArtifactoryTokenRefreshInterval > 0 && serverDetails.RefreshToken == "" && serverDetails.AccessToken == "") ||
-		(serverDetails.ArtifactoryRefreshToken != "" && serverDetails.AccessToken != "") {
+	if !(serverDetails.ArtifactoryTokenRefreshInterval > 0 && serverDetails.ArtifactoryRefreshToken == "" && serverDetails.AccessToken == "") ||
+		(serverDetails.RefreshToken != "" && serverDetails.AccessToken != "") {
 		return nil
 	}
 	mutex.Lock()

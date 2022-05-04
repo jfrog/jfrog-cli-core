@@ -12,10 +12,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
-var (
-	trueValue  = true
-	falseValue = false
-)
+const InviteCliSourceName = "cli"
 
 type InviteCommand struct {
 	invitedEmail  string
@@ -55,7 +52,7 @@ func (ic *InviteCommand) Run() (err error) {
 	params := new(services.UserParams)
 	params.UserDetails = *userDetails
 	params.ReplaceIfExists = false
-	// Inviting new user - send a 'CreateUser' request to artifactory with a parameter "shouldInvite=true".
+	// Inviting the new user - send a 'CreateUser' request to artifactory with the "shouldInvite=true" parameter.
 	err = servicesManager.CreateUser(*params)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "already exists") {
@@ -66,7 +63,7 @@ func (ic *InviteCommand) Run() (err error) {
 				return
 			}
 			// Re-inviting user - send an "Invite" request to access.
-			err = accessManager.InviteUser(params.UserDetails.Email)
+			err = accessManager.InviteUser(params.UserDetails.Email, InviteCliSourceName)
 			if err != nil {
 				return
 			}
@@ -76,6 +73,8 @@ func (ic *InviteCommand) Run() (err error) {
 }
 
 func (ic *InviteCommand) createNewInvitedUser() *services.User {
+	var trueValue = true
+	var falseValue = false
 	userDetails := services.User{}
 	// Parameters "name" and "email" should both be with the email value for internal reasons in access.
 	userDetails.Email = ic.invitedEmail

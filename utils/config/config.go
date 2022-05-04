@@ -489,9 +489,7 @@ type Config struct {
 }
 
 type ConfigV6 struct {
-	Servers []*ServerDetails `json:"servers"`
-	Version string           `json:"version,omitempty"`
-	Enc     bool             `json:"enc,omitempty"`
+	ConfigV5
 }
 
 type ConfigV5 struct {

@@ -150,8 +150,8 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
 	refreshToken := serverConfiguration.RefreshToken
 	// Remove previous tokens
-	serverConfiguration.AccessToken = ""
-	serverConfiguration.RefreshToken = ""
+	//serverConfiguration.AccessToken = ""
+	//serverConfiguration.RefreshToken = ""
 	// Try refreshing tokens
 	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, refreshToken)
 
@@ -254,14 +254,14 @@ func refreshArtifactoryExpiredToken(serverDetails *ServerDetails, currentAccessT
 
 func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
 	// The tokens passed as parameters are also used for authentication
-	noCredsDetails := new(ServerDetails)
-	noCredsDetails.Url = serverDetails.Url
-	noCredsDetails.ClientCertPath = serverDetails.ClientCertPath
-	noCredsDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
-	noCredsDetails.ServerId = serverDetails.ServerId
-	noCredsDetails.IsDefault = serverDetails.IsDefault
+	//serverDetails := new(ServerDetails)
+	//serverDetails.Url = serverDetails.Url
+	//serverDetails.ClientCertPath = serverDetails.ClientCertPath
+	//serverDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
+	//serverDetails.ServerId = serverDetails.ServerId
+	//serverDetails.IsDefault = serverDetails.IsDefault
 
-	servicesManager, err := createAccessTokensServiceManager(noCredsDetails)
+	servicesManager, err := createAccessTokensServiceManager(serverDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}

@@ -533,10 +533,7 @@ func checkSingleAuthMethod(details *config.ServerDetails) error {
 	authMethods := []bool{
 		details.User != "" && details.Password != "",
 		details.AccessToken != "" && details.ArtifactoryRefreshToken == "",
-		details.SshKeyPath != "",
-		// Internal case - User can't provide refreshToken as a parameter to 'config' command.
-		// For example: When inviting a new user to the platform using 'invite'&'setup' commands we generate refreshable accessToken and set 'details.RefreshToken' manually.
-		details.AccessToken != "" && details.RefreshToken != ""}
+		details.SshKeyPath != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
 		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token")
 	}

@@ -36,11 +36,11 @@ var trueValue = true
 
 type EnvSetupCommand struct {
 	registrationURL string
-	// In case base64Credentials were provided - we have a registered user that was invited to the platform.
-	base64Credentials string
-	id                uuid.UUID
-	serverDetails     *config.ServerDetails
-	progress          ioUtils.ProgressMgr
+	// In case encodedConnectionDetails were provided - we have a registered user that was invited to the platform.
+	encodedConnectionDetails string
+	id                       uuid.UUID
+	serverDetails            *config.ServerDetails
+	progress                 ioUtils.ProgressMgr
 }
 
 func (ftc *EnvSetupCommand) SetRegistrationURL(registrationURL string) *EnvSetupCommand {
@@ -48,8 +48,8 @@ func (ftc *EnvSetupCommand) SetRegistrationURL(registrationURL string) *EnvSetup
 	return ftc
 }
 
-func (ftc *EnvSetupCommand) SetBase64Credentials(base64Credentials string) *EnvSetupCommand {
-	ftc.base64Credentials = base64Credentials
+func (ftc *EnvSetupCommand) SetEncodedConnectionDetails(encodedConnectionDetails string) *EnvSetupCommand {
+	ftc.encodedConnectionDetails = encodedConnectionDetails
 	return ftc
 }
 
@@ -99,18 +99,7 @@ func (ftc *EnvSetupCommand) quitProgress() error {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	var server *config.ServerDetails
-	// If credentials were provided, this means that the user was invited to join an existing JFrog environment.
-	// Otherwise, this is a brand-new user, that needs to register and setup a new JFrog environment.
-	if ftc.base64Credentials == "" {
-		server, err = ftc.setupNewUser()
-	} else {
-		server, err = ftc.setupInvitedUser()
-	}
-	if err != nil {
-		return
-	}
-	err = configServer(server)
+	err = ftc.SetupAndConfigServer()
 	if err != nil {
 		return err
 	}
@@ -133,6 +122,22 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	return
 }
 
+func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
+	var server *config.ServerDetails
+	// If credentials were provided, this means that the user was invited to join an existing JFrog environment.
+	// Otherwise, this is a brand-new user, that needs to register and setup a new JFrog environment.
+	if ftc.encodedConnectionDetails == "" {
+		server, err = ftc.setupNewUser()
+	} else {
+		server, err = ftc.setupInvitedUser()
+	}
+	if err != nil {
+		return
+	}
+	err = configServer(server)
+	return
+}
+
 func (ftc *EnvSetupCommand) setupNewUser() (*config.ServerDetails, error) {
 	ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
 	time.Sleep(8 * time.Second)
@@ -144,16 +149,16 @@ func (ftc *EnvSetupCommand) setupNewUser() (*config.ServerDetails, error) {
 }
 
 func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, err error) {
-	server, err = ftc.decodeBase64Credentials()
+	server, err = ftc.decodeConnectionDetails()
 	if err != nil {
 		return
 	}
-	err = generateNewLongTermAccessToken(server)
+	err = GenerateNewLongTermRefreshableAccessToken(server)
 	return
 }
 
 // Take the short-lived token and generate a long term (1 year expiry) refreshable accessToken.
-func generateNewLongTermAccessToken(server *config.ServerDetails) (err error) {
+func GenerateNewLongTermRefreshableAccessToken(server *config.ServerDetails) (err error) {
 	accessManager, err := utils.CreateAccessServiceManager(server, false)
 	if err != nil {
 		return
@@ -177,8 +182,8 @@ func createLongExpirationRefreshableTokenParams() *services.CreateTokenParams {
 	return &params
 }
 
-func (ftc *EnvSetupCommand) decodeBase64Credentials() (server *config.ServerDetails, err error) {
-	rawDecodedText, err := base64.StdEncoding.DecodeString(ftc.base64Credentials)
+func (ftc *EnvSetupCommand) decodeConnectionDetails() (server *config.ServerDetails, err error) {
+	rawDecodedText, err := base64.StdEncoding.DecodeString(ftc.encodedConnectionDetails)
 	if errorutils.CheckError(err) != nil {
 		return
 	}

@@ -148,17 +148,11 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 }
 
 func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
-	refreshToken := serverConfiguration.RefreshToken
-	// Remove previous tokens
-	//serverConfiguration.AccessToken = ""
-	//serverConfiguration.RefreshToken = ""
 	// Try refreshing tokens
-	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, refreshToken)
-
+	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, serverConfiguration.RefreshToken)
 	if err != nil {
 		return "", errorutils.CheckError(errors.New("Refresh access token failed: " + err.Error()))
 	}
-
 	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
 	return newToken.AccessToken, err
 }
@@ -253,15 +247,16 @@ func refreshArtifactoryExpiredToken(serverDetails *ServerDetails, currentAccessT
 }
 
 func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {
-	// The tokens passed as parameters are also used for authentication
-	//serverDetails := new(ServerDetails)
-	//serverDetails.Url = serverDetails.Url
-	//serverDetails.ClientCertPath = serverDetails.ClientCertPath
-	//serverDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
-	//serverDetails.ServerId = serverDetails.ServerId
-	//serverDetails.IsDefault = serverDetails.IsDefault
+	// Creating accessTokens service manager without credentials.
+	// In case credentials were provided accessTokens refresh mechanism will be operated. That will cause recursive locking mechanism.
+	noCredServerDetails := new(ServerDetails)
+	noCredServerDetails.Url = serverDetails.Url
+	noCredServerDetails.ClientCertPath = serverDetails.ClientCertPath
+	noCredServerDetails.ClientCertKeyPath = serverDetails.ClientCertKeyPath
+	noCredServerDetails.ServerId = serverDetails.ServerId
+	noCredServerDetails.IsDefault = serverDetails.IsDefault
 
-	servicesManager, err := createAccessTokensServiceManager(serverDetails)
+	servicesManager, err := createAccessTokensServiceManager(noCredServerDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}

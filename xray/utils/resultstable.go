@@ -2,14 +2,16 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -139,7 +141,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
-	fmt.Println(noContextMessage + "Below are all vulnerabilities detected.")
+	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
 
 	vulnerabilitiesRows, err := PrepareVulnerabilities(vulnerabilities, multipleRoots, coreutils.IsTerminal())
 	if err != nil {

@@ -1,14 +1,13 @@
 package utils
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -106,7 +105,7 @@ func AskString(msg, promptPrefix string, allowEmpty bool, allowVars bool) string
 // if not and a default value was provided, the default value is returned.
 func askString(msg, promptPrefix, defaultValue string, allowEmpty bool, allowVars bool) string {
 	if msg != "" {
-		fmt.Println(msg + ":")
+		log.Output(msg + ":")
 	}
 	errMsg := EmptyValueMsg
 	if allowVars {
@@ -123,7 +122,7 @@ func askString(msg, promptPrefix, defaultValue string, allowEmpty bool, allowVar
 		if defaultValue != "" {
 			return defaultValue
 		}
-		fmt.Println(errMsg)
+		log.Output(errMsg)
 	}
 }
 
@@ -132,7 +131,7 @@ func askString(msg, promptPrefix, defaultValue string, allowEmpty bool, allowVar
 // Otherwise, the answer must be chosen from the list, but can be a variable if allowVars set to true.
 func AskFromList(msg, promptPrefix string, allowVars bool, options []prompt.Suggest, defaultValue string) string {
 	if msg != "" {
-		fmt.Println(msg + PressTabMsg)
+		log.Output(msg + PressTabMsg)
 	}
 	errMsg := InvalidAnswerMsg
 	if allowVars {
@@ -148,7 +147,7 @@ func AskFromList(msg, promptPrefix string, allowVars bool, options []prompt.Sugg
 		if validateAnswer(answer, options, allowVars) {
 			return answer
 		}
-		fmt.Println(errMsg)
+		log.Output(errMsg)
 	}
 }
 
@@ -179,7 +178,7 @@ func AskFromListWithMismatchConfirmation(promptPrefix, misMatchMsg string, optio
 	for {
 		answer := prompt.Input(promptPrefix+" ", prefixCompleter(options), interruptKeyBind())
 		if answer == "" {
-			fmt.Println(EmptyValueMsg)
+			log.Output(EmptyValueMsg)
 		}
 		for _, option := range options {
 			if answer == option.Text {
@@ -227,7 +226,7 @@ func (iq *InteractiveQuestionnaire) Perform() error {
 			return err
 		}
 	}
-	fmt.Println("You can type \":x\" at any time to save and exit.")
+	log.Output("You can type \":x\" at any time to save and exit.")
 	OptionalKeyQuestion := iq.QuestionsMap[OptionalKey]
 	OptionalKeyQuestion.Options = iq.OptionalKeysSuggests
 	for {

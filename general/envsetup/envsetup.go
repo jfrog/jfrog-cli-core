@@ -100,6 +100,9 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	} else {
 		// Closes the progress manger and reset the log prints.
 		err = ftc.quitProgress()
+		if err != nil {
+			return
+		}
 	}
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
@@ -116,6 +119,9 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if ftc.outputFormat == Human {
 		// Closes the progress manger and reset the log prints.
 		err = ftc.quitProgress()
+		if err != nil {
+			return
+		}
 		log.Output()
 		log.Output(coreutils.PrintBold("Congrats! You're all set"))
 		message :=

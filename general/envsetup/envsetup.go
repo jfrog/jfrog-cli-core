@@ -95,13 +95,11 @@ func (ftc *EnvSetupCommand) quitProgress() error {
 
 func (ftc *EnvSetupCommand) Run() (err error) {
 	if ftc.outputFormat == Human {
-		fmt.Println()
-		fmt.Println()
-		fmt.Println(coreutils.PrintTitle("Thank you for installing JFrog CLI! 🐸"))
-		fmt.Println(coreutils.PrintTitle("We'll now set up a FREE JFrog environment in the cloud for you, and configure your local machine to use it."))
-		fmt.Println("Your environment will be ready in less than a minute.")
 		ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
 		time.Sleep(8 * time.Second)
+	} else {
+		// Closes the progress manger and reset the log prints.
+		err = ftc.quitProgress()
 	}
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
@@ -118,9 +116,6 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if ftc.outputFormat == Human {
 		// Closes the progress manger and reset the log prints.
 		err = ftc.quitProgress()
-		if err != nil {
-			return err
-		}
 		log.Output()
 		log.Output(coreutils.PrintBold("Congrats! You're all set"))
 		message :=
@@ -192,7 +187,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		if resp.StatusCode == http.StatusOK {
 			if !readyMessageDisplayed {
 				if ftc.outputFormat == Machine {
-					fmt.Println("PREPARING_ENV")
+					log.Output("PREPARING_ENV")
 				} else {
 					ftc.clearHeadlineMsg()
 					ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")

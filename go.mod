@@ -74,7 +74,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -90,11 +90,8 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-//replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.12.4-0.20220502070028-12d6570a7d19
-//
-replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.2.6-0.20220501062728-3ce03e0924b3
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.12.6-0.20220510154641-5bafb8efc2a4
 
-// replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.0.7-0.20211128152632-e218c460d703
-replace github.com/jfrog/jfrog-client-go => github.com/gailazar300/jfrog-client-go v0.18.1-0.20220510151434-d384448a1476
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.2.7-0.20220510151507-12e2f448f35d
 
-//replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
+replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.0.7-0.20211213134245-6f374e4b7e3b

@@ -136,7 +136,7 @@ func ConvertExitCodeError(err error) error {
 
 // GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
 func GetCliConfigVersion() int {
-	return 5
+	return 6
 }
 
 // GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').

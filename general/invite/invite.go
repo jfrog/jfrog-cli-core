@@ -79,6 +79,7 @@ func (ic *InviteCommand) createNewInvitedUser() *services.User {
 	// Parameters "name" and "email" should both be with the email value for internal reasons in access.
 	userDetails.Email = ic.invitedEmail
 	userDetails.Name = ic.invitedEmail
+	// Random valid password - information won't be used in access.
 	userDetails.Password = "Password1!"
 	userDetails.Admin = &trueValue
 	userDetails.ShouldInvite = &trueValue

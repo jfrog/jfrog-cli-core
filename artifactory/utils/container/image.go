@@ -132,6 +132,7 @@ func (image *Image) GetRemoteRepo(serviceManager artifactory.ArtifactoryServices
 	// Build the request URL.
 	endpoint := buildRequestUrl(longImageName, imageTag, containerRegistryUrl, isSecure)
 	artHttpDetails := serviceManager.GetConfig().GetServiceDetails().CreateHttpClientDetails()
+	artHttpDetails.Headers["accept"] = "application/vnd.docker.distribution.manifest.v1+prettyjws, application/json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json"
 	resp, _, err := serviceManager.Client().SendHead(endpoint, &artHttpDetails)
 	if err != nil {
 		return "", err

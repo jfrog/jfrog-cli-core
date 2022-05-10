@@ -3,13 +3,14 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/term"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"golang.org/x/term"
 
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -133,8 +134,14 @@ func ConvertExitCodeError(err error) error {
 	return err
 }
 
-func GetConfigVersion() int {
+// GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
+func GetCliConfigVersion() int {
 	return 5
+}
+
+// GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').
+func GetPluginsConfigVersion() int {
+	return 1
 }
 
 func SumTrueValues(boolArr []bool) int {
@@ -293,6 +300,45 @@ func GetJfrogPluginsDir() (string, error) {
 	return filepath.Join(homeDir, JfrogPluginsDirName), nil
 }
 
+func GetJfrogPluginsResourcesDir(pluginsName string) (string, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pluginsDir, pluginsName, PluginsResourcesDirName), nil
+}
+
+func GetPluginsDirContent() ([]os.DirEntry, error) {
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return nil, err
+	}
+	exists, err := fileutils.IsDirExists(pluginsDir, false)
+	if err != nil || !exists {
+		return nil, err
+	}
+	content, err := os.ReadDir(pluginsDir)
+	return content, errorutils.CheckError(err)
+}
+
+func ChmodPluginsDirectoryContent() error {
+	plugins, err := GetPluginsDirContent()
+	if err != nil || plugins == nil {
+		return err
+	}
+	pluginsDir, err := GetJfrogPluginsDir()
+	if err != nil {
+		return err
+	}
+	for _, p := range plugins {
+		err = os.Chmod(filepath.Join(pluginsDir, p.Name()), 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GetJfrogLocksDir() (string, error) {
 	homeDir, err := GetJfrogHomeDir()
 	if err != nil {
@@ -310,6 +356,15 @@ func GetJfrogConfigLockDir() (string, error) {
 	return filepath.Join(locksDirPath, configLockDirName), nil
 }
 
+func GetJfrogPluginsLockDir() (string, error) {
+	pluginsLockDirName := "plugins"
+	locksDirPath, err := GetJfrogLocksDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(locksDirPath, pluginsLockDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"
@@ -319,13 +374,13 @@ func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	promptPrefix += " (y/n) " + defStr + "? "
 	var answer string
 	for {
-		fmt.Print(promptPrefix)
+		log.Output(promptPrefix)
 		_, _ = fmt.Scanln(&answer)
 		parsed, valid := parseYesNo(answer, defaultValue)
 		if valid {
 			return parsed
 		}
-		fmt.Println("Please enter a valid option.")
+		log.Output("Please enter a valid option.")
 	}
 }
 

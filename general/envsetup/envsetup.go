@@ -3,11 +3,12 @@ package envsetup
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/browser"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/pkg/browser"
 
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
@@ -21,10 +22,16 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+type OutputFormat string
+
 const (
 	myJfrogEndPoint   = "https://myjfrog-api.jfrog.com/api/v1/activation/cloud/cli/getStatus/"
 	syncSleepInterval = 5 * time.Second  // 5 seconds
 	maxWaitMinutes    = 30 * time.Minute // 30 minutes
+
+	// OutputFormat values
+	Human   OutputFormat = "human"
+	Machine OutputFormat = "machine"
 )
 
 type EnvSetupCommand struct {
@@ -32,6 +39,7 @@ type EnvSetupCommand struct {
 	id              uuid.UUID
 	serverDetails   *config.ServerDetails
 	progress        ioUtils.ProgressMgr
+	outputFormat    OutputFormat
 }
 
 func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -40,6 +48,11 @@ func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
 
 func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	ftc.progress = progress
+}
+
+func (ftc *EnvSetupCommand) SetOutputFormat(format OutputFormat) *EnvSetupCommand {
+	ftc.outputFormat = format
+	return ftc
 }
 
 func NewEnvSetupCommand(url string) *EnvSetupCommand {
@@ -70,9 +83,27 @@ func (ftc *EnvSetupCommand) clearHeadlineMsg() {
 	}
 }
 
+// This function is a wrapper around the 'ftc.progress.Quit()' API,
+// to make sure that ftc.progress isn't nil before clearing it.
+// It can be nil in case the CI environment variable is set.
+func (ftc *EnvSetupCommand) quitProgress() error {
+	if ftc.progress != nil {
+		return ftc.progress.Quit()
+	}
+	return nil
+}
+
 func (ftc *EnvSetupCommand) Run() (err error) {
-	ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
-	time.Sleep(8 * time.Second)
+	if ftc.outputFormat == Human {
+		ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
+		time.Sleep(8 * time.Second)
+	} else {
+		// Closes the progress manger and reset the log prints.
+		err = ftc.quitProgress()
+		if err != nil {
+			return
+		}
+	}
 	err = browser.OpenURL(ftc.registrationURL + "?id=" + ftc.id.String())
 	if err != nil {
 		return
@@ -85,17 +116,24 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println()
-	fmt.Println(coreutils.PrintBold("Congrats! You're all set"))
-	message :=
-		coreutils.PrintTitle("So what's next?") + "\n" +
-			"1. 'cd' into your code project directory\n" +
-			"2. Run \"jf project init\"\n" +
-			"3. Read more about how to get started at -\n" +
-			coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
-			"4. We've just sent you an email message. Please use it to verify your email address"
+	if ftc.outputFormat == Human {
+		// Closes the progress manger and reset the log prints.
+		err = ftc.quitProgress()
+		if err != nil {
+			return
+		}
+		log.Output()
+		log.Output(coreutils.PrintBold("Congrats! You're all set"))
+		message :=
+			coreutils.PrintTitle("So what's next?") + "\n" +
+				"1. 'cd' into your code project directory\n" +
+				"2. Run \"jf project init\"\n" +
+				"3. Read more about how to get started at -\n" +
+				coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
+				"4. We've just sent you an email message. Please use it to verify your email address"
 
-	err = coreutils.PrintTable("", "", message, false)
+		err = coreutils.PrintTable("", "", message, false)
+	}
 	return
 }
 
@@ -130,7 +168,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		log.Debug(pollingMessage)
 		// Send request to MyJFrog.
 		resp, body, err := client.SendPost(myJfrogEndPoint, requestContent, httpClientDetails, "")
-		// If an HTTP error occured.
+		// If an HTTP error occurred.
 		if err != nil {
 			errorsCount++
 			log.Debug(fmt.Sprintf(pollingErrorMessage, errorsCount, err.Error()))
@@ -154,8 +192,12 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 		// Wait for 'ready=true' response from MyJFrog
 		if resp.StatusCode == http.StatusOK {
 			if !readyMessageDisplayed {
-				ftc.clearHeadlineMsg()
-				ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
+				if ftc.outputFormat == Machine {
+					log.Output("PREPARING_ENV")
+				} else {
+					ftc.clearHeadlineMsg()
+					ftc.setHeadlineMsg("Almost done! Please hang on while JFrog CLI completes the setup 🛠")
+				}
 				readyMessageDisplayed = true
 			}
 			statusResponse := myJfrogGetStatusResponse{}

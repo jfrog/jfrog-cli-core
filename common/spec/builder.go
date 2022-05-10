@@ -5,33 +5,34 @@ import (
 )
 
 type builder struct {
-	pattern          string
-	exclusions       []string
-	target           string
-	explode          string
-	props            string
-	targetProps      string
-	excludeProps     string
-	sortOrder        string
-	sortBy           []string
-	offset           int
-	limit            int
-	build            string
-	project          string
-	excludeArtifacts bool
-	includeDeps      bool
-	bundle           string
-	publicGpgKey     string
-	recursive        bool
-	flat             bool
-	regexp           bool
-	ant              bool
-	includeDirs      bool
-	archiveEntries   string
-	validateSymlinks bool
-	symlinks         bool
-	archive          string
-	transitive       bool
+	pattern             string
+	exclusions          []string
+	target              string
+	explode             string
+	props               string
+	targetProps         string
+	excludeProps        string
+	sortOrder           string
+	sortBy              []string
+	offset              int
+	limit               int
+	build               string
+	project             string
+	excludeArtifacts    bool
+	includeDeps         bool
+	bundle              string
+	publicGpgKey        string
+	recursive           bool
+	flat                bool
+	regexp              bool
+	ant                 bool
+	includeDirs         bool
+	archiveEntries      string
+	validateSymlinks    bool
+	symlinks            bool
+	archive             string
+	transitive          bool
+	targetPathInArchive string
 }
 
 func NewBuilder() *builder {
@@ -133,6 +134,11 @@ func (b *builder) Archive(archive string) *builder {
 	return b
 }
 
+func (b *builder) TargetPathInArchive(targetPathInArchive string) *builder {
+	b.targetPathInArchive = targetPathInArchive
+	return b
+}
+
 func (b *builder) Recursive(recursive bool) *builder {
 	b.recursive = recursive
 	return b
@@ -177,33 +183,34 @@ func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
 			{
-				Pattern:          b.pattern,
-				Exclusions:       b.exclusions,
-				Target:           b.target,
-				Props:            b.props,
-				TargetProps:      b.targetProps,
-				ExcludeProps:     b.excludeProps,
-				SortOrder:        b.sortOrder,
-				SortBy:           b.sortBy,
-				Offset:           b.offset,
-				Limit:            b.limit,
-				Build:            b.build,
-				Project:          b.project,
-				Bundle:           b.bundle,
-				PublicGpgKey:     b.publicGpgKey,
-				Explode:          b.explode,
-				ArchiveEntries:   b.archiveEntries,
-				Archive:          b.archive,
-				Recursive:        strconv.FormatBool(b.recursive),
-				Flat:             strconv.FormatBool(b.flat),
-				Regexp:           strconv.FormatBool(b.regexp),
-				Ant:              strconv.FormatBool(b.ant),
-				IncludeDirs:      strconv.FormatBool(b.includeDirs),
-				ValidateSymlinks: strconv.FormatBool(b.validateSymlinks),
-				ExcludeArtifacts: strconv.FormatBool(b.excludeArtifacts),
-				IncludeDeps:      strconv.FormatBool(b.includeDeps),
-				Symlinks:         strconv.FormatBool(b.symlinks),
-				Transitive:       strconv.FormatBool(b.transitive),
+				Pattern:             b.pattern,
+				Exclusions:          b.exclusions,
+				Target:              b.target,
+				Props:               b.props,
+				TargetProps:         b.targetProps,
+				ExcludeProps:        b.excludeProps,
+				SortOrder:           b.sortOrder,
+				SortBy:              b.sortBy,
+				Offset:              b.offset,
+				Limit:               b.limit,
+				Build:               b.build,
+				Project:             b.project,
+				Bundle:              b.bundle,
+				PublicGpgKey:        b.publicGpgKey,
+				Explode:             b.explode,
+				ArchiveEntries:      b.archiveEntries,
+				Archive:             b.archive,
+				TargetPathInArchive: b.targetPathInArchive,
+				Recursive:           strconv.FormatBool(b.recursive),
+				Flat:                strconv.FormatBool(b.flat),
+				Regexp:              strconv.FormatBool(b.regexp),
+				Ant:                 strconv.FormatBool(b.ant),
+				IncludeDirs:         strconv.FormatBool(b.includeDirs),
+				ValidateSymlinks:    strconv.FormatBool(b.validateSymlinks),
+				ExcludeArtifacts:    strconv.FormatBool(b.excludeArtifacts),
+				IncludeDeps:         strconv.FormatBool(b.includeDeps),
+				Symlinks:            strconv.FormatBool(b.symlinks),
+				Transitive:          strconv.FormatBool(b.transitive),
 			},
 		},
 	}

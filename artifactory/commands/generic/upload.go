@@ -241,6 +241,7 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bui
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = buildProps
 	uploadParams.Archive = f.Archive
+	uploadParams.TargetPathInArchive = f.TargetPathInArchive
 
 	uploadParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {

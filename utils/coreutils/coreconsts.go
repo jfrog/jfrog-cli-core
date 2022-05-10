@@ -19,6 +19,9 @@ const (
 	JfrogLogsDirName         = "logs"
 	JfrogLocksDirName        = "locks"
 	JfrogPluginsDirName      = "plugins"
+	PluginsExecDirName       = "bin"
+	PluginsResourcesDirName  = "resources"
+	JfrogPluginsFileName     = "plugins.yml"
 
 	// Env
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"

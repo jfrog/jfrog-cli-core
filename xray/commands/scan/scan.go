@@ -191,7 +191,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		}
 	}
 	if scanCmd.progress != nil {
-		scanCmd.progress.Quit()
+		if err = scanCmd.progress.Quit(); err != nil {
+			return err
+		}
+
 	}
 
 	fileCollectingErr := fileCollectingErrorsQueue.GetError()

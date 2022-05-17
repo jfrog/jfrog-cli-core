@@ -3,13 +3,14 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/term"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"golang.org/x/term"
 
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -135,7 +136,7 @@ func ConvertExitCodeError(err error) error {
 
 // GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
 func GetCliConfigVersion() int {
-	return 5
+	return 6
 }
 
 // GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').
@@ -373,13 +374,13 @@ func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	promptPrefix += " (y/n) " + defStr + "? "
 	var answer string
 	for {
-		fmt.Print(promptPrefix)
+		log.Output(promptPrefix)
 		_, _ = fmt.Scanln(&answer)
 		parsed, valid := parseYesNo(answer, defaultValue)
 		if valid {
 			return parsed
 		}
-		fmt.Println("Please enter a valid option.")
+		log.Output("Please enter a valid option.")
 	}
 }
 

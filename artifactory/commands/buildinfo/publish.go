@@ -3,23 +3,22 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
-	"strconv"
-	"strings"
-	"time"
-
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	biconf "github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type BuildPublishCommand struct {
@@ -191,14 +190,17 @@ func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime ti
 	}
 	baseUrl = clientutils.AddTrailingSlashIfNeeded(baseUrl)
 
+	project := bpc.buildConfiguration.GetProject()
+	buildName, buildNumber, project = url.PathEscape(buildName), url.PathEscape(buildNumber), url.QueryEscape(project)
+
 	if majorVersion <= 6 {
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
 			baseUrl, buildName, buildNumber), nil
 	}
-	if bpc.buildConfiguration.GetProject() != "" {
+	if project != "" {
 		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
-			baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10), bpc.buildConfiguration.GetProject(), bpc.buildConfiguration.GetProject()), nil
+			baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10), project, project), nil
 	}
 	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",

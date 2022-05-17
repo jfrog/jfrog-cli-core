@@ -1,13 +1,16 @@
 package coreutils
 
 import (
+	"bufio"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"golang.org/x/term"
 	"math"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 )
 
 // Controls the max col width when printing to a non-terminal. See the PrintTable description for more info.
@@ -87,23 +90,30 @@ var DefaultMaxColWidth = 25
 // ┌─────────────────────────┐
 // │ No customers were found │
 // └─────────────────────────┘
-func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) error {
+func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) (err error) {
 	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)
 	if err != nil || tableWriter == nil {
-		return err
+		return
 	}
 
 	if title != "" {
-		fmt.Println(title)
+		log.Output(title)
 	}
 
 	if IsTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
 	tableWriter.Style().Options.SeparateRows = true
-	tableWriter.SetOutputMirror(os.Stdout)
+	stdoutWriter := bufio.NewWriter(os.Stdout)
+	defer func() {
+		e := stdoutWriter.Flush()
+		if err == nil {
+			err = e
+		}
+	}()
+	tableWriter.SetOutputMirror(stdoutWriter)
 	tableWriter.Render()
-	return nil
+	return
 }
 
 // Creates table following the logic described in PrintTable.

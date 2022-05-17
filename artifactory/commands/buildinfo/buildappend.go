@@ -3,6 +3,7 @@ package buildinfo
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -145,9 +146,9 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (buildinfo.Ch
 
 	buildInfoRepo := "artifactory-build-info"
 	if bac.buildConfiguration.GetProject() != "" {
-		buildInfoRepo = bac.buildConfiguration.GetProject() + "-build-info"
+		buildInfoRepo = url.PathEscape(bac.buildConfiguration.GetProject()) + "-build-info"
 	}
-	buildInfoPath := serviceDetails.GetUrl() + buildInfoRepo + "/" + bac.buildNameToAppend + "/" + bac.buildNumberToAppend + "-" + strconv.FormatInt(timestamp, 10) + ".json"
+	buildInfoPath := fmt.Sprintf("%v%v/%v/%v-%v.json", serviceDetails.GetUrl(), buildInfoRepo, url.PathEscape(bac.buildNameToAppend), url.PathEscape(bac.buildNumberToAppend), strconv.FormatInt(timestamp, 10))
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
 		return buildinfo.Checksum{}, err

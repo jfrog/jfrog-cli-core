@@ -105,7 +105,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		return err
 	}
 
-	err = xrutils.PrintScanResults(results, auditCmd.OutputFormat, auditCmd.IncludeVulnerabilities, auditCmd.IncludeLicenses, isMultipleRootProject, auditCmd.PrintExtendedTable)
+	err = xrutils.PrintScanResults(results, nil, auditCmd.OutputFormat, auditCmd.IncludeVulnerabilities, auditCmd.IncludeLicenses, isMultipleRootProject, auditCmd.PrintExtendedTable)
 	if err != nil {
 		return err
 	}

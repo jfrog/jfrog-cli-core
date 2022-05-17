@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/distribution/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 var (
@@ -120,9 +121,9 @@ func (db *DeleteReleaseBundleCommand) confirmDelete(distributionRulesEmpty bool)
 		return false, errorutils.CheckError(err)
 	}
 
-	fmt.Println(clientutils.IndentJson(bytes))
+	log.Output(clientutils.IndentJson(bytes))
 	if db.deleteBundlesParams.DeleteFromDistribution {
-		fmt.Println("This command will also delete the release bundle locally from distribution.")
+		log.Output("This command will also delete the release bundle locally from distribution.")
 	}
 	return coreutils.AskYesNo(message+"with the above distribution rules?\n"+
 		"You can avoid this confirmation message by adding --quiet to the command.", false), nil

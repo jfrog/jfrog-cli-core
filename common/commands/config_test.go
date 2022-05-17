@@ -54,20 +54,20 @@ func TestAccessToken(t *testing.T) {
 	configAndTest(t, inputDetails, true)
 }
 
-func TestRefreshToken(t *testing.T) {
+func TestArtifactoryRefreshToken(t *testing.T) {
 	// Import after tokens were generated.
 	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "admin"
 	inputDetails.Password = "password"
 	inputDetails.AccessToken = "accessToken"
-	inputDetails.RefreshToken = "refreshToken"
+	inputDetails.ArtifactoryRefreshToken = "refreshToken"
 
 	configAndTest(t, inputDetails, false)
 	configAndTest(t, inputDetails, true)
 
 	// Import before tokens were generated.
 	inputDetails.AccessToken = ""
-	inputDetails.RefreshToken = ""
+	inputDetails.ArtifactoryRefreshToken = ""
 	configAndTest(t, inputDetails, false)
 	configAndTest(t, inputDetails, true)
 }
@@ -123,13 +123,13 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	// Verify setting the option disables refreshable tokens.
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, false)
 	assert.NoError(t, err)
-	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.TokenRefreshInterval, "expected refreshable token to be disabled")
+	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be disabled")
 	assert.NoError(t, DeleteConfig("test"))
 
 	// Verify setting the option enables refreshable tokens.
 	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
-	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.TokenRefreshInterval, "expected refreshable token to be enabled")
+	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be enabled")
 	assert.NoError(t, DeleteConfig("test"))
 }
 

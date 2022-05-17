@@ -323,5 +323,19 @@ func (solution *solution) getDependenciesSources() error {
 			return errorutils.CheckError(err)
 		}
 	}
+
+	err = fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
+		if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
+			absPath, err := filepath.Abs(path)
+			if err != nil {
+				return err
+			}
+			solution.dependenciesSources = append(solution.dependenciesSources, absPath)
+		}
+		return nil
+	}, true)
+
+	return errorutils.CheckError(err)
+
 	return nil
 }

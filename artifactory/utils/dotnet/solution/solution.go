@@ -33,8 +33,14 @@ var projectRegExp *regexp.Regexp
 
 func Load(solutionPath, slnFile string) (Solution, error) {
 	solution := &solution{path: solutionPath, slnFile: slnFile}
+	var err error
 	// Find all potential dependencies sources: packages.config and project.assets.json files.
-	err := solution.getDependenciesSources()
+	// If '.sln' file was provided - get projects root and search there, otherwise the given path is the project's directory, and we search there.
+	if slnFile != "" {
+		err = solution.getDependenciesSourcesFromSolutionFile()
+	} else {
+		err = solution.getDependenciesSourcesFromCurrentDir()
+	}
 	if err != nil {
 		return solution, err
 	}
@@ -297,7 +303,7 @@ func removeQuotes(value string) string {
 // 2. Walk through the file system to find all potential dependencies sources.
 //		* 'project.assets.json' files are located in 'obj' directory under project root.
 //		* 'packages.config' files are located in the project root.
-func (solution *solution) getDependenciesSources() error {
+func (solution *solution) getDependenciesSourcesFromSolutionFile() error {
 	slnProjects, err := solution.getProjectsFromSlns()
 	if err != nil {
 		return err
@@ -323,8 +329,11 @@ func (solution *solution) getDependenciesSources() error {
 			return errorutils.CheckError(err)
 		}
 	}
+	return nil
+}
 
-	err = fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
+func (solution *solution) getDependenciesSourcesFromCurrentDir() error {
+	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
 		if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
 			absPath, err := filepath.Abs(path)
 			if err != nil {
@@ -336,6 +345,4 @@ func (solution *solution) getDependenciesSources() error {
 	}, true)
 
 	return errorutils.CheckError(err)
-
-	return nil
 }

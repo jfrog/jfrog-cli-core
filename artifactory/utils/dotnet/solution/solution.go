@@ -33,6 +33,7 @@ var projectRegExp *regexp.Regexp
 
 func Load(solutionPath, slnFile string) (Solution, error) {
 	solution := &solution{path: solutionPath, slnFile: slnFile}
+	// Find all potential dependencies sources: packages.config and project.assets.json files.
 	err := solution.getDependenciesSources()
 	if err != nil {
 		return solution, err
@@ -43,7 +44,7 @@ func Load(solutionPath, slnFile string) (Solution, error) {
 
 type solution struct {
 	path string
-	// If there are more then one sln files in the directory,
+	// If there are more than one sln files in the directory,
 	// the user must specify as arguments the sln file that should be used.
 	slnFile             string
 	projects            []project.Project
@@ -291,18 +292,36 @@ func removeQuotes(value string) string {
 	return strings.Trim(strings.TrimSpace(value), "\"")
 }
 
-// We'll walk through the file system to find all potential dependencies sources: packages.config and project.assets.json files
+// Find all potential dependencies sources: packages.config and project.assets.json files.
+// 1. Read all project's paths from the '.sln' file.
+// 2. Walk through the file system to find all potential dependencies sources.
+//		* 'project.assets.json' files are located in 'obj' directory under project root.
+//		* 'packages.config' files are located in the project root.
 func (solution *solution) getDependenciesSources() error {
-	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
-		if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				return err
-			}
-			solution.dependenciesSources = append(solution.dependenciesSources, absPath)
+	slnProjects, err := solution.getProjectsFromSlns()
+	if err != nil {
+		return err
+	}
+	// Walk and search for dependencies sources files in project's directories.
+	for _, projectLine := range slnProjects {
+		_, projFilePath, err := parseProjectLine(projectLine, solution.path)
+		if err != nil {
+			return err
 		}
-		return nil
-	}, true)
-
-	return errorutils.CheckError(err)
+		projDirPath := filepath.Dir(projFilePath)
+		err = fileutils.Walk(projDirPath, func(path string, f os.FileInfo, err error) error {
+			if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
+				absPath, err := filepath.Abs(path)
+				if err != nil {
+					return err
+				}
+				solution.dependenciesSources = append(solution.dependenciesSources, absPath)
+			}
+			return nil
+		}, true)
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
+	}
+	return nil
 }

@@ -31,15 +31,16 @@ type Solution interface {
 
 var projectRegExp *regexp.Regexp
 
-func Load(solutionPath, slnFile string) (Solution, error) {
-	solution := &solution{path: solutionPath, slnFile: slnFile}
+func Load(path, slnFile string) (Solution, error) {
+	solution := &solution{path: path, slnFile: slnFile}
 	var err error
 	// Find all potential dependencies sources: packages.config and project.assets.json files.
-	// If '.sln' file was provided - get projects root and search there, otherwise the given path is the project's directory, and we search there.
+	// If '.sln' file was provided - Read projects' paths from the solution file, walk and search for sources files.
+	// Otherwise, walk and search under the given path.
 	if slnFile != "" {
 		err = solution.getDependenciesSourcesFromSolutionFile()
 	} else {
-		err = solution.getDependenciesSourcesFromCurrentDir()
+		err = solution.getDependenciesSourcesInGivenPath()
 	}
 	if err != nil {
 		return solution, err
@@ -300,8 +301,8 @@ func removeQuotes(value string) string {
 
 // Find all potential dependencies sources: packages.config and project.assets.json files.
 // 1. Read all project's paths from the '.sln' file.
-// 2. Walk through the file system to find all potential dependencies sources.
-//		* 'project.assets.json' files are located in 'obj' directory under project root.
+// 2. Walk through the file system to find all potential dependencies sources:
+//		* 'project.assets.json' files are located in 'obj' directory in project's root.
 //		* 'packages.config' files are located in the project root.
 func (solution *solution) getDependenciesSourcesFromSolutionFile() error {
 	slnProjects, err := solution.getProjectsFromSlns()
@@ -332,7 +333,7 @@ func (solution *solution) getDependenciesSourcesFromSolutionFile() error {
 	return nil
 }
 
-func (solution *solution) getDependenciesSourcesFromCurrentDir() error {
+func (solution *solution) getDependenciesSourcesInGivenPath() error {
 	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
 		if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
 			absPath, err := filepath.Abs(path)

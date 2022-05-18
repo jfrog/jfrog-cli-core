@@ -210,7 +210,7 @@ func (solution *solution) loadSingleProject(projectName, projFilePath string) {
 	}
 	// If no dependencies source was found, we will skip the current project
 	if len(dependenciesSource) == 0 {
-		log.Debug(fmt.Sprintf("Project dependencies was not found for project: %s", projectName))
+		log.Debug(fmt.Sprintf("Project dependencies were not found for project: %s", projectName))
 		return
 	}
 	proj, err := project.Load(projectName, projectRootPath, dependenciesSource)

@@ -44,10 +44,10 @@ type EnvSetupCommand struct {
 	registrationURL string
 	// In case encodedConnectionDetails were provided - we have a registered user that was invited to the platform.
 	encodedConnectionDetails string
-	id              uuid.UUID
-	serverDetails   *config.ServerDetails
-	progress        ioUtils.ProgressMgr
-	outputFormat    OutputFormat
+	id                       uuid.UUID
+	serverDetails            *config.ServerDetails
+	progress                 ioUtils.ProgressMgr
+	outputFormat             OutputFormat
 }
 
 func (ftc *EnvSetupCommand) SetRegistrationURL(registrationURL string) *EnvSetupCommand {
@@ -152,7 +152,7 @@ func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
 	return
 }
 
-func (ftc *EnvSetupCommand) setupNewUser() (server *config.ServerDetails,err error) {
+func (ftc *EnvSetupCommand) setupNewUser() (server *config.ServerDetails, err error) {
 	if ftc.outputFormat == Human {
 		ftc.setHeadlineMsg("Just fill out its details in your browser 📝")
 		time.Sleep(8 * time.Second)

@@ -3,6 +3,8 @@ package solution
 import (
 	"encoding/json"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -141,5 +143,39 @@ func replaceCarriageSign(results []string) {
 		for i, result := range results {
 			results[i] = strings.Replace(result, "\r\n", "\n", -1)
 		}
+	}
+}
+
+//TODO: fix test
+func TestLoad(t *testing.T) {
+	previousLog := log.Logger
+	newLog := log.NewLogger(corelog.GetCliLogLevel(), nil)
+	// Restore previous logger when the function returns.
+	log.SetLogger(newLog)
+	defer log.SetLogger(previousLog)
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Error(err)
+	}
+	solution := &solution{path: filepath.Join(wd, "testdata", "multireference", "solutions"), slnFile: "multireference.sln"}
+	// Reads all projects from '.sln' files.
+	slnProjects, err := solution.getProjectsListFromSlns()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Find all potential dependencies sources: packages.config and project.assets.json files.
+	err = solution.getDependenciesSources(slnProjects)
+	if err != nil {
+		t.Error(err)
+	}
+	err = solution.loadProjects(slnProjects)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = Load(filepath.Join(wd, "testdata", "multireference", "solutions"), "multireference.sln")
+	if err != nil {
+		t.Error(err)
 	}
 }

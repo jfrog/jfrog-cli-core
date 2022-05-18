@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -34,16 +35,16 @@ var projectRegExp *regexp.Regexp
 func Load(path, slnFile string) (Solution, error) {
 	solution := &solution{path: path, slnFile: slnFile}
 	// Reads all projects from '.sln' files.
-	err := solution.loadProjectsListFromSolutions()
+	slnProjects, err := solution.getProjectsListFromSlns()
 	if err != nil {
 		return solution, err
 	}
 	// Find all potential dependencies sources: packages.config and project.assets.json files.
-	err = solution.getDependenciesSources()
+	err = solution.getDependenciesSources(slnProjects)
 	if err != nil {
 		return solution, err
 	}
-	err = solution.loadProjects()
+	err = solution.loadProjects(slnProjects)
 	if err != nil {
 		return solution, err
 	}
@@ -150,33 +151,31 @@ func (solution *solution) GetProjects() []project.Project {
 	return solution.projects
 }
 
-func (solution *solution) loadProjectsListFromSolutions() error {
+func (solution *solution) getProjectsListFromSlns() ([]project.Project, error) {
 	slnProjects, err := solution.getProjectsFromSlns()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if slnProjects != nil {
-		err = solution.parseProjectsFromSolutionFile(slnProjects)
-		if err != nil {
-			return err
-		}
+		return solution.parseProjectsFromSolutionFile(slnProjects)
 	}
-	return nil
+	return nil, nil
 }
 
-func (solution *solution) loadProjects() error {
+func (solution *solution) loadProjects(slnProjects []project.Project) error {
 	// No solution file was provided as a parameter/founded - load project from the given directory ('solution.path')
-	if solution.projects == nil {
+	if slnProjects == nil {
 		return solution.loadSingleProjectFromDir()
 	}
 	// Loading all projects provided in the relevant '.sln' files.
-	for _, project := range solution.projects {
+	for _, project := range slnProjects {
 		solution.loadSingleProject(project)
 	}
 	return nil
 }
 
-func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) error {
+func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) ([]project.Project, error) {
+	var projects []project.Project
 	for _, projectLine := range slnProjects {
 		projectName, projFilePath, err := parseProjectLine(projectLine, solution.path)
 		if err != nil {
@@ -188,9 +187,9 @@ func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) er
 			log.Debug(fmt.Sprintf("Skipping a project \"%s\", since it doesn't have a '.*proj' file path.", projectName))
 			continue
 		}
-		solution.projects = append(solution.projects, project.CreateProject(projectName, projFilePath))
+		projects = append(projects, project.CreateProject(projectName, path.Dir(projFilePath)))
 	}
-	return nil
+	return projects, nil
 }
 
 func (solution *solution) loadSingleProjectFromDir() error {
@@ -213,7 +212,7 @@ func (solution *solution) loadSingleProject(project project.Project) {
 	// First we wil find the project's dependencies source.
 	// It can be located directly in the project's root directory or in a directory with the project name under the solution root
 	// or under obj directory (in case of assets.json file)
-	projectRootPath := filepath.Dir(project.RootPath())
+	projectRootPath := project.RootPath()
 	projectPathPattern := filepath.Join(projectRootPath, dependencies.AssetDirName) + string(filepath.Separator)
 	projectNamePattern := string(filepath.Separator) + project.Name() + string(filepath.Separator)
 	var dependenciesSource string
@@ -320,12 +319,12 @@ func removeQuotes(value string) string {
 // 2. Find all potential dependencies sources for the relevant projects:
 //		* 'project.assets.json' files are located in 'obj' directory in project's root.
 //		* 'packages.config' files are located in the project root.
-func (solution *solution) getDependenciesSourcesInProjectsDir() error {
+func (solution *solution) getDependenciesSourcesInProjectsDir(slnProjects []project.Project) error {
 	// Walk and search for dependencies sources files in project's directories.
-	for _, project := range solution.projects {
+	for _, project := range slnProjects {
 		// Before running this function we already looked for dependencies sources in the solutions root path.
 		// If a project isn't located under solutions' path - we should look for the dependencies sources in this specific project directory.
-		if strings.HasPrefix(project.RootPath(), solution.path) {
+		if !strings.HasPrefix(project.RootPath(), solution.path) {
 			err := fileutils.Walk(project.RootPath(), func(path string, f os.FileInfo, err error) error {
 				return solution.addPathToDependenciesSourcesIfNeeded(path)
 			}, true)
@@ -340,7 +339,8 @@ func (solution *solution) getDependenciesSourcesInProjectsDir() error {
 // Find all potential dependencies sources: packages.config and project.assets.json files.
 func (solution *solution) getDependenciesSourcesInSolutionsDir() error {
 	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
-		return solution.addPathToDependenciesSourcesIfNeeded(path)
+		err2 := solution.addPathToDependenciesSourcesIfNeeded(path)
+		return err2
 	}, true)
 
 	return errorutils.CheckError(err)
@@ -357,11 +357,11 @@ func (solution *solution) addPathToDependenciesSourcesIfNeeded(path string) erro
 	return nil
 }
 
-func (solution *solution) getDependenciesSources() error {
+func (solution *solution) getDependenciesSources(slnProjects []project.Project) error {
 	// Find all potential dependencies sources: packages.config and project.assets.json files in solution/project root.
 	err := solution.getDependenciesSourcesInSolutionsDir()
 	if err != nil {
 		return err
 	}
-	return solution.getDependenciesSourcesInProjectsDir()
+	return solution.getDependenciesSourcesInProjectsDir(slnProjects)
 }

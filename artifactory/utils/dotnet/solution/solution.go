@@ -339,8 +339,7 @@ func (solution *solution) getDependenciesSourcesInProjectsDir(slnProjects []proj
 // Find all potential dependencies sources: packages.config and project.assets.json files.
 func (solution *solution) getDependenciesSourcesInSolutionsDir() error {
 	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
-		err2 := solution.addPathToDependenciesSourcesIfNeeded(path)
-		return err2
+		return solution.addPathToDependenciesSourcesIfNeeded(path)
 	}, true)
 
 	return errorutils.CheckError(err)

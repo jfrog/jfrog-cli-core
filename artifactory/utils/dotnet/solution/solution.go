@@ -36,7 +36,7 @@ func Load(path, slnFile string) (Solution, error) {
 	var err error
 	// Find all potential dependencies sources: packages.config and project.assets.json files.
 	// If '.sln' file was provided - Read projects' paths from the solution file, walk and search for sources files.
-	// Otherwise, walk and search under the given path.
+	// Otherwise, walk and search in given path.
 	if slnFile != "" {
 		err = solution.getDependenciesSourcesFromSolutionFile()
 	} else {
@@ -317,14 +317,7 @@ func (solution *solution) getDependenciesSourcesFromSolutionFile() error {
 		}
 		projDirPath := filepath.Dir(projFilePath)
 		err = fileutils.Walk(projDirPath, func(path string, f os.FileInfo, err error) error {
-			if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
-				absPath, err := filepath.Abs(path)
-				if err != nil {
-					return err
-				}
-				solution.dependenciesSources = append(solution.dependenciesSources, absPath)
-			}
-			return nil
+			return solution.addPathToDependenciesSourcesIfNeeded(path)
 		}, true)
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -333,17 +326,22 @@ func (solution *solution) getDependenciesSourcesFromSolutionFile() error {
 	return nil
 }
 
+// Find all potential dependencies sources: packages.config and project.assets.json files.
 func (solution *solution) getDependenciesSourcesInGivenPath() error {
 	err := fileutils.Walk(solution.path, func(path string, f os.FileInfo, err error) error {
-		if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				return err
-			}
-			solution.dependenciesSources = append(solution.dependenciesSources, absPath)
-		}
-		return nil
+		return solution.addPathToDependenciesSourcesIfNeeded(path)
 	}, true)
 
 	return errorutils.CheckError(err)
+}
+
+func (solution *solution) addPathToDependenciesSourcesIfNeeded(path string) error {
+	if strings.HasSuffix(path, dependencies.PackagesFileName) || strings.HasSuffix(path, dependencies.AssetFileName) {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		solution.dependenciesSources = append(solution.dependenciesSources, absPath)
+	}
+	return nil
 }

@@ -220,6 +220,16 @@ func (solution *solution) loadSingleProject(project project.Project) error {
 	for _, source := range solution.dependenciesSources {
 		if projectRootPath == filepath.Dir(source) || strings.Contains(source, projectPathPattern) || strings.Contains(source, projectNamePattern) {
 			dependenciesSource = source
+			log.Info(fmt.Sprintf("Gai: Print sources: %s", source))
+			file := filepath.Join(source)
+			content, err := ioutil.ReadFile(file)
+			if err != nil {
+				log.Error(err)
+			}
+
+			// Convert []byte to string and print to screen
+			text := string(content)
+			fmt.Println(text)
 			break
 		}
 	}

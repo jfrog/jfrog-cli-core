@@ -3,8 +3,7 @@ package solution
 import (
 	"encoding/json"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -148,20 +147,15 @@ func replaceCarriageSign(results []string) {
 }
 
 func TestLoad(t *testing.T) {
-	previousLog := log.Logger
-	newLog := log.NewLogger(corelog.GetCliLogLevel(), nil)
-	// Restore previous logger when the function returns.
-	log.SetLogger(newLog)
-	defer log.SetLogger(previousLog)
+	log.SetDefaultLogger()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
 	}
-
+	// 'nugetproj' contains 2 'packages.config' files for 2 projects - one file is located in the project's root dir and the other in solutions dir.
 	solutions, err := Load(filepath.Join(wd, "testdata", "nugetproj", "solutions"), "nugetproj.sln")
 	if err != nil {
 		t.Error(err)
 	}
 	assert.Equal(t, 2, len(solutions.GetProjects()))
-
 }

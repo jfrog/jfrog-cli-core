@@ -5,6 +5,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -146,7 +147,6 @@ func replaceCarriageSign(results []string) {
 	}
 }
 
-//TODO: fix test
 func TestLoad(t *testing.T) {
 	previousLog := log.Logger
 	newLog := log.NewLogger(corelog.GetCliLogLevel(), nil)
@@ -157,25 +157,11 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	solution := &solution{path: filepath.Join(wd, "testdata", "multireference", "solutions"), slnFile: "multireference.sln"}
-	// Reads all projects from '.sln' files.
-	slnProjects, err := solution.getProjectsListFromSlns()
-	if err != nil {
-		t.Error(err)
-	}
 
-	// Find all potential dependencies sources: packages.config and project.assets.json files.
-	err = solution.getDependenciesSources(slnProjects)
+	solutions, err := Load(filepath.Join(wd, "testdata", "nugetproj", "solutions"), "nugetproj.sln")
 	if err != nil {
 		t.Error(err)
 	}
-	err = solution.loadProjects(slnProjects)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Equal(t, 2, len(solutions.GetProjects()))
 
-	_, err = Load(filepath.Join(wd, "testdata", "multireference", "solutions"), "multireference.sln")
-	if err != nil {
-		t.Error(err)
-	}
 }

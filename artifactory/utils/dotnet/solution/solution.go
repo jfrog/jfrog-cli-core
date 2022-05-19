@@ -169,7 +169,10 @@ func (solution *solution) loadProjects(slnProjects []project.Project) error {
 	}
 	// Loading all projects provided in the relevant '.sln' files.
 	for _, project := range slnProjects {
-		solution.loadSingleProject(project)
+		err := solution.loadSingleProject(project)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -208,7 +211,7 @@ func (solution *solution) loadSingleProjectFromDir() error {
 	return nil
 }
 
-func (solution *solution) loadSingleProject(project project.Project) {
+func (solution *solution) loadSingleProject(project project.Project) error {
 	// First we wil find the project's dependencies source.
 	// It can be located directly in the project's root directory or in a directory with the project name under the solution root
 	// or under obj directory (in case of assets.json file)
@@ -225,16 +228,16 @@ func (solution *solution) loadSingleProject(project project.Project) {
 	// If no dependencies source was found, we will skip the current project
 	if len(dependenciesSource) == 0 {
 		log.Debug(fmt.Sprintf("Project dependencies were not found for project: %s", project.Name()))
-		return
+		return nil
 	}
 	proj, err := project.Load(dependenciesSource)
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 	if proj.Extractor() != nil {
 		solution.projects = append(solution.projects, proj)
 	}
+	return nil
 }
 
 // Finds all the projects by reading the content of the sln files.

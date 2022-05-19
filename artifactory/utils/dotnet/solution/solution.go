@@ -203,7 +203,8 @@ func (solution *solution) loadSingleProjectFromDir() error {
 
 	if len(projFiles) == 1 {
 		projectName := strings.TrimSuffix(filepath.Base(projFiles[0]), filepath.Ext(projFiles[0]))
-		solution.loadSingleProject(project.CreateProject(projectName, path.Dir(projFiles[0])))
+		projectDir := path.Dir(projFiles[0])
+		return solution.loadSingleProject(project.CreateProject(projectName, projectDir))
 	}
 	return nil
 }

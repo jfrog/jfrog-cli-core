@@ -146,16 +146,42 @@ func replaceCarriageSign(results []string) {
 	}
 }
 
+//func TestLoad2(t *testing.T) {
+//	log.SetDefaultLogger()
+//	wd, err := os.Getwd()
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	// 'nugetproj' contains 2 'packages.config' files for 2 projects - one file is located in the project's root dir and the other in solutions dir.
+//	solutions, err := Load(filepath.Join(wd, "testdata", "nugetproj", "solutions"), "nugetproj.sln")
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	assert.Equal(t, 2, len(solutions.GetProjects()))
+//}
+
 func TestLoad(t *testing.T) {
 	log.SetDefaultLogger()
-	wd, err := os.Getwd()
+	pwd, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
 	}
-	// 'nugetproj' contains 2 'packages.config' files for 2 projects - one file is located in the project's root dir and the other in solutions dir.
-	solutions, err := Load(filepath.Join(wd, "testdata", "nugetproj", "solutions"), "nugetproj.sln")
-	if err != nil {
-		t.Error(err)
+
+	tests := []struct {
+		name             string
+		solution         solution
+		expectedProjects int
+	}{
+		{"withoutSlnFile", solution{path: filepath.Join(pwd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}, 2},
 	}
-	assert.Equal(t, 2, len(solutions.GetProjects()))
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			solutions, err := Load(test.solution.path, test.solution.slnFile)
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, test.expectedProjects, len(solutions.GetProjects()))
+		})
+	}
 }

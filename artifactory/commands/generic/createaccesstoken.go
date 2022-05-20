@@ -2,6 +2,7 @@ package generic
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"strings"
 
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -24,11 +25,11 @@ type AccessTokenCreateCommand struct {
 	audience      string
 	groups        string
 	grantAdmin    bool
-	response      *services.CreateTokenResponseData
+	response      *auth.CreateTokenResponseData
 }
 
 func NewAccessTokenCreateCommand() *AccessTokenCreateCommand {
-	return &AccessTokenCreateCommand{response: new(services.CreateTokenResponseData)}
+	return &AccessTokenCreateCommand{response: new(auth.CreateTokenResponseData)}
 }
 
 func (atcc *AccessTokenCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *AccessTokenCreateCommand {

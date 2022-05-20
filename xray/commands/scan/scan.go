@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -19,10 +24,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 type FileContext func(string) parallel.TaskFunc
@@ -190,7 +191,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		}
 	}
 	if scanCmd.progress != nil {
-		scanCmd.progress.ClearHeadlineMsg()
+		if err = scanCmd.progress.Quit(); err != nil {
+			return err
+		}
+
 	}
 
 	fileCollectingErr := fileCollectingErrorsQueue.GetError()

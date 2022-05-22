@@ -189,7 +189,7 @@ func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) ([
 			log.Debug(fmt.Sprintf("Skipping a project \"%s\", since it doesn't have a '.*proj' file path.", projectName))
 			continue
 		}
-		projects = append(projects, project.CreateProject(projectName, path.Dir(projFilePath)))
+		projects = append(projects, project.CreateProject(projectName, filepath.Dir(projFilePath)))
 	}
 	return projects, nil
 }
@@ -205,7 +205,7 @@ func (solution *solution) loadSingleProjectFromDir() error {
 
 	if len(projFiles) == 1 {
 		projectName := strings.TrimSuffix(filepath.Base(projFiles[0]), filepath.Ext(projFiles[0]))
-		projectDir := path.Dir(projFiles[0])
+		projectDir := filepath.Dir(projFiles[0])
 		return solution.loadSingleProject(project.CreateProject(projectName, projectDir))
 	}
 	return nil

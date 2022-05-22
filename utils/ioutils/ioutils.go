@@ -24,7 +24,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
-		password, err := ScanPasswordFromConsole("JFrog password or API key: ")
+		password, err := ScanJFrogPasswordFromConsole()
 		if err != nil {
 			return err
 		}
@@ -34,6 +34,10 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 		}
 	}
 	return nil
+}
+
+func ScanJFrogPasswordFromConsole() (string, error) {
+	return ScanPasswordFromConsole("JFrog password or API key: ")
 }
 
 func ScanPasswordFromConsole(message string) (string, error) {

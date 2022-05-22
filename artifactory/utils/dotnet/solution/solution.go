@@ -178,6 +178,8 @@ func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) ([
 	var projects []project.Project
 	for _, projectLine := range slnProjects {
 		projectName, projFilePath, err := parseProjectLine(projectLine, solution.path)
+		log.Info(fmt.Sprintf("Gai2: projectLine: %s", projectLine))
+		log.Info(fmt.Sprintf("after parseProjectLine: projectName: %s, projFilePath: %s, dir: %s", projectName, projFilePath, path.Dir(projFilePath)))
 		if err != nil {
 			log.Error(err)
 			continue

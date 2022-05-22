@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"net/http"
 	"net/url"
@@ -20,7 +21,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	clientioutils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -46,7 +47,7 @@ type EnvSetupCommand struct {
 	encodedConnectionDetails string
 	id                       uuid.UUID
 	serverDetails            *config.ServerDetails
-	progress                 ioUtils.ProgressMgr
+	progress                 clientioutils.ProgressMgr
 	outputFormat             OutputFormat
 }
 
@@ -64,7 +65,7 @@ func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
+func (ftc *EnvSetupCommand) SetProgress(progress clientioutils.ProgressMgr) {
 	ftc.progress = progress
 }
 
@@ -176,7 +177,24 @@ func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, er
 	if err != nil {
 		return
 	}
-	err = GenerateNewLongTermRefreshableAccessToken(server)
+	if server.Url != "" {
+		err = errorutils.CheckErrorf("The response from JFrog Access does not include a JFrog environment URL")
+		return
+	}
+	if server.AccessToken != "" {
+		// If the server details received from JFrog Access include an access token, this access token is
+		// short-lived, and we therefore need to replace it with a new long-lived access token, and configure
+		// JFrog CLI with it.
+		err = GenerateNewLongTermRefreshableAccessToken(server)
+		return
+	}
+	if server.User == "" {
+		err = errorutils.CheckErrorf("The response from JFrog Access does not includes a username or access token")
+		return
+	}
+	if server.Password == "" {
+		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
+	}
 	return
 }
 

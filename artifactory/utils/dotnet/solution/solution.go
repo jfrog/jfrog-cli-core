@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -178,8 +177,6 @@ func (solution *solution) parseProjectsFromSolutionFile(slnProjects []string) ([
 	var projects []project.Project
 	for _, projectLine := range slnProjects {
 		projectName, projFilePath, err := parseProjectLine(projectLine, solution.path)
-		log.Info(fmt.Sprintf("Gai2: projectLine: %s", projectLine))
-		log.Info(fmt.Sprintf("after parseProjectLine: projectName: %s, projFilePath: %s, dir: %s", projectName, projFilePath, path.Dir(projFilePath)))
 		if err != nil {
 			log.Error(err)
 			continue
@@ -219,24 +216,9 @@ func (solution *solution) loadSingleProject(project project.Project) error {
 	projectPathPattern := filepath.Join(projectRootPath, dependencies.AssetDirName) + string(filepath.Separator)
 	projectNamePattern := string(filepath.Separator) + project.Name() + string(filepath.Separator)
 	var dependenciesSource string
-	log.Info(fmt.Sprintf("Gai: projectRootPath: %s", project.RootPath()))
 	for _, source := range solution.dependenciesSources {
 		if projectRootPath == filepath.Dir(source) || strings.Contains(source, projectPathPattern) || strings.Contains(source, projectNamePattern) {
 			dependenciesSource = source
-			log.Info(fmt.Sprintf("projectPathPattern: %s", projectPathPattern))
-			log.Info(fmt.Sprintf("projectNamePattern: %s", projectNamePattern))
-			log.Info(fmt.Sprintf("Print sources: %s", source))
-
-			file := filepath.Join(source)
-			content, err := ioutil.ReadFile(file)
-			if err != nil {
-				log.Error(err)
-			}
-
-			// Convert []byte to string and print to screen
-			text := string(content)
-			fmt.Println(text)
-			log.Info(fmt.Sprintf("End!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
 			break
 		}
 	}

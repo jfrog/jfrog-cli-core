@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
@@ -149,19 +150,23 @@ func replaceCarriageSign(results []string) {
 
 func TestLoad(t *testing.T) {
 	log.SetDefaultLogger()
-	pwd, err := os.Getwd()
+	wd, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
 	}
 	// Run 'nuget restore' command before testing 'Load()' functionality.
 	// The reason is that way the "global packages" directory (which is required for the loading process) will be created.
-	nugetCmd := exec.Command("nuget", "restore", filepath.Join(pwd, "testdata", "nugetproj", "solutions", "nugetproj.sln"))
+	assert.NoError(t, fileutils.CopyDir(filepath.Join(wd, "testdata", "nugetproj"), filepath.Join(wd, "tmp", "nugetproj"), true, nil))
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(filepath.Join(wd, "tmp")))
+	}()
+	nugetCmd := exec.Command("nuget", "restore", filepath.Join(wd, "tmp", "nugetproj", "solutions", "nugetproj.sln"))
 	assert.NoError(t, nugetCmd.Run())
 
 	// 'nugetproj' contains 2 'packages.config' files for 2 projects -
 	// 1. located in the project's root directory.
 	// 2. located in solutions directory.
-	solution := solution{path: filepath.Join(pwd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}
+	solution := solution{path: filepath.Join(wd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}
 	solutions, err := Load(solution.path, solution.slnFile)
 	if err != nil {
 		t.Error(err)

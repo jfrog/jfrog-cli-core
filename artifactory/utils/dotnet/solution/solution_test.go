@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -162,6 +163,9 @@ func TestLoad(t *testing.T) {
 		{"sln_and_proj_different_locations", solution{path: filepath.Join(pwd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}, 2},
 	}
 
+	//nugetCmd := dotnet.NewNugetCommand().SetBasicCommand("resolve").SetSolutionPath(filepath.Join(pwd, "testdata", "nugetproj", "solutions"))
+	nugetCmd := exec.Command("nuget", "restore", filepath.Join(pwd, "testdata", "nugetproj", "solutions", "nugetproj.sln"))
+	assert.NoError(t, nugetCmd.Run())
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			solutions, err := Load(test.solution.path, test.solution.slnFile)

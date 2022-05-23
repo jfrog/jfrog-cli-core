@@ -153,26 +153,18 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	tests := []struct {
-		name             string
-		solution         solution
-		expectedProjects int
-	}{
-		// 'nugetproj' contains 2 'packages.config' files for 2 projects - one file is located in the project's root dir and the other in solutions dir.
-		{"sln_and_proj_different_locations", solution{path: filepath.Join(pwd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}, 2},
-	}
-
-	//nugetCmd := dotnet.NewNugetCommand().SetBasicCommand("resolve").SetSolutionPath(filepath.Join(pwd, "testdata", "nugetproj", "solutions"))
+	// Run 'nuget restore' command before testing 'Load()' functionality.
+	// The reason is that way the "global packages" directory (which is required for the loading process) will be created.
 	nugetCmd := exec.Command("nuget", "restore", filepath.Join(pwd, "testdata", "nugetproj", "solutions", "nugetproj.sln"))
 	assert.NoError(t, nugetCmd.Run())
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			solutions, err := Load(test.solution.path, test.solution.slnFile)
-			if err != nil {
-				t.Error(err)
-			}
-			assert.Equal(t, test.expectedProjects, len(solutions.GetProjects()))
-		})
+
+	// 'nugetproj' contains 2 'packages.config' files for 2 projects -
+	// 1. located in the project's root directory.
+	// 2. located in solutions directory.
+	solution := solution{path: filepath.Join(pwd, "testdata", "nugetproj", "solutions"), slnFile: "nugetproj.sln"}
+	solutions, err := Load(solution.path, solution.slnFile)
+	if err != nil {
+		t.Error(err)
 	}
+	assert.Equal(t, 2, len(solutions.GetProjects()))
 }

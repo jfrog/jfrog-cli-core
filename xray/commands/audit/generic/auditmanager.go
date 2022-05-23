@@ -28,25 +28,33 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 	}
 
 	for _, tech := range coreutils.ToTechnologies(technologies) {
+		var techResults []services.ScanResponse
+		var e error
 		switch tech {
 		case coreutils.Maven:
-			results, isMultipleRootProject, err = java.AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls)
+			techResults, isMultipleRootProject, e = java.AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls)
 		case coreutils.Gradle:
-			results, isMultipleRootProject, err = java.AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper)
+			techResults, isMultipleRootProject, e = java.AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper)
 		case coreutils.Npm:
-			results, isMultipleRootProject, err = npm.AuditNpm(xrayGraphScanPrams, serverDetails, args)
+			techResults, isMultipleRootProject, e = npm.AuditNpm(xrayGraphScanPrams, serverDetails, args)
 		case coreutils.Go:
-			results, isMultipleRootProject, err = _go.AuditGo(xrayGraphScanPrams, serverDetails)
+			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails)
 		case coreutils.Pip:
-			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip)
 		case coreutils.Pipenv:
-			results, isMultipleRootProject, err = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:
-			results, isMultipleRootProject, err = nuget.AuditNuget(xrayGraphScanPrams, serverDetails)
+			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanPrams, serverDetails)
 		default:
 			log.Info(string(tech), " is currently not supported")
+		}
+		if e != nil {
+			// Save the error but continue to audit the next tech
+			err = e
+		} else {
+			results = append(results, techResults...)
 		}
 	}
 	return

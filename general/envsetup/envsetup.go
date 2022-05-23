@@ -173,11 +173,15 @@ func (ftc *EnvSetupCommand) setupNewUser() (server *config.ServerDetails, err er
 }
 
 func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, err error) {
+	err = ftc.quitProgress()
+	if err != nil {
+		return
+	}
 	server, err = ftc.decodeConnectionDetails()
 	if err != nil {
 		return
 	}
-	if server.Url != "" {
+	if server.Url == "" {
 		err = errorutils.CheckErrorf("The response from JFrog Access does not include a JFrog environment URL")
 		return
 	}

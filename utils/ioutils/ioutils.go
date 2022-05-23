@@ -2,6 +2,7 @@ package ioutils
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -41,7 +42,7 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 }
 
 func ScanPasswordFromConsole(message string) (string, error) {
-	log.Output(message)
+	fmt.Print(message)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -53,9 +54,9 @@ func ScanPasswordFromConsole(message string) (string, error) {
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	if defaultValue != "" {
-		log.Output(caption + " [" + defaultValue + "]: ")
+		fmt.Print(caption + " [" + defaultValue + "]: ")
 	} else {
-		log.Output(caption + ": ")
+		fmt.Print(caption + ": ")
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)

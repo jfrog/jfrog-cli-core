@@ -311,9 +311,9 @@ func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, 
 	return &uploadParams
 }
 
-// Module's path in terraform repository : namespace/provider/moduleName/tag.zip
+// Module's path in terraform repository : namespace/moduleName/provider/tag.zip
 func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) string {
-	return path.Join(tpc.repo, tpc.namespace, tpc.provider, moduleName, tpc.tag+".zip")
+	return path.Join(tpc.repo, tpc.namespace, moduleName, tpc.provider, tpc.tag+".zip")
 }
 
 // We identify a Terraform module by the existence of a file with a ".tf" extension inside the module directory.

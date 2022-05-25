@@ -41,7 +41,7 @@ const (
 	Machine OutputFormat = "machine"
 
 	// When entering password on terminal the user has limited number of retries.
-	enterPasswordRetries = 2
+	enterPasswordMaxRetries = 20
 )
 
 var trueValue = true
@@ -213,7 +213,7 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
 	// User has limited number of retries to enter his correct password.
 	// Password validation is operated by Artifactory EncryptedPassword API.
-	for i := 1; i <= enterPasswordRetries; i++ {
+	for i := 1; i <= enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
 		server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 		var artAuth auth.ServiceDetails
@@ -223,7 +223,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		}
 		_, err = utils.GetEncryptedPasswordFromArtifactory(artAuth, false)
 		if err != nil {
-			if i != enterPasswordRetries {
+			if i != enterPasswordMaxRetries {
 				log.Info("Wrong password! please try again. ")
 			}
 			continue

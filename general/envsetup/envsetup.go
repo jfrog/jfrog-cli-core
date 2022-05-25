@@ -215,6 +215,9 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 	// Password validation is operated by Artifactory EncryptedPassword API.
 	for i := 1; i <= enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
+		if err != nil {
+			return
+		}
 		server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 		var artAuth auth.ServiceDetails
 		artAuth, err = server.CreateArtAuthConfig()
@@ -224,7 +227,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		_, err = utils.GetEncryptedPasswordFromArtifactory(artAuth, false)
 		if err != nil {
 			if i != enterPasswordMaxRetries {
-				log.Info("Wrong password! please try again. ")
+				log.Info("wrong password! please try again. ")
 			}
 			continue
 		}

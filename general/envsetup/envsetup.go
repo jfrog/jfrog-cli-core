@@ -234,7 +234,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		// No error while encrypting password => valid password.
 		return
 	}
-	err = errorutils.CheckError(errors.New("Bad credentials: Wrong password. "))
+	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
 	return
 }
 

@@ -159,7 +159,7 @@ func (solution *solution) getProjectsListFromSlns() ([]project.Project, error) {
 }
 
 func (solution *solution) loadProjects(slnProjects []project.Project) error {
-	// No '.sln' file was provided as a parameter/founded - load project from the given directory.
+	// No '.sln' file was provided as a parameter/found - load project from the given directory.
 	if slnProjects == nil {
 		return solution.loadSingleProjectFromDir()
 	}
@@ -205,6 +205,7 @@ func (solution *solution) loadSingleProjectFromDir() error {
 		projectDir := filepath.Dir(projFiles[0])
 		return solution.loadSingleProject(project.CreateProject(projectName, projectDir))
 	}
+	log.Warn(fmt.Sprintf("expecting 1 'proj' file but fuond %d files in path: %s", len(projFiles), solution.path))
 	return nil
 }
 

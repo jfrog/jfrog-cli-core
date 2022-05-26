@@ -3,12 +3,11 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
 	"strings"
 	"syscall"
-
-	"golang.org/x/term"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -43,12 +42,27 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 
 func ScanPasswordFromConsole(message string) (string, error) {
 	fmt.Print(message)
-	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", errorutils.CheckError(err)
+	var fd int
+	if terminal.IsTerminal(syscall.Stdin) {
+		fd = syscall.Stdin
+	} else {
+		tty, err := os.Open("/dev/tty")
+		if err != nil {
+			return "", errorutils.CheckError(err)
+		}
+		defer tty.Close()
+		fd = int(tty.Fd())
 	}
+	bytePassword, err := terminal.ReadPassword(fd)
+	if err != nil {
+		log.Error("failed reading password")
+		return "nil", errorutils.CheckError(err)
+	}
+
 	// New-line required after the password input:
 	log.Output()
+	// TODO: delete
+	fmt.Println("   " + string(bytePassword))
 	return string(bytePassword), nil
 }
 

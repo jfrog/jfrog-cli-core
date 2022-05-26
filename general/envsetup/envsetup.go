@@ -217,22 +217,34 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 	// User has limited number of retries to enter his correct password.
 	// Password validation is operated by Artifactory encryptedPassword API.
 	var artAuth auth.ServiceDetails
+	server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 	for i := 0; i < enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
 		if err != nil {
 			return
 		}
-		server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 		artAuth, err = server.CreateArtAuthConfig()
 		if err != nil {
 			return
 		}
 		// Validate correct password by using Artifactory encryptedPassword API.
+		fmt.Println("ping password is:" + server.Password)
 		_, err = utils.GetEncryptedPasswordFromArtifactory(artAuth, false)
+
+		//// ping
+		//pingCmd := generic.NewPingCommand()
+		//pingCmd.SetServerDetails(server)
+		//err = commands.Exec(pingCmd)
+		////search
+		//searchCmd := generic.NewSearchCommand()
+		//searchCmd.SetServerDetails(server).SetSpec(spec.NewBuilder().Target("a/").BuildSpec())
+		//err = commands.Exec(searchCmd)
+
 		if err == nil {
 			// No error while encrypting password => correct password.
 			return
 		}
+		log.Output("error: " + err.Error())
 		if i != enterPasswordMaxRetries-1 {
 			log.Info("wrong password! please try again. ")
 		}

@@ -150,7 +150,7 @@ func (ftc *EnvSetupCommand) SetupAndConfigServer() (introSuffix string, err erro
 	if ftc.encodedConnectionDetails == "" {
 		server, err = ftc.setupNewUser()
 		// For new users we will want to print this message after finishing the environment setup.
-		introSuffix = "4. We've just sent you an email message. Please use it to verify your email address"
+		introSuffix = "4. We've just sent you an email message. Please use it to verify your email address in the next 48 hours."
 	} else {
 		server, err = ftc.setupExistingUser()
 	}
@@ -204,6 +204,9 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 		err = errorutils.CheckErrorf("The response from JFrog Access does not includes a username or access token")
 		return
 	}
+	// Url and accessToken/userName must be provided in the base64 encoded connection details.
+	// APIkey/password are optional - In case they were not provided user can enter his password on console.
+	// Password will be validated before the config command is being called.
 	if server.Password == "" {
 		err = ftc.scanAndValidateJFrogPasswordFromConsole(server)
 	}
@@ -212,27 +215,27 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 
 func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
 	// User has limited number of retries to enter his correct password.
-	// Password validation is operated by Artifactory EncryptedPassword API.
-	for i := 1; i <= enterPasswordMaxRetries; i++ {
+	// Password validation is operated by Artifactory encryptedPassword API.
+	var artAuth auth.ServiceDetails
+	for i := 0; i < enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
 		if err != nil {
 			return
 		}
 		server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
-		var artAuth auth.ServiceDetails
 		artAuth, err = server.CreateArtAuthConfig()
 		if err != nil {
 			return
 		}
+		// Validate correct password by using Artifactory encryptedPassword API.
 		_, err = utils.GetEncryptedPasswordFromArtifactory(artAuth, false)
-		if err != nil {
-			if i != enterPasswordMaxRetries {
-				log.Info("wrong password! please try again. ")
-			}
-			continue
+		if err == nil {
+			// No error while encrypting password => correct password.
+			return
 		}
-		// No error while encrypting password => valid password.
-		return
+		if i != enterPasswordMaxRetries-1 {
+			log.Info("wrong password! please try again. ")
+		}
 	}
 	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
 	return

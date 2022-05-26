@@ -374,7 +374,7 @@ func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	promptPrefix += " (y/n) " + defStr + "? "
 	var answer string
 	for {
-		log.Output(promptPrefix)
+		fmt.Print(promptPrefix)
 		_, _ = fmt.Scanln(&answer)
 		parsed, valid := parseYesNo(answer, defaultValue)
 		if valid {

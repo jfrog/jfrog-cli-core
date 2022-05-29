@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"net/http"
 	"net/url"
 	"strings"
@@ -215,27 +215,21 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 
 func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
 	// User has limited number of retries to enter his correct password.
-	// Password validation is operated by Artifactory encryptedPassword API.
-	var artAuth auth.ServiceDetails
+	// Password validation is operated by Artifactory ping API.
+	server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 	for i := 0; i < enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
 		if err != nil {
 			return
 		}
-		server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
-		artAuth, err = server.CreateArtAuthConfig()
-		if err != nil {
-			return
-		}
-		// Validate correct password by using Artifactory encryptedPassword API.
-		_, err = utils.GetEncryptedPasswordFromArtifactory(artAuth, false)
+		// Validate correct password by using Artifactory ping API.
+		pingCmd := generic.NewPingCommand().SetServerDetails(server)
+		err = commands.Exec(pingCmd)
 		if err == nil {
 			// No error while encrypting password => correct password.
 			return
 		}
-		if i != enterPasswordMaxRetries-1 {
-			log.Info("wrong password! please try again. ")
-		}
+		log.Output(err.Error())
 	}
 	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
 	return

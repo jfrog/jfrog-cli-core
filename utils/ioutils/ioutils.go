@@ -43,20 +43,19 @@ func ScanPasswordFromConsole(message string) (password string, err error) {
 	stdin := 0
 	if terminal.IsTerminal(stdin) {
 		fileDescriptor = stdin
-		inputPass, err := terminal.ReadPassword(fileDescriptor)
-		if err != nil {
-			return "", err
+		inputPass, e := terminal.ReadPassword(fileDescriptor)
+		if e != nil {
+			return "", e
 		}
 		password = string(inputPass)
 	} else {
 		// Handling non-terminal sources.
 		// When command is running from external script - reading from terminal should be handled using buffer.
 		reader := bufio.NewReader(os.Stdin)
-		s, err := reader.ReadString('\n')
+		password, err = reader.ReadString('\n')
 		if err != nil {
 			return "", err
 		}
-		password = s
 	}
 	return
 }

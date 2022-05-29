@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	terminal "golang.org/x/term"
 	"io"
 	"os"
@@ -41,34 +40,25 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 func ScanPasswordFromConsole(message string) (password string, err error) {
 	fmt.Print(message)
 	var fileDescriptor int
-	var tty *os.File
-	if terminal.IsTerminal(0) {
-		// File descriptor 0 represents Stdin
-		fileDescriptor = 0
+	stdin := 0
+	if terminal.IsTerminal(stdin) {
+		fileDescriptor = stdin
+		inputPass, err := terminal.ReadPassword(fileDescriptor)
+		if err != nil {
+			return "", err
+		}
+		password = string(inputPass)
 	} else {
 		// Handling non-terminal sources.
-		// When command is running from external script - reading from terminal should be handled using Teletype(tty).
-		tty, err = os.Open("/dev/tty")
+		// When command is running from external script - reading from terminal should be handled using buffer.
+		reader := bufio.NewReader(os.Stdin)
+		s, err := reader.ReadString('\n')
 		if err != nil {
-			return "", errorutils.CheckError(err)
+			return "", err
 		}
-		defer func() {
-			e := tty.Close()
-			if e != nil {
-				err = e
-			}
-		}()
-		fileDescriptor = int(tty.Fd())
+		password = s
 	}
-	bytePassword, err := terminal.ReadPassword(fileDescriptor)
-	if err != nil {
-		log.Error("failed reading password")
-		return "", errorutils.CheckError(err)
-	}
-
-	// New-line required after the password input:
-	log.Output()
-	return string(bytePassword), nil
+	return
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {

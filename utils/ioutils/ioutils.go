@@ -3,15 +3,13 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	terminal "golang.org/x/term"
 	"io"
 	"os"
 	"strings"
-	"syscall"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -45,7 +43,7 @@ func ScanPasswordFromConsole(message string) (password string, err error) {
 	var fd int
 	var tty *os.File
 	if terminal.IsTerminal(0) {
-		fd = syscall.Stdin
+		fd = 0
 	} else {
 		tty, err = os.Open("/dev/tty")
 		if err != nil {

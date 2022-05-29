@@ -44,7 +44,7 @@ func ScanPasswordFromConsole(message string) (password string, err error) {
 	fmt.Print(message)
 	var fd int
 	var tty *os.File
-	if terminal.IsTerminal(int(syscall.Stdin)) {
+	if terminal.IsTerminal(0) {
 		fd = syscall.Stdin
 	} else {
 		tty, err = os.Open("/dev/tty")

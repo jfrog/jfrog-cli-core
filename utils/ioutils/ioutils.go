@@ -61,8 +61,6 @@ func ScanPasswordFromConsole(message string) (string, error) {
 
 	// New-line required after the password input:
 	log.Output()
-	// TODO: delete
-	fmt.Println("   " + string(bytePassword))
 	return string(bytePassword), nil
 }
 

@@ -3,7 +3,7 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 	"io"
 	"os"
 	"strings"
@@ -40,17 +40,20 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 	return ScanPasswordFromConsole("JFrog password or API key: ")
 }
 
-func ScanPasswordFromConsole(message string) (string, error) {
+func ScanPasswordFromConsole(message string) (password string, err error) {
 	fmt.Print(message)
 	var fd int
-	if terminal.IsTerminal(syscall.Stdin) {
+	var tty *os.File
+	if terminal.IsTerminal(int(syscall.Stdin)) {
 		fd = syscall.Stdin
 	} else {
-		tty, err := os.Open("/dev/tty")
+		tty, err = os.Open("/dev/tty")
 		if err != nil {
 			return "", errorutils.CheckError(err)
 		}
-		defer tty.Close()
+		defer func() {
+			err = tty.Close()
+		}()
 		fd = int(tty.Fd())
 	}
 	bytePassword, err := terminal.ReadPassword(fd)

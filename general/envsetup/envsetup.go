@@ -215,7 +215,7 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 
 func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
 	// User has limited number of retries to enter his correct password.
-	// Password validation is operated by Artifactory encryptedPassword API.
+	// Password validation is operated by Artifactory ping API.
 	server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 	for i := 0; i < enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()

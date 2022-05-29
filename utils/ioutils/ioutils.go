@@ -50,7 +50,7 @@ func ScanPasswordFromConsole(message string) (password string, err error) {
 		password = string(inputPass)
 	} else {
 		// Handling non-terminal sources.
-		// When command is running from external script - reading from terminal should be handled using buffer.
+		// When command is running from external script - reading input should be done using a buffer.
 		reader := bufio.NewReader(os.Stdin)
 		password, err = reader.ReadString('\n')
 		if err != nil {

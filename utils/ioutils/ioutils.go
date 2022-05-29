@@ -40,24 +40,30 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 
 func ScanPasswordFromConsole(message string) (password string, err error) {
 	fmt.Print(message)
-	var fd int
+	var fileDescriptor int
 	var tty *os.File
 	if terminal.IsTerminal(0) {
-		fd = 0
+		// File descriptor 0 represents Stdin
+		fileDescriptor = 0
 	} else {
+		// Handling non-terminal sources.
+		// When command is running from external script - reading from terminal should be handled using Teletype(tty).
 		tty, err = os.Open("/dev/tty")
 		if err != nil {
 			return "", errorutils.CheckError(err)
 		}
 		defer func() {
-			err = tty.Close()
+			e := tty.Close()
+			if e != nil {
+				err = e
+			}
 		}()
-		fd = int(tty.Fd())
+		fileDescriptor = int(tty.Fd())
 	}
-	bytePassword, err := terminal.ReadPassword(fd)
+	bytePassword, err := terminal.ReadPassword(fileDescriptor)
 	if err != nil {
 		log.Error("failed reading password")
-		return "nil", errorutils.CheckError(err)
+		return "", errorutils.CheckError(err)
 	}
 
 	// New-line required after the password input:

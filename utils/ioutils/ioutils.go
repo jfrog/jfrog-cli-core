@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	terminal "golang.org/x/term"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 	"io"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -37,27 +39,15 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 	return ScanPasswordFromConsole("JFrog password or API key: ")
 }
 
-func ScanPasswordFromConsole(message string) (password string, err error) {
+func ScanPasswordFromConsole(message string) (string, error) {
 	fmt.Print(message)
-	var fileDescriptor int
-	stdin := 0
-	if terminal.IsTerminal(stdin) {
-		fileDescriptor = stdin
-		inputPass, e := terminal.ReadPassword(fileDescriptor)
-		if e != nil {
-			return "", e
-		}
-		password = string(inputPass)
-	} else {
-		// Handling non-terminal sources.
-		// When command is running from external script - reading input should be done using a buffer.
-		reader := bufio.NewReader(os.Stdin)
-		password, err = reader.ReadString('\n')
-		if err != nil {
-			return "", err
-		}
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", errorutils.CheckError(err)
 	}
-	return
+	// New-line required after the password input:
+	log.Output()
+	return string(bytePassword), nil
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {

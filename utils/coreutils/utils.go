@@ -136,7 +136,7 @@ func ConvertExitCodeError(err error) error {
 
 // GetCliConfigVersion returns the latest version of the config.yml file on the file system at '.jfrog'.
 func GetCliConfigVersion() int {
-	return 5
+	return 6
 }
 
 // GetPluginsConfigVersion returns the latest plugins layout version on the file system (at '.jfrog/plugins').
@@ -374,7 +374,7 @@ func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	promptPrefix += " (y/n) " + defStr + "? "
 	var answer string
 	for {
-		log.Output(promptPrefix)
+		fmt.Print(promptPrefix)
 		_, _ = fmt.Scanln(&answer)
 		parsed, valid := parseYesNo(answer, defaultValue)
 		if valid {

@@ -2,16 +2,15 @@ package ioutils
 
 import (
 	"bufio"
+	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 	"io"
 	"os"
 	"strings"
 	"syscall"
-
-	"golang.org/x/term"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -24,7 +23,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 		disallowUsingSavedPassword = true
 	}
 	if details.GetPassword() == "" {
-		password, err := ScanPasswordFromConsole("JFrog password or API key: ")
+		password, err := ScanJFrogPasswordFromConsole()
 		if err != nil {
 			return err
 		}
@@ -36,8 +35,12 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 	return nil
 }
 
+func ScanJFrogPasswordFromConsole() (string, error) {
+	return ScanPasswordFromConsole("JFrog password or API key: ")
+}
+
 func ScanPasswordFromConsole(message string) (string, error) {
-	log.Output(message)
+	fmt.Print(message)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -49,9 +52,9 @@ func ScanPasswordFromConsole(message string) (string, error) {
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 	if defaultValue != "" {
-		log.Output(caption + " [" + defaultValue + "]: ")
+		fmt.Print(caption + " [" + defaultValue + "]: ")
 	} else {
-		log.Output(caption + ": ")
+		fmt.Print(caption + ": ")
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)

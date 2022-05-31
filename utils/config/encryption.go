@@ -32,7 +32,7 @@ const decryptErrorPrefix = "cannot decrypt config: "
 type secretHandler func(string, string) (string, error)
 
 // Encrypt config file if security configuration file exists and contains master key.
-func (config *ConfigV5) encrypt() error {
+func (config *Config) encrypt() error {
 	key, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || key == "" {
 		return err
@@ -43,7 +43,7 @@ func (config *ConfigV5) encrypt() error {
 }
 
 // Decrypt config if encrypted and master key exists.
-func (config *ConfigV5) decrypt() error {
+func (config *Config) decrypt() error {
 	if !config.Enc {
 		return updateEncryptionIfNeeded(config)
 	}
@@ -61,7 +61,7 @@ func (config *ConfigV5) decrypt() error {
 }
 
 // Encrypt the config file if it is decrypted while security configuration file exists and contains a master key.
-func updateEncryptionIfNeeded(originalConfig *ConfigV5) error {
+func updateEncryptionIfNeeded(originalConfig *Config) error {
 	masterKey, _, err := getMasterKeyFromSecurityConfFile()
 	if err != nil || masterKey == "" {
 		return err
@@ -72,7 +72,7 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV5) error {
 	if err != nil {
 		return err
 	}
-	tmpEncConfig := new(ConfigV5)
+	tmpEncConfig := new(Config)
 	err = json.Unmarshal(decryptedContent, &tmpEncConfig)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -87,7 +87,7 @@ func updateEncryptionIfNeeded(originalConfig *ConfigV5) error {
 }
 
 // Encrypt/Decrypt all secrets in the provided config, with the provided master key.
-func handleSecrets(config *ConfigV5, handler secretHandler, key string) error {
+func handleSecrets(config *Config, handler secretHandler, key string) error {
 	var err error
 	for _, serverDetails := range config.Servers {
 		serverDetails.Password, err = handler(serverDetails.Password, key)
@@ -103,6 +103,10 @@ func handleSecrets(config *ConfigV5, handler secretHandler, key string) error {
 			return err
 		}
 		serverDetails.RefreshToken, err = handler(serverDetails.RefreshToken, key)
+		if err != nil {
+			return err
+		}
+		serverDetails.ArtifactoryRefreshToken, err = handler(serverDetails.ArtifactoryRefreshToken, key)
 		if err != nil {
 			return err
 		}

@@ -187,11 +187,12 @@ func (cc *ConfigCommand) config() error {
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
+	// If username and password weren't provided, then the artifactoryToken refresh mechanism isn't set.
 	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.
-	cc.details.TokenRefreshInterval = coreutils.TokenRefreshDefaultInterval
+	cc.details.ArtifactoryTokenRefreshInterval = coreutils.TokenRefreshDefaultInterval
 }
 
 func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, error) {
@@ -557,7 +558,7 @@ func (cc *ConfigCommand) encryptPassword() error {
 func checkSingleAuthMethod(details *config.ServerDetails) error {
 	authMethods := []bool{
 		details.User != "" && details.Password != "",
-		details.AccessToken != "" && details.RefreshToken == "",
+		details.AccessToken != "" && details.ArtifactoryRefreshToken == "",
 		details.SshKeyPath != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
 		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token")

@@ -2,6 +2,7 @@ package dotnet
 
 import (
 	"fmt"
+	"github.com/jfrog/build-info-go/build/utils/dotnet/solution"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/solution"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -115,7 +115,7 @@ func (dc *DotnetCommand) Exec() error {
 	if err != nil {
 		return err
 	}
-	sol, err := solution.Load(dc.solutionPath, slnFile)
+	sol, err := solution.Load(dc.solutionPath, slnFile, log.GetLogger())
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (dc *DotnetCommand) Exec() error {
 	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
-	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.GetModule())
+	buildInfo, err := sol.BuildInfo(dc.buildConfiguration.GetModule(), log.GetLogger())
 	if err != nil {
 		return err
 	}

@@ -1,8 +1,8 @@
 package dotnet
 
 import (
+	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"

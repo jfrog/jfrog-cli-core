@@ -251,7 +251,7 @@ func ValidateClientApiVersion() error {
 	content = strings.TrimSpace(content)
 	if !ApiVersionRegex.Match([]byte(content)) {
 		// The Api version is expected to be 'major.minor'. Anything else should return an error.
-		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:" + content)
+		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:", content)
 		return errorutils.CheckError(err)
 	}
 	if !IsCompatibleApiVersion(content) {

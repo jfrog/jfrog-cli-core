@@ -108,7 +108,7 @@ func (dc *DotnetCommand) Exec() error {
 	// TODO: setargs
 	//dc.buildInfoModule.SetArgs(filteredYarnArgs)
 	// TODO: remove logger
-	if err = dc.buildInfoModule.Build(log.Logger()); err != nil {
+	if err = dc.buildInfoModule.Build(); err != nil {
 		//return dc.restoreConfigurationsAndError(err)
 		return err
 	}

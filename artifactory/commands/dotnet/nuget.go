@@ -30,14 +30,14 @@ func DependencyTreeCmd() error {
 		return errorutils.CheckError(err)
 	}
 
-	sol, err := solution.Load(workspace, "", log.GetLogger())
+	sol, err := solution.Load(workspace, "", log.Logger)
 	if err != nil {
 		return err
 	}
 
 	// Create the tree for each project
 	for _, project := range sol.GetProjects() {
-		err = project.CreateDependencyTree(log.GetLogger())
+		err = project.CreateDependencyTree(log.Logger)
 		if err != nil {
 			return err
 		}

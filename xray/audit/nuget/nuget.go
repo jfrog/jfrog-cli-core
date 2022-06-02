@@ -30,11 +30,11 @@ func BuildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
 	if err != nil {
 		return
 	}
-	sol, err := solution.Load(wd, "", log.GetLogger())
+	sol, err := solution.Load(wd, "", log.Logger())
 	if err != nil {
 		return
 	}
-	buildInfo, err := sol.BuildInfo("", log.GetLogger())
+	buildInfo, err := sol.BuildInfo("", log.Logger())
 	if err != nil {
 		return
 	}

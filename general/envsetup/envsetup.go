@@ -3,7 +3,9 @@ package envsetup
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
@@ -37,6 +39,9 @@ const (
 	// OutputFormat values
 	Human   OutputFormat = "human"
 	Machine OutputFormat = "machine"
+
+	// When entering password on terminal the user has limited number of retries.
+	enterPasswordMaxRetries = 20
 )
 
 var trueValue = true
@@ -112,7 +117,7 @@ func (ftc *EnvSetupCommand) quitProgress() error {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	err = ftc.SetupAndConfigServer()
+	introSuffix, err := ftc.SetupAndConfigServer()
 	if err != nil {
 		return err
 	}
@@ -129,22 +134,25 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 				"1. 'cd' into your code project directory\n" +
 				"2. Run \"jf project init\"\n" +
 				"3. Read more about how to get started at -\n" +
-				coreutils.PrintLink(coreutils.GettingStartedGuideUrl) + "\n" +
-				"4. We've just sent you an email message. Please use it to verify your email address"
-
+				coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
+		if introSuffix != "" {
+			message += "\n" + introSuffix
+		}
 		err = coreutils.PrintTable("", "", message, false)
 	}
 	return
 }
 
-func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
+func (ftc *EnvSetupCommand) SetupAndConfigServer() (introSuffix string, err error) {
 	var server *config.ServerDetails
 	// If credentials were provided, this means that the user was invited to join an existing JFrog environment.
 	// Otherwise, this is a brand-new user, that needs to register and setup a new JFrog environment.
 	if ftc.encodedConnectionDetails == "" {
 		server, err = ftc.setupNewUser()
+		// For new users we will want to print this message after finishing the environment setup.
+		introSuffix = "4. We've just sent you an email message. Please use it to verify your email address in the next 48 hours."
 	} else {
-		server, err = ftc.setupInvitedUser()
+		server, err = ftc.setupExistingUser()
 	}
 	if err != nil {
 		return
@@ -172,7 +180,7 @@ func (ftc *EnvSetupCommand) setupNewUser() (server *config.ServerDetails, err er
 	return
 }
 
-func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, err error) {
+func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, err error) {
 	err = ftc.quitProgress()
 	if err != nil {
 		return
@@ -196,9 +204,34 @@ func (ftc *EnvSetupCommand) setupInvitedUser() (server *config.ServerDetails, er
 		err = errorutils.CheckErrorf("The response from JFrog Access does not includes a username or access token")
 		return
 	}
+	// Url and accessToken/userName must be provided in the base64 encoded connection details.
+	// APIkey/password are optional - In case they were not provided user can enter his password on console.
+	// Password will be validated before the config command is being called.
 	if server.Password == "" {
-		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
+		err = ftc.scanAndValidateJFrogPasswordFromConsole(server)
 	}
+	return
+}
+
+func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
+	// User has limited number of retries to enter his correct password.
+	// Password validation is operated by Artifactory ping API.
+	server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
+	for i := 0; i < enterPasswordMaxRetries; i++ {
+		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
+		if err != nil {
+			return
+		}
+		// Validate correct password by using Artifactory ping API.
+		pingCmd := generic.NewPingCommand().SetServerDetails(server)
+		err = commands.Exec(pingCmd)
+		if err == nil {
+			// No error while encrypting password => correct password.
+			return
+		}
+		log.Output(err.Error())
+	}
+	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
 	return
 }
 

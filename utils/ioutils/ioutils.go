@@ -3,16 +3,14 @@ package ioutils
 import (
 	"bufio"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 	"io"
 	"os"
 	"strings"
 	"syscall"
-
-	"golang.org/x/term"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.

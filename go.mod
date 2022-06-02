@@ -11,7 +11,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.0
 	github.com/jfrog/build-info-go v1.2.6
 	github.com/jfrog/gofrog v1.1.1
-	github.com/jfrog/jfrog-client-go v1.13.0
+	github.com/jfrog/jfrog-client-go v1.13.1
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.8.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -81,7 +81,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )
 
 // Exclude vulnerable dependencies

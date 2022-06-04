@@ -1,7 +1,6 @@
 package dotnet
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
@@ -130,8 +129,6 @@ func (dc *DotnetCommand) Exec() error {
 func (dc *DotnetCommand) prepareDotnetBuildInfoModule() (func(), error) {
 	dc.buildInfoModule.SetName(dc.buildConfiguration.GetModule())
 	dc.buildInfoModule.SetSubcommand(dc.subCommand)
-	// TODO: check if needed
-	//dc.buildInfoModule.SetSolutionPath(dc.solutionPath)
 	dc.buildInfoModule.SetArgAndFlags(dc.argAndFlags)
 	dc.buildInfoModule.SetToolchainType(dc.toolchainType)
 	cmd, err := dc.createCmd()
@@ -317,7 +314,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 			continue
 		}
 		if i+1 == len(cmd.CommandFlags) {
-			return "", errors.New(fmt.Sprintf("%s flag was provided without value", cmdFlag))
+			return "", fmt.Errorf("%s flag was provided without value", cmdFlag)
 		}
 		return cmd.CommandFlags[i+1], nil
 	}

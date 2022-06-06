@@ -91,7 +91,7 @@ func (dc *DotnetCommand) CommandName() string {
 }
 
 // Exec all consume type nuget commands, install, update, add, restore.
-func (dc *DotnetCommand) Exec() error {
+func (dc *DotnetCommand) Exec() (err error) {
 	log.Info("Running " + dc.toolchainType.String() + "...")
 	buildName, err := dc.buildConfiguration.GetBuildName()
 	if err != nil {
@@ -115,7 +115,12 @@ func (dc *DotnetCommand) Exec() error {
 	if err != nil {
 		return err
 	}
-	defer fallbackFunc()
+	defer func() {
+		e := fallbackFunc()
+		if err == nil {
+			err = e
+		}
+	}()
 	dc.buildInfoModule.SetArgsAndFlags(dc.argAndFlags)
 	if err = dc.buildInfoModule.Build(); err != nil {
 		return err
@@ -126,7 +131,7 @@ func (dc *DotnetCommand) Exec() error {
 
 // prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
 // In case no config file was provided - creates a temporary one.
-func (dc *DotnetCommand) prepareDotnetBuildInfoModule() (func(), error) {
+func (dc *DotnetCommand) prepareDotnetBuildInfoModule() (func() error, error) {
 	dc.buildInfoModule.SetName(dc.buildConfiguration.GetModule())
 	dc.buildInfoModule.SetSubcommand(dc.subCommand)
 	dc.buildInfoModule.SetArgAndFlags(dc.argAndFlags)
@@ -198,7 +203,7 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (func(), error) {
+func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (func() error, error) {
 	// Use temp dir to save config file, so that config will be removed at the end.
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -231,8 +236,8 @@ func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (func(), error) {
 	if err == nil {
 		cmd.CommandFlags = append(cmd.CommandFlags, cmd.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
-	return func() {
-		fileutils.RemoveTempDir(tempDirPath)
+	return func() error {
+		return fileutils.RemoveTempDir(tempDirPath)
 	}, err
 }
 

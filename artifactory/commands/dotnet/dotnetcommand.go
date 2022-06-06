@@ -93,7 +93,6 @@ func (dc *DotnetCommand) CommandName() string {
 // Exec all consume type nuget commands, install, update, add, restore.
 func (dc *DotnetCommand) Exec() error {
 	log.Info("Running " + dc.toolchainType.String() + "...")
-
 	buildName, err := dc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
@@ -125,7 +124,8 @@ func (dc *DotnetCommand) Exec() error {
 	return nil
 }
 
-// prepareDotnetBuildInfoModule prepare dotnet modules with the cli parameters and environment
+// prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
+// In case no config file was provided - creates a temporary one.
 func (dc *DotnetCommand) prepareDotnetBuildInfoModule() (func(), error) {
 	dc.buildInfoModule.SetName(dc.buildConfiguration.GetModule())
 	dc.buildInfoModule.SetSubcommand(dc.subCommand)
@@ -160,7 +160,7 @@ func changeWorkingDir(newWorkingDir string) (string, error) {
 		newWorkingDir, err = os.Getwd()
 	}
 
-	return newWorkingDir, err
+	return newWorkingDir, errorutils.CheckError(err)
 }
 
 // Set Artifactory repo as source using the toolchain's `add source` command
@@ -236,6 +236,21 @@ func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (func(), error) {
 	}, err
 }
 
+// Returns the value of the flag if exists
+func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
+	for i := 0; i < len(cmd.CommandFlags); i++ {
+		if !strings.EqualFold(cmd.CommandFlags[i], cmdFlag) {
+			continue
+		}
+		if i+1 == len(cmd.CommandFlags) {
+			return "", fmt.Errorf("%s flag was provided without value", cmdFlag)
+		}
+		return cmd.CommandFlags[i+1], nil
+	}
+
+	return "", nil
+}
+
 // Got to here, means that neither of the flags provided and we need to init our own config.
 func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
@@ -305,19 +320,4 @@ func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, e
 		password = serverDetails.AccessToken
 	}
 	return
-}
-
-// Returns the value of the flag if exists
-func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
-	for i := 0; i < len(cmd.CommandFlags); i++ {
-		if !strings.EqualFold(cmd.CommandFlags[i], cmdFlag) {
-			continue
-		}
-		if i+1 == len(cmd.CommandFlags) {
-			return "", fmt.Errorf("%s flag was provided without value", cmdFlag)
-		}
-		return cmd.CommandFlags[i+1], nil
-	}
-
-	return "", nil
 }

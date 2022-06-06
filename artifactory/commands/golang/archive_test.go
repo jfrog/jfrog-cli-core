@@ -2,11 +2,12 @@ package golang
 
 import (
 	"bytes"
-	"github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/jfrog/build-info-go/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"

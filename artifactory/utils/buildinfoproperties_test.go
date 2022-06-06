@@ -2,11 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/jfrog/build-info-go/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/spf13/viper"

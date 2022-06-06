@@ -2,8 +2,8 @@ package dotnet
 
 import (
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/io"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"reflect"
 	"testing"
 )
@@ -36,7 +36,7 @@ func TestGetFlagValueExists(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				defer utils.RemoveAndAssert(t, test.currentConfigPath)
+				defer testsutils.RemoveAndAssert(t, test.currentConfigPath)
 			}
 			c := &dotnet.Cmd{CommandFlags: test.cmdFlags}
 			_, err := getFlagValueIfExists("-configfile", c)

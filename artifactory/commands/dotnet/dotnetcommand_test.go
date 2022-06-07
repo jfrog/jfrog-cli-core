@@ -1,12 +1,9 @@
 package dotnet
 
 import (
+	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -52,42 +49,6 @@ func TestGetFlagValueExists(t *testing.T) {
 			if !reflect.DeepEqual(c.CommandFlags, test.expectedCmdFlags) {
 				t.Errorf("Expecting: %s, Got: %s", test.expectedCmdFlags, c.CommandFlags)
 			}
-		})
-	}
-}
-
-func TestUpdateSolutionPathAndGetFileName(t *testing.T) {
-	workingDir, err := os.Getwd()
-	assert.NoError(t, err)
-	tests := []struct {
-		name                 string
-		flags                []string
-		solutionPath         string
-		expectedSlnFile      string
-		expectedSolutionPath string
-	}{
-		{"emptyFlags", []string{}, workingDir, "", workingDir},
-		{"justFlags", []string{"-flag1", "value1", "-flag2", "value2"}, workingDir, "", workingDir},
-		{"relFileArgRelPath1", []string{filepath.Join("testdata", "slnDir", "sol.sln")}, filepath.Join("rel", "path"), "sol.sln", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"relDirArgRelPath2", []string{filepath.Join("testdata", "slnDir")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absFileArgRelPath1", []string{filepath.Join(workingDir, "testdata", "slnDir", "sol.sln")}, filepath.Join(".", "rel", "path"), "sol.sln", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"absDirArgRelPath2", []string{filepath.Join(workingDir, "testdata", "slnDir"), "-flag", "value"}, filepath.Join(".", "rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"nonExistingFile", []string{filepath.Join(".", "dir1", "sol.sln")}, workingDir, "", workingDir},
-		{"nonExistingPath", []string{filepath.Join(workingDir, "non", "existing", "path")}, workingDir, "", workingDir},
-		{"relCsprojFile", []string{filepath.Join("testdata", "slnDir", "proj.csproj")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"relVbprojFile", []string{filepath.Join("testdata", "slnDir", "projTwo.vbproj")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absCsprojFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "proj.csproj")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"absVbprojFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "projTwo.vbproj")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-		{"relPackagesConfigFile", []string{filepath.Join("testdata", "slnDir", "packages.config")}, filepath.Join("rel", "path"), "", filepath.Join("rel", "path", "testdata", "slnDir")},
-		{"absPackagesConfigFile", []string{filepath.Join(workingDir, "testdata", "slnDir", "packages.config")}, filepath.Join("rel", "path"), "", filepath.Join(workingDir, "testdata", "slnDir")},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			dc := DotnetCommand{solutionPath: test.solutionPath, argAndFlags: test.flags}
-			slnFile, err := dc.updateSolutionPathAndGetFileName()
-			assert.NoError(t, err)
-			assert.Equal(t, test.expectedSlnFile, slnFile)
-			assert.Equal(t, test.expectedSolutionPath, dc.solutionPath)
 		})
 	}
 }

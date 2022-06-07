@@ -92,6 +92,6 @@ exclude (
 
 replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.13.2-0.20220606094407-6d5d8fd74202
 
-replace github.com/jfrog/build-info-go => github.com/asafgabai/build-info-go v0.0.0-20220602143343-25f76e5c1e98
+replace github.com/jfrog/build-info-go => github.com/asafgabai/build-info-go v0.0.0-20220606135535-b946335e92fe
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.0.7-0.20211213134245-6f374e4b7e3b

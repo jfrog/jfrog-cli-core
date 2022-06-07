@@ -12,6 +12,7 @@ const (
 	Maven  = "Maven"
 	Gradle = "Gradle"
 	Npm    = "npm"
+	Yarn   = "Yarn"
 	Go     = "go"
 	Pip    = "pip"
 	Pipenv = "pipenv"
@@ -23,6 +24,7 @@ const (
 type TechData struct {
 	PackageType    string
 	indicators     []string
+	exclude        []string
 	ciSetupSupport bool
 }
 
@@ -40,7 +42,12 @@ var technologiesData = map[Technology]TechData{
 	Npm: {
 		PackageType:    "npm",
 		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		exclude:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport: true,
+	},
+	Yarn: {
+		PackageType: "npm",
+		indicators:  []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 	},
 	Go: {
 		PackageType: "go",
@@ -87,26 +94,33 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 	if err != nil {
 		return nil, err
 	}
-	detectedTechnologies := make(map[Technology]bool)
-	for _, file := range filesList {
-		techNames := detectTechnologiesByFile(strings.ToLower(file), isCiSetup)
-		for _, techName := range techNames {
-			detectedTechnologies[techName] = true
-		}
-	}
+	detectedTechnologies := detectTechnologiesByFilePaths(filesList, isCiSetup)
 	return detectedTechnologies, nil
 }
 
-func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
-	detected = []Technology{}
-	for techName, techData := range technologiesData {
-		if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
-			for _, indicator := range techData.indicators {
-				if strings.Contains(file, indicator) {
-					detected = append(detected, techName)
+func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map[Technology]bool) {
+	detected = make(map[Technology]bool)
+	exclude := make(map[Technology]bool)
+	for _, path := range paths {
+		for techName, techData := range technologiesData {
+			if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
+				for _, excludeFile := range techData.exclude {
+					if strings.Contains(path, excludeFile) {
+						exclude[techName] = true
+					}
+				}
+				if _, exist := exclude[techName]; !exist {
+					for _, indicator := range techData.indicators {
+						if strings.Contains(path, indicator) {
+							detected[techName] = true
+						}
+					}
 				}
 			}
 		}
+	}
+	for excludeTech := range exclude {
+		delete(detected, excludeTech)
 	}
 	return detected
 }

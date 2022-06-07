@@ -107,7 +107,7 @@ func (dc *DotnetCommand) Exec() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	dc.buildInfoModule, err = dotnetBuild.AddDotnetModule(dc.solutionPath)
+	dc.buildInfoModule, err = dotnetBuild.AddDotnetModules(dc.solutionPath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -122,7 +122,7 @@ func (dc *DotnetCommand) Exec() (err error) {
 		}
 	}()
 	dc.buildInfoModule.SetArgsAndFlags(dc.argAndFlags)
-	if err = dc.buildInfoModule.Build(); err != nil {
+	if err = dc.buildInfoModule.CalcDependencies(); err != nil {
 		return err
 	}
 	log.Info(fmt.Sprintf("%s finished successfully.", dc.toolchainType))
@@ -196,49 +196,49 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
 	output, err := io.RunCmdOutput(cmd)
-	log.Debug("Running command: Add sources. Output:", output)
+	log.Debug("'Add sources' command executed. Output:", output)
 	return err
 }
 
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (func() error, error) {
+func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (cleanup func() error, err error) {
 	// Use temp dir to save config file, so that config will be removed at the end.
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return
 	}
-
+	cleanup = func() error {
+		return fileutils.RemoveTempDir(tempDirPath)
+	}
 	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
 	if err != nil {
-		return nil, err
+		return
 	}
 	cmdFlag := dc.GetToolchain().GetTypeFlagPrefix() + "configfile"
 	currentConfigPath, err := getFlagValueIfExists(cmdFlag, cmd)
 	if err != nil {
-		return nil, err
+		return
 	}
 	if currentConfigPath != "" {
-		return nil, nil
+		return
 	}
 
 	cmdFlag = cmd.GetToolchain().GetTypeFlagPrefix() + "source"
 	sourceCommandValue, err := getFlagValueIfExists(cmdFlag, cmd)
 	if err != nil {
-		return nil, err
+		return
 	}
 	if sourceCommandValue != "" {
-		return nil, nil
+		return
 	}
 
 	configFile, err := dc.InitNewConfig(tempDirPath)
 	if err == nil {
 		cmd.CommandFlags = append(cmd.CommandFlags, cmd.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
-	return func() error {
-		return fileutils.RemoveTempDir(tempDirPath)
-	}, err
+	return
 }
 
 // Returns the value of the flag if exists
@@ -248,7 +248,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 			continue
 		}
 		if i+1 == len(cmd.CommandFlags) {
-			return "", fmt.Errorf("%s flag was provided without value", cmdFlag)
+			return "", errorutils.CheckErrorf(cmdFlag, " flag was provided without value")
 		}
 		return cmd.CommandFlags[i+1], nil
 	}

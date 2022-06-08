@@ -94,7 +94,6 @@ func (cc *ConfigCommand) Run() error {
 		if err == nil {
 			err = e
 		}
-
 	}()
 	if err != nil {
 		return err

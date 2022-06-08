@@ -205,9 +205,9 @@ func (lock *Lock) Unlock() error {
 }
 
 func CreateLock(lockDirPath string) (Lock, error) {
+	log.Debug("Creating lock in: ", lockDirPath)
 	lockFile := new(Lock)
 	err := lockFile.createNewLockFile(lockDirPath)
-
 	if err != nil {
 		return *lockFile, err
 	}

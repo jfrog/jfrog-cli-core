@@ -48,9 +48,11 @@ func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClie
 	if err != nil || timeLeft > refreshBeforeExpiryMinutes {
 		return err
 	}
-
+	log.Debug("tokenRefreshPreRequestInterceptor: mutex.lock")
 	// Lock to make sure only one thread is trying to refresh
 	mutex.Lock()
+	log.Debug("tokenRefreshPreRequestInterceptor: mutex.locked")
+	defer log.Debug("tokenRefreshPreRequestInterceptor: mutex.unlocked")
 	defer mutex.Unlock()
 	// Refresh only if a new token wasn't acquired (by another thread) while waiting at mutex.
 	if fields.AccessToken == httpClientDetails.AccessToken {
@@ -75,8 +77,10 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 		return "", err
 	}
 	lockFile, err := lock.CreateLock(lockDirPath)
+	log.Debug("tokenRefreshHandler: CreateLock")
 	defer func() {
 		e := lockFile.Unlock()
+		log.Debug("tokenRefreshHandler: Unlock")
 		if err == nil {
 			err = e
 		}

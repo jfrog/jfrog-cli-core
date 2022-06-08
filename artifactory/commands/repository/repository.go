@@ -150,6 +150,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	PomRepositoryReferencesCleanupPolicy: utils.WriteStringAnswer,
 	DefaultDeploymentRepo:                utils.WriteStringAnswer,
 	ForceMavenAuthentication:             utils.WriteBoolAnswer,
+	ForceNugetAuthentication:             utils.WriteBoolAnswer,
 	ExternalDependenciesRemoteRepo:       utils.WriteStringAnswer,
 }
 

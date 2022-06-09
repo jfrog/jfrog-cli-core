@@ -26,9 +26,18 @@ const (
 	JxrayDefaultBaseUrl = "https://jxray.jfrog.io/"
 	JxrayApiBundles     = "api/v1/updates/bundles"
 	JxrayApiOnboarding  = "api/v1/updates/onboarding"
+	periodicState       = "periodic"
+	onboardingState     = "onboarding"
 )
 
 func OfflineUpdate(flags *OfflineUpdatesFlags) error {
+	if flags.IsDBSyncV3 {
+		return handleDBSyncV3OfflineUpdate(flags)
+	}
+	return handleDBSyncV1OfflineUpdate(flags)
+}
+
+func handleDBSyncV1OfflineUpdate(flags *OfflineUpdatesFlags) error {
 	updatesUrl, err := buildUpdatesUrl(flags)
 	if err != nil {
 		return err
@@ -69,16 +78,133 @@ func OfflineUpdate(flags *OfflineUpdatesFlags) error {
 	} else {
 		log.Info("There are no new components.")
 	}
-
 	return nil
 }
 
-func getUpdatesBaseUrl(datesSpecified bool) string {
+func getURLsToDownloadDBSyncV3(responseBody []byte, isPeriodicUpdate bool) ([]string, error) {
+	var onboardingResponse OnboardingResponse
+	var periodicResponse V3PeriodicUpdateResponse
+	var urlsToDownload []string
+	var err error
+	if isPeriodicUpdate {
+		err = json.Unmarshal(responseBody, &periodicResponse)
+		if err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+		for _, packageUrl := range periodicResponse.Update {
+			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+		}
+		for _, packageUrl := range periodicResponse.Deletion {
+			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+		}
+	} else {
+		err = json.Unmarshal(responseBody, &onboardingResponse)
+		if err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+		for _, packageUrl := range onboardingResponse {
+			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+		}
+	}
+	return urlsToDownload, nil
+}
+
+func createV3MetadataFile(state string, body []byte, destFolder string) (err error) {
+	metaDataFileName := state + ".json"
+	metaDataFile := filepath.Join(destFolder, metaDataFileName)
+	f, err := os.Create(metaDataFile)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	defer func() {
+		if cerr := f.Close(); err != nil {
+			err = cerr
+		}
+	}()
+	_, err = f.Write(body)
+	return errorutils.CheckError(err)
+}
+
+func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
+	url := buildUrlDBSyncV3(flags.IsDBSyncV3PeriodicUpdate)
+	log.Info("Getting updates...")
+	headers := make(map[string]string)
+	headers["X-Xray-License"] = flags.License
+	httpClientDetails := httputils.HttpClientDetails{
+		Headers: headers,
+	}
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
+	if err != nil {
+		return err
+	}
+	resp, body, _, err := client.SendGet(url, false, httpClientDetails, "")
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		err = errorutils.CheckErrorf("Response: " + err.Error())
+		return err
+	}
+
+	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsDBSyncV3PeriodicUpdate)
+	var state string
+
+	if flags.IsDBSyncV3PeriodicUpdate {
+		state = periodicState
+	} else {
+		state = onboardingState
+	}
+	xrayTempDir, err := getXrayTempDir()
+	if err != nil {
+		return err
+	}
+	dataDir, err := ioutil.TempDir(xrayTempDir, "xray_downloaded_data")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := fileutils.RemoveTempDir(dataDir); err == nil {
+			err = cerr
+		}
+	}()
+	err = downloadData(urlsToDownload, dataDir, createXrayFileNameFromUrlV3)
+	if err != nil {
+		return err
+	}
+
+	err = createV3MetadataFile(state, body, dataDir)
+	if err != nil {
+		return err
+	}
+
+	packageName := "xray_update_package" + "_" + state
+	err = createZipArchive(dataDir, flags.Target, packageName, "")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildUrlDBSyncV3(isPeriodic bool) string {
+	url := getJxRayBaseUrl() + "api/v3/updates/"
+	if isPeriodic {
+		return url + periodicState
+	} else {
+		return url + onboardingState
+	}
+}
+
+func getJxRayBaseUrl() string {
 	jxRayBaseUrl := os.Getenv("JFROG_CLI_JXRAY_BASE_URL")
 	jxRayBaseUrl = utils.AddTrailingSlashIfNeeded(jxRayBaseUrl)
 	if jxRayBaseUrl == "" {
 		jxRayBaseUrl = JxrayDefaultBaseUrl
 	}
+	return jxRayBaseUrl
+}
+
+func getUpdatesBaseUrl(datesSpecified bool) string {
+	jxRayBaseUrl := getJxRayBaseUrl()
 	if datesSpecified {
 		return jxRayBaseUrl + JxrayApiBundles
 	}
@@ -127,24 +253,17 @@ func getXrayTempDir() (string, error) {
 	return xrayDir, nil
 }
 
-func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []string) error {
-	dataDir, err := ioutil.TempDir(xrayTmpDir, filesPrefix)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if cerr := fileutils.RemoveTempDir(dataDir); cerr != nil && err == nil {
-			err = cerr
-		}
-	}()
+func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(string) (string, error)) error {
+	//
 	for _, url := range urlsList {
-		fileName, err := createXrayFileNameFromUrl(url)
+		fileName, err := fileNameFromUrlFunc(url)
 		if err != nil {
 			return err
 		}
-		log.Info("Downloading", url)
+		log.Info("Downloading updates package from %s", url)
 		client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 		if err != nil {
+			log.Error("Couldn't download from %s", url)
 			return err
 		}
 
@@ -155,11 +274,16 @@ func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []
 			LocalFileName: fileName}
 		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
 		if err != nil {
-			return err
+			return errorutils.CheckErrorf("Couldn't download from %s. Error: %s", url, err.Error())
 		}
 	}
+	log.Info("Download completed.")
+	return nil
+}
+
+func createZipArchive(dataDir, targetPath, filesPrefix, zipSuffix string) error {
 	log.Info("Zipping files.")
-	err = fileutils.ZipFolderFiles(dataDir, filepath.Join(targetPath, filesPrefix+zipSuffix+".zip"))
+	err := fileutils.ZipFolderFiles(dataDir, filepath.Join(targetPath, filesPrefix+zipSuffix+".zip"))
 	if err != nil {
 		return err
 	}
@@ -167,8 +291,28 @@ func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []
 	return nil
 }
 
-func createXrayFileNameFromUrl(url string) (fileName string, err error) {
-	originalUrl := url
+func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []string) (err error) {
+	dataDir, err := ioutil.TempDir(xrayTmpDir, filesPrefix)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := fileutils.RemoveTempDir(dataDir); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	err = downloadData(urlsList, dataDir, createXrayFileNameFromUrl)
+	if err != nil {
+		return err
+	}
+	err = createZipArchive(dataDir, targetPath, filesPrefix, zipSuffix)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getUrlSections(url string) []string {
 	index := strings.Index(url, "?")
 	if index != -1 {
 		url = url[:index]
@@ -177,11 +321,20 @@ func createXrayFileNameFromUrl(url string) (fileName string, err error) {
 	if index != -1 {
 		url = url[:index]
 	}
+	return strings.Split(url, "/")
+}
 
-	sections := strings.Split(url, "/")
+func createXrayFileNameFromUrlV3(url string) (string, error) {
+	sections := getUrlSections(url)
+	length := len(sections)
+	return sections[length-1], nil
+}
+
+func createXrayFileNameFromUrl(url string) (fileName string, err error) {
+	sections := getUrlSections(url)
 	length := len(sections)
 	if length < 2 {
-		err = errorutils.CheckErrorf("Unexpected URL format: %s", originalUrl)
+		err = errorutils.CheckErrorf("Unexpected URL format: %s", url)
 		return
 	}
 	fileName = fmt.Sprintf("%s__%s", sections[length-2], sections[length-1])
@@ -227,14 +380,26 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 }
 
 type OfflineUpdatesFlags struct {
-	License string
-	From    int64
-	To      int64
-	Version string
-	Target  string
+	License                  string
+	From                     int64
+	To                       int64
+	Version                  string
+	Target                   string
+	IsDBSyncV3               bool
+	IsDBSyncV3PeriodicUpdate bool
 }
 
 type FilesList struct {
 	LastUpdate int64
 	Urls       []string
 }
+
+type V3UpdateResponseItem struct {
+	DownloadUrl string `json:"download_url"`
+	Timestamp   int64  `json:"timestamp"`
+}
+type V3PeriodicUpdateResponse struct {
+	Update   []V3UpdateResponseItem `json:"update"`
+	Deletion []V3UpdateResponseItem `json:"deletion"`
+}
+type OnboardingResponse []V3UpdateResponseItem

@@ -1,10 +1,11 @@
 package nuget
 
 import (
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 
+	"github.com/jfrog/build-info-go/build/utils/dotnet/solution"
 	"github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/dotnet/solution"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -29,11 +30,11 @@ func BuildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
 	if err != nil {
 		return
 	}
-	sol, err := solution.Load(wd, "")
+	sol, err := solution.Load(wd, "", log.Logger)
 	if err != nil {
 		return
 	}
-	buildInfo, err := sol.BuildInfo("")
+	buildInfo, err := sol.BuildInfo("", log.Logger)
 	if err != nil {
 		return
 	}

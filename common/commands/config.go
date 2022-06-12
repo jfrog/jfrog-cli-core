@@ -80,8 +80,8 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 }
 
 func (cc *ConfigCommand) Run() error {
-	log.Info("Locking config file to run config " + cc.cmdType + " command.")
-	defer log.Info("Config " + cc.cmdType + " command completed successfully. config file is released.")
+	log.Debug("Locking config file to run config " + cc.cmdType + " command.")
+	defer log.Debug("Config " + cc.cmdType + " command completed successfully. config file is released.")
 	mutex.Lock()
 	defer mutex.Unlock()
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()

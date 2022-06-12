@@ -48,7 +48,6 @@ func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClie
 	if err != nil || timeLeft > refreshBeforeExpiryMinutes {
 		return err
 	}
-	log.Debug("tokenRefreshPreRequestInterceptor: mutex.lock")
 	// Lock to make sure only one thread is trying to refresh
 	mutex.Lock()
 	defer mutex.Unlock()

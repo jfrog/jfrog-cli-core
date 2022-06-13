@@ -1,12 +1,10 @@
 package utils
 
 import (
-	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"strings"
 )
 
-const maxFilesInTree = 20
+const maxFilesInTree = 200
 
 type FileTree struct {
 	repos      map[string]*dirNode
@@ -18,23 +16,7 @@ func NewFileTree() *FileTree {
 	return &FileTree{repos: map[string]*dirNode{}, size: 0}
 }
 
-// AddFilesFromArtifactsDetailsReader reads the files in artifactsDetailsReader and adds them to the tree.
-// If artifactsDetailsReader contains more files than the maximum, no more files will be added to the tree,
-// and the tree's String() function will return an empty string.
-func (ft *FileTree) AddFilesFromArtifactsDetailsReader(artifactsDetailsReader *content.ContentReader) {
-	artifactIndex := 0
-	for item := new(rtServicesUtils.ArtifactDetails); artifactsDetailsReader.NextRecord(item) == nil; item = new(rtServicesUtils.ArtifactDetails) {
-		if artifactIndex == maxFilesInTree {
-			ft.exceedsMax = true
-			break
-		}
-		ft.addFile(item.ArtifactoryPath)
-		artifactIndex++
-	}
-	artifactsDetailsReader.Reset()
-}
-
-func (ft *FileTree) addFile(path string) {
+func (ft *FileTree) AddFile(path string) {
 	if ft.size >= maxFilesInTree {
 		ft.exceedsMax = true
 		return

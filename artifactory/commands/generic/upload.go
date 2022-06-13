@@ -6,6 +6,10 @@ import (
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -15,9 +19,6 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strconv"
-	"time"
 )
 
 type UploadCommand struct {
@@ -170,14 +171,6 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
-			if isTerminal {
-				tree := utils.NewFileTree()
-				tree.AddFilesFromArtifactsDetailsReader(artifactsDetailsReader)
-				treeOutput := tree.String()
-				if len(treeOutput) > 0 {
-					uc.result.SetOutput(tree.String())
-				}
-			}
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)

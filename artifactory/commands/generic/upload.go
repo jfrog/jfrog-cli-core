@@ -2,9 +2,10 @@ package generic
 
 import (
 	"errors"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
-	buildinfo "github.com/jfrog/build-info-go/entities"
+	buildInfo "github.com/jfrog/build-info-go/entities"
 
 	"os"
 	"strconv"

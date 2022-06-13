@@ -124,13 +124,13 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be disabled")
-	assert.NoError(t, DeleteConfig("test"))
+	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 
 	// Verify setting the option enables refreshable tokens.
 	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be enabled")
-	assert.NoError(t, DeleteConfig("test"))
+	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 }
 
 func TestExportEmptyConfig(t *testing.T) {
@@ -161,14 +161,14 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, interactive)
 	assert.NoError(t, err)
 	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputConfig), "unexpected configuration was saved to file")
-	assert.NoError(t, DeleteConfig("test"))
+	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 	testExportImport(t, inputDetails)
 }
 
 func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, basicAuthOnly, interactive bool) (*config.ServerDetails, error) {
-	configCmd := NewConfigCommand().SetDetails(inputDetails).SetServerId("test").SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
+	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
 	configCmd.disablePromptUrls = true
-	assert.NoError(t, configCmd.Config())
+	assert.NoError(t, configCmd.Run())
 	return GetConfig("test", false)
 }
 

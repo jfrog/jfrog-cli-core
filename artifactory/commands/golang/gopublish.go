@@ -106,14 +106,6 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if summary != nil {
-		defer func() {
-			e := summary.ArtifactsDetailsReader.Close()
-			if err == nil {
-				err = e
-			}
-		}()
-	}
 	result := gpc.Result()
 	result.SetSuccessCount(summary.TotalSucceeded)
 	result.SetFailCount(summary.TotalFailed)

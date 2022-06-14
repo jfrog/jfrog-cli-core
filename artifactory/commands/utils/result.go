@@ -22,7 +22,6 @@ type Result struct {
 	successCount int
 	failCount    int
 	reader       *content.ContentReader
-	output       string
 }
 
 func (r *Result) SuccessCount() int {
@@ -37,10 +36,6 @@ func (r *Result) Reader() *content.ContentReader {
 	return r.reader
 }
 
-func (r *Result) Output() string {
-	return r.output
-}
-
 func (r *Result) SetSuccessCount(successCount int) {
 	r.successCount = successCount
 }
@@ -51,10 +46,6 @@ func (r *Result) SetFailCount(failCount int) {
 
 func (r *Result) SetReader(reader *content.ContentReader) {
 	r.reader = reader
-}
-
-func (r *Result) SetOutput(output string) {
-	r.output = output
 }
 
 // UnmarshalDeployableArtifacts reads and parses the deployed artifacts details from the provided file.

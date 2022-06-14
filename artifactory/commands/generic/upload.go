@@ -3,8 +3,6 @@ package generic
 import (
 	"errors"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
 	"os"
@@ -88,11 +86,11 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 	serverDetails, err := uc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
-		return
+		return err
 	}
 	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.retries, uc.retryWaitTimeMilliSecs, uc.DryRun(), uc.progress)
 	if err != nil {
-		return
+		return err
 	}
 
 	addVcsProps := false
@@ -100,7 +98,7 @@ func (uc *UploadCommand) upload() (err error) {
 	// Build Info Collection:
 	toCollect, err := uc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
-		return
+		return err
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
@@ -143,8 +141,7 @@ func (uc *UploadCommand) upload() (err error) {
 	// otherwise we use the upload service which provides only general counters.
 	var successCount, failCount int
 	var artifactsDetailsReader *content.ContentReader = nil
-	isTerminal := coreutils.IsTerminal()
-	if isTerminal || uc.DetailedSummary() || toCollect {
+	if uc.DetailedSummary() || toCollect {
 		var summary *rtServicesUtils.OperationSummary
 		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
 		if err != nil {

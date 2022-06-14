@@ -47,7 +47,7 @@ const (
 		"   Open the IDE 👉 Install the JFrog extension or plugin 👉 View the JFrog panel"
 	MessageDockerDesktop = "📦 Open Docker Desktop and install the JFrog Extension to scan any of your \n" +
 		"   local docker images"
-	MessageDockerScan = "📦 Scan any Docker image from the command line by running\n" +
+	MessageDockerScan = "📦 Scan local Docker images from the terminal by running\n" +
 		"   jf docker scan <image name>:<image tag>"
 )
 
@@ -141,13 +141,14 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 			coreutils.PrintTitle("IDE") + "\n" +
 				MessageIdes + "\n\n" +
 				coreutils.PrintTitle("Docker") + "\n" +
-				MessageDockerDesktop + "\n" +
-				MessageDockerScan + "\n\n" +
+				"You can scan your local Docker images from the terminal or the Docker Desktop UI\n" +
+				MessageDockerScan + "\n" +
+				MessageDockerDesktop + "\n\n" +
 				coreutils.PrintTitle("Build, scan & deploy") + "\n" +
-				"   1. 'cd' into your code project directory\n" +
-				"   2. Run 'jf project init'\n\n" +
+				"1. 'cd' into your code project directory\n" +
+				"2. Run 'jf project init'\n\n" +
 				coreutils.PrintTitle("Read more") + "\n" +
-				"   Read more about how to get started at -\n" +
+				"📦 Read more about how to get started at -\n" +
 				"   " + coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 		err = coreutils.PrintTable("", "", message, false)
 		if err != nil {

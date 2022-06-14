@@ -43,11 +43,11 @@ const (
 	// When entering password on terminal the user has limited number of retries.
 	enterPasswordMaxRetries = 20
 
-	messageIdes = "📦 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand\n" +
+	MessageIdes = "📦 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand\n" +
 		"   Open the IDE 👉 Install the JFrog extension or plugin 👉 View the JFrog panel"
-	messageDockerDesktop = "📦 Open Docker Desktop and install the JFrog Extension to scan any of your \n" +
+	MessageDockerDesktop = "📦 Open Docker Desktop and install the JFrog Extension to scan any of your \n" +
 		"   local docker images"
-	messageDockerScan = "📦 Scan any Docker image from the command line by running\n" +
+	MessageDockerScan = "📦 Scan any Docker image from the command line by running\n" +
 		"   jf docker scan <image name>:<image tag>"
 )
 
@@ -139,10 +139,10 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		log.Output("So what's next?")
 		message :=
 			coreutils.PrintTitle("IDE") + "\n" +
-				messageIdes + "\n\n" +
+				MessageIdes + "\n\n" +
 				coreutils.PrintTitle("Docker") + "\n" +
-				messageDockerDesktop + "\n" +
-				messageDockerScan + "\n\n" +
+				MessageDockerDesktop + "\n" +
+				MessageDockerScan + "\n\n" +
 				coreutils.PrintTitle("Build, scan & deploy") + "\n" +
 				"   1. 'cd' into your code project directory\n" +
 				"   2. Run 'jf project init'\n\n" +

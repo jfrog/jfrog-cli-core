@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-const maxFilesInTree = 200
+var maxFilesInTree = 200
 
 type FileTree struct {
 	repos      map[string]*dirNode

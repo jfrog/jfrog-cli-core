@@ -23,7 +23,6 @@ type BuildScanCommand struct {
 	includeVulnerabilities bool
 	failBuild              bool
 	printExtendedTable     bool
-	rescan                 bool
 }
 
 func NewBuildScanCommand() *BuildScanCommand {
@@ -64,11 +63,6 @@ func (bsc *BuildScanCommand) SetPrintExtendedTable(printExtendedTable bool) *Bui
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetRescan(rescan bool) *BuildScanCommand {
-	bsc.rescan = rescan
-	return bsc
-}
-
 // Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
 	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(bsc.serverDetails)
@@ -97,7 +91,6 @@ func (bsc *BuildScanCommand) Run() (err error) {
 		BuildName:   buildName,
 		BuildNumber: buildNumber,
 		Project:     bsc.buildConfiguration.GetProject(),
-		Rescan:      bsc.rescan,
 	}
 
 	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, params)

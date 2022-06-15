@@ -1,7 +1,9 @@
 package audit
 
 import (
+	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -17,7 +19,7 @@ import (
 )
 
 // GenericAudit audits the project found in the current directory using Xray.
-func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, progress ioUtils.ProgressMgr, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	// If no technologies were given, try to detect all types of technologies that in used.
 	// Otherwise, run audit for requested technologies only.
 	if len(technologies) == 0 {
@@ -30,23 +32,26 @@ func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		var techResults []services.ScanResponse
 		var e error
+		if progress != nil {
+			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech))
+		}
 		switch tech {
 		case coreutils.Maven:
-			techResults, isMultipleRootProject, e = java.AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls)
+			techResults, isMultipleRootProject, e = java.AuditMvn(xrayGraphScanPrams, serverDetails, insecureTls, progress)
 		case coreutils.Gradle:
-			techResults, isMultipleRootProject, e = java.AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper)
+			techResults, isMultipleRootProject, e = java.AuditGradle(xrayGraphScanPrams, serverDetails, excludeTestDeps, useWrapper, progress)
 		case coreutils.Npm:
-			techResults, isMultipleRootProject, e = npm.AuditNpm(xrayGraphScanPrams, serverDetails, args)
+			techResults, isMultipleRootProject, e = npm.AuditNpm(xrayGraphScanPrams, serverDetails, args, progress)
 		case coreutils.Go:
-			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails)
+			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails, progress)
 		case coreutils.Pip:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip, progress)
 		case coreutils.Pipenv:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv, progress)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:
-			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanPrams, serverDetails)
+			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanPrams, serverDetails, progress)
 		default:
 			log.Info(string(tech), " is currently not supported")
 		}

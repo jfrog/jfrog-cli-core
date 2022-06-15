@@ -1,6 +1,7 @@
 package audit
 
 import (
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -24,6 +25,7 @@ type GenericAuditCommand struct {
 	insecureTls             bool
 	args                    []string
 	technologies            []string
+	progress                ioUtils.ProgressMgr
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
@@ -100,7 +102,15 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	results, isMultipleRootProject, err := GenericAudit(auditCmd.CreateXrayGraphScanParams(), server, auditCmd.excludeTestDependencies, auditCmd.useWrapper, auditCmd.insecureTls, auditCmd.args, auditCmd.technologies...)
+	results, isMultipleRootProject, err := GenericAudit(auditCmd.CreateXrayGraphScanParams(), server, auditCmd.excludeTestDependencies, auditCmd.useWrapper, auditCmd.insecureTls, auditCmd.args, auditCmd.progress, auditCmd.technologies...)
+	if err != nil {
+		return err
+	}
+
+	if auditCmd.progress != nil {
+		err = auditCmd.progress.Quit()
+	}
+
 	if err != nil {
 		return err
 	}
@@ -148,4 +158,8 @@ func (auditCmd *GenericAuditCommand) SetInsecureTls(insecureTls bool) *GenericAu
 func (auditCmd *GenericAuditCommand) SetTechnologies(technologies []string) *GenericAuditCommand {
 	auditCmd.technologies = technologies
 	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) SetProgress(progress ioUtils.ProgressMgr) {
+	auditCmd.progress = progress
 }

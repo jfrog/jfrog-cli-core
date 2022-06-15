@@ -148,4 +148,5 @@ func (auditCmd *GenericAuditCommand) SetInsecureTls(insecureTls bool) *GenericAu
 func (auditCmd *GenericAuditCommand) SetTechnologies(technologies []string) *GenericAuditCommand {
 	auditCmd.technologies = technologies
 	return auditCmd
+
 }

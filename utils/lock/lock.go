@@ -51,12 +51,10 @@ func (lock *Lock) createNewLockFile(lockDirPath string) error {
 func (lock *Lock) createFile(folderName string, pid int) error {
 	// We are creating an empty file with the pid and current time part of the name
 	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
-	log.Debug("Creating lock file: ", lock.fileName)
 	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-
 	if err = file.Close(); err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -85,7 +83,7 @@ func (lock *Lock) lock() error {
 		// If the first timestamp in the sorted locks slice is equal to this timestamp
 		// means that the lock can be acquired
 		if locks[0].currentTime == lock.currentTime {
-			// Edge case, if at the same time (by the nano seconds) two different process created two files.
+			// Edge case, if at the same time (by the nanoseconds) two different process created two files.
 			// We are checking the PID to know which process can run.
 			if locks[0].pid != lock.pid {
 				err := lock.removeOtherLockOrWait(locks[0], &filesList)
@@ -207,9 +205,9 @@ func (lock *Lock) Unlock() error {
 }
 
 func CreateLock(lockDirPath string) (Lock, error) {
+	log.Debug("Creating lock in: ", lockDirPath)
 	lockFile := new(Lock)
 	err := lockFile.createNewLockFile(lockDirPath)
-
 	if err != nil {
 		return *lockFile, err
 	}

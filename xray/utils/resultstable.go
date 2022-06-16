@@ -25,7 +25,7 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolations(violations, multipleRoots, coreutils.IsTerminal())
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolations(violations, multipleRoots, log.IsTerminal())
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, coloredOu
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
 	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
 
-	vulnerabilitiesRows, err := PrepareVulnerabilities(vulnerabilities, multipleRoots, coreutils.IsTerminal())
+	vulnerabilitiesRows, err := PrepareVulnerabilities(vulnerabilities, multipleRoots, log.IsTerminal())
 	if err != nil {
 		return err
 	}

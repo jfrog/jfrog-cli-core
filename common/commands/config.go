@@ -30,6 +30,14 @@ const (
 	Clear     ConfigAction = "Clear"
 )
 
+type AuthenticationMethod string
+
+const (
+	AccessToken     AuthenticationMethod = "Access Token"
+	UsernameAndPass AuthenticationMethod = "Username and Password / API Key"
+	MTLS            AuthenticationMethod = "Mutual TLS"
+)
+
 // Internal golang locking for the same process.
 var mutex sync.Mutex
 
@@ -226,7 +234,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 	// Remove and get the server details from the configurations list
 	tempConfiguration, configurations := config.GetAndRemoveConfiguration(cc.details.ServerId, configurations)
 
-	// Change default server details if the server was exist in the configurations list
+	// Change default server details if the server existed in the configurations list
 	if tempConfiguration != nil {
 		cc.defaultDetails = tempConfiguration
 		cc.details.IsDefault = tempConfiguration.IsDefault
@@ -285,23 +293,53 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 				return err
 			}
 		}
-		// Password/Access-Token
+		// Password/Access-Token/MTLS Certificate
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
-			err := readAccessTokenFromConsole(cc.details)
+			authMethod, err := promptAuthMethods()
 			if err != nil {
 				return err
 			}
-			if len(cc.details.GetAccessToken()) == 0 {
+			switch authMethod {
+			case UsernameAndPass:
 				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
-				if err != nil {
-					return err
-				}
+			case AccessToken:
+				err = readAccessTokenFromConsole(cc.details)
+			case MTLS:
+				checkCertificateForMTLS(cc)
+			}
+			if err != nil {
+				return err
 			}
 		}
 	}
 
-	cc.readClientCertInfoFromConsole()
+	checkClientCertForReverseProxy(cc)
 	return nil
+}
+
+func checkCertificateForMTLS(cc *ConfigCommand) {
+	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
+		return
+	}
+	cc.readClientCertInfoFromConsole()
+}
+
+func promptAuthMethods() (method AuthenticationMethod, err error) {
+	var selected string
+	authMethod := []AuthenticationMethod{
+		UsernameAndPass,
+		AccessToken,
+		MTLS,
+	}
+	var selectableItems []ioutils.PromptItem
+	for _, method := range authMethod {
+		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(method), TargetValue: &selected})
+	}
+	err = ioutils.SelectString(selectableItems, "Select one of the following authentication method:", func(item ioutils.PromptItem) {
+		*item.TargetValue = item.Option
+		method = AuthenticationMethod(*item.TargetValue)
+	})
+	return
 }
 
 func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
@@ -319,21 +357,25 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 }
 
 func (cc *ConfigCommand) readClientCertInfoFromConsole() {
+	if cc.details.ClientCertPath == "" {
+		ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
+	}
+	if cc.details.ClientCertKeyPath == "" {
+		ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
+	}
+}
+
+func checkClientCertForReverseProxy(cc *ConfigCommand) {
 	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
 		return
 	}
 	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
-		if cc.details.ClientCertPath == "" {
-			ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
-		}
-		if cc.details.ClientCertKeyPath == "" {
-			ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
-		}
+		cc.readClientCertInfoFromConsole()
 	}
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
-	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
+	token, err := ioutils.ScanPasswordFromConsole("JFrog access token:")
 	if err == nil {
 		details.SetAccessToken(token)
 	}

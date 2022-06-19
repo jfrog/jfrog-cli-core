@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -30,11 +31,11 @@ func buildYarnDependencyTree() (rootNode *services.GraphNode, err error) {
 	}
 	executablePath, err := biutils.GetYarnExecutable()
 	if err != nil {
-		return nil, err
+		return nil, errorutils.CheckError(err)
 	}
 	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, nil)
 	if err != nil {
-		return
+		return nil, errorutils.CheckError(err)
 	}
 	// Calculate Yarn dependencies
 	dependenciesMap, _, err := biutils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)

@@ -42,5 +42,4 @@ func TestParseYarnDependenciesList(t *testing.T) {
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 	}
-
 }

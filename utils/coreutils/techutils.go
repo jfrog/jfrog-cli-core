@@ -22,9 +22,15 @@ const (
 )
 
 type TechData struct {
-	PackageType    string
-	indicators     []string
-	exclude        []string
+	// The name of the package type used in this technology.
+	PackageType string
+	// Suffixes of file/directory names that indicate if a project uses this technology.
+	// The name of at least one of the files/directories in the project's directory must end with one of these suffixes.
+	indicators []string
+	// Suffixes of file/directory names that indicate if a project does not use this technology.
+	// The names of all the files/directories in the project's directory must NOT end with any of these suffixes.
+	exclude []string
+	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
 }
 
@@ -103,15 +109,19 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 	exclude := make(map[Technology]bool)
 	for _, path := range paths {
 		for techName, techData := range technologiesData {
+			// If the detection is in a 'jf ci-setup' command, then the checked technology must be supported.
 			if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
+				// If the project contains a file/directory with a name that ends with an excluded suffix, then this technology is excluded.
 				for _, excludeFile := range techData.exclude {
-					if strings.Contains(path, excludeFile) {
+					if strings.HasSuffix(path, excludeFile) {
 						exclude[techName] = true
 					}
 				}
+				// If this technology was already excluded, there's no need to look for indicator files/directories.
 				if _, exist := exclude[techName]; !exist {
+					// If the project contains a file/directory with a name that ends with the indicator suffix, then the project probably uses this technology.
 					for _, indicator := range techData.indicators {
-						if strings.Contains(path, indicator) {
+						if strings.HasSuffix(path, indicator) {
 							detected[techName] = true
 						}
 					}
@@ -119,6 +129,7 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 			}
 		}
 	}
+	// Remove excluded technologies.
 	for excludeTech := range exclude {
 		delete(detected, excludeTech)
 	}

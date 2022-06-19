@@ -6,6 +6,7 @@ import (
 
 var maxFilesInTree = 200
 
+// FileTree is a UI components that displays a file-system tree view in the terminal.
 type FileTree struct {
 	repos      map[string]*dirNode
 	size       int

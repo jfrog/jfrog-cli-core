@@ -86,11 +86,11 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 	serverDetails, err := uc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
-		return err
+		return
 	}
 	servicesManager, err := utils.CreateUploadServiceManager(serverDetails, uc.uploadConfiguration.Threads, uc.retries, uc.retryWaitTimeMilliSecs, uc.DryRun(), uc.progress)
 	if err != nil {
-		return err
+		return
 	}
 
 	addVcsProps := false
@@ -98,7 +98,7 @@ func (uc *UploadCommand) upload() (err error) {
 	// Build Info Collection:
 	toCollect, err := uc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
-		return err
+		return
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
@@ -110,7 +110,8 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return err
 		}
-		if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, uc.buildConfiguration.GetProject()); err != nil {
+		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, uc.buildConfiguration.GetProject())
+		if err != nil {
 			return err
 		}
 		buildProps, err = utils.CreateBuildProperties(buildName, buildNumber, uc.buildConfiguration.GetProject())

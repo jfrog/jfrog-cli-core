@@ -6,6 +6,7 @@ import (
 
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // Removes the provided flag and value from the command arguments
@@ -296,7 +297,7 @@ func PrintComment(str string) string {
 
 // Print the test to the console with the specified color.
 func colorStr(str string, c color.Color) string {
-	if IsTerminal() {
+	if log.IsTerminal() {
 		return c.Render(str)
 	}
 	return str

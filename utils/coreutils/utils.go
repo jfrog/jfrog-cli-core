@@ -10,8 +10,6 @@ import (
 	"runtime"
 	"strings"
 
-	"golang.org/x/term"
-
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -210,11 +208,6 @@ func GetWorkingDirectory() (string, error) {
 	}
 
 	return currentDir, nil
-}
-
-// IsTerminal checks whether stdout is a terminal.
-func IsTerminal() bool {
-	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 type Credentials interface {

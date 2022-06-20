@@ -29,8 +29,8 @@ func TestUnmarshalDeployableArtifacts(t *testing.T) {
 	result, err := UnmarshalDeployableArtifacts(tempDeployableArtifacts, gradleConfigFile, false)
 	assert.NoError(t, err)
 	for transferDetails := new(clientutils.FileTransferDetails); result.reader.NextRecord(transferDetails) == nil; transferDetails = new(clientutils.FileTransferDetails) {
-		assert.True(t, strings.HasPrefix(transferDetails.TargetPath, "http://localhost:8080/artifactory/"))
-		assert.True(t, strings.Contains(transferDetails.TargetPath, "gradle-local-repo"))
+		assert.Equal(t, transferDetails.RtUrl, "http://localhost:8080/artifactory/")
+		assert.True(t, strings.HasPrefix(transferDetails.TargetPath, "gradle-local-repo"))
 	}
 }
 

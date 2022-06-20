@@ -12,6 +12,7 @@ const (
 	Maven  = "Maven"
 	Gradle = "Gradle"
 	Npm    = "npm"
+	Yarn   = "Yarn"
 	Go     = "go"
 	Pip    = "pip"
 	Pipenv = "pipenv"
@@ -21,8 +22,15 @@ const (
 )
 
 type TechData struct {
-	PackageType    string
-	indicators     []string
+	// The name of the package type used in this technology.
+	PackageType string
+	// Suffixes of file/directory names that indicate if a project uses this technology.
+	// The name of at least one of the files/directories in the project's directory must end with one of these suffixes.
+	indicators []string
+	// Suffixes of file/directory names that indicate if a project does not use this technology.
+	// The names of all the files/directories in the project's directory must NOT end with any of these suffixes.
+	exclude []string
+	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
 }
 
@@ -40,7 +48,12 @@ var technologiesData = map[Technology]TechData{
 	Npm: {
 		PackageType:    "npm",
 		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		exclude:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport: true,
+	},
+	Yarn: {
+		PackageType: "npm",
+		indicators:  []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 	},
 	Go: {
 		PackageType: "go",
@@ -87,26 +100,38 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 	if err != nil {
 		return nil, err
 	}
-	detectedTechnologies := make(map[Technology]bool)
-	for _, file := range filesList {
-		techNames := detectTechnologiesByFile(strings.ToLower(file), isCiSetup)
-		for _, techName := range techNames {
-			detectedTechnologies[techName] = true
-		}
-	}
+	detectedTechnologies := detectTechnologiesByFilePaths(filesList, isCiSetup)
 	return detectedTechnologies, nil
 }
 
-func detectTechnologiesByFile(file string, isCiSetup bool) (detected []Technology) {
-	detected = []Technology{}
-	for techName, techData := range technologiesData {
-		if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
-			for _, indicator := range techData.indicators {
-				if strings.Contains(file, indicator) {
-					detected = append(detected, techName)
+func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map[Technology]bool) {
+	detected = make(map[Technology]bool)
+	exclude := make(map[Technology]bool)
+	for _, path := range paths {
+		for techName, techData := range technologiesData {
+			// If the detection is in a 'jf ci-setup' command, then the checked technology must be supported.
+			if !isCiSetup || (isCiSetup && techData.ciSetupSupport) {
+				// If the project contains a file/directory with a name that ends with an excluded suffix, then this technology is excluded.
+				for _, excludeFile := range techData.exclude {
+					if strings.HasSuffix(path, excludeFile) {
+						exclude[techName] = true
+					}
+				}
+				// If this technology was already excluded, there's no need to look for indicator files/directories.
+				if _, exist := exclude[techName]; !exist {
+					// If the project contains a file/directory with a name that ends with the indicator suffix, then the project probably uses this technology.
+					for _, indicator := range techData.indicators {
+						if strings.HasSuffix(path, indicator) {
+							detected[techName] = true
+						}
+					}
 				}
 			}
 		}
+	}
+	// Remove excluded technologies.
+	for excludeTech := range exclude {
+		delete(detected, excludeTech)
 	}
 	return detected
 }

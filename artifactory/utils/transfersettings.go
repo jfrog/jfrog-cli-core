@@ -91,7 +91,7 @@ func SaveTransferSettings(settings *TransferSettings) (err error) {
 }
 
 func getSettingsFilePath() (string, error) {
-	filePath, err := coreutils.GetJfrogTransferFilesDir()
+	filePath, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
 		return "", err
 	}

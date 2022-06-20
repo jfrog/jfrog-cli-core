@@ -463,10 +463,10 @@ func RemoveAllWhiteSpaces(input string) string {
 	return strings.Join(strings.Fields(input), "")
 }
 
-func GetJfrogTransferFilesDir() (string, error) {
+func GetJfrogTransferDir() (string, error) {
 	homeDir, err := GetJfrogHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homeDir, JfrogTransferFilesDirName), nil
+	return filepath.Join(homeDir, JfrogTransferDirName), nil
 }

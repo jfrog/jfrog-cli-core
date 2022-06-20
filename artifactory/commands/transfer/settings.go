@@ -21,23 +21,23 @@ func (tst *TransferSettingsCommand) Run() error {
 	var threadsNumberInput string
 	ioutils.ScanFromConsole("Choose the threads number", &threadsNumberInput, "")
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
-	if err != nil || threadsNumber < 1 {
-		return errorutils.CheckError(errors.New("the threads number must be a numeric positive value"))
+	if err != nil || threadsNumber < 1 || threadsNumber > 100 {
+		return errorutils.CheckError(errors.New("the value must be a number between 1 and 100"))
 	}
 	conf := &utils.TransferSettings{ThreadsNumber: threadsNumber}
 	err = utils.SaveTransferSettings(conf)
 	if err != nil {
 		return err
 	}
-	log.Output("The settings were saved successfully. It might take a while until they take effect.")
+	log.Output("The settings were saved successfully. It might take a few moments for the new settings to take effect.")
 	return nil
 }
 
 func (tst *TransferSettingsCommand) ServerDetails() (*config.ServerDetails, error) {
-	// Since it's a local command, usage won't be reported.
+	// There's no need to report the usage of this command.
 	return nil, nil
 }
 
 func (tst *TransferSettingsCommand) CommandName() string {
-	return "rt_transfer_set_threads"
+	return "rt_transfer_settings"
 }

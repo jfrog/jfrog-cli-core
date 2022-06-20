@@ -17,7 +17,7 @@ type TransferSettings struct {
 	ThreadsNumber int `json:"threadsNumber,omitempty"`
 }
 
-func ReadTransferSettings() (*TransferSettings, error) {
+func LoadTransferSettings() (*TransferSettings, error) {
 	filePath, err := getSettingsFilePath()
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func SaveTransferSettings(settings *TransferSettings) error {
 }
 
 func getSettingsFilePath() (string, error) {
-	filePath, err := coreutils.GetJfrogTransferDir()
+	filePath, err := coreutils.GetJfrogTransferFilesDir()
 	if err != nil {
 		return "", err
 	}

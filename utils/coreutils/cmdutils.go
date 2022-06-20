@@ -297,7 +297,7 @@ func PrintComment(str string) string {
 
 // Print the test to the console with the specified color.
 func colorStr(str string, c color.Color) string {
-	if log.IsColorsSupported() {
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
 		return c.Render(str)
 	}
 	return str

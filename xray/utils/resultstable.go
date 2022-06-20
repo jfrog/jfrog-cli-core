@@ -404,10 +404,10 @@ type severity struct {
 }
 
 func (s *severity) printableTitle() string {
-	if !log.IsColorsSupported() {
-		return s.title
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
+		return s.style.Render(s.emoji + s.title)
 	}
-	return s.style.Render(s.emoji + s.title)
+	return s.title
 }
 
 var severities = map[string]*severity{

@@ -462,3 +462,11 @@ func ListToText(list []string) string {
 func RemoveAllWhiteSpaces(input string) string {
 	return strings.Join(strings.Fields(input), "")
 }
+
+func GetJfrogTransferFilesDir() (string, error) {
+	homeDir, err := GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, JfrogTransferFilesDirName), nil
+}

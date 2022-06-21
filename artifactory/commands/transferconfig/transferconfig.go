@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -32,6 +33,8 @@ type TransferConfigCommand struct {
 	targetServerDetails *config.ServerDetails
 	dryRun              bool
 	force               bool
+	// List of repositries to include in the import. If empty - include all.
+	includedRepositories []string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -49,6 +52,11 @@ func (tcc *TransferConfigCommand) SetDryRun(dryRun bool) *TransferConfigCommand 
 
 func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	tcc.force = force
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetIncludedRepositories(includedRepositories []string) *TransferConfigCommand {
+	tcc.includedRepositories = includedRepositories
 	return tcc
 }
 
@@ -91,7 +99,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = fixConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
 	if err != nil {
 		return
 	}
@@ -198,6 +206,20 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 
 	// Return the export directory and the cleanup function
 	return files[0], cleanUp, nil
+}
+
+// Modify artifactory.config.xml:
+// 1. Remove non-included repositories, if provided
+// 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
+	var err error
+	if len(tcc.includedRepositories) > 0 {
+		configXml, err = configxmlutils.FilterNonIncludedRepositories(configXml, tcc.includedRepositories)
+		if err != nil {
+			return "", err
+		}
+	}
+	return configxmlutils.ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl)
 }
 
 // Import from the input buffer to the target Artifactory

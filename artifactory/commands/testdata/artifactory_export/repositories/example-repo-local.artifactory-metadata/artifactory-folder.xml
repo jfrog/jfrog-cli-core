@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<artifactory-folder>
+  <repoPath>
+    <repoKey>example-repo-local</repoKey>
+    <path></path>
+    <folder>true</folder>
+  </repoPath>
+  <name></name>
+  <created>1652771690145</created>
+  <lastModified>1652771690145</lastModified>
+  <additionalInfo>
+    <lastUpdated>1652771690145</lastUpdated>
+  </additionalInfo>
+</artifactory-folder>

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -95,4 +96,61 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 		return false, errorutils.CheckErrorf("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error())
 	}
 	return repoDetails.GetRepoType() == "remote", nil
+}
+
+// GetFilteredRepositories returns the names of all repositories filtered by their names and types.
+// includePatterns - patterns of repository names (can contain wildcards) to include in the results. A repository's name
+// must match at least one of these patterns in order to be included in the results. If includePatterns' length is zero,
+// all repositories are included.
+// excludePatterns - patterns of repository names (can contain wildcards) to exclude from the results. A repository's name
+// must NOT match any of these patterns in order to be included in the results.
+// repoType - only repositories of this type will be returned. Pass nil to return repositories of all types.
+func GetFilteredRepositories(servicesManager artifactory.ArtifactoryServicesManager, includePatterns, excludePatterns []string, repoType *RepoType) ([]string, error) {
+	filterParams := services.RepositoriesFilterParams{RepoType: repoType.String()}
+	repos, err := servicesManager.GetAllRepositoriesFiltered(filterParams)
+	if err != nil {
+		return nil, err
+	}
+	return filterRepositoryNames(repos, includePatterns, excludePatterns)
+}
+
+func filterRepositoryNames(repos *[]services.RepositoryDetails, includePatterns, excludePatterns []string) ([]string, error) {
+	// If includePattens is empty, include all repositories.
+	if len(includePatterns) == 0 {
+		includePatterns = []string{"*"}
+	}
+
+	var included []string
+	for _, repo := range *repos {
+		repoIncluded := false
+
+		// Check if this repository name matches any include pattern.
+		for _, includePattern := range includePatterns {
+			matched, err := filepath.Match(includePattern, repo.Key)
+			if err != nil {
+				return nil, err
+			}
+			if matched {
+				repoIncluded = true
+				break
+			}
+		}
+		if repoIncluded {
+			// Check if this repository name matches any exclude pattern.
+			for _, excludePattern := range excludePatterns {
+				matched, err := filepath.Match(excludePattern, repo.Key)
+				if err != nil {
+					return nil, err
+				}
+				if matched {
+					repoIncluded = false
+					break
+				}
+			}
+			if repoIncluded {
+				included = append(included, repo.Key)
+			}
+		}
+	}
+	return included, nil
 }

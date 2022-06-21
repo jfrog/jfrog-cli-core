@@ -126,7 +126,9 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, err
 		}
 		return nil, errorutils.CheckErrorf("Xray indexer app failed indexing %s with %s: %s", filePath, err, stderr.String())
 	}
-	log.Info(stderr.String())
+	if stderr.String() != "" {
+		log.Info(stderr.String())
+	}
 	err = json.Unmarshal(stdout.Bytes(), &indexerResults)
 	return &indexerResults, errorutils.CheckError(err)
 }

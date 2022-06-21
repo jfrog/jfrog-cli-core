@@ -22,7 +22,7 @@ const (
 //	2. Optional questions:
 //		* We have to provide a slice of prompt.Suggest, in which each suggest.Text is a key of a question in the map.
 //		* After a suggest was chosen from the list, the corresponding question from the map will be asked.
-//		* Each answer is written to to the configMap using its writer, under the MapKey specified in the questionInfo.
+//		* Each answer is written to the configMap using its writer, under the MapKey specified in the questionInfo.
 //		* We will execute the previous step until the SaveAndExit string was inserted.
 type InteractiveQuestionnaire struct {
 	QuestionsMap           map[string]QuestionInfo

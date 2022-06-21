@@ -1,12 +1,13 @@
 package coreutils
 
 import (
+	"github.com/forPelevin/gomoji"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strconv"
 	"strings"
 
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // Removes the provided flag and value from the command arguments
@@ -297,8 +298,13 @@ func PrintComment(str string) string {
 
 // Print the test to the console with the specified color.
 func colorStr(str string, c color.Color) string {
-	if log.IsTerminal() {
+	// Add styles only on supported terminals
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
 		return c.Render(str)
+	}
+	// Remove emojis from non-supported terminals
+	if gomoji.ContainsEmoji(str) {
+		str = gomoji.RemoveEmojis(str)
 	}
 	return str
 }

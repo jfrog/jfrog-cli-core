@@ -14,6 +14,7 @@ type DistributeReleaseBundleCommand struct {
 	sync                    bool
 	maxWaitMinutes          int
 	dryRun                  bool
+	createRepo              bool
 }
 
 func NewReleaseBundleDistributeCommand() *DistributeReleaseBundleCommand {
@@ -50,6 +51,11 @@ func (db *DistributeReleaseBundleCommand) SetDryRun(dryRun bool) *DistributeRele
 	return db
 }
 
+func (db *DistributeReleaseBundleCommand) SetCreateRepo(createRepo bool) *DistributeReleaseBundleCommand {
+	db.createRepo = createRepo
+	return db
+}
+
 func (db *DistributeReleaseBundleCommand) Run() error {
 	servicesManager, err := utils.CreateDistributionServiceManager(db.serverDetails, db.dryRun)
 	if err != nil {
@@ -61,9 +67,9 @@ func (db *DistributeReleaseBundleCommand) Run() error {
 	}
 
 	if db.sync {
-		return servicesManager.DistributeReleaseBundleSync(db.distributeBundlesParams, db.maxWaitMinutes)
+		return servicesManager.DistributeReleaseBundleSync(db.distributeBundlesParams, db.maxWaitMinutes, db.createRepo)
 	}
-	return servicesManager.DistributeReleaseBundle(db.distributeBundlesParams)
+	return servicesManager.DistributeReleaseBundle(db.distributeBundlesParams, db.createRepo)
 }
 
 func (db *DistributeReleaseBundleCommand) ServerDetails() (*config.ServerDetails, error) {

@@ -56,20 +56,20 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	// Create config managers
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
-		return err
+		return
 	}
 	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
 	if err != nil {
-		return err
+		return
 	}
 	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Make sure that the source and targer Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.verifyArtifactoryServers(sourceServicesManager, sourceArtifactoryVersion); err != nil {
-		return err
+	if err = tcc.validateArtifactoryServers(sourceServicesManager, sourceArtifactoryVersion); err != nil {
+		return
 	}
 
 	// Run export on the source Artifactory
@@ -81,25 +81,25 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		}
 	}()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Download and decrypt the config XML from the source Artifactory
 	configXml, err := tcc.getConfigXml(sourceServicesManager, sourceArtifactoryVersion)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Prepare the config XML to be imported to SaaS
 	configXml, err = fixConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Create an archive of the source Artifactory export in memory
 	archiveConfig, err := archiveConfig(exportPath, configXml)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Import the archive to the target Artifactory
@@ -108,13 +108,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 
 // Make sure source and target Artifactory URLs are different.
 // Make sure the target Artifactory is empty, by counting the number of the repositories. If it is bigger than 1, return an error.
-func (tcc *TransferConfigCommand) verifyArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) error {
+// Also make sure that the source Artifactory version is sufficient.
+func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) error {
 	if !version.NewVersion(sourceArtifactoryVersion).AtLeast(minArtifactoryVersion) {
 		return errorutils.CheckErrorf("This operation requires source Artifactory version %s or higher", minArtifactoryVersion)
 	}
 
 	// Avoid exporting and importing to the same server
-	log.Info("Verifying servers are different...")
+	log.Info("Verifying source and target servers are different...")
 	if tcc.sourceServerDetails.GetArtifactoryUrl() == tcc.targetServerDetails.GetArtifactoryUrl() {
 		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
@@ -140,9 +141,8 @@ func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.
 	// For Artifactory 6, in some cases, the artifactory.config.xml may not be decrypted and the following error returned:
 	// 409: Cannot decrypt without artifactory key file
 	if !version.NewVersion(sourceArtifactoryVersion).AtLeast("7.0.0") {
-		activationErr := sourceServiceManager.ActivateKeyEncryption()
-		if err == nil {
-			err = activationErr
+		if err = sourceServiceManager.ActivateKeyEncryption(); err != nil {
+			return
 		}
 	}
 
@@ -158,19 +158,17 @@ func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.
 	return sourceServiceManager.GetConfigDescriptor()
 }
 
-// Export source Artifactory to a local directory.
-// Return the path to the export directory, a cleanup function and error.
+// Export the config from the source Artifactory to a local directory.
+// Return the path to the export directory, a cleanup function and an error.
 func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager artifactory.ArtifactoryServicesManager) (string, func() error, error) {
 	// Create temp directory that will contain the export directory
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
 		return "", func() error { return nil }, err
 	}
-	cleanUp := func() error {
-		return fileutils.RemoveTempDir(tempDir)
-	}
-	if err = os.Chmod(tempDir, 0777); err != nil {
-		return "", func() error { return nil }, err
+
+	if err = os.Chmod(tempDir, 0755); err != nil {
+		return "", func() error { return nil }, errorutils.CheckError(err)
 	}
 
 	// Do export
@@ -181,6 +179,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 		Verbose:         &trueValue,
 		ExcludeContent:  &trueValue,
 	}
+	cleanUp := func() error { return fileutils.RemoveTempDir(tempDir) }
 	if err = sourceServicesManager.Export(exportParams); err != nil {
 		return "", cleanUp, err
 	}
@@ -286,7 +285,7 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 		}
 
 		// 401 or 403 - The user used for the target Artifactory server does not exist anymore.
-		// This is perfectly normal. We can now use the credentials of the source Artifactory server.
+		// This is perfectly normal, because the import caused the user to be deleted. We can now use the credentials of the source Artifactory server.
 		newServerDetails := tcc.targetServerDetails
 		newServerDetails.SetUser(tcc.sourceServerDetails.GetUser())
 		newServerDetails.SetPassword(tcc.sourceServerDetails.GetPassword())

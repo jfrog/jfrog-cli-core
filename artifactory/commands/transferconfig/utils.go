@@ -33,7 +33,7 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 	defer func() {
 		closeErr := writer.Close()
 		if retErr == nil {
-			retErr = closeErr
+			retErr = errorutils.CheckError(closeErr)
 		}
 	}()
 
@@ -46,19 +46,19 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 				log.Info("url.signing.key file is missing in the source Artifactory server. Skipping...")
 				continue
 			}
-			return nil, err
+			return nil, errorutils.CheckError(err)
 		}
 		fileWriter, err := writer.Create(neededFile)
 		if err != nil {
-			return nil, err
+			return nil, errorutils.CheckError(err)
 		}
-		if _, retErr = fileWriter.Write(fileContent); retErr != nil {
+		if _, retErr = fileWriter.Write(fileContent); errorutils.CheckError(retErr) != nil {
 			return
 		}
 	}
 	fileWriter, err := writer.Create("artifactory.config.xml")
 	if err != nil {
-		return buffer, err
+		return buffer, errorutils.CheckError(err)
 	}
 	_, retErr = fileWriter.Write([]byte(configXml))
 	return

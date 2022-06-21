@@ -109,29 +109,29 @@ func TestSanityVerifications(t *testing.T) {
 	transferConfigCmd := NewTransferConfigCommand(serverDetails, &config.ServerDetails{})
 
 	// Test low artifactory version
-	err := transferConfigCmd.verifyArtifactoryServers(serviceManager, "6.0.0")
+	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
 	assert.ErrorContains(t, err, "This operation requires source Artifactory version 6.23.21 or higher")
 
 	// Test no repositories
-	err = transferConfigCmd.verifyArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test 1 repository
-	err = transferConfigCmd.verifyArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test 2 repositories
-	err = transferConfigCmd.verifyArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it doesn't look empty. You can bypass this rule by providing the --force flag")
 
 	// Assert force = true
 	transferConfigCmd.force = true
-	err = transferConfigCmd.verifyArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test same source and target Artifactory servers
 	transferConfigCmd = NewTransferConfigCommand(serverDetails, serverDetails)
-	err = transferConfigCmd.verifyArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 
 }

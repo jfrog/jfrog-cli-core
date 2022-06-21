@@ -124,13 +124,13 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return nil
 	}
 	log.Info("Verifying target server is empty...")
-	filterParams := services.RepositoriesFilterParams{RepoType: utils.LOCAL.String()}
-	localRepositories, err := targetServicesManager.GetAllRepositoriesFiltered(filterParams)
+	users, err := targetServicesManager.GetAllUsers()
 	if err != nil {
 		return err
 	}
-	if len(*localRepositories) > 1 {
-		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it doesn't look empty. You can bypass this rule by providing the --force flag.")
+	// We consider an "empty" Artifactory as an Artifactory server that contains 2 users: the admin user and the anonymous.
+	if len(users) > 2 {
+		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag.")
 	}
 	return nil
 }

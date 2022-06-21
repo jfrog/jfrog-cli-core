@@ -94,15 +94,15 @@ func TestGetConfigXml(t *testing.T) {
 }
 
 func TestSanityVerifications(t *testing.T) {
-	repositories := []services.RepositoryDetails{}
+	users := []services.User{}
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
-		content, err := json.Marshal(repositories)
+		content, err := json.Marshal(users)
 		assert.NoError(t, err)
 		w.Write(content)
-		repositories = append(repositories, services.RepositoryDetails{})
+		users = append(users, services.User{})
 	})
 	defer testServer.Close()
 
@@ -112,17 +112,21 @@ func TestSanityVerifications(t *testing.T) {
 	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
 	assert.ErrorContains(t, err, "This operation requires source Artifactory version 6.23.21 or higher")
 
-	// Test no repositories
+	// Test no users
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.NoError(t, err)
 
-	// Test 1 repository
+	// Test 1 users
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.NoError(t, err)
 
-	// Test 2 repositories
+	// Test 2 users
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
-	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it doesn't look empty. You can bypass this rule by providing the --force flag")
+	assert.NoError(t, err)
+
+	// Test 3 users
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag")
 
 	// Assert force = true
 	transferConfigCmd.force = true

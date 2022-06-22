@@ -214,7 +214,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
 	var err error
 	if len(tcc.includedRepositories) > 0 {
-		configXml, err = configxmlutils.FilterNonIncludedRepositories(configXml, tcc.includedRepositories)
+		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.includedRepositories)
 		if err != nil {
 			return "", err
 		}

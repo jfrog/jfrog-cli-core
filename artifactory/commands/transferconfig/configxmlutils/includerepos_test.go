@@ -20,7 +20,7 @@ var testCases = []struct {
 		"ecosys-generic-local", "default-libs-release", "example-repo-local", "ecosys-npm-remote", "default-libs-snapshot"}},
 }
 
-func TestFilterNonIncludedRepositories(t *testing.T) {
+func TestRemoveNonIncludedRepositories(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.expectedXml, func(t *testing.T) {
 			testCasesDir := filepath.Join("..", "..", "testdata", "config_xmls_exclude_repos")
@@ -35,8 +35,8 @@ func TestFilterNonIncludedRepositories(t *testing.T) {
 			expectedConfigXml, err := os.ReadFile(expectedConfigXmlPath)
 			assert.NoError(t, err)
 
-			// Run FilterNonIncludedRepositories and compare
-			result, err := FilterNonIncludedRepositories(string(inputConfigXml), testCase.includedRepositories)
+			// Run RemoveNonIncludedRepositories and compare
+			result, err := RemoveNonIncludedRepositories(string(inputConfigXml), testCase.includedRepositories)
 			assert.NoError(t, err)
 			assert.Equal(t, string(expectedConfigXml), result)
 		})

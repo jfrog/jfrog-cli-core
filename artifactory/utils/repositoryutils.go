@@ -1,15 +1,11 @@
 package utils
 
 import (
-	"net/http"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"path/filepath"
 
-	"github.com/buger/jsonparser"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/jfrog/jfrog-client-go/auth"
-	"github.com/jfrog/jfrog-client-go/http/httpclient"
-	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -31,10 +27,14 @@ func (repoType RepoType) String() string {
 	return RepoTypes[repoType]
 }
 
-func GetRepositories(artDetails auth.ServiceDetails, repoType ...RepoType) ([]string, error) {
+func GetRepositories(artDetails *config.ServerDetails, repoType ...RepoType) ([]string, error) {
+	sm, err := CreateServiceManager(artDetails, 3, 0, false)
+	if err != nil {
+		return nil, err
+	}
 	repos := []string{}
 	for _, v := range repoType {
-		r, err := execGetRepositories(artDetails, v)
+		r, err := GetFilteredRepositories(sm, nil, nil, &v)
 		if err != nil {
 			return repos, err
 		}
@@ -43,36 +43,6 @@ func GetRepositories(artDetails auth.ServiceDetails, repoType ...RepoType) ([]st
 		}
 	}
 
-	return repos, nil
-}
-
-func execGetRepositories(artDetails auth.ServiceDetails, repoType RepoType) ([]string, error) {
-	repos := []string{}
-	artDetails.SetUrl(utils.AddTrailingSlashIfNeeded(artDetails.GetUrl()))
-	apiUrl := artDetails.GetUrl() + "api/repositories?type=" + repoType.String()
-
-	httpClientsDetails := artDetails.CreateHttpClientDetails()
-	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
-	if err != nil {
-		return repos, err
-	}
-	resp, body, _, err := client.SendGet(apiUrl, true, httpClientsDetails, "")
-	if err != nil {
-		return repos, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return repos, errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + utils.IndentJson(body))
-	}
-
-	_, err = jsonparser.ArrayEach(body, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		val, _, _, err := jsonparser.Get(value, "key")
-		if err == nil {
-			repos = append(repos, string(val))
-		}
-	})
-	if err != nil {
-		return repos, err
-	}
 	return repos, nil
 }
 

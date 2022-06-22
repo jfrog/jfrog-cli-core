@@ -311,9 +311,13 @@ func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []bu
 }
 
 func convertSearchResultToDependency(resultItem specutils.ResultItem) buildinfo.Dependency {
-	dependency := buildinfo.Dependency{Checksum: buildinfo.Checksum{Md5: resultItem.Actual_Md5, Sha1: resultItem.Actual_Sha1}}
-	dependency.Id = resultItem.Name
-	return dependency
+	return buildinfo.Dependency{
+		Id: resultItem.Name,
+		Checksum: buildinfo.Checksum{
+			Md5:    resultItem.Actual_Md5,
+			Sha1:   resultItem.Actual_Sha1,
+			Sha256: resultItem.Sha256},
+	}
 }
 
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {

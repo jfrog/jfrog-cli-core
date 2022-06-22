@@ -35,8 +35,8 @@ func GetRepositories(artDetails *config.ServerDetails, repoType ...RepoType) ([]
 		return nil, err
 	}
 	repos := []string{}
-	for _, v := range repoType {
-		r, err := GetFilteredRepositories(sm, nil, nil, &v)
+	for i := range repoType {
+		r, err := GetFilteredRepositories(sm, nil, nil, &repoType[i])
 		if err != nil {
 			return repos, err
 		}

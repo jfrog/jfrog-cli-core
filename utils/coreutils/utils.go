@@ -470,3 +470,12 @@ func GetJfrogTransferDir() (string, error) {
 	}
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
 }
+
+func Contains(arr []string, str string) bool {
+	for _, element := range arr {
+		if element == str {
+			return true
+		}
+	}
+	return false
+}

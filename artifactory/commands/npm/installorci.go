@@ -25,7 +25,6 @@ type NpmInstallOrCiCommand struct {
 	internalCommandName string
 	collectBuildInfo    bool
 	buildInfoModule     *build.NpmModule
-	filteredArgs        []string
 	CommonArgs
 }
 

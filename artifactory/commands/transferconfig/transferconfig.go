@@ -3,6 +3,7 @@ package transferconfig
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -128,6 +129,12 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
 
+	// Verify installation of the config-import plugin in the target server and make sure that the user is admin
+	log.Info("Verifying config-import plugin is installed in the target server...")
+	if err := tcc.verifyConfigImportPlugin(targetServicesManager); err != nil {
+		return err
+	}
+
 	if tcc.force {
 		return nil
 	}
@@ -141,6 +148,35 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag.")
 	}
 	return nil
+}
+
+func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager artifactory.ArtifactoryServicesManager) error {
+	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.targetServerDetails.GetArtifactoryUrl())
+
+	// Create rtDetails
+	rtDetails, err := createArtifactoryClientDetails(targetServicesManager)
+	if err != nil {
+		return err
+	}
+
+	// Execute 'GET /api/plugins/execute/checkPermissions'
+	resp, _, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	// Unexpected status received
+	errorBody, _ := io.ReadAll(resp.Body)
+	messageFormat := fmt.Sprintf("Target server response: %s.\n%s\n", resp.Status, errorBody)
+	if resp.StatusCode == http.StatusNotFound {
+		// Probably the plugin is not installed
+		return errorutils.CheckErrorf("%sIt looks like the config-import plugin is not installed on your target server.", messageFormat)
+	}
+	// 403 if the user is not admin, 500+ if there is a server error
+	return errorutils.CheckErrorf(messageFormat)
 }
 
 // Download and decrypt artifactory.config.xml from the source Artifactory server.

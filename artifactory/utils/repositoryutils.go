@@ -15,12 +15,14 @@ const (
 	LOCAL RepoType = iota
 	REMOTE
 	VIRTUAL
+	FEDERATED
 )
 
 var RepoTypes = []string{
 	"local",
 	"remote",
 	"virtual",
+	"federated",
 }
 
 func (repoType RepoType) String() string {

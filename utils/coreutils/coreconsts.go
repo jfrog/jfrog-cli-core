@@ -10,19 +10,20 @@ const (
 	TokenRefreshDefaultInterval = 60
 
 	// Home Dir
-	JfrogCertsDirName        = "certs"
-	JfrogConfigFile          = "jfrog-cli.conf"
-	JfrogDependenciesDirName = "dependencies"
-	JfrogSecurityDirName     = "security"
-	JfrogSecurityConfFile    = "security.yaml"
-	JfrogBackupDirName       = "backup"
-	JfrogLogsDirName         = "logs"
-	JfrogLocksDirName        = "locks"
-	JfrogPluginsDirName      = "plugins"
-	PluginsExecDirName       = "bin"
-	PluginsResourcesDirName  = "resources"
-	JfrogPluginsFileName     = "plugins.yml"
-	JfrogTransferDirName     = "transfer"
+	JfrogCertsDirName          = "certs"
+	JfrogConfigFile            = "jfrog-cli.conf"
+	JfrogDependenciesDirName   = "dependencies"
+	JfrogSecurityDirName       = "security"
+	JfrogSecurityConfFile      = "security.yaml"
+	JfrogBackupDirName         = "backup"
+	JfrogLogsDirName           = "logs"
+	JfrogLocksDirName          = "locks"
+	JfrogPluginsDirName        = "plugins"
+	PluginsExecDirName         = "bin"
+	PluginsResourcesDirName    = "resources"
+	JfrogPluginsFileName       = "plugins.yml"
+	JfrogTransferDirName       = "transfer"
+	JfrogTransferStateFileName = "state.json"
 
 	// Env
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"

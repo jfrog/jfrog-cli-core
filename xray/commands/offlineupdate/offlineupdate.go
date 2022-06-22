@@ -398,8 +398,10 @@ type V3UpdateResponseItem struct {
 	DownloadUrl string `json:"download_url"`
 	Timestamp   int64  `json:"timestamp"`
 }
+
 type V3PeriodicUpdateResponse struct {
 	Update   []V3UpdateResponseItem `json:"update"`
 	Deletion []V3UpdateResponseItem `json:"deletion"`
 }
+
 type OnboardingResponse []V3UpdateResponseItem

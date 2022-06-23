@@ -82,7 +82,7 @@ type ChunkStatus struct {
 type FileUploadStatusResponse struct {
 	FileRepresentation
 	Status     ChunkFileStatusType `json:"status,omitempty"`
-	StatusCode string              `json:"status_code,omitempty"`
+	StatusCode int                 `json:"status_code,omitempty"`
 	Reason     string              `json:"reason,omitempty"`
 }
 

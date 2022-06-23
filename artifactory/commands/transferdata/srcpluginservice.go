@@ -40,7 +40,7 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunksStatus", content, &httpDetails) // todo getUploadChunksStatus
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
 	}
@@ -67,7 +67,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadFiles", content, &httpDetails) // todo uploadChunk
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
 		return "", err
 	}

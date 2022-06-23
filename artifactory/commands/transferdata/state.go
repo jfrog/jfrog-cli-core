@@ -39,7 +39,7 @@ type FullDiffDetails struct {
 	Completed             bool         `json:"completed,omitempty"`
 }
 
-type actionOnStateFunc func(state *TransferState)
+type actionOnStateFunc func(state *TransferState) error
 
 func getTransferState() (*TransferState, error) {
 	transferDir, err := coreutils.GetJfrogTransferDir()
@@ -95,15 +95,19 @@ func saveTransferState(state *TransferState) error {
 	return nil
 }
 
-func (ts *TransferState) getOrAddRepository(repoKey string) *Repository {
+// TODO should only be called once probably.
+func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*Repository, error) {
 	for i := range ts.Repositories {
 		if ts.Repositories[i].Name == repoKey {
-			return &ts.Repositories[i]
+			return &ts.Repositories[i], nil
 		}
+	}
+	if !createIfMissing {
+		return nil, errorutils.CheckErrorf("Could not find repository '" + repoKey + "' in state file. Aborting.")
 	}
 	repo := Repository{Name: repoKey}
 	ts.Repositories = append(ts.Repositories, repo)
-	return &repo
+	return &repo, nil
 }
 
 func doAndSaveState(action actionOnStateFunc) error {
@@ -115,103 +119,139 @@ func doAndSaveState(action actionOnStateFunc) error {
 		return err
 	}
 
-	action(state)
+	err = action(state)
+	if err != nil {
+		return err
+	}
 
 	return saveTransferState(state)
 }
 
 func setRepoMigrationStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Migration.Started = convertTimeToRFC3339(startTime)
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func setRepoMigrationCompleted(repoKey string) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Migration.Ended = convertTimeToRFC3339(time.Now())
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func addNewDiffToState(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		newDiff := FullDiffDetails{}
 
 		// Range start time is the end of the last diff completed, or migration completion time if no diff was completed.
 		for i := len(repo.Diffs) - 1; i >= 0; i-- {
 			if repo.Diffs[i].Completed {
-				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Ended
+				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Ended // TODO Might want to change to Started
 				break
 			}
 		}
 		if newDiff.HandledRange.Started == "" {
-			newDiff.HandledRange.Started = repo.Migration.Ended
+			newDiff.HandledRange.Started = repo.Migration.Ended // TODO Might want to change to Started
 		}
 		newDiff.HandledRange.Ended = convertTimeToRFC3339(startTime)
 		repo.Diffs = append(repo.Diffs, newDiff)
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func getDiffHandlingRange(repoKey string) (start, end time.Time, err error) {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
-		start, err = convertRFC3339ToTime(repo.Diffs[len(repo.Diffs)-1].HandledRange.Started)
-		if err != nil {
-			return
+	action := func(state *TransferState) error {
+		repo, inErr := state.getRepository(repoKey, false)
+		start, inErr = convertRFC3339ToTime(repo.Diffs[len(repo.Diffs)-1].HandledRange.Started)
+		if inErr != nil {
+			return inErr
 		}
-		end, err = convertRFC3339ToTime(repo.Diffs[len(repo.Diffs)-1].HandledRange.Ended)
-		if err != nil {
-			return
+		end, inErr = convertRFC3339ToTime(repo.Diffs[len(repo.Diffs)-1].HandledRange.Ended)
+		if inErr != nil {
+			return inErr
 		}
+		return nil
 	}
 	err = doAndSaveState(action)
 	return
 }
 
 func setFilesDiffHandlingStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Started = convertTimeToRFC3339(startTime)
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func setFilesDiffHandlingCompleted(repoKey string) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
 		repo.Diffs[len(repo.Diffs)-1].Completed = propertiesPhaseDisabled
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func setPropsDiffHandlingStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Started = convertTimeToRFC3339(startTime)
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func setPropsDiffHandlingCompleted(repoKey string) error {
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
 		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
 		repo.Diffs[len(repo.Diffs)-1].Completed = true
+		return nil
 	}
 	return doAndSaveState(action)
 }
 
 func isRepoMigrated(repoKey string) (bool, error) {
 	isMigrated := false
-	action := func(state *TransferState) {
-		repo := state.getOrAddRepository(repoKey)
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, true)
+		if err != nil {
+			return err
+		}
 		isMigrated = repo.Migration.Ended != ""
+		return nil
 	}
 	err := doAndSaveState(action)
 	return isMigrated, err
@@ -227,14 +267,6 @@ func convertRFC3339ToTime(timeToConvert string) (time.Time, error) {
 
 func convertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 13)
-}
-
-func convertEpochMillisecondsToTime(timeToConvert string) (time.Time, error) {
-	timeInt, err := strconv.Atoi(timeToConvert)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return time.UnixMilli(int64(timeInt)), nil
 }
 
 // Sends rapid requests to the user plugin and finds all existing nodes in Artifactory.

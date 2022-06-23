@@ -8,6 +8,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
+	"sync"
 	"time"
 )
 
@@ -68,8 +69,13 @@ func (m *migrationPhase) run() error {
 	expectedChan := make(chan int, 1)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
+	var runWaitGroup sync.WaitGroup
+	// Done channel notifies the polling go routine that no more tasks are expected.
+	doneChan := make(chan bool, 1)
 
+	runWaitGroup.Add(1)
 	go func() {
+		defer runWaitGroup.Done()
 		pcDetails := producerConsumerDetails{
 			producerConsumer: producerConsumer,
 			expectedChan:     expectedChan,
@@ -80,28 +86,32 @@ func (m *migrationPhase) run() error {
 		_, _ = producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), errorsQueue.AddError)
 	}()
 
-	doneChan := make(chan bool, 1)
-
 	var pollingError error
+	runWaitGroup.Add(1)
 	go func() {
+		defer runWaitGroup.Done()
 		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan)
 	}()
 
 	var runnerErr error
+	runWaitGroup.Add(1)
 	go func() {
+		defer runWaitGroup.Done()
 		runnerErr = producerConsumer.DoneWhenAllIdle(15)
 		doneChan <- true
 	}()
 	// Blocked until finish consuming
 	producerConsumer.Run()
+	runWaitGroup.Wait()
 
-	if runnerErr != nil {
-		return runnerErr
+	var returnedError error
+	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
+		if err != nil {
+			log.Error(err)
+			returnedError = err
+		}
 	}
-	if pollingError != nil {
-		return pollingError
-	}
-	return errorsQueue.GetError()
+	return returnedError
 }
 
 type folderMigrationHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -154,6 +164,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
 				if err != nil {
+					// TODO Maybe write failures to file and / or implement retry.
 					return err
 				}
 				// Empty the uploaded chunk.

@@ -7,12 +7,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"sync"
 	"time"
 )
 
-const waitTimeBetweenChunkStatusSeconds = 30
+const waitTimeBetweenChunkStatusSeconds = 3
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -171,7 +172,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks <= getThreads() {
+	if curProcessedUploadChunks < getThreads() {
 		curProcessedUploadChunks++
 		return true
 	}
@@ -190,7 +191,7 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 			return append(uuidTokens[:i], uuidTokens[i+1:]...)
 		}
 	}
-	// todo log unexpected.
+	log.Error("Unexpected uuid token found: " + token)
 	return uuidTokens
 }
 
@@ -229,6 +230,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 		}
 		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil || isChecksumDeployed {
+			// Chunk not uploaded or does not require polling.
 			reduceCurProcessedChunks()
 		}
 		return err

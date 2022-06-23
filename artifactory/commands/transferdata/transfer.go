@@ -10,9 +10,11 @@ import (
 
 const (
 	tasksMaxCapacity = 500000
-	uploadChunkSize  = 10
-	// TODO change to 16:
-	defaultThreads = 2
+	// TODO change defaults:
+	uploadChunkSize = 2
+	defaultThreads  = 2
+	// TODO temporary repo:
+	singleRepo = "transfer-small-local"
 )
 
 type TransferDataCommand struct {
@@ -51,7 +53,7 @@ func (tdc *TransferDataCommand) Run() (err error) {
 		return err
 	}
 	// TODO replace with include/exclude repos.
-	srcRepos = &[]services.RepositoryDetails{{Key: "transfer-local"}}
+	srcRepos = &[]services.RepositoryDetails{{Key: singleRepo}}
 
 	targetRepos, err := tdc.getAllTargetLocalRepositories()
 	if err != nil {

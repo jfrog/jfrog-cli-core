@@ -87,14 +87,15 @@ func GetFilteredRepositories(servicesManager artifactory.ArtifactoryServicesMana
 }
 
 func filterRepositoryNames(repos *[]services.RepositoryDetails, includePatterns, excludePatterns []string) ([]string, error) {
+	allIncluded := false
 	// If includePattens is empty, include all repositories.
 	if len(includePatterns) == 0 {
-		includePatterns = []string{"*"}
+		allIncluded = true
 	}
 
 	var included []string
 	for _, repo := range *repos {
-		repoIncluded := false
+		repoIncluded := allIncluded
 
 		// Check if this repository name matches any include pattern.
 		for _, includePattern := range includePatterns {

@@ -1,6 +1,8 @@
 package container
 
 import (
+	"path"
+
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
@@ -126,20 +128,12 @@ func (pc *PushCommand) Run() error {
 				return err
 			}
 		}
-		artifactsDetails := layersMapToFileTransferDetails(serverDetails.ArtifactoryUrl, builder.GetLayers())
-		tempFile, err := clientutils.SaveFileTransferDetailsInTempFile(artifactsDetails)
-		if err != nil {
-			return err
-		}
-		result := new(commandsutils.Result)
-		result.SetReader(content.NewContentReader(tempFile, "files"))
-		result.SetSuccessCount(len(*artifactsDetails))
-		pc.SetResult(result)
+		return pc.layersMapToFileTransferDetails(serverDetails.ArtifactoryUrl, builder.GetLayers())
 	}
 	return nil
 }
 
-func layersMapToFileTransferDetails(artifactoryUrl string, layers *[]servicesutils.ResultItem) *[]clientutils.FileTransferDetails {
+func (pc *PushCommand) layersMapToFileTransferDetails(artifactoryUrl string, layers *[]servicesutils.ResultItem) error {
 	var details []clientutils.FileTransferDetails
 	for _, layer := range *layers {
 		sha256 := ""
@@ -148,10 +142,17 @@ func layersMapToFileTransferDetails(artifactoryUrl string, layers *[]servicesuti
 				sha256 = property.Value
 			}
 		}
-		target := artifactoryUrl + layer.Repo + "/" + layer.Path + "/" + layer.Name
-		details = append(details, clientutils.FileTransferDetails{TargetPath: target, Sha256: sha256})
+		details = append(details, clientutils.FileTransferDetails{TargetPath: path.Join(layer.Repo, layer.Path, layer.Name), RtUrl: artifactoryUrl, Sha256: sha256})
 	}
-	return &details
+	tempFile, err := clientutils.SaveFileTransferDetailsInTempFile(&details)
+	if err != nil {
+		return err
+	}
+	result := new(commandsutils.Result)
+	result.SetReader(content.NewContentReader(tempFile, "files"))
+	result.SetSuccessCount(len(details))
+	pc.SetResult(result)
+	return nil
 }
 
 func (pc *PushCommand) CommandName() string {

@@ -53,14 +53,28 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 }
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
+	return buildXrayDependencyTree(treeHelper, []string{nodeId})
+}
+
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *services.GraphNode {
+	nodeId := impactPath[len(impactPath)-1]
+
 	// Initialize the new node
 	xrDependencyTree := &services.GraphNode{}
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*services.GraphNode{}
 	// Recursively create & append all node's dependencies.
 	for _, dependency := range treeHelper[nodeId] {
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, BuildXrayDependencyTree(treeHelper, dependency))
-
+		circularDep := false
+		for _, impactPathNode := range impactPath {
+			if dependency == impactPathNode {
+				circularDep = true
+			}
+		}
+		if circularDep {
+			continue
+		}
+		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency)))
 	}
 	return xrDependencyTree
 }

@@ -77,7 +77,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Make sure that the source and targer Artifactory servers are different and that the target Artifactory is empty
+	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
 	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
 		return
 	}

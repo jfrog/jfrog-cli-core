@@ -71,13 +71,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
+	log.Info("Verifying minimum version of the source server...")
 	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()
 	if err != nil {
 		return
 	}
 
 	// Make sure that the source and targer Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.validateArtifactoryServers(sourceServicesManager, sourceArtifactoryVersion); err != nil {
+	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
 		return
 	}
 
@@ -170,7 +171,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 
 	// Unexpected status received
 	errorBody, _ := io.ReadAll(resp.Body)
-	messageFormat := fmt.Sprintf("Target server response: %s.\n%s\n", resp.Status, errorBody)
+	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, errorBody)
 	if resp.StatusCode == http.StatusNotFound {
 		// Probably the plugin is not installed
 		return errorutils.CheckErrorf("%sIt looks like the config-import plugin is not installed on your target server.", messageFormat)

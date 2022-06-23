@@ -1,0 +1,1067 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<licenses>
+  <licenses>
+    <license>
+      <name>AFL-3.0</name>
+      <longName>The Academic Free License 3.0</longName>
+      <url>http://www.opensource.org/licenses/afl-3.0.php</url>
+      <regexp>((.*)(academic)(.*)|(AFL)+(.*))(3)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>AGPL-V3</name>
+      <longName>GNU AFFERO GENERAL PUBLIC LICENSE v3</longName>
+      <url>http://www.opensource.org/licenses/agpl-v3.html</url>
+      <regexp>((.*)(gnu)+(.*)(affero)|(AGPL))+(.*)(3)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>APL-1.0</name>
+      <longName>Adaptive Public License 1.0</longName>
+      <url>http://www.opensource.org/licenses/apl1.0.php</url>
+      <regexp>(((.*)(adaptive)+(.*))|(apl))+(.*)(1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Apache-2.0</name>
+      <longName>The Apache Software License, Version 2.0</longName>
+      <url>http://www.opensource.org/licenses/apache2.0.php</url>
+      <regexp>(((.*)(apache|the apache|asf)(.*)(2)(.*))|(.*)(apache license|apache|Software Licenses))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Apache-1.0</name>
+      <longName>The Apache Software License, Version 1.0</longName>
+      <url>http://apache.org/licenses/LICENSE-1.0</url>
+      <regexp>(.*)(apache|the apache|asf)(.*)(1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Apache-1.1</name>
+      <longName>The Apache Software License, Version 1.1</longName>
+      <url>http://apache.org/licenses/LICENSE-1.1</url>
+      <regexp>(.*)(apache|the apache|asf)(.*)(1.1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>APSL-2.0</name>
+      <longName>The Apple Public Source License 2.0</longName>
+      <url>http://www.opensource.org/licenses/apsl-2.0.php</url>
+      <regexp>(((.*)(apple)+(.*))|(apsl))+(.*)(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Artistic-License-2.0</name>
+      <longName>Artistic License 2.0</longName>
+      <url>http://www.opensource.org/licenses/artistic-license-2.0.php</url>
+      <regexp>(((.*)(artistic)+(.*)))+(.*)(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Attribution</name>
+      <longName>The Attribution Assurance License</longName>
+      <url>http://www.opensource.org/licenses/attribution.php</url>
+      <regexp>(((.*)(attribution assurance)(.*))|(AAL)+)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>BSL-1.0</name>
+      <longName>Boost Software License 1.0 (BSL1.0)</longName>
+      <url>http://www.opensource.org/licenses/bsl1.0.html</url>
+      <regexp>(((.*)(boost)+(.*))|(bsl))+(.*)(1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CA-TOSL-1.1</name>
+      <longName>Computer Associates Trusted Open Source License 1.1</longName>
+      <url>http://www.opensource.org/licenses/ca-tosl1.1.php</url>
+      <regexp>(((.*)(computer associates)+(.*))|(CA))+(.*)(1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CDDL-1.0</name>
+      <longName>Common Development and Distribution License (CDDL) 1.0</longName>
+      <url>http://www.opensource.org/licenses/cddl1.php</url>
+      <regexp>(((.*)(common development)+(.*))|(CDDL))+(.*)(1.0)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CDDL-1.0.1</name>
+      <longName>Common Development and Distribution License (CDDL) 1.0.1</longName>
+      <url>http://www.opensource.org/licenses/cddl1.php</url>
+      <regexp>(((.*)(common development)+(.*))|(CDDL))+(.*)(1.0.1)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CDDL-1.1</name>
+      <longName>Common Development and Distribution License (CDDL) 1.1</longName>
+      <url>http://glassfish.java.net/public/CDDL+GPL_1_1.html</url>
+      <regexp>(((.*)(common development)+(.*))|(CDDL))+(.*)(1.1)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Codehaus</name>
+      <longName>Copyright 2002 (C) The Codehaus</longName>
+      <url>http://classworlds.codehaus.org/license.html</url>
+      <regexp>((.*)(Codehaus)+(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CCAG-2.5</name>
+      <longName>Creative Commons Attribution 2.5 Generic</longName>
+      <url>http://creativecommons.org/licenses/by/2.5/</url>
+      <regexp>((.*)(Creative)+(.*)(commons)+(.*)(Attribution)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CPAL-1.0</name>
+      <longName>Common Public Attribution License Version 1.0 (CPAL)</longName>
+      <url>http://www.opensource.org/licenses/cpal_1.0</url>
+      <regexp>(((.*)(common public attribution)+(.*))|(CPAL))+(.*)(1)*(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CUAOFFICE-1.0</name>
+      <longName>CUA Office Public License</longName>
+      <url>http://www.opensource.org/licenses/cuaoffice.php</url>
+      <regexp>(((.*)(office)+(public)+(.*))|(CUA)+)+(.*)(1)*(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Day</name>
+      <longName>Day Spec License</longName>
+      <url>http://www.day.com/dam/day/downloads/jsr283/day-spec-license.htm</url>
+      <regexp>((.*)(Day)(.*)(Spec)(.*)(License))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Day-Addendum</name>
+      <longName>Day Specification License Addendum</longName>
+      <url>http://www.day.com/content/dam/day/downloads/jsr283/LICENSE.txt</url>
+      <regexp>((.*)(Day)(.*)(Spec)(.*)(License)(.*)(Addendum)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Bouncy-Castle</name>
+      <longName>Bouncy Castle License</longName>
+      <url>http://www.bouncycastle.org/licence.html</url>
+      <regexp>((.*)(Bouncy)(.*)(Castle)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>EUDATAGRID</name>
+      <longName>EU DataGrid Software License</longName>
+      <url>http://www.opensource.org/licenses/eudatagrid.php</url>
+      <regexp>(((.*)(DataGrid)+(.*)))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Enovi</name>
+      <longName>Copyright (c) 2005 Envoi Solutions LLC</longName>
+      <url></url>
+      <regexp>(.*)(Envoi)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>CPL-1.0</name>
+      <longName>Common Public License</longName>
+      <url>http://www.opensource.org/licenses/cpl1.0.txt</url>
+      <regexp>((.*)(CPL)(.*)|(Common Public License))(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>LGPL-2.1</name>
+      <longName>GNU Lesser General Public License, Version 2.1</longName>
+      <url>http://www.opensource.org/licenses/lgpl-2.1.php</url>
+      <regexp>((\D*)(GNU)(\D*)((lesser)|(LGPL))(\D*)|(LGPL)+)+(\D*)(2.1)?(\D*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>LGPL-3.0</name>
+      <longName>GNU Lesser General Public License, Version 3</longName>
+      <url>http://www.opensource.org/licenses/lgpl-3.0.html</url>
+      <regexp>((\D*)(GNU)(\D*)((lesser)|(LGPL))(\D*)|(LGPL)+)+(\D*)(3(\.0)?){1}(\D*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Historical</name>
+      <longName>Historical Permission Notice and Disclaimer</longName>
+      <url>http://www.opensource.org/licenses/historical.php</url>
+      <regexp>(((.*)(historical)(.*)))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>HSQLDB</name>
+      <longName>HSQLDB License</longName>
+      <url>http://hsqldb.org/web/hsqlLicense.html</url>
+      <regexp>(((.*)(HSQLDB)(.*)))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>IBMPL-1.0</name>
+      <longName>IBM Public License Version 1.0</longName>
+      <url>http://www.opensource.org/licenses/ibmpl.php</url>
+      <regexp>(((.*)(IBM)+(PL)*(.*)))+(.*)(1)*(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>IPAFont-1.0</name>
+      <longName>IPA Font License</longName>
+      <url>http://www.opensource.org/licenses/ipafont.html</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>ISC</name>
+      <longName>ISC License (ISCL)</longName>
+      <url>http://www.opensource.org/licenses/isc-license.txt</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Lucent-1.02</name>
+      <longName>Lucent Public License Version 1.02</longName>
+      <url>http://www.opensource.org/licenses/lucent1.02.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>MirOS</name>
+      <longName>MirOS License</longName>
+      <url>http://www.opensource.org/licenses/miros.html</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>MS-PL</name>
+      <longName>Microsoft Public License</longName>
+      <url>http://www.opensource.org/licenses/ms-pl.html</url>
+      <regexp>((.*)(Microsoft)+(.*)(Public)(.*)|(MS)+(.*)(PL)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>MS-RL</name>
+      <longName>Microsoft Reciprocal License</longName>
+      <url>http://www.opensource.org/licenses/ms-rl.html</url>
+      <regexp>((.*)(Microsoft)+(.*)(Reciprocal)(.*)|(MS)+(.*)(RL)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>JA-SIG</name>
+      <longName>JA-SIG</longName>
+      <url>http://www.jasig.org/cas/license</url>
+      <regexp>(.*)(JA-SIG|JA SIG)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>BSD</name>
+      <longName>Berkeley Software Distribution (BSD)</longName>
+      <url>http://www.opensource.org/licenses/bsd-license.php</url>
+      <regexp>(.*)(BSD|Berkeley)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>MIT</name>
+      <longName>The MIT License</longName>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <regexp>(.*)(MIT)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>JSON</name>
+      <longName>The JSON License</longName>
+      <url>http://www.json.org/license.html</url>
+      <regexp>(.*)(JSON)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Motosoto-0.9.1</name>
+      <longName>The MOTOSOTO OPEN SOURCE LICENSE - Version 0.9.1</longName>
+      <url>http://www.opensource.org/licenses/motosoto.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Eclipse-1.0</name>
+      <longName>Eclipse Public License 1.0</longName>
+      <url>http://www.opensource.org/licenses/eclipse-1.0.php</url>
+      <regexp>(.*)(Eclipse)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>ECL2</name>
+      <longName>Educational Community License, Version 2.0</longName>
+      <url>http://www.opensource.org/licenses/ecl2.php</url>
+      <regexp>((.*)(Educational)+(.*)(Community)(.*)|(.*)(ECL)(.*))+(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Eiffel-2.0</name>
+      <longName>Eiffel Forum License - Ver.2</longName>
+      <url>http://www.opensource.org/licenses/ver2_eiffel.php</url>
+      <regexp>((.*)(Eiffel)(.*))+(.*)(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>JTidy</name>
+      <longName>Java HTML Tidy License</longName>
+      <url>http://jtidy.sourceforge.net/license.html</url>
+      <regexp>((.*)(Java)(.*)(HTML)(.*)(Tidy)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>JTA-Specification-1.0.1B</name>
+      <longName>License Agreement for Java(TM) Transaction API (JTA) Specification 1.0.1B Maintenance Release
+            </longName>
+      <url>http://www.oracle.com/technetwork/java/javaee/tech/jta-138684.html</url>
+      <regexp>((.*)(JTA)+(.*)(1.0.1B)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Entessa-1.0</name>
+      <longName>The X.Net, Inc. License</longName>
+      <url>http://www.opensource.org/licenses/entessa.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>EUPL-1.1</name>
+      <longName>Public Licence - EUPL v.1.1</longName>
+      <url>http://ec.europa.eu/idabc/eupl</url>
+      <regexp>((.*)(Europe)(.*)(union)(.*)|(.*)(EUPL)(.*))+(.*)(1.1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Fair</name>
+      <longName>Fair License</longName>
+      <url>http://www.opensource.org/licenses/fair.php</url>
+      <regexp>((.*)(Fair)+(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Frameworx-1.0</name>
+      <longName>Frameworx License 1.0</longName>
+      <url>http://www.opensource.org/licenses/frameworx.php</url>
+      <regexp>((.*)(Frameworx)+(.*)(1)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>GPL-2.0</name>
+      <longName>The GNU General Public License Version 2</longName>
+      <url>http://www.opensource.org/licenses/gpl-2.0.php</url>
+      <regexp>((GPL)|(.*)GNU)(?!.*lesser)(.*)(2)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>GPL-2.0+CE</name>
+      <longName>The GNU General Public License Version 2 with Classpath Exception</longName>
+      <url>http://www.opensource.org/licenses/gpl-2.0.php</url>
+      <regexp>((GPL)|(.*)GNU)(?!.*lesser)(.*)(2)+(.*)(classpath|ce)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>GPL-3.0</name>
+      <longName>GNU General Public License version 3</longName>
+      <url>http://www.opensource.org/licenses/gpl-3.0.html</url>
+      <regexp>((GPL)|(.*)GNU)(?!.*lesser)(.*)(3)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Mozilla-1.1</name>
+      <longName>Mozilla Public License 1.1 (MPL 1.1)</longName>
+      <url>http://www.opensource.org/licenses/mozilla1.1.php</url>
+      <regexp>((.*)(Mozilla)(.*)|MPL(.*))+(1.1)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Multics</name>
+      <longName>Multics License</longName>
+      <url>http://www.opensource.org/licenses/multics.txt</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>NASA-1.3</name>
+      <longName>NASA Open Source Agreement v1.3</longName>
+      <url>http://www.opensource.org/licenses/nasa1.3.php</url>
+      <regexp>(((.*)(nasa)+(.*)))+(.*)(1.3)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>NTP</name>
+      <longName>NTP License</longName>
+      <url>http://www.opensource.org/licenses/ntp-license.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>NAUMEN</name>
+      <longName>NAUMEN Public License</longName>
+      <url>http://www.opensource.org/licenses/naumen.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Nethack</name>
+      <longName>The Nethack General Public License</longName>
+      <url>http://www.opensource.org/licenses/nethack.php</url>
+      <regexp>((.*)(Nethack)+(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Nokia-1.0a</name>
+      <longName>Nokia Open Source License (NOKOS License) Version 1.0a</longName>
+      <url>http://www.opensource.org/licenses/nokia.php</url>
+      <regexp>((.*)(Nokia)+(.*)(1.0a)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>NOSL-3.0</name>
+      <longName>The Non-Profit Open Software License version 3.0</longName>
+      <url>http://www.opensource.org/licenses/NOSL3.0.html</url>
+      <regexp>((.*)(Non)(.+)(profit)(.*)(open software)(.*)|(.*)(NOSL)(.*))+(.*)(3)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>OCLC-2.0</name>
+      <longName>The OCLC Research Public License 2.0 License</longName>
+      <url>http://www.opensource.org/licenses/oclc2.php</url>
+      <regexp>(.*)(OCLC)(.*)(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Openfont-1.1</name>
+      <longName>SIL OPEN FONT LICENSE</longName>
+      <url>http://www.opensource.org/licenses/openfont.html</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Opengroup</name>
+      <longName>The Open Group Test Suite License</longName>
+      <url>http://www.opensource.org/licenses/opengroup.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>OpenSymphony</name>
+      <longName>The OpenSymphony Software License</longName>
+      <url>http://www.opensymphony.com/webwork/license.action</url>
+      <regexp>(.*)(open)(.?)(symphony)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>OSL-3.0</name>
+      <longName>The Open Software License 3.0</longName>
+      <url>http://www.opensource.org/licenses/osl-3.0.php</url>
+      <regexp>(((.*)(open)+(.*)(software)+(.*)|(OSL)))+(.*)(3)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>PHP-3.0</name>
+      <longName>The PHP License 3.0</longName>
+      <url>http://www.opensource.org/licenses/php.php</url>
+      <regexp>((.*)(PHP)+(.*)(3)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>PostgreSQL</name>
+      <longName>The PostgreSQL Licence</longName>
+      <url>http://www.opensource.org/licenses/postgresql</url>
+      <regexp>((.*)(PostgreSQL)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Public Domain</name>
+      <longName>Public Domain</longName>
+      <url>http://creativecommons.org/licenses/publicdomain/</url>
+      <regexp></regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Public Domain - SUN</name>
+      <longName>TECHNOLOGY LICENSE FROM SUN MICROSYSTEMS, INC.</longName>
+      <url>http://gee.cs.oswego.edu/dl/classes/EDU/oswego/cs/dl/util/sun-u.c.license.pdf</url>
+      <regexp>((((.*)(public)(.*)(domain))|(.*)(technology)(.*)(license))(.*)(sun)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>PythonPL</name>
+      <longName>The Python License (CNRI Python License)</longName>
+      <url>http://www.opensource.org/licenses/pythonpl.php</url>
+      <regexp>((.*)(python license)(.*)|(.*)(pythonpl)(.*))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>PythonSoftFoundation</name>
+      <longName>Python Software Foundation License</longName>
+      <url>http://www.opensource.org/licenses/PythonSoftFoundation.php</url>
+      <regexp>((.*)(python)(.*)(soft)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>QTPL-1.0</name>
+      <longName>The Q Public License Version 1.0</longName>
+      <url>http://www.opensource.org/licenses/qtpl.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Real-1.0</name>
+      <longName>RealNetworks Public Source License Version 1.0</longName>
+      <url>http://www.opensource.org/licenses/real.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>RPL-1.5</name>
+      <longName>Reciprocal Public License 1.5</longName>
+      <url>http://www.opensource.org/licenses/rpl1.5.txt</url>
+      <regexp>((.*)(Reciprocal)(.*)|(.*)(RPL)(.*))+(.*)(1.5)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>RicohPL</name>
+      <longName>The Ricoh Source Code Public License</longName>
+      <url>http://www.opensource.org/licenses/ricohpl.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>SimPL-2.0</name>
+      <longName>Simple Public License (SimPL) 2.0</longName>
+      <url>http://www.opensource.org/licenses/simpl-2.0.html</url>
+      <regexp>((.*)(Simple)(.*)(public)(.*)|(.*)(simpl)(.*))+(.*)(2)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Sleepycat</name>
+      <longName>The Sleepycat License</longName>
+      <url>http://www.opensource.org/licenses/sleepycat.php</url>
+      <regexp>(.*)(sleepycat)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>SUNPublic-1.0</name>
+      <longName>The SUN PUBLIC LICENSE Version 1.0</longName>
+      <url>http://www.opensource.org/licenses/sunpublic.php</url>
+      <regexp>((.*)(sun)(.*)(public)(.*)|(.*)(SUNPublic)(.*))+(.*)(1)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Sybase-1.0</name>
+      <longName>Sybase Open Watcom Public License version 1.0</longName>
+      <url>http://www.opensource.org/licenses/sybase.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>TMate</name>
+      <longName>The TMate Open Source License</longName>
+      <url>http://svnkit.com/license.html</url>
+      <regexp>(.*)(TMate)(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>UoI-NCSA</name>
+      <longName>The University of Illinois/NCSA Open Source License</longName>
+      <url>http://www.opensource.org/licenses/UoI-NCSA.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>IU-Extreme-1.1.1</name>
+      <longName>Indiana University Extreme! Lab Software License</longName>
+      <url>http://www.extreme.indiana.edu/viewcvs/~checkout~/XPP3/java/LICENSE.txt</url>
+      <regexp>(((.*)((Indiana)+(.*)((extreme)*))|(IU)*(Extreme)*)(.*))(1.1.1)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>VovidaPL-1.0</name>
+      <longName>The Vovida Software License v. 1.0</longName>
+      <url>http://www.opensource.org/licenses/vovidapl.php</url>
+      <regexp>((.*)(vovida)(.*))</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>W3C</name>
+      <longName>The W3C SOFTWARE NOTICE AND LICENSE</longName>
+      <url>http://www.opensource.org/licenses/W3C.php</url>
+      <regexp>(((.*)(W3C)+(.*)))+</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>wxWindows</name>
+      <longName>The wxWindows Library Licence</longName>
+      <url>http://www.opensource.org/licenses/wxwindows.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Xnet</name>
+      <longName>The X.Net, Inc. License</longName>
+      <url>http://www.opensource.org/licenses/xnet.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>ZPL-2.0</name>
+      <longName>The Zope Public License Ver.2.0</longName>
+      <url>http://www.opensource.org/licenses/zpl.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>ZLIB</name>
+      <longName>The zlib/libpng License</longName>
+      <url>http://www.opensource.org/licenses/zlib-license.php</url>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>TPL</name>
+      <longName>Terracotta Public License</longName>
+      <url>http://www.terracotta.org/legal/terracotta-public-license</url>
+      <regexp>(.*)(Terracotta)+(.*)|(.*)(TPL)+(.*)</regexp>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+    <license>
+      <name>Not Searched</name>
+      <longName></longName>
+      <url></url>
+      <regexp></regexp>
+      <comments></comments>
+      <approved>false</approved>
+      <unknown>false</unknown>
+      <validLicense>false</validLicense>
+      <found>false</found>
+      <notFound>false</notFound>
+      <notSearched>false</notSearched>
+    </license>
+  </licenses>
+</licenses>

@@ -49,6 +49,9 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 			err = e
 		}
 	}()
+	if err != nil {
+		return "", err
+	}
 	exists, err := fileutils.IsFileExists(indexerPath, false)
 	if exists || err != nil {
 		return

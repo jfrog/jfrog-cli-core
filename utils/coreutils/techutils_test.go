@@ -1,31 +1,32 @@
 package coreutils
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"reflect"
+	"testing"
 )
 
-func TestTechIndicator(t *testing.T) {
+func TestDetectTechnologiesByFilePaths(t *testing.T) {
 	tests := []struct {
 		name     string
-		filePath string
-		expected []Technology
+		paths    []string
+		expected map[Technology]bool
 	}{
-		{"simpleMavenTest", "pom.xml", []Technology{Maven}},
-		{"npmTest", "../package.json", []Technology{Npm}},
-		{"windowsGradleTest", "c:\\users\\test\\package\\build.gradle", []Technology{Gradle}},
-		{"windowsPipTest", "c:\\users\\test\\package\\setup.py", []Technology{Pip}},
-		{"windowsPipenvTest", "c:\\users\\test\\package\\pipfile", []Technology{Pipenv}},
-		{"golangTest", "/Users/eco/dev/jfrog-cli-core/go.mod", []Technology{Go}},
-		{"windowsNugetTest", "c:\\users\\test\\package\\project.sln", []Technology{Nuget, Dotnet}},
-		{"noTechTest", "pomxml", []Technology{}},
+		{"simpleMavenTest", []string{"pom.xml"}, map[Technology]bool{Maven: true}},
+		{"npmTest", []string{"../package.json"}, map[Technology]bool{Npm: true}},
+		{"yarnTest", []string{"./package.json", "./.yarn"}, map[Technology]bool{Yarn: true}},
+		{"windowsGradleTest", []string{"c:\\users\\test\\package\\build.gradle"}, map[Technology]bool{Gradle: true}},
+		{"windowsPipTest", []string{"c:\\users\\test\\package\\setup.py"}, map[Technology]bool{Pip: true}},
+		{"windowsPipenvTest", []string{"c:\\users\\test\\package\\pipfile"}, map[Technology]bool{Pipenv: true}},
+		{"golangTest", []string{"/Users/eco/dev/jfrog-cli-core/go.mod"}, map[Technology]bool{Go: true}},
+		{"windowsNugetTest", []string{"c:\\users\\test\\package\\project.sln"}, map[Technology]bool{Nuget: true, Dotnet: true}},
+		{"noTechTest", []string{"pomxml"}, map[Technology]bool{}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			detectedTech := detectTechnologiesByFile(test.filePath, false)
-			assert.ElementsMatch(t, test.expected, detectedTech)
+			detectedTech := detectTechnologiesByFilePaths(test.paths, false)
+			assert.True(t, reflect.DeepEqual(test.expected, detectedTech), "expected: %s, actual: %s", test.expected, detectedTech)
 		})
 	}
 }

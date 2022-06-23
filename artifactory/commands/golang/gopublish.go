@@ -1,8 +1,9 @@
 package golang
 
 import (
-	"github.com/jfrog/gofrog/version"
 	"os/exec"
+
+	"github.com/jfrog/gofrog/version"
 
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -73,17 +74,17 @@ func (gpc *GoPublishCommand) Run() error {
 		return err
 	}
 
-	version := version.NewVersion(artifactoryVersion)
-	if !version.AtLeast(minSupportedArtifactoryVersion) {
+	rtVersion := version.NewVersion(artifactoryVersion)
+	if !rtVersion.AtLeast(minSupportedArtifactoryVersion) {
 		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
 	}
 	var goBuild *build.Build
 	var buildName, buildNumber, project string
-	toCollect, err := gpc.buildConfiguration.IsCollectBuildInfo()
+	collectBuildInfo, err := gpc.buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
 		return err
 	}
-	if toCollect {
+	if collectBuildInfo {
 		buildName, err = gpc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
@@ -100,7 +101,7 @@ func (gpc *GoPublishCommand) Run() error {
 		}
 	}
 
-	// Publish the package to Artifactory
+	// Publish the package to Artifactory.
 	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, serviceManager)
 	if err != nil {
 		return err
@@ -112,7 +113,7 @@ func (gpc *GoPublishCommand) Run() error {
 		result.SetReader(summary.TransferDetailsReader)
 	}
 	// Publish the build-info to Artifactory
-	if toCollect {
+	if collectBuildInfo {
 		goModule, err := goBuild.AddGoModule("")
 		if err != nil {
 			return errorutils.CheckError(err)

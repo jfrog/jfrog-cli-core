@@ -80,7 +80,7 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 	return cc
 }
 
-func (cc *ConfigCommand) Run() error {
+func (cc *ConfigCommand) Run() (err error) {
 	log.Debug("Locking config file to run config " + cc.cmdType + " command.")
 	mutex.Lock()
 
@@ -91,27 +91,34 @@ func (cc *ConfigCommand) Run() error {
 
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
-		return err
+		return
 	}
 
 	lockFile, err := lock.CreateLock(lockDirPath)
 	if err != nil {
-		return err
+		return
 	}
-	defer lockFile.Unlock()
+	defer func() {
+		e := lockFile.Unlock()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	switch cc.cmdType {
 	case AddOrEdit:
-		return cc.config()
+		err = cc.config()
 	case Delete:
-		return cc.delete()
+		err = cc.delete()
 	case Use:
-		return cc.use()
+		err = cc.use()
 	case Clear:
-		return cc.clear()
+		err = cc.clear()
 	default:
-		return fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
+		err = fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
 	}
+
+	return
 }
 
 func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {

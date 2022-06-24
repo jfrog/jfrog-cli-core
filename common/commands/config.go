@@ -2,14 +2,15 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
@@ -81,23 +82,24 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 
 func (cc *ConfigCommand) Run() error {
 	log.Debug("Locking config file to run config " + cc.cmdType + " command.")
-	defer log.Debug("Config " + cc.cmdType + " command completed successfully. config file is released.")
 	mutex.Lock()
-	defer mutex.Unlock()
+
+	defer func() {
+		mutex.Unlock()
+		log.Debug("Config " + cc.cmdType + " command completed successfully. config file is released.")
+	}()
+
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
 		return err
 	}
+
 	lockFile, err := lock.CreateLock(lockDirPath)
-	defer func() {
-		e := lockFile.Unlock()
-		if err == nil {
-			err = e
-		}
-	}()
 	if err != nil {
 		return err
 	}
+	defer lockFile.Unlock()
+
 	switch cc.cmdType {
 	case AddOrEdit:
 		return cc.config()
@@ -237,7 +239,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 	return configurations, err
 }
 
-/// Returning the first non-empty value:
+// Returning the first non-empty value:
 // 1. The serverId argument sent.
 // 2. details.ServerId
 // 3. defaultDetails.ServerId

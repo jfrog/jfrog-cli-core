@@ -91,12 +91,11 @@ func (cc *ConfigCommand) Run() (err error) {
 
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
-		return
+		return err
 	}
-
 	lockFile, err := lock.CreateLock(lockDirPath)
 	if err != nil {
-		return
+		return err
 	}
 	defer func() {
 		e := lockFile.Unlock()
@@ -107,18 +106,16 @@ func (cc *ConfigCommand) Run() (err error) {
 
 	switch cc.cmdType {
 	case AddOrEdit:
-		err = cc.config()
+		return cc.config()
 	case Delete:
-		err = cc.delete()
+		return cc.delete()
 	case Use:
-		err = cc.use()
+		return cc.use()
 	case Clear:
-		err = cc.clear()
+		return cc.clear()
 	default:
-		err = fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
+		return fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
 	}
-
-	return
 }
 
 func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {

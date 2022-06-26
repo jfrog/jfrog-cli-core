@@ -147,8 +147,11 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	}
 
 	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsDBSyncV3PeriodicUpdate)
-	var state string
+	if err != nil {
+		return err
+	}
 
+	var state string
 	if flags.IsDBSyncV3PeriodicUpdate {
 		state = periodicState
 	} else {

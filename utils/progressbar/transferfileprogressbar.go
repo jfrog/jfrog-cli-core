@@ -3,6 +3,8 @@ package progressbar
 import (
 	"errors"
 	"github.com/gookit/color"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+
 	//"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
@@ -49,11 +51,22 @@ func (t *TransferProgressMng) NewRepository(name string, tasksPhase1, tasksPhase
 }
 
 // Quit terminate the TransferProgressMng process.
-func (t *TransferProgressMng) Quit() {
+func (t *TransferProgressMng) Quit() error {
 	t.removeRepository()
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
+	// Close log file
+	if t.barsMng.logFile != nil {
+		err := corelog.CloseLogFile(t.barsMng.logFile)
+		if err != nil {
+			return err
+		}
+		t.barsMng = nil
+		// Set back the default logger
+		corelog.SetDefaultLogger()
+	}
+	return nil
 }
 
 // IncrementPhase increments completed tasks count for a specific phase by 1.
@@ -90,7 +103,7 @@ func (t *TransferProgressMng) removeRepository() {
 		t.barsMng.quitTasksWithHeadlineProg(t.phases[i])
 	}
 	t.phases = nil
-	time.Sleep(progressRefreshRate)
+	time.Sleep(ProgressRefreshRate)
 }
 
 // Progress that includes two bars:

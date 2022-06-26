@@ -4,22 +4,19 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 	"golang.org/x/term"
 	"os"
-	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 )
 
 const (
-	progressBarWidth     = 20
+	ProgressBarWidth     = 20
 	longProgressBarWidth = 100
-	progressRefreshRate  = 200 * time.Millisecond
+	ProgressRefreshRate  = 200 * time.Millisecond
 )
 
 type Color int64
@@ -48,7 +45,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	}
 	mng = &ProgressBarMng{}
 	// Init log file
-	mng.logFile, err = CreateLogFile()
+	mng.logFile, err = corelog.CreateLogFile()
 	if err != nil {
 		return
 	}
@@ -60,7 +57,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 		mpb.WithOutput(os.Stderr),
 		mpb.WithWidth(longProgressBarWidth),
 		mpb.WithWaitGroup(mng.barsWg),
-		mpb.WithRefreshRate(progressRefreshRate))
+		mpb.WithRefreshRate(ProgressRefreshRate))
 	return
 }
 
@@ -191,22 +188,4 @@ func setTerminalWidthVar() error {
 		terminalWidth = 5
 	}
 	return err
-}
-
-func CreateLogFile() (*os.File, error) {
-	logDir, err := coreutils.CreateDirInJfrogHome(coreutils.JfrogLogsDirName)
-	if err != nil {
-		return nil, err
-	}
-
-	currentTime := time.Now().Format("2006-01-02.15-04-05")
-	pid := os.Getpid()
-
-	fileName := filepath.Join(logDir, "jfrog-cli."+currentTime+"."+strconv.Itoa(pid)+".log")
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-
-	return file, nil
 }

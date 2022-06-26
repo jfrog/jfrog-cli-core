@@ -31,41 +31,44 @@ type PluginsV1 struct {
 
 // CheckPluginsVersionAndConvertIfNeeded In case the latest plugin's layout version isn't match to the local plugins hierarchy at '.jfrog/plugins' -
 // Migrate to the latest version.
-func CheckPluginsVersionAndConvertIfNeeded() error {
+func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 	// Locking mechanism - two threads in the same process.
 	mutex.Lock()
 	defer mutex.Unlock()
 	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
 	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
 	if err != nil {
-		return err
+		return
 	}
-	lockFile, err := lock.CreateLock(lockDirPath)
-	defer lockFile.Unlock()
+	unlockFunc, err := lock.CreateLock(lockDirPath)
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+	defer func() {
+		e := unlockFunc()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
-		return err
+		return
 	}
 	// Check if 'plugins' directory exists in .jfrog
 	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
-		return err
+		return
 	}
 	exists, err := fileutils.IsDirExists(filepath.Join(jfrogHomeDir, coreutils.JfrogPluginsDirName), false)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
+	if err != nil || !exists {
+		return
 	}
 
 	plugins, err := readPluginsConfig()
 	if err != nil {
-		return err
+		return
 	}
 	if plugins.Version != coreutils.GetPluginsConfigVersion() {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)))
+		err = errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)))
 	}
-	return nil
+	return
 }
 
 func readPluginsConfig() (*PluginsV1, error) {

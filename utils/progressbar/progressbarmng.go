@@ -116,6 +116,14 @@ func (bm *ProgressBarMng) Increment(prog *tasksWithHeadlineProg) {
 	prog.tasksProgressBar.tasksCount++
 }
 
+// Increment increments completed tasks count by n.
+func (bm *ProgressBarMng) IncBy(n int, prog *tasksWithHeadlineProg) {
+	bm.barsRWMutex.RLock()
+	defer bm.barsRWMutex.RUnlock()
+	prog.tasksProgressBar.bar.IncrBy(n)
+	prog.tasksProgressBar.tasksCount += int64(n)
+}
+
 func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *tasksProgressBar {
 	pb := &tasksProgressBar{}
 	filter := filterColor(color)

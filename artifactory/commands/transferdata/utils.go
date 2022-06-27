@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -220,7 +221,7 @@ func addToSkippedFile(file FileUploadStatusResponse) {
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) error {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -228,7 +229,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan, progressbar, phaseId)
 		if err != nil || isChecksumDeployed {
 			// Chunk not uploaded or does not require polling.
 			reduceCurProcessedChunks()
@@ -237,14 +238,14 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
-func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) (bool, error) {
+func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) (bool, error) {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return false, err
 	}
 	// Empty token is returned if all files were checksum deployed.
 	if uuidToken == "" {
-		// TODO increment progress. If needed increment local counter.
+		progressbar.IncrementPhaseBy(phaseId, len(chunk.UploadCandidates))
 		return true, nil
 	}
 

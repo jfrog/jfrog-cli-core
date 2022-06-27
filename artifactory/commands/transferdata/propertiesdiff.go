@@ -2,6 +2,7 @@ package transferdata
 
 import (
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"time"
 )
@@ -16,6 +17,23 @@ type propertiesDiffPhase struct {
 	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
+	progressBar               *progressbar.TransferProgressMng
+}
+
+func (p *propertiesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
+	return p.srcRtDetails
+}
+
+func (p *propertiesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+	p.progressBar = progressbar
+}
+
+func (p *propertiesDiffPhase) getProgressBar() *progressbar.TransferProgressMng {
+	return p.progressBar
+}
+
+func (p *propertiesDiffPhase) initProgressBar() error {
+	return nil
 }
 
 func (p *propertiesDiffPhase) getPhaseName() string {
@@ -24,7 +42,6 @@ func (p *propertiesDiffPhase) getPhaseName() string {
 
 func (p *propertiesDiffPhase) phaseStarted() error {
 	p.startTime = time.Now()
-	// TODO notify progress
 	return setPropsDiffHandlingStarted(p.repoKey, p.startTime)
 }
 

@@ -1,6 +1,9 @@
 package transferdata
 
-import coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+import (
+	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
+)
 
 const numberOfPhases = 3
 
@@ -12,8 +15,12 @@ type transferPhase interface {
 	shouldSkipPhase() (bool, error)
 	setSrcUserPluginService(*srcUserPluginService)
 	setSourceDetails(*coreConfig.ServerDetails)
+	getSourceDetails() *coreConfig.ServerDetails
 	setTargetDetails(*coreConfig.ServerDetails)
 	getPhaseName() string
+	setProgressBar(*progressbar.TransferProgressMng)
+	getProgressBar() *progressbar.TransferProgressMng
+	initProgressBar() error
 }
 
 func getPhaseByNum(i int, repoKey string) transferPhase {

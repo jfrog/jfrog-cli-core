@@ -40,14 +40,13 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 
 // NewRepository adding new repository's progress details.
 // Aborting previous repository if exists.
-func (t *TransferProgressMng) NewRepository(name string, tasksPhase1, tasksPhase2 int64) {
+func (t *TransferProgressMng) NewRepository(name string) {
 	// Abort previous repository before creating the new one
 	if t.currentRepoHeadline != nil {
 		t.removeRepository()
 	}
 	t.currentRepoHeadline = t.barsMng.NewHeadlineBar("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
-	t.addPhases(tasksPhase1, tasksPhase2)
 }
 
 // Quit terminate the TransferProgressMng process.
@@ -81,10 +80,34 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) addPhases(tasksPhase1, tasksPhase2 int64) {
+// IncrementPhase increments completed tasks count for a specific phase by n.
+func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
+	if id < 0 || id > len(t.phases)-1 {
+		return errorutils.CheckError(errors.New("invalid phase id"))
+	}
+	if t.phases[id].tasksProgressBar.totalTasks == 0 {
+		return errorutils.CheckError(errors.New("trying to increase tasks bar that was done in previous run. "))
+	}
+	t.barsMng.IncBy(n, t.phases[id])
+	return nil
+}
+
+// TODO change to addphase
+func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transfer all files in the repository", false, GREEN))
+}
+
+func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transfer newly created and modified files", false, GREEN))
 }
+
+//
+//func (t *TransferProgressMng) GetPhase2(id int) (*tasksWithHeadlineProg, error) {
+//	if id < 0 || id > len(t.phases)-1 {
+//		return nil, errorutils.CheckError(errors.New("invalid phase id"))
+//	}
+//	return t.phases[id], nil
+//}
 
 func (t *TransferProgressMng) removeRepository() {
 	if t.currentRepoHeadline == nil {

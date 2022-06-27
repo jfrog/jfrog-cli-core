@@ -2,6 +2,7 @@ package audit
 
 import (
 	"fmt"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,9 +79,13 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
+	}
+
+	if progress != nil {
+		progress.SetHeadlineMsg("Scanning for vulnerabilities")
 	}
 
 	// Get Xray version

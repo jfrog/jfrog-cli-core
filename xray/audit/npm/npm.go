@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -14,13 +15,13 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, args []string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, args []string, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	graph, err := BuildNpmDependencyTree(args)
 	if err != nil {
 		return
 	}
 	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress)
 	return
 }
 

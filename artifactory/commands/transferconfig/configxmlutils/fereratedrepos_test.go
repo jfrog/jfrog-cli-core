@@ -1,4 +1,4 @@
-package transferconfig
+package configxmlutils
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFixConfigXml(t *testing.T) {
-	testCasesDir := filepath.Join("..", "testdata", "config_xmls_federated_repos")
+func TestReplaceUrlInFederatedrepos(t *testing.T) {
+	testCasesDir := filepath.Join("..", "..", "testdata", "config_xmls_federated_repos")
 	files, err := os.ReadDir(filepath.Join(testCasesDir, "input"))
 	assert.NoError(t, err)
 
@@ -25,7 +25,7 @@ func TestFixConfigXml(t *testing.T) {
 			expectedConfigXml, err := os.ReadFile(expectedConfigXmlPath)
 			assert.NoError(t, err)
 
-			result, err := fixConfigXml(string(inputConfigXml), "http://localhost:8081/artifactory", "https://acme.jfrog.io/artifactory")
+			result, err := ReplaceUrlsInFederatedrepos(string(inputConfigXml), "http://localhost:8081/artifactory", "https://acme.jfrog.io/artifactory")
 			assert.NoError(t, err)
 			assert.Equal(t, string(expectedConfigXml), result)
 		})

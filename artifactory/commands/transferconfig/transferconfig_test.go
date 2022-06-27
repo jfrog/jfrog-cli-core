@@ -97,16 +97,18 @@ func TestSanityVerifications(t *testing.T) {
 	users := []services.User{}
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-
-		content, err := json.Marshal(users)
-		assert.NoError(t, err)
-		w.Write(content)
-		users = append(users, services.User{})
+		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			content, err := json.Marshal(users)
+			assert.NoError(t, err)
+			w.Write(content)
+			users = append(users, services.User{})
+		}
 	})
 	defer testServer.Close()
 
-	transferConfigCmd := NewTransferConfigCommand(serverDetails, &config.ServerDetails{})
+	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 
 	// Test low artifactory version
 	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
@@ -138,6 +140,32 @@ func TestSanityVerifications(t *testing.T) {
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
 	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 
+}
+
+func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
+	// Create transfer config command
+	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not found"))
+	})
+	defer testServer.Close()
+
+	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
+	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
+	assert.ErrorContains(t, err, "Target server response: 404 Not Found.\n\nIt looks like the config-import plugin is not installed on your target server.")
+}
+
+func TestVerifyConfigImportPluginForbidden(t *testing.T) {
+	// Create transfer config command
+	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("An admin user is required"))
+	})
+	defer testServer.Close()
+
+	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
+	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
+	assert.ErrorContains(t, err, "Target server response: 403 Forbidden.")
 }
 
 // Create mock server to test replication body

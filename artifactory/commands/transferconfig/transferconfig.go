@@ -3,11 +3,13 @@ package transferconfig
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -32,6 +34,8 @@ type TransferConfigCommand struct {
 	targetServerDetails *config.ServerDetails
 	dryRun              bool
 	force               bool
+	// List of repositries to include in the import. If empty - include all.
+	includedRepositories []string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -52,6 +56,11 @@ func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	return tcc
 }
 
+func (tcc *TransferConfigCommand) SetIncludedRepositories(includedRepositories []string) *TransferConfigCommand {
+	tcc.includedRepositories = includedRepositories
+	return tcc
+}
+
 func (tcc *TransferConfigCommand) Run() (err error) {
 	// Create config managers
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
@@ -62,13 +71,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
+	log.Info("Verifying minimum version of the source server...")
 	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()
 	if err != nil {
 		return
 	}
 
-	// Make sure that the source and targer Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.validateArtifactoryServers(sourceServicesManager, sourceArtifactoryVersion); err != nil {
+	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
+	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
 		return
 	}
 
@@ -91,7 +101,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = fixConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
 	if err != nil {
 		return
 	}
@@ -120,6 +130,12 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
 
+	// Verify installation of the config-import plugin in the target server and make sure that the user is admin
+	log.Info("Verifying config-import plugin is installed in the target server...")
+	if err := tcc.verifyConfigImportPlugin(targetServicesManager); err != nil {
+		return err
+	}
+
 	if tcc.force {
 		return nil
 	}
@@ -133,6 +149,35 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag.")
 	}
 	return nil
+}
+
+func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager artifactory.ArtifactoryServicesManager) error {
+	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.targetServerDetails.GetArtifactoryUrl())
+
+	// Create rtDetails
+	rtDetails, err := createArtifactoryClientDetails(targetServicesManager)
+	if err != nil {
+		return err
+	}
+
+	// Execute 'GET /api/plugins/execute/checkPermissions'
+	resp, _, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	// Unexpected status received
+	errorBody, _ := io.ReadAll(resp.Body)
+	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, errorBody)
+	if resp.StatusCode == http.StatusNotFound {
+		// Probably the plugin is not installed
+		return errorutils.CheckErrorf("%sIt looks like the config-import plugin is not installed on your target server.", messageFormat)
+	}
+	// 403 if the user is not admin, 500+ if there is a server error
+	return errorutils.CheckErrorf(messageFormat)
 }
 
 // Download and decrypt artifactory.config.xml from the source Artifactory server.
@@ -198,6 +243,20 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 
 	// Return the export directory and the cleanup function
 	return files[0], cleanUp, nil
+}
+
+// Modify artifactory.config.xml:
+// 1. Remove non-included repositories, if provided
+// 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
+	var err error
+	if len(tcc.includedRepositories) > 0 {
+		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.includedRepositories)
+		if err != nil {
+			return "", err
+		}
+	}
+	return configxmlutils.ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl)
 }
 
 // Import from the input buffer to the target Artifactory

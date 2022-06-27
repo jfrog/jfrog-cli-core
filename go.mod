@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/buger/jsonparser v1.1.1
-	github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 duy to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
+	github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/forPelevin/gomoji v1.1.4
 	github.com/google/uuid v1.3.0
@@ -95,6 +95,6 @@ exclude (
 
 replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.14.1-0.20220623075136-855d1dda204e
 
-replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.3.1-0.20220620130614-83dda95caddf
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.3.1-0.20220623084021-a61432b84f63
 
 replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.1.3-0.20220620100951-fea5fdb5ca1b

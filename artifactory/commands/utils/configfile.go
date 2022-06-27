@@ -501,12 +501,7 @@ func getRepositories(serverId string, repoTypes ...utils.RepoType) ([]string, er
 		return nil, err
 	}
 
-	artAuth, err := artDetails.CreateArtAuthConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return utils.GetRepositories(artAuth, repoTypes...)
+	return utils.GetRepositories(artDetails, repoTypes...)
 }
 
 func defaultIfNotSet(c *cli.Context, flagName string, defaultValue string) string {

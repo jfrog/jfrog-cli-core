@@ -7,11 +7,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io/ioutil"
 	"strconv"
-	"sync"
 	"time"
 )
-
-var stateMutex sync.Mutex
 
 const requestsNumForNodeDetection = 50
 
@@ -107,9 +104,6 @@ func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*R
 }
 
 func doAndSaveState(action actionOnStateFunc) error {
-	stateMutex.Lock()
-	defer stateMutex.Unlock()
-
 	state, err := getTransferState()
 	if err != nil {
 		return err
@@ -155,15 +149,15 @@ func addNewDiffToState(repoKey string, startTime time.Time) error {
 		}
 		newDiff := FullDiffDetails{}
 
-		// Range start time is the end of the last diff completed, or migration completion time if no diff was completed.
+		// Range start time is the start time of the last diff completed, or migration start time if no diff was completed.
 		for i := len(repo.Diffs) - 1; i >= 0; i-- {
 			if repo.Diffs[i].Completed {
-				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Ended // TODO Might want to change to Started
+				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Started
 				break
 			}
 		}
 		if newDiff.HandledRange.Started == "" {
-			newDiff.HandledRange.Started = repo.Migration.Ended // TODO Might want to change to Started
+			newDiff.HandledRange.Started = repo.Migration.Started
 		}
 		newDiff.HandledRange.Ended = convertTimeToRFC3339(startTime)
 		repo.Diffs = append(repo.Diffs, newDiff)

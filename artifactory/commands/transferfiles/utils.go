@@ -2,8 +2,10 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -14,6 +16,25 @@ import (
 )
 
 const waitTimeBetweenChunkStatusSeconds = 3
+const waitTimeBetweenThreadsUpdateSeconds = 20
+const phase1Id = 0
+const phase2Id = 1
+
+var curThreads int
+var threadsMutex sync.Mutex
+
+func init() {
+	// Use default threads if settings file doesn't exist or an error occurred.
+	curThreads = defaultThreads
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if settings != nil {
+		curThreads = settings.ThreadsNumber
+	}
+}
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -131,7 +152,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, progressbar *progressbar.TransferProgressMng, phaseId int) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -141,12 +162,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 		curTokensBatch.fillTokensBatch(uploadTokensChan)
 
 		if len(curTokensBatch.UuidTokens) == 0 {
-			select {
-			case done := <-doneChan:
-				if done {
-					return nil
-				}
-			default:
+			if shouldStopPolling(doneChan) {
+				return nil
 			}
 			continue
 		}
@@ -162,6 +179,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				continue
 			case Done:
 				reduceCurProcessedChunks()
+				progressbar.IncrementPhase(phaseId)
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				handleFilesOfCompletedChunk(chunk.Files)
 			}
@@ -199,12 +217,12 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			// TODO increment progress.
+			// TODO update summary.
 		case Fail:
-			// TODO increment progress.
+			// TODO update summary.
 			addFailuresToConsumableFile(file)
 		case SkippedLargeProps:
-			// TODO increment progress.
+			// TODO update summary.
 			addToSkippedFile(file)
 		}
 	}
@@ -220,7 +238,7 @@ func addToSkippedFile(file FileUploadStatusResponse) {
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) error {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -228,7 +246,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan, progressbar, phaseId)
 		if err != nil || isChecksumDeployed {
 			// Chunk not uploaded or does not require polling.
 			reduceCurProcessedChunks()
@@ -237,14 +255,14 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
-func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) (bool, error) {
+func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) (bool, error) {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return false, err
 	}
 	// Empty token is returned if all files were checksum deployed.
 	if uuidToken == "" {
-		// TODO increment progress. If needed increment local counter.
+		progressbar.IncrementPhaseBy(phaseId, len(chunk.UploadCandidates))
 		return true, nil
 	}
 
@@ -258,6 +276,50 @@ func verifyRepoExistsInTarget(targetRepos *[]services.RepositoryDetails, srcRepo
 		if targetRepo.Key == srcRepoKey {
 			return true
 		}
+	}
+	return false
+}
+
+func getThreads() int {
+	threadsMutex.Lock()
+	defer threadsMutex.Unlock()
+	return curThreads
+}
+
+// Periodically reads settings file and updates the number of threads.
+func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool) {
+	for {
+		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
+		if shouldStopPolling(doneChan) {
+			return
+		}
+		err := updateThreads(producerConsumer)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func updateThreads(producerConsumer parallel.Runner) error {
+	threadsMutex.Lock()
+	defer threadsMutex.Unlock()
+
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		return err
+	}
+	if settings != nil && curThreads != settings.ThreadsNumber {
+		curThreads = settings.ThreadsNumber
+		producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+	}
+	return nil
+}
+
+func shouldStopPolling(doneChan chan bool) bool {
+	select {
+	case done := <-doneChan:
+		return done
+	default:
 	}
 	return false
 }

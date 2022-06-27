@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -15,15 +16,16 @@ const (
 	tasksMaxCapacity = 500000
 	// TODO change defaults:
 	uploadChunkSize = 2
-	defaultThreads  = 2
+	defaultThreads  = 16
 	// TODO temporary repo:
-	singleRepo = "transfer-small-local"
+	singleRepo = "transfer-data-local"
 )
 
 type TransferFilesCommand struct {
 	sourceServerDetails       *config.ServerDetails
 	targetServerDetails       *config.ServerDetails
 	checkExistenceInFilestore bool
+	progressbar               *progressbar.TransferProgressMng
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -57,7 +59,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if cleanStart {
+	if cleanStart && !propertiesPhaseDisabled {
 		err = nodeDetection(srcUpService)
 		if err != nil {
 			return err
@@ -76,14 +78,23 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	// Set progress bar
+	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(*srcRepos)))
+	if err != nil {
+		return err
+	}
+	tdc.progressbar = progressBarMng
+
 	for _, repo := range *srcRepos {
 		exists := verifyRepoExistsInTarget(targetRepos, repo.Key)
 		if !exists {
 			log.Error("Repo '" + repo.Key + "' does not exist in target. Skipping...")
 			continue
 		}
+		progressBarMng.NewRepository(repo.Key)
 		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
 			newPhase := getPhaseByNum(phaseI, repo.Key)
+			tdc.initNewPhase(newPhase, srcUpService)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
 				return err
@@ -91,8 +102,8 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if skip {
 				continue
 			}
-			tdc.initNewPhase(newPhase, srcUpService)
 			err = newPhase.phaseStarted()
+			newPhase.initProgressBar()
 			if err != nil {
 				return err
 			}
@@ -106,7 +117,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				return err
 			}
 		}
+		tdc.progressbar.RemoveRepository()
 	}
+	tdc.progressbar.Quit()
 	return nil
 }
 
@@ -115,6 +128,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)
 	newPhase.setSrcUserPluginService(srcUpService)
+	newPhase.setProgressBar(tdc.progressbar)
 }
 
 type producerConsumerDetails struct {
@@ -122,9 +136,4 @@ type producerConsumerDetails struct {
 	expectedChan     chan int
 	errorsQueue      *clientUtils.ErrorsQueue
 	uploadTokensChan chan string
-}
-
-func getThreads() int {
-	// TODO implement
-	return defaultThreads
 }

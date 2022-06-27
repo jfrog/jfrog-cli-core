@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"math"
 	"sync"
 	"time"
 )
@@ -20,6 +22,27 @@ type filesDiffPhase struct {
 	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
+	progressBar               *progressbar.TransferProgressMng
+}
+
+func (f *filesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
+	return f.srcRtDetails
+}
+
+func (f *filesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+	f.progressBar = progressbar
+}
+
+func (f *filesDiffPhase) initProgressBar() error {
+	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
+	if err != nil {
+		return err
+	}
+
+	totalLength := diffRangeEnd.Sub(diffRangeStart)
+	aqlNum := math.Ceil(totalLength.Minutes() / searchTimeFramesMinutes)
+	f.progressBar.AddPhase2(int64(aqlNum) + 1)
+	return nil
 }
 
 func (f *filesDiffPhase) getPhaseName() string {
@@ -27,7 +50,6 @@ func (f *filesDiffPhase) getPhaseName() string {
 }
 
 func (f *filesDiffPhase) phaseStarted() error {
-	// TODO notify progress
 	f.startTime = time.Now()
 	err := addNewDiffToState(f.repoKey, f.startTime)
 	if err != nil {
@@ -37,7 +59,6 @@ func (f *filesDiffPhase) phaseStarted() error {
 }
 
 func (f *filesDiffPhase) phaseDone() error {
-	// TODO notify progress
 	return setFilesDiffHandlingCompleted(f.repoKey)
 }
 
@@ -72,8 +93,14 @@ func (f *filesDiffPhase) run() error {
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routine that no more tasks are expected.
-	doneChan := make(chan bool, 1)
+	// Done channel notifies the polling go routines that no more tasks are expected.
+	doneChan := make(chan bool, 2)
+
+	runWaitGroup.Add(1)
+	go func() {
+		defer runWaitGroup.Done()
+		periodicallyUpdateThreads(producerConsumer, doneChan)
+	}()
 
 	runWaitGroup.Add(1)
 	go func() {
@@ -98,7 +125,7 @@ func (f *filesDiffPhase) run() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, phase2Id)
 	}()
 
 	runWaitGroup.Add(1)
@@ -106,6 +133,7 @@ func (f *filesDiffPhase) run() error {
 	go func() {
 		defer runWaitGroup.Done()
 		runnerErr = producerConsumer.DoneWhenAllIdle(15)
+		doneChan <- true
 		doneChan <- true
 	}()
 	// Blocked until finish consuming
@@ -164,7 +192,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 		}
 		curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err := uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
 			if err != nil {
 				return err
 			}
@@ -174,7 +202,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
 	}
 	return nil
 }

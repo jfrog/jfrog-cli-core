@@ -1,11 +1,15 @@
 package transferfiles
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"sync"
@@ -19,6 +23,37 @@ type migrationPhase struct {
 	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
+	progressBar               *progressbar.TransferProgressMng
+}
+
+func (m *migrationPhase) getSourceDetails() *coreConfig.ServerDetails {
+	return m.srcRtDetails
+}
+
+func (m *migrationPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+	m.progressBar = progressbar
+}
+
+func (m *migrationPhase) initProgressBar() error {
+	serviceManager, err := utils.CreateServiceManager(m.getSourceDetails(), -1, 0, false)
+	if err != nil {
+		return err
+	}
+	repoSummaryList, err := serviceManager.StorageInfo()
+	if err != nil {
+		return err
+	}
+	for _, repo := range repoSummaryList.RepositoriesSummaryList {
+		if m.repoKey == repo.RepoKey {
+			tasks, err := repo.FilesCount.Int64()
+			if err != nil {
+				return err
+			}
+			m.progressBar.AddPhase1(tasks)
+			return nil
+		}
+	}
+	return errorutils.CheckError(errors.New(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)))
 }
 
 func (m *migrationPhase) getPhaseName() string {
@@ -26,7 +61,6 @@ func (m *migrationPhase) getPhaseName() string {
 }
 
 func (m *migrationPhase) phaseStarted() error {
-	// TODO notify progress
 	m.startTime = time.Now()
 	err := setRepoMigrationStarted(m.repoKey, m.startTime)
 	if err != nil {
@@ -49,7 +83,19 @@ func (m *migrationPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
 }
 
 func (m *migrationPhase) shouldSkipPhase() (bool, error) {
-	return isRepoMigrated(m.repoKey)
+	skip, err := isRepoMigrated(m.repoKey)
+	if err != nil {
+		return false, err
+	}
+	if skip {
+		m.skipPhase()
+	}
+	return skip, nil
+}
+
+func (m *migrationPhase) skipPhase() {
+	// Init progress bas ad "done" with 0 tasks.
+	m.progressBar.AddPhase1(0)
 }
 
 func (m *migrationPhase) setSrcUserPluginService(service *srcUserPluginService) {
@@ -70,8 +116,14 @@ func (m *migrationPhase) run() error {
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routine that no more tasks are expected.
-	doneChan := make(chan bool, 1)
+	// Done channel notifies the polling go routines that no more tasks are expected.
+	doneChan := make(chan bool, 2)
+
+	runWaitGroup.Add(1)
+	go func() {
+		defer runWaitGroup.Done()
+		periodicallyUpdateThreads(producerConsumer, doneChan)
+	}()
 
 	runWaitGroup.Add(1)
 	go func() {
@@ -90,7 +142,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id)
 	}()
 
 	var runnerErr error
@@ -98,6 +150,7 @@ func (m *migrationPhase) run() error {
 	go func() {
 		defer runWaitGroup.Done()
 		runnerErr = producerConsumer.DoneWhenAllIdle(15)
+		doneChan <- true
 		doneChan <- true
 	}()
 	// Blocked until finish consuming
@@ -162,7 +215,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 		case "file":
 			curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
 				if err != nil {
 					// TODO Maybe write failures to file and / or implement retry.
 					return err
@@ -180,7 +233,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+		return uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
 	}
 	return nil
 }

@@ -4,10 +4,13 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 )
 
 const (
@@ -19,22 +22,35 @@ const (
 	singleRepo = "transfer-small-local"
 )
 
-type TransferDataCommand struct {
+type TransferFilesCommand struct {
 	sourceServerDetails       *config.ServerDetails
 	targetServerDetails       *config.ServerDetails
 	checkExistenceInFilestore bool
 	progressbar               *progressbar.TransferProgressMng
 }
 
-func NewTransferDataCommand(sourceServer, targetServer *config.ServerDetails) *TransferDataCommand {
-	return &TransferDataCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
+	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
 }
 
-func (tdc *TransferDataCommand) CommandName() string {
+func (tdc *TransferFilesCommand) CommandName() string {
 	return "rt_transfer_data"
 }
 
-func (tdc *TransferDataCommand) Run() (err error) {
+func (tdc *TransferFilesCommand) SetFilestore(filestore bool) {
+	tdc.checkExistenceInFilestore = filestore
+}
+
+func (tdc *TransferFilesCommand) Run() (err error) {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(transferDir, 0777)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
 	if err != nil {
 		return err
@@ -87,7 +103,6 @@ func (tdc *TransferDataCommand) Run() (err error) {
 			if skip {
 				continue
 			}
-
 			tdc.initNewPhase(newPhase, srcUpService)
 			err = newPhase.phaseStarted()
 			newPhase.initProgressBar()
@@ -108,18 +123,7 @@ func (tdc *TransferDataCommand) Run() (err error) {
 	return nil
 }
 
-func (tdc *TransferDataCommand) initProgressbar(repoSummaryList *[]utils.RepositorySummary, phaseI int, repoKey string) error {
-	switch phaseI {
-	case 0:
-
-	case 1:
-		// TODO gai
-
-	}
-	return nil
-}
-
-func (tdc *TransferDataCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {
+func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {
 	newPhase.shouldCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)

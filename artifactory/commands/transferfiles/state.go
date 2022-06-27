@@ -1,4 +1,4 @@
-package transferdata
+package transferfiles
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io/ioutil"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -42,17 +41,16 @@ type FullDiffDetails struct {
 type actionOnStateFunc func(state *TransferState) error
 
 func getTransferState() (*TransferState, error) {
-	transferDir, err := coreutils.GetJfrogTransferDir()
+	stateFilePath, err := coreutils.GetJfrogTransferStateFilePath()
 	if err != nil {
 		return nil, err
 	}
-	stateFilePath := filepath.Join(transferDir, coreutils.JfrogTransferStateFileName)
 	exists, err := fileutils.IsFileExists(stateFilePath, false)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return &TransferState{}, fileutils.CreateDirIfNotExist(transferDir)
+		return &TransferState{}, nil
 	}
 
 	content, err := fileutils.ReadFile(stateFilePath)
@@ -69,12 +67,11 @@ func getTransferState() (*TransferState, error) {
 }
 
 func isCleanStart() (bool, error) {
-	stateFilePath, err := coreutils.GetJfrogTransferStateFilePath()
+	state, err := getTransferState()
 	if err != nil {
 		return false, err
 	}
-	exists, err := fileutils.IsFileExists(stateFilePath, false)
-	return !exists, err
+	return len(state.NodeIds) == 0, nil
 }
 
 func saveTransferState(state *TransferState) error {
@@ -95,7 +92,6 @@ func saveTransferState(state *TransferState) error {
 	return nil
 }
 
-// TODO should only be called once probably.
 func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*Repository, error) {
 	for i := range ts.Repositories {
 		if ts.Repositories[i].Name == repoKey {

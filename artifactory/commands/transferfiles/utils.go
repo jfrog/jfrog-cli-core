@@ -1,4 +1,4 @@
-package transferdata
+package transferfiles
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
 }
 
-func (tdc *TransferDataCommand) getStorageInfo() (*artifactoryUtils.StorageInfo, error) {
+func (tdc *TransferFilesCommand) getStorageInfo() (*artifactoryUtils.StorageInfo, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, -1, 0, false)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (tdc *TransferDataCommand) getStorageInfo() (*artifactoryUtils.StorageInfo,
 	return serviceManager.StorageInfo()
 }
 
-func (tdc *TransferDataCommand) createTargetUploadServiceManager() (*services.UploadService, error) {
+func (tdc *TransferFilesCommand) createTargetUploadServiceManager() (*services.UploadService, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, 0, 0, false)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (tdc *TransferDataCommand) createTargetUploadServiceManager() (*services.Up
 	return uploadService, nil
 }
 
-func (tdc *TransferDataCommand) createSourceDownloadServiceManager() (*services.DownloadService, error) {
+func (tdc *TransferFilesCommand) createSourceDownloadServiceManager() (*services.DownloadService, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, 0, 0, false)
 	if err != nil {
 		return nil, err
@@ -53,11 +53,11 @@ func (tdc *TransferDataCommand) createSourceDownloadServiceManager() (*services.
 	return downloadService, nil
 }
 
-func (tdc *TransferDataCommand) createSourcePropsServiceManager() (*services.PropsService, error) {
+func (tdc *TransferFilesCommand) createSourcePropsServiceManager() (*services.PropsService, error) {
 	return createPropsServiceManager(tdc.sourceServerDetails)
 }
 
-func (tdc *TransferDataCommand) createTargetPropsServiceManager() (*services.PropsService, error) {
+func (tdc *TransferFilesCommand) createTargetPropsServiceManager() (*services.PropsService, error) {
 	return createPropsServiceManager(tdc.targetServerDetails)
 }
 
@@ -71,15 +71,15 @@ func createPropsServiceManager(serverDetails *coreConfig.ServerDetails) (*servic
 	return propsService, nil
 }
 
-func (tdc *TransferDataCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
 	return tdc.getAllLocalRepositories(tdc.sourceServerDetails)
 }
 
-func (tdc *TransferDataCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
 	return tdc.getAllLocalRepositories(tdc.targetServerDetails)
 }
 
-func (tdc *TransferDataCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
 	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return nil, err

@@ -79,7 +79,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar
-	// TODO: check int64
 	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(*srcRepos)))
 	if err != nil {
 		return err
@@ -120,6 +119,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 		tdc.progressbar.RemoveRepository()
 	}
+	tdc.progressbar.Quit()
 	return nil
 }
 

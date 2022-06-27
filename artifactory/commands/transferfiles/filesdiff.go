@@ -33,10 +33,6 @@ func (f *filesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgres
 	f.progressBar = progressbar
 }
 
-func (f *filesDiffPhase) getProgressBar() *progressbar.TransferProgressMng {
-	return f.progressBar
-}
-
 func (f *filesDiffPhase) initProgressBar() error {
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
@@ -63,7 +59,6 @@ func (f *filesDiffPhase) phaseStarted() error {
 }
 
 func (f *filesDiffPhase) phaseDone() error {
-	// TODO notify progress
 	return setFilesDiffHandlingCompleted(f.repoKey)
 }
 
@@ -124,7 +119,7 @@ func (f *filesDiffPhase) run() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, 1)
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, phase2Id)
 	}()
 
 	runWaitGroup.Add(1)
@@ -190,7 +185,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 		}
 		curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, 1)
+			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
 			if err != nil {
 				return err
 			}
@@ -200,7 +195,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, 1)
+		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
 	}
 	return nil
 }

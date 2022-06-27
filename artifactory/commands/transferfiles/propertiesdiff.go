@@ -28,10 +28,6 @@ func (p *propertiesDiffPhase) setProgressBar(progressbar *progressbar.TransferPr
 	p.progressBar = progressbar
 }
 
-func (p *propertiesDiffPhase) getProgressBar() *progressbar.TransferProgressMng {
-	return p.progressBar
-}
-
 func (p *propertiesDiffPhase) initProgressBar() error {
 	return nil
 }
@@ -46,7 +42,6 @@ func (p *propertiesDiffPhase) phaseStarted() error {
 }
 
 func (p *propertiesDiffPhase) phaseDone() error {
-	// TODO notify progress
 	return setPropsDiffHandlingCompleted(p.repoKey)
 }
 

@@ -19,7 +19,6 @@ type transferPhase interface {
 	setTargetDetails(*coreConfig.ServerDetails)
 	getPhaseName() string
 	setProgressBar(*progressbar.TransferProgressMng)
-	getProgressBar() *progressbar.TransferProgressMng
 	initProgressBar() error
 }
 

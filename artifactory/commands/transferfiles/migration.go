@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -8,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"sync"
@@ -32,10 +34,6 @@ func (m *migrationPhase) setProgressBar(progressbar *progressbar.TransferProgres
 	m.progressBar = progressbar
 }
 
-func (m *migrationPhase) getProgressBar() *progressbar.TransferProgressMng {
-	return m.progressBar
-}
-
 func (m *migrationPhase) initProgressBar() error {
 	serviceManager, err := utils.CreateServiceManager(m.getSourceDetails(), -1, 0, false)
 	if err != nil {
@@ -55,9 +53,7 @@ func (m *migrationPhase) initProgressBar() error {
 			return nil
 		}
 	}
-
-	m.progressBar.AddPhase1(0)
-	return nil
+	return errorutils.CheckError(errors.New(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)))
 }
 
 func (m *migrationPhase) getPhaseName() string {
@@ -98,6 +94,7 @@ func (m *migrationPhase) shouldSkipPhase() (bool, error) {
 }
 
 func (m *migrationPhase) skipPhase() {
+	// Init progress bas ad "done" with 0 tasks.
 	m.progressBar.AddPhase1(0)
 }
 
@@ -139,7 +136,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, 0)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id)
 	}()
 
 	var runnerErr error
@@ -211,7 +208,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 		case "file":
 			curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, 0)
+				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
 				if err != nil {
 					// TODO Maybe write failures to file and / or implement retry.
 					return err
@@ -229,7 +226,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, 0)
+		return uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
 	}
 	return nil
 }

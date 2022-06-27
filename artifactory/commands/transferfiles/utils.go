@@ -14,7 +14,11 @@ import (
 	"time"
 )
 
-const waitTimeBetweenChunkStatusSeconds = 3
+const (
+	waitTimeBetweenChunkStatusSeconds = 3
+	phase1Id                          = 0
+	phase2Id                          = 1
+)
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -163,8 +167,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				continue
 			case Done:
 				reduceCurProcessedChunks()
-				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				progressbar.IncrementPhase(phaseId)
+				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				handleFilesOfCompletedChunk(chunk.Files)
 			}
 		}

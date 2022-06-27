@@ -34,7 +34,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	}
 	transfer := TransferProgressMng{barsMng: mng}
 	// Init the total repositories transfer progress bar
-	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), true, WHITE)
+	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, WHITE)
 	return &transfer, nil
 }
 
@@ -45,7 +45,7 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.currentRepoHeadline = t.barsMng.NewHeadlineBar("Current repository: " + color.Green.Render(name))
+	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 }
 

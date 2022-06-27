@@ -128,7 +128,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, 0)
 	}()
 
 	var runnerErr error

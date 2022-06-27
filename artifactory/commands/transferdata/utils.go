@@ -132,7 +132,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, progressbar *progressbar.TransferProgressMng, phaseId int) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -164,7 +164,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				handleFilesOfCompletedChunk(chunk.Files)
+				handleFilesOfCompletedChunk(chunk.Files, progressbar, phaseId)
 			}
 		}
 	}
@@ -196,16 +196,17 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, progressbar *progressbar.TransferProgressMng, phaseId int) {
+	progressbar.IncrementPhaseBy(phaseId, len(chunkFiles))
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			// TODO increment progress.
+			// TODO update summary.
 		case Fail:
-			// TODO increment progress.
+			// TODO update summary.
 			addFailuresToConsumableFile(file)
 		case SkippedLargeProps:
-			// TODO increment progress.
+			// TODO update summary.
 			addToSkippedFile(file)
 		}
 	}

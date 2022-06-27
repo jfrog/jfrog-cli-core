@@ -87,7 +87,18 @@ func (m *migrationPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
 }
 
 func (m *migrationPhase) shouldSkipPhase() (bool, error) {
-	return isRepoMigrated(m.repoKey)
+	skip, err := isRepoMigrated(m.repoKey)
+	if err != nil {
+		return false, err
+	}
+	if skip {
+		m.skipPhase()
+	}
+	return skip, nil
+}
+
+func (m *migrationPhase) skipPhase() {
+	m.progressBar.AddPhase1(0)
 }
 
 func (m *migrationPhase) setSrcUserPluginService(service *srcUserPluginService) {

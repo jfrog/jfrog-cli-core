@@ -1,12 +1,11 @@
-package transferdata
+package transferfiles
 
 import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -96,6 +95,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		progressBarMng.NewRepository(repo.Key)
 		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
 			newPhase := getPhaseByNum(phaseI, repo.Key)
+			tdc.initNewPhase(newPhase, srcUpService)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
 				return err
@@ -103,7 +103,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if skip {
 				continue
 			}
-			tdc.initNewPhase(newPhase, srcUpService)
 			err = newPhase.phaseStarted()
 			newPhase.initProgressBar()
 			if err != nil {
@@ -119,6 +118,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				return err
 			}
 		}
+		tdc.progressbar.RemoveRepository()
 	}
 	return nil
 }

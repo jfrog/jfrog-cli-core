@@ -164,7 +164,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				handleFilesOfCompletedChunk(chunk.Files, progressbar, phaseId)
+				progressbar.IncrementPhase(phaseId)
+				handleFilesOfCompletedChunk(chunk.Files)
 			}
 		}
 	}
@@ -196,8 +197,7 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, progressbar *progressbar.TransferProgressMng, phaseId int) {
-	progressbar.IncrementPhaseBy(phaseId, len(chunkFiles))
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:

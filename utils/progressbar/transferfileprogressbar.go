@@ -43,7 +43,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 func (t *TransferProgressMng) NewRepository(name string) {
 	// Abort previous repository before creating the new one
 	if t.currentRepoHeadline != nil {
-		t.removeRepository()
+		t.RemoveRepository()
 	}
 	t.currentRepoHeadline = t.barsMng.NewHeadlineBar("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
@@ -51,7 +51,9 @@ func (t *TransferProgressMng) NewRepository(name string) {
 
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
-	t.removeRepository()
+	if t.currentRepoHeadline != nil {
+		t.RemoveRepository()
+	}
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
@@ -109,7 +111,7 @@ func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 //	return t.phases[id], nil
 //}
 
-func (t *TransferProgressMng) removeRepository() {
+func (t *TransferProgressMng) RemoveRepository() {
 	if t.currentRepoHeadline == nil {
 		return
 	}

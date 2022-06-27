@@ -124,7 +124,6 @@ func (f *filesDiffPhase) run() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		defer f.getProgressBar().IncrementPhase(1)
 		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, 1)
 	}()
 

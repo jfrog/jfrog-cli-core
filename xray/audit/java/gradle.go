@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 
@@ -12,13 +13,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper bool) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	graph, err := BuildGradleDependencyTree(excludeTestDeps, useWrapper)
 	if err != nil {
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress)
 	return
 }
 

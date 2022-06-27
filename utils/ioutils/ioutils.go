@@ -32,6 +32,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 			details.SetPassword(savedDetails.GetPassword())
 		}
 	}
+
 	return nil
 }
 

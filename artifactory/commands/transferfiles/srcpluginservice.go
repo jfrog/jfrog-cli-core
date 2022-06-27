@@ -1,4 +1,4 @@
-package transferdata
+package transferfiles
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package transferdata
+package transferfiles
 
 import (
 	"encoding/json"
@@ -7,12 +7,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"sync"
 	"time"
 )
 
-const waitTimeBetweenChunkStatusSeconds = 30
+const waitTimeBetweenChunkStatusSeconds = 3
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -22,7 +23,7 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
 }
 
-func (tdc *TransferDataCommand) getStorageInfo() (*artifactoryUtils.StorageInfo, error) {
+func (tdc *TransferFilesCommand) getStorageInfo() (*artifactoryUtils.StorageInfo, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, -1, 0, false)
 	if err != nil {
 		return nil, err
@@ -30,7 +31,7 @@ func (tdc *TransferDataCommand) getStorageInfo() (*artifactoryUtils.StorageInfo,
 	return serviceManager.StorageInfo()
 }
 
-func (tdc *TransferDataCommand) createTargetUploadServiceManager() (*services.UploadService, error) {
+func (tdc *TransferFilesCommand) createTargetUploadServiceManager() (*services.UploadService, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, 0, 0, false)
 	if err != nil {
 		return nil, err
@@ -41,7 +42,7 @@ func (tdc *TransferDataCommand) createTargetUploadServiceManager() (*services.Up
 	return uploadService, nil
 }
 
-func (tdc *TransferDataCommand) createSourceDownloadServiceManager() (*services.DownloadService, error) {
+func (tdc *TransferFilesCommand) createSourceDownloadServiceManager() (*services.DownloadService, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, 0, 0, false)
 	if err != nil {
 		return nil, err
@@ -51,11 +52,11 @@ func (tdc *TransferDataCommand) createSourceDownloadServiceManager() (*services.
 	return downloadService, nil
 }
 
-func (tdc *TransferDataCommand) createSourcePropsServiceManager() (*services.PropsService, error) {
+func (tdc *TransferFilesCommand) createSourcePropsServiceManager() (*services.PropsService, error) {
 	return createPropsServiceManager(tdc.sourceServerDetails)
 }
 
-func (tdc *TransferDataCommand) createTargetPropsServiceManager() (*services.PropsService, error) {
+func (tdc *TransferFilesCommand) createTargetPropsServiceManager() (*services.PropsService, error) {
 	return createPropsServiceManager(tdc.targetServerDetails)
 }
 
@@ -69,15 +70,15 @@ func createPropsServiceManager(serverDetails *coreConfig.ServerDetails) (*servic
 	return propsService, nil
 }
 
-func (tdc *TransferDataCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
 	return tdc.getAllLocalRepositories(tdc.sourceServerDetails)
 }
 
-func (tdc *TransferDataCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
 	return tdc.getAllLocalRepositories(tdc.targetServerDetails)
 }
 
-func (tdc *TransferDataCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
+func (tdc *TransferFilesCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
 	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return nil, err
@@ -171,7 +172,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks <= getThreads() {
+	if curProcessedUploadChunks < getThreads() {
 		curProcessedUploadChunks++
 		return true
 	}
@@ -190,7 +191,7 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 			return append(uuidTokens[:i], uuidTokens[i+1:]...)
 		}
 	}
-	// todo log unexpected.
+	log.Error("Unexpected uuid token found: " + token)
 	return uuidTokens
 }
 
@@ -229,6 +230,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 		}
 		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil || isChecksumDeployed {
+			// Chunk not uploaded or does not require polling.
 			reduceCurProcessedChunks()
 		}
 		return err

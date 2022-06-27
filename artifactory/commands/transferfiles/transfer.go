@@ -1,35 +1,53 @@
-package transferdata
+package transferfiles
 
 import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 )
 
 const (
 	tasksMaxCapacity = 500000
-	uploadChunkSize  = 10
-	// TODO change to 16:
-	defaultThreads = 2
+	// TODO change defaults:
+	uploadChunkSize = 2
+	defaultThreads  = 2
+	// TODO temporary repo:
+	singleRepo = "transfer-small-local"
 )
 
-type TransferDataCommand struct {
+type TransferFilesCommand struct {
 	sourceServerDetails       *config.ServerDetails
 	targetServerDetails       *config.ServerDetails
 	checkExistenceInFilestore bool
 }
 
-func NewTransferDataCommand(sourceServer, targetServer *config.ServerDetails) *TransferDataCommand {
-	return &TransferDataCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
+	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
 }
 
-func (tdc *TransferDataCommand) CommandName() string {
+func (tdc *TransferFilesCommand) CommandName() string {
 	return "rt_transfer_data"
 }
 
-func (tdc *TransferDataCommand) Run() (err error) {
+func (tdc *TransferFilesCommand) SetFilestore(filestore bool) {
+	tdc.checkExistenceInFilestore = filestore
+}
+
+func (tdc *TransferFilesCommand) Run() (err error) {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(transferDir, 0777)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
 	if err != nil {
 		return err
@@ -51,7 +69,7 @@ func (tdc *TransferDataCommand) Run() (err error) {
 		return err
 	}
 	// TODO replace with include/exclude repos.
-	srcRepos = &[]services.RepositoryDetails{{Key: "transfer-local"}}
+	srcRepos = &[]services.RepositoryDetails{{Key: singleRepo}}
 
 	targetRepos, err := tdc.getAllTargetLocalRepositories()
 	if err != nil {
@@ -92,7 +110,7 @@ func (tdc *TransferDataCommand) Run() (err error) {
 	return nil
 }
 
-func (tdc *TransferDataCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {
+func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {
 	newPhase.shouldCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)

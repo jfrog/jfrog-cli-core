@@ -1,4 +1,4 @@
-package transferdata
+package transferfiles
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"sync"
 	"time"
 )
 
@@ -70,8 +71,13 @@ func (f *filesDiffPhase) run() error {
 	expectedChan := make(chan int, 1)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
+	var runWaitGroup sync.WaitGroup
+	// Done channel notifies the polling go routine that no more tasks are expected.
+	doneChan := make(chan bool, 1)
 
+	runWaitGroup.Add(1)
 	go func() {
+		defer runWaitGroup.Done()
 		pcDetails := producerConsumerDetails{
 			producerConsumer: producerConsumer,
 			expectedChan:     expectedChan,
@@ -88,29 +94,32 @@ func (f *filesDiffPhase) run() error {
 		}
 	}()
 
-	doneChan := make(chan bool, 1)
-
+	runWaitGroup.Add(1)
 	var pollingError error
 	go func() {
+		defer runWaitGroup.Done()
 		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
 	}()
 
+	runWaitGroup.Add(1)
 	var runnerErr error
 	go func() {
+		defer runWaitGroup.Done()
 		runnerErr = producerConsumer.DoneWhenAllIdle(15)
 		doneChan <- true
 	}()
 	// Blocked until finish consuming
 	producerConsumer.Run()
+	runWaitGroup.Wait()
 
-	if runnerErr != nil {
-		return runnerErr
+	var returnedError error
+	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
+		if err != nil {
+			log.Error(err)
+			returnedError = err
+		}
 	}
-	if pollingError != nil {
-		return pollingError
-	}
-
-	return errorsQueue.GetError()
+	return returnedError
 }
 
 type diffTimeFrameHandlerFunc func(params timeFrameParams) parallel.TaskFunc
@@ -176,7 +185,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 }
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
-	items := fmt.Sprintf(`items.find({"type":"file","modified":{"$gte":"%s"},"modified":{"$lt":"%s"},"$or":[{"$and":[{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]}]})`, repoKey, fromTimestamp, toTimestamp)
+	items := fmt.Sprintf(`items.find({"type":"file","modified":{"$gte":"%s"},"modified":{"$lt":"%s"},"$or":[{"$and":[{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]}]})`, fromTimestamp, toTimestamp, repoKey)
 	items += `.include("repo","path","name")`
 	return items
 }

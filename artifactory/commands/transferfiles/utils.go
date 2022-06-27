@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -14,11 +15,26 @@ import (
 	"time"
 )
 
-const (
-	waitTimeBetweenChunkStatusSeconds = 3
-	phase1Id                          = 0
-	phase2Id                          = 1
-)
+const waitTimeBetweenChunkStatusSeconds = 3
+const waitTimeBetweenThreadsUpdateSeconds = 20
+const phase1Id = 0
+const phase2Id = 1
+
+var curThreads int
+var threadsMutex sync.Mutex
+
+func init() {
+	// Use default threads if settings file doesn't exist or an error occurred.
+	curThreads = defaultThreads
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if settings != nil {
+		curThreads = settings.ThreadsNumber
+	}
+}
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -146,12 +162,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 		curTokensBatch.fillTokensBatch(uploadTokensChan)
 
 		if len(curTokensBatch.UuidTokens) == 0 {
-			select {
-			case done := <-doneChan:
-				if done {
-					return nil
-				}
-			default:
+			if shouldStopPolling(doneChan) {
+				return nil
 			}
 			continue
 		}
@@ -264,6 +276,50 @@ func verifyRepoExistsInTarget(targetRepos *[]services.RepositoryDetails, srcRepo
 		if targetRepo.Key == srcRepoKey {
 			return true
 		}
+	}
+	return false
+}
+
+func getThreads() int {
+	threadsMutex.Lock()
+	defer threadsMutex.Unlock()
+	return curThreads
+}
+
+// Periodically reads settings file and updates the number of threads.
+func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool) {
+	for {
+		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
+		if shouldStopPolling(doneChan) {
+			return
+		}
+		err := updateThreads(producerConsumer)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func updateThreads(producerConsumer parallel.Runner) error {
+	threadsMutex.Lock()
+	defer threadsMutex.Unlock()
+
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		return err
+	}
+	if settings != nil && curThreads != settings.ThreadsNumber {
+		curThreads = settings.ThreadsNumber
+		producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+	}
+	return nil
+}
+
+func shouldStopPolling(doneChan chan bool) bool {
+	select {
+	case done := <-doneChan:
+		return done
+	default:
 	}
 	return false
 }

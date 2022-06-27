@@ -116,8 +116,14 @@ func (m *migrationPhase) run() error {
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routine that no more tasks are expected.
-	doneChan := make(chan bool, 1)
+	// Done channel notifies the polling go routines that no more tasks are expected.
+	doneChan := make(chan bool, 2)
+
+	runWaitGroup.Add(1)
+	go func() {
+		defer runWaitGroup.Done()
+		periodicallyUpdateThreads(producerConsumer, doneChan)
+	}()
 
 	runWaitGroup.Add(1)
 	go func() {
@@ -144,6 +150,7 @@ func (m *migrationPhase) run() error {
 	go func() {
 		defer runWaitGroup.Done()
 		runnerErr = producerConsumer.DoneWhenAllIdle(15)
+		doneChan <- true
 		doneChan <- true
 	}()
 	// Blocked until finish consuming

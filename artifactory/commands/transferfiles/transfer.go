@@ -16,9 +16,9 @@ const (
 	tasksMaxCapacity = 500000
 	// TODO change defaults:
 	uploadChunkSize = 2
-	defaultThreads  = 2
+	defaultThreads  = 16
 	// TODO temporary repo:
-	singleRepo = "transfer-small-local"
+	singleRepo = "transfer-data-local"
 )
 
 type TransferFilesCommand struct {
@@ -59,7 +59,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if cleanStart {
+	if cleanStart && !propertiesPhaseDisabled {
 		err = nodeDetection(srcUpService)
 		if err != nil {
 			return err
@@ -136,9 +136,4 @@ type producerConsumerDetails struct {
 	expectedChan     chan int
 	errorsQueue      *clientUtils.ErrorsQueue
 	uploadTokensChan chan string
-}
-
-func getThreads() int {
-	// TODO implement
-	return defaultThreads
 }

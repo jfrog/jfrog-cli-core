@@ -102,20 +102,35 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	results, isMultipleRootProject, err := GenericAudit(auditCmd.CreateXrayGraphScanParams(), server, auditCmd.excludeTestDependencies, auditCmd.useWrapper, auditCmd.insecureTls, auditCmd.args, auditCmd.progress, auditCmd.technologies...)
+	results, isMultipleRootProject, err := GenericAudit(
+		auditCmd.CreateXrayGraphScanParams(),
+		server,
+		auditCmd.excludeTestDependencies,
+		auditCmd.useWrapper,
+		auditCmd.insecureTls,
+		auditCmd.args,
+		auditCmd.progress,
+		auditCmd.technologies...,
+	)
 	if err != nil {
 		return err
 	}
 
 	if auditCmd.progress != nil {
 		err = auditCmd.progress.Quit()
+		if err != nil {
+			return err
+		}
 	}
 
-	if err != nil {
-		return err
-	}
-
-	err = xrutils.PrintScanResults(results, nil, auditCmd.OutputFormat, auditCmd.IncludeVulnerabilities, auditCmd.IncludeLicenses, isMultipleRootProject, auditCmd.PrintExtendedTable)
+	err = xrutils.PrintScanResults(results,
+		nil,
+		auditCmd.OutputFormat,
+		auditCmd.IncludeVulnerabilities,
+		auditCmd.IncludeLicenses,
+		isMultipleRootProject,
+		auditCmd.PrintExtendedTable,
+	)
 	if err != nil {
 		return err
 	}

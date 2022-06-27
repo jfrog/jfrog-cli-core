@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type tranaferConfigHandler func(w http.ResponseWriter, r *http.Request)
+type transferConfigHandler func(w http.ResponseWriter, r *http.Request)
 
 func TestExportSourceArtifactory(t *testing.T) {
 	// Create transfer config command
@@ -171,7 +171,7 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 // Create mock server to test replication body
 // t           - The testing object
 // testHandler - The HTTP handler of the test
-func createMockServer(t *testing.T, testHandler tranaferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
+func createMockServer(t *testing.T, testHandler transferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
 

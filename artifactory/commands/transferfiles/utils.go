@@ -91,24 +91,6 @@ func createPropsServiceManager(serverDetails *coreConfig.ServerDetails) (*servic
 	return propsService, nil
 }
 
-func (tdc *TransferFilesCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
-	return tdc.getAllLocalRepositories(tdc.sourceServerDetails)
-}
-
-func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
-	return tdc.getAllLocalRepositories(tdc.targetServerDetails)
-}
-
-func (tdc *TransferFilesCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
-	if err != nil {
-		return nil, err
-	}
-
-	params := services.RepositoriesFilterParams{RepoType: "local"}
-	return serviceManager.GetAllRepositoriesFiltered(params)
-}
-
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *artifactoryUtils.AqlSearchResult, err error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, -1, 0, false)
 	if err != nil {
@@ -271,9 +253,9 @@ func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk
 	return false, nil
 }
 
-func verifyRepoExistsInTarget(targetRepos *[]services.RepositoryDetails, srcRepoKey string) bool {
-	for _, targetRepo := range *targetRepos {
-		if targetRepo.Key == srcRepoKey {
+func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
+	for _, targetRepo := range targetRepos {
+		if targetRepo == srcRepoKey {
 			return true
 		}
 	}

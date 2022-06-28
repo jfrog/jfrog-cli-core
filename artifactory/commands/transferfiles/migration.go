@@ -81,7 +81,10 @@ func (m *migrationPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.DonePhase(phase1Id)
+	if m.progressBar != nil {
+		return m.progressBar.DonePhase(phase1Id)
+	}
+	return nil
 }
 
 func (m *migrationPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -127,6 +130,16 @@ func (m *migrationPhase) run() error {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
+	// TODO create chanel
+	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	go func() {
+		err := WriteTransferErrorsToFile(m.repoKey, phase1Id, convertTimeToEpochMilliseconds(m.startTime), errorChannel)
+		if err != nil {
+			// TODO: check what to do with the error
+			log.Error(err)
+		}
+	}()
+
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
@@ -150,7 +163,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id, errorChannel)
 	}()
 
 	var runnerErr error
@@ -164,6 +177,8 @@ func (m *migrationPhase) run() error {
 	// Blocked until finish consuming
 	producerConsumer.Run()
 	runWaitGroup.Wait()
+
+	close(errorChannel)
 
 	var returnedError error
 	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {

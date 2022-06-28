@@ -66,7 +66,10 @@ func (f *filesDiffPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return f.progressBar.DonePhase(phase2Id)
+	if f.progressBar != nil {
+		return f.progressBar.DonePhase(phase2Id)
+	}
+	return nil
 }
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
@@ -103,6 +106,15 @@ func (f *filesDiffPhase) run() error {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
+	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	go func() {
+		err := WriteTransferErrorsToFile(f.repoKey, phase1Id, convertTimeToEpochMilliseconds(f.startTime), errorChannel)
+		if err != nil {
+			// TODO: check what to do with the error
+			log.Error(err)
+		}
+	}()
+
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
@@ -132,7 +144,7 @@ func (f *filesDiffPhase) run() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, phase2Id)
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, phase2Id, errorChannel)
 	}()
 
 	runWaitGroup.Add(1)
@@ -146,6 +158,8 @@ func (f *filesDiffPhase) run() error {
 	// Blocked until finish consuming
 	producerConsumer.Run()
 	runWaitGroup.Wait()
+
+	close(errorChannel)
 
 	var returnedError error
 	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {

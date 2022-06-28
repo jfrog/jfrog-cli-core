@@ -169,6 +169,9 @@ func addNewDiffToState(repoKey string, startTime time.Time) error {
 func getDiffHandlingRange(repoKey string) (start, end time.Time, err error) {
 	action := func(state *TransferState) error {
 		repo, inErr := state.getRepository(repoKey, false)
+		if inErr != nil {
+			return inErr
+		}
 		start, inErr = convertRFC3339ToTime(repo.Diffs[len(repo.Diffs)-1].HandledRange.Started)
 		if inErr != nil {
 			return inErr

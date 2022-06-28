@@ -121,10 +121,9 @@ propertiesHandling:
 }
 
 type propsHandlingStatus struct {
-	nodesStatus         []nodeStatus
-	totalPropsToDeliver int64
-	totalPropsDelivered int64
+	nodesStatus []nodeStatus
 }
+
 type nodeStatus struct {
 	nodeId              string
 	propertiesDelivered int64
@@ -171,7 +170,6 @@ func (phs propsHandlingStatus) updateTotalAndDelivered(localNodeStatus *nodeStat
 	}
 	// Total has changed, update it.
 	if remoteTotal != localNodeStatus.propertiesTotal {
-		phs.totalPropsToDeliver += remoteTotal - localNodeStatus.propertiesTotal
 		localNodeStatus.propertiesTotal = remoteTotal
 	}
 
@@ -180,8 +178,6 @@ func (phs propsHandlingStatus) updateTotalAndDelivered(localNodeStatus *nodeStat
 	if err != nil {
 		return err
 	}
-	newDeliveries := delivered - localNodeStatus.propertiesDelivered
-	phs.totalPropsDelivered += newDeliveries
 	localNodeStatus.propertiesDelivered = delivered
 	return nil
 }

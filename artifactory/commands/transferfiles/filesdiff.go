@@ -156,7 +156,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, f.getPhaseId())
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
 	}()
 
 	runWaitGroup.Add(1)
@@ -294,7 +294,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, f.getPhaseId())
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
 	}()
 
 	runWaitGroup.Add(1)

@@ -7,8 +7,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -47,53 +45,6 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 		return nil, err
 	}
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
-}
-
-func (tdc *TransferFilesCommand) getStorageInfo() (*artifactoryUtils.StorageInfo, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, -1, 0, false)
-	if err != nil {
-		return nil, err
-	}
-	return serviceManager.StorageInfo()
-}
-
-func (tdc *TransferFilesCommand) createTargetUploadServiceManager() (*services.UploadService, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, 0, 0, false)
-	if err != nil {
-		return nil, err
-	}
-	uploadService := services.NewUploadService(serviceManager.Client())
-	uploadService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
-	uploadService.Threads = serviceManager.GetConfig().GetThreads()
-	return uploadService, nil
-}
-
-func (tdc *TransferFilesCommand) createSourceDownloadServiceManager() (*services.DownloadService, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, 0, 0, false)
-	if err != nil {
-		return nil, err
-	}
-	downloadService := services.NewDownloadService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client())
-	downloadService.Threads = serviceManager.GetConfig().GetThreads()
-	return downloadService, nil
-}
-
-func (tdc *TransferFilesCommand) createSourcePropsServiceManager() (*services.PropsService, error) {
-	return createPropsServiceManager(tdc.sourceServerDetails)
-}
-
-func (tdc *TransferFilesCommand) createTargetPropsServiceManager() (*services.PropsService, error) {
-	return createPropsServiceManager(tdc.targetServerDetails)
-}
-
-func createPropsServiceManager(serverDetails *coreConfig.ServerDetails) (*services.PropsService, error) {
-	serviceManager, err := utils.CreateServiceManager(serverDetails, 0, 0, false)
-	if err != nil {
-		return nil, err
-	}
-	propsService := services.NewPropsService(serviceManager.Client())
-	propsService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
-	return propsService, nil
 }
 
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *artifactoryUtils.AqlSearchResult, err error) {
@@ -139,7 +90,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, progressbar *progressbar.TransferProgressMng, phaseId int) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 

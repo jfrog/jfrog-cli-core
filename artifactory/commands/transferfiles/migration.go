@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -9,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"sync"
@@ -56,11 +54,15 @@ func (m *migrationPhase) initProgressBar() error {
 			return nil
 		}
 	}
-	return errorutils.CheckError(errors.New(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)))
+	return fmt.Errorf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)
 }
 
 func (m *migrationPhase) getPhaseName() string {
 	return "Migration Phase"
+}
+
+func (m *migrationPhase) getPhaseId() int {
+	return 0
 }
 
 func (m *migrationPhase) phaseStarted() error {
@@ -70,7 +72,7 @@ func (m *migrationPhase) phaseStarted() error {
 		return err
 	}
 
-	if !propertiesPhaseDisabled {
+	if !isPropertiesPhaseDisabled() {
 		return m.srcUpService.storeProperties(m.repoKey)
 	}
 	return nil
@@ -82,7 +84,7 @@ func (m *migrationPhase) phaseDone() error {
 		return err
 	}
 	if m.progressBar != nil {
-		return m.progressBar.DonePhase(phase1Id)
+		return m.progressBar.DonePhase(m.getPhaseId())
 	}
 	return nil
 }
@@ -163,7 +165,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id, errorChannel)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, errorChannel)
 	}()
 
 	var runnerErr error
@@ -240,15 +242,12 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
 				if err != nil {
-					// TODO Maybe write failures to file and / or implement retry.
-					return err
+					log.Error(err)
 				}
 				// Increase phase1 progress bar with the uploaded number of files.
 				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
-					if err != nil {
-						return err
-					}
+					err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
+					log.Error(err)
 				}
 				// Empty the uploaded chunk.
 				curUploadChunk.UploadCandidates = []FileRepresentation{}
@@ -269,7 +268,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
-			err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
+			err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
 			if err != nil {
 				return err
 			}

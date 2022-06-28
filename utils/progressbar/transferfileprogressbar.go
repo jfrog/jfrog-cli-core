@@ -55,6 +55,8 @@ func (t *TransferProgressMng) Quit() error {
 		t.RemoveRepository()
 	}
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	// Wait a refresh rate to make sure all aborts have finished
+	time.Sleep(ProgressRefreshRate)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
 	// Close log file
@@ -82,7 +84,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	return nil
 }
 
-// IncrementPhase increments completed tasks count for a specific phase by n.
+// IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckError(errors.New("invalid phase id"))
@@ -127,6 +129,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 		t.barsMng.quitTasksWithHeadlineProg(t.phases[i])
 	}
 	t.phases = nil
+	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
 }
 

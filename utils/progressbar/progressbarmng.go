@@ -179,7 +179,6 @@ func filterColor(color Color) (filter string) {
 	return
 }
 
-// TODO: duplication
 // The ShouldInitProgressBar func is used to determine whether the progress bar should be displayed.
 // This default implementation will init the progress bar if the following conditions are met:
 // CI == false (or unset) and Stderr is a terminal.

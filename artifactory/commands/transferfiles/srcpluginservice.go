@@ -91,6 +91,10 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 	params := map[string]string{"repoKey": repoKey}
 	requestFullUrl, err := utils.BuildArtifactoryUrl(sup.GetArtifactoryDetails().GetUrl(), pluginsExecuteRestApi+"storeProperties", params)
+	if err != nil {
+		return err
+	}
+
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	resp, body, err := sup.client.SendPost(requestFullUrl, nil, &httpDetails)
 	if err != nil {
@@ -107,25 +111,6 @@ func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 func (sup *srcUserPluginService) ping() (nodeId string, err error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	resp, body, _, err := sup.client.SendGet(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"pingDataTransfer", true, &httpDetails)
-	if err != nil {
-		return "", err
-	}
-
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
-	}
-
-	var response NodeIdResponse
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return response.NodeId, nil
-}
-
-func (sup *srcUserPluginService) cleanStart() (nodeId string, err error) {
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"cleanStart", nil, &httpDetails)
 	if err != nil {
 		return "", err
 	}

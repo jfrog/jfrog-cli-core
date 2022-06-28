@@ -55,6 +55,7 @@ func (t *TransferProgressMng) Quit() error {
 		t.RemoveRepository()
 	}
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	time.Sleep(ProgressRefreshRate)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
 	// Close log file

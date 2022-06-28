@@ -55,6 +55,7 @@ func (t *TransferProgressMng) Quit() error {
 		t.RemoveRepository()
 	}
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
@@ -128,6 +129,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 		t.barsMng.quitTasksWithHeadlineProg(t.phases[i])
 	}
 	t.phases = nil
+	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
 }
 

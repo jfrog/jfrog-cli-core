@@ -7,17 +7,19 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
 
-func GenerateSummaryFiles(logPaths []string) (err error) {
+func GenerateSummaryFiles(logPaths []string, csvDirPath string) (err error) {
 	allErrors, err := ReadErrorsFromLogFiles(logPaths)
 	if err != nil {
 		return
 	}
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	summaryCsv, err := os.Create(fmt.Sprintf("logs-%s.csv", timestamp))
+	// todo: create name convention and location for file
+	summaryCsv, err := os.Create(filepath.Join(csvDirPath, fmt.Sprintf("logs-%s.csv", timestamp)))
 	if err != nil {
 		return
 	}
@@ -27,7 +29,8 @@ func GenerateSummaryFiles(logPaths []string) (err error) {
 			err = e
 		}
 	}()
-	return gocsv.MarshalFile(&allErrors, summaryCsv)
+	err = gocsv.MarshalFile(allErrors.Errors, summaryCsv)
+	return
 }
 
 func ReadErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {

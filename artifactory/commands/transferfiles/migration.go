@@ -273,6 +273,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 			}
 		}
 	}
+	log.Debug(logMsgPrefix+"Done migrating folder:", path.Join(params.repoKey, params.relativePath))
 	return nil
 }
 

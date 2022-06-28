@@ -232,8 +232,12 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 		return err
 	}
 	if f.progressBar != nil {
-		return f.progressBar.IncrementPhase(f.getPhaseId())
+		err = f.progressBar.IncrementPhase(f.getPhaseId())
+		if err != nil {
+			return err
+		}
 	}
+	log.Debug(logMsgPrefix + "Done handling time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
 	return nil
 }
 

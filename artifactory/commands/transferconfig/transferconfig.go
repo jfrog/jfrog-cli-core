@@ -176,6 +176,9 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 
 	// Create rtDetails
 	rtDetails, err := createArtifactoryClientDetails(targetServicesManager)
+	if err != nil {
+		return err
+	}
 
 	// Get config-import plugin version
 	configImportVersionUrl := artifactoryUrl + "api/plugins/execute/configImportVersion"

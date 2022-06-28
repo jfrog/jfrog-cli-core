@@ -202,7 +202,7 @@ func setFilesDiffHandlingCompleted(repoKey string) error {
 			return err
 		}
 		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
-		repo.Diffs[len(repo.Diffs)-1].Completed = propertiesPhaseDisabled
+		repo.Diffs[len(repo.Diffs)-1].Completed = isPropertiesPhaseDisabled()
 		return nil
 	}
 	return doAndSaveState(action)

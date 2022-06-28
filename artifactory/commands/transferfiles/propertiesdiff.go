@@ -8,7 +8,6 @@ import (
 )
 
 const waitTimeBetweenPropertiesStatusSeconds = 5
-const propertiesPhaseDisabled = true
 
 type propertiesDiffPhase struct {
 	repoKey                   string
@@ -36,6 +35,10 @@ func (p *propertiesDiffPhase) getPhaseName() string {
 	return "Properties Diff Handling Phase"
 }
 
+func (p *propertiesDiffPhase) getPhaseId() int {
+	return 2
+}
+
 func (p *propertiesDiffPhase) phaseStarted() error {
 	p.startTime = time.Now()
 	return setPropsDiffHandlingStarted(p.repoKey, p.startTime)
@@ -50,7 +53,7 @@ func (p *propertiesDiffPhase) shouldCheckExistenceInFilestore(shouldCheck bool) 
 }
 
 func (p *propertiesDiffPhase) shouldSkipPhase() (bool, error) {
-	return propertiesPhaseDisabled, nil
+	return isPropertiesPhaseDisabled(), nil
 }
 
 func (p *propertiesDiffPhase) setSrcUserPluginService(service *srcUserPluginService) {
@@ -113,7 +116,6 @@ propertiesHandling:
 			}
 		}
 
-		notifyPropertiesProgressDone()
 		return nil
 	}
 }
@@ -165,24 +167,20 @@ func (phs propsHandlingStatus) handleInProgressStatus(remoteNodeStatus *HandlePr
 func (phs propsHandlingStatus) updateTotalAndDelivered(localNodeStatus *nodeStatus, remoteNodeStatus *HandlePropertiesDiffResponse) error {
 	remoteTotal, err := remoteNodeStatus.PropertiesTotal.Int64()
 	if err != nil {
-		// TODO handle error.
 		return err
 	}
 	// Total has changed, update it.
 	if remoteTotal != localNodeStatus.propertiesTotal {
 		phs.totalPropsToDeliver += remoteTotal - localNodeStatus.propertiesTotal
 		localNodeStatus.propertiesTotal = remoteTotal
-		updatePropertiesProgressTotal(phs.totalPropsToDeliver)
 	}
 
 	// Delivered has changed, update it.
 	delivered, err := remoteNodeStatus.PropertiesDelivered.Int64()
 	if err != nil {
-		// TODO handle error.
 		return err
 	}
 	newDeliveries := delivered - localNodeStatus.propertiesDelivered
-	incrementPropertiesProgress(newDeliveries)
 	phs.totalPropsDelivered += newDeliveries
 	localNodeStatus.propertiesDelivered = delivered
 	return nil
@@ -200,22 +198,9 @@ func (phs propsHandlingStatus) handleDoneStatus(remoteNodeStatus *HandleProperti
 	}
 
 	localNodeStatus.isDone = true
-	addErrorsToNonConsumableFile(remoteNodeStatus.Errors)
 	return phs.updateTotalAndDelivered(localNodeStatus, remoteNodeStatus)
 }
 
-func updatePropertiesProgressTotal(newTotal int64) {
-	// TODO implement
-}
-
-func incrementPropertiesProgress(incr int64) {
-	// TODO implement
-}
-
-func notifyPropertiesProgressDone() {
-	// TODO implement
-}
-
-func addErrorsToNonConsumableFile(errors []PropertiesHandlingError) {
-	// TODO implement
+func isPropertiesPhaseDisabled() bool {
+	return true
 }

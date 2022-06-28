@@ -20,10 +20,10 @@ import (
 	"time"
 )
 
-const waitTimeBetweenChunkStatusSeconds = 3
-const waitTimeBetweenThreadsUpdateSeconds = 20
-const phase1Id = 0
-const phase2Id = 1
+const (
+	waitTimeBetweenChunkStatusSeconds   = 3
+	waitTimeBetweenThreadsUpdateSeconds = 20
+)
 
 var curThreads int
 var threadsMutex sync.Mutex
@@ -166,12 +166,6 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				continue
 			case Done:
 				reduceCurProcessedChunks()
-				if progressbar != nil {
-					err = progressbar.IncrementPhase(phaseId)
-					if err != nil {
-						return err
-					}
-				}
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				handleFilesOfCompletedChunk(chunk.Files)
 			}
@@ -209,23 +203,10 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			// TODO update summary.
 		case Fail:
-			// TODO update summary.
-			addFailuresToConsumableFile(file)
 		case SkippedLargeProps:
-			// TODO update summary.
-			addToSkippedFile(file)
 		}
 	}
-}
-
-func addFailuresToConsumableFile(file FileUploadStatusResponse) {
-	// TODO implement
-}
-
-func addToSkippedFile(file FileUploadStatusResponse) {
-	// TODO implement
 }
 
 // Uploads chunk when there is room in queue.
@@ -301,7 +282,9 @@ func updateThreads(producerConsumer parallel.Runner) error {
 	}
 	if settings != nil && curThreads != settings.ThreadsNumber {
 		curThreads = settings.ThreadsNumber
-		producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+		if producerConsumer != nil {
+			producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}
 	return nil

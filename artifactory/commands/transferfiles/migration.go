@@ -63,6 +63,10 @@ func (m *migrationPhase) getPhaseName() string {
 	return "Migration Phase"
 }
 
+func (m *migrationPhase) getPhaseId() int {
+	return 0
+}
+
 func (m *migrationPhase) phaseStarted() error {
 	m.startTime = time.Now()
 	err := setRepoMigrationStarted(m.repoKey, m.startTime)
@@ -70,7 +74,7 @@ func (m *migrationPhase) phaseStarted() error {
 		return err
 	}
 
-	if !propertiesPhaseDisabled {
+	if !isPropertiesPhaseDisabled() {
 		return m.srcUpService.storeProperties(m.repoKey)
 	}
 	return nil
@@ -81,7 +85,7 @@ func (m *migrationPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.DonePhase(phase1Id)
+	return m.progressBar.DonePhase(m.getPhaseId())
 }
 
 func (m *migrationPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -150,7 +154,7 @@ func (m *migrationPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, phase1Id)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, m.progressBar, m.getPhaseId())
 	}()
 
 	var runnerErr error
@@ -225,15 +229,12 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
 				if err != nil {
-					// TODO Maybe write failures to file and / or implement retry.
-					return err
+					log.Error(err)
 				}
 				// Increase phase1 progress bar with the uploaded number of files.
 				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
-					if err != nil {
-						return err
-					}
+					err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
+					log.Error(err)
 				}
 				// Empty the uploaded chunk.
 				curUploadChunk.UploadCandidates = []FileRepresentation{}
@@ -254,7 +255,7 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
-			err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
+			err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
 			if err != nil {
 				return err
 			}

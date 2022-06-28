@@ -2,15 +2,20 @@ package transferfiles
 
 import (
 	"encoding/json"
+	biUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -89,24 +94,6 @@ func createPropsServiceManager(serverDetails *coreConfig.ServerDetails) (*servic
 	propsService := services.NewPropsService(serviceManager.Client())
 	propsService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
 	return propsService, nil
-}
-
-func (tdc *TransferFilesCommand) getAllSrcLocalRepositories() (*[]services.RepositoryDetails, error) {
-	return tdc.getAllLocalRepositories(tdc.sourceServerDetails)
-}
-
-func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() (*[]services.RepositoryDetails, error) {
-	return tdc.getAllLocalRepositories(tdc.targetServerDetails)
-}
-
-func (tdc *TransferFilesCommand) getAllLocalRepositories(serverDetails *coreConfig.ServerDetails) (*[]services.RepositoryDetails, error) {
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
-	if err != nil {
-		return nil, err
-	}
-
-	params := services.RepositoriesFilterParams{RepoType: "local"}
-	return serviceManager.GetAllRepositoriesFiltered(params)
 }
 
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *artifactoryUtils.AqlSearchResult, err error) {
@@ -275,9 +262,9 @@ func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk
 	return false, nil
 }
 
-func verifyRepoExistsInTarget(targetRepos *[]services.RepositoryDetails, srcRepoKey string) bool {
-	for _, targetRepo := range *targetRepos {
-		if targetRepo.Key == srcRepoKey {
+func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
+	for _, targetRepo := range targetRepos {
+		if targetRepo == srcRepoKey {
 			return true
 		}
 	}
@@ -315,6 +302,7 @@ func updateThreads(producerConsumer parallel.Runner) error {
 	if settings != nil && curThreads != settings.ThreadsNumber {
 		curThreads = settings.ThreadsNumber
 		producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}
 	return nil
 }
@@ -326,4 +314,32 @@ func shouldStopPolling(doneChan chan bool) bool {
 	default:
 	}
 	return false
+}
+
+func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
+	var dirPath string
+	if isRetry {
+		dirPath, err = coreutils.GetJfrogTransferRetryableDir()
+	} else {
+		dirPath, err = coreutils.GetJfrogTransferSkippedDir()
+	}
+	if err != nil {
+		return []string{}, err
+	}
+	exist, err := biUtils.IsDirExists(dirPath, false)
+	if !exist || err != nil {
+		return []string{}, err
+	}
+
+	filesNames, err := biUtils.ListFiles(dirPath, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range filesNames {
+		if strings.HasPrefix(filepath.Base(file), repoKey) {
+			filesPaths = append(filesPaths, file)
+		}
+	}
+	return
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -63,7 +62,7 @@ func CheckPluginsVersionAndConvertIfNeeded() error {
 		return err
 	}
 	if plugins.Version != coreutils.GetPluginsConfigVersion() {
-		return errorutils.CheckError(errors.New(fmt.Sprintf("Expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)))
+		return fmt.Errorf("expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)
 	}
 	return nil
 }

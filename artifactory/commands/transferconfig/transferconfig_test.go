@@ -99,15 +99,20 @@ func TestSanityVerifications(t *testing.T) {
 	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
 			w.WriteHeader(http.StatusOK)
+		} else if r.RequestURI == "/api/plugins/execute/configImportVersion" {
+			content, err := json.Marshal(versionResponse{Version: "1.0.0"})
+			assert.NoError(t, err)
+			_, err = w.Write(content)
+			assert.NoError(t, err)
 		} else {
 			content, err := json.Marshal(users)
 			assert.NoError(t, err)
-			w.Write(content)
+			_, err = w.Write(content)
+			assert.NoError(t, err)
 			users = append(users, services.User{})
 		}
 	})
 	defer testServer.Close()
-
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 
 	// Test low artifactory version
@@ -152,7 +157,7 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
-	assert.ErrorContains(t, err, "Target server response: 404 Not Found.\n\nIt looks like the config-import plugin is not installed on your target server.")
+	assert.ErrorContains(t, err, "Response from Artifactory: 404 Not Found.")
 }
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {
@@ -165,7 +170,7 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
-	assert.ErrorContains(t, err, "Target server response: 403 Forbidden.")
+	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
 }
 
 // Create mock server to test replication body

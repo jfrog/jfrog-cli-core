@@ -34,6 +34,9 @@ func (f *filesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgres
 }
 
 func (f *filesDiffPhase) initProgressBar() error {
+	if f.progressBar == nil {
+		return nil
+	}
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
@@ -59,7 +62,11 @@ func (f *filesDiffPhase) phaseStarted() error {
 }
 
 func (f *filesDiffPhase) phaseDone() error {
-	return setFilesDiffHandlingCompleted(f.repoKey)
+	err := setFilesDiffHandlingCompleted(f.repoKey)
+	if err != nil {
+		return err
+	}
+	return f.progressBar.DonePhase(phase2Id)
 }
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
@@ -192,7 +199,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 		}
 		curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
+			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
 			if err != nil {
 				return err
 			}
@@ -202,9 +209,16 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, f.progressBar, phase2Id)
+		err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+		if err != nil {
+			return err
+		}
 	}
-	return nil
+
+	if f.progressBar != nil {
+		err = f.progressBar.IncrementPhase(phase2Id)
+	}
+	return err
 }
 
 func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string) (result *artifactoryUtils.AqlSearchResult, err error) {

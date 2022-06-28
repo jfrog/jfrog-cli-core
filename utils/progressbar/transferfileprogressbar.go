@@ -94,22 +94,21 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	return nil
 }
 
-// TODO change to addphase
+func (t *TransferProgressMng) DonePhase(id int) error {
+	if id < 0 || id > len(t.phases)-1 {
+		return errorutils.CheckError(errors.New("invalid phase id"))
+	}
+	t.barsMng.DoneTask(t.phases[id])
+	return nil
+}
+
 func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transfer all files in the repository", false, GREEN))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, GREEN))
 }
 
 func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transfer newly created and modified files", false, GREEN))
 }
-
-//
-//func (t *TransferProgressMng) GetPhase2(id int) (*tasksWithHeadlineProg, error) {
-//	if id < 0 || id > len(t.phases)-1 {
-//		return nil, errorutils.CheckError(errors.New("invalid phase id"))
-//	}
-//	return t.phases[id], nil
-//}
 
 func (t *TransferProgressMng) RemoveRepository() {
 	if t.currentRepoHeadline == nil {

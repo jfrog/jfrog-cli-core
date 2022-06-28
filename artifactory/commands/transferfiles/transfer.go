@@ -91,7 +91,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			log.Error("Repo '" + repo.Key + "' does not exist in target. Skipping...")
 			continue
 		}
-		progressBarMng.NewRepository(repo.Key)
+		if tdc.progressbar != nil {
+			tdc.progressbar.NewRepository(repo.Key)
+		}
 		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
 			newPhase := getPhaseByNum(phaseI, repo.Key)
 			tdc.initNewPhase(newPhase, srcUpService)
@@ -103,7 +105,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				continue
 			}
 			err = newPhase.phaseStarted()
-			newPhase.initProgressBar()
+			if err != nil {
+				return err
+			}
+			err = newPhase.initProgressBar()
 			if err != nil {
 				return err
 			}
@@ -117,10 +122,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				return err
 			}
 		}
-		tdc.progressbar.RemoveRepository()
 	}
-	tdc.progressbar.Quit()
-	return nil
+	if tdc.progressbar != nil {
+		err = tdc.progressbar.Quit()
+	}
+	return err
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {

@@ -35,6 +35,9 @@ func (m *migrationPhase) setProgressBar(progressbar *progressbar.TransferProgres
 }
 
 func (m *migrationPhase) initProgressBar() error {
+	if m.progressBar == nil {
+		return nil
+	}
 	serviceManager, err := utils.CreateServiceManager(m.getSourceDetails(), -1, 0, false)
 	if err != nil {
 		return err
@@ -74,8 +77,11 @@ func (m *migrationPhase) phaseStarted() error {
 }
 
 func (m *migrationPhase) phaseDone() error {
-	// TODO notify progress
-	return setRepoMigrationCompleted(m.repoKey)
+	err := setRepoMigrationCompleted(m.repoKey)
+	if err != nil {
+		return err
+	}
+	return m.progressBar.DonePhase(phase1Id)
 }
 
 func (m *migrationPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -94,8 +100,10 @@ func (m *migrationPhase) shouldSkipPhase() (bool, error) {
 }
 
 func (m *migrationPhase) skipPhase() {
-	// Init progress bas ad "done" with 0 tasks.
-	m.progressBar.AddPhase1(0)
+	// Init progress bar as "done" with 0 tasks.
+	if m.progressBar != nil {
+		m.progressBar.AddPhase1(0)
+	}
 }
 
 func (m *migrationPhase) setSrcUserPluginService(service *srcUserPluginService) {
@@ -215,10 +223,17 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 		case "file":
 			curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
+				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
 				if err != nil {
 					// TODO Maybe write failures to file and / or implement retry.
 					return err
+				}
+				// Increase phase1 progress bar with the uploaded number of files.
+				if m.progressBar != nil {
+					err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
+					if err != nil {
+						return err
+					}
 				}
 				// Empty the uploaded chunk.
 				curUploadChunk.UploadCandidates = []FileRepresentation{}
@@ -233,7 +248,17 @@ func (m *migrationPhase) migrateFolder(params folderParams, logMsgPrefix string,
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan, m.progressBar, phase1Id)
+		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+		if err != nil {
+			return err
+		}
+		// Increase phase1 progress bar with the uploaded number of files.
+		if m.progressBar != nil {
+			err = m.progressBar.IncrementPhaseBy(phase1Id, len(curUploadChunk.UploadCandidates))
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

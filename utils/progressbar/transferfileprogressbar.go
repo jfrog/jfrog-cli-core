@@ -84,7 +84,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	return nil
 }
 
-// IncrementPhase increments completed tasks count for a specific phase by n.
+// IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckError(errors.New("invalid phase id"))

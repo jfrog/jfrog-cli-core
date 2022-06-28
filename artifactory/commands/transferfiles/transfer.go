@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	tasksMaxCapacity = 500000
-	// TODO change defaults:
-	uploadChunkSize = 2
-	defaultThreads  = 16
+	tasksMaxCapacity = 10000
+	uploadChunkSize  = 10
+	defaultThreads   = 16
 )
 
 type TransferFilesCommand struct {
@@ -67,7 +66,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if cleanStart && !propertiesPhaseDisabled {
+	if cleanStart && !isPropertiesPhaseDisabled() {
 		err = nodeDetection(srcUpService)
 		if err != nil {
 			return err

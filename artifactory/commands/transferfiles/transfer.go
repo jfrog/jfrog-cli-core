@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	tasksMaxCapacity = 500000
-	// TODO change defaults:
-	uploadChunkSize = 2
-	defaultThreads  = 16
+	tasksMaxCapacity = 10000
+	uploadChunkSize  = 10
+	defaultThreads   = 16
 )
 
 type TransferFilesCommand struct {
@@ -67,7 +66,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if cleanStart && !propertiesPhaseDisabled {
+	if cleanStart && !isPropertiesPhaseDisabled() {
 		err = nodeDetection(srcUpService)
 		if err != nil {
 			return err
@@ -97,7 +96,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			log.Error("Repo '" + repo + "' does not exist in target. Skipping...")
 			continue
 		}
-		progressBarMng.NewRepository(repo)
+		if tdc.progressbar != nil {
+			tdc.progressbar.NewRepository(repo)
+		}
 		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
 			newPhase := getPhaseByNum(phaseI, repo)
 			tdc.initNewPhase(newPhase, srcUpService)
@@ -109,7 +110,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				continue
 			}
 			err = newPhase.phaseStarted()
-			newPhase.initProgressBar()
+			if err != nil {
+				return err
+			}
+			err = newPhase.initProgressBar()
 			if err != nil {
 				return err
 			}
@@ -123,10 +127,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 				return err
 			}
 		}
-		tdc.progressbar.RemoveRepository()
 	}
-	tdc.progressbar.Quit()
-	return nil
+	if tdc.progressbar != nil {
+		err = tdc.progressbar.Quit()
+	}
+	return err
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {

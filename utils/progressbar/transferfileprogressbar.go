@@ -55,6 +55,8 @@ func (t *TransferProgressMng) Quit() error {
 		t.RemoveRepository()
 	}
 	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	// Wait a refresh rate to make sure all aborts have finished
+	time.Sleep(ProgressRefreshRate)
 	// Wait for all go routines to finish before quiting
 	t.barsMng.barsWg.Wait()
 	// Close log file
@@ -82,7 +84,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	return nil
 }
 
-// IncrementPhase increments completed tasks count for a specific phase by n.
+// IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckError(errors.New("invalid phase id"))
@@ -94,22 +96,21 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	return nil
 }
 
-// TODO change to addphase
+func (t *TransferProgressMng) DonePhase(id int) error {
+	if id < 0 || id > len(t.phases)-1 {
+		return errorutils.CheckError(errors.New("invalid phase id"))
+	}
+	t.barsMng.DoneTask(t.phases[id])
+	return nil
+}
+
 func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transfer all files in the repository", false, GREEN))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, GREEN))
 }
 
 func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transfer newly created and modified files", false, GREEN))
 }
-
-//
-//func (t *TransferProgressMng) GetPhase2(id int) (*tasksWithHeadlineProg, error) {
-//	if id < 0 || id > len(t.phases)-1 {
-//		return nil, errorutils.CheckError(errors.New("invalid phase id"))
-//	}
-//	return t.phases[id], nil
-//}
 
 func (t *TransferProgressMng) RemoveRepository() {
 	if t.currentRepoHeadline == nil {
@@ -128,6 +129,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 		t.barsMng.quitTasksWithHeadlineProg(t.phases[i])
 	}
 	t.phases = nil
+	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
 }
 

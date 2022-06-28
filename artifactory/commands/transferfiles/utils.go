@@ -20,10 +20,10 @@ import (
 	"time"
 )
 
-const waitTimeBetweenChunkStatusSeconds = 3
-const waitTimeBetweenThreadsUpdateSeconds = 20
-const phase1Id = 0
-const phase2Id = 1
+const (
+	waitTimeBetweenChunkStatusSeconds   = 3
+	waitTimeBetweenThreadsUpdateSeconds = 20
+)
 
 var curThreads int
 var threadsMutex sync.Mutex
@@ -166,7 +166,6 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				continue
 			case Done:
 				reduceCurProcessedChunks()
-				progressbar.IncrementPhase(phaseId)
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				handleFilesOfCompletedChunk(chunk.Files)
 			}
@@ -204,28 +203,15 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			// TODO update summary.
 		case Fail:
-			// TODO update summary.
-			addFailuresToConsumableFile(file)
 		case SkippedLargeProps:
-			// TODO update summary.
-			addToSkippedFile(file)
 		}
 	}
 }
 
-func addFailuresToConsumableFile(file FileUploadStatusResponse) {
-	// TODO implement
-}
-
-func addToSkippedFile(file FileUploadStatusResponse) {
-	// TODO implement
-}
-
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) error {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -233,7 +219,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan, progressbar, phaseId)
+		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil || isChecksumDeployed {
 			// Chunk not uploaded or does not require polling.
 			reduceCurProcessedChunks()
@@ -242,14 +228,13 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
-func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, progressbar *progressbar.TransferProgressMng, phaseId int) (bool, error) {
+func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) (bool, error) {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return false, err
 	}
 	// Empty token is returned if all files were checksum deployed.
 	if uuidToken == "" {
-		progressbar.IncrementPhaseBy(phaseId, len(chunk.UploadCandidates))
 		return true, nil
 	}
 
@@ -297,7 +282,9 @@ func updateThreads(producerConsumer parallel.Runner) error {
 	}
 	if settings != nil && curThreads != settings.ThreadsNumber {
 		curThreads = settings.ThreadsNumber
-		producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+		if producerConsumer != nil {
+			producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}
 	return nil

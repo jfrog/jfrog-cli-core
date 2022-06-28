@@ -8,6 +8,7 @@ import (
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 	"golang.org/x/term"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -82,8 +83,11 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 
 func (bm *ProgressBarMng) quitTasksWithHeadlineProg(prog *tasksWithHeadlineProg) {
 	prog.headlineBar.Abort(true)
+	prog.headlineBar = nil
 	prog.tasksProgressBar.bar.Abort(true)
+	prog.tasksProgressBar = nil
 	prog.emptyLine.Abort(true)
+	prog.emptyLine = nil
 	bm.barsWg.Done()
 }
 
@@ -122,6 +126,18 @@ func (bm *ProgressBarMng) IncBy(n int, prog *tasksWithHeadlineProg) {
 	defer bm.barsRWMutex.RUnlock()
 	prog.tasksProgressBar.bar.IncrBy(n)
 	prog.tasksProgressBar.tasksCount += int64(n)
+}
+
+// DoneTask increase tasks counter to the number of totalTasks.
+func (bm *ProgressBarMng) DoneTask(prog *tasksWithHeadlineProg) {
+	bm.barsRWMutex.RLock()
+	defer bm.barsRWMutex.RUnlock()
+	diff := prog.tasksProgressBar.totalTasks - prog.tasksProgressBar.tasksCount
+	// Handle large number of total tasks
+	for ; diff > math.MaxInt; diff -= math.MaxInt {
+		prog.tasksProgressBar.bar.IncrBy(math.MaxInt)
+	}
+	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
 func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *tasksProgressBar {
@@ -163,7 +179,6 @@ func filterColor(color Color) (filter string) {
 	return
 }
 
-// TODO: duplication
 // The ShouldInitProgressBar func is used to determine whether the progress bar should be displayed.
 // This default implementation will init the progress bar if the following conditions are met:
 // CI == false (or unset) and Stderr is a terminal.

@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -9,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"sync"
@@ -56,7 +54,7 @@ func (m *migrationPhase) initProgressBar() error {
 			return nil
 		}
 	}
-	return errorutils.CheckError(errors.New(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)))
+	return fmt.Errorf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)
 }
 
 func (m *migrationPhase) getPhaseName() string {

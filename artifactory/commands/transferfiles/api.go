@@ -86,6 +86,10 @@ type FileUploadStatusResponse struct {
 	Reason     string              `json:"reason,omitempty"`
 }
 
+type FilesErrors struct {
+	Errors []FileUploadStatusResponse `json:"errors,omitempty"`
+}
+
 type NodeIdResponse struct {
 	NodeId string `json:"node_id,omitempty"`
 }

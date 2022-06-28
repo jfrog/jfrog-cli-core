@@ -2,10 +2,10 @@ package transferfiles
 
 import (
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -17,8 +17,6 @@ const (
 	// TODO change defaults:
 	uploadChunkSize = 2
 	defaultThreads  = 16
-	// TODO temporary repo:
-	singleRepo = "transfer-data-local"
 )
 
 type TransferFilesCommand struct {
@@ -26,6 +24,8 @@ type TransferFilesCommand struct {
 	targetServerDetails       *config.ServerDetails
 	checkExistenceInFilestore bool
 	progressbar               *progressbar.TransferProgressMng
+	includeReposPatterns      []string
+	excludeReposPatterns      []string
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -38,6 +38,14 @@ func (tdc *TransferFilesCommand) CommandName() string {
 
 func (tdc *TransferFilesCommand) SetFilestore(filestore bool) {
 	tdc.checkExistenceInFilestore = filestore
+}
+
+func (tdc *TransferFilesCommand) SetIncludeReposPatterns(includeReposPatterns []string) {
+	tdc.includeReposPatterns = includeReposPatterns
+}
+
+func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []string) {
+	tdc.excludeReposPatterns = excludeReposPatterns
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
@@ -66,34 +74,32 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 	}
 
-	srcRepos, err := tdc.getAllSrcLocalRepositories()
+	srcRepos, err := tdc.getSrcLocalRepositories()
 	if err != nil {
 		return err
 	}
-	// TODO replace with include/exclude repos.
-	srcRepos = &[]services.RepositoryDetails{{Key: singleRepo}}
 
-	targetRepos, err := tdc.getAllTargetLocalRepositories()
+	targetRepos, err := tdc.getTargetLocalRepositories()
 	if err != nil {
 		return err
 	}
 
 	// Set progress bar
-	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(*srcRepos)))
+	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(srcRepos)))
 	if err != nil {
 		return err
 	}
 	tdc.progressbar = progressBarMng
 
-	for _, repo := range *srcRepos {
-		exists := verifyRepoExistsInTarget(targetRepos, repo.Key)
+	for _, repo := range srcRepos {
+		exists := verifyRepoExistsInTarget(targetRepos, repo)
 		if !exists {
-			log.Error("Repo '" + repo.Key + "' does not exist in target. Skipping...")
+			log.Error("Repo '" + repo + "' does not exist in target. Skipping...")
 			continue
 		}
-		progressBarMng.NewRepository(repo.Key)
+		progressBarMng.NewRepository(repo)
 		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
-			newPhase := getPhaseByNum(phaseI, repo.Key)
+			newPhase := getPhaseByNum(phaseI, repo)
 			tdc.initNewPhase(newPhase, srcUpService)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
@@ -107,7 +113,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Debug("Running '" + newPhase.getPhaseName() + "' for repo '" + repo.Key + "'")
+			log.Debug("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
 			err = newPhase.run()
 			if err != nil {
 				return err
@@ -129,6 +135,22 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setTargetDetails(tdc.targetServerDetails)
 	newPhase.setSrcUserPluginService(srcUpService)
 	newPhase.setProgressBar(tdc.progressbar)
+}
+
+func (tdc *TransferFilesCommand) getSrcLocalRepositories() ([]string, error) {
+	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, -1, 0, false)
+	if err != nil {
+		return nil, err
+	}
+	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+}
+
+func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) {
+	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, -1, 0, false)
+	if err != nil {
+		return nil, err
+	}
+	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
 }
 
 type producerConsumerDetails struct {

@@ -90,7 +90,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool,  errorChannel chan FileUploadStatusResponse) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorChannel chan FileUploadStatusResponse) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -154,14 +154,11 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorCha
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			// TODO delete
-			errorChannel <- file
+			// TODO : handle in repo list summary
 		case Fail:
 			errorChannel <- file
-			addFailuresToConsumableFile(file)
 		case SkippedLargeProps:
 			errorChannel <- file
-			addToSkippedFile(file)
 		}
 	}
 }

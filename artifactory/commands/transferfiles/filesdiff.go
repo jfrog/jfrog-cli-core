@@ -132,7 +132,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 
 	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
 	go func() {
-		err := WriteTransferErrorsToFile(f.repoKey, phase1Id, convertTimeToEpochMilliseconds(f.startTime), errorChannel)
+		err := WriteTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
 		if err != nil {
 			// TODO: check what to do with the error
 			log.Error(err)
@@ -168,7 +168,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, f.progressBar, errorChannel)
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, errorChannel)
 	}()
 
 	runWaitGroup.Add(1)
@@ -298,6 +298,14 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
+	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	go func() {
+		err := WriteTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
+		if err != nil {
+			log.Error(err)
+		}
+	}()
+
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
@@ -308,7 +316,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
+		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan, errorChannel)
 	}()
 
 	runWaitGroup.Add(1)
@@ -321,6 +329,8 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 	}()
 
 	runWaitGroup.Wait()
+
+	close(errorChannel)
 
 	for _, err := range []error{runnerErr, pollingError} {
 		if err != nil {

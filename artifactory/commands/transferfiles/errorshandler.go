@@ -13,9 +13,7 @@ import (
 
 const (
 	// Max errors that will be written in a file
-	// TODO: change to larger size
-	//maxErrorsInFile = 5000
-	maxErrorsInFile = 2
+	maxErrorsInFile = 50000
 )
 
 // TransferErrorsMng managing multi threads writing errors.

@@ -78,7 +78,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 		return errorutils.CheckError(errors.New("invalid phase id"))
 	}
 	if t.phases[id].tasksProgressBar.totalTasks == 0 {
-		return errorutils.CheckError(errors.New("trying to increase tasks bar that was done in previous run. "))
+		return nil
 	}
 	t.barsMng.Increment(t.phases[id])
 	return nil
@@ -90,7 +90,10 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 		return errorutils.CheckError(errors.New("invalid phase id"))
 	}
 	if t.phases[id].tasksProgressBar.totalTasks == 0 {
-		return errorutils.CheckError(errors.New("trying to increase tasks bar that was done in previous run. "))
+		return nil
+	}
+	if t.phases[id].tasksProgressBar.totalTasks < t.phases[id].tasksProgressBar.tasksCount+int64(n) {
+		return t.DonePhase(id)
 	}
 	t.barsMng.IncBy(n, t.phases[id])
 	return nil

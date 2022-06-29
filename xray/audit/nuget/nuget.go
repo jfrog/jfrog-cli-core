@@ -1,6 +1,7 @@
 package nuget
 
 import (
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 
@@ -15,13 +16,13 @@ const (
 	nugetPackageTypeIdentifier = "nuget://"
 )
 
-func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	graph, err := BuildNugetDependencyTree()
 	if err != nil {
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress)
 	return
 }
 

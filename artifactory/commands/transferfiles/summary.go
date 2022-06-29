@@ -12,15 +12,24 @@ import (
 	"time"
 )
 
-func GenerateSummaryFiles(logPaths []string, csvDirPath string) (err error) {
-	allErrors, err := ReadErrorsFromLogFiles(logPaths)
+// Create Errors Summary Csv File from given JSON log files
+// logPaths   - array of log file absolute path's
+// tmpDirPath - temp directory to store the CSV file
+// csvPath    - Created CSV file path
+func CreateErrorsSummaryCsvFile(logPaths []string, tmpDirPath string) (csvPath string, err error) {
+	// Collect all errors from the given log files
+	allErrors, err := ParseErrorsFromLogFiles(logPaths)
 	if err != nil {
 		return
 	}
+
+	// Create errors CSV file
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	// todo: create name convention and location for file
-	summaryCsv, err := os.Create(filepath.Join(csvDirPath, fmt.Sprintf("logs-%s.csv", timestamp)))
+	csvPath = filepath.Join(tmpDirPath, fmt.Sprintf("logs-%s.csv", timestamp))
+	summaryCsv, err := os.Create(csvPath)
 	if err != nil {
+		err = errorutils.CheckError(err)
 		return
 	}
 	defer func() {
@@ -29,11 +38,12 @@ func GenerateSummaryFiles(logPaths []string, csvDirPath string) (err error) {
 			err = e
 		}
 	}()
-	err = gocsv.MarshalFile(allErrors.Errors, summaryCsv)
+	// Marshal JSON typed FileUploadStatusResponse array to CSV file
+	err = errorutils.CheckError(gocsv.MarshalFile(allErrors.Errors, summaryCsv))
 	return
 }
 
-func ReadErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
+func ParseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
 	for _, logPath := range logPaths {
 		var exists bool
 		exists, err = fileutils.IsFileExists(logPath, false)

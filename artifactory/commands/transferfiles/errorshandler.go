@@ -92,36 +92,50 @@ func WriteTransferErrorsToFile(repoName string, phaseId int, phaseStartTime stri
 // Inside the error directory creates directory for retryable errors and skip errors.
 // Return the root errors' directory path.
 func initTransferErrorsDir() error {
+	// Create errors directory
 	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
 	if err != nil {
 		return err
 	}
-	exists, err := fileutils.IsDirExists(errorsDirPath, false)
+	err = makeDir(errorsDirPath)
+	if err != nil {
+		return err
+	}
+	// Create retryable directory inside errors directory
+	retryable, err := coreutils.GetJfrogTransferRetryableDir()
+	if err != nil {
+		return err
+	}
+	err = makeDir(retryable)
+	if err != nil {
+		return err
+	}
+	// Create skipped directory inside errors directory
+	skipped, err := coreutils.GetJfrogTransferSkippedDir()
+	if err != nil {
+		return err
+	}
+	err = makeDir(skipped)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func makeDir(path string) error {
+	exists, err := fileutils.IsDirExists(path, false)
+	if err != nil {
+		return err
+	}
 	if !exists {
-		err = os.Mkdir(errorsDirPath, 0777)
-		if err != nil {
-			return err
-		}
-		// Create retryable and skip errors directories
-		retryable, err := coreutils.GetJfrogTransferRetryableDir()
-		if err != nil {
-			return err
-		}
-		err = os.Mkdir(retryable, 0777)
-		if err != nil {
-			return err
-		}
-		skipped, err := coreutils.GetJfrogTransferSkippedDir()
-		if err != nil {
-			return err
-		}
-		err = os.Mkdir(skipped, 0777)
+		err = os.Mkdir(path, 0777)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
 func (mng *TransferErrorsMng) Start() error {
 	for e := range mng.errorsChannel {
 		log.Info(fmt.Sprintf("Status code:  %s.", e.StatusCode))

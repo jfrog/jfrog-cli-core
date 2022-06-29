@@ -38,7 +38,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	repoSummaryList, err := serviceManager.StorageInfo()
+	repoSummaryList, err := serviceManager.StorageInfo(true)
 	if err != nil {
 		return err
 	}
@@ -48,12 +48,13 @@ func (m *fullTransferPhase) initProgressBar() error {
 			if err != nil {
 				return err
 			}
-			// TODO handle 0 tasks
 			m.progressBar.AddPhase1(tasks)
 			return nil
 		}
 	}
-	return fmt.Errorf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)
+	// Case that the repo was exists in the beginning of the transfer run and was deleted before handled.
+	log.Error(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey))
+	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {

@@ -32,12 +32,12 @@ const (
 )
 
 type TransferConfigCommand struct {
-	sourceServerDetails *config.ServerDetails
-	targetServerDetails *config.ServerDetails
-	dryRun              bool
-	force               bool
-	// List of repositries to include in the import. If empty - include all.
-	includedRepositories []string
+	sourceServerDetails  *config.ServerDetails
+	targetServerDetails  *config.ServerDetails
+	dryRun               bool
+	force                bool
+	includeReposPatterns []string
+	excludeReposPatterns []string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -58,8 +58,13 @@ func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) SetIncludedRepositories(includedRepositories []string) *TransferConfigCommand {
-	tcc.includedRepositories = includedRepositories
+func (tcc *TransferConfigCommand) SetIncludeReposPatterns(includeReposPatterns []string) *TransferConfigCommand {
+	tcc.includeReposPatterns = includeReposPatterns
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigCommand {
+	tcc.excludeReposPatterns = excludeReposPatterns
 	return tcc
 }
 
@@ -119,8 +124,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
+	// Filter repositories to transfer
+	transferRepositories, err := utils.GetFilteredRepositories(sourceServicesManager, tcc.includeReposPatterns, tcc.excludeReposPatterns)
+	if err != nil {
+		return
+	}
+
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl, transferRepositories)
 	if err != nil {
 		return
 	}
@@ -271,10 +282,10 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string, transferRepositories []string) (string, error) {
 	var err error
-	if len(tcc.includedRepositories) > 0 {
-		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.includedRepositories)
+	if len(transferRepositories) > 0 {
+		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, transferRepositories)
 		if err != nil {
 			return "", err
 		}

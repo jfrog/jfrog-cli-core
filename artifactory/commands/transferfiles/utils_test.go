@@ -27,7 +27,7 @@ func TestGetErrorsFiles(t *testing.T) {
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, repoKey, 0, 0))
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, repoKey, 0, 1))
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, repoKey, 1, 0))
-	// Create 2 errors files that are distractions.
+	// Create 3 errors files that are distractions.
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, "wrong"+repoKey, 0, 0))
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, repoKey+"wrong", 0, 1))
 	assert.NoError(t, writeEmptyErrorsFile(retryableErrorsDirPath, "wrong-"+repoKey+"-wrong", 1, 0))

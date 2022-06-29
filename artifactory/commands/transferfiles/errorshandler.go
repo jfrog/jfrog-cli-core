@@ -138,7 +138,6 @@ func makeDir(path string) error {
 
 func (mng *TransferErrorsMng) Start() error {
 	for e := range mng.errorsChannel {
-		log.Info(fmt.Sprintf("Status code:  %s.", e.StatusCode))
 		mng.writeErrorContent(e)
 	}
 	mng.errorWriterMng.retryable.closeWriter()

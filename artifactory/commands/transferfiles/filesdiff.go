@@ -81,7 +81,10 @@ func (f *filesDiffPhase) phaseDone() error {
 		return err
 	}
 	if f.progressBar != nil {
-		f.progressBar.DonePhase(f.getPhaseId())
+		err = f.progressBar.DonePhase(f.getPhaseId())
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

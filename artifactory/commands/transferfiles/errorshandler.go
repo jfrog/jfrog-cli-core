@@ -84,7 +84,10 @@ func WriteTransferErrorsToFile(repoName string, phaseId int, phaseStartTime stri
 	if err != nil {
 		return err
 	}
-	mng.Start()
+	err = mng.Start()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -138,10 +141,19 @@ func makeDir(path string) error {
 
 func (mng *TransferErrorsMng) Start() error {
 	for e := range mng.errorsChannel {
-		mng.writeErrorContent(e)
+		err := mng.writeErrorContent(e)
+		if err != nil {
+			return err
+		}
 	}
-	mng.errorWriterMng.retryable.closeWriter()
-	mng.errorWriterMng.skipped.closeWriter()
+	err := mng.errorWriterMng.retryable.closeWriter()
+	if err != nil {
+		return err
+	}
+	err = mng.errorWriterMng.skipped.closeWriter()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -163,7 +175,10 @@ func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) erro
 		mng.errorWriterMng.skipped.errorCount++
 		// If file contains maximum number off errors - create and write to a new errors file
 		if mng.errorWriterMng.skipped.errorCount == maxErrorsInFile {
-			mng.errorWriterMng.skipped.closeWriter()
+			err := mng.errorWriterMng.skipped.closeWriter()
+			if err != nil {
+				return err
+			}
 			// Initialize variables for new errors file
 			mng.errorWriterMng.skipped.fileIndex++
 			dirPath, err := coreutils.GetJfrogTransferSkippedDir()
@@ -184,7 +199,10 @@ func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) erro
 		mng.errorWriterMng.retryable.errorCount++
 		// If file contains maximum number off errors - create and write to a new errors file
 		if mng.errorWriterMng.retryable.errorCount == maxErrorsInFile {
-			mng.errorWriterMng.retryable.closeWriter()
+			err := mng.errorWriterMng.retryable.closeWriter()
+			if err != nil {
+				return err
+			}
 			// Initialize variables for new errors file
 			mng.errorWriterMng.retryable.fileIndex++
 			dirPath, err := coreutils.GetJfrogTransferRetryableDir()

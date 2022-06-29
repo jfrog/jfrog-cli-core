@@ -69,7 +69,7 @@ func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns [
 }
 
 func (tcc *TransferConfigCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - preparations ==========")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	// Create config managers
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
@@ -104,7 +104,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Run export on the source Artifactory
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - export configuration from the source Artifactory ==========")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - Export configuration from the source Artifactory ==========")))
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServicesManager)
 	defer func() {
 		cleanUpErr := cleanUp()
@@ -116,7 +116,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/4 - download and modify configuration ==========")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/4 - Download and modify configuration ==========")))
 
 	// Download and decrypt the config XML from the source Artifactory
 	configXml, err := tcc.getConfigXml(sourceServicesManager, sourceArtifactoryVersion)
@@ -143,7 +143,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Import the archive to the target Artifactory
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 4/4 - import configuration to the target Artifactory ==========")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 4/4 - Import configuration to the target Artifactory ==========")))
 	return tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
 }
 
@@ -418,8 +418,7 @@ func getPluginVersion(servicesManager artifactory.ArtifactoryServicesManager, ur
 
 	messageFormat := fmt.Sprintf("Response from Artifactory: %s.\n%s\n", versionResp.Status, versionBody)
 	if versionResp.StatusCode == http.StatusNotFound {
-		// Probably the plugin is not installed
-		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the server.", messageFormat, pluginName) /////////////TODO: change the message!!!!!
+		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the server.", messageFormat, pluginName)
 	} else {
 		// 403 if the user is not admin, 500+ if there is a server error
 		return "", errorutils.CheckErrorf(messageFormat)

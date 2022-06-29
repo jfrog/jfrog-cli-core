@@ -31,7 +31,7 @@ func (ptc *PermissionTargetCommand) PerformPermissionTargetCmd(isUpdate bool) (e
 	if err != nil {
 		return err
 	}
-	// Go over the the confMap and write the values with the correct types
+	// Go over the confMap and write the values with the correct types
 	for key, value := range permissionTargetConfigMap {
 		isBuildSection := false
 		switch key {

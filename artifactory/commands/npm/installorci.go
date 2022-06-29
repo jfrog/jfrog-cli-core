@@ -187,7 +187,7 @@ func addArrayConfigs(conf []string, key, arrayValue string) []string {
 
 func removeNpmrcIfExists(workingDirectory string) error {
 	if _, err := os.Stat(filepath.Join(workingDirectory, npmrcFileName)); err != nil {
-		if os.IsNotExist(err) { // The file dose not exist, nothing to do.
+		if os.IsNotExist(err) { // The file does not exist, nothing to do.
 			return nil
 		}
 		return errorutils.CheckError(err)

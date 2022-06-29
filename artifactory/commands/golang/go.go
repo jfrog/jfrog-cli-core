@@ -184,7 +184,12 @@ func (gc *GoCommand) run() error {
 				return err
 			}
 			// Cleanup the temp working directory at the end.
-			defer fileutils.RemoveTempDir(tempDirPath)
+			defer func() {
+				e := fileutils.RemoveTempDir(tempDirPath)
+				if err == nil {
+					err = e
+				}
+			}()
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
@@ -246,9 +251,9 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 	return nil
 }
 
-// getPackageFilePathFromArtifactory returns a string that represents the package files chache path.
-// In most cases the path to those chache files is retrived using the supplied package name and Artifactory details.
-// However if the user asked for a specifc version (package@vX.Y.Z) the unnecessary call to Artifactpry is avoided.
+// getPackageFilePathFromArtifactory returns a string that represents the package files cache path.
+// In most cases the path to those cache files is retrieved using the supplied package name and Artifactory details.
+// However, if the user asked for a specific version (package@vX.Y.Z) the unnecessary call to Artifactory is avoided.
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
 	packageCachePath, err := biutils.GetGoModCachePath()
@@ -258,17 +263,17 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 	}
 	packageNameSplitted := strings.Split(packageName, "@")
 	name := packageNameSplitted[0]
-	// The case the user asks for a specifc version
+	// The case the user asks for a specific version
 	if len(packageNameSplitted) == 2 && strings.HasPrefix(packageNameSplitted[1], "v") {
 		version = packageNameSplitted[1]
 	} else {
 		branchName := ""
-		// The case the user asks for a specifc branch
+		// The case the user asks for a specific branch
 		if len(packageNameSplitted) == 2 {
 			branchName = packageNameSplitted[1]
 		}
 		packageVersionRequest := buildPackageVersionRequest(name, branchName)
-		// Retrive the package version using Artifactory
+		// Retrieve the package version using Artifactory
 		version, err = getPackageVersion(rtTargetRepo, packageVersionRequest, authArtDetails)
 		if err != nil {
 			return

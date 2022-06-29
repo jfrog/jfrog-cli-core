@@ -335,7 +335,7 @@ func promptAuthMethods() (method AuthenticationMethod, err error) {
 	for _, method := range authMethod {
 		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(method), TargetValue: &selected})
 	}
-	err = ioutils.SelectString(selectableItems, "Select one of the following authentication method:", func(item ioutils.PromptItem) {
+	err = ioutils.SelectString(selectableItems, "Select one of the following authentication methods:", func(item ioutils.PromptItem) {
 		*item.TargetValue = item.Option
 		method = AuthenticationMethod(*item.TargetValue)
 	})

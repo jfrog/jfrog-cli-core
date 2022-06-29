@@ -170,10 +170,12 @@ func startBuild(executablePath string, ocFlags []string) (ocBuildName string, er
 
 	log.Debug("Running command: oc", strings.Join(cmdArgs, " "))
 	cmd := exec.Command(executablePath, cmdArgs...)
-	outputReader, err := cmd.StdoutPipe()
+	outputPr, outputPw, err := os.Pipe()
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
+	outputWriter := io.MultiWriter(os.Stderr, outputPw)
+	cmd.Stdout = outputWriter
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	if err != nil {
@@ -181,15 +183,10 @@ func startBuild(executablePath string, ocFlags []string) (ocBuildName string, er
 	}
 
 	// The build name is in the first line of the output
-	scanner := bufio.NewScanner(outputReader)
+	scanner := bufio.NewScanner(outputPr)
 	scanner.Scan()
 	ocBuildName = scanner.Text()
 
-	// Print the output to stderr
-	_, err = io.Copy(os.Stderr, outputReader)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
 	err = errorutils.CheckError(convertExitError(cmd.Wait()))
 	return
 }

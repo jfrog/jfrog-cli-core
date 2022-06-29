@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Artifactory is a binaries repository manager.
+  ~ Copyright (C) 2019 JFrog Ltd.
+  ~
+  ~ Artifactory is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ Artifactory is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with Artifactory.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+<!--
+    This file configures Artifactory's known mime types. A list of registered
+    media types can be found in http://www.iana.org/assignments/media-types/ and common ones in
+    http://www.webmaster-toolkit.com/mime-types.shtml
+    Each mime type may have the following attributes:
+        type - The mime entry unique name (mandatory)
+        extensions - Comma separated list of file extensions mapped to this mime type (mandatory)
+        index - True if this mime type should be indexed for searching (valid only for supported archive files)
+        archive - True if this mime type is a browsable archive
+        viewable - True if this mime type can be viewed as text file
+        syntax - The UI highlighter syntax to for this mime type (only relevant if this is a viewable type)
+        css - The css class of a display icon for this mime type
+-->
+<mimetypes version="15">
+
+    <mimetype type="text/plain" extensions="txt, properties, mf, asc, log, yml, yaml, tf" viewable="true"
+              syntax="plain"/>
+    <mimetype type="text/html" extensions="htm, html" viewable="true" syntax="xml"/>
+    <mimetype type="text/css" extensions="css" viewable="true" syntax="css"/>
+    <mimetype type="text/xsl" extensions="xsl" viewable="true" syntax="xml"/>
+    <mimetype type="text/xslt" extensions="xslt" viewable="true" syntax="xml"/>
+    <mimetype type="text/x-java-source" extensions="java" viewable="true" syntax="java"/>
+    <mimetype type="text/x-javafx-source" extensions="fx" viewable="true" syntax="javafx"/>
+    <mimetype type="text/x-groovy-source" extensions="groovy, gradle" viewable="true" syntax="groovy"/>
+    <mimetype type="text/x-c" extensions="h, c, cc, cpp" viewable="true" syntax="cpp"/>
+
+    <mimetype type="application/xml-dtd" extensions="dtd" viewable="true"/>
+    <mimetype type="application/xml-schema" extensions="xsd" viewable="true" syntax="xml" css="xml"/>
+    <mimetype type="application/xml-external-parsed-entity" extensions="ent" viewable="true"/>
+    <mimetype type="application/xhtml+xml" extensions="xhtml" viewable="true" syntax="xml"/>
+    <mimetype type="application/json" extensions="json" viewable="true" syntax="javascript"/>
+    <mimetype type="text/x-python" extensions="py" viewable="true" syntax="python" css="python"/>
+
+    <mimetype type="application/x-java-pack200" extensions="jar.pack.gz" archive="true" index="true" css="jar"/>
+    <mimetype type="application/x-java-archive-diff" extensions="jardiff" archive="false"/>
+    <mimetype type="application/zip" extensions="zip" archive="true" index="true" css="jar"/>
+    <mimetype type="application/x-tar" extensions="tar" archive="true" index="false"/>
+    <mimetype type="application/x-gzip" extensions="tgz, tar.gz, gz" archive="true" index="false"/>
+    <mimetype type="application/x-bzip2" extensions="bz2, tar.bz2" archive="true" index="false"/>
+    <mimetype type="application/x-7z-compressed" extensions="7z" archive="true" index="false"/>
+    <mimetype type="application/x-nupkg" extensions="nupkg" archive="true" index="true" css="nupkg"/>
+    <mimetype type="application/x-conda" extensions="conda" archive="true" index="true" css="conda"/>
+    <mimetype type="application/x-rar-compressed" extensions="rar" archive="false" css="jar"/>
+    <mimetype type="application/vnd.android.package-archive" extensions="apk" archive="true" index="true" css="apk"/>
+    <mimetype type="application/x-rpm" extensions="rpm" css="rpm"/>
+    <mimetype type="application/x-rubygems" extensions="gem" css="gem"/>
+    <mimetype type="application/x-ruby-marshal" extensions="rz" css="ruby-marshal"/>
+    <mimetype type="application/x-debian-package" extensions="deb, ddeb" css="deb"/>
+    <mimetype type="application/x-vagrant-box" extensions="box" css="box"/>
+    <mimetype type="application/json+info" extensions="info" viewable="true" syntax="json"/>
+    <mimetype type="text/plain+mod" extensions="mod" viewable="true" syntax="plain"/>
+    <mimetype type="text/x-swift " extensions="swift" viewable="true" syntax="plain" index="false"/>
+
+    <!-- not registered -->
+    <mimetype type="text/x-scala-source" extensions="scala" viewable="true" syntax="scala"/>
+    <mimetype type="text/x-ruby-source" extensions="rb" viewable="true" syntax="ruby"/>
+    <mimetype type="text/x-script.sh" extensions="sh" viewable="true" syntax="shell"/>
+    <mimetype type="text/x-csharp.sh" extensions="cs" viewable="true" syntax="csharp"/>
+
+    <!--
+        NOTE: The following mime types are required for a proper functioning of certain features in Artifactory 
+         DO NOT change them unless you really know what you are doing
+    -->
+    <mimetype type="application/xml" extensions="xml, xsl, xsi" viewable="true" syntax="xml" css="xml"/>
+    <mimetype type="application/x-maven-pom+xml" extensions="pom" viewable="true" syntax="xml" css="pom"/>
+    <mimetype type="application/x-ivy+xml" extensions="ivy" viewable="true" syntax="xml" css="xml"/>
+    <mimetype type="application/x-nuspec+xml" extensions="nuspec" viewable="true" syntax="xml" css="xml"/>
+    <mimetype type="application/x-java-jnlp-file" extensions="jnlp" viewable="true" syntax="xml" css="jnlp"/>
+    <mimetype type="application/x-checksum" extensions="sha1, sha256, md5" viewable="true" syntax="plain"/>
+    <mimetype type="application/java-archive" extensions="jar, war, ear, sar, har, hpi, jpi" archive="true" index="true"
+              css="jar"/>
+
+</mimetypes>

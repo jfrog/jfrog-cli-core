@@ -10,8 +10,6 @@ import (
 	"runtime"
 	"strings"
 
-	"golang.org/x/term"
-
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -212,11 +210,6 @@ func GetWorkingDirectory() (string, error) {
 	return currentDir, nil
 }
 
-// IsTerminal checks whether stdout is a terminal.
-func IsTerminal() bool {
-	return term.IsTerminal(int(os.Stdout.Fd()))
-}
-
 type Credentials interface {
 	SetUser(string)
 	SetPassword(string)
@@ -365,6 +358,38 @@ func GetJfrogPluginsLockDir() (string, error) {
 	return filepath.Join(locksDirPath, pluginsLockDirName), nil
 }
 
+func GetJfrogTransferStateFilePath() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferStateFileName), nil
+}
+
+func GetJfrogTransferErrorsDir() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferErrorsDirName), nil
+}
+
+func GetJfrogTransferRetryableDir() (string, error) {
+	errorsDir, err := GetJfrogTransferErrorsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(errorsDir, JfrogTransferRetryableErrorsDirName), nil
+}
+
+func GetJfrogTransferSkippedDir() (string, error) {
+	errorsDir, err := GetJfrogTransferErrorsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(errorsDir, JfrogTransferSkippedErrorsDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"
@@ -468,4 +493,21 @@ func ListToText(list []string) string {
 
 func RemoveAllWhiteSpaces(input string) string {
 	return strings.Join(strings.Fields(input), "")
+}
+
+func GetJfrogTransferDir() (string, error) {
+	homeDir, err := GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, JfrogTransferDirName), nil
+}
+
+func Contains(arr []string, str string) bool {
+	for _, element := range arr {
+		if element == str {
+			return true
+		}
+	}
+	return false
 }

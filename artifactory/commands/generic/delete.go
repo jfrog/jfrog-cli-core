@@ -87,8 +87,12 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 	if err != nil {
 		return nil, err
 	}
-	defer tempMergedReader.Close()
-
+	defer func() {
+		e := tempMergedReader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	// After merge, remove top chain dirs as we may encounter duplicates and collisions between files and directories to delete.
 	// For example:
 	// Reader1: {"a"}

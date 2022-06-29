@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path"
-	"time"
 )
 
 const (
@@ -128,12 +127,8 @@ func (mng *TransferErrorsMng) Start() error {
 		log.Info(fmt.Sprintf("Status code:  %s.", e.StatusCode))
 		mng.writeErrorContent(e)
 	}
-	time.Sleep(2 * time.Second)
 	mng.errorWriterMng.retryable.closeWriter()
 	mng.errorWriterMng.skipped.closeWriter()
-	// TODO debug
-	log.Info(fmt.Sprintf("Finish writing repository's retryable errors to files %s.", mng.errorWriterMng.retryable.filePath))
-	log.Info(fmt.Sprintf("Finish writing repository's skipped errors to files %s.", mng.errorWriterMng.skipped.filePath))
 
 	return nil
 }
@@ -206,8 +201,12 @@ func (writerMng *errorWriter) closeWriter() error {
 	}
 
 	if writerMng.writer.GetFilePath() != "" {
-		log.Debug(fmt.Sprintf("Move %s to %s.", writerMng.writer.GetFilePath(), writerMng.filePath))
+		log.Debug(fmt.Sprintf("Save errors outpt in: %s.", writerMng.filePath))
 		err = fileutils.MoveFile(writerMng.writer.GetFilePath(), writerMng.filePath)
+		if err != nil {
+			log.Error(fmt.Sprintf("Saving error file failed : failed to move %s to %s", writerMng.writer.GetFilePath(), writerMng.filePath))
+			return err
+		}
 	}
-	return err
+	return nil
 }

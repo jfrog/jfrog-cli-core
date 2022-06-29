@@ -48,6 +48,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 			if err != nil {
 				return err
 			}
+			// TODO handle 0 tasks
 			m.progressBar.AddPhase1(tasks)
 			return nil
 		}

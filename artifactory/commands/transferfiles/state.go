@@ -12,15 +12,19 @@ import (
 
 const requestsNumForNodeDetection = 50
 
+// This struct holds the current state of the whole transfer of the source Artifactory instance.
+// It is saved to a file in JFrog CLI's home.
+// The command determines actions based on the state, such as if full transfer need or was completed before,
+// on what time range files diffs should be fixed, etc.
 type TransferState struct {
 	Repositories []Repository `json:"repositories,omitempty"`
 	NodeIds      []string     `json:"nodes,omitempty"`
 }
 
 type Repository struct {
-	Name      string            `json:"name,omitempty"`
-	Migration PhaseDetails      `json:"migration,omitempty"`
-	Diffs     []FullDiffDetails `json:"diffs,omitempty"`
+	Name         string            `json:"name,omitempty"`
+	FullTransfer PhaseDetails      `json:"full_transfer,omitempty"`
+	Diffs        []FullDiffDetails `json:"diffs,omitempty"`
 }
 
 type PhaseDetails struct {
@@ -63,6 +67,8 @@ func getTransferState() (*TransferState, error) {
 	return state, nil
 }
 
+// Checks whether this is the first run of the command, based on information saved in the command's state.
+// Currently, only needed for the properties phase.
 func isCleanStart() (bool, error) {
 	state, err := getTransferState()
 	if err != nil {
@@ -117,25 +123,25 @@ func doAndSaveState(action actionOnStateFunc) error {
 	return saveTransferState(state)
 }
 
-func setRepoMigrationStarted(repoKey string, startTime time.Time) error {
+func setRepoFullTransferStarted(repoKey string, startTime time.Time) error {
 	action := func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.Migration.Started = convertTimeToRFC3339(startTime)
+		repo.FullTransfer.Started = convertTimeToRFC3339(startTime)
 		return nil
 	}
 	return doAndSaveState(action)
 }
 
-func setRepoMigrationCompleted(repoKey string) error {
+func setRepoFullTransferCompleted(repoKey string) error {
 	action := func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.Migration.Ended = convertTimeToRFC3339(time.Now())
+		repo.FullTransfer.Ended = convertTimeToRFC3339(time.Now())
 		return nil
 	}
 	return doAndSaveState(action)
@@ -149,7 +155,11 @@ func addNewDiffToState(repoKey string, startTime time.Time) error {
 		}
 		newDiff := FullDiffDetails{}
 
-		// Range start time is the start time of the last diff completed, or migration start time if no diff was completed.
+		// Determines the range on which files diffs should be fixed.
+		// The beginning of the range should be the start time of the last phase completed for the same repo.
+		// For example, if the repo was just fully migrated, the start of the range would be the start time of the migration, so that we will handle files
+		// that may have been created / modified during the transfer.
+		// If the repo has already previously completed a files diff phase, we will take the start time of that phase.
 		for i := len(repo.Diffs) - 1; i >= 0; i-- {
 			if repo.Diffs[i].Completed {
 				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Started
@@ -157,7 +167,7 @@ func addNewDiffToState(repoKey string, startTime time.Time) error {
 			}
 		}
 		if newDiff.HandledRange.Started == "" {
-			newDiff.HandledRange.Started = repo.Migration.Started
+			newDiff.HandledRange.Started = repo.FullTransfer.Started
 		}
 		newDiff.HandledRange.Ended = convertTimeToRFC3339(startTime)
 		repo.Diffs = append(repo.Diffs, newDiff)
@@ -236,18 +246,18 @@ func setPropsDiffHandlingCompleted(repoKey string) error {
 	return doAndSaveState(action)
 }
 
-func isRepoMigrated(repoKey string) (bool, error) {
-	isMigrated := false
+func isRepoTransferred(repoKey string) (bool, error) {
+	isTransferred := false
 	action := func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, true)
 		if err != nil {
 			return err
 		}
-		isMigrated = repo.Migration.Ended != ""
+		isTransferred = repo.FullTransfer.Ended != ""
 		return nil
 	}
 	err := doAndSaveState(action)
-	return isMigrated, err
+	return isTransferred, err
 }
 
 func convertTimeToRFC3339(timeToConvert time.Time) string {
@@ -264,7 +274,8 @@ func convertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 
 // Sends rapid requests to the user plugin and finds all existing nodes in Artifactory.
 // Writes all node ids to the state file.
-// Also notifies all nodes of a clean start.
+// Also notifies all nodes of a clean start, i.e. older caches (if exists) are not needed, and the nodes should start
+// tracking properties modifications (if phase 3 is enabled).
 // Nodes are expected not to change during the whole transfer process.
 func nodeDetection(srcUpService *srcUserPluginService) error {
 	var nodeIds []string

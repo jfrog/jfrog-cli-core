@@ -10,13 +10,7 @@ import (
 const waitTimeBetweenPropertiesStatusSeconds = 5
 
 type propertiesDiffPhase struct {
-	repoKey                   string
-	checkExistenceInFilestore bool
-	startTime                 time.Time
-	srcUpService              *srcUserPluginService
-	srcRtDetails              *coreConfig.ServerDetails
-	targetRtDetails           *coreConfig.ServerDetails
-	progressBar               *progressbar.TransferProgressMng
+	phaseBase
 }
 
 func (p *propertiesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
@@ -151,7 +145,7 @@ func (phs propsHandlingStatus) getNodeStatus(nodeId string) *nodeStatus {
 		}
 	}
 	// Unknown node id was returned.
-	log.Error("Unknown node id '" + nodeId + "' was returned. Skipping...")
+	log.Error("unknown node id '" + nodeId + "' was returned. Skipping...")
 	return nil
 }
 

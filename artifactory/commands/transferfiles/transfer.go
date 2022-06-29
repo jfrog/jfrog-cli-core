@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	tasksMaxCapacity = 500000
+	tasksMaxCapacity = 10000
+	uploadChunkSize  = 100
+	defaultThreads   = 16
 	errorChannelSize = 500000
-	uploadChunkSize = 2
-	defaultThreads  = 16
 )
 
 type TransferFilesCommand struct {
@@ -33,7 +33,7 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
-	return "rt_transfer_data"
+	return "rt_transfer_files"
 }
 
 func (tdc *TransferFilesCommand) SetFilestore(filestore bool) {
@@ -58,6 +58,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return errorutils.CheckError(err)
 	}
 
+	err = tdc.initCurThreads()
+	if err != nil {
+		return err
+	}
+
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
 	if err != nil {
 		return err
@@ -78,22 +83,22 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+
 	targetRepos, err := tdc.getTargetLocalRepositories()
 	if err != nil {
 		return err
 	}
 
 	// Set progress bar
-	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(srcRepos)))
+	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(srcRepos)))
 	if err != nil {
 		return err
 	}
-	tdc.progressbar = progressBarMng
 
 	for _, repo := range srcRepos {
 		exists := verifyRepoExistsInTarget(targetRepos, repo)
 		if !exists {
-			log.Error("Repo '" + repo + "' does not exist in target. Skipping...")
+			log.Error("repo '" + repo + "' does not exist in target. Skipping...")
 			continue
 		}
 		if tdc.progressbar != nil {
@@ -157,6 +162,19 @@ func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) 
 		return nil, err
 	}
 	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+}
+
+func (tdc *TransferFilesCommand) initCurThreads() error {
+	// Use default threads if settings file doesn't exist or an error occurred.
+	curThreads = defaultThreads
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		return err
+	}
+	if settings != nil {
+		curThreads = settings.ThreadsNumber
+	}
+	return nil
 }
 
 type producerConsumerDetails struct {

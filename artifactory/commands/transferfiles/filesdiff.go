@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"math"
 	"os"
@@ -15,17 +16,13 @@ import (
 	"time"
 )
 
+// When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
 const searchTimeFramesMinutes = 15
 
+// Manages the phase of fixing files diffs (files that were created/modified after they were transferred),
+// and handling upload failures that were collected during previous runs and phases.
 type filesDiffPhase struct {
-	repoKey                   string
-	checkExistenceInFilestore bool
-	startTime                 time.Time
-	srcUpService              *srcUserPluginService
-	srcRtDetails              *coreConfig.ServerDetails
-	targetRtDetails           *coreConfig.ServerDetails
-	// Progress is determined by task, which is either an errors file handling, or a time frame diff handling.
-	progressBar         *progressbar.TransferProgressMng
+	phaseBase
 	errorsFilesToHandle []string
 }
 
@@ -46,7 +43,9 @@ func (f *filesDiffPhase) initProgressBar() error {
 		return err
 	}
 
-	// Init progress with the number of tasks. Task is either an errors file handling, or a time frame diff handling.
+	// Init progress with the number of tasks.
+	// Task is either an errors file handling (fixing previous upload failures),
+	// or a time frame diff handling (a split of the time range on which this phase fixes files diffs).
 	totalLength := diffRangeEnd.Sub(diffRangeStart)
 	aqlNum := math.Ceil(totalLength.Minutes() / searchTimeFramesMinutes)
 	f.progressBar.AddPhase2(int64(len(f.errorsFilesToHandle)) + int64(aqlNum))
@@ -72,12 +71,8 @@ func (f *filesDiffPhase) phaseStarted() error {
 		return err
 	}
 	// Find all errors files the phase will handle.
-	filesPaths, err := getErrorsFiles(f.repoKey, true)
-	if err != nil {
-		return err
-	}
-	f.errorsFilesToHandle = filesPaths
-	return nil
+	f.errorsFilesToHandle, err = getErrorsFiles(f.repoKey, true)
+	return err
 }
 
 func (f *filesDiffPhase) phaseDone() error {
@@ -116,6 +111,8 @@ func (f *filesDiffPhase) run() error {
 	return f.handleDiffTimeFrames()
 }
 
+// Split the time range of fixing files diffs into smaller time frames and handle them separately with smaller AQLs.
+// Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
@@ -159,7 +156,10 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcDetails)
-			_, _ = producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), errorsQueue.AddError)
+			_, err = producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), errorsQueue.AddError)
+			if err != nil {
+				log.Error("error occurred when adding new task to producer consumer:" + err.Error())
+			}
 			curDiffTimeFrame = curDiffTimeFrame.Add(searchTimeFramesMinutes * time.Minute)
 		}
 	}()
@@ -175,7 +175,10 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	var runnerErr error
 	go func() {
 		defer runWaitGroup.Done()
-		runnerErr = producerConsumer.DoneWhenAllIdle(15)
+		// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
+		// the work is assumed to be done.
+		runnerErr = producerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
+		// Notify the other go routines that work is done.
 		doneChan <- true
 		doneChan <- true
 	}()
@@ -252,6 +255,8 @@ func convertResultsToFileRepresentation(results []artifactoryUtils.ResultItem) (
 	return
 }
 
+// Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
+// If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
 func (f *filesDiffPhase) uploadByChunks(files []FileRepresentation, uploadTokensChan chan string) (err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(f.targetRtDetails),
@@ -259,9 +264,6 @@ func (f *filesDiffPhase) uploadByChunks(files []FileRepresentation, uploadTokens
 	}
 
 	for _, item := range files {
-		if item.Name == "." {
-			continue
-		}
 		curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, uploadTokensChan)
@@ -274,10 +276,7 @@ func (f *filesDiffPhase) uploadByChunks(files []FileRepresentation, uploadTokens
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, uploadTokensChan)
-		if err != nil {
-			return err
-		}
+		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, uploadTokensChan)
 	}
 	return nil
 }
@@ -345,6 +344,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 
 func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 	for _, path := range f.errorsFilesToHandle {
+		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -353,7 +353,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 		var failedFiles FilesErrors
 		err = json.Unmarshal(content, &failedFiles)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 
 		err = f.uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan)
@@ -364,7 +364,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 		// Remove the file, so it won't be consumed again.
 		err = os.Remove(path)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 
 		if f.progressBar != nil {
@@ -373,6 +373,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 				return err
 			}
 		}
+		log.Debug("Done handling errors file: '" + path + "'. Deleting it...")
 	}
 	return nil
 }

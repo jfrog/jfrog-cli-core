@@ -3,6 +3,7 @@ package transferfiles
 import (
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
+	"time"
 )
 
 const numberOfPhases = 3
@@ -23,14 +24,24 @@ type transferPhase interface {
 	initProgressBar() error
 }
 
+type phaseBase struct {
+	repoKey                   string
+	checkExistenceInFilestore bool
+	startTime                 time.Time
+	srcUpService              *srcUserPluginService
+	srcRtDetails              *coreConfig.ServerDetails
+	targetRtDetails           *coreConfig.ServerDetails
+	progressBar               *progressbar.TransferProgressMng
+}
+
 func getPhaseByNum(i int, repoKey string) transferPhase {
 	switch i {
 	case 0:
-		return &migrationPhase{repoKey: repoKey}
+		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey}}
 	case 1:
-		return &filesDiffPhase{repoKey: repoKey}
+		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey}}
 	case 2:
-		return &propertiesDiffPhase{repoKey: repoKey}
+		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey}}
 	}
 	return nil
 }

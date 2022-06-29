@@ -56,13 +56,13 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 		jsonTable := formats.SimpleJsonResults{}
 		if includeVulnerabilities {
 			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
-			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, false)
+			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots)
 			if err != nil {
 				return err
 			}
 			jsonTable.Vulnerabilities = vulJsonTable
 		} else {
-			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, false)
+			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots)
 			if err != nil {
 				return err
 			}

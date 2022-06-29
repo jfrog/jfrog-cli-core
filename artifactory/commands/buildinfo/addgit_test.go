@@ -23,6 +23,7 @@ const (
 	withGit    = "git_test_.git_suffix"
 	withoutGit = "git_test_no_.git_suffix"
 	withBranch = "git_issues2_.git_suffix"
+	withEmoji  = "git_issues3_.git_suffix"
 	buildName  = "TestExtractGitUrl"
 )
 
@@ -77,7 +78,9 @@ func TestBuildAddGitVCSDetails(t *testing.T) {
 		message     string
 	}{
 		{"Test vcs details without branch", withGit, "6198a6294722fdc75a570aac505784d2ec0d1818", "", "TEST-2 - Adding text to file1.txt"},
-		{"Test vcs details with branch", withBranch, "b033a0e508bdb52eee25654c9e12db33ff01b8ff", "master", "TEST-4 - Adding text to file2.txt"}}
+		{"Test vcs details with branch", withBranch, "b033a0e508bdb52eee25654c9e12db33ff01b8ff", "master", "TEST-4 - Adding text to file2.txt"},
+		{"Test vcs details with emoji in message", withEmoji, "f579f0fd274d687949c1f82a55e116eb566ec66d", "master", "TEST-5 - Adding text to file2.txt"},
+	}
 
 	for _, test := range bagTests {
 		t.Run(test.name, func(t *testing.T) {

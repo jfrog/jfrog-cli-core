@@ -10,13 +10,7 @@ import (
 const waitTimeBetweenPropertiesStatusSeconds = 5
 
 type propertiesDiffPhase struct {
-	repoKey                   string
-	checkExistenceInFilestore bool
-	startTime                 time.Time
-	srcUpService              *srcUserPluginService
-	srcRtDetails              *coreConfig.ServerDetails
-	targetRtDetails           *coreConfig.ServerDetails
-	progressBar               *progressbar.TransferProgressMng
+	phaseBase
 }
 
 func (p *propertiesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
@@ -121,10 +115,9 @@ propertiesHandling:
 }
 
 type propsHandlingStatus struct {
-	nodesStatus         []nodeStatus
-	totalPropsToDeliver int64
-	totalPropsDelivered int64
+	nodesStatus []nodeStatus
 }
+
 type nodeStatus struct {
 	nodeId              string
 	propertiesDelivered int64
@@ -152,7 +145,7 @@ func (phs propsHandlingStatus) getNodeStatus(nodeId string) *nodeStatus {
 		}
 	}
 	// Unknown node id was returned.
-	log.Error("Unknown node id '" + nodeId + "' was returned. Skipping...")
+	log.Error("unknown node id '" + nodeId + "' was returned. Skipping...")
 	return nil
 }
 
@@ -171,7 +164,6 @@ func (phs propsHandlingStatus) updateTotalAndDelivered(localNodeStatus *nodeStat
 	}
 	// Total has changed, update it.
 	if remoteTotal != localNodeStatus.propertiesTotal {
-		phs.totalPropsToDeliver += remoteTotal - localNodeStatus.propertiesTotal
 		localNodeStatus.propertiesTotal = remoteTotal
 	}
 
@@ -180,8 +172,6 @@ func (phs propsHandlingStatus) updateTotalAndDelivered(localNodeStatus *nodeStat
 	if err != nil {
 		return err
 	}
-	newDeliveries := delivered - localNodeStatus.propertiesDelivered
-	phs.totalPropsDelivered += newDeliveries
 	localNodeStatus.propertiesDelivered = delivered
 	return nil
 }

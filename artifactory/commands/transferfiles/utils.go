@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"fmt"
 	biUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -12,8 +13,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -247,6 +248,8 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
+const errorsFilesRegexFormat = `^(%s)-([0-9]+)-([0-9]+)-([0-9]+)\.json$`
+
 // Gets a list of all errors files from the CLI's cache.
 // Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
 func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
@@ -264,13 +267,22 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 		return []string{}, err
 	}
 
-	filesNames, err := biUtils.ListFiles(dirPath, false)
+	errorsFilesRegex := fmt.Sprintf(errorsFilesRegexFormat, repoKey)
+
+	regExp, err := regexp.Compile(errorsFilesRegex)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+
+	files, err := biUtils.ListFiles(dirPath, false)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, file := range filesNames {
-		if strings.HasPrefix(filepath.Base(file), repoKey) {
+	for _, file := range files {
+		matches := regExp.FindStringSubmatch(filepath.Base(file))
+		// Expecting a match and 4 groups.
+		if len(matches) == 5 {
 			filesPaths = append(filesPaths, file)
 		}
 	}

@@ -121,7 +121,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Debug("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
+			log.Info("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
 			err = newPhase.run()
 			if err != nil {
 				return err
@@ -130,7 +130,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Debug("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
+			log.Info("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
 		}
 	}
 	if tdc.progressbar != nil {

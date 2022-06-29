@@ -19,25 +19,12 @@ import (
 )
 
 const (
-	waitTimeBetweenChunkStatusSeconds   = 3
-	waitTimeBetweenThreadsUpdateSeconds = 20
+	waitTimeBetweenChunkStatusSeconds            = 3
+	waitTimeBetweenThreadsUpdateSeconds          = 20
+	assumeProducerConsumerDoneWhenIdleForSeconds = 15
 )
 
 var curThreads int
-var threadsMutex sync.Mutex
-
-func init() {
-	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = defaultThreads
-	settings, err := utils.LoadTransferSettings()
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	if settings != nil {
-		curThreads = settings.ThreadsNumber
-	}
-}
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
@@ -85,11 +72,16 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 	return targetAuth
 }
 
-// This variable holds the number of upload chunk that was sent to the user plugin to process.
+// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
+// This function polls on chunks of files that were uploaded during one of the phases and were not checksum deployed.
+// It does so by requesting the status of each chunk, by sending the uuid token that was returned when the chunk was uploaded.
+// Number of chunks is limited by the number of threads.
+// Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
+// and a new token to be polled on.
 func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
@@ -124,6 +116,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 	}
 }
 
+// Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
+// Returns true if the total number was indeed incremented.
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
@@ -134,6 +128,8 @@ func incrCurProcessedChunksWhenPossible() bool {
 	return false
 }
 
+// Reduces the current total number of upload chunks processed. Called when an upload chunks doesn't require polling for status -
+// if it's checksum deployed, or done processing.
 func reduceCurProcessedChunks() {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
@@ -179,6 +175,9 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
+// Sends an upload chunk to the source Artifactory instance.
+// If not all files were successfully checksum deployed, an uuid token is returned in order to poll on it for status.
+// If such token is indeed returned, this function sends it to the uploadTokensChan for the pollUploads function to read and poll.
 func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) (bool, error) {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
@@ -204,12 +203,13 @@ func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
 }
 
 func getThreads() int {
-	threadsMutex.Lock()
-	defer threadsMutex.Unlock()
 	return curThreads
 }
 
 // Periodically reads settings file and updates the number of threads.
+// Number of threads in the settings files is expected to change by running a separate command.
+// The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
+// the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
 func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
@@ -224,9 +224,6 @@ func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan b
 }
 
 func updateThreads(producerConsumer parallel.Runner) error {
-	threadsMutex.Lock()
-	defer threadsMutex.Unlock()
-
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err
@@ -250,6 +247,8 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
+// Gets a list of all errors files from the CLI's cache.
+// Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
 func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
 	var dirPath string
 	if isRetry {

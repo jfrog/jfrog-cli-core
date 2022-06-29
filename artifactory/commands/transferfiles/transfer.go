@@ -14,7 +14,7 @@ import (
 
 const (
 	tasksMaxCapacity = 10000
-	uploadChunkSize  = 10
+	uploadChunkSize  = 100
 	defaultThreads   = 16
 )
 
@@ -32,7 +32,7 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
-	return "rt_transfer_data"
+	return "rt_transfer_files"
 }
 
 func (tdc *TransferFilesCommand) SetFilestore(filestore bool) {
@@ -55,6 +55,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	err = os.MkdirAll(transferDir, 0777)
 	if err != nil {
 		return errorutils.CheckError(err)
+	}
+
+	err = tdc.initCurThreads()
+	if err != nil {
+		return err
 	}
 
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
@@ -84,16 +89,15 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar
-	progressBarMng, err := progressbar.NewTransferProgressMng(int64(len(srcRepos)))
+	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(srcRepos)))
 	if err != nil {
 		return err
 	}
-	tdc.progressbar = progressBarMng
 
 	for _, repo := range srcRepos {
 		exists := verifyRepoExistsInTarget(targetRepos, repo)
 		if !exists {
-			log.Error("Repo '" + repo + "' does not exist in target. Skipping...")
+			log.Error("repo '" + repo + "' does not exist in target. Skipping...")
 			continue
 		}
 		if tdc.progressbar != nil {
@@ -157,6 +161,19 @@ func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) 
 		return nil, err
 	}
 	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+}
+
+func (tdc *TransferFilesCommand) initCurThreads() error {
+	// Use default threads if settings file doesn't exist or an error occurred.
+	curThreads = defaultThreads
+	settings, err := utils.LoadTransferSettings()
+	if err != nil {
+		return err
+	}
+	if settings != nil {
+		curThreads = settings.ThreadsNumber
+	}
+	return nil
 }
 
 type producerConsumerDetails struct {

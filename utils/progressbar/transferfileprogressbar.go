@@ -4,8 +4,6 @@ import (
 	"errors"
 	"github.com/gookit/color"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-
-	//"github.com/jfrog/jfrog-cli/utils/cliutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
 	"sync/atomic"
@@ -25,7 +23,7 @@ type TransferProgressMng struct {
 	barsMng *ProgressBarMng
 }
 
-// NewTransferProgressMng Create TransferProgressMng object.
+// NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
 func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, error) {
 	mng, shouldDisplay, err := NewBarsMng()
@@ -38,7 +36,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	return &transfer, nil
 }
 
-// NewRepository adding new repository's progress details.
+// NewRepository adds new repository's progress details.
 // Aborting previous repository if exists.
 func (t *TransferProgressMng) NewRepository(name string) {
 	// Abort previous repository before creating the new one
@@ -109,7 +107,7 @@ func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
 }
 
 func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transfer newly created and modified files", false, GREEN))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, GREEN))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

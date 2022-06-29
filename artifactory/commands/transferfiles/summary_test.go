@@ -40,5 +40,4 @@ func TestGenerateSummaryFiles(t *testing.T) {
 	if !reflect.DeepEqual(expectedFileErrors, actualFileErrors) {
 		t.Errorf("Expected value: %v, got: %v.", expectedFileErrors, actualFileErrors)
 	}
-
 }

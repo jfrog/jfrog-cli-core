@@ -41,7 +41,7 @@ func ReadErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error
 			return
 		}
 		if !exists {
-			err = fmt.Errorf("log file: %s does not exist.", logPath)
+			err = fmt.Errorf("log file: %s does not exist", logPath)
 			return
 		}
 		var content []byte

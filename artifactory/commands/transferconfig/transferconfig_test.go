@@ -152,7 +152,7 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
-	assert.ErrorContains(t, err, "Target server response: 404 Not Found.\n\nIt looks like the config-import plugin is not installed on your target server.")
+	assert.ErrorContains(t, err, "Target server response: 404 Not Found.")
 }
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {

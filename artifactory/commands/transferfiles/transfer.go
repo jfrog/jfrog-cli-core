@@ -150,7 +150,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 	if csvErrorsFile != "" {
-		log.Info(fmt.Sprintf("See transfer errors summary csv file in: %s", csvErrorsFile))
+		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}
 	return nil
 }

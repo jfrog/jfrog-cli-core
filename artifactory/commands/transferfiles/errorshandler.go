@@ -273,39 +273,3 @@ func createErrorsCsvSummary() (string, error) {
 	}
 	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
 }
-
-// Creates the csv errors files - contains the retryable and skipped errors.
-// In case no errors were written returns empty string
-func createErrorsCsvSummary() (string, error) {
-	// Create csv errors file
-	csvTempDIr, err := fileutils.CreateTempDir()
-	if err != nil {
-		return "", err
-	}
-
-	// Get a list of retryable errors files from the errors directory
-	retryable, err := coreutils.GetJfrogTransferRetryableDir()
-	if err != nil {
-		return "", err
-	}
-	errorsFiles, err := fileutils.ListFiles(retryable, false)
-	if err != nil {
-		return "", err
-	}
-
-	// Get a list of skipped errors files from the errors directory
-	skipped, err := coreutils.GetJfrogTransferSkippedDir()
-	if err != nil {
-		return "", err
-	}
-	skippedFilesList, err := fileutils.ListFiles(skipped, false)
-	if err != nil {
-		return "", err
-	}
-
-	errorsFiles = append(errorsFiles, skippedFilesList...)
-	if len(errorsFiles) == 0 {
-		return "", nil
-	}
-	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
-}

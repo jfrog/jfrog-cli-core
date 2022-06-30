@@ -1,6 +1,7 @@
 package configxmlutils
 
 import (
+	"encoding/xml"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
@@ -50,20 +51,18 @@ func doRemoveNonIncludedRepositories(content string, repoType utils.RepoType, in
 }
 
 func shouldRemoveRepository(content string, includedRepositories []string) (bool, error) {
-	xmlTagIndices, _, err := findAllXmlTagIndices(content, `type`, true)
+	rtRepo := &artifactoryRepository{}
+	err := xml.Unmarshal([]byte(content), rtRepo)
 	if err != nil {
 		return false, err
 	}
-	_, repositoryType, _ := splitXmlTag(content, xmlTagIndices, 0)
-	if repositoryType == "buildinfo" {
+	if rtRepo.Type == "buildinfo" {
 		return false, nil
 	}
+	return !coreutils.Contains(includedRepositories, rtRepo.Key), nil
+}
 
-	xmlTagIndices, _, err = findAllXmlTagIndices(content, `key`, true)
-	if err != nil {
-		return false, err
-	}
-	_, repositoryKey, _ := splitXmlTag(content, xmlTagIndices, 0)
-
-	return !coreutils.Contains(includedRepositories, repositoryKey), nil
+type artifactoryRepository struct {
+	Key  string `xml:"key"`
+	Type string `xml:"type"`
 }

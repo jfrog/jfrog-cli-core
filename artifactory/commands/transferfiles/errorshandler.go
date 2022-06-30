@@ -242,6 +242,8 @@ func (writerMng *errorWriter) closeWriter() error {
 	return nil
 }
 
+// Creates the csv errors files - contains the retryable and skipped errors.
+// In case no errors were written returns empty string
 func createErrorsCsvSummary() (string, error) {
 	// Create csv errors file
 	csvTempDIr, err := fileutils.CreateTempDir()
@@ -260,7 +262,7 @@ func createErrorsCsvSummary() (string, error) {
 	}
 
 	// Get a list of skipped errors files from the errors directory
-	skipped, err := coreutils.GetJfrogTransferRetryableDir()
+	skipped, err := coreutils.GetJfrogTransferSkippedDir()
 	if err != nil {
 		return "", err
 	}
@@ -270,5 +272,8 @@ func createErrorsCsvSummary() (string, error) {
 	}
 
 	errorsFiles = append(errorsFiles, skippedFilesList...)
+	if len(errorsFiles) == 0 {
+		return "", nil
+	}
 	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
 }

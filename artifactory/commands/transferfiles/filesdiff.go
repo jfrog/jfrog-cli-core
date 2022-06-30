@@ -117,6 +117,7 @@ func (f *filesDiffPhase) run() error {
 // Split the time range of fixing files diffs into smaller time frames and handle them separately with smaller AQLs.
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
+	log.Info("Starting to handle files diffs...")
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
@@ -205,6 +206,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 			returnedError = err
 		}
 	}
+	log.Info("Done handling files diffs.")
 	return returnedError
 }
 

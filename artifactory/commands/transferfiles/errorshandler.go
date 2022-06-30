@@ -271,5 +271,5 @@ func createErrorsCsvSummary() (string, error) {
 	if len(errorsFiles) == 0 {
 		return "", nil
 	}
-	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
+	return createErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
 }

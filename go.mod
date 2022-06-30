@@ -26,6 +26,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
+require github.com/gocarina/gocsv v0.0.0-20220629092026-72f2e845d8d1
+
 require (
 	github.com/CycloneDX/cyclonedx-go v0.5.1 // indirect
 	github.com/Microsoft/go-winio v0.5.0 // indirect

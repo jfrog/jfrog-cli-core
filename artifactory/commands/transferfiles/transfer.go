@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -136,8 +137,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 	if tdc.progressbar != nil {
 		err = tdc.progressbar.Quit()
+		if err != nil {
+			return err
+		}
 	}
-	return err
+	csvErrorsFile, err := createErrorsCsvSummary()
+	if err != nil {
+		return err
+	}
+	log.Info("Transferring was completed!")
+	log.Info(fmt.Sprintf("See transfer errors summary csv file in: %s", csvErrorsFile))
+	return nil
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {

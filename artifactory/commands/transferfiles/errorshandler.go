@@ -241,3 +241,34 @@ func (writerMng *errorWriter) closeWriter() error {
 	}
 	return nil
 }
+
+func createErrorsCsvSummary() (string, error) {
+	// Create csv errors file
+	csvTempDIr, err := fileutils.CreateTempDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Get a list of retryable errors files from the errors directory
+	retryable, err := coreutils.GetJfrogTransferRetryableDir()
+	if err != nil {
+		return "", err
+	}
+	errorsFiles, err := fileutils.ListFiles(retryable, false)
+	if err != nil {
+		return "", err
+	}
+
+	// Get a list of skipped errors files from the errors directory
+	skipped, err := coreutils.GetJfrogTransferRetryableDir()
+	if err != nil {
+		return "", err
+	}
+	skippedFilesList, err := fileutils.ListFiles(skipped, false)
+	if err != nil {
+		return "", err
+	}
+
+	errorsFiles = append(errorsFiles, skippedFilesList...)
+	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
+}

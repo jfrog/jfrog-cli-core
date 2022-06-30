@@ -8,6 +8,7 @@ import (
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 	"golang.org/x/term"
+	golangLog "log"
 	"math"
 	"os"
 	"sync"
@@ -51,7 +52,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 		return
 	}
 	log.Info("Log path:", mng.logFile.Name())
-	log.SetLogger(log.NewLogger(corelog.GetCliLogLevel(), mng.logFile))
+	log.SetLogger(log.NewLoggerWithFlags(corelog.GetCliLogLevel(), mng.logFile, golangLog.Ldate|golangLog.Ltime|golangLog.Lmsgprefix))
 
 	mng.barsWg = new(sync.WaitGroup)
 	mng.container = mpb.New(

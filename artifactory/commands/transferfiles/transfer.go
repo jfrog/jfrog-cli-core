@@ -16,6 +16,7 @@ const (
 	tasksMaxCapacity = 10000
 	uploadChunkSize  = 100
 	defaultThreads   = 16
+	errorChannelSize = 500000
 )
 
 type TransferFilesCommand struct {

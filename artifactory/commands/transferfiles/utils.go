@@ -82,7 +82,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorChannel chan FileUploadStatusResponse) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -110,7 +110,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				handleFilesOfCompletedChunk(chunk.Files)
+				handleFilesOfCompletedChunk(chunk.Files, errorChannel)
 			}
 		}
 	}
@@ -146,12 +146,14 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorChannel chan FileUploadStatusResponse) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
 		case Fail:
+			errorChannel <- file
 		case SkippedLargeProps:
+			errorChannel <- file
 		}
 	}
 }

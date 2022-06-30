@@ -7,6 +7,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/forPelevin/gomoji v1.1.4
+	github.com/gocarina/gocsv v0.0.0-20220531201732-5f969b02b902
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.3.2
@@ -92,7 +93,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.14.1-0.20220628130908-765615492207
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.14.1-0.20220630090055-53a8c69a5f05
 
 replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.3.1-0.20220623084021-a61432b84f63
 

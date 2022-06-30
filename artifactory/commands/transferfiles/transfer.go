@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -15,7 +16,9 @@ import (
 const (
 	tasksMaxCapacity = 10000
 	uploadChunkSize  = 100
-	defaultThreads   = 16
+	// Default number of threads working while transferring Artifactory's data
+	defaultThreads = 16
+	// Size of the channel where the transfer's go routines write the transfer errors
 	errorChannelSize = 500000
 )
 
@@ -122,7 +125,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Debug("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
+			log.Info("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
 			err = newPhase.run()
 			if err != nil {
 				return err
@@ -131,13 +134,25 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Debug("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'")
+			log.Info("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
 		}
 	}
 	if tdc.progressbar != nil {
 		err = tdc.progressbar.Quit()
+		if err != nil {
+			return err
+		}
 	}
-	return err
+
+	log.Info("Transferring was completed!")
+	csvErrorsFile, err := createErrorsCsvSummary()
+	if err != nil {
+		return err
+	}
+	if csvErrorsFile != "" {
+		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	}
+	return nil
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService) {

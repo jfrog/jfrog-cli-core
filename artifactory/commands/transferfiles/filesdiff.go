@@ -82,11 +82,8 @@ func (f *filesDiffPhase) phaseDone() error {
 	}
 	if f.progressBar != nil {
 		err = f.progressBar.DonePhase(f.getPhaseId())
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+	return err
 }
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
@@ -110,13 +107,17 @@ func (f *filesDiffPhase) setTargetDetails(details *coreConfig.ServerDetails) {
 }
 
 func (f *filesDiffPhase) run() error {
-	f.handlePreviousUploadFailures()
+	err := f.handlePreviousUploadFailures()
+	if err != nil {
+		return err
+	}
 	return f.handleDiffTimeFrames()
 }
 
 // Split the time range of fixing files diffs into smaller time frames and handle them separately with smaller AQLs.
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
+	log.Info("Starting to handle files diffs...")
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
@@ -131,12 +132,14 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	doneChan := make(chan bool, 2)
 
 	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	transferErrorsMng, err := newTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
+	if err != nil {
+		return err
+	}
+	// Error returned from the "writing transfer errors to file" mechanism
+	var writingErrorsErr error
 	go func() {
-		err := WriteTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
-		if err != nil {
-			// TODO: check what to do with the error
-			log.Error(err)
-		}
+		writingErrorsErr = transferErrorsMng.start()
 	}()
 
 	runWaitGroup.Add(1)
@@ -191,6 +194,11 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 
 	close(errorChannel)
 
+	// Checking if we had an error while writing the transfer's errors files
+	if writingErrorsErr != nil {
+		return writingErrorsErr
+	}
+
 	var returnedError error
 	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
 		if err != nil {
@@ -198,6 +206,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 			returnedError = err
 		}
 	}
+	log.Info("Done handling files diffs.")
 	return returnedError
 }
 
@@ -298,18 +307,21 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 // Consumes errors files with upload failures from cache and tries to upload these files again.
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
-func (f *filesDiffPhase) handlePreviousUploadFailures() {
+func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
 	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	transferErrorsMng, err := newTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
+	if err != nil {
+		return err
+	}
+	// Error returned from the "writing transfer errors to file" mechanism
+	var writingErrorsErr error
 	go func() {
-		err := WriteTransferErrorsToFile(f.repoKey, f.getPhaseId(), convertTimeToEpochMilliseconds(f.startTime), errorChannel)
-		if err != nil {
-			log.Error(err)
-		}
+		writingErrorsErr = transferErrorsMng.start()
 	}()
 
 	runWaitGroup.Add(1)
@@ -338,11 +350,17 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 
 	close(errorChannel)
 
-	for _, err := range []error{runnerErr, pollingError} {
+	// Checking if we had an error while writing the transfer's errors files
+	if writingErrorsErr != nil {
+		return writingErrorsErr
+	}
+
+	for _, err = range []error{runnerErr, pollingError} {
 		if err != nil {
-			log.Error(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {

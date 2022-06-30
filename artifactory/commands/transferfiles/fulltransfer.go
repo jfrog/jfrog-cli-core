@@ -133,12 +133,14 @@ func (m *fullTransferPhase) run() error {
 	doneChan := make(chan bool, 2)
 
 	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	transferErrorsMng, err := newTransferErrorsToFile(m.repoKey, m.getPhaseId(), convertTimeToEpochMilliseconds(m.startTime), errorChannel)
+	if err != nil {
+		return err
+	}
+	// Error returned from the "writing transfer errors to file" mechanism
+	var writingErrorsErr error
 	go func() {
-		err := WriteTransferErrorsToFile(m.repoKey, m.getPhaseId(), convertTimeToEpochMilliseconds(m.startTime), errorChannel)
-		if err != nil {
-			// TODO: check what to do with the error
-			log.Error(err)
-		}
+		writingErrorsErr = transferErrorsMng.start()
 	}()
 
 	runWaitGroup.Add(1)
@@ -186,6 +188,11 @@ func (m *fullTransferPhase) run() error {
 	runWaitGroup.Wait()
 
 	close(errorChannel)
+
+	// Checking if we had an error while writing the transfer's errors files
+	if writingErrorsErr != nil {
+		return writingErrorsErr
+	}
 
 	var returnedError error
 	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {

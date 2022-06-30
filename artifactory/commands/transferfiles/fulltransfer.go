@@ -191,7 +191,7 @@ func (m *fullTransferPhase) run() error {
 
 	// Checking if we had an error while writing the transfer's errors files
 	if writingErrorsErr != nil {
-		return err
+		return writingErrorsErr
 	}
 
 	var returnedError error

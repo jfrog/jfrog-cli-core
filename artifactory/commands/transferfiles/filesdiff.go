@@ -195,7 +195,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 
 	// Checking if we had an error while writing the transfer's errors files
 	if writingErrorsErr != nil {
-		return err
+		return writingErrorsErr
 	}
 
 	var returnedError error
@@ -350,7 +350,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 
 	// Checking if we had an error while writing the transfer's errors files
 	if writingErrorsErr != nil {
-		return err
+		return writingErrorsErr
 	}
 
 	for _, err = range []error{runnerErr, pollingError} {

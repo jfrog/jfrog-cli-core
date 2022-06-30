@@ -280,9 +280,9 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	}
 
 	for _, file := range files {
-		matches := regExp.FindStringSubmatch(filepath.Base(file))
-		// Expecting a match and 4 groups.
-		if len(matches) == 5 {
+		matchAndGroups := regExp.FindStringSubmatch(filepath.Base(file))
+		// Expecting a match and 4 groups. A total of 5 results.
+		if len(matchAndGroups) == 5 {
 			filesPaths = append(filesPaths, file)
 		}
 	}

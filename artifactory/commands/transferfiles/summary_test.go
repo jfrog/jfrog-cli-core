@@ -17,7 +17,7 @@ func TestCreateErrorsSummaryFile(t *testing.T) {
 	logFiles := []string{filepath.Join(testDataDir, "logs1.json"), filepath.Join(testDataDir, "logs2.json")}
 
 	// Create Errors Summary Csv File from given JSON log files
-	createdCsvPath, err := CreateErrorsSummaryCsvFile(logFiles, tmpDir)
+	createdCsvPath, err := createErrorsSummaryCsvFile(logFiles, tmpDir)
 	assert.NoError(t, err)
 	createdFile, err := os.Open(createdCsvPath)
 	assert.NoError(t, err)

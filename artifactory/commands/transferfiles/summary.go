@@ -16,9 +16,9 @@ import (
 // logPaths   - array of log file absolute path's
 // tmpDirPath - temp directory to store the CSV file
 // csvPath    - Created CSV file path
-func CreateErrorsSummaryCsvFile(logPaths []string, tmpDirPath string) (csvPath string, err error) {
+func createErrorsSummaryCsvFile(logPaths []string, tmpDirPath string) (csvPath string, err error) {
 	// Collect all errors from the given log files
-	allErrors, err := ParseErrorsFromLogFiles(logPaths)
+	allErrors, err := parseErrorsFromLogFiles(logPaths)
 	if err != nil {
 		return
 	}
@@ -28,8 +28,7 @@ func CreateErrorsSummaryCsvFile(logPaths []string, tmpDirPath string) (csvPath s
 	// todo: create name convention and location for file
 	csvPath = filepath.Join(tmpDirPath, fmt.Sprintf("logs-%s.csv", timestamp))
 	summaryCsv, err := os.Create(csvPath)
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	defer func() {
@@ -43,7 +42,8 @@ func CreateErrorsSummaryCsvFile(logPaths []string, tmpDirPath string) (csvPath s
 	return
 }
 
-func ParseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
+// Loop on json files containing FilesErrors and collect them to one FilesErrors object.
+func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
 	for _, logPath := range logPaths {
 		var exists bool
 		exists, err = fileutils.IsFileExists(logPath, false)

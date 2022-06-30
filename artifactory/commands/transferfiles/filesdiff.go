@@ -117,6 +117,7 @@ func (f *filesDiffPhase) run() error {
 // Split the time range of fixing files diffs into smaller time frames and handle them separately with smaller AQLs.
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
+	log.Info("Starting to handle files diffs...")
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
@@ -198,6 +199,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 			returnedError = err
 		}
 	}
+	log.Info("Done handling files diffs.")
 	return returnedError
 }
 
@@ -299,6 +301,7 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
 func (f *filesDiffPhase) handlePreviousUploadFailures() {
+	log.Info("Starting to handle previous upload failures...")
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
 	// Done channel notifies the polling go routines that no more tasks are expected.
@@ -343,6 +346,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() {
 			log.Error(err)
 		}
 	}
+	log.Info("Done handling previous upload failures.")
 }
 
 func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {

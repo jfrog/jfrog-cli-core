@@ -38,7 +38,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	repoSummaryList, err := serviceManager.StorageInfo()
+	repoSummaryList, err := serviceManager.StorageInfo(true)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,9 @@ func (m *fullTransferPhase) initProgressBar() error {
 			return nil
 		}
 	}
-	return fmt.Errorf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)
+	// Case that the repo was exists in the beginning of the transfer run and was deleted before handled.
+	log.Error(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey))
+	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -81,7 +83,10 @@ func (m *fullTransferPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.DonePhase(m.getPhaseId())
+	if m.progressBar != nil {
+		return m.progressBar.DonePhase(m.getPhaseId())
+	}
+	return nil
 }
 
 func (m *fullTransferPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -127,6 +132,15 @@ func (m *fullTransferPhase) run() error {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
+	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
+	go func() {
+		err := WriteTransferErrorsToFile(m.repoKey, m.getPhaseId(), convertTimeToEpochMilliseconds(m.startTime), errorChannel)
+		if err != nil {
+			// TODO: check what to do with the error
+			log.Error(err)
+		}
+	}()
+
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
@@ -153,7 +167,7 @@ func (m *fullTransferPhase) run() error {
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan)
+		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, errorChannel)
 	}()
 
 	var runnerErr error
@@ -170,6 +184,8 @@ func (m *fullTransferPhase) run() error {
 	// Blocked until finish consuming
 	producerConsumer.Run()
 	runWaitGroup.Wait()
+
+	close(errorChannel)
 
 	var returnedError error
 	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {

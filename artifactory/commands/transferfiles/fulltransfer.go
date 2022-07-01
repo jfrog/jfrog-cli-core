@@ -3,14 +3,12 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
-	"sync"
 	"time"
 )
 
@@ -34,35 +32,16 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	serviceManager, err := utils.CreateServiceManager(m.getSourceDetails(), -1, 0, false)
+	tasks, err := m.repoSummary.FilesCount.Int64()
 	if err != nil {
 		return err
 	}
-	repoSummaryList, err := serviceManager.StorageInfo(true)
-	if err != nil {
-		return err
-	}
-	for _, repo := range repoSummaryList.RepositoriesSummaryList {
-		if m.repoKey == repo.RepoKey {
-			tasks, err := repo.FilesCount.Int64()
-			if err != nil {
-				return err
-			}
-			m.progressBar.AddPhase1(tasks)
-			return nil
-		}
-	}
-	// Case that the repo was exists in the beginning of the transfer run and was deleted before handled.
-	log.Error(fmt.Sprintf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey))
+	m.progressBar.AddPhase1(tasks)
 	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
 	return "Full Transfer Phase"
-}
-
-func (m *fullTransferPhase) getPhaseId() int {
-	return 0
 }
 
 func (m *fullTransferPhase) phaseStarted() error {
@@ -84,7 +63,7 @@ func (m *fullTransferPhase) phaseDone() error {
 		return err
 	}
 	if m.progressBar != nil {
-		return m.progressBar.DonePhase(m.getPhaseId())
+		return m.progressBar.DonePhase(m.phaseId)
 	}
 	return nil
 }
@@ -123,85 +102,18 @@ func (m *fullTransferPhase) setTargetDetails(details *coreConfig.ServerDetails) 
 	m.targetRtDetails = details
 }
 
-func (m *fullTransferPhase) run() error {
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
-	expectedChan := make(chan int, 1)
-	errorsQueue := clientUtils.NewErrorsQueue(1)
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
-	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routines that no more tasks are expected.
-	doneChan := make(chan bool, 2)
+func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
+	m.repoSummary = repoSummary
+}
 
-	errorChannel := make(chan FileUploadStatusResponse, errorChannelSize)
-	transferErrorsMng, err := newTransferErrorsToFile(m.repoKey, m.getPhaseId(), convertTimeToEpochMilliseconds(m.startTime), errorChannel)
-	if err != nil {
+func (m *fullTransferPhase) run() error {
+	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
+	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
+		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper)
+		_, err := pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcDetails.errorsQueue.AddError)
 		return err
 	}
-	// Error returned from the "writing transfer errors to file" mechanism
-	var writingErrorsErr error
-	go func() {
-		writingErrorsErr = transferErrorsMng.start()
-	}()
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		pcDetails := producerConsumerDetails{
-			producerConsumer: producerConsumer,
-			expectedChan:     expectedChan,
-			errorsQueue:      errorsQueue,
-			uploadTokensChan: uploadTokensChan,
-		}
-		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails)
-		_, err := producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), errorsQueue.AddError)
-		if err != nil {
-			log.Error("error occurred when adding new task to producer consumer:" + err.Error())
-		}
-	}()
-
-	var pollingError error
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan, errorChannel)
-	}()
-
-	var runnerErr error
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
-		// the work is assumed to be done.
-		runnerErr = producerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-		// Notify the other go routines that work is done.
-		doneChan <- true
-		doneChan <- true
-	}()
-	// Blocked until finish consuming
-	producerConsumer.Run()
-	runWaitGroup.Wait()
-
-	close(errorChannel)
-
-	// Checking if we had an error while writing the transfer's errors files
-	if writingErrorsErr != nil {
-		return writingErrorsErr
-	}
-
-	var returnedError error
-	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
-		if err != nil {
-			log.Error(err)
-			returnedError = err
-		}
-	}
-	return returnedError
+	return manager.doTransfer(true, action)
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -211,16 +123,16 @@ type folderParams struct {
 	relativePath string
 }
 
-func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails) folderFullTransferHandlerFunc {
+func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return m.transferFolder(params, logMsgPrefix, pcDetails)
+			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper)
 		}
 	}
 }
 
-func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails) error {
+func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
@@ -243,21 +155,26 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			if params.relativePath != "." {
 				newRelativePath = path.Join(params.relativePath, newRelativePath)
 			}
-			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails)
+			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
 			if err != nil {
-				log.Error("error occurred when adding new task to producer consumer:" + err.Error())
+				return err
 			}
 		case "file":
-			curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
+			file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+			delayed := delayHelper.delayUploadIfNecessary(file)
+			if delayed {
+				continue
+			}
+			curUploadChunk.appendUploadCandidate(file)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan)
 				if err != nil {
 					log.Error(err)
 				}
 				// Increase phase1 progress bar with the uploaded number of files.
 				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
+					err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 					if err != nil {
 						return err
 					}
@@ -270,18 +187,22 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Empty folder. Add it as candidate.
 	if len(result.Results) == 0 {
-		curUploadChunk.appendUploadCandidate(params.repoKey, path.Dir(params.relativePath), path.Base(params.relativePath))
+		curUploadChunk.appendUploadCandidate(FileRepresentation{
+			Repo: params.repoKey,
+			Path: path.Dir(params.relativePath),
+			Name: path.Base(params.relativePath),
+		})
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
+		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan)
 		if err != nil {
 			return err
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
-			err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
+			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 			if err != nil {
 				return err
 			}
@@ -291,7 +212,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	return nil
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *artifactoryUtils.AqlSearchResult, err error) {
+func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateFolderContentsAqlQuery(repoKey, relativePath)
 	return runAql(m.srcRtDetails, query)
 }

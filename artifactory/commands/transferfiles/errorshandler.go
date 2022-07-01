@@ -2,12 +2,15 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 const (
@@ -20,7 +23,7 @@ type TransferErrorsMng struct {
 	// All go routines will write errors to this channel
 	errorsChannel chan FileUploadStatusResponse
 	// Current repository that is being transferred
-	repoName string
+	repoKey string
 	// Transfer current phase
 	phaseId        int
 	phaseStartTime string
@@ -70,16 +73,16 @@ func (mng *TransferErrorsMng) initErrorWriterMng() error {
 
 // newTransferErrorsToFile creates a manager for the files transferring process.
 // localPath - Path to the dir which error files will be written to.
-// repoName - the repo that is being transferred
+// repoKey - the repo that is being transferred
 // phase - the phase number
 // bufferSize - the total of errorsEntity instances to write in buffer before flushing to disk
-func newTransferErrorsToFile(repoName string, phaseId int, phaseStartTime string, errorsChannel chan FileUploadStatusResponse) (*TransferErrorsMng, error) {
+func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannel chan FileUploadStatusResponse) (*TransferErrorsMng, error) {
 	err := initTransferErrorsDir()
 	if err != nil {
 		return nil, err
 	}
 
-	mng := TransferErrorsMng{errorsChannel: errorsChannel, repoName: repoName, phaseId: phaseId, phaseStartTime: phaseStartTime}
+	mng := TransferErrorsMng{errorsChannel: errorsChannel, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime}
 	err = mng.initErrorWriterMng()
 	return &mng, err
 }
@@ -153,7 +156,7 @@ func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*cont
 	if err != nil {
 		return nil, "", err
 	}
-	errorsFilePath := filepath.Join(dirPath, fmt.Sprintf("%s-%d-%s-%d.json", mng.repoName, mng.phaseId, mng.phaseStartTime, index))
+	errorsFilePath := filepath.Join(dirPath, fmt.Sprintf("%s-%d-%s-%d.json", mng.repoKey, mng.phaseId, mng.phaseStartTime, index))
 	return writer, errorsFilePath, nil
 }
 
@@ -169,7 +172,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) erro
 }
 
 func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusResponse) error {
-	log.Info(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
+	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -194,7 +197,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusRespons
 }
 
 func (mng *TransferErrorsMng) writeRetryableErrorContent(e FileUploadStatusResponse) error {
-	log.Info(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
+	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -272,4 +275,45 @@ func createErrorsCsvSummary() (string, error) {
 		return "", nil
 	}
 	return CreateErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
+}
+
+const errorsFilesRegexFormat = `^(%s)-([0-9]+)-([0-9]+)-([0-9]+)\.json$`
+
+// Gets a list of all errors files from the CLI's cache.
+// Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
+func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
+	var dirPath string
+	if isRetry {
+		dirPath, err = coreutils.GetJfrogTransferRetryableDir()
+	} else {
+		dirPath, err = coreutils.GetJfrogTransferSkippedDir()
+	}
+	if err != nil {
+		return []string{}, err
+	}
+	exist, err := utils.IsDirExists(dirPath, false)
+	if !exist || err != nil {
+		return []string{}, err
+	}
+
+	errorsFilesRegex := fmt.Sprintf(errorsFilesRegexFormat, repoKey)
+
+	regExp, err := regexp.Compile(errorsFilesRegex)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+
+	files, err := utils.ListFiles(dirPath, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		matchAndGroups := regExp.FindStringSubmatch(filepath.Base(file))
+		// Expecting a match and 4 groups. A total of 5 results.
+		if len(matchAndGroups) == 5 {
+			filesPaths = append(filesPaths, file)
+		}
+	}
+	return
 }

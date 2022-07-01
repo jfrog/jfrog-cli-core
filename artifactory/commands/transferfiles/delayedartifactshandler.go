@@ -105,10 +105,6 @@ func (mng *TransferDelayedArtifactsMng) closeWriter() error {
 	return err
 }
 
-func (mng *TransferDelayedArtifactsMng) getFilesToConsume() []string {
-	return mng.filesToConsume
-}
-
 type DelayedArtifactsFile struct {
 	DelayedArtifacts []FileRepresentation `json:"delayed_artifacts,omitempty"`
 }

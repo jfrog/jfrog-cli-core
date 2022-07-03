@@ -16,7 +16,8 @@ const (
 	maxDelayedArtifactsInFile = 50000
 )
 
-// TransferDelayedArtifactsMng managing multi threads writing delayed deployment artifacts in order to keep the order of deployment.
+// TransferDelayedArtifactsMng takes care of the multi-threaded-writing of artifacts to be transferred, while maintaining the correct order of the deployment.
+// This is needed because, for example, for maven repositories, pom file should be deployed last.
 type TransferDelayedArtifactsMng struct {
 	// All go routines will write delayedArtifacts to this channel
 	delayedArtifactsChannel chan FileRepresentation
@@ -33,76 +34,51 @@ type delayedArtifactWriter struct {
 	fileIndex int
 }
 
-func (mng *TransferDelayedArtifactsMng) initDelayedArtifactWriter() (err error) {
-	// Init the content writer which responsible for writing delayed artifacts - That means delayed artifacts that we should upload later, in a certain order.
-	writer, err := mng.newContentWriter()
-	if err != nil {
-		return err
-	}
-	mng.deployedWriter = delayedArtifactWriter{writer: writer, fileIndex: 0}
-	return nil
-}
-
 // Creates a manager for the files transferring process.
-func newTransferDelayedArtifactsToFile(delayedArtifactsChannel chan FileRepresentation) (*TransferDelayedArtifactsMng, error) {
-	mng := TransferDelayedArtifactsMng{delayedArtifactsChannel: delayedArtifactsChannel}
-	err := mng.initDelayedArtifactWriter()
-	return &mng, err
+func newTransferDelayedArtifactsToFile(delayedArtifactsChannel chan FileRepresentation) *TransferDelayedArtifactsMng {
+	return &TransferDelayedArtifactsMng{delayedArtifactsChannel: delayedArtifactsChannel}
 }
 
-func (mng *TransferDelayedArtifactsMng) start() error {
+func (mng *TransferDelayedArtifactsMng) start() (err error) {
+	defer func() {
+		if mng.deployedWriter.writer != nil {
+			e := mng.deployedWriter.writer.Close()
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
+			if mng.deployedWriter.writer.GetFilePath() != "" {
+				mng.filesToConsume = append(mng.filesToConsume, mng.deployedWriter.writer.GetFilePath())
+			}
+		}
+	}()
+
 	for file := range mng.delayedArtifactsChannel {
-		err := mng.writeDelayedArtifactContent(file)
-		if err != nil {
-			return err
-		}
-	}
-	return mng.closeWriter()
-}
+		if mng.deployedWriter.writer == nil {
+			// Init the content writer, which is responsible for writing delayed artifacts - This means that delayed artifacts will be deployed later, to maintain the right deployment order.
+			writer, err := content.NewContentWriter("delayed_artifacts", true, false)
+			if err != nil {
+				return err
+			}
+			mng.deployedWriter = delayedArtifactWriter{writer: writer, fileIndex: 0}
 
-func (mng *TransferDelayedArtifactsMng) newContentWriter() (*content.ContentWriter, error) {
-	writer, err := content.NewContentWriter("delayed_artifacts", true, false)
-	if err != nil {
-		return nil, err
-	}
-	return writer, nil
-}
+		}
 
-func (mng *TransferDelayedArtifactsMng) writeDelayedArtifactContent(artifact FileRepresentation) error {
-	log.Debug(fmt.Sprintf("Deplay the upload of file '%s'. Writing it to be uploaded later...", path.Join(artifact.Repo, artifact.Path, artifact.Name)))
-	mng.deployedWriter.writer.Write(artifact)
-	mng.deployedWriter.delayedArtifactCount++
-	// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file
-	if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
-		err := mng.closeWriter()
-		if err != nil {
-			return err
+		log.Debug(fmt.Sprintf("Delaying the upload of file '%s'. Writing it to be uploaded later...", path.Join(file.Repo, file.Path, file.Name)))
+		mng.deployedWriter.writer.Write(file)
+		mng.deployedWriter.delayedArtifactCount++
+		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file
+		if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
+			err = mng.deployedWriter.writer.Close()
+			if err == nil {
+				return err
+			}
+			if mng.deployedWriter.writer.GetFilePath() != "" {
+				mng.filesToConsume = append(mng.filesToConsume, mng.deployedWriter.writer.GetFilePath())
+			}
+			mng.deployedWriter.delayedArtifactCount = 0
 		}
-		// Initialize variables for new delayedArtifacts file
-		mng.deployedWriter.fileIndex++
-		mng.deployedWriter.writer, err = mng.newContentWriter()
-		if err != nil {
-			return err
-		}
-		mng.deployedWriter.delayedArtifactCount = 0
 	}
 	return nil
-}
-
-func (mng *TransferDelayedArtifactsMng) closeWriter() error {
-	// Close content writer and add output file to the array in the manager.
-	if mng.deployedWriter.writer == nil {
-		return nil
-	}
-	err := mng.deployedWriter.writer.Close()
-	if err != nil {
-		return err
-	}
-
-	if mng.deployedWriter.writer.GetFilePath() != "" {
-		mng.filesToConsume = append(mng.filesToConsume, mng.deployedWriter.writer.GetFilePath())
-	}
-	return err
 }
 
 type DelayedArtifactsFile struct {
@@ -197,7 +173,7 @@ type delayUploadHelper struct {
 }
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
-// This is an array to allow removing a single comparison when its delay is no longer needed.
+// When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
 func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) bool {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if shouldDelay(file.Name) {

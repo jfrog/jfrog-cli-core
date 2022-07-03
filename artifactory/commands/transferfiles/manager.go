@@ -20,7 +20,7 @@ type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTo
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
-// The transferAction will collect artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle.
+// The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle.
 // The Artifactory user plugin in the source instance will try to checksum-deploy all the artifacts in the chunk.
 // If not successful, an uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
 // In some repositories the order of deployment is important. In these case the any artifacts that should be delay will be collected by
@@ -49,10 +49,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	}()
 
 	delayedArtifactsChannel := make(chan FileRepresentation, fileWritersChannelSize)
-	delayedArtifactsMng, err := newTransferDelayedArtifactsToFile(delayedArtifactsChannel)
-	if err != nil {
-		return err
-	}
+	delayedArtifactsMng := newTransferDelayedArtifactsToFile(delayedArtifactsChannel)
 	var writingDelayedArtifactsErr error
 	if len(ftm.delayUploadComparisonFunctions) > 0 {
 		writtersWaitGroup.Add(1)

@@ -2,6 +2,7 @@ package configxmlutils
 
 import (
 	"encoding/xml"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
@@ -53,7 +54,7 @@ func doRemoveNonIncludedRepositories(content string, repoType utils.RepoType, in
 func shouldRemoveRepository(content string, includedRepositories []string) (bool, error) {
 	rtRepo := &artifactoryRepository{}
 	// The content of the repository tag must be wrapped inside an outer tag in order to be unmarshalled.
-	content = "<repo>" + content + "</repo>"
+	content = fmt.Sprintf("<repo>%s</repo>", content)
 	err := xml.Unmarshal([]byte(content), rtRepo)
 	if err != nil {
 		return false, err

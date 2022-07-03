@@ -2,18 +2,14 @@ package transferfiles
 
 import (
 	"encoding/json"
-	biUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -27,15 +23,15 @@ const (
 var curThreads int
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, 0, 0, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
 	if err != nil {
 		return nil, err
 	}
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
 }
 
-func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *artifactoryUtils.AqlSearchResult, err error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, -1, 0, false)
+func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +53,7 @@ func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *ar
 		return nil, errorutils.CheckError(err)
 	}
 
-	result = &artifactoryUtils.AqlSearchResult{}
+	result = &serviceUtils.AqlSearchResult{}
 	err = json.Unmarshal(respBody, result)
 	return result, errorutils.CheckError(err)
 }
@@ -249,32 +245,42 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-// Gets a list of all errors files from the CLI's cache.
-// Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
-func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
-	var dirPath string
-	if isRetry {
-		dirPath, err = coreutils.GetJfrogTransferRetryableDir()
-	} else {
-		dirPath, err = coreutils.GetJfrogTransferSkippedDir()
-	}
-	if err != nil {
-		return []string{}, err
-	}
-	exist, err := biUtils.IsDirExists(dirPath, false)
-	if !exist || err != nil {
-		return []string{}, err
-	}
-
-	filesNames, err := biUtils.ListFiles(dirPath, false)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range filesNames {
-		if strings.HasPrefix(filepath.Base(file), repoKey) {
-			filesPaths = append(filesPaths, file)
+func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, repoKey string) (serviceUtils.RepositorySummary, error) {
+	for i := range repoSummaryList {
+		if repoKey == repoSummaryList[i].RepoKey {
+			return repoSummaryList[i], nil
 		}
 	}
-	return
+	return serviceUtils.RepositorySummary{}, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary of the source instance", repoKey)
+}
+
+// Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
+// If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper) (err error) {
+	curUploadChunk := UploadChunk{
+		TargetAuth:                createTargetAuth(base.targetRtDetails),
+		CheckExistenceInFilestore: base.checkExistenceInFilestore,
+	}
+
+	for _, item := range files {
+		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+		delayed := delayHelper.delayUploadIfNecessary(file)
+		if delayed {
+			continue
+		}
+		curUploadChunk.appendUploadCandidate(file)
+		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+			err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan)
+			if err != nil {
+				return err
+			}
+			// Empty the uploaded chunk.
+			curUploadChunk.UploadCandidates = []FileRepresentation{}
+		}
+	}
+	// Chunk didn't reach full size. Upload the remaining files.
+	if len(curUploadChunk.UploadCandidates) > 0 {
+		return uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan)
+	}
+	return nil
 }

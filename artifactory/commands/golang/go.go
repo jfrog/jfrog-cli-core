@@ -184,7 +184,12 @@ func (gc *GoCommand) run() error {
 				return err
 			}
 			// Cleanup the temp working directory at the end.
-			defer fileutils.RemoveTempDir(tempDirPath)
+			defer func() {
+				e := fileutils.RemoveTempDir(tempDirPath)
+				if err == nil {
+					err = e
+				}
+			}()
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
@@ -232,7 +237,7 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 }
 
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
-// The path to those chache files is retrived using the supplied package name and Artifactory details.
+// The path to those cache files is retrieved using the supplied package name and Artifactory details.
 func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) error {
 	packageFilesPath, err := getPackageFilePathFromArtifactory(packageName, rtTargetRepo, authArtDetails)
 	if err != nil {
@@ -252,8 +257,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArtDetails auth.ServiceDetails) (packageFilesPath string, err error) {
 	var version string
 	packageCachePath, err := biutils.GetGoModCachePath()
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	packageNameSplitted := strings.Split(packageName, "@")

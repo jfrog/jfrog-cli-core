@@ -20,7 +20,16 @@ import (
 )
 
 // GenericAudit audits the project found in the current directory using Xray.
-func GenericAudit(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, insecureTls bool, args []string, progress ioUtils.ProgressMgr, technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func GenericAudit(
+	xrayGraphScanPrams services.XrayGraphScanParams,
+	serverDetails *config.ServerDetails,
+	excludeTestDeps,
+	useWrapper,
+	insecureTls bool,
+	args []string,
+	progress ioUtils.ProgressMgr,
+	technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
 	if len(technologies) == 0 {

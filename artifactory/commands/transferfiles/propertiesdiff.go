@@ -3,6 +3,7 @@ package transferfiles
 import (
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"time"
 )
@@ -27,10 +28,6 @@ func (p *propertiesDiffPhase) initProgressBar() error {
 
 func (p *propertiesDiffPhase) getPhaseName() string {
 	return "Properties Diff Handling Phase"
-}
-
-func (p *propertiesDiffPhase) getPhaseId() int {
-	return 2
 }
 
 func (p *propertiesDiffPhase) phaseStarted() error {
@@ -60,6 +57,10 @@ func (p *propertiesDiffPhase) setSourceDetails(details *coreConfig.ServerDetails
 
 func (p *propertiesDiffPhase) setTargetDetails(details *coreConfig.ServerDetails) {
 	p.targetRtDetails = details
+}
+
+func (p *propertiesDiffPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
+	p.repoSummary = repoSummary
 }
 
 func (p *propertiesDiffPhase) run() error {

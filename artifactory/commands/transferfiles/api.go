@@ -111,6 +111,6 @@ func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string)
 	}
 }
 
-func (uc *UploadChunk) appendUploadCandidate(repo, path, name string) {
-	uc.UploadCandidates = append(uc.UploadCandidates, FileRepresentation{Repo: repo, Path: path, Name: name})
+func (uc *UploadChunk) appendUploadCandidate(file FileRepresentation) {
+	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }

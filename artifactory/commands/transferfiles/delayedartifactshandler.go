@@ -30,8 +30,6 @@ type TransferDelayedArtifactsMng struct {
 type delayedArtifactWriter struct {
 	writer               *content.ContentWriter
 	delayedArtifactCount int
-	// In case we have multiple delayedArtifacts files - we index them
-	fileIndex int
 }
 
 // Creates a manager for the files transferring process.
@@ -59,14 +57,13 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 			if err != nil {
 				return err
 			}
-			mng.deployedWriter = delayedArtifactWriter{writer: writer, fileIndex: 0}
-
+			mng.deployedWriter = delayedArtifactWriter{writer: writer}
 		}
 
 		log.Debug(fmt.Sprintf("Delaying the upload of file '%s'. Writing it to be uploaded later...", path.Join(file.Repo, file.Path, file.Name)))
 		mng.deployedWriter.writer.Write(file)
 		mng.deployedWriter.delayedArtifactCount++
-		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file
+		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file.
 		if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
 			err = mng.deployedWriter.writer.Close()
 			if err == nil {
@@ -75,7 +72,9 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 			if mng.deployedWriter.writer.GetFilePath() != "" {
 				mng.filesToConsume = append(mng.filesToConsume, mng.deployedWriter.writer.GetFilePath())
 			}
+			// Reset writer and counter.
 			mng.deployedWriter.delayedArtifactCount = 0
+			mng.deployedWriter.writer = nil
 		}
 	}
 	return nil

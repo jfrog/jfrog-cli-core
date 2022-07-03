@@ -36,7 +36,7 @@ func GetRepositories(artDetails *config.ServerDetails, repoType ...RepoType) ([]
 	}
 	repos := []string{}
 	for i := range repoType {
-		r, err := GetFilteredRepositories(sm, nil, nil, &repoType[i])
+		r, err := GetFilteredRepositories(sm, nil, nil, repoType[i])
 		if err != nil {
 			return repos, err
 		}
@@ -76,9 +76,13 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 // all repositories are included.
 // excludePatterns - patterns of repository names (can contain wildcards) to exclude from the results. A repository's name
 // must NOT match any of these patterns in order to be included in the results.
-// repoType - only repositories of this type will be returned. Pass nil to return repositories of all types.
-func GetFilteredRepositories(servicesManager artifactory.ArtifactoryServicesManager, includePatterns, excludePatterns []string, repoType *RepoType) ([]string, error) {
-	filterParams := services.RepositoriesFilterParams{RepoType: repoType.String()}
+// repoType - only repositories of this type will be returned. Only a maximum of ONE repository type can be filtered.
+// If more than one type are provided, the repositories will be filtered by the first one only.
+func GetFilteredRepositories(servicesManager artifactory.ArtifactoryServicesManager, includePatterns, excludePatterns []string, repoType ...RepoType) ([]string, error) {
+	filterParams := services.RepositoriesFilterParams{}
+	if len(repoType) > 0 {
+		filterParams.RepoType = repoType[0].String()
+	}
 	repos, err := servicesManager.GetAllRepositoriesFiltered(filterParams)
 	if err != nil {
 		return nil, err

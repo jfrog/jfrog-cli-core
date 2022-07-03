@@ -2,7 +2,9 @@ package transferconfig
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io"
 	"net/http"
 	"os"
@@ -30,12 +32,12 @@ const (
 )
 
 type TransferConfigCommand struct {
-	sourceServerDetails *config.ServerDetails
-	targetServerDetails *config.ServerDetails
-	dryRun              bool
-	force               bool
-	// List of repositries to include in the import. If empty - include all.
-	includedRepositories []string
+	sourceServerDetails  *config.ServerDetails
+	targetServerDetails  *config.ServerDetails
+	dryRun               bool
+	force                bool
+	includeReposPatterns []string
+	excludeReposPatterns []string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -56,12 +58,18 @@ func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) SetIncludedRepositories(includedRepositories []string) *TransferConfigCommand {
-	tcc.includedRepositories = includedRepositories
+func (tcc *TransferConfigCommand) SetIncludeReposPatterns(includeReposPatterns []string) *TransferConfigCommand {
+	tcc.includeReposPatterns = includeReposPatterns
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigCommand {
+	tcc.excludeReposPatterns = excludeReposPatterns
 	return tcc
 }
 
 func (tcc *TransferConfigCommand) Run() (err error) {
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	// Create config managers
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
@@ -77,12 +85,26 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
+	// Get data-transfer plugin version
+	sourceArtifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.sourceServerDetails.GetArtifactoryUrl())
+	sourceRtDetails, err := createArtifactoryClientDetails(sourceServicesManager)
+	if err != nil {
+		return err
+	}
+	dataTransferVersionUrl := sourceArtifactoryUrl + "api/plugins/execute/dataTransferVersion"
+	dataTransferPluginVersion, err := getPluginVersion(sourceServicesManager, dataTransferVersionUrl, "data-transfer", sourceRtDetails)
+	if err != nil {
+		return err
+	}
+	log.Info("data-transfer plugin version: " + dataTransferPluginVersion)
+
 	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
 	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
 		return
 	}
 
 	// Run export on the source Artifactory
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - Export configuration from the source Artifactory ==========")))
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServicesManager)
 	defer func() {
 		cleanUpErr := cleanUp()
@@ -94,14 +116,22 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/4 - Download and modify configuration ==========")))
+
 	// Download and decrypt the config XML from the source Artifactory
 	configXml, err := tcc.getConfigXml(sourceServicesManager, sourceArtifactoryVersion)
 	if err != nil {
 		return
 	}
 
+	// Filter repositories to transfer
+	transferRepositories, err := utils.GetFilteredRepositories(sourceServicesManager, tcc.includeReposPatterns, tcc.excludeReposPatterns)
+	if err != nil {
+		return
+	}
+
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl, transferRepositories)
 	if err != nil {
 		return
 	}
@@ -113,6 +143,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Import the archive to the target Artifactory
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 4/4 - Import configuration to the target Artifactory ==========")))
 	return tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
 }
 
@@ -160,6 +191,14 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 		return err
 	}
 
+	// Get config-import plugin version
+	configImportVersionUrl := artifactoryUrl + "api/plugins/execute/configImportVersion"
+	configImportPluginVersion, err := getPluginVersion(targetServicesManager, configImportVersionUrl, "config-import", rtDetails)
+	if err != nil {
+		return err
+	}
+	log.Info("config-import plugin version: " + configImportPluginVersion)
+
 	// Execute 'GET /api/plugins/execute/checkPermissions'
 	resp, _, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
 	if err != nil {
@@ -169,14 +208,9 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 		return nil
 	}
 
-	// Unexpected status received
+	// Unexpected status received: 403 if the user is not admin, 500+ if there is a server error
 	errorBody, _ := io.ReadAll(resp.Body)
 	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, errorBody)
-	if resp.StatusCode == http.StatusNotFound {
-		// Probably the plugin is not installed
-		return errorutils.CheckErrorf("%sIt looks like the config-import plugin is not installed on your target server.", messageFormat)
-	}
-	// 403 if the user is not admin, 500+ if there is a server error
 	return errorutils.CheckErrorf(messageFormat)
 }
 
@@ -212,7 +246,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 		return "", func() error { return nil }, err
 	}
 
-	if err = os.Chmod(tempDir, 0755); err != nil {
+	if err = os.Chmod(tempDir, 0777); err != nil {
 		return "", func() error { return nil }, errorutils.CheckError(err)
 	}
 
@@ -248,10 +282,10 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string, transferRepositories []string) (string, error) {
 	var err error
-	if len(tcc.includedRepositories) > 0 {
-		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.includedRepositories)
+	if len(transferRepositories) > 0 {
+		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, transferRepositories)
 		if err != nil {
 			return "", err
 		}
@@ -316,7 +350,7 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 	if err != nil {
 		return err
 	}
-	log.Info(fmt.Sprintf("\n====== Import log ======\n%s========================", body))
+	log.Info(fmt.Sprintf("Logs from Artifactory:\n%s", body))
 	return nil
 }
 
@@ -361,5 +395,32 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 
 		// After 401 or 403, the server credentials are fixed and therefore we can run again
 		return false, nil, nil
+	}
+}
+
+type versionResponse struct {
+	Version string `json:"version,omitempty"`
+}
+
+func getPluginVersion(servicesManager artifactory.ArtifactoryServicesManager, url, pluginName string, rtDetails *httputils.HttpClientDetails) (string, error) {
+	versionResp, versionBody, _, err := servicesManager.Client().SendGet(url, false, rtDetails)
+	if err != nil {
+		return "", err
+	}
+	if versionResp.StatusCode == http.StatusOK {
+		verRes := &versionResponse{}
+		err = json.Unmarshal(versionBody, verRes)
+		if err != nil {
+			return "", errorutils.CheckError(err)
+		}
+		return verRes.Version, nil
+	}
+
+	messageFormat := fmt.Sprintf("Response from Artifactory: %s.\n%s\n", versionResp.Status, versionBody)
+	if versionResp.StatusCode == http.StatusNotFound {
+		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the server.", messageFormat, pluginName)
+	} else {
+		// 403 if the user is not admin, 500+ if there is a server error
+		return "", errorutils.CheckErrorf(messageFormat)
 	}
 }

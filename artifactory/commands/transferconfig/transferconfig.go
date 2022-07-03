@@ -460,7 +460,7 @@ func getPluginVersion(servicesManager artifactory.ArtifactoryServicesManager, ur
 
 	messageFormat := fmt.Sprintf("Response from Artifactory: %s.\n%s\n", versionResp.Status, versionBody)
 	if versionResp.StatusCode == http.StatusNotFound {
-		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the server.", messageFormat, pluginName)
+		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the source server.", messageFormat, pluginName)
 	} else {
 		// 403 if the user is not admin, 500+ if there is a server error
 		return "", errorutils.CheckErrorf(messageFormat)

@@ -407,7 +407,7 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 }
 
 func (tcc *TransferConfigCommand) updateServerDetails() error {
-	log.Info("Pinging the target Artifactory.")
+	log.Info("Pinging the target Artifactory...")
 	newTargetServerDetails := tcc.targetServerDetails
 
 	// Copy credentials from the source server details

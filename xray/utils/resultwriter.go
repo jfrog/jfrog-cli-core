@@ -101,8 +101,7 @@ func splitScanResults(results []services.ScanResponse) ([]services.Violation, []
 
 func writeJsonResults(results []services.ScanResponse) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	defer func() {
@@ -112,19 +111,16 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 		}
 	}()
 	bytesRes, err := json.Marshal(&results)
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	var content bytes.Buffer
 	err = json.Indent(&content, bytesRes, "", "  ")
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	_, err = out.Write(content.Bytes())
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	resultsPath = out.Name()

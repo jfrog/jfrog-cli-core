@@ -71,22 +71,23 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 	// Lock config to prevent access from different processes
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
-		return "", err
+		return
 	}
-	lockFile, err := lock.CreateLock(lockDirPath)
+	unlockFunc, err := lock.CreateLock(lockDirPath)
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := lockFile.Unlock()
+		e := unlockFunc()
 		if err == nil {
 			err = e
 		}
 	}()
 	if err != nil {
-		return "", err
+		return
 	}
 
 	serverConfiguration, err := GetSpecificConfig(tokenRefreshServerId, true, false)
 	if err != nil {
-		return "", err
+		return
 	}
 	if tokenRefreshServerId == "" && serverConfiguration != nil {
 		tokenRefreshServerId = serverConfiguration.ServerId
@@ -94,26 +95,29 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 	// If token already refreshed, get new token from config
 	if serverConfiguration.AccessToken != "" && serverConfiguration.AccessToken != currentAccessToken {
 		log.Debug("Fetched new token from config.")
-		return serverConfiguration.AccessToken, nil
+		newAccessToken = serverConfiguration.AccessToken
+		return
 	}
 
 	// If token isn't already expired, Wait to make sure requests using the current token are sent before it is refreshed and becomes invalid
 	timeLeft, err := auth.GetTokenMinutesLeft(currentAccessToken)
 	if err != nil {
-		return "", err
+		return
 	}
 	if timeLeft > 0 {
 		time.Sleep(auth.WaitBeforeRefreshSeconds * time.Second)
 	}
 
 	if tokenType == ArtifactoryToken {
-		return refreshArtifactoryTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+		newAccessToken, err = refreshArtifactoryTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+		return
 	}
 	if tokenType == AccessToken {
-		return refreshAccessTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+		newAccessToken, err = refreshAccessTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
+		return
 	}
-	return "", errorutils.CheckError(errors.New("unsupported refreshable token type: " + string(tokenType)))
-
+	err = errorutils.CheckError(errors.New("unsupported refreshable token type: " + string(tokenType)))
+	return
 }
 
 func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails, currentAccessToken string) (string, error) {
@@ -203,26 +207,28 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	defer mutex.Unlock()
 	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
 	if err != nil {
-		return err
+		return
 	}
-	lockFile, err := lock.CreateLock(lockDirPath)
+	unlockFunc, err := lock.CreateLock(lockDirPath)
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := lockFile.Unlock()
+		e := unlockFunc()
 		if err == nil {
 			err = e
 		}
 	}()
 	if err != nil {
-		return err
+		return
 	}
 
 	newToken, err := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
 	if err != nil {
-		return err
+		return
 	}
 	// Remove initializing value.
 	serverDetails.ArtifactoryTokenRefreshInterval = 0
-	return writeNewArtifactoryTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
+	err = writeNewArtifactoryTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
+	return
 }
 
 func refreshArtifactoryExpiredToken(serverDetails *ServerDetails, currentAccessToken string, refreshToken string) (auth.CreateTokenResponseData, error) {

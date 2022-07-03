@@ -52,8 +52,7 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool) ([]*services.GraphNo
 
 func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 
@@ -64,8 +63,7 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 	}
 
 	err = os.Chdir(tempDirPath)
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 

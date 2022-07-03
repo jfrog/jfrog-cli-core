@@ -156,7 +156,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorCha
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorChannel chan FileUploadStatusResponse) error {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -165,11 +165,26 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			continue
 		}
 		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
-		if err != nil || isChecksumDeployed {
-			// Chunk not uploaded or does not require polling.
+		if err != nil {
+			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
+			reduceCurProcessedChunks()
+			sendAllChunkToErrorChannel(chunk, errorChannel, err)
+			return err
+		}
+		if isChecksumDeployed {
+			// Chunk does not require polling.
 			reduceCurProcessedChunks()
 		}
-		return err
+		return nil
+	}
+}
+
+func sendAllChunkToErrorChannel(chunk UploadChunk, errorChannel chan FileUploadStatusResponse, err error) {
+	for _, file := range chunk.UploadCandidates {
+		errorChannel <- FileUploadStatusResponse{
+			FileRepresentation: file,
+			Reason:             err.Error(),
+		}
 	}
 }
 
@@ -256,7 +271,7 @@ func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, re
 
 // Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper) (err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) (err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -270,7 +285,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan)
+			err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
 			if err != nil {
 				return err
 			}
@@ -280,7 +295,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan)
+		return uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
 	}
 	return nil
 }

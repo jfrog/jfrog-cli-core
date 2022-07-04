@@ -146,6 +146,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorCha
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
+		case SkippedMetadataFile:
 		case Fail:
 			errorChannel <- file
 		case SkippedLargeProps:

@@ -76,7 +76,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, errorChannel)
+		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, errorChannel, writingDelayedArtifactsErr)
 	}()
 
 	// Transfer action to execute.

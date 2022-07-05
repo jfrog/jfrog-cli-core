@@ -2,7 +2,6 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -79,7 +78,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorChannel chan FileUploadStatusResponse, writingDelayedArtifactsErr error) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorMng ErrorsChannelMng, writingDelayedArtifactsErr error) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -107,9 +106,10 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				err = handleFilesOfCompletedChunk(chunk.Files, errorChannel, writingDelayedArtifactsErr)
-				if err != nil {
-					return err
+				succeed := handleFilesOfCompletedChunk(chunk.Files, errorMng, writingDelayedArtifactsErr)
+				// In case an error occurred while writing errors status's to the errors file we will stop transferring.
+				if !succeed {
+					return nil
 				}
 			}
 		}
@@ -146,22 +146,26 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorChannel chan FileUploadStatusResponse, writingDelayedArtifactsErr error) error {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng ErrorsChannelMng, writingDelayedArtifactsErr error) (succeed bool) {
 	// Check if an error occurred while writing errors status's to the errors file.
 	// In case of an error we will stop the transferring.
-	if writingDelayedArtifactsErr != nil {
-		return fmt.Errorf("error occurred while writing transfer errors status's to the errors file: %s", writingDelayedArtifactsErr.Error())
-	}
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
+			if !errorMng.add(file) {
+				return false
+			}
 		case Fail:
-			errorChannel <- file
+			if !errorMng.add(file) {
+				return false
+			}
 		case SkippedLargeProps:
-			errorChannel <- file
+			if !errorMng.add(file) {
+				return false
+			}
 		}
 	}
-	return nil
+	return true
 }
 
 // Uploads chunk when there is room in queue.

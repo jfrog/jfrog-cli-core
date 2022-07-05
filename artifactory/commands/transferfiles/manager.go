@@ -35,17 +35,17 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
-	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), errorChannel)
+	// Manager for the transfer's errors statuses writing mechanism
+	errorsChannelMng := createErrorsChannelMng()
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), errorsChannelMng)
 	if err != nil {
 		return err
 	}
-	// Error returned from the "writing transfer errors to file" mechanism
-	var writingErrorsErr error
+
 	writtersWaitGroup.Add(1)
 	go func() {
 		defer writtersWaitGroup.Done()
-		writingErrorsErr = transferErrorsMng.start()
+		errorsChannelMng.err = transferErrorsMng.start()
 	}()
 
 	delayedArtifactsChannel := make(chan FileRepresentation, fileWritersChannelSize)
@@ -76,7 +76,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, errorChannel, writingDelayedArtifactsErr)
+		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, errorsChannelMng, writingDelayedArtifactsErr)
 	}()
 
 	// Transfer action to execute.
@@ -104,13 +104,13 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	// After done is sent, wait for polling go routines to exit.
 	runWaitGroup.Wait()
 	// Close writer channels.
-	close(errorChannel)
+	errorsChannelMng.close()
 	close(delayedArtifactsChannel)
 	// Wait for writers channels to exit. Writers must exit last.
 	writtersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, pollingError, writingErrorsErr, writingDelayedArtifactsErr, runnerErr, executionErr} {
+	for _, err := range []error{actionErr, pollingError, errorsChannelMng.err, writingDelayedArtifactsErr, runnerErr, executionErr} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err
@@ -147,4 +147,30 @@ func runProducerConsumer(pcDetails producerConsumerDetails, runWaitGroup *sync.W
 	pcDetails.producerConsumer.Run()
 	executionErr = pcDetails.errorsQueue.GetError()
 	return
+}
+
+type ErrorsChannelMng struct {
+	channel chan FileUploadStatusResponse
+	err     error
+}
+
+// Check if a new element can be added to the channel
+func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (succeed bool) {
+	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
+	if mng.err != nil {
+		return false
+	}
+	mng.channel <- element
+	return true
+}
+
+// Close channel
+func (mng ErrorsChannelMng) close() {
+	close(mng.channel)
+}
+
+func createErrorsChannelMng() ErrorsChannelMng {
+	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
+	var writingErrorsErr error
+	return ErrorsChannelMng{errorChannel, writingErrorsErr}
 }

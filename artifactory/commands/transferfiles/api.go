@@ -14,9 +14,10 @@ const (
 type ChunkFileStatusType string
 
 const (
-	Success           ChunkFileStatusType = "SUCCESS"
-	Fail              ChunkFileStatusType = "FAIL"
-	SkippedLargeProps ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
+	Success             ChunkFileStatusType = "SUCCESS"
+	Fail                ChunkFileStatusType = "FAIL"
+	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
+	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
 )
 
 type TargetAuth struct {

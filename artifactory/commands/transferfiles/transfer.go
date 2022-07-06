@@ -55,6 +55,18 @@ func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
+	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
+	if err != nil {
+		return err
+	}
+
+	// Verify connection to the source Artifactory instance and that the user plugin is installed and responsive.
+	version, err := srcUpService.version()
+	if err != nil {
+		return err
+	}
+	log.Info("data-transfer plugin version: " + version)
+
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
 		return err
@@ -69,19 +81,16 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.sourceServerDetails)
-	if err != nil {
-		return err
-	}
-
-	cleanStart, err := isCleanStart()
-	if err != nil {
-		return err
-	}
-	if cleanStart && !isPropertiesPhaseDisabled() {
-		err = nodeDetection(srcUpService)
+	if !isPropertiesPhaseDisabled() {
+		cleanStart, err := isCleanStart()
 		if err != nil {
 			return err
+		}
+		if cleanStart {
+			err = nodeDetection(srcUpService)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

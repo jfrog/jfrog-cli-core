@@ -109,6 +109,10 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
+		// In case an error occurred while handling delayed artifacts - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+			return nil
+		}
 		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper)
 		_, err := pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcDetails.errorsQueue.AddError)
 		return err
@@ -132,12 +136,12 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails produc
 	}
 }
 
-func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
+func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
 	if err != nil {
-		return err
+		return
 	}
 
 	curUploadChunk := UploadChunk{
@@ -146,6 +150,10 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	}
 
 	for _, item := range result.Results {
+		// In case an error occurred while handling delayed artifacts - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+			return
+		}
 		if item.Name == "." {
 			continue
 		}
@@ -158,11 +166,14 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
 			if err != nil {
-				return err
+				return
 			}
 		case "file":
 			file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-			delayed := delayHelper.delayUploadIfNecessary(file)
+			delayed, shouldStop := delayHelper.delayUploadIfNecessary(file)
+			if shouldStop {
+				return
+			}
 			if delayed {
 				continue
 			}
@@ -176,7 +187,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				if m.progressBar != nil {
 					err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 					if err != nil {
-						return err
+						return
 					}
 				}
 				// Empty the uploaded chunk.
@@ -198,18 +209,18 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	if len(curUploadChunk.UploadCandidates) > 0 {
 		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan)
 		if err != nil {
-			return err
+			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
 			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 			if err != nil {
-				return err
+				return
 			}
 		}
 	}
 	log.Debug(logMsgPrefix+"Done transferring folder:", path.Join(params.repoKey, params.relativePath))
-	return nil
+	return
 }
 
 func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *servicesUtils.AqlSearchResult, err error) {

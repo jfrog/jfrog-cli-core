@@ -125,8 +125,9 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
+		// In case an error occurred while handling delayed artifacts - stop transferring.
 		curDiffTimeFrame := diffRangeStart
-		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 {
+		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !delayHelper.delayedArtifactsChannelMng.shouldStop() {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
@@ -218,6 +219,10 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error {
+		// In case an error occurred while handling delayed artifacts - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+			return nil
+		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper)
 	}
 	err := manager.doTransfer(false, action)

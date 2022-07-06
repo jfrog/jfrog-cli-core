@@ -318,3 +318,37 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	}
 	return
 }
+
+type ErrorsChannelMng struct {
+	channel chan FileUploadStatusResponse
+	err     error
+}
+
+// Check if a new element can be added to the channel
+func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (succeed bool) {
+	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
+	if mng.shouldStop() {
+		return false
+	}
+	mng.channel <- element
+	return true
+}
+
+// Close channel
+func (mng ErrorsChannelMng) close() {
+	close(mng.channel)
+}
+
+func (mng ErrorsChannelMng) shouldStop() bool {
+	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
+	if mng.err != nil {
+		return true
+	}
+	return false
+}
+
+func createErrorsChannelMng() ErrorsChannelMng {
+	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
+	var writingErrorsErr error
+	return ErrorsChannelMng{errorChannel, writingErrorsErr}
+}

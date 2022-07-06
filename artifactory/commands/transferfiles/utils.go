@@ -78,7 +78,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorMng ErrorsChannelMng, writingDelayedArtifactsErr error) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng ErrorsChannelMng) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -106,7 +106,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				succeed := handleFilesOfCompletedChunk(chunk.Files, errorMng, writingDelayedArtifactsErr)
+				succeed := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file we will stop transferring.
 				if !succeed {
 					return nil
@@ -146,7 +146,7 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng ErrorsChannelMng, writingDelayedArtifactsErr error) (succeed bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng ErrorsChannelMng) (succeed bool) {
 	// Check if an error occurred while writing errors status's to the errors file.
 	// In case of an error we will stop the transferring.
 	for _, file := range chunkFiles {
@@ -277,8 +277,15 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 
 	for _, item := range files {
+		// In case an error occurred while handling delayed artifacts - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+			return
+		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-		delayed := delayHelper.delayUploadIfNecessary(file)
+		delayed, ShouldStop := delayHelper.delayUploadIfNecessary(file)
+		if ShouldStop {
+			return nil
+		}
 		if delayed {
 			continue
 		}

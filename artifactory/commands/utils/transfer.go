@@ -15,7 +15,7 @@ func GetTransferPluginVersion(client *jfroghttpclient.JfrogHttpClient, url, plug
 		return "", err
 	}
 	if versionResp.StatusCode == http.StatusOK {
-		verRes := &versionResponse{}
+		verRes := &VersionResponse{}
 		err = json.Unmarshal(versionBody, verRes)
 		if err != nil {
 			return "", errorutils.CheckError(err)
@@ -32,6 +32,6 @@ func GetTransferPluginVersion(client *jfroghttpclient.JfrogHttpClient, url, plug
 	}
 }
 
-type versionResponse struct {
+type VersionResponse struct {
 	Version string `json:"version,omitempty"`
 }

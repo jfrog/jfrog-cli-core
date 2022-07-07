@@ -51,7 +51,7 @@ func (db *DistributeReleaseBundleCommand) SetDryRun(dryRun bool) *DistributeRele
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetCreateRepo(autoCreateRepo bool) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleCommand) SetAutoCreateRepo(autoCreateRepo bool) *DistributeReleaseBundleCommand {
 	db.autoCreateRepo = autoCreateRepo
 	return db
 }

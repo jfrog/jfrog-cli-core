@@ -326,7 +326,6 @@ type ErrorsChannelMng struct {
 
 // Check if a new element can be added to the channel
 func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (succeed bool) {
-	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
 	if mng.shouldStop() {
 		return false
 	}

@@ -147,8 +147,6 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 }
 
 func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng ErrorsChannelMng) (succeed bool) {
-	// Check if an error occurred while writing errors status's to the errors file.
-	// In case of an error we will stop the transferring.
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
@@ -177,7 +175,8 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		var isChecksumDeployed bool
+		isChecksumDeployed, err = uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()

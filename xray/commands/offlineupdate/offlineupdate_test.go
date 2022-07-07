@@ -2,6 +2,9 @@ package offlineupdate
 
 import (
 	"github.com/magiconair/properties/assert"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -23,4 +26,86 @@ func TestCreateXrayFileNameFromUrl(t *testing.T) {
 		}
 		assert.Equal(t, fileName, test.fileName)
 	}
+}
+
+// DBSync V3 test data
+
+var periodicUpdateResponse = "[{\"download_url\":\"some_url_to_package_update\",\"timestamp\":1234}]"
+var periodicDeletionResponse = "[{\"download_url\":\"some_url_to_package_delete\",\"timestamp\":1234}]"
+var periodicUpdateResponseSection = "\"update\":" + periodicUpdateResponse
+var periodicDeleteResponseSection = "\"deletion\":" + periodicDeletionResponse
+
+var periodicResponse = "{" + periodicUpdateResponseSection + "," + periodicDeleteResponseSection + "}"
+var onboardingResponse = "[{\"download_url\":\"some_url_to_package_onboard\",\"timestamp\":1234}]"
+
+func TestDBSyncV3BuildURL(t *testing.T) {
+	tests := []struct {
+		isPeriodic bool
+		expected   string
+	}{
+		{true, "api/v3/updates/periodic"}, {false, "api/v3/updates/onboarding"},
+	}
+	for _, test := range tests {
+		url := buildUrlDBSyncV3(test.isPeriodic)
+		assert.Equal(t, strings.HasSuffix(url, test.expected), true)
+	}
+}
+
+func TestDBSyncV3getURLsToDownload(t *testing.T) {
+	tests := []struct {
+		serverResponse []byte
+		isPeriodic     bool
+		expected       []string
+	}{
+		{[]byte(periodicResponse), true, []string{"some_url_to_package_update", "some_url_to_package_delete"}},
+		{[]byte(onboardingResponse), false, []string{"some_url_to_package_onboard"}},
+	}
+
+	for _, test := range tests {
+		urls, err := getURLsToDownloadDBSyncV3(test.serverResponse, test.isPeriodic)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, urls, test.expected)
+	}
+}
+
+func TestDBSyncV3createXrayFileNameFromURL(t *testing.T) {
+	tests := []struct {
+		url      string
+		expected string
+	}{{"a/b/c/d.zip", "d.zip"}, {"x/y.zip", "y.zip"}}
+
+	for _, test := range tests {
+		expected, err := createXrayFileNameFromUrlV3(test.url)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, expected, test.expected)
+	}
+}
+
+func TestDBSyncV3createV3MetadataFile(t *testing.T) {
+	tests := []struct {
+		serverResponse   []byte
+		state            string
+		expectedFilename string
+	}{
+		{[]byte(periodicResponse), periodicState, periodicState + ".json"},
+		{[]byte(onboardingResponse), onboardingState, onboardingState + ".json"},
+	}
+
+	for _, test := range tests {
+		dir := t.TempDir()
+		err := createV3MetadataFile(test.state, test.serverResponse, dir)
+		if err != nil {
+			t.Error(err)
+		}
+		fileContent, err := ioutil.ReadFile(filepath.Join(dir, test.expectedFilename))
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, fileContent, test.serverResponse)
+	}
+
 }

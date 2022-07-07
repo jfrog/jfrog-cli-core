@@ -1,6 +1,7 @@
 package _go
 
 import (
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -14,13 +15,13 @@ const (
 	goPackageTypeIdentifier = "go://"
 )
 
-func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	graph, err := BuildGoDependencyTree()
 	if err != nil {
 		return
 	}
 	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails)
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress)
 	return
 }
 

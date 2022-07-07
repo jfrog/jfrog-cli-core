@@ -358,6 +358,38 @@ func GetJfrogPluginsLockDir() (string, error) {
 	return filepath.Join(locksDirPath, pluginsLockDirName), nil
 }
 
+func GetJfrogTransferStateFilePath() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferStateFileName), nil
+}
+
+func GetJfrogTransferErrorsDir() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferErrorsDirName), nil
+}
+
+func GetJfrogTransferRetryableDir() (string, error) {
+	errorsDir, err := GetJfrogTransferErrorsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(errorsDir, JfrogTransferRetryableErrorsDirName), nil
+}
+
+func GetJfrogTransferSkippedDir() (string, error) {
+	errorsDir, err := GetJfrogTransferErrorsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(errorsDir, JfrogTransferSkippedErrorsDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"
@@ -469,4 +501,13 @@ func GetJfrogTransferDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
+}
+
+func Contains(arr []string, str string) bool {
+	for _, element := range arr {
+		if element == str {
+			return true
+		}
+	}
+	return false
 }

@@ -87,12 +87,12 @@ type DelayedArtifactsFile struct {
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
 			return nil
 		}
-		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorChannel)
+		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
 	}
 	err := manager.doTransfer(false, action)
 	if err == nil {
@@ -101,7 +101,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	return err
 }
 
-func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		fileContent, err := os.ReadFile(filePath)
@@ -115,8 +115,8 @@ func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan
 			return errorutils.CheckError(err)
 		}
 
-		err = uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorChannel)
-		if err != nil {
+		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorsChannelMng)
+		if err != nil || shouldStop {
 			return err
 		}
 

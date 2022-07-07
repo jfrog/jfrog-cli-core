@@ -108,12 +108,12 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
 			return nil
 		}
-		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorChannel)
+		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 		_, err := pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcDetails.errorsQueue.AddError)
 		return err
 	}
@@ -128,17 +128,17 @@ type folderParams struct {
 }
 
 func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails, uploadTokensChan chan string,
-	delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) folderFullTransferHandlerFunc {
+	delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper, errorChannel)
+			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails,
-	uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) (err error) {
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
@@ -152,8 +152,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	}
 
 	for _, item := range result.Results {
-		// In case an error occurred while handling delayed artifacts - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
 			return
 		}
 		if item.Name == "." {
@@ -165,7 +165,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			if params.relativePath != "." {
 				newRelativePath = path.Join(params.relativePath, newRelativePath)
 			}
-			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorChannel)
+			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
 			if err != nil {
 				return
@@ -181,9 +181,12 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 			curUploadChunk.appendUploadCandidate(file)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
+				shouldStop, err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
 				if err != nil {
 					log.Error(err)
+				}
+				if shouldStop {
+					return
 				}
 				// Increase phase1 progress bar with the uploaded number of files.
 				if m.progressBar != nil {
@@ -209,8 +212,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
-		if err != nil {
+		var shouldStop bool
+		shouldStop, err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		if err != nil || shouldStop {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.

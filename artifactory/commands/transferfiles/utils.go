@@ -169,7 +169,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorChannel chan FileUploadStatusResponse) error {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng ErrorsChannelMng) (shouldStop bool, err error) {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -181,24 +181,29 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
-			sendAllChunkToErrorChannel(chunk, errorChannel, err)
-			return err
+			shouldStop = sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			return
 		}
 		if isChecksumDeployed {
 			// Chunk does not require polling.
 			reduceCurProcessedChunks()
 		}
-		return nil
+		return
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk UploadChunk, errorChannel chan FileUploadStatusResponse, err error) {
+func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng ErrorsChannelMng, err error) (shouldStop bool) {
 	for _, file := range chunk.UploadCandidates {
-		errorChannel <- FileUploadStatusResponse{
+		err := FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             err.Error(),
 		}
+		// In case an error occurred while handling errors files - stop transferring.
+		if !errorsChannelMng.add(err) {
+			return true
+		}
 	}
+	return false
 }
 
 // Sends an upload chunk to the source Artifactory instance.
@@ -284,7 +289,7 @@ func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, re
 
 // Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) (err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -298,16 +303,16 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 		delayed, ShouldStop := delayHelper.delayUploadIfNecessary(file)
 		if ShouldStop {
-			return nil
+			return
 		}
 		if delayed {
 			continue
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
-			if err != nil {
-				return err
+			shouldStop, err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+			if err != nil || shouldStop {
+				return
 			}
 			// Empty the uploaded chunk.
 			curUploadChunk.UploadCandidates = []FileRepresentation{}
@@ -315,7 +320,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
+		shouldStop, err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
 	}
-	return nil
+	return
 }

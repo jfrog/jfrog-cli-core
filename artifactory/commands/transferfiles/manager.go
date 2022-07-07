@@ -16,22 +16,22 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper) error
+type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
 // The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle.
 // The Artifactory user plugin in the source instance will try to checksum-deploy all the artifacts in the chunk.
 // If not successful, an uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
-// In some repositories the order of deployment is important. In these case the any artifacts that should be delay will be collected by
-// the delayedArtifactsMng and later handled by handleDelayedArtifactsFiles.
+// In some repositories the order of deployment is important. In these cases, any artifacts that should be delayed will be collected by
+// the delayedArtifactsMng and will later be handled by handleDelayedArtifactsFiles.
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction transferActionType) error {
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
-	var writtersWaitGroup sync.WaitGroup
+	var writersWaitGroup sync.WaitGroup
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChan := make(chan bool, 2)
 
@@ -42,18 +42,18 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		return err
 	}
 
-	writtersWaitGroup.Add(1)
+	writersWaitGroup.Add(1)
 	go func() {
-		defer writtersWaitGroup.Done()
+		defer writersWaitGroup.Done()
 		errorsChannelMng.err = transferErrorsMng.start()
 	}()
 
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
 	delayedArtifactsMng := newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng)
 	if len(ftm.delayUploadComparisonFunctions) > 0 {
-		writtersWaitGroup.Add(1)
+		writersWaitGroup.Add(1)
 		go func() {
-			defer writtersWaitGroup.Done()
+			defer writersWaitGroup.Done()
 			delayedArtifactsChannelMng.err = delayedArtifactsMng.start()
 		}()
 	}
@@ -83,7 +83,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var actionErr error
 	go func() {
 		defer runWaitGroup.Done()
-		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: delayedArtifactsChannelMng})
+		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: delayedArtifactsChannelMng}, errorChannel)
 		if !isProducerConsumer {
 			// Notify the other go routines that work is done.
 			doneChan <- true
@@ -106,7 +106,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	errorsChannelMng.close()
 	delayedArtifactsChannelMng.close()
 	// Wait for writers channels to exit. Writers must exit last.
-	writtersWaitGroup.Wait()
+	writersWaitGroup.Wait()
 
 	var returnedError error
 	for _, err := range []error{actionErr, pollingError, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr} {

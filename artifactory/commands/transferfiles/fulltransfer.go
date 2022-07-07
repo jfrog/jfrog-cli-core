@@ -2,14 +2,16 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -135,6 +137,9 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails produc
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails,
 	uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+	if m.stop {
+		return errorutils.CheckError(&InterruptionErr{})
+	}
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
@@ -148,6 +153,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	}
 
 	for _, item := range result.Results {
+		if m.stop {
+			return errorutils.CheckError(&InterruptionErr{})
+		}
 		if item.Name == "." {
 			continue
 		}
@@ -217,6 +225,11 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateFolderContentsAqlQuery(repoKey, relativePath)
 	return runAql(m.srcRtDetails, query)
+}
+
+func (m *fullTransferPhase) stopGracefully() {
+	m.stop = true
+	m.progressBar.StopGracefully()
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string) string {

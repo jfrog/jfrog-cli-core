@@ -3,6 +3,10 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -10,9 +14,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"math"
-	"os"
-	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -110,6 +111,9 @@ func (f *filesDiffPhase) run() error {
 	if err != nil {
 		return err
 	}
+	if f.stop {
+		return errorutils.CheckError(&InterruptionErr{})
+	}
 	return f.handleDiffTimeFrames()
 }
 
@@ -127,6 +131,9 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 {
+			if f.stop {
+				return errorutils.CheckError(&InterruptionErr{})
+			}
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorChannel)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
@@ -220,6 +227,9 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorChannel)
 	}
+	if f.stop {
+		return errorutils.CheckError(&InterruptionErr{})
+	}
 	err := manager.doTransfer(false, action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
@@ -229,6 +239,9 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 
 func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
 	for _, path := range f.errorsFilesToHandle {
+		if f.stop {
+			return errorutils.CheckError(&InterruptionErr{})
+		}
 		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)
 		if err != nil {
@@ -261,6 +274,11 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHe
 		log.Debug("Done handling errors file: '" + path + "'. Deleting it...")
 	}
 	return nil
+}
+
+func (f *filesDiffPhase) stopGracefully() {
+	f.stop = true
+	f.progressBar.StopGracefully()
 }
 
 func convertUploadStatusToFileRepresentation(statuses []FileUploadStatusResponse) (files []FileRepresentation) {

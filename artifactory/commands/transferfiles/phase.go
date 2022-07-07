@@ -23,6 +23,7 @@ type transferPhase interface {
 	getPhaseName() string
 	setProgressBar(*progressbar.TransferProgressMng)
 	initProgressBar() error
+	stopGracefully()
 }
 
 type phaseBase struct {
@@ -35,6 +36,7 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *progressbar.TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
+	stop                      bool
 }
 
 func getPhaseByNum(i int, repoKey string) transferPhase {

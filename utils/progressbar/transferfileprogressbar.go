@@ -2,12 +2,13 @@ package progressbar
 
 import (
 	"errors"
+	"sync/atomic"
+	"time"
+
 	"github.com/gookit/color"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
-	"sync/atomic"
-	"time"
 )
 
 // TransferProgressMng provides progress indication for the jf rt transfer-files command.
@@ -132,6 +133,10 @@ func (t *TransferProgressMng) RemoveRepository() {
 	t.phases = nil
 	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
+}
+
+func (t *TransferProgressMng) StopGracefully() {
+	t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
 }
 
 // Progress that includes two bars:

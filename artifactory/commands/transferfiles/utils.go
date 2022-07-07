@@ -2,16 +2,17 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -21,6 +22,12 @@ const (
 )
 
 var curThreads int
+
+type InterruptionErr struct{}
+
+func (m *InterruptionErr) Error() string {
+	return "Interrupted"
+}
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
@@ -300,4 +307,33 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		return uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
 	}
 	return nil
+}
+
+func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	if err != nil {
+		return nil, err
+	}
+	return serviceManager.GetRunningNodes()
+}
+
+func stopAllRunningNodes(srcUpService *srcUserPluginService, runningNodes []string) {
+	remainingNodesToStop := make(map[string]string)
+	for _, s := range runningNodes {
+		remainingNodesToStop[s] = s
+	}
+	log.Debug("Running nodes to stop:", remainingNodesToStop)
+	for i := 0; i < requestsNumForStop; i++ {
+		if len(remainingNodesToStop) == 0 {
+			log.Debug("All running nodes stopped successfully")
+			return
+		}
+		nodeId, err := srcUpService.stop()
+		if err != nil {
+			log.Error(err)
+		} else {
+			log.Debug("Node " + nodeId + " stopped")
+			delete(remainingNodesToStop, nodeId)
+		}
+	}
 }

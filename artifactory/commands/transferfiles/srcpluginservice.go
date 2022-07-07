@@ -2,12 +2,13 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"net/http"
 )
 
 const pluginsExecuteRestApi = "api/plugins/execute/"
@@ -108,25 +109,6 @@ func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 	return nil
 }
 
-func (sup *srcUserPluginService) ping() (nodeId string, err error) {
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, _, err := sup.client.SendGet(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"pingDataTransfer", true, &httpDetails)
-	if err != nil {
-		return "", err
-	}
-
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
-	}
-
-	var response NodeIdResponse
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return response.NodeId, nil
-}
-
 func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandlePropertiesDiff) (*HandlePropertiesDiffResponse, error) {
 	content, err := json.Marshal(requestBody)
 	if err != nil {
@@ -149,4 +131,23 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 		return nil, errorutils.CheckError(err)
 	}
 	return &result, nil
+}
+
+func (sup *srcUserPluginService) stop() (nodeId string, err error) {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"stop", []byte{}, &httpDetails)
+	if err != nil {
+		return "", err
+	}
+
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	}
+
+	var result NodeIdResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return result.NodeId, nil
 }

@@ -2,6 +2,10 @@ package transferfiles
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -11,7 +15,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
 )
 
 const (
@@ -23,6 +26,7 @@ const (
 	fileWritersChannelSize = 500000
 	retries                = 3
 	retriesWait            = 0
+	requestsNumForStop     = 5
 )
 
 type TransferFilesCommand struct {
@@ -74,17 +78,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	cleanStart, err := isCleanStart()
-	if err != nil {
-		return err
-	}
-	if cleanStart && !isPropertiesPhaseDisabled() {
-		err = nodeDetection(srcUpService)
-		if err != nil {
-			return err
-		}
-	}
-
 	srcRepos, err := tdc.getSrcLocalRepositories()
 	if err != nil {
 		return err
@@ -106,7 +99,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	// Handle interruptions
+	shouldStop := false
+	var newPhase transferPhase
+	finishStopping := tdc.handleStop(&shouldStop, &newPhase, srcUpService)
+	defer finishStopping()
+
 	for _, repo := range srcRepos {
+		if shouldStop {
+			break
+		}
+
 		exists := verifyRepoExistsInTarget(targetRepos, repo)
 		if !exists {
 			log.Error("repository '" + repo + "' does not exist in target. Skipping...")
@@ -122,8 +125,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		if tdc.progressbar != nil {
 			tdc.progressbar.NewRepository(repo)
 		}
-		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
-			newPhase := getPhaseByNum(phaseI, repo)
+
+		for phaseI := 0; phaseI < numberOfPhases && !shouldStop; phaseI++ {
+			newPhase = getPhaseByNum(phaseI, repo)
 			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
@@ -159,7 +163,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 	}
 
-	log.Info("Transferring was completed!")
+	if !shouldStop {
+		log.Info("Transferring was completed!")
+	}
 	csvErrorsFile, err := createErrorsCsvSummary()
 	if err != nil {
 		return err
@@ -168,6 +174,39 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}
 	return nil
+}
+
+func (tdc *TransferFilesCommand) handleStop(shouldStop *bool, newPhase *transferPhase, srcUpService *srcUserPluginService) func() {
+	finishStop := make(chan bool)
+	stopSignal := make(chan os.Signal, 1)
+	signal.Notify(stopSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		defer close(finishStop)
+		if <-stopSignal == nil {
+			// The stopSignal channel is closed
+			return
+		}
+		*shouldStop = true
+		if newPhase != nil {
+			(*newPhase).stopGracefully()
+		}
+		log.Info("Gracefully stopping files transfer...")
+		runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+		if err != nil {
+			log.Error(err)
+		} else {
+			stopAllRunningNodes(srcUpService, runningNodes)
+		}
+
+	}()
+	return func() {
+		// Close the stop signal channel
+		close(stopSignal)
+		if *shouldStop {
+			// If should stop, wait for stop to happen
+			<-finishStop
+		}
+	}
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {

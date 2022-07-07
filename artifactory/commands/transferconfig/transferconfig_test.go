@@ -173,7 +173,7 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
 }
 
-// Create mock server to test replication body
+// Create mock server to test transfer config commands
 // t           - The testing object
 // testHandler - The HTTP handler of the test
 func createMockServer(t *testing.T, testHandler transferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {

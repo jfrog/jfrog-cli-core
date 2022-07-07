@@ -746,8 +746,8 @@ github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PK
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
-github.com/sverdlov93/jfrog-client-go v1.0.2-0.20220707100808-597040e3c34f h1:+xh53w0kPxa+fdIGEi4MtpOvuAeUy9wMrbe/WLZEV5Y=
-github.com/sverdlov93/jfrog-client-go v1.0.2-0.20220707100808-597040e3c34f/go.mod h1:/Dk1HHBDjwt7CNKH2FPwLs0i5lMfomiX73GdluI328c=
+github.com/sverdlov93/jfrog-client-go v1.0.2-0.20220707101710-96bd53941a10 h1:burOyJ5l8zBLFQzjJpPUbMj0/3H0Vz1VGLI3Fk42RrU=
+github.com/sverdlov93/jfrog-client-go v1.0.2-0.20220707101710-96bd53941a10/go.mod h1:/Dk1HHBDjwt7CNKH2FPwLs0i5lMfomiX73GdluI328c=
 github.com/sylvia7788/contextcheck v1.0.4/go.mod h1:vuPKJMQ7MQ91ZTqfdyreNKwZjyUg6KO+IebVyQDedZQ=
 github.com/tdakkota/asciicheck v0.1.1/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=

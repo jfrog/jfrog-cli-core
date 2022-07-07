@@ -340,10 +340,7 @@ func (mng ErrorsChannelMng) close() {
 
 func (mng ErrorsChannelMng) shouldStop() bool {
 	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
-	if mng.err != nil {
-		return true
-	}
-	return false
+	return mng.err != nil
 }
 
 func createErrorsChannelMng() ErrorsChannelMng {

@@ -208,10 +208,7 @@ func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (succeed b
 
 func (mng DelayedArtifactsChannelMng) shouldStop() bool {
 	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
-	if mng.err != nil {
-		return true
-	}
-	return false
+	return mng.err != nil
 }
 
 // Close channel

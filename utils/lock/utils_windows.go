@@ -12,7 +12,7 @@ import (
 func isProcessRunning(pid int) (bool, error) {
 	process, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, true, uint32(pid))
 	if err != nil {
-		// Check if err is type of syscall.Errno that is Windows error number.
+		// Check if err is of type of syscall.Errno, which is a Windows error number.
 		if errnoErr, ok := err.(syscall.Errno); ok {
 			// 87 - error invalid parameter. For example during the tests when we provide a non existing PID
 			if uintptr(errnoErr) == 87 {

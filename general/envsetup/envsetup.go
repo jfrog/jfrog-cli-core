@@ -165,7 +165,7 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
 	var server *config.ServerDetails
 	// If credentials were provided, this means that the user was invited to join an existing JFrog environment.
-	// Otherwise, this is a brand-new user, that needs to register and setup a new JFrog environment.
+	// Otherwise, this is a brand-new user, that needs to register and set up a new JFrog environment.
 	if ftc.encodedConnectionDetails == "" {
 		server, err = ftc.setupNewUser()
 	} else {

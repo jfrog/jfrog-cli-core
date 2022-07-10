@@ -42,7 +42,7 @@ func IsServerConfExists() (bool, error) {
 
 // Returns the configured server or error if the server id was not found.
 // If defaultOrEmpty: return empty details if no configurations found, or default conf for empty serverId.
-// Exclude refreshable tokens when working with external tools (build tools, curl, etc) or when sending requests not via ArtifactoryHttpClient.
+// Exclude refreshable tokens when working with external tools (build tools, curl, etc.) or when sending requests not via ArtifactoryHttpClient.
 func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableTokens bool) (*ServerDetails, error) {
 	configs, err := GetAllServersConfigs()
 	if err != nil {

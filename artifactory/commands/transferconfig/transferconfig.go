@@ -209,7 +209,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 }
 
 // Download and decrypt artifactory.config.xml from the source Artifactory server.
-// It is safer to not store the decrypted artifactory.config.xml file in the file system and therefore we only keep it in memory.
+// It is safer to not store the decrypted artifactory.config.xml file in the file system, and therefore we only keep it in memory.
 func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) (configXml string, err error) {
 	// For Artifactory 6, in some cases, the artifactory.config.xml may not be decrypted and the following error returned:
 	// 409: Cannot decrypt without artifactory key file
@@ -387,7 +387,7 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 			return true, nil, err
 		}
 
-		// After 401 or 403, the server credentials are fixed and therefore we can run again
+		// After 401 or 403, the server credentials are fixed, and therefore we can run again
 		return false, nil, nil
 	}
 }

@@ -120,8 +120,8 @@ func (pc *PushCommand) Run() error {
 	}
 	if pc.IsDetailedSummary() {
 		if !toCollect {
-			// Collect build-info wasn't trigger at this point and we do need it to print the detailed summary.
-			// As a result, we are skipping the 'set image build name/number props' before running collect build-info.
+			// The build-info collection hasn't been triggered at this point, and we do need it for handling the detailed summary.
+			// We are therefore skipping setting mage build name/number props before running build-info collection.
 			builder.SetSkipTaggingLayers(true)
 			_, err = builder.Build("")
 			if err != nil {

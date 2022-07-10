@@ -83,19 +83,24 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 }
 
 // Set build properties on image layers in Artifactory.
-func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) error {
+func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
 	props, err := artutils.CreateBuildProperties(buildName, buildNumber, project)
 	if err != nil {
-		return err
+		return
 	}
 	pathToFile, err := writeLayersToFile(imageLayers)
 	if err != nil {
-		return err
+		return
 	}
 	reader := content.NewContentReader(pathToFile, content.DefaultKey)
-	defer reader.Close()
+	defer func() {
+		e := reader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	_, err = serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
-	return err
+	return
 }
 
 // Download the content of layer search result.
@@ -285,7 +290,7 @@ func toNoneMarkerLayer(layer string) string {
 
 type CommandType string
 
-// Create a image's build info from manifest.json.
+// Create an image's build info from manifest.json.
 func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manifest *manifest, candidateLayers map[string]*utils.ResultItem, module string) (*buildinfo.BuildInfo, error) {
 	if manifest == nil {
 		return nil, nil

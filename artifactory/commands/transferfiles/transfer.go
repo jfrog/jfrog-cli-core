@@ -127,7 +127,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
-				tdc.stopTransferIgnoreErrors()
+				tdc.stopTransferAfterErrorOccurred()
 				return err
 			}
 			if skip {
@@ -135,24 +135,24 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			}
 			err = newPhase.phaseStarted()
 			if err != nil {
-				tdc.stopTransferIgnoreErrors()
+				tdc.stopTransferAfterErrorOccurred()
 				return err
 			}
 			err = newPhase.initProgressBar()
 			if err != nil {
-				tdc.stopTransferIgnoreErrors()
+				tdc.stopTransferAfterErrorOccurred()
 				return err
 			}
 			printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
 			err = newPhase.run()
 			if err != nil {
-				tdc.stopTransferIgnoreErrors()
+				tdc.stopTransferAfterErrorOccurred()
 				return err
 			}
 			printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
 			err = newPhase.phaseDone()
 			if err != nil {
-				tdc.stopTransferIgnoreErrors()
+				tdc.stopTransferAfterErrorOccurred()
 				return err
 			}
 		}
@@ -230,7 +230,9 @@ type producerConsumerDetails struct {
 	errorsQueue      *clientUtils.ErrorsQueue
 }
 
-func (tdc *TransferFilesCommand) stopTransferIgnoreErrors() {
+// stopTransferAfterErrorOccurred will close progressBar and creates CSV errors file in case of an error occurred.
+// errors received from this function will be shown in stdErr
+func (tdc *TransferFilesCommand) stopTransferAfterErrorOccurred() {
 	// Quit progress bar
 	if tdc.progressbar != nil {
 		err := tdc.progressbar.Quit()

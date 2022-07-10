@@ -48,6 +48,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		errorsChannelMng.err = transferErrorsMng.start()
 	}()
 
+	// Manager for the transfer's delayed artifacts writing mechanism
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
 	delayedArtifactsMng := newTransferDelayedArtifactsToFile(&delayedArtifactsChannelMng)
 	if len(ftm.delayUploadComparisonFunctions) > 0 {

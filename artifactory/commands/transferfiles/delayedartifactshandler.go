@@ -88,9 +88,9 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
 	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling delayed artifacts - stop transferring.
+		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 			return nil
 		}
 		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
@@ -193,6 +193,8 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentat
 	return
 }
 
+// DelayedArtifactsChannelMng managing writing 'delayed artifacts' to a common channel.
+// In case that an error occurred while handling the files - stops adding elements to the channel.
 type DelayedArtifactsChannelMng struct {
 	channel chan FileRepresentation
 	err     error

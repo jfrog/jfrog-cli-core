@@ -125,9 +125,9 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
-		// In case an error occurred while handling delayed artifacts - stop transferring.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
-		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !delayHelper.delayedArtifactsChannelMng.shouldStop() && !errorsChannelMng.shouldStop() {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorsChannelMng)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
@@ -219,10 +219,9 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling delayed artifacts - stop transferring.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			// TODO change phrase
-			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 			return nil
 		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)

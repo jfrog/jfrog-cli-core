@@ -109,9 +109,9 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling delayed artifacts - stop transferring.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 			return nil
 		}
 		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)

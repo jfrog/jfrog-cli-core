@@ -150,11 +150,6 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			//TODO: added for testing reasons- needs to be removed
-			if !errorsChannelMng.add(file) {
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
-				return false
-			}
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
 		case Fail:
@@ -303,9 +298,9 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 
 	for _, item := range files {
-		// In case an error occurred while handling delayed artifacts - stop transferring.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 			return
 		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}

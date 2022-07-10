@@ -144,10 +144,12 @@ func (mng *TransferErrorsMng) start() error {
 
 	e := mng.errorWriterMng.retryable.closeWriter()
 	if err != nil {
+		log.Error(e.Error())
 		err = e
 	}
 	e = mng.errorWriterMng.skipped.closeWriter()
 	if err != nil {
+		log.Error(e.Error())
 		err = e
 	}
 	// Returns the first error received
@@ -321,6 +323,8 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	return
 }
 
+// ErrorsChannelMng managing writing 'files uploading errors' to a common channel.
+// In case that an error occurred while handling the files - stops adding elements to the channel.
 type ErrorsChannelMng struct {
 	channel chan FileUploadStatusResponse
 	err     error

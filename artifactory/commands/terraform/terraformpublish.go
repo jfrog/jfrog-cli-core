@@ -224,7 +224,7 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 			uploadParams := tpc.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
 			archiveData := createTerraformArchiveUploadData(uploadParams, errorsQueue)
 			dataHandlerFunc := GetSaveTaskInContentWriterFunc(archiveData, *uploadParams, errorsQueue)
-			// Collect files that matches uploadParams and write them in archiveData's writer.
+			// Collect files that match uploadParams and write them in archiveData's writer.
 			e = services.CollectFilesForUpload(*uploadParams, nil, nil, dataHandlerFunc)
 			if e != nil {
 				log.Error(e)
@@ -235,7 +235,7 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 				log.Error(e)
 				errorsQueue.AddError(e)
 			}
-			// In case all files were excluded and no files were written to writer- skip this module.
+			// In case all files were excluded and no files were written to writer - skip this module.
 			if archiveData.GetWriter().IsEmpty() {
 				return filepath.SkipDir
 			}

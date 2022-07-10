@@ -2,20 +2,15 @@ package transferconfig
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"io"
-	"net/http"
-	"os"
-	"time"
-
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -23,6 +18,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"net/http"
+	"os"
+	"time"
 )
 
 const (
@@ -86,19 +85,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-
-	// Get data-transfer plugin version
-	sourceArtifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.sourceServerDetails.GetArtifactoryUrl())
-	sourceRtDetails, err := createArtifactoryClientDetails(sourceServicesManager)
-	if err != nil {
-		return err
-	}
-	dataTransferVersionUrl := sourceArtifactoryUrl + "api/plugins/execute/dataTransferVersion"
-	dataTransferPluginVersion, err := getPluginVersion(sourceServicesManager, dataTransferVersionUrl, "data-transfer", sourceRtDetails)
-	if err != nil {
-		return err
-	}
-	log.Info("data-transfer plugin version: " + dataTransferPluginVersion)
 
 	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
 	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
@@ -201,7 +187,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 
 	// Get config-import plugin version
 	configImportVersionUrl := artifactoryUrl + "api/plugins/execute/configImportVersion"
-	configImportPluginVersion, err := getPluginVersion(targetServicesManager, configImportVersionUrl, "config-import", rtDetails)
+	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(targetServicesManager.Client(), configImportVersionUrl, "config-import", rtDetails)
 	if err != nil {
 		return err
 	}
@@ -223,7 +209,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 }
 
 // Download and decrypt artifactory.config.xml from the source Artifactory server.
-// It is safer to not store the decrypted artifactory.config.xml file in the file system and therefore we only keep it in memory.
+// It is safer to not store the decrypted artifactory.config.xml file in the file system, and therefore we only keep it in memory.
 func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) (configXml string, err error) {
 	// For Artifactory 6, in some cases, the artifactory.config.xml may not be decrypted and the following error returned:
 	// 409: Cannot decrypt without artifactory key file
@@ -401,7 +387,7 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 			return true, nil, err
 		}
 
-		// After 401 or 403, the server credentials are fixed and therefore we can run again
+		// After 401 or 403, the server credentials are fixed, and therefore we can run again
 		return false, nil, nil
 	}
 }
@@ -438,31 +424,4 @@ func (tcc *TransferConfigCommand) updateServerDetails() error {
 	}
 	tcc.targetServerDetails = newTargetServerDetails
 	return nil
-}
-
-type versionResponse struct {
-	Version string `json:"version,omitempty"`
-}
-
-func getPluginVersion(servicesManager artifactory.ArtifactoryServicesManager, url, pluginName string, rtDetails *httputils.HttpClientDetails) (string, error) {
-	versionResp, versionBody, _, err := servicesManager.Client().SendGet(url, false, rtDetails)
-	if err != nil {
-		return "", err
-	}
-	if versionResp.StatusCode == http.StatusOK {
-		verRes := &versionResponse{}
-		err = json.Unmarshal(versionBody, verRes)
-		if err != nil {
-			return "", errorutils.CheckError(err)
-		}
-		return verRes.Version, nil
-	}
-
-	messageFormat := fmt.Sprintf("Response from Artifactory: %s.\n%s\n", versionResp.Status, versionBody)
-	if versionResp.StatusCode == http.StatusNotFound {
-		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the source server.", messageFormat, pluginName)
-	} else {
-		// 403 if the user is not admin, 500+ if there is a server error
-		return "", errorutils.CheckErrorf(messageFormat)
-	}
 }

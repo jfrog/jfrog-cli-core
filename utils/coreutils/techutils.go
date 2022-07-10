@@ -19,6 +19,7 @@ const (
 	Nuget  = "nuget"
 	Dotnet = "dotnet"
 	Docker = "docker"
+	Python = "Python"
 )
 
 type TechData struct {

@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
@@ -149,4 +150,10 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 		return nil, errorutils.CheckError(err)
 	}
 	return &result, nil
+}
+
+func (sup *srcUserPluginService) version() (string, error) {
+	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", &httpDetails)
 }

@@ -2,18 +2,15 @@ package transferconfig
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"io"
-	"net/http"
-	"os"
-	"time"
-
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -21,6 +18,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"net/http"
+	"os"
+	"time"
 )
 
 const (
@@ -85,19 +86,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Get data-transfer plugin version
-	sourceArtifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.sourceServerDetails.GetArtifactoryUrl())
-	sourceRtDetails, err := createArtifactoryClientDetails(sourceServicesManager)
-	if err != nil {
-		return err
-	}
-	dataTransferVersionUrl := sourceArtifactoryUrl + "api/plugins/execute/dataTransferVersion"
-	dataTransferPluginVersion, err := getPluginVersion(sourceServicesManager, dataTransferVersionUrl, "data-transfer", sourceRtDetails)
-	if err != nil {
-		return err
-	}
-	log.Info("data-transfer plugin version: " + dataTransferPluginVersion)
-
 	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
 	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
 		return
@@ -144,7 +132,13 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 
 	// Import the archive to the target Artifactory
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 4/4 - Import configuration to the target Artifactory ==========")))
-	return tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
+	err = tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
+	if err != nil {
+		return
+	}
+
+	// Update the server details of the target Artifactory in the CLI configuration
+	return tcc.updateServerDetails()
 }
 
 // Make sure source and target Artifactory URLs are different.
@@ -193,7 +187,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 
 	// Get config-import plugin version
 	configImportVersionUrl := artifactoryUrl + "api/plugins/execute/configImportVersion"
-	configImportPluginVersion, err := getPluginVersion(targetServicesManager, configImportVersionUrl, "config-import", rtDetails)
+	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(targetServicesManager.Client(), configImportVersionUrl, "config-import", rtDetails)
 	if err != nil {
 		return err
 	}
@@ -398,29 +392,36 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 	}
 }
 
-type versionResponse struct {
-	Version string `json:"version,omitempty"`
-}
+func (tcc *TransferConfigCommand) updateServerDetails() error {
+	log.Info("Pinging the target Artifactory...")
+	newTargetServerDetails := tcc.targetServerDetails
 
-func getPluginVersion(servicesManager artifactory.ArtifactoryServicesManager, url, pluginName string, rtDetails *httputils.HttpClientDetails) (string, error) {
-	versionResp, versionBody, _, err := servicesManager.Client().SendGet(url, false, rtDetails)
+	// Copy credentials from the source server details
+	newTargetServerDetails.User = tcc.sourceServerDetails.User
+	newTargetServerDetails.Password = tcc.sourceServerDetails.Password
+	newTargetServerDetails.SshKeyPath = tcc.sourceServerDetails.SshKeyPath
+	newTargetServerDetails.SshPassphrase = tcc.sourceServerDetails.SshPassphrase
+	newTargetServerDetails.AccessToken = tcc.sourceServerDetails.AccessToken
+	newTargetServerDetails.RefreshToken = tcc.sourceServerDetails.RefreshToken
+	newTargetServerDetails.ArtifactoryRefreshToken = tcc.sourceServerDetails.ArtifactoryRefreshToken
+	newTargetServerDetails.ArtifactoryTokenRefreshInterval = tcc.sourceServerDetails.ArtifactoryTokenRefreshInterval
+	newTargetServerDetails.ClientCertPath = tcc.sourceServerDetails.ClientCertPath
+	newTargetServerDetails.ClientCertKeyPath = tcc.sourceServerDetails.ClientCertKeyPath
+
+	// Ping to validate the transfer ended successfully
+	pingCmd := generic.NewPingCommand().SetServerDetails(newTargetServerDetails)
+	err := pingCmd.Run()
 	if err != nil {
-		return "", err
+		return err
 	}
-	if versionResp.StatusCode == http.StatusOK {
-		verRes := &versionResponse{}
-		err = json.Unmarshal(versionBody, verRes)
-		if err != nil {
-			return "", errorutils.CheckError(err)
-		}
-		return verRes.Version, nil
-	}
+	log.Info("Ping to the target Artifactory was successful. Updating the server configuration in JFrog CLI.")
 
-	messageFormat := fmt.Sprintf("Response from Artifactory: %s.\n%s\n", versionResp.Status, versionBody)
-	if versionResp.StatusCode == http.StatusNotFound {
-		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the server.", messageFormat, pluginName)
-	} else {
-		// 403 if the user is not admin, 500+ if there is a server error
-		return "", errorutils.CheckErrorf(messageFormat)
+	// Update the server details in JFrog CLI configuration
+	configCmd := commands.NewConfigCommand(commands.AddOrEdit, newTargetServerDetails.ServerId).SetInteractive(false).SetDetails(newTargetServerDetails)
+	err = configCmd.Run()
+	if err != nil {
+		return err
 	}
+	tcc.targetServerDetails = newTargetServerDetails
+	return nil
 }

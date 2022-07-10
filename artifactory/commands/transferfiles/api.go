@@ -14,9 +14,10 @@ const (
 type ChunkFileStatusType string
 
 const (
-	Success           ChunkFileStatusType = "SUCCESS"
-	Fail              ChunkFileStatusType = "FAIL"
-	SkippedLargeProps ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
+	Success             ChunkFileStatusType = "SUCCESS"
+	Fail                ChunkFileStatusType = "FAIL"
+	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
+	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
 )
 
 type TargetAuth struct {
@@ -111,6 +112,6 @@ func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string)
 	}
 }
 
-func (uc *UploadChunk) appendUploadCandidate(repo, path, name string) {
-	uc.UploadCandidates = append(uc.UploadCandidates, FileRepresentation{Repo: repo, Path: path, Name: name})
+func (uc *UploadChunk) appendUploadCandidate(file FileRepresentation) {
+	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }

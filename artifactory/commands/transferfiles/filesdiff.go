@@ -6,13 +6,12 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"math"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -56,10 +55,6 @@ func (f *filesDiffPhase) getPhaseName() string {
 	return "Files Diff Handling Phase"
 }
 
-func (f *filesDiffPhase) getPhaseId() int {
-	return 1
-}
-
 func (f *filesDiffPhase) phaseStarted() error {
 	f.startTime = time.Now()
 	err := addNewDiffToState(f.repoKey, f.startTime)
@@ -80,7 +75,10 @@ func (f *filesDiffPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return f.progressBar.DonePhase(f.getPhaseId())
+	if f.progressBar != nil {
+		err = f.progressBar.DonePhase(f.phaseId)
+	}
+	return err
 }
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
@@ -103,85 +101,46 @@ func (f *filesDiffPhase) setTargetDetails(details *coreConfig.ServerDetails) {
 	f.targetRtDetails = details
 }
 
+func (f *filesDiffPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
+	f.repoSummary = repoSummary
+}
+
 func (f *filesDiffPhase) run() error {
-	f.handlePreviousUploadFailures()
+	err := f.handlePreviousUploadFailures()
+	if err != nil {
+		return err
+	}
 	return f.handleDiffTimeFrames()
 }
 
 // Split the time range of fixing files diffs into smaller time frames and handle them separately with smaller AQLs.
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
+	log.Info("Starting to handle files diffs...")
 	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
 	}
 
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
-	expectedChan := make(chan int, 1)
-	errorsQueue := clientUtils.NewErrorsQueue(1)
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
-	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routines that no more tasks are expected.
-	doneChan := make(chan bool, 2)
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		pcDetails := producerConsumerDetails{
-			producerConsumer: producerConsumer,
-			expectedChan:     expectedChan,
-			errorsQueue:      errorsQueue,
-			uploadTokensChan: uploadTokensChan,
-		}
-
+	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
+	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 {
-			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcDetails)
-			_, err = producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), errorsQueue.AddError)
+			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorChannel)
+			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
-				log.Error("error occurred when adding new task to producer consumer:" + err.Error())
+				return err
 			}
 			curDiffTimeFrame = curDiffTimeFrame.Add(searchTimeFramesMinutes * time.Minute)
 		}
-	}()
-
-	runWaitGroup.Add(1)
-	var pollingError error
-	go func() {
-		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	var runnerErr error
-	go func() {
-		defer runWaitGroup.Done()
-		// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
-		// the work is assumed to be done.
-		runnerErr = producerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-		// Notify the other go routines that work is done.
-		doneChan <- true
-		doneChan <- true
-	}()
-	// Blocked until finish consuming
-	producerConsumer.Run()
-	runWaitGroup.Wait()
-
-	var returnedError error
-	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
-		if err != nil {
-			log.Error(err)
-			returnedError = err
-		}
+		return nil
 	}
-	return returnedError
+	err = manager.doTransfer(true, action)
+	if err == nil {
+		log.Info("Done handling files diffs.")
+	}
+	return err
 }
 
 type diffTimeFrameHandlerFunc func(params timeFrameParams) parallel.TaskFunc
@@ -191,16 +150,16 @@ type timeFrameParams struct {
 	fromTime time.Time
 }
 
-func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcDetails producerConsumerDetails) diffTimeFrameHandlerFunc {
+func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return f.handleTimeFrameFilesDiff(params, logMsgPrefix, pcDetails)
+			return f.handleTimeFrameFilesDiff(params, logMsgPrefix, uploadTokensChan, delayHelper, errorChannel)
 		}
 	}
 }
 
-func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, pcDetails producerConsumerDetails) error {
+func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
 	fromTimestamp := params.fromTime.Format(time.RFC3339)
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
@@ -216,12 +175,12 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	}
 
 	files := convertResultsToFileRepresentation(result.Results)
-	err = f.uploadByChunks(files, pcDetails.uploadTokensChan)
+	err = uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
 	if err != nil {
 		return err
 	}
 	if f.progressBar != nil {
-		err = f.progressBar.IncrementPhase(f.getPhaseId())
+		err = f.progressBar.IncrementPhase(f.phaseId)
 		if err != nil {
 			return err
 		}
@@ -230,7 +189,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	return nil
 }
 
-func convertResultsToFileRepresentation(results []artifactoryUtils.ResultItem) (files []FileRepresentation) {
+func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []FileRepresentation) {
 	for _, result := range results {
 		files = append(files, FileRepresentation{
 			Repo: result.Repo,
@@ -241,33 +200,7 @@ func convertResultsToFileRepresentation(results []artifactoryUtils.ResultItem) (
 	return
 }
 
-// Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
-// If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
-func (f *filesDiffPhase) uploadByChunks(files []FileRepresentation, uploadTokensChan chan string) (err error) {
-	curUploadChunk := UploadChunk{
-		TargetAuth:                createTargetAuth(f.targetRtDetails),
-		CheckExistenceInFilestore: f.checkExistenceInFilestore,
-	}
-
-	for _, item := range files {
-		curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
-		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			err = uploadChunkWhenPossible(f.srcUpService, curUploadChunk, uploadTokensChan)
-			if err != nil {
-				return err
-			}
-			// Empty the uploaded chunk.
-			curUploadChunk.UploadCandidates = []FileRepresentation{}
-		}
-	}
-	// Chunk didn't reach full size. Upload the remaining files.
-	if len(curUploadChunk.UploadCandidates) > 0 {
-		return uploadChunkWhenPossible(f.srcUpService, curUploadChunk, uploadTokensChan)
-	}
-	return nil
-}
-
-func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string) (result *artifactoryUtils.AqlSearchResult, err error) {
+func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp)
 	return runAql(f.srcRtDetails, query)
 }
@@ -281,44 +214,20 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 // Consumes errors files with upload failures from cache and tries to upload these files again.
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
-func (f *filesDiffPhase) handlePreviousUploadFailures() {
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
-	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routines that no more tasks are expected.
-	doneChan := make(chan bool, 2)
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(nil, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	var pollingError error
-	go func() {
-		defer runWaitGroup.Done()
-		pollingError = pollUploads(f.srcUpService, uploadTokensChan, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	var runnerErr error
-	go func() {
-		defer runWaitGroup.Done()
-		runnerErr = f.handleErrorsFiles(uploadTokensChan)
-		doneChan <- true
-		doneChan <- true
-	}()
-
-	runWaitGroup.Wait()
-
-	for _, err := range []error{runnerErr, pollingError} {
-		if err != nil {
-			log.Error(err)
-		}
+func (f *filesDiffPhase) handlePreviousUploadFailures() error {
+	log.Info("Starting to handle previous upload failures...")
+	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
+	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorChannel)
 	}
+	err := manager.doTransfer(false, action)
+	if err == nil {
+		log.Info("Done handling previous upload failures.")
+	}
+	return err
 }
 
-func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
+func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
 	for _, path := range f.errorsFilesToHandle {
 		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)
@@ -332,7 +241,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 			return errorutils.CheckError(err)
 		}
 
-		err = f.uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan)
+		err = uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
 		if err != nil {
 			return err
 		}
@@ -344,7 +253,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string) error {
 		}
 
 		if f.progressBar != nil {
-			err = f.progressBar.IncrementPhase(f.getPhaseId())
+			err = f.progressBar.IncrementPhase(f.phaseId)
 			if err != nil {
 				return err
 			}

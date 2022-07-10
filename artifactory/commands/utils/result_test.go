@@ -39,8 +39,7 @@ func createTempDeployableArtifactFile() (filePath string, err error) {
 	filePath = ""
 	testsDataGradlePath := getTestsDataGradlePath()
 	summary, err := os.Open(path.Join(testsDataGradlePath, "deployableArtifacts", "artifacts"))
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	defer func() {

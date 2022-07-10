@@ -3,21 +3,21 @@ package transferconfig
 import (
 	"bytes"
 	"encoding/json"
+	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/stretchr/testify/assert"
 )
 
-type tranaferConfigHandler func(w http.ResponseWriter, r *http.Request)
+type transferConfigHandler func(w http.ResponseWriter, r *http.Request)
 
 func TestExportSourceArtifactory(t *testing.T) {
 	// Create transfer config command
@@ -100,7 +100,7 @@ func TestSanityVerifications(t *testing.T) {
 		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
 			w.WriteHeader(http.StatusOK)
 		} else if r.RequestURI == "/api/plugins/execute/configImportVersion" {
-			content, err := json.Marshal(versionResponse{Version: "1.0.0"})
+			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
@@ -176,7 +176,7 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 // Create mock server to test replication body
 // t           - The testing object
 // testHandler - The HTTP handler of the test
-func createMockServer(t *testing.T, testHandler tranaferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
+func createMockServer(t *testing.T, testHandler transferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
 

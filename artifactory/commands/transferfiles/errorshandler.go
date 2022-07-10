@@ -21,7 +21,7 @@ const (
 // TransferErrorsMng managing multi threads writing errors.
 type TransferErrorsMng struct {
 	// All go routines will write errors to the same channel
-	errorsChannelMng ErrorsChannelMng
+	errorsChannelMng *ErrorsChannelMng
 	// Current repository that is being transferred
 	repoKey string
 	// Transfer current phase
@@ -76,7 +76,7 @@ func (mng *TransferErrorsMng) initErrorWriterMng() error {
 // repoKey - the repo that is being transferred
 // phase - the phase number
 // errorsChannelMng - all go routines will write to the same channel
-func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng ErrorsChannelMng) (*TransferErrorsMng, error) {
+func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng) (*TransferErrorsMng, error) {
 	err := initTransferErrorsDir()
 	if err != nil {
 		return nil, err
@@ -134,22 +134,24 @@ func makeDirIfDoesNotExists(path string) error {
 
 func (mng *TransferErrorsMng) start() error {
 	// Read errors from channel and write them to files.
+	var err error
 	for e := range mng.errorsChannelMng.channel {
-		err := mng.writeErrorContent(e)
+		err = mng.writeErrorContent(e)
 		if err != nil {
 			return err
 		}
 	}
-	err := mng.errorWriterMng.retryable.closeWriter()
-	if err != nil {
-		return err
-	}
-	err = mng.errorWriterMng.skipped.closeWriter()
-	if err != nil {
-		return err
-	}
 
-	return nil
+	e := mng.errorWriterMng.retryable.closeWriter()
+	if err != nil {
+		err = e
+	}
+	e = mng.errorWriterMng.skipped.closeWriter()
+	if err != nil {
+		err = e
+	}
+	// Returns the first error received
+	return err
 }
 
 func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*content.ContentWriter, string, error) {

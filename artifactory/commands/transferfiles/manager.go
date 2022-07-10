@@ -16,7 +16,7 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error
+type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
@@ -37,7 +37,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), errorsChannelMng)
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	}()
 
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
-	delayedArtifactsMng := newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng)
+	delayedArtifactsMng := newTransferDelayedArtifactsToFile(&delayedArtifactsChannelMng)
 	if len(ftm.delayUploadComparisonFunctions) > 0 {
 		writersWaitGroup.Add(1)
 		go func() {
@@ -75,7 +75,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var pollingError error
 	go func() {
 		defer runWaitGroup.Done()
-		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, errorsChannelMng)
+		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, &errorsChannelMng)
 	}()
 
 	// Transfer action to execute.
@@ -83,7 +83,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var actionErr error
 	go func() {
 		defer runWaitGroup.Done()
-		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: delayedArtifactsChannelMng}, errorsChannelMng)
+		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
 		if !isProducerConsumer {
 			// Notify the other go routines that work is done.
 			doneChan <- true

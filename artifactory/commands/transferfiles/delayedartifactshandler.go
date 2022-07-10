@@ -20,7 +20,7 @@ const (
 // This is needed because, for example, for maven repositories, pom file should be deployed last.
 type TransferDelayedArtifactsMng struct {
 	// All go routines will write delayedArtifacts to the same channel
-	delayedArtifactsChannelMng DelayedArtifactsChannelMng
+	delayedArtifactsChannelMng *DelayedArtifactsChannelMng
 
 	// Files containing delayed artifacts to upload later on.
 	filesToConsume []string
@@ -33,7 +33,7 @@ type delayedArtifactWriter struct {
 }
 
 // Creates a manager for the files transferring process.
-func newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng DelayedArtifactsChannelMng) *TransferDelayedArtifactsMng {
+func newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng *DelayedArtifactsChannelMng) *TransferDelayedArtifactsMng {
 	return &TransferDelayedArtifactsMng{delayedArtifactsChannelMng: delayedArtifactsChannelMng}
 }
 
@@ -87,9 +87,10 @@ type DelayedArtifactsFile struct {
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 			return nil
 		}
 		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
@@ -101,7 +102,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	return err
 }
 
-func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		fileContent, err := os.ReadFile(filePath)
@@ -172,7 +173,7 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 
 type delayUploadHelper struct {
 	shouldDelayFunctions       []shouldDelayUpload
-	delayedArtifactsChannelMng DelayedArtifactsChannelMng
+	delayedArtifactsChannelMng *DelayedArtifactsChannelMng
 }
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
@@ -184,6 +185,7 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentat
 			succeed := delayHelper.delayedArtifactsChannelMng.add(file)
 			if !succeed {
 				// In case an error occurred while handling delayed artifacts - stop transferring.
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
 				shouldStop = true
 			}
 		}

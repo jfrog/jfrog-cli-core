@@ -123,7 +123,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	}
 
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling delayed artifacts - stop transferring.
 		curDiffTimeFrame := diffRangeStart
@@ -151,7 +151,7 @@ type timeFrameParams struct {
 	fromTime time.Time
 }
 
-func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) diffTimeFrameHandlerFunc {
+func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
@@ -160,7 +160,7 @@ func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan st
 	}
 }
 
-func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	fromTimestamp := params.fromTime.Format(time.RFC3339)
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
@@ -218,9 +218,11 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			// TODO change phrase
+			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 			return nil
 		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)
@@ -232,7 +234,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	return err
 }
 
-func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range f.errorsFilesToHandle {
 		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)

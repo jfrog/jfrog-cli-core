@@ -127,6 +127,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
+				tdc.stopTransferIgnoreErrors()
 				return err
 			}
 			if skip {
@@ -134,20 +135,24 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			}
 			err = newPhase.phaseStarted()
 			if err != nil {
+				tdc.stopTransferIgnoreErrors()
 				return err
 			}
 			err = newPhase.initProgressBar()
 			if err != nil {
+				tdc.stopTransferIgnoreErrors()
 				return err
 			}
 			printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
 			err = newPhase.run()
 			if err != nil {
+				tdc.stopTransferIgnoreErrors()
 				return err
 			}
 			printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
 			err = newPhase.phaseDone()
 			if err != nil {
+				tdc.stopTransferIgnoreErrors()
 				return err
 			}
 		}
@@ -223,4 +228,22 @@ func printPhaseChange(message string) {
 type producerConsumerDetails struct {
 	producerConsumer parallel.Runner
 	errorsQueue      *clientUtils.ErrorsQueue
+}
+
+func (tdc *TransferFilesCommand) stopTransferIgnoreErrors() {
+	// Quit progress bar
+	if tdc.progressbar != nil {
+		err := tdc.progressbar.Quit()
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+	// Create csv errors file
+	csvErrorsFile, err := createErrorsCsvSummary()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	if csvErrorsFile != "" {
+		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	}
 }

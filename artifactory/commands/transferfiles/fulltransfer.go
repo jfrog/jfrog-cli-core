@@ -108,9 +108,10 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) error {
+	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 			return nil
 		}
 		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
@@ -128,7 +129,7 @@ type folderParams struct {
 }
 
 func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails, uploadTokensChan chan string,
-	delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) folderFullTransferHandlerFunc {
+	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
@@ -138,7 +139,7 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails produc
 }
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails,
-	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) (err error) {
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
@@ -154,6 +155,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	for _, item := range result.Results {
 		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's files.")
 			return
 		}
 		if item.Name == "." {

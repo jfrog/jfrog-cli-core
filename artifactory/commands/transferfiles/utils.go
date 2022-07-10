@@ -78,7 +78,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng ErrorsChannelMng) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -146,18 +146,25 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng ErrorsChannelMng) (succeed bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (succeed bool) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
+			//TODO: added for testing reasons- needs to be removed
+			if !errorsChannelMng.add(file) {
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
+				return false
+			}
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
 		case Fail:
-			if !errorMng.add(file) {
+			if !errorsChannelMng.add(file) {
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
 				return false
 			}
 		case SkippedLargeProps:
-			if !errorMng.add(file) {
+			if !errorsChannelMng.add(file) {
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
 				return false
 			}
 		}
@@ -167,7 +174,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorMng
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -191,7 +198,7 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng ErrorsChannelMng, err error) (shouldStop bool) {
+func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChannelMng, err error) (shouldStop bool) {
 	for _, file := range chunk.UploadCandidates {
 		err := FileUploadStatusResponse{
 			FileRepresentation: file,
@@ -199,6 +206,7 @@ func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng ErrorsChanne
 		}
 		// In case an error occurred while handling errors files - stop transferring.
 		if !errorsChannelMng.add(err) {
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
 			return true
 		}
 	}
@@ -288,7 +296,7 @@ func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, re
 
 // Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -296,7 +304,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 
 	for _, item := range files {
 		// In case an error occurred while handling delayed artifacts - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 			return
 		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}

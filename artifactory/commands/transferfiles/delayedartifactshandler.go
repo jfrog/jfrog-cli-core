@@ -178,35 +178,34 @@ type delayUploadHelper struct {
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 // When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
-func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) (delayed, shouldStop bool) {
+func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) (delayed, stopped bool) {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if shouldDelay(file.Name) {
 			delayed = true
-			succeed := delayHelper.delayedArtifactsChannelMng.add(file)
-			if !succeed {
+			stopped = delayHelper.delayedArtifactsChannelMng.add(file)
+			if stopped {
 				// In case an error occurred while handling delayed artifacts - stop transferring.
 				log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
-				shouldStop = true
+				return
 			}
 		}
 	}
 	return
 }
 
-// DelayedArtifactsChannelMng managing writing 'delayed artifacts' to a common channel.
-// If an error occurs while handling the files, stop adding elements to the channel.
+// DelayedArtifactsChannelMng is used when writing 'delayed artifacts' to a common channel.
+// If an error occurs while handling the files - this message is used to stop adding elements to the channel.
 type DelayedArtifactsChannelMng struct {
 	channel chan FileRepresentation
 	err     error
 }
 
-// Check if a new element can be added to the channel
-func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (succeed bool) {
+func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (stopped bool) {
 	if mng.shouldStop() {
-		return false
+		return true
 	}
 	mng.channel <- element
-	return true
+	return false
 }
 
 func (mng DelayedArtifactsChannelMng) shouldStop() bool {
@@ -221,6 +220,5 @@ func (mng DelayedArtifactsChannelMng) close() {
 
 func createdDelayedArtifactsChannelMng() DelayedArtifactsChannelMng {
 	channel := make(chan FileRepresentation, fileWritersChannelSize)
-	var DelayedArtifactsErr error
-	return DelayedArtifactsChannelMng{channel, DelayedArtifactsErr}
+	return DelayedArtifactsChannelMng{channel: channel}
 }

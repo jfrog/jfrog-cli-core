@@ -327,13 +327,12 @@ type ErrorsChannelMng struct {
 	err     error
 }
 
-// Check if a new element can be added to the channel
-func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (succeed bool) {
+func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
 	if mng.shouldStop() {
-		return false
+		return true
 	}
 	mng.channel <- element
-	return true
+	return false
 }
 
 // Close channel
@@ -348,6 +347,5 @@ func (mng ErrorsChannelMng) shouldStop() bool {
 
 func createErrorsChannelMng() ErrorsChannelMng {
 	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
-	var writingErrorsErr error
-	return ErrorsChannelMng{errorChannel, writingErrorsErr}
+	return ErrorsChannelMng{channel: errorChannel}
 }

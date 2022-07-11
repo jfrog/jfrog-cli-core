@@ -106,9 +106,9 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			case Done:
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				succeed := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
+				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
-				if !succeed {
+				if stopped {
 					return nil
 				}
 			}
@@ -146,30 +146,25 @@ func removeTokenFromBatch(uuidTokens []string, token string) []string {
 	return uuidTokens
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (succeed bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
-		case Fail:
-			if !errorsChannelMng.add(file) {
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
-				return false
-			}
-		case SkippedLargeProps:
-			if !errorsChannelMng.add(file) {
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
-				return false
+		case Fail, SkippedLargeProps:
+			stopped = addErrorToChannel(errorsChannelMng, file)
+			if stopped {
+				return
 			}
 		}
 	}
-	return true
+	return
 }
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
@@ -178,11 +173,11 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			continue
 		}
 		var isChecksumDeployed bool
-		isChecksumDeployed, err = uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
-			shouldStop = sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			stopped = sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
 			return
 		}
 		if isChecksumDeployed {
@@ -193,19 +188,19 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChannelMng, err error) (shouldStop bool) {
+func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChannelMng, err error) (stopped bool) {
 	for _, file := range chunk.UploadCandidates {
 		err := FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             err.Error(),
 		}
 		// In case an error occurred while handling errors files - stop transferring.
-		if !errorsChannelMng.add(err) {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
-			return true
+		stopped = addErrorToChannel(errorsChannelMng, err)
+		if stopped {
+			return
 		}
 	}
-	return false
+	return
 }
 
 // Sends an upload chunk to the source Artifactory instance.
@@ -314,8 +309,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop, err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
-			if err != nil || shouldStop {
+			shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+			if shouldStop {
 				return
 			}
 			// Empty the uploaded chunk.
@@ -324,7 +319,15 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		shouldStop, err = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
 	}
 	return
+}
+
+func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatusResponse) (stopped bool) {
+	if errorsChannelMng.add(file) {
+		log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
+		return true
+	}
+	return false
 }

@@ -131,52 +131,39 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		if tdc.progressbar != nil {
 			tdc.progressbar.NewRepository(repo)
 		}
-		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
-			newPhase := getPhaseByNum(phaseI, repo)
-			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
-			skip, err := newPhase.shouldSkipPhase()
-			if err != nil {
-				return tdc.cleanup(err)
-			}
-			if skip {
-				continue
-			}
-			err = newPhase.phaseStarted()
-			if err != nil {
-				return tdc.cleanup(err)
-			}
-			err = newPhase.initProgressBar()
-			if err != nil {
-				return tdc.cleanup(err)
-			}
-			printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
-			err = newPhase.run()
-			if err != nil {
-				return tdc.cleanup(err)
-			}
-			printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
-			err = newPhase.phaseDone()
+		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
+			err = tdc.startPhase(currentPhaseId, repo, repoSummary, srcUpService)
 			if err != nil {
 				return tdc.cleanup(err)
 			}
 		}
 	}
-	if tdc.progressbar != nil {
-		err = tdc.progressbar.Quit()
-		if err != nil {
-			return err
-		}
-	}
+	// Close progressBar and create CSV errors summary file
+	return tdc.cleanup(nil)
+}
 
-	log.Info("Transferring was completed!")
-	csvErrorsFile, err := createErrorsCsvSummary()
+func (tdc *TransferFilesCommand) startPhase(currentPhaseId int, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
+	newPhase := getPhaseByNum(currentPhaseId, repo)
+	tdc.initNewPhase(newPhase, srcUpService, repoSummary)
+	skip, err := newPhase.shouldSkipPhase()
+	if err != nil || skip {
+		return err
+	}
+	err = newPhase.phaseStarted()
 	if err != nil {
 		return err
 	}
-	if csvErrorsFile != "" {
-		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	err = newPhase.initProgressBar()
+	if err != nil {
+		return err
 	}
-	return nil
+	printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
+	err = newPhase.run()
+	if err != nil {
+		return err
+	}
+	printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
+	return newPhase.phaseDone()
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {

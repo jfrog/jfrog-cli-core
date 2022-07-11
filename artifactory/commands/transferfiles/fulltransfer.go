@@ -174,8 +174,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 		case "file":
 			file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-			delayed, shouldStop := delayHelper.delayUploadIfNecessary(file)
-			if shouldStop {
+			delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+			if stopped {
 				return
 			}
 			if delayed {
@@ -183,11 +183,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 			curUploadChunk.appendUploadCandidate(file)
 			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				shouldStop, err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
-				if err != nil {
-					log.Error(err)
-				}
-				if shouldStop {
+				stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+				if stopped {
 					return
 				}
 				// Increase phase1 progress bar with the uploaded number of files.
@@ -214,9 +211,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		var shouldStop bool
-		shouldStop, err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
-		if err != nil || shouldStop {
+		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.

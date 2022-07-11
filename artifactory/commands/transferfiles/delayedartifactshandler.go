@@ -185,7 +185,7 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentat
 			succeed := delayHelper.delayedArtifactsChannelMng.add(file)
 			if !succeed {
 				// In case an error occurred while handling delayed artifacts - stop transferring.
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")
+				log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 				shouldStop = true
 			}
 		}
@@ -194,7 +194,7 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentat
 }
 
 // DelayedArtifactsChannelMng managing writing 'delayed artifacts' to a common channel.
-// In case that an error occurred while handling the files - stops adding elements to the channel.
+// If an error occurs while handling the files, stop adding elements to the channel.
 type DelayedArtifactsChannelMng struct {
 	channel chan FileRepresentation
 	err     error
@@ -202,7 +202,6 @@ type DelayedArtifactsChannelMng struct {
 
 // Check if a new element can be added to the channel
 func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (succeed bool) {
-	// Stop adding elements to the channel if an error occurred.
 	if mng.shouldStop() {
 		return false
 	}
@@ -211,7 +210,7 @@ func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (succeed b
 }
 
 func (mng DelayedArtifactsChannelMng) shouldStop() bool {
-	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
+	// Stop adding elements to the channel if a 'blocking' error occurred in a different go routine.
 	return mng.err != nil
 }
 

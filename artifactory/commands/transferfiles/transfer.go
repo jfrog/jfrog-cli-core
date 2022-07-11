@@ -136,33 +136,28 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
 			skip, err := newPhase.shouldSkipPhase()
 			if err != nil {
-				tdc.stopTransferAfterErrorOccurred()
-				return err
+				return tdc.cleanup(err)
 			}
 			if skip {
 				continue
 			}
 			err = newPhase.phaseStarted()
 			if err != nil {
-				tdc.stopTransferAfterErrorOccurred()
-				return err
+				return tdc.cleanup(err)
 			}
 			err = newPhase.initProgressBar()
 			if err != nil {
-				tdc.stopTransferAfterErrorOccurred()
-				return err
+				return tdc.cleanup(err)
 			}
 			printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
 			err = newPhase.run()
 			if err != nil {
-				tdc.stopTransferAfterErrorOccurred()
-				return err
+				return tdc.cleanup(err)
 			}
 			printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
 			err = newPhase.phaseDone()
 			if err != nil {
-				tdc.stopTransferAfterErrorOccurred()
-				return err
+				return tdc.cleanup(err)
 			}
 		}
 	}
@@ -239,22 +234,27 @@ type producerConsumerDetails struct {
 	errorsQueue      *clientUtils.ErrorsQueue
 }
 
-// stopTransferAfterErrorOccurred will close progressBar and creates CSV errors file in case of an error occurred.
-// errors received from this function will be shown in stdErr
-func (tdc *TransferFilesCommand) stopTransferAfterErrorOccurred() {
+// If an error occurred cleanup will:
+// 1. Close progressBar
+// 2. Create CSV errors summary file
+func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
+	err = originalErr
 	// Quit progress bar
-	if tdc.progressbar != nil {
-		err := tdc.progressbar.Quit()
-		if err != nil {
-			log.Error(err.Error())
+	defer func() {
+		if tdc.progressbar != nil {
+			e := tdc.progressbar.Quit()
+			if err == nil {
+				err = e
+			}
 		}
-	}
-	// Create csv errors file
-	csvErrorsFile, err := createErrorsCsvSummary()
-	if err != nil {
-		log.Error(err.Error())
+	}()
+	// Create csv errors summary file
+	csvErrorsFile, e := createErrorsCsvSummary()
+	if err == nil {
+		err = e
 	}
 	if csvErrorsFile != "" {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}
+	return
 }

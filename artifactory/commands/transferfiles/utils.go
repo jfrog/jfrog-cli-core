@@ -107,7 +107,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				reduceCurProcessedChunks()
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				succeed := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
-				// In case an error occurred while writing errors status's to the errors file we will stop transferring.
+				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if !succeed {
 					return nil
 				}
@@ -304,8 +304,9 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 			return
 		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-		delayed, ShouldStop := delayHelper.delayUploadIfNecessary(file)
-		if ShouldStop {
+		var delayed bool
+		delayed, shouldStop = delayHelper.delayUploadIfNecessary(file)
+		if shouldStop {
 			return
 		}
 		if delayed {

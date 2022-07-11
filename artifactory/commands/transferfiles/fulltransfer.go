@@ -153,9 +153,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	}
 
 	for _, item := range result.Results {
-		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's files.")
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 			return
 		}
 		if item.Name == "." {

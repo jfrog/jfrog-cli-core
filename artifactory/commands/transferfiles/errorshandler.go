@@ -132,28 +132,25 @@ func makeDirIfDoesNotExists(path string) error {
 	return err
 }
 
-func (mng *TransferErrorsMng) start() error {
+func (mng *TransferErrorsMng) start() (err error) {
+	defer func() {
+		e := mng.errorWriterMng.retryable.closeWriter()
+		if err == nil {
+			err = e
+		}
+		e = mng.errorWriterMng.skipped.closeWriter()
+		if err == nil {
+			err = e
+		}
+	}()
 	// Read errors from channel and write them to files.
-	var err error
 	for e := range mng.errorsChannelMng.channel {
 		err = mng.writeErrorContent(e)
 		if err != nil {
-			return err
+			return
 		}
 	}
-
-	e := mng.errorWriterMng.retryable.closeWriter()
-	if err != nil {
-		log.Error(e.Error())
-		err = e
-	}
-	e = mng.errorWriterMng.skipped.closeWriter()
-	if err != nil {
-		log.Error(e.Error())
-		err = e
-	}
-	// Returns the first error received
-	return err
+	return
 }
 
 func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*content.ContentWriter, string, error) {
@@ -323,8 +320,8 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	return
 }
 
-// ErrorsChannelMng managing writing 'files uploading errors' to a common channel.
-// In case that an error occurred while handling the files - stops adding elements to the channel.
+// ErrorsChannelMng managing writing 'uploading errors' to a common channel.
+// If an error occurs while handling the files, stop adding elements to the channel.
 type ErrorsChannelMng struct {
 	channel chan FileUploadStatusResponse
 	err     error
@@ -345,7 +342,7 @@ func (mng ErrorsChannelMng) close() {
 }
 
 func (mng ErrorsChannelMng) shouldStop() bool {
-	// Stop adding elements to the channel if an 'blocking' error occurred in a different go routine.
+	// Stop adding elements to the channel if a 'blocking' error occurred in a different go routine.
 	return mng.err != nil
 }
 

@@ -16,7 +16,20 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionWithProducerConsumerType func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionSingleProducerType func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+
+func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
+	pcDetails := initProducerConsumer()
+	return doTransfer(ftm, &pcDetails, transferAction)
+}
+
+func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionSingleProducerType) error {
+	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
+	}
+	return doTransfer(ftm, nil, transferActionPc)
+}
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
@@ -28,7 +41,7 @@ type transferActionType func(optionalPcDetails producerConsumerDetails, uploadTo
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
-func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction transferActionType) error {
+func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
@@ -56,14 +69,13 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		}()
 	}
 
-	var pcDetails producerConsumerDetails
-	if isProducerConsumer {
-		pcDetails = initProducerConsumer()
-	}
-
 	// Manager for transfer's tasks "done" channel - channel which indicate that files transfer was finished.
 	pollingTasksManager := newPollingTasksManager()
-	pollingTasksManager.start(&runWaitGroup, pcDetails.producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
+	var producerConsumer parallel.Runner
+	if pcDetails != nil {
+		producerConsumer = pcDetails.producerConsumer
+	}
+	pollingTasksManager.start(&runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
 
 	// Transfer action to execute.
 	runWaitGroup.Add(1)
@@ -71,7 +83,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	go func() {
 		defer runWaitGroup.Done()
 		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
-		if !isProducerConsumer {
+		if pcDetails == nil {
 			pollingTasksManager.stop()
 		}
 	}()
@@ -79,8 +91,8 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	// Run and wait till done if producer consumer is used.
 	var runnerErr error
 	var executionErr error
-	if isProducerConsumer {
-		runnerErr, executionErr = runProducerConsumer(pcDetails, &runWaitGroup)
+	if pcDetails != nil {
+		runnerErr, executionErr = runProducerConsumer(*pcDetails, &runWaitGroup)
 		pollingTasksManager.stop()
 	}
 	// After done is sent, wait for polling go routines to exit.

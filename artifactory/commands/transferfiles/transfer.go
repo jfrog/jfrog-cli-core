@@ -226,15 +226,17 @@ type producerConsumerDetails struct {
 // 2. Create CSV errors summary file
 func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 	err = originalErr
-	// Quit progress bar
-	defer func() {
-		if tdc.progressbar != nil {
-			e := tdc.progressbar.Quit()
-			if err == nil {
-				err = e
-			}
+	// Quit progress bar (before printing logs)
+	if tdc.progressbar != nil {
+		e := tdc.progressbar.Quit()
+		if err == nil {
+			err = e
 		}
-	}()
+	}
+	// Transferring finished successfully
+	if originalErr == nil {
+		log.Info("Transferring was completed!")
+	}
 	// Create csv errors summary file
 	csvErrorsFile, e := createErrorsCsvSummary()
 	if err == nil {

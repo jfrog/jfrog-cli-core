@@ -123,7 +123,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	}
 
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
@@ -137,7 +137,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = manager.doTransfer(true, action)
+	err = manager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}
@@ -218,7 +218,7 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
 			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
@@ -226,7 +226,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransfer(false, action)
+	err := manager.doTransferWithSingleProducer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}

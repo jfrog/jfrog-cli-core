@@ -226,7 +226,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransferWithSingleProducer(action)
+	err := manager.doTransfer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}

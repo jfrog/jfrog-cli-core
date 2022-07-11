@@ -17,14 +17,14 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 }
 
 type transferActionWithProducerConsumerType func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
-type transferActionSingleProducerType func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionType func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
 	pcDetails := initProducerConsumer()
 	return doTransfer(ftm, &pcDetails, transferAction)
 }
 
-func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionSingleProducerType) error {
+func (ftm *transferManager) doTransfer(transferAction transferActionType) error {
 	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
 	}

@@ -32,8 +32,6 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routines that no more tasks are expected.
-	doneChan := make(chan bool, 2)
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
@@ -41,7 +39,6 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	if err != nil {
 		return err
 	}
-
 	writersWaitGroup.Add(1)
 	go func() {
 		defer writersWaitGroup.Done()
@@ -64,20 +61,9 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		pcDetails = initProducerConsumer()
 	}
 
-	// Update threads by polling on the settings file.
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(pcDetails.producerConsumer, doneChan)
-	}()
-
-	// Check status of uploaded chunks.
-	runWaitGroup.Add(1)
-	var pollingError error
-	go func() {
-		defer runWaitGroup.Done()
-		pollingError = pollUploads(ftm.srcUpService, uploadTokensChan, doneChan, &errorsChannelMng)
-	}()
+	// Manager for transfer's tasks "done" channel - channel which indicate that files transfer was finished.
+	pollingTasksManager := newPollingTasksManager()
+	pollingTasksManager.start(&runWaitGroup, pcDetails.producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
 
 	// Transfer action to execute.
 	runWaitGroup.Add(1)
@@ -86,9 +72,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		defer runWaitGroup.Done()
 		actionErr = transferAction(pcDetails, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
 		if !isProducerConsumer {
-			// Notify the other go routines that work is done.
-			doneChan <- true
-			doneChan <- true
+			pollingTasksManager.stop()
 		}
 	}()
 
@@ -97,9 +81,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	var executionErr error
 	if isProducerConsumer {
 		runnerErr, executionErr = runProducerConsumer(pcDetails, &runWaitGroup)
-		// Notify the other go routines that work is done.
-		doneChan <- true
-		doneChan <- true
+		pollingTasksManager.stop()
 	}
 	// After done is sent, wait for polling go routines to exit.
 	runWaitGroup.Wait()
@@ -110,7 +92,7 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 	writersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, pollingError, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr} {
+	for _, err := range []error{actionErr, pollingTasksManager.pollingErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err
@@ -123,6 +105,44 @@ func (ftm *transferManager) doTransfer(isProducerConsumer bool, transferAction t
 		returnedError = handleDelayedArtifactsFiles(delayedArtifactsMng.filesToConsume, ftm.phaseBase, ftm.delayUploadComparisonFunctions[1:])
 	}
 	return returnedError
+}
+
+type PollingTasksManager struct {
+	// Done channel notifies the polling go routines that no more tasks are expected.
+	doneChannel chan bool
+	// Error returned by the polling go routine
+	pollingErr error
+}
+
+// Runs 2 go routines :
+// 1. Check number of threads
+// 2. Poll uploaded chunks
+func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng) {
+	// Update threads by polling on the settings file.
+	runWaitGroup.Add(1)
+	go func() {
+		defer runWaitGroup.Done()
+		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel)
+	}()
+
+	// Check status of uploaded chunks.
+	runWaitGroup.Add(1)
+	go func() {
+		defer runWaitGroup.Done()
+		ptm.pollingErr = pollUploads(srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
+	}()
+	return
+}
+
+func (ptm *PollingTasksManager) stop() {
+	// Notify the other go routines that work is done.
+	ptm.doneChannel <- true
+	ptm.doneChannel <- true
+}
+
+func newPollingTasksManager() PollingTasksManager {
+	// Channel's size is 2, because there are exactly two go routines that need to be signaled that they should stop by it.
+	return PollingTasksManager{doneChannel: make(chan bool, 2)}
 }
 
 func initProducerConsumer() producerConsumerDetails {

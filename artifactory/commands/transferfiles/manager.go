@@ -143,7 +143,6 @@ func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerCons
 		defer runWaitGroup.Done()
 		ptm.pollingErr = pollUploads(srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
 	}()
-	return
 }
 
 func (ptm *PollingTasksManager) stop() {

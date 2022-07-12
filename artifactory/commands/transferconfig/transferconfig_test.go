@@ -32,7 +32,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 
 		// Make sure all parameters as expected
 		assert.True(t, *actual.IncludeMetadata)
-		assert.True(t, *actual.Verbose)
+		assert.False(t, *actual.Verbose)
 		assert.True(t, *actual.ExcludeContent)
 		assert.Nil(t, actual.CreateArchive)
 		assert.Nil(t, actual.M2)

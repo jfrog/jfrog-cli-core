@@ -3,6 +3,11 @@ package transferconfig
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
@@ -18,10 +23,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/http"
-	"os"
-	"time"
 )
 
 const (
@@ -37,6 +38,7 @@ type TransferConfigCommand struct {
 	targetServerDetails  *config.ServerDetails
 	dryRun               bool
 	force                bool
+	verbose              bool
 	includeReposPatterns []string
 	excludeReposPatterns []string
 }
@@ -56,6 +58,11 @@ func (tcc *TransferConfigCommand) SetDryRun(dryRun bool) *TransferConfigCommand 
 
 func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	tcc.force = force
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetVerbose(verbose bool) *TransferConfigCommand {
+	tcc.verbose = verbose
 	return tcc
 }
 
@@ -249,7 +256,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 	exportParams := services.ExportParams{
 		ExportPath:      tempDir,
 		IncludeMetadata: &trueValue,
-		Verbose:         &trueValue,
+		Verbose:         &tcc.verbose,
 		ExcludeContent:  &trueValue,
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(tempDir) }

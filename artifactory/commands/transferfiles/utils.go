@@ -18,6 +18,7 @@ const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
+	aqlPaginationLimit                           = 10000
 )
 
 var curThreads int
@@ -105,6 +106,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				continue
 			case Done:
 				reduceCurProcessedChunks()
+				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				handleFilesOfCompletedChunk(chunk.Files, errorChannel)
 			}

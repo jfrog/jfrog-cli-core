@@ -12,11 +12,12 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"strconv"
 )
 
 const (
 	tasksMaxCapacity = 10000
-	uploadChunkSize  = 100
+	uploadChunkSize  = 10
 	// Default number of threads working while transferring Artifactory's data
 	defaultThreads = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
@@ -222,6 +223,7 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 	if settings != nil {
 		curThreads = settings.ThreadsNumber
 	}
+	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }
 

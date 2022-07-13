@@ -164,23 +164,34 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
 
-	result, err := f.getTimeFrameFilesDiff(params.repoKey, fromTimestamp, toTimestamp)
-	if err != nil {
-		return err
+	paginationI := 0
+	for {
+		result, err := f.getTimeFrameFilesDiff(params.repoKey, fromTimestamp, toTimestamp, paginationI)
+		if err != nil {
+			return err
+		}
+
+		if len(result.Results) == 0 {
+			if paginationI == 0 {
+				log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
+			}
+			break
+		}
+
+		files := convertResultsToFileRepresentation(result.Results)
+		err = uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
+		if err != nil {
+			return err
+		}
+
+		if len(result.Results) < aqlPaginationLimit {
+			break
+		}
+		paginationI++
 	}
 
-	if len(result.Results) == 0 {
-		log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
-		return nil
-	}
-
-	files := convertResultsToFileRepresentation(result.Results)
-	err = uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
-	if err != nil {
-		return err
-	}
 	if f.progressBar != nil {
-		err = f.progressBar.IncrementPhase(f.phaseId)
+		err := f.progressBar.IncrementPhase(f.phaseId)
 		if err != nil {
 			return err
 		}
@@ -200,15 +211,16 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
-func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp)
+func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.srcRtDetails, query)
 }
 
-func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
-	items := fmt.Sprintf(`items.find({"type":"file","modified":{"$gte":"%s"},"modified":{"$lt":"%s"},"$or":[{"$and":[{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]}]})`, fromTimestamp, toTimestamp, repoKey)
-	items += `.include("repo","path","name")`
-	return items
+func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"type":"file","modified":{"$gte":"%s"},"modified":{"$lt":"%s"},"$or":[{"$and":[{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]}]})`, fromTimestamp, toTimestamp, repoKey)
+	query += `.include("repo","path","name","modified")`
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	return query
 }
 
 // Consumes errors files with upload failures from cache and tries to upload these files again.

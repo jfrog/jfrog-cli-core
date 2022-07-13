@@ -235,7 +235,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 	}
 	// Transferring finished successfully
 	if originalErr == nil {
-		log.Info("Transferring was completed!")
+		log.Info("Files transfer is complete!")
 	}
 	// Create csv errors summary file
 	csvErrorsFile, e := createErrorsCsvSummary()

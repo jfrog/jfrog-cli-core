@@ -150,6 +150,10 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
+			stopped = addErrorToChannel(errorsChannelMng, file)
+			if stopped {
+				return
+			}
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
 		case Fail, SkippedLargeProps:
@@ -172,13 +176,11 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		var isChecksumDeployed bool
 		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
-			stopped = sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
-			return
+			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
 		}
 		if isChecksumDeployed {
 			// Chunk does not require polling.
@@ -324,6 +326,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	return
 }
 
+// Add a new error to the common error channel.
+// In case an error occurs when creating the upload errors files, we would like to stop the transfer right away and stop adding elements to the channel.
 func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatusResponse) (stopped bool) {
 	if errorsChannelMng.add(file) {
 		log.Debug("Stop transferring data - error occurred while handling transfer's errors files.")

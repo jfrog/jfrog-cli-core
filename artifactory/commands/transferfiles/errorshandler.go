@@ -18,7 +18,12 @@ const (
 	maxErrorsInFile = 50000
 )
 
-// TransferErrorsMng managing multi threads writing errors.
+// TransferErrorsMng manages multi threads writing errors.
+// We want to create a file which contains all upload error statuses for each repository and phase.
+// Those files will serve us in 2 cases:
+// 1. Whenever we re-run 'transfer-files' command, we want to attempt to upload failed files again.
+// 2. As part of the transfer process, we generate a csv file that contains all upload errors.
+// In case an error occurs when creating those upload errors files, we would like to stop the transfer right away.
 type TransferErrorsMng struct {
 	// All go routines will write errors to the same channel
 	errorsChannelMng *ErrorsChannelMng
@@ -27,7 +32,6 @@ type TransferErrorsMng struct {
 	// Transfer current phase
 	phaseId        int
 	phaseStartTime string
-
 	errorWriterMng errorWriterMng
 }
 
@@ -81,10 +85,8 @@ func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string,
 	if err != nil {
 		return nil, err
 	}
-
 	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime}
-	err = mng.initErrorWriterMng()
-	return &mng, err
+	return &mng, nil
 }
 
 // Create transfer errors directory inside the JFrog CLI home directory.
@@ -133,6 +135,10 @@ func makeDirIfDoesNotExists(path string) error {
 }
 
 func (mng *TransferErrorsMng) start() (err error) {
+	err = mng.initErrorWriterMng()
+	if err != nil {
+		return
+	}
 	defer func() {
 		e := mng.errorWriterMng.retryable.closeWriter()
 		if err == nil {
@@ -320,8 +326,8 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	return
 }
 
-// ErrorsChannelMng managing writing 'uploading errors' to a common channel.
-// If an error occurs while handling the files, stop adding elements to the channel.
+// ErrorsChannelMng handles the uploading errors and add them to a common channel.
+// Stops adding elements to the channel if an error occurs while handling the files.
 type ErrorsChannelMng struct {
 	channel chan FileUploadStatusResponse
 	err     error

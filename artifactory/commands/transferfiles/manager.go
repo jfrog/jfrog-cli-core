@@ -179,12 +179,11 @@ func (ptm *PollingTasksManager) addGoRoutine() error {
 	return nil
 }
 
-func (ptm *PollingTasksManager) stop() error {
+func (ptm *PollingTasksManager) stop() {
 	// Notify the other go routines that work is done.
 	for i := 0; i < ptm.totalRunningGoRoutines; i++ {
 		ptm.doneChannel <- true
 	}
-	return nil
 }
 
 func initProducerConsumer() producerConsumerDetails {

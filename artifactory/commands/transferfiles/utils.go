@@ -150,10 +150,6 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			stopped = addErrorToChannel(errorsChannelMng, file)
-			if stopped {
-				return
-			}
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
 		case Fail, SkippedLargeProps:

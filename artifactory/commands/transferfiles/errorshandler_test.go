@@ -17,7 +17,8 @@ func TestTransferErrorsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 	repoKey := "repo"
-	errorsNumber := 100
+	errorsNumber := 105
+	//maxErrorsInFile = 20
 	errorsChannelMng := createErrorsChannelMng()
 	transferErrorsMng, err := newTransferErrorsToFile(repoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng)
 	assert.NoError(t, err)
@@ -55,12 +56,12 @@ func TestTransferErrorsMng(t *testing.T) {
 
 	retryableErrorsDirPath, err := getErrorsFiles("repo", true)
 	assert.Equal(t, 1, len(retryableErrorsDirPath), "got more than 1 retryable error file")
-	entitiesNum, err := verifyErrorsFiles(retryableErrorsDirPath[0], Fail)
+	entitiesNum, err := validateErrorsFiles(retryableErrorsDirPath[0], Fail)
 	assert.NoError(t, err)
 	assert.Equal(t, errorsNumber, entitiesNum)
 }
 
-func verifyErrorsFiles(path string, status ChunkFileStatusType) (entitiesNum int, err error) {
+func validateErrorsFiles(path string, status ChunkFileStatusType) (entitiesNum int, err error) {
 	exists, err := fileutils.IsFileExists(path, false)
 	if err != nil {
 		return

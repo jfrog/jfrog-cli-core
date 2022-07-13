@@ -34,17 +34,6 @@ var severitiesScore = map[string]string{
 	"Low":      "3", // Low Score Range is 0.1 – 3.9
 }
 
-var dependenciesFiles = map[string]string{
-	"go":     "go.mod",
-	"maven":  "pom.xml",
-	"npm":    "package.json",
-	"nuget":  "NuGet Dependency File",
-	"gradle": "Gradle Dependency File",
-	"pip":    "Pip Dependency File",
-	"pipenv": "Pipenv Dependency File",
-	"python": "Python Dependency File",
-}
-
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
 func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
@@ -91,7 +80,6 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 }
 
 func GenerateSarifFileFromScan(currentScan []services.ScanResponse, includeVulnerabilities, isMultipleRoots bool) (string, error) {
-	// add check that scan has some vulnerabilities/violations
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -180,7 +168,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 }
 
 func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) {
-	path := dependenciesFiles[strings.ToLower(technology)]
+	path := coreutils.GetTechnologyDependencyFile(technology)
 	pb := sarif.NewPropertyBag()
 	pb.Add("security-severity", severitiesScore[severity])
 	run.AddRule(issueId).

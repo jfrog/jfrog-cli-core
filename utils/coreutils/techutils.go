@@ -19,7 +19,6 @@ const (
 	Nuget  = "nuget"
 	Dotnet = "dotnet"
 	Docker = "docker"
-	Python = "Python"
 )
 
 type TechData struct {
@@ -33,6 +32,8 @@ type TechData struct {
 	exclude []string
 	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
+	// The file that handles the project's dependencies.
+	dependencyFile string
 }
 
 var technologiesData = map[Technology]TechData{
@@ -40,25 +41,29 @@ var technologiesData = map[Technology]TechData{
 		PackageType:    "Maven",
 		indicators:     []string{"pom.xml"},
 		ciSetupSupport: true,
+		dependencyFile: "pom.xml",
 	},
 	Gradle: {
 		PackageType:    "Gradle",
 		indicators:     []string{".gradle"},
 		ciSetupSupport: true,
+		dependencyFile: "build.gradle",
 	},
 	Npm: {
 		PackageType:    "npm",
 		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport: true,
+		dependencyFile: "package.json",
 	},
 	Yarn: {
 		PackageType: "npm",
 		indicators:  []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 	},
 	Go: {
-		PackageType: "go",
-		indicators:  []string{"go.mod"},
+		PackageType:    "go",
+		indicators:     []string{"go.mod"},
+		dependencyFile: "go.mod",
 	},
 	Pip: {
 		PackageType: "pypi",
@@ -164,4 +169,17 @@ func ToTechnologies(args []string) (technologies []Technology) {
 		technologies = append(technologies, Technology(argument))
 	}
 	return
+}
+
+func GetTechnologyDependencyFile(tech string) string {
+	techData, ok := technologiesData[Technology(tech)]
+	var dependencyFile string
+	if ok {
+		dependencyFile = techData.dependencyFile
+	}
+	if dependencyFile == "" {
+		return tech + "Dependency File"
+	}
+
+	return dependencyFile
 }

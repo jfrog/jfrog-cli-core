@@ -3,6 +3,11 @@ package transferconfig
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
@@ -18,10 +23,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/http"
-	"os"
-	"time"
 )
 
 const (
@@ -37,6 +38,7 @@ type TransferConfigCommand struct {
 	targetServerDetails  *config.ServerDetails
 	dryRun               bool
 	force                bool
+	verbose              bool
 	includeReposPatterns []string
 	excludeReposPatterns []string
 }
@@ -56,6 +58,11 @@ func (tcc *TransferConfigCommand) SetDryRun(dryRun bool) *TransferConfigCommand 
 
 func (tcc *TransferConfigCommand) SetForce(force bool) *TransferConfigCommand {
 	tcc.force = force
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetVerbose(verbose bool) *TransferConfigCommand {
+	tcc.verbose = verbose
 	return tcc
 }
 
@@ -171,7 +178,7 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 	}
 	// We consider an "empty" Artifactory as an Artifactory server that contains 2 users: the admin user and the anonymous.
 	if len(users) > 2 {
-		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag.")
+		return errorutils.CheckErrorf("cowardly refusing to import the config to the target server, because it contains more than 2 users. By default, this command avoids transferring the config to a server which isn't empty. You can bypass this rule by providing the --force flag to the transfer-config command.")
 	}
 	return nil
 }
@@ -249,7 +256,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 	exportParams := services.ExportParams{
 		ExportPath:      tempDir,
 		IncludeMetadata: &trueValue,
-		Verbose:         &trueValue,
+		Verbose:         &tcc.verbose,
 		ExcludeContent:  &trueValue,
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(tempDir) }

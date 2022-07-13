@@ -256,7 +256,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 	return "", nil
 }
 
-// Got to here, means that neither of the flags provided and we need to init our own config.
+// The fact that we here, means that neither of the flags were provided, and we need to init our own config.
 func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
 	configFile, err = ioutil.TempFile(configDirPath, "jfrog.cli.nuget.")

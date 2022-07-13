@@ -17,7 +17,7 @@ var testCases = []struct {
 	{"select-remote", []string{"default-maven-remote"}},
 	{"select-one-from-all", []string{"default-libs-release-local", "default-maven-remote", "default-libs-release"}},
 	{"select-all", []string{"default-libs-release-local", "default-libs-snapshot-local", "default-maven-remote",
-		"ecosys-generic-local", "default-libs-release", "example-repo-local", "ecosys-npm-remote", "default-libs-snapshot"}},
+		"ecosys-generic-local", "default-libs-release", "example-repo-local", "ecosys-npm-remote", "default-go-remote", "default-libs-snapshot"}},
 }
 
 func TestRemoveNonIncludedRepositories(t *testing.T) {

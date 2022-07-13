@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/forPelevin/gomoji"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -29,10 +28,10 @@ var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), st
 
 // Converting severities to their relevant score in range
 var severitiesScore = map[string]string{
-	"critical": "9", // Critical Score Range is 9.0 – 10.0
-	"high":     "8", // High Score Range is 7.0 – 8.9
-	"medium":   "6", // Medium Score Range is 4.0 – 6.9
-	"low":      "3", // Low Score Range is 0.1 – 3.9
+	"Critical": "9", // Critical Score Range is 9.0 – 10.0
+	"High":     "8", // High Score Range is 7.0 – 8.9
+	"Medium":   "6", // Medium Score Range is 4.0 – 6.9
+	"Low":      "3", // Low Score Range is 0.1 – 3.9
 }
 
 var dependenciesFiles = map[string]string{
@@ -157,11 +156,11 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			if violations[i].FixedVersions != nil {
 				violations[i].Summary += "\n . Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
 			}
-			addScanResultsToSarifRun(run, strings.ToLower(gomoji.RemoveEmojis(violations[i].Severity)), violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].ImpactedPackageType)
+			addScanResultsToSarifRun(run, violations[i].Severity, violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].ImpactedPackageType)
 		}
 		for i := 0; i < len(licenses); i++ {
 			impactedPackageFull := licenses[i].ImpactedPackageName + " " + licenses[i].ImpactedPackageVersion
-			addScanResultsToSarifRun(run, strings.ToLower(gomoji.RemoveEmojis(licenses[i].Severity)), licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
+			addScanResultsToSarifRun(run, licenses[i].Severity, licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
 		}
 	} else if len(jsonTable.Vulnerabilities) > 0 {
 		vulnerabilities := jsonTable.Vulnerabilities
@@ -173,7 +172,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			if vulnerabilities[i].FixedVersions != nil {
 				vulnerabilities[i].Summary += "\n . Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
 			}
-			addScanResultsToSarifRun(run, strings.ToLower(gomoji.RemoveEmojis(vulnerabilities[i].Severity)), vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].ImpactedPackageType)
+			addScanResultsToSarifRun(run, vulnerabilities[i].Severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].ImpactedPackageType)
 		}
 	}
 

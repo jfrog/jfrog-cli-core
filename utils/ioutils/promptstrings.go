@@ -85,8 +85,8 @@ func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) e
 	return nil
 }
 
-// In MacOS, Terminal bell is ringing when trying to select items using up and down arrows.
-// Using bellSkipper as Stdout is a workaround for this issue.
+// On macOS the terminal's bell is ringing when trying to select items using the up and down arrows.
+//  By using bellSkipper the issue is resolved.
 type bellSkipper struct{ io.WriteCloser }
 
 var charBell = []byte{readline.CharBell}

@@ -232,7 +232,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 	// Remove and get the server details from the configurations list
 	tempConfiguration, configurations := config.GetAndRemoveConfiguration(cc.details.ServerId, configurations)
 
-	// Change default server details if the server was exist in the configurations list
+	// Change default server details if the server was existed in the configurations list
 	if tempConfiguration != nil {
 		cc.defaultDetails = tempConfiguration
 		cc.details.IsDefault = tempConfiguration.IsDefault

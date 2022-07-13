@@ -234,7 +234,7 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	return foundIssues, nil
 }
 
-// Creates a regexp handler to parse and fetch issues from the the output of the git log command.
+// Creates a regexp handler to parse and fetch issues from the output of the git log command.
 func createLogRegExpHandler(issuesConfig *IssuesConfiguration, foundIssues *[]buildinfo.AffectedIssue) (*gofrogcmd.CmdOutputPattern, error) {
 	// Create regex pattern.
 	issueRegexp, err := clientutils.GetRegExp(issuesConfig.Regexp)

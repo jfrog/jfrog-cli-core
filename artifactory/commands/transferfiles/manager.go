@@ -1,11 +1,14 @@
 package transferfiles
 
 import (
+	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sync"
 )
+
+const totalNumberPollingGoRoutines = 2
 
 type transferManager struct {
 	phaseBase
@@ -19,11 +22,13 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 type transferActionWithProducerConsumerType func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 type transferActionType func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
+// Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
 	pcDetails := initProducerConsumer()
 	return doTransfer(ftm, &pcDetails, transferAction)
 }
 
+// Transfer files using a single producer.
 func (ftm *transferManager) doTransfer(transferAction transferActionType) error {
 	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
@@ -69,14 +74,17 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 		}()
 	}
 
-	// Manager for transfer's tasks "done" channel - channel which indicate that files transfer was finished.
-	pollingTasksManager := newPollingTasksManager()
+	// Manager for transfer's tasks "done" channel - channel which indicate that files transfer is finished.
+	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
 	var producerConsumer parallel.Runner
 	if pcDetails != nil {
 		producerConsumer = pcDetails.producerConsumer
 	}
-	pollingTasksManager.start(&runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
-
+	err = pollingTasksManager.start(&runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
+	if err != nil {
+		pollingTasksManager.stop()
+		return err
+	}
 	// Transfer action to execute.
 	runWaitGroup.Add(1)
 	var actionErr error
@@ -124,14 +132,27 @@ type PollingTasksManager struct {
 	doneChannel chan bool
 	// Error returned by the polling go routine
 	pollingErr error
+	// Number of go routines expected to write to the doneChannel
+	totalGoRoutines int
+	// The actual number of running go routines
+	totalRunningGoRoutines int
+}
+
+func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
+	// The channel's size is 'totalGoRoutines', since there are a limited number of routines that need to be signaled to stop by 'doneChannel'.
+	return PollingTasksManager{doneChannel: make(chan bool, totalGoRoutines), totalGoRoutines: totalGoRoutines}
 }
 
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng) {
+func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
+	err := ptm.addGoRoutine()
+	if err != nil {
+		return err
+	}
 	go func() {
 		defer runWaitGroup.Done()
 		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel)
@@ -139,21 +160,30 @@ func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerCons
 
 	// Check status of uploaded chunks.
 	runWaitGroup.Add(1)
+	err = ptm.addGoRoutine()
+	if err != nil {
+		return err
+	}
 	go func() {
 		defer runWaitGroup.Done()
 		ptm.pollingErr = pollUploads(srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
 	}()
+	return nil
+}
+
+func (ptm *PollingTasksManager) addGoRoutine() error {
+	if ptm.totalGoRoutines < ptm.totalRunningGoRoutines+1 {
+		return fmt.Errorf("can't create another polling go routine. maximum number of go routines is: %d", ptm.totalGoRoutines)
+	}
+	ptm.totalRunningGoRoutines++
+	return nil
 }
 
 func (ptm *PollingTasksManager) stop() {
 	// Notify the other go routines that work is done.
-	ptm.doneChannel <- true
-	ptm.doneChannel <- true
-}
-
-func newPollingTasksManager() PollingTasksManager {
-	// Channel's size is 2, because there are exactly two go routines that need to be signaled that they should stop by it.
-	return PollingTasksManager{doneChannel: make(chan bool, 2)}
+	for i := 0; i < ptm.totalRunningGoRoutines; i++ {
+		ptm.doneChannel <- true
+	}
 }
 
 func initProducerConsumer() producerConsumerDetails {

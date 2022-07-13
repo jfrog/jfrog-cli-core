@@ -32,7 +32,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 
 		// Make sure all parameters as expected
 		assert.True(t, *actual.IncludeMetadata)
-		assert.True(t, *actual.Verbose)
+		assert.False(t, *actual.Verbose)
 		assert.True(t, *actual.ExcludeContent)
 		assert.Nil(t, actual.CreateArchive)
 		assert.Nil(t, actual.M2)
@@ -133,7 +133,7 @@ func TestSanityVerifications(t *testing.T) {
 
 	// Test 3 users
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
-	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users. You can bypass this rule by providing the --force flag")
+	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users.")
 
 	// Assert force = true
 	transferConfigCmd.force = true

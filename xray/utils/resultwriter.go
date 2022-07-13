@@ -91,7 +91,6 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 }
 
 func GenerateSarifFileFromScan(currentScan []services.ScanResponse, includeVulnerabilities, isMultipleRoots bool) (string, error) {
-	// add check that scan has some vulnerabilities/violations
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)

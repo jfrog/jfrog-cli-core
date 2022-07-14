@@ -147,9 +147,10 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 
+	var result *servicesUtils.AqlSearchResult
 	paginationI := 0
 	for {
-		result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
+		result, err = m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
 		if err != nil {
 			return err
 		}

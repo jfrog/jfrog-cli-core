@@ -18,6 +18,7 @@ const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
+	aqlPaginationLimit                           = 10000
 )
 
 var curThreads int
@@ -100,11 +101,16 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			return err
 		}
 		for _, chunk := range chunksStatus.ChunksStatus {
+			if chunk.UuidToken == "" {
+				log.Error("Unexpected empty uuid token in status")
+				continue
+			}
 			switch chunk.Status {
 			case InProgress:
 				continue
 			case Done:
 				reduceCurProcessedChunks()
+				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.

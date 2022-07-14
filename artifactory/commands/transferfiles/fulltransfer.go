@@ -142,71 +142,81 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
-	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
-	if err != nil {
-		return
-	}
-
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 
-	for _, item := range result.Results {
-		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
-			return
+	var result *servicesUtils.AqlSearchResult
+	paginationI := 0
+	for {
+		result, err = m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
+		if err != nil {
+			return err
 		}
-		if item.Name == "." {
-			continue
+
+		// Empty folder. Add it as candidate.
+		if paginationI == 0 && len(result.Results) == 0 {
+			curUploadChunk.appendUploadCandidate(FileRepresentation{
+				Repo: params.repoKey,
+				Path: path.Dir(params.relativePath),
+				Name: path.Base(params.relativePath),
+			})
+			break
 		}
-		switch item.Type {
-		case "folder":
-			newRelativePath := item.Name
-			if params.relativePath != "." {
-				newRelativePath = path.Join(params.relativePath, newRelativePath)
-			}
-			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
-			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
-			if err != nil {
+
+		for _, item := range result.Results {
+			// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
+			if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
 				return
 			}
-		case "file":
-			file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-			delayed, stopped := delayHelper.delayUploadIfNecessary(file)
-			if stopped {
-				return
-			}
-			if delayed {
+			if item.Name == "." {
 				continue
 			}
-			curUploadChunk.appendUploadCandidate(file)
-			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+			switch item.Type {
+			case "folder":
+				newRelativePath := item.Name
+				if params.relativePath != "." {
+					newRelativePath = path.Join(params.relativePath, newRelativePath)
+				}
+				folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
+				_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
+				if err != nil {
+					return err
+				}
+			case "file":
+				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
 				if stopped {
 					return
 				}
-				// Increase phase1 progress bar with the uploaded number of files.
-				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
-					if err != nil {
+				if delayed {
+					continue
+				}
+				curUploadChunk.appendUploadCandidate(file)
+				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					if stopped {
 						return
 					}
+					// Increase phase1 progress bar with the uploaded number of files.
+					if m.progressBar != nil {
+						err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
+						if err != nil {
+							return err
+						}
+					}
+					// Empty the uploaded chunk.
+					curUploadChunk.UploadCandidates = []FileRepresentation{}
 				}
-				// Empty the uploaded chunk.
-				curUploadChunk.UploadCandidates = []FileRepresentation{}
 			}
 		}
-	}
 
-	// Empty folder. Add it as candidate.
-	if len(result.Results) == 0 {
-		curUploadChunk.appendUploadCandidate(FileRepresentation{
-			Repo: params.repoKey,
-			Path: path.Dir(params.relativePath),
-			Name: path.Base(params.relativePath),
-		})
+		if len(result.Results) < aqlPaginationLimit {
+			break
+		}
+		paginationI++
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
@@ -226,11 +236,14 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	return
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateFolderContentsAqlQuery(repoKey, relativePath)
+func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	query := generateFolderContentsAqlQuery(repoKey, relativePath, paginationOffset)
 	return runAql(m.srcRtDetails, query)
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string) string {
-	return fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]}).include("repo","path","name","type")`, repoKey, relativePath)
+func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
+	query += `.include("repo","path","name","type")`
+	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	return query
 }

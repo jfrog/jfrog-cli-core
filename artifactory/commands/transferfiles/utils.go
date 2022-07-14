@@ -101,6 +101,10 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 			return err
 		}
 		for _, chunk := range chunksStatus.ChunksStatus {
+			if chunk.UuidToken == "" {
+				log.Error("Unexpected empty uuid token in status")
+				continue
+			}
 			switch chunk.Status {
 			case InProgress:
 				continue

@@ -17,7 +17,7 @@ import (
 
 const (
 	tasksMaxCapacity = 10000
-	uploadChunkSize  = 10
+	uploadChunkSize  = 100
 	// Default number of threads working while transferring Artifactory's data
 	defaultThreads = 16
 	// Size of the channel where the transfer's go routines write the transfer errors

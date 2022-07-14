@@ -96,11 +96,7 @@ func initTransferErrorsDir() error {
 	if err != nil {
 		return err
 	}
-	err = makeDirIfDoesNotExists(skipped)
-	if err != nil {
-		return err
-	}
-	return nil
+	return makeDirIfDoesNotExists(skipped)
 }
 
 func makeDirIfDoesNotExists(path string) error {
@@ -117,7 +113,7 @@ func makeDirIfDoesNotExists(path string) error {
 func (mng *TransferErrorsMng) start() (err error) {
 	// Init content writers manager
 	writerMng := errorWriterMng{}
-	// Init the content writer which responsible for writing 'retryable errors' into files.
+	// Init the content writer which is responsible for writing 'retryable errors' into files.
 	// In the next run we would like to retry and upload those files again.
 	retryablePath, err := coreutils.GetJfrogTransferRetryableDir()
 	if err != nil {
@@ -134,7 +130,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 		}
 	}()
 	writerMng.retryable = errorWriter{writer: writerRetry, fileIndex: 0, filePath: retryFilePath}
-	// Init the content writer which responsible for writing 'skipped errors' into files.
+	// Init the content writer which is responsible for writing 'skipped errors' into files.
 	// In the next run we won't retry and upload those files.
 	skippedPath, err := coreutils.GetJfrogTransferSkippedDir()
 	if err != nil {
@@ -330,7 +326,7 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 	return
 }
 
-// ErrorsChannelMng handles the uploading errors and add them to a common channel.
+// ErrorsChannelMng handles the uploading errors and adds them to a common channel.
 // Stops adding elements to the channel if an error occurs while handling the files.
 type ErrorsChannelMng struct {
 	channel chan FileUploadStatusResponse

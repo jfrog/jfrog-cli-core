@@ -13,10 +13,8 @@ import (
 	"regexp"
 )
 
-const (
-	// Max errors that will be written in a file
-	maxErrorsInFile = 50000
-)
+// Max errors that will be written in a file
+var maxErrorsInFile = 50000
 
 // TransferErrorsMng manages multi threads writing errors.
 // We want to create a file which contains all upload error statuses for each repository and phase.

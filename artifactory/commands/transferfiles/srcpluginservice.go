@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -42,7 +41,7 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	serviceutils.SetContentType("application/json", &httpDetails.Headers)
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
@@ -70,7 +69,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	serviceutils.SetContentType("application/json", &httpDetails.Headers)
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
 		return "", err
@@ -138,7 +137,7 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	serviceutils.SetContentType("application/json", &httpDetails.Headers)
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"handlePropertiesDiff", content, &httpDetails)
 	if err != nil {
 		return nil, err

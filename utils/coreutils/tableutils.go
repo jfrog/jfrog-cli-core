@@ -100,7 +100,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 		log.Output(title)
 	}
 
-	if IsTerminal() {
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
 	tableWriter.Style().Options.SeparateRows = true
@@ -198,7 +198,7 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 	colMaxWidth := DefaultMaxColWidth
 
 	// If terminal, calculate the max width.
-	if IsTerminal() {
+	if log.IsStdErrTerminal() {
 		colNum := len(columnConfigs)
 		termWidth, err := getTerminalAllowedWidth(colNum)
 		if err != nil {
@@ -327,7 +327,7 @@ type embeddedTableCell struct {
 func PrintMessage(message string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
-	if IsTerminal() {
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
 	tableWriter.AppendRow(table.Row{message})

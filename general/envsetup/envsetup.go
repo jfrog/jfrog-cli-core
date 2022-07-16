@@ -42,6 +42,13 @@ const (
 
 	// When entering password on terminal the user has limited number of retries.
 	enterPasswordMaxRetries = 20
+
+	MessageIdes = "📦 If you're using VS Code, IntelliJ IDEA, WebStorm, PyCharm, Android Studio or GoLand\n" +
+		"   Open the IDE 👉 Install the JFrog extension or plugin 👉 View the JFrog panel"
+	MessageDockerDesktop = "📦 Open Docker Desktop and install the JFrog Extension to scan any of your \n" +
+		"   local docker images"
+	MessageDockerScan = "📦 Scan local Docker images from the terminal by running\n" +
+		"   jf docker scan <image name>:<image tag>"
 )
 
 var trueValue = true
@@ -117,9 +124,9 @@ func (ftc *EnvSetupCommand) quitProgress() error {
 }
 
 func (ftc *EnvSetupCommand) Run() (err error) {
-	introSuffix, err := ftc.SetupAndConfigServer()
+	err = ftc.SetupAndConfigServer()
 	if err != nil {
-		return err
+		return
 	}
 	if ftc.outputFormat == Human {
 		// Closes the progress manger and reset the log prints.
@@ -129,28 +136,38 @@ func (ftc *EnvSetupCommand) Run() (err error) {
 		}
 		log.Output()
 		log.Output(coreutils.PrintBold("Congrats! You're all set"))
+		log.Output("So what's next?")
 		message :=
-			coreutils.PrintTitle("So what's next?") + "\n" +
+			coreutils.PrintTitle("IDE") + "\n" +
+				MessageIdes + "\n\n" +
+				coreutils.PrintTitle("Docker") + "\n" +
+				"You can scan your local Docker images from the terminal or the Docker Desktop UI\n" +
+				MessageDockerScan + "\n" +
+				MessageDockerDesktop + "\n\n" +
+				coreutils.PrintTitle("Build, scan & deploy") + "\n" +
 				"1. 'cd' into your code project directory\n" +
-				"2. Run \"jf project init\"\n" +
-				"3. Read more about how to get started at -\n" +
-				coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
-		if introSuffix != "" {
-			message += "\n" + introSuffix
-		}
+				"2. Run 'jf project init'\n\n" +
+				coreutils.PrintTitle("Read more") + "\n" +
+				"📦 Read more about how to get started at -\n" +
+				"   " + coreutils.PrintLink(coreutils.GettingStartedGuideUrl)
 		err = coreutils.PrintTable("", "", message, false)
+		if err != nil {
+			return
+		}
+		if ftc.encodedConnectionDetails == "" {
+			log.Output(coreutils.PrintBold("Important"))
+			log.Output("Please use the email we've just sent you, to verify your email address during the next 48 hours.\n")
+		}
 	}
 	return
 }
 
-func (ftc *EnvSetupCommand) SetupAndConfigServer() (introSuffix string, err error) {
+func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
 	var server *config.ServerDetails
 	// If credentials were provided, this means that the user was invited to join an existing JFrog environment.
-	// Otherwise, this is a brand-new user, that needs to register and setup a new JFrog environment.
+	// Otherwise, this is a brand-new user, that needs to register and set up a new JFrog environment.
 	if ftc.encodedConnectionDetails == "" {
 		server, err = ftc.setupNewUser()
-		// For new users we will want to print this message after finishing the environment setup.
-		introSuffix = "4. We've just sent you an email message. Please use it to verify your email address in the next 48 hours."
 	} else {
 		server, err = ftc.setupExistingUser()
 	}

@@ -56,13 +56,13 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 		jsonTable := formats.SimpleJsonResults{}
 		if includeVulnerabilities {
 			log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
-			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, false)
+			vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots)
 			if err != nil {
 				return err
 			}
 			jsonTable.Vulnerabilities = vulJsonTable
 		} else {
-			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, false)
+			secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots)
 			if err != nil {
 				return err
 			}
@@ -101,8 +101,7 @@ func splitScanResults(results []services.ScanResponse) ([]services.Violation, []
 
 func writeJsonResults(results []services.ScanResponse) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	defer func() {
@@ -112,19 +111,16 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 		}
 	}()
 	bytesRes, err := json.Marshal(&results)
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	var content bytes.Buffer
 	err = json.Indent(&content, bytesRes, "", "  ")
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	_, err = out.Write(content.Bytes())
-	if err != nil {
-		err = errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	resultsPath = out.Name()

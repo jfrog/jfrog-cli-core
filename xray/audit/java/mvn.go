@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -11,13 +12,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls bool) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 	graph, err := BuildMvnDependencyTree(insecureTls)
 	if err != nil {
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress)
 	return
 }
 

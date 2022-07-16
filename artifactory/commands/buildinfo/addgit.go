@@ -15,6 +15,7 @@ import (
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 
+	"github.com/forPelevin/gomoji"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -114,7 +115,7 @@ func (config *BuildAddGitCommand) Run() error {
 			Url:      gitManager.GetUrl(),
 			Revision: gitManager.GetRevision(),
 			Branch:   gitManager.GetBranch(),
-			Message:  gitManager.GetMessage(),
+			Message:  gomoji.RemoveEmojis(gitManager.GetMessage()),
 		})
 
 		if config.configFilePath != "" {
@@ -233,7 +234,7 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	return foundIssues, nil
 }
 
-// Creates a regexp handler to parse and fetch issues from the the output of the git log command.
+// Creates a regexp handler to parse and fetch issues from the output of the git log command.
 func createLogRegExpHandler(issuesConfig *IssuesConfiguration, foundIssues *[]buildinfo.AffectedIssue) (*gofrogcmd.CmdOutputPattern, error) {
 	// Create regex pattern.
 	issueRegexp, err := clientutils.GetRegExp(issuesConfig.Regexp)

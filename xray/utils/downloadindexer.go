@@ -32,7 +32,7 @@ const (
 func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionStr string) (indexerPath string, err error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
-		return "", err
+		return
 	}
 	indexerDirPath := filepath.Join(dependenciesPath, indexerDirName)
 	indexerBinaryName := getIndexerBinaryName()
@@ -40,15 +40,19 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
-		return "", err
+		return
 	}
-	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
+	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := lockFile.Unlock()
+		e := unlockFunc()
 		if err == nil {
 			err = e
 		}
 	}()
+	if err != nil {
+		return
+	}
 	exists, err := fileutils.IsFileExists(indexerPath, false)
 	if exists || err != nil {
 		return

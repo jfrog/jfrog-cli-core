@@ -145,7 +145,7 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 
 // Find the URL argument in the Curl Command.
 // A command flag is prefixed by '-' or '--'.
-// Use this method ONLY after removing all JFrog-CLI flags, i.e flags in the form: '--my-flag=value' are not allowed.
+// Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 	skipThisArg := false

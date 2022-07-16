@@ -204,18 +204,19 @@ func (lock *Lock) Unlock() error {
 	return nil
 }
 
-func CreateLock(lockDirPath string) (Lock, error) {
+func CreateLock(lockDirPath string) (unlock func() error, err error) {
 	log.Debug("Creating lock in: ", lockDirPath)
 	lockFile := new(Lock)
-	err := lockFile.createNewLockFile(lockDirPath)
+	unlock = func() error { return lockFile.Unlock() }
+	err = lockFile.createNewLockFile(lockDirPath)
 	if err != nil {
-		return *lockFile, err
+		return
 	}
 
 	// Trying to acquire a lock for the running process.
 	err = lockFile.lock()
 	if err != nil {
-		return *lockFile, errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
 	}
-	return *lockFile, nil
+	return
 }

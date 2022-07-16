@@ -2,6 +2,7 @@ package audit
 
 import (
 	"fmt"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,21 +53,39 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 }
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
+	return buildXrayDependencyTree(treeHelper, []string{nodeId})
+}
+
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *services.GraphNode {
+	nodeId := impactPath[len(impactPath)-1]
+
 	// Initialize the new node
 	xrDependencyTree := &services.GraphNode{}
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*services.GraphNode{}
 	// Recursively create & append all node's dependencies.
 	for _, dependency := range treeHelper[nodeId] {
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, BuildXrayDependencyTree(treeHelper, dependency))
-
+		circularDep := false
+		for _, impactPathNode := range impactPath {
+			if dependency == impactPathNode {
+				circularDep = true
+			}
+		}
+		if circularDep {
+			continue
+		}
+		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency)))
 	}
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails) (results []services.ScanResponse, err error) {
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
+	}
+
+	if progress != nil {
+		progress.SetHeadlineMsg("Scanning for vulnerabilities")
 	}
 
 	// Get Xray version

@@ -31,37 +31,43 @@ func (dc *DeleteCommand) CommandName() string {
 	return "rt_delete"
 }
 
-func (dc *DeleteCommand) Run() error {
+func (dc *DeleteCommand) Run() (err error) {
 	reader, err := dc.GetPathsToDelete()
 	if err != nil {
-		return err
+		return
 	}
-	defer reader.Close()
+	defer func() {
+		e := reader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	allowDelete := true
 	if !dc.quiet {
 		allowDelete, err = utils.ConfirmDelete(reader)
 		if err != nil {
-			return err
+			return
 		}
 	}
 	if allowDelete {
-		success, failed, err := dc.DeleteFiles(reader)
+		var successCount int
+		var failedCount int
+		successCount, failedCount, err = dc.DeleteFiles(reader)
 		result := dc.Result()
-		result.SetFailCount(failed)
-		result.SetSuccessCount(success)
-		return err
+		result.SetFailCount(failedCount)
+		result.SetSuccessCount(successCount)
 	}
-	return nil
+	return
 }
 
 func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReader, err error) {
 	serverDetails, err := dc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
-		return nil, err
+		return
 	}
 	servicesManager, err := utils.CreateServiceManager(serverDetails, dc.retries, dc.retryWaitTimeMilliSecs, dc.DryRun())
 	if err != nil {
-		return nil, err
+		return
 	}
 	var temp []*content.ContentReader
 	defer func() {
@@ -73,13 +79,15 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 		}
 	}()
 	for i := 0; i < len(dc.Spec().Files); i++ {
-		deleteParams, err := getDeleteParams(dc.Spec().Get(i))
+		var deleteParams services.DeleteParams
+		deleteParams, err = getDeleteParams(dc.Spec().Get(i))
 		if err != nil {
-			return nil, err
+			return
 		}
-		reader, err := servicesManager.GetPathsToDelete(deleteParams)
+		var reader *content.ContentReader
+		reader, err = servicesManager.GetPathsToDelete(deleteParams)
 		if err != nil {
-			return nil, err
+			return
 		}
 		temp = append(temp, reader)
 	}
@@ -87,15 +95,20 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 	if err != nil {
 		return nil, err
 	}
-	defer tempMergedReader.Close()
-
+	defer func() {
+		e := tempMergedReader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	// After merge, remove top chain dirs as we may encounter duplicates and collisions between files and directories to delete.
 	// For example:
 	// Reader1: {"a"}
 	// Reader2: {"a/b","a/c"}
 	// After merge, received a Reader: {"a","a/b","a/c"}.
 	// If "a" is deleted prior to "a/b" or "a/c", the delete operation returns a failure.
-	return clientutils.ReduceTopChainDirResult(clientutils.ResultItem{}, tempMergedReader)
+	contentReader, err = clientutils.ReduceTopChainDirResult(clientutils.ResultItem{}, tempMergedReader)
+	return
 }
 
 func (dc *DeleteCommand) DeleteFiles(reader *content.ContentReader) (successCount, failedCount int, err error) {

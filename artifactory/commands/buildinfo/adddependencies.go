@@ -185,7 +185,7 @@ func (badc *BuildAddDependenciesCommand) readRemoteDependencies(reader *content.
 	count := 0
 	var buildInfoDependencies []buildinfo.Dependency
 	for resultItem := new(specutils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(specutils.ResultItem) {
-		buildInfoDependencies = append(buildInfoDependencies, convertSearchResultToDependency(*resultItem))
+		buildInfoDependencies = append(buildInfoDependencies, resultItem.ToDependency())
 		count++
 		if count > clientutils.MaxBufferSize {
 			if err = badc.savePartialBuildInfo(buildInfoDependencies); err != nil {
@@ -308,12 +308,6 @@ func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []bu
 		buildDependencies = append(buildDependencies, dependency)
 	}
 	return buildDependencies
-}
-
-func convertSearchResultToDependency(resultItem specutils.ResultItem) buildinfo.Dependency {
-	dependency := buildinfo.Dependency{Checksum: buildinfo.Checksum{Md5: resultItem.Actual_Md5, Sha1: resultItem.Actual_Sha1}}
-	dependency.Id = resultItem.Name
-	return dependency
 }
 
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {

@@ -24,6 +24,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	defer cleanUpJfrogHome()
 
 	errorsNumber := 40
+	// We reduce the maximum number of entities per file to test the creation of multiple errors files.
 	maxErrorsInFile = 20
 	errorsChannelMng := createErrorsChannelMng()
 	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng)
@@ -32,7 +33,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	var writeWaitGroup sync.WaitGroup
 	var readWaitGroup sync.WaitGroup
 
-	// Error returned from the "writing transfer errors to file" mechanism
+	// "Writing transfer's errors to files" mechanism returned error
 	var writingErrorsErr error
 	// Start reading from the errors channel, and write errors into the relevant files.
 	readWaitGroup.Add(1)
@@ -47,7 +48,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: "name"}, Status: Fail, StatusCode: i, Reason: "reason"}
+			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: Fail, StatusCode: 404, Reason: "reason"}
 		}
 	}()
 
@@ -57,7 +58,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: "name"}, Status: SkippedLargeProps, StatusCode: i, Reason: "reason"}
+			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: SkippedLargeProps, StatusCode: 404, Reason: "reason"}
 		}
 	}()
 
@@ -65,11 +66,12 @@ func TestTransferErrorsMng(t *testing.T) {
 	errorsChannelMng.close()
 	readWaitGroup.Wait()
 	assert.NoError(t, writingErrorsErr)
-	numOfFiles := int(math.Ceil(float64(errorsNumber) / float64(maxErrorsInFile)))
-	validateErrorsFiles(t, numOfFiles, maxErrorsInFile, true)
-	validateErrorsFiles(t, numOfFiles, maxErrorsInFile, false)
+	expectedNumberOfFiles := int(math.Ceil(float64(errorsNumber) / float64(maxErrorsInFile)))
+	validateErrorsFiles(t, expectedNumberOfFiles, maxErrorsInFile, true)
+	validateErrorsFiles(t, expectedNumberOfFiles, maxErrorsInFile, false)
 }
 
+// Ensure that all retryable/skipped errors files have been created and that they contain the expected content
 func validateErrorsFiles(t *testing.T, filesNum, errorsNum int, isRetryable bool) {
 	errorsFiles, err := getErrorsFiles(testRepoKey, isRetryable)
 	status := getStatusType(isRetryable)
@@ -88,6 +90,7 @@ func getStatusType(isRetryable bool) ChunkFileStatusType {
 	return testSkippedStatus
 }
 
+// Check the number of errors, their status and their uniqueness by reading the file's content.
 func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatusType) (entitiesNum int) {
 	exists, err := fileutils.IsFileExists(path, false)
 	assert.NoError(t, err)
@@ -97,22 +100,23 @@ func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatus
 	content, err = fileutils.ReadFile(path)
 	assert.NoError(t, err)
 
-	fileErrors := new(FilesErrors)
-	assert.NoError(t, json.Unmarshal(content, &fileErrors))
+	filesErrors := new(FilesErrors)
+	assert.NoError(t, json.Unmarshal(content, &filesErrors))
 
 	// Verify all unique errors were written with the correct status
-	statusCodeMap := make(map[int]bool)
-	for _, entity := range fileErrors.Errors {
+	errorsNamesMap := make(map[string]bool)
+	for _, entity := range filesErrors.Errors {
+		// Verify error's status
 		if entity.Status != status {
 			assert.Fail(t, fmt.Sprintf("expecting error status to be: %s but got %s", status, entity.Status))
 			return
 		}
-		// Verify error's unique status code
-		if statusCodeMap[entity.StatusCode] == true {
-			assert.Fail(t, fmt.Sprintf("an error with a uniqe status code %d was written more than one", entity.StatusCode))
+		// Verify error's unique name
+		if errorsNamesMap[entity.Name] == true {
+			assert.Fail(t, fmt.Sprintf("an error with the uniqe name \"%s\" was written more than once", entity.Name))
 			return
 		}
-		statusCodeMap[entity.StatusCode] = true
+		errorsNamesMap[entity.Name] = true
 	}
-	return len(fileErrors.Errors)
+	return len(filesErrors.Errors)
 }

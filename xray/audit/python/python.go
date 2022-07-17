@@ -29,7 +29,7 @@ func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails 
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, string(pythonTool))
 	return
 }
 

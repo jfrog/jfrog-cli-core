@@ -33,37 +33,38 @@ type TechData struct {
 	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
 	// The file that handles the project's dependencies.
-	dependencyFile string
+	packageDescriptor string
 }
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		PackageType:    "Maven",
-		indicators:     []string{"pom.xml"},
-		ciSetupSupport: true,
-		dependencyFile: "pom.xml",
+		PackageType:       "Maven",
+		indicators:        []string{"pom.xml"},
+		ciSetupSupport:    true,
+		packageDescriptor: "pom.xml",
 	},
 	Gradle: {
-		PackageType:    "Gradle",
-		indicators:     []string{".gradle"},
-		ciSetupSupport: true,
-		dependencyFile: "build.gradle",
+		PackageType:       "Gradle",
+		indicators:        []string{".gradle"},
+		ciSetupSupport:    true,
+		packageDescriptor: "build.gradle",
 	},
 	Npm: {
-		PackageType:    "npm",
-		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
-		exclude:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		ciSetupSupport: true,
-		dependencyFile: "package.json",
+		PackageType:       "npm",
+		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		ciSetupSupport:    true,
+		packageDescriptor: "package.json",
 	},
 	Yarn: {
-		PackageType: "npm",
-		indicators:  []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		PackageType:       "npm",
+		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor: "package.json",
 	},
 	Go: {
-		PackageType:    "go",
-		indicators:     []string{"go.mod"},
-		dependencyFile: "go.mod",
+		PackageType:       "go",
+		indicators:        []string{"go.mod"},
+		packageDescriptor: "go.mod",
 	},
 	Pip: {
 		PackageType: "pypi",
@@ -171,14 +172,14 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetTechnologyDependencyFile(tech string) string {
+func GetTechnologyPackageDescriptor(tech string) string {
 	techData, ok := technologiesData[Technology(tech)]
 	var dependencyFile string
 	if ok {
-		dependencyFile = techData.dependencyFile
+		dependencyFile = techData.packageDescriptor
 	}
 	if dependencyFile == "" {
-		return tech + "Dependency File"
+		return tech + " package descriptor"
 	}
 
 	return dependencyFile

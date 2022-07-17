@@ -167,7 +167,8 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			if vulnerabilities[i].FixedVersions != nil {
 				vulnerabilities[i].Summary += ". Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
 			}
-			err = addScanResultsToSarifRun(run, vulnerabilities[i].Severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
+			severity, err := findMaxCVEScore(vulnerabilities[i].Cves)
+			err = addScanResultsToSarifRun(run, severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
 			if err != nil {
 				return err
 			}
@@ -277,13 +278,14 @@ func CheckIfFailBuild(results []services.ScanResponse) bool {
 }
 
 func IsEmptyScanResponse(results []services.ScanResponse) bool {
-	isEmpty := false
-	if len(results) == 0 {
-		isEmpty = true
-	} else if len(results[0].Violations) == 0 &&
-		len(results[0].Vulnerabilities) == 0 &&
-		len(results[0].Licenses) == 0 {
-		isEmpty = true
+	isEmpty := true
+	if len(results) > 0 {
+		for i := range results {
+			if len(results[i].Violations) > 0 || len(results[i].Vulnerabilities) > 0 || len(results[i].Licenses) > 0 {
+				isEmpty = false
+				break
+			}
+		}
 	}
 
 	return isEmpty

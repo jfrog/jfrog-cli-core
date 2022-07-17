@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -11,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"strconv"
 	"strings"
 )
 
@@ -25,14 +27,6 @@ const (
 )
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
-
-// Converting severities to their relevant score in range
-var severitiesScore = map[string]string{
-	"Critical": "9", // Critical Score Range is 9.0 – 10.0
-	"High":     "8", // High Score Range is 7.0 – 8.9
-	"Medium":   "6", // Medium Score Range is 4.0 – 6.9
-	"Low":      "3", // Low Score Range is 0.1 – 3.9
-}
 
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
@@ -84,7 +78,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, includeVulne
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	run := sarif.NewRunWithInformationURI("Xray", "https://jfrog.com/xray/")
+	run := sarif.NewRunWithInformationURI("JFrog Xray", "https://jfrog.com/xray/")
 	err = convertScanToSarif(run, currentScan, includeVulnerabilities, isMultipleRoots)
 	if err != nil {
 		return "", err
@@ -140,15 +134,28 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 		violations := jsonTable.SecurityViolations
 		licenses := jsonTable.LicensesViolations
 		for i := 0; i < len(jsonTable.SecurityViolations); i++ {
-			impactedPackageFull := violations[i].ImpactedPackageName + " " + violations[i].ImpactedPackageVersion
+			impactedPackageFull := violations[i].ImpactedPackageName + ":" + violations[i].ImpactedPackageVersion
 			if violations[i].FixedVersions != nil {
 				violations[i].Summary += "\n . Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
 			}
-			addScanResultsToSarifRun(run, violations[i].Severity, violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].ImpactedPackageType)
+			severity, err := findMaxCVEScore(violations[i].Cves)
+			if err != nil {
+				return err
+			}
+			err = addScanResultsToSarifRun(run, severity, violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].Technology)
+			if err != nil {
+				return err
+			}
 		}
 		for i := 0; i < len(licenses); i++ {
-			impactedPackageFull := licenses[i].ImpactedPackageName + " " + licenses[i].ImpactedPackageVersion
-			addScanResultsToSarifRun(run, licenses[i].Severity, licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
+			impactedPackageFull := licenses[i].ImpactedPackageName + ":" + licenses[i].ImpactedPackageVersion
+			if err != nil {
+				return err
+			}
+			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
+			if err != nil {
+				return err
+			}
 		}
 	} else if len(jsonTable.Vulnerabilities) > 0 {
 		vulnerabilities := jsonTable.Vulnerabilities
@@ -156,21 +163,25 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			return err
 		}
 		for i := 0; i < len(vulnerabilities); i++ {
-			impactedPackageFull := vulnerabilities[i].ImpactedPackageName + " " + vulnerabilities[i].ImpactedPackageVersion
+			impactedPackageFull := vulnerabilities[i].ImpactedPackageName + ":" + vulnerabilities[i].ImpactedPackageVersion
 			if vulnerabilities[i].FixedVersions != nil {
-				vulnerabilities[i].Summary += "\n . Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
+				vulnerabilities[i].Summary += ". Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
 			}
-			addScanResultsToSarifRun(run, vulnerabilities[i].Severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].ImpactedPackageType)
+			err = addScanResultsToSarifRun(run, vulnerabilities[i].Severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) {
-	path := coreutils.GetTechnologyDependencyFile(technology)
+// Adding the Xray scan results details to the sarif struct, for each issue found in the scan
+func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) error {
+	techPackageDescriptor := coreutils.GetTechnologyPackageDescriptor(technology)
 	pb := sarif.NewPropertyBag()
-	pb.Add("security-severity", severitiesScore[severity])
+	pb.Add("security-severity", severity)
 	run.AddRule(issueId).
 		WithProperties(pb.Properties).
 		WithFullDescription(sarif.NewMultiformatMessageString(description))
@@ -180,10 +191,28 @@ func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, i
 			sarif.NewLocationWithPhysicalLocation(
 				sarif.NewPhysicalLocation().
 					WithArtifactLocation(
-						sarif.NewSimpleArtifactLocation(path),
+						sarif.NewSimpleArtifactLocation(techPackageDescriptor),
 					),
 			),
 		)
+
+	return nil
+}
+
+func findMaxCVEScore(cves []formats.CveRow) (string, error) {
+	maxCve := 0.0
+	for _, cve := range cves {
+		floatCve, err := strconv.ParseFloat(cve.CvssV3, 32)
+		if err != nil {
+			return "", err
+		}
+		if floatCve > maxCve {
+			maxCve = floatCve
+		}
+	}
+	strCve := fmt.Sprintf("%v", maxCve)
+
+	return strCve, nil
 }
 
 // Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.

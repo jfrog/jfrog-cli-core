@@ -25,7 +25,9 @@ func TestTransferErrorsMng(t *testing.T) {
 
 	errorsNumber := 40
 	// We reduce the maximum number of entities per file to test the creation of multiple errors files.
+	originalMaxErrorsInFile := maxErrorsInFile
 	maxErrorsInFile = 20
+	defer func() { maxErrorsInFile = originalMaxErrorsInFile }()
 	errorsChannelMng := createErrorsChannelMng()
 	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng)
 	assert.NoError(t, err)

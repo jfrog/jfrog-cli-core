@@ -19,7 +19,9 @@ func TestDelayedArtifactsMng(t *testing.T) {
 
 	artifactsNumber := 40
 	// We reduce the maximum number of entities per file to test the creation of multiple delayed artifacts files.
+	originalMaxArtifactsInFile := maxDelayedArtifactsInFile
 	maxDelayedArtifactsInFile = 20
+	defer func() { maxDelayedArtifactsInFile = originalMaxArtifactsInFile }()
 	artifactsChannelMng := createdDelayedArtifactsChannelMng()
 	transferDelayedArtifactsToFile := newTransferDelayedArtifactsToFile(&artifactsChannelMng)
 

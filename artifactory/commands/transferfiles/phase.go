@@ -1,10 +1,11 @@
 package transferfiles
 
 import (
+	"time"
+
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"time"
 )
 
 const numberOfPhases = 3
@@ -37,6 +38,17 @@ type phaseBase struct {
 	progressBar               *progressbar.TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
 	stop                      bool
+}
+
+func (pb phaseBase) shouldStop() bool {
+	return pb.stop
+}
+
+func (pb phaseBase) getStop() error {
+	if pb.shouldStop() {
+		return &InterruptionErr{}
+	}
+	return nil
 }
 
 func getPhaseByNum(i int, repoKey string) transferPhase {

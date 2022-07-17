@@ -29,7 +29,7 @@ func init() {
 	Here we test the functionality of a real process with a real PID and a dummy process with MaxInt pid.
 */
 func TestLockSmallerPid(t *testing.T) {
-	// First creating the first lock object with special pid number that doesn't exists.
+	// First creating the first lock object with special pid number that doesn't exist.
 	firstLock, _ := getLock(math.MaxInt32, t)
 	// Creating a second lock object with the running PID
 	secondLock, folderName := getLock(os.Getpid(), t)
@@ -78,7 +78,7 @@ func TestLockSmallerPid(t *testing.T) {
 	Here we test the functionality of a real process with a real PID and a dummy process with -1 pid.
 */
 func TestLockBiggerPid(t *testing.T) {
-	// First creating the first lock object with special pid number that doesn't exists.
+	// First creating the first lock object with special pid number that doesn't exist.
 	getLock(-1, t)
 	// Creating a second lock object with the running PID
 	secondLock, folderName := getLock(os.Getpid(), t)

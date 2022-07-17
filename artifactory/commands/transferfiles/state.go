@@ -257,5 +257,5 @@ func convertRFC3339ToTime(timeToConvert string) (time.Time, error) {
 }
 
 func convertTimeToEpochMilliseconds(timeToConvert time.Time) string {
-	return strconv.FormatInt(timeToConvert.UnixMilli(), 13)
+	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
 }

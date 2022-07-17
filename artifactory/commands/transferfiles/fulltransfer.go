@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -110,12 +109,15 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
-		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorChannel)
+	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+			return nil
+		}
+		folderHandler := m.createFolderFullTransferHandlerFunc(*pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 		_, err := pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcDetails.errorsQueue.AddError)
 		return err
 	}
-	return manager.doTransfer(true, action)
+	return manager.doTransferWithProducerConsumer(action)
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -126,104 +128,113 @@ type folderParams struct {
 }
 
 func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails, uploadTokensChan chan string,
-	delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) folderFullTransferHandlerFunc {
+	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper, errorChannel)
+			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails,
-	uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
-	if m.stop {
-		return errorutils.CheckError(&InterruptionErr{})
-	}
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
-
-	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
-	if err != nil {
-		return err
-	}
 
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 
-	for _, item := range result.Results {
-		if m.stop {
-			return errorutils.CheckError(&InterruptionErr{})
+	var result *servicesUtils.AqlSearchResult
+	paginationI := 0
+	for {
+		result, err = m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
+		if err != nil {
+			return err
 		}
-		if item.Name == "." {
-			continue
+
+		// Empty folder. Add it as candidate.
+		if paginationI == 0 && len(result.Results) == 0 {
+			curUploadChunk.appendUploadCandidate(FileRepresentation{
+				Repo: params.repoKey,
+				Path: path.Dir(params.relativePath),
+				Name: path.Base(params.relativePath),
+			})
+			break
 		}
-		switch item.Type {
-		case "folder":
-			newRelativePath := item.Name
-			if params.relativePath != "." {
-				newRelativePath = path.Join(params.relativePath, newRelativePath)
+
+		for _, item := range result.Results {
+			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+				return
 			}
-			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorChannel)
-			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
-			if err != nil {
-				return err
-			}
-		case "file":
-			file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-			delayed := delayHelper.delayUploadIfNecessary(file)
-			if delayed {
+			if item.Name == "." {
 				continue
 			}
-			curUploadChunk.appendUploadCandidate(file)
-			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
+			switch item.Type {
+			case "folder":
+				newRelativePath := item.Name
+				if params.relativePath != "." {
+					newRelativePath = path.Join(params.relativePath, newRelativePath)
+				}
+				folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
+				_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
 				if err != nil {
-					log.Error(err)
+					return err
 				}
-				// Increase phase1 progress bar with the uploaded number of files.
-				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
-					if err != nil {
-						return err
+			case "file":
+				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+				if stopped {
+					return
+				}
+				if delayed {
+					continue
+				}
+				curUploadChunk.appendUploadCandidate(file)
+				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					if stopped {
+						return
 					}
+					// Increase phase1 progress bar with the uploaded number of files.
+					if m.progressBar != nil {
+						err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
+						if err != nil {
+							return err
+						}
+					}
+					// Empty the uploaded chunk.
+					curUploadChunk.UploadCandidates = []FileRepresentation{}
 				}
-				// Empty the uploaded chunk.
-				curUploadChunk.UploadCandidates = []FileRepresentation{}
 			}
 		}
-	}
 
-	// Empty folder. Add it as candidate.
-	if len(result.Results) == 0 {
-		curUploadChunk.appendUploadCandidate(FileRepresentation{
-			Repo: params.repoKey,
-			Path: path.Dir(params.relativePath),
-			Name: path.Base(params.relativePath),
-		})
+		if len(result.Results) < aqlPaginationLimit {
+			break
+		}
+		paginationI++
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorChannel)
-		if err != nil {
-			return err
+		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
 			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 			if err != nil {
-				return err
+				return
 			}
 		}
 	}
 	log.Debug(logMsgPrefix+"Done transferring folder:", path.Join(params.repoKey, params.relativePath))
-	return nil
+	return
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateFolderContentsAqlQuery(repoKey, relativePath)
+func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	query := generateFolderContentsAqlQuery(repoKey, relativePath, paginationOffset)
 	return runAql(m.srcRtDetails, query)
 }
 
@@ -232,6 +243,9 @@ func (m *fullTransferPhase) stopGracefully() {
 	m.progressBar.StopGracefully()
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string) string {
-	return fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]}).include("repo","path","name","type")`, repoKey, relativePath)
+func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
+	query += `.include("repo","path","name","type")`
+	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	return query
 }

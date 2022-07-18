@@ -13,10 +13,8 @@ import (
 	"regexp"
 )
 
-const (
-	// Max errors that will be written in a file
-	maxErrorsInFile = 50000
-)
+// Max errors that will be written in a file
+var maxErrorsInFile = 50000
 
 // TransferErrorsMng manages multi threads writing errors.
 // We want to create a file which contains all upload error statuses for each repository and phase.
@@ -66,6 +64,15 @@ func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string,
 // Inside the errors directory creates directory for retryable errors and skipped errors.
 // Return the root errors' directory path.
 func initTransferErrorsDir() error {
+	// Create transfer directory (if it doesn't exist)
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = makeDirIfDoesNotExists(transferDir)
+	if err != nil {
+		return err
+	}
 	// Create errors directory
 	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
 	if err != nil {

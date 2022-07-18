@@ -11,10 +11,7 @@ import (
 	"path/filepath"
 )
 
-const (
-	// Max delayedArtifacts that will be written in a file
-	maxDelayedArtifactsInFile = 50000
-)
+var maxDelayedArtifactsInFile = 50000
 
 // TransferDelayedArtifactsMng takes care of the multi-threaded-writing of artifacts to be transferred, while maintaining the correct order of the deployment.
 // This is needed because, for example, for maven repositories, pom file should be deployed last.
@@ -66,7 +63,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file.
 		if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
 			err = mng.deployedWriter.writer.Close()
-			if err == nil {
+			if err != nil {
 				return err
 			}
 			if mng.deployedWriter.writer.GetFilePath() != "" {

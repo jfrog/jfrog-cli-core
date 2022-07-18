@@ -270,28 +270,24 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		ioutils.ScanFromConsole("JFrog platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
-	if cc.details.Url != "" {
-		if fileutils.IsSshUrl(cc.details.Url) {
-			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
-		} else {
-			cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
-		}
+	if fileutils.IsSshUrl(cc.details.Url) {
+		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+	} else {
+		cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
 		if err := getSshKeyPath(cc.details); err != nil {
 			return err
 		}
-	} else {
-		if !cc.disablePromptUrls {
-			if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-				return err
-			}
+	} else if !cc.disablePromptUrls {
+		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+			return err
 		}
 		// Password/Access-Token/MTLS Certificate
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
@@ -311,9 +307,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 				return err
 			}
 		}
+
+		checkClientCertForReverseProxy(cc)
 	}
 
-	checkClientCertForReverseProxy(cc)
 	return nil
 }
 

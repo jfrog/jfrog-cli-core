@@ -23,7 +23,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
-	errorsNumber := 40
+	errorsNumber := 50
 	// We reduce the maximum number of entities per file to test the creation of multiple errors files.
 	originalMaxErrorsInFile := maxErrorsInFile
 	maxErrorsInFile = 20
@@ -46,31 +46,28 @@ func TestTransferErrorsMng(t *testing.T) {
 
 	// Add 'retryable errors' to the common errors channel.
 	// These errors will be written into files located in the "retryable" directory under the Jfrog CLI home directory.
-	writeWaitGroup.Add(1)
-	go func() {
-		defer writeWaitGroup.Done()
-		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: Fail, StatusCode: 404, Reason: "reason"}
-		}
-	}()
-
+	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, Fail)
 	// Add 'skipped errors' to the common errors channel.
 	// These errors will be written into files located in the "skipped" directory under the Jfrog CLI home directory.
-	writeWaitGroup.Add(1)
-	go func() {
-		defer writeWaitGroup.Done()
-		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: SkippedLargeProps, StatusCode: 404, Reason: "reason"}
-		}
-	}()
+	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, SkippedLargeProps)
 
 	writeWaitGroup.Wait()
 	errorsChannelMng.close()
 	readWaitGroup.Wait()
 	assert.NoError(t, writingErrorsErr)
 	expectedNumberOfFiles := int(math.Ceil(float64(errorsNumber) / float64(maxErrorsInFile)))
-	validateErrorsFiles(t, expectedNumberOfFiles, maxErrorsInFile, true)
-	validateErrorsFiles(t, expectedNumberOfFiles, maxErrorsInFile, false)
+	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, true)
+	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, false)
+}
+
+func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status ChunkFileStatusType) {
+	writeWaitGroup.Add(1)
+	go func() {
+		defer writeWaitGroup.Done()
+		for i := 0; i < errorsNumber; i++ {
+			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: status, StatusCode: 404, Reason: "reason"}
+		}
+	}()
 }
 
 // Ensure that all retryable/skipped errors files have been created and that they contain the expected content
@@ -78,11 +75,12 @@ func validateErrorsFiles(t *testing.T, filesNum, errorsNum int, isRetryable bool
 	errorsFiles, err := getErrorsFiles(testRepoKey, isRetryable)
 	status := getStatusType(isRetryable)
 	assert.NoError(t, err)
-	assert.Equal(t, filesNum, len(errorsFiles), "unexpected number of error files.")
+	assert.Lenf(t, errorsFiles, filesNum, "unexpected number of error files.")
+	var entitiesNum int
 	for i := 0; i < filesNum; i++ {
-		entitiesNum := validateErrorsFileContent(t, errorsFiles[i], status)
-		assert.Equal(t, errorsNum, entitiesNum)
+		entitiesNum += validateErrorsFileContent(t, errorsFiles[i], status)
 	}
+	assert.Equal(t, errorsNum, entitiesNum)
 }
 
 func getStatusType(isRetryable bool) ChunkFileStatusType {

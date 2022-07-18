@@ -17,7 +17,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
-	artifactsNumber := 40
+	artifactsNumber := 50
 	// We reduce the maximum number of entities per file to test the creation of multiple delayed artifacts files.
 	originalMaxArtifactsInFile := maxDelayedArtifactsInFile
 	maxDelayedArtifactsInFile = 20
@@ -51,16 +51,17 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	readWaitGroup.Wait()
 	assert.NoError(t, delayedArtifactsErr)
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
-	validateDelayedArtifactsFiles(t, transferDelayedArtifactsToFile.filesToConsume, expectedNumberOfFiles, maxDelayedArtifactsInFile)
+	validateDelayedArtifactsFiles(t, transferDelayedArtifactsToFile.filesToConsume, expectedNumberOfFiles, artifactsNumber)
 }
 
 // Ensure that all 'delayed artifacts files' have been created and that they contain the expected content
 func validateDelayedArtifactsFiles(t *testing.T, delayedArtifactsFile []string, filesNum, artifactsNum int) {
-	assert.Equal(t, filesNum, len(delayedArtifactsFile), "unexpected number of delayed artifacts files.")
+	assert.Lenf(t, delayedArtifactsFile, filesNum, "unexpected number of delayed artifacts files.")
+	var entitiesNum int
 	for i := 0; i < filesNum; i++ {
-		entitiesNum := validateDelayedArtifactsFilesContent(t, delayedArtifactsFile[i])
-		assert.Equal(t, artifactsNum, entitiesNum)
+		entitiesNum += validateDelayedArtifactsFilesContent(t, delayedArtifactsFile[i])
 	}
+	assert.Equal(t, artifactsNum, entitiesNum)
 }
 
 // Check the number of artifacts and their uniqueness by reading the file's content.

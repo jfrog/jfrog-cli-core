@@ -142,6 +142,7 @@ const (
 	gradle = "Gradle"
 	ivy    = "Ivy"
 	docker = "Docker"
+	conan  = "Conan"
 )
 
 // A function to determine whether the file deployment should be delayed.
@@ -163,6 +164,14 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 			return fileName == "manifest.json"
 		}, func(fileName string) bool {
 			return fileName == "list.manifest.json"
+		}}
+	case conan:
+		return []shouldDelayUpload{func(fileName string) bool {
+			return fileName == "conanfile.py"
+		}, func(fileName string) bool {
+			return fileName == "conaninfo.txt"
+		}, func(fileName string) bool {
+			return fileName == "index.json"
 		}}
 	}
 	return []shouldDelayUpload{}

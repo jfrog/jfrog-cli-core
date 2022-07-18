@@ -37,28 +37,38 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *progressbar.TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
-	stop                      bool
+	stop                      *bool
 }
 
-func (pb phaseBase) shouldStop() bool {
-	return pb.stop
+func (pb *phaseBase) shouldStop() bool {
+	return *pb.stop
 }
 
-func (pb phaseBase) getStop() error {
+// Return InterruptionError, if stop is true
+func (pb *phaseBase) getInterruptionErr() error {
 	if pb.shouldStop() {
-		return &InterruptionErr{}
+		return new(InterruptionErr)
 	}
 	return nil
 }
 
+// Stop the phase gracefully and show it in the progressbar
+func (pb *phaseBase) stopGracefully() {
+	*pb.stop = true
+	if pb.progressBar != nil {
+		pb.progressBar.StopGracefully()
+	}
+}
+
 func getPhaseByNum(i int, repoKey string) transferPhase {
+	stopValue := false
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 0}}
+		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 0, stop: &stopValue}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 1}}
+		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 1, stop: &stopValue}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 2}}
+		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 2, stop: &stopValue}}
 	}
 	return nil
 }

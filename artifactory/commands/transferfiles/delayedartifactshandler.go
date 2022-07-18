@@ -177,16 +177,14 @@ type delayUploadHelper struct {
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 // When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
-func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) (delayed, stopped bool) {
+func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file FileRepresentation) (delayed, stopped bool) {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
+		if ShouldStop(&phase, &delayHelper, nil) {
+			return delayed, true
+		}
 		if shouldDelay(file.Name) {
 			delayed = true
-			stopped = delayHelper.delayedArtifactsChannelMng.add(file)
-			if stopped {
-				// In case an error occurred while handling delayed artifacts - stop transferring.
-				log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
-				return
-			}
+			delayHelper.delayedArtifactsChannelMng.add(file)
 		}
 	}
 	return
@@ -199,12 +197,8 @@ type DelayedArtifactsChannelMng struct {
 	err     error
 }
 
-func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (stopped bool) {
-	if mng.shouldStop() {
-		return true
-	}
+func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) {
 	mng.channel <- element
-	return false
 }
 
 func (mng DelayedArtifactsChannelMng) shouldStop() bool {

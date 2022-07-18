@@ -65,11 +65,6 @@ func (p *propertiesDiffPhase) setRepoSummary(repoSummary servicesUtils.Repositor
 	p.repoSummary = repoSummary
 }
 
-func (p *propertiesDiffPhase) stopGracefully() {
-	p.stop = true
-	p.progressBar.StopGracefully()
-}
-
 func (p *propertiesDiffPhase) run() error {
 	diffStart, diffEnd, err := getDiffHandlingRange(p.repoKey)
 	if err != nil {
@@ -93,7 +88,7 @@ func (p *propertiesDiffPhase) run() error {
 	// Done handling when all nodes return done status.
 propertiesHandling:
 	for {
-		if p.stop {
+		if *p.stop {
 			return errorutils.CheckError(&InterruptionErr{})
 		}
 		remoteNodeStatus, err := p.srcUpService.handlePropertiesDiff(requestBody)

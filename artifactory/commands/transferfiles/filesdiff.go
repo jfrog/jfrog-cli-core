@@ -280,11 +280,6 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHe
 	return nil
 }
 
-func (f *filesDiffPhase) stopGracefully() {
-	f.stop = true
-	f.progressBar.StopGracefully()
-}
-
 func convertUploadStatusToFileRepresentation(statuses []FileUploadStatusResponse) (files []FileRepresentation) {
 	for _, status := range statuses {
 		files = append(files, status.FileRepresentation)

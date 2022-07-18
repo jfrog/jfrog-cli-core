@@ -113,7 +113,7 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, trans
 	writersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, pollingTasksManager.pollingErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getStop()} {
+	for _, err := range []error{actionErr, pollingTasksManager.pollingErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getInterruptionErr()} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err

@@ -184,7 +184,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 			case "file":
 				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 				if stopped {
 					return
 				}
@@ -236,11 +236,6 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateFolderContentsAqlQuery(repoKey, relativePath, paginationOffset)
 	return runAql(m.srcRtDetails, query)
-}
-
-func (m *fullTransferPhase) stopGracefully() {
-	m.stop = true
-	m.progressBar.StopGracefully()
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {

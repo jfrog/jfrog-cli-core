@@ -307,12 +307,9 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 
 	for _, item := range files {
-		if ShouldStop(&base, &delayHelper, errorsChannelMng) {
-			return true, nil
-		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 		var delayed bool
-		delayed, shouldStop = delayHelper.delayUploadIfNecessary(file)
+		delayed, shouldStop = delayHelper.delayUploadIfNecessary(base, file)
 		if shouldStop {
 			return
 		}
@@ -356,7 +353,7 @@ func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelM
 		return true
 	}
 	if delayHelper != nil && delayHelper.delayedArtifactsChannelMng.shouldStop() {
-		log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files")
+		log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
 		return true
 	}
 	if errorsChannelMng != nil && errorsChannelMng.shouldStop() {
@@ -380,7 +377,7 @@ func stopAllRunningNodes(srcUpService *srcUserPluginService, runningNodes []stri
 		remainingNodesToStop[s] = s
 	}
 	log.Debug("Running nodes to stop:", remainingNodesToStop)
-	for i := 0; i < requestsNumForStop; i++ {
+	for i := 0; i < len(runningNodes)*3; i++ {
 		if len(remainingNodesToStop) == 0 {
 			log.Debug("All running nodes stopped successfully")
 			return

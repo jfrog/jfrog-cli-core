@@ -28,7 +28,6 @@ const (
 	fileWritersChannelSize = 500000
 	retries                = 3
 	retriesWait            = 0
-	requestsNumForStop     = 5
 )
 
 type TransferFilesCommand struct {
@@ -172,12 +171,17 @@ func (tdc *TransferFilesCommand) startPhase(newPhase transferPhase, repo string,
 	return newPhase.phaseDone()
 }
 
+// Handle interrupted signal.
+// shouldStop - Pointer to boolean variable, if the process gets interrupted shouldStop will be set to true
+// newPhase - The current running phase
+// srcUpService - Source plugin service
 func (tdc *TransferFilesCommand) handleStop(shouldStop *bool, newPhase *transferPhase, srcUpService *srcUserPluginService) func() {
 	finishStop := make(chan bool)
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		defer close(finishStop)
+		// Wait for the stop signal or close(stopSignal) to happen
 		if <-stopSignal == nil {
 			// The stopSignal channel is closed
 			return
@@ -195,6 +199,8 @@ func (tdc *TransferFilesCommand) handleStop(shouldStop *bool, newPhase *transfer
 		}
 
 	}()
+
+	// Return a cleanup function that closes the stopSignal channel and wait for close if needed
 	return func() {
 		// Close the stop signal channel
 		close(stopSignal)

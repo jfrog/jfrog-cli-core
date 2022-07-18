@@ -19,6 +19,7 @@ type TransferProgressMng struct {
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
+	stopLine            *mpb.Bar
 	phases              []*tasksWithHeadlineProg
 	// Progress bar manager
 	barsMng *ProgressBarMng
@@ -53,7 +54,13 @@ func (t *TransferProgressMng) Quit() error {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	if t.stopLine != nil {
+		t.stopLine.Abort(true)
+		t.stopLine = nil
+	}
+	if t.totalRepositories != nil {
+		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	}
 	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(ProgressRefreshRate)
 	// Wait for all go routines to finish before quiting
@@ -136,7 +143,12 @@ func (t *TransferProgressMng) RemoveRepository() {
 }
 
 func (t *TransferProgressMng) StopGracefully() {
-	t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+	if t.barsMng != nil {
+		t.RemoveRepository()
+		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+		t.totalRepositories = nil
+		t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+	}
 }
 
 // Progress that includes two bars:

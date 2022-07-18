@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestHandleStopSignals(t *testing.T) {
+func TestHandleStopInitAndClose(t *testing.T) {
 	transferFilesCommand := NewTransferFilesCommand(nil, nil)
 
 	shouldStop := false

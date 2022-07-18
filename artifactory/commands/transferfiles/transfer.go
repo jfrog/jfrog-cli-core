@@ -12,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"strconv"
 )
 
 const (
@@ -209,6 +210,7 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 	if settings != nil {
 		curThreads = settings.ThreadsNumber
 	}
+	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }
 

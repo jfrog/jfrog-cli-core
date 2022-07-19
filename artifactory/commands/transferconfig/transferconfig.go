@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jfrog/gofrog/version"
@@ -353,6 +354,9 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 		return err
 	}
 	log.Info(fmt.Sprintf("Logs from Artifactory:\n%s", body))
+	if strings.Contains(string(body), "[ERROR]") {
+		return errorutils.CheckErrorf("Errors detected during config import. Hint: To skip failed repositories, please refer to the '--exclude-repos' flag.")
+	}
 	return nil
 }
 

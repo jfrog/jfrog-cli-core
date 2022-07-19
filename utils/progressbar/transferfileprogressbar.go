@@ -2,11 +2,11 @@ package progressbar
 
 import (
 	"errors"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"sync/atomic"
 	"time"
 
 	"github.com/gookit/color"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
 )
@@ -19,10 +19,11 @@ type TransferProgressMng struct {
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
-	stopLine            *mpb.Bar
 	phases              []*tasksWithHeadlineProg
 	// Progress bar manager
 	barsMng *ProgressBarMng
+	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
+	stopLine *mpb.Bar
 }
 
 // NewTransferProgressMng creates TransferProgressMng object.
@@ -51,29 +52,34 @@ func (t *TransferProgressMng) NewRepository(name string) {
 
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
-	if t.currentRepoHeadline != nil {
-		t.RemoveRepository()
-	}
-	if t.stopLine != nil {
-		t.stopLine.Abort(true)
-		t.stopLine = nil
-	}
-	if t.totalRepositories != nil {
-		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
-	}
-	// Wait a refresh rate to make sure all aborts have finished
-	time.Sleep(ProgressRefreshRate)
-	// Wait for all go routines to finish before quiting
-	t.barsMng.barsWg.Wait()
-	// Close log file
-	if t.barsMng.logFile != nil {
-		err := corelog.CloseLogFile(t.barsMng.logFile)
-		if err != nil {
-			return err
-		}
+	if t.barsMng != nil {
+		barMng := t.barsMng
+		// The transfer's manager bar should be set to nil before aborting, so that all go routines know it's not available.
 		t.barsMng = nil
-		// Set back the default logger
-		corelog.SetDefaultLogger()
+		if t.currentRepoHeadline != nil {
+			t.RemoveRepository()
+		}
+		if t.totalRepositories != nil {
+			barMng.quitTasksWithHeadlineProg(t.totalRepositories)
+		}
+		// Wait a refresh rate to make sure all aborts have finished
+		time.Sleep(ProgressRefreshRate)
+		// Wait for all go routines to finish before quiting
+		barMng.barsWg.Wait()
+		// Close log file
+		if barMng.logFile != nil {
+			err := corelog.CloseLogFile(barMng.logFile)
+			if err != nil {
+				return err
+			}
+			// Set back the default logger
+			corelog.SetDefaultLogger()
+		}
+	} else {
+		if t.stopLine != nil {
+			t.stopLine.Abort(true)
+			t.stopLine = nil
+		}
 	}
 	return nil
 }
@@ -144,9 +150,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 
 func (t *TransferProgressMng) StopGracefully() {
 	if t.barsMng != nil {
-		t.RemoveRepository()
-		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
-		t.totalRepositories = nil
+		t.Quit()
 		t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
 	}
 }

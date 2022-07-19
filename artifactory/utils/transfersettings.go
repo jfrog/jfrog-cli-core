@@ -13,6 +13,9 @@ import (
 )
 
 const (
+	// DefaultThreads is the default number of threads working while transferring Artifactory's data
+	DefaultThreads = 8
+
 	transferSettingsFile     = "transfer.conf"
 	transferSettingsLockFile = "transfer-settings"
 )

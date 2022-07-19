@@ -18,8 +18,6 @@ import (
 const (
 	tasksMaxCapacity = 10000
 	uploadChunkSize  = 16
-	// Default number of threads working while transferring Artifactory's data
-	defaultThreads = 8
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize = 500000
 	retries                = 3
@@ -202,7 +200,7 @@ func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageIn
 
 func (tdc *TransferFilesCommand) initCurThreads() error {
 	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = defaultThreads
+	curThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err

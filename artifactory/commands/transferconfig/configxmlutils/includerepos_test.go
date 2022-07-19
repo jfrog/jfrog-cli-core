@@ -15,8 +15,9 @@ var testCases = []struct {
 	{"filter-all", []string{}},
 	{"select-local", []string{"default-libs-release-local"}},
 	{"select-remote", []string{"default-maven-remote"}},
-	{"select-one-from-all", []string{"default-libs-release-local", "default-maven-remote", "default-libs-release"}},
-	{"select-all", []string{"default-libs-release-local", "default-libs-snapshot-local", "default-maven-remote",
+	{"select-release-bundle", []string{"release-bundles"}},
+	{"select-one-from-all", []string{"default-libs-release-local", "default-maven-remote", "default-libs-release", "release-bundles"}},
+	{"select-all", []string{"default-libs-release-local", "default-libs-snapshot-local", "default-maven-remote", "release-bundles",
 		"ecosys-generic-local", "default-libs-release", "example-repo-local", "ecosys-npm-remote", "default-go-remote", "default-libs-snapshot"}},
 }
 

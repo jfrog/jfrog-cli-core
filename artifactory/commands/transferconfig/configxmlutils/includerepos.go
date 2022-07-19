@@ -3,6 +3,7 @@ package configxmlutils
 import (
 	"encoding/xml"
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
@@ -11,7 +12,7 @@ import (
 // configXml            - artifactory.config.xml of the source Artifactory
 // includedRepositories - Selected repositories
 func RemoveNonIncludedRepositories(configXml string, includedRepositories []string) (string, error) {
-	for _, repoType := range []utils.RepoType{utils.LOCAL, utils.REMOTE, utils.VIRTUAL, utils.FEDERATED} {
+	for _, repoType := range []utils.RepoType{utils.LOCAL, utils.REMOTE, utils.VIRTUAL, utils.FEDERATED, utils.RELEASE_BUNDLES} {
 		xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, repoType.String()+`Repositories`, true)
 		if err != nil {
 			return "", err

@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"path/filepath"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -16,6 +17,7 @@ const (
 	REMOTE
 	VIRTUAL
 	FEDERATED
+	RELEASE_BUNDLES
 )
 
 var RepoTypes = []string{
@@ -23,6 +25,7 @@ var RepoTypes = []string{
 	"remote",
 	"virtual",
 	"federated",
+	"releaseBundles",
 }
 
 func (repoType RepoType) String() string {

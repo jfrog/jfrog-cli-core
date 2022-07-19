@@ -201,7 +201,7 @@
         </remoteRepositories>
     <virtualRepositories></virtualRepositories>
     <federatedRepositories/>
-    <releaseBundlesRepositories/>
+    <releaseBundlesRepositories></releaseBundlesRepositories>
     <proxies/>
     <reverseProxies>
         <reverseProxy>

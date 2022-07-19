@@ -119,7 +119,7 @@ func FindBooleanFlag(flagName string, args []string) (flagIndex int, flagValue b
 	return -1, false, nil
 }
 
-// Find the first match of any of the provided flags in args.
+// Find the first match of the provided flags in args.
 // Return same values as FindFlag.
 func FindFlagFirstMatch(flags, args []string) (flagIndex, flagValueIndex int, flagValue string, err error) {
 	// Look for provided flags.

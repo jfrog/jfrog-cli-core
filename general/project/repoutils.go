@@ -149,7 +149,7 @@ func CreateDefaultRemoteRepo(technologyType coreutils.Technology, serverId strin
 	if err != nil {
 		return err
 	}
-	// NuGet specifc case, due to required DownloadContextPath param by Artifactory
+	// NuGet specific case, due to required DownloadContextPath param by Artifactory
 	if technologyType == coreutils.Nuget || technologyType == coreutils.Dotnet {
 		return createDefaultRemoteNugetRepo(serverId, params)
 	}

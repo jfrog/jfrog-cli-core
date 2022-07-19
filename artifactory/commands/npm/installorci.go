@@ -25,7 +25,6 @@ type NpmInstallOrCiCommand struct {
 	internalCommandName string
 	collectBuildInfo    bool
 	buildInfoModule     *build.NpmModule
-	filteredArgs        []string
 	CommonArgs
 }
 
@@ -87,8 +86,6 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 		return
 	}
 
-	nic.filteredArgs = filterFlags(nic.npmArgs)
-
 	if err = nic.prepareBuildInfoModule(); err != nil {
 		return
 	}
@@ -126,7 +123,7 @@ func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 	}
 
 	// Build-info should not be created when installing a single package (npm install <package name>).
-	if len(nic.filteredArgs) > 0 {
+	if len(filterFlags(nic.npmArgs)) > 0 {
 		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
 		nic.collectBuildInfo = false
 		return nil
@@ -158,7 +155,7 @@ func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
 	log.Debug(fmt.Sprintf("Running npm %s command.", nic.cmdName))
 	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nic.executablePath,
-		Command:      append([]string{nic.cmdName}, nic.filteredArgs...),
+		Command:      append([]string{nic.cmdName}, nic.npmArgs...),
 		CommandFlags: nil,
 		StrWriter:    nil,
 		ErrWriter:    nil,
@@ -190,7 +187,8 @@ func addArrayConfigs(conf []string, key, arrayValue string) []string {
 
 func removeNpmrcIfExists(workingDirectory string) error {
 	if _, err := os.Stat(filepath.Join(workingDirectory, npmrcFileName)); err != nil {
-		if os.IsNotExist(err) { // The file dose not exist, nothing to do.
+		// The file does not exist, nothing to do.
+		if os.IsNotExist(err) {
 			return nil
 		}
 		return errorutils.CheckError(err)

@@ -10,6 +10,8 @@ import (
 	"strconv"
 )
 
+const maxThreadsLimit = 256
+
 type TransferSettingsCommand struct {
 }
 
@@ -21,8 +23,8 @@ func (tst *TransferSettingsCommand) Run() error {
 	var threadsNumberInput string
 	ioutils.ScanFromConsole("Enter the number of working threads", &threadsNumberInput, "")
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
-	if err != nil || threadsNumber < 1 || threadsNumber > 100 {
-		return errorutils.CheckError(errors.New("the value must be a number between 1 and 100"))
+	if err != nil || threadsNumber < 1 || threadsNumber > maxThreadsLimit {
+		return errorutils.CheckError(errors.New("the value must be a number between 1 and " + strconv.Itoa(maxThreadsLimit)))
 	}
 	conf := &utils.TransferSettings{ThreadsNumber: threadsNumber}
 	err = utils.SaveTransferSettings(conf)

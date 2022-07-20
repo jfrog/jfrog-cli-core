@@ -13,11 +13,11 @@ import (
 type RepoType int
 
 const (
-	LOCAL RepoType = iota
-	REMOTE
-	VIRTUAL
-	FEDERATED
-	RELEASE_BUNDLES
+	Local RepoType = iota
+	Remote
+	Virtual
+	Federated
+	ReleaseBundles
 )
 
 var RepoTypes = []string{

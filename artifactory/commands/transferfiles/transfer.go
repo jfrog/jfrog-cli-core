@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -11,8 +14,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strconv"
 )
 
 const (
@@ -181,7 +182,7 @@ func (tdc *TransferFilesCommand) getSrcLocalRepositories() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 }
 
 func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) {
@@ -189,7 +190,7 @@ func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 }
 
 func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageInfo, error) {

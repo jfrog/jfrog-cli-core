@@ -12,7 +12,7 @@ import (
 // configXml            - artifactory.config.xml of the source Artifactory
 // includedRepositories - Selected repositories
 func RemoveNonIncludedRepositories(configXml string, includedRepositories []string) (string, error) {
-	for _, repoType := range []utils.RepoType{utils.LOCAL, utils.REMOTE, utils.VIRTUAL, utils.FEDERATED, utils.RELEASE_BUNDLES} {
+	for _, repoType := range []utils.RepoType{utils.Local, utils.Remote, utils.Virtual, utils.Federated, utils.ReleaseBundles} {
 		xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, repoType.String()+`Repositories`, true)
 		if err != nil {
 			return "", err

@@ -1,11 +1,12 @@
 package python
 
 import (
+	"path/filepath"
+	"testing"
+
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"testing"
 )
 
 func TestBuildPipDependencyListSetuppy(t *testing.T) {
@@ -57,4 +58,23 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	childNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
 	// Test sub child module
 	audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+}
+
+func TestBuildPoetryDependencyList(t *testing.T) {
+	// Create and change directory to test workspace
+	_, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
+	defer cleanUp()
+	// Run getModulesDependencyTrees
+	rootNodes, err := BuildDependencyTree(pythonutils.Poetry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEmpty(t, rootNodes)
+
+	// Test child module
+	childNode := audit.GetAndAssertNode(t, rootNodes, "pytest:5.4.3")
+	// Test sub child module
+	transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")
+
+	audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
 }

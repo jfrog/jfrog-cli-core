@@ -3,12 +3,10 @@ package audit
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/build-info-go/utils/pythonutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 	"strings"
 
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
@@ -16,7 +14,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -60,11 +60,9 @@ func GenericAudit(
 		case coreutils.Yarn:
 			techResults, isMultipleRootProject, e = yarn.AuditYarn(xrayGraphScanParams, serverDetails, progress)
 		case coreutils.Go:
-			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanParams, serverDetails, progress)
-		case coreutils.Pip:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanParams, serverDetails, pythonutils.Pip, progress, requirementsFile)
-		case coreutils.Pipenv:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanParams, serverDetails, pythonutils.Pipenv, progress, "")
+			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails, progress)
+		case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.PythonTool(tech), progress, requirementsFile)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:

@@ -198,7 +198,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 						return
 					}
 					// Increase phase1 progress bar with the uploaded number of files.
-					if m.progressBar != nil {
+					if m.progressBar != nil && m.progressBar.ShouldDisplay() {
 						err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 						if err != nil {
 							return err
@@ -222,7 +222,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
-		if m.progressBar != nil {
+		if m.progressBar != nil && m.progressBar.ShouldDisplay() {
 			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 			if err != nil {
 				return

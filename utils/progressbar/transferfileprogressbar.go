@@ -14,6 +14,8 @@ import (
 // TransferProgressMng provides progress indication for the jf rt transfer-files command.
 // Transferring one repository's data at a time.
 type TransferProgressMng struct {
+	// Determine whether the progress bar should be displayed
+	shouldDisplay bool
 	// Task bar with the total repositories transfer progress
 	totalRepositories *tasksWithHeadlineProg
 	// Current repo progress bars
@@ -33,7 +35,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	if !shouldDisplay || err != nil {
 		return nil, err
 	}
-	transfer := TransferProgressMng{barsMng: mng}
+	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, WHITE)
 	return &transfer, nil
@@ -52,36 +54,37 @@ func (t *TransferProgressMng) NewRepository(name string) {
 
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
-	if t.barsMng != nil {
-		barMng := t.barsMng
-		// The transfer's manager bar should be set to nil before aborting, so that all go routines know it's not available.
-		t.barsMng = nil
+	if t.ShouldDisplay() {
 		if t.currentRepoHeadline != nil {
 			t.RemoveRepository()
 		}
 		if t.totalRepositories != nil {
-			barMng.quitTasksWithHeadlineProg(t.totalRepositories)
+			t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
 		}
 		// Wait a refresh rate to make sure all aborts have finished
 		time.Sleep(ProgressRefreshRate)
 		// Wait for all go routines to finish before quiting
-		barMng.barsWg.Wait()
-		// Close log file
-		if barMng.logFile != nil {
-			err := corelog.CloseLogFile(barMng.logFile)
-			if err != nil {
-				return err
-			}
-			// Set back the default logger
-			corelog.SetDefaultLogger()
-		}
+		t.barsMng.barsWg.Wait()
 	} else {
 		if t.stopLine != nil {
 			t.stopLine.Abort(true)
 			t.stopLine = nil
 		}
 	}
+	// Close log file
+	if t.barsMng.logFile != nil {
+		err := corelog.CloseLogFile(t.barsMng.logFile)
+		if err != nil {
+			return err
+		}
+		// Set back the default logger
+		corelog.SetDefaultLogger()
+	}
 	return nil
+}
+
+func (t *TransferProgressMng) ShouldDisplay() bool {
+	return t.shouldDisplay
 }
 
 // IncrementPhase increments completed tasks count for a specific phase by 1.
@@ -92,7 +95,9 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	if t.phases[id].tasksProgressBar.totalTasks == 0 {
 		return nil
 	}
-	t.barsMng.Increment(t.phases[id])
+	if t.ShouldDisplay() {
+		t.barsMng.Increment(t.phases[id])
+	}
 	return nil
 }
 
@@ -107,7 +112,9 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if t.phases[id].tasksProgressBar.totalTasks < t.phases[id].tasksProgressBar.tasksCount+int64(n) {
 		return t.DonePhase(id)
 	}
-	t.barsMng.IncBy(n, t.phases[id])
+	if t.ShouldDisplay() {
+		t.barsMng.IncBy(n, t.phases[id])
+	}
 	return nil
 }
 
@@ -149,8 +156,13 @@ func (t *TransferProgressMng) RemoveRepository() {
 }
 
 func (t *TransferProgressMng) StopGracefully() {
-	if t.barsMng != nil {
-		t.Quit()
+	if t.ShouldDisplay() {
+		t.shouldDisplay = false
+		// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
+		time.Sleep(ProgressRefreshRate)
+		t.RemoveRepository()
+		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+		t.totalRepositories = nil
 		t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
 	}
 }

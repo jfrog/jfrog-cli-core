@@ -65,7 +65,7 @@ func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errors
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.channel <- FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: status, StatusCode: 404, Reason: "reason"}
+			errorsChannelMng.add(FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: status, StatusCode: 404, Reason: "reason"})
 		}
 	}()
 }
@@ -117,6 +117,11 @@ func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatus
 			return
 		}
 		errorsNamesMap[entity.Name] = true
+		// Verify time
+		if entity.Time == "" {
+			assert.Fail(t, "expecting error's time stamp, but got empty string")
+			return
+		}
 	}
 	return len(filesErrors.Errors)
 }

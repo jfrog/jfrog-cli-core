@@ -336,7 +336,7 @@ type ErrorsChannelMng struct {
 
 type ExtendedFileUploadStatusResponse struct {
 	FileUploadStatusResponse
-	Time string
+	Time string `json:"time,omitempty"`
 }
 
 func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {

@@ -168,6 +168,9 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 				vulnerabilities[i].Summary += ". Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
 			}
 			severity, err := findMaxCVEScore(vulnerabilities[i].Cves)
+			if err != nil {
+				return err
+			}
 			err = addScanResultsToSarifRun(run, severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
 			if err != nil {
 				return err

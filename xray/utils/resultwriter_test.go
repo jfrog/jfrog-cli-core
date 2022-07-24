@@ -10,10 +10,13 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 	currentScan := services.ScanResponse{
 		Vulnerabilities: []services.Vulnerability{
 			{
-				IssueId:    "XRAY-1",
-				Summary:    "summary-1",
-				Severity:   "9",
-				Components: map[string]services.Component{"component-G": {[]string{"[2.1.3]"}, nil}, "component-B": {}},
+				IssueId:  "XRAY-1",
+				Summary:  "summary-1",
+				Severity: "9",
+				Components: map[string]services.Component{
+					"component-G": {FixedVersions: []string{"[2.1.3]"},
+						ImpactPaths: nil},
+					"component-B": {}},
 				Technology: "go",
 			},
 			{

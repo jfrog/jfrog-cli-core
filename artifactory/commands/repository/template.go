@@ -290,6 +290,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	PomRepositoryReferencesCleanupPolicy: {Text: PomRepositoryReferencesCleanupPolicy},
 	DefaultDeploymentRepo:                {Text: DefaultDeploymentRepo},
 	ForceMavenAuthentication:             {Text: ForceMavenAuthentication},
+	ForceNugetAuthentication:             {Text: ForceNugetAuthentication},
 	ExternalDependenciesRemoteRepo:       {Text: ExternalDependenciesRemoteRepo},
 }
 
@@ -921,5 +922,6 @@ var questionMap = map[string]utils.QuestionInfo{
 	},
 	DefaultDeploymentRepo:          utils.FreeStringQuestionInfo,
 	ForceMavenAuthentication:       BoolToStringQuestionInfo,
+	ForceNugetAuthentication:       BoolToStringQuestionInfo,
 	ExternalDependenciesRemoteRepo: utils.FreeStringQuestionInfo,
 }

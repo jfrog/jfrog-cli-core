@@ -72,7 +72,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Pipenv: {
 		PackageType: "pypi",
-		indicators:  []string{"pipfile", "pipfile.lock"},
+		indicators:  []string{"Pipfile", "Pipfile.lock"},
 	},
 	Nuget: {
 		PackageType: "nuget",

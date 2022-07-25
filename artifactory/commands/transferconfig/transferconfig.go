@@ -253,9 +253,10 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 
 	// Do export
 	trueValue := true
+	falseValue := false
 	exportParams := services.ExportParams{
 		ExportPath:      tempDir,
-		IncludeMetadata: &trueValue,
+		IncludeMetadata: &falseValue,
 		Verbose:         &tcc.verbose,
 		ExcludeContent:  &trueValue,
 	}

@@ -123,11 +123,12 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	}
 
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
-		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 {
-			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorChannel)
+		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !delayHelper.delayedArtifactsChannelMng.shouldStop() && !errorsChannelMng.shouldStop() {
+			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorsChannelMng)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
 				return err
@@ -136,7 +137,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = manager.doTransfer(true, action)
+	err = manager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}
@@ -150,37 +151,48 @@ type timeFrameParams struct {
 	fromTime time.Time
 }
 
-func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) diffTimeFrameHandlerFunc {
+func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return f.handleTimeFrameFilesDiff(params, logMsgPrefix, uploadTokensChan, delayHelper, errorChannel)
+			return f.handleTimeFrameFilesDiff(params, logMsgPrefix, uploadTokensChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
-func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	fromTimestamp := params.fromTime.Format(time.RFC3339)
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
 
-	result, err := f.getTimeFrameFilesDiff(params.repoKey, fromTimestamp, toTimestamp)
-	if err != nil {
-		return err
+	paginationI := 0
+	for {
+		result, err := f.getTimeFrameFilesDiff(params.repoKey, fromTimestamp, toTimestamp, paginationI)
+		if err != nil {
+			return err
+		}
+
+		if len(result.Results) == 0 {
+			if paginationI == 0 {
+				log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
+			}
+			break
+		}
+
+		files := convertResultsToFileRepresentation(result.Results)
+		shouldStop, err := uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorsChannelMng)
+		if err != nil || shouldStop {
+			return err
+		}
+
+		if len(result.Results) < aqlPaginationLimit {
+			break
+		}
+		paginationI++
 	}
 
-	if len(result.Results) == 0 {
-		log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
-		return nil
-	}
-
-	files := convertResultsToFileRepresentation(result.Results)
-	err = uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
-	if err != nil {
-		return err
-	}
 	if f.progressBar != nil {
-		err = f.progressBar.IncrementPhase(f.phaseId)
+		err := f.progressBar.IncrementPhase(f.phaseId)
 		if err != nil {
 			return err
 		}
@@ -200,15 +212,16 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
-func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp)
+func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.srcRtDetails, query)
 }
 
-func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
-	items := fmt.Sprintf(`items.find({"type":"file","modified":{"$gte":"%s"},"modified":{"$lt":"%s"},"$or":[{"$and":[{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]}]})`, fromTimestamp, toTimestamp, repoKey)
-	items += `.include("repo","path","name")`
-	return items
+func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
+	query += `.include("repo","path","name","modified")`
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	return query
 }
 
 // Consumes errors files with upload failures from cache and tries to upload these files again.
@@ -217,17 +230,22 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string) string {
 func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
-		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorChannel)
+	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+			return nil
+		}
+		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransfer(false, action)
+	err := manager.doTransfer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}
 	return err
 }
 
-func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range f.errorsFilesToHandle {
 		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)
@@ -241,8 +259,8 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHe
 			return errorutils.CheckError(err)
 		}
 
-		err = uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan, f.phaseBase, delayHelper, errorChannel)
-		if err != nil {
+		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan, f.phaseBase, delayHelper, errorsChannelMng)
+		if err != nil || shouldStop {
 			return err
 		}
 

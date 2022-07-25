@@ -12,13 +12,12 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"strconv"
 )
 
 const (
 	tasksMaxCapacity = 10000
-	uploadChunkSize  = 100
-	// Default number of threads working while transferring Artifactory's data
-	defaultThreads = 16
+	uploadChunkSize  = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize = 500000
 	retries                = 3
@@ -131,52 +130,39 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		if tdc.progressbar != nil {
 			tdc.progressbar.NewRepository(repo)
 		}
-		for phaseI := 0; phaseI < numberOfPhases; phaseI++ {
-			newPhase := getPhaseByNum(phaseI, repo)
-			tdc.initNewPhase(newPhase, srcUpService, repoSummary)
-			skip, err := newPhase.shouldSkipPhase()
+		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
+			err = tdc.startPhase(currentPhaseId, repo, repoSummary, srcUpService)
 			if err != nil {
-				return err
-			}
-			if skip {
-				continue
-			}
-			err = newPhase.phaseStarted()
-			if err != nil {
-				return err
-			}
-			err = newPhase.initProgressBar()
-			if err != nil {
-				return err
-			}
-			printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
-			err = newPhase.run()
-			if err != nil {
-				return err
-			}
-			printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
-			err = newPhase.phaseDone()
-			if err != nil {
-				return err
+				return tdc.cleanup(err)
 			}
 		}
 	}
-	if tdc.progressbar != nil {
-		err = tdc.progressbar.Quit()
-		if err != nil {
-			return err
-		}
-	}
+	// Close progressBar and create CSV errors summary file
+	return tdc.cleanup(nil)
+}
 
-	log.Info("Transferring was completed!")
-	csvErrorsFile, err := createErrorsCsvSummary()
+func (tdc *TransferFilesCommand) startPhase(currentPhaseId int, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
+	newPhase := getPhaseByNum(currentPhaseId, repo)
+	tdc.initNewPhase(newPhase, srcUpService, repoSummary)
+	skip, err := newPhase.shouldSkipPhase()
+	if err != nil || skip {
+		return err
+	}
+	err = newPhase.phaseStarted()
 	if err != nil {
 		return err
 	}
-	if csvErrorsFile != "" {
-		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	err = newPhase.initProgressBar()
+	if err != nil {
+		return err
 	}
-	return nil
+	printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
+	err = newPhase.run()
+	if err != nil {
+		return err
+	}
+	printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
+	return newPhase.phaseDone()
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {
@@ -214,7 +200,7 @@ func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageIn
 
 func (tdc *TransferFilesCommand) initCurThreads() error {
 	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = defaultThreads
+	curThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err
@@ -222,6 +208,7 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 	if settings != nil {
 		curThreads = settings.ThreadsNumber
 	}
+	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }
 
@@ -232,4 +219,31 @@ func printPhaseChange(message string) {
 type producerConsumerDetails struct {
 	producerConsumer parallel.Runner
 	errorsQueue      *clientUtils.ErrorsQueue
+}
+
+// If an error occurred cleanup will:
+// 1. Close progressBar
+// 2. Create CSV errors summary file
+func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
+	err = originalErr
+	// Quit progress bar (before printing logs)
+	if tdc.progressbar != nil {
+		e := tdc.progressbar.Quit()
+		if err == nil {
+			err = e
+		}
+	}
+	// Transferring finished successfully
+	if originalErr == nil {
+		log.Info("Files transfer is complete!")
+	}
+	// Create csv errors summary file
+	csvErrorsFile, e := createErrorsCsvSummary()
+	if err == nil {
+		err = e
+	}
+	if csvErrorsFile != "" {
+		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	}
+	return
 }

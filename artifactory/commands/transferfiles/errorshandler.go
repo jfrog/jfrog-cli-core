@@ -13,21 +13,23 @@ import (
 	"regexp"
 )
 
-const (
-	// Max errors that will be written in a file
-	maxErrorsInFile = 50000
-)
+// Max errors that will be written in a file
+var maxErrorsInFile = 50000
 
-// TransferErrorsMng managing multi threads writing errors.
+// TransferErrorsMng manages multi threads writing errors.
+// We want to create a file which contains all upload error statuses for each repository and phase.
+// Those files will serve us in 2 cases:
+// 1. Whenever we re-run 'transfer-files' command, we want to attempt to upload failed files again.
+// 2. As part of the transfer process, we generate a csv file that contains all upload errors.
+// In case an error occurs when creating those upload errors files, we would like to stop the transfer right away.
 type TransferErrorsMng struct {
-	// All go routines will write errors to this channel
-	errorsChannel chan FileUploadStatusResponse
+	// All go routines will write errors to the same channel
+	errorsChannelMng *ErrorsChannelMng
 	// Current repository that is being transferred
 	repoKey string
 	// Transfer current phase
 	phaseId        int
 	phaseStartTime string
-
 	errorWriterMng errorWriterMng
 }
 
@@ -44,53 +46,33 @@ type errorWriterMng struct {
 	skipped   errorWriter
 }
 
-func (mng *TransferErrorsMng) initErrorWriterMng() error {
-	writerMng := errorWriterMng{}
-	// Init the content writer which responsible for writing retryable errors - That means errors which related to files that we should try to transfer again in the next run
-	retryablePath, err := coreutils.GetJfrogTransferRetryableDir()
-	if err != nil {
-		return err
-	}
-	writerRetry, retryFilePath, err := mng.newContentWriter(retryablePath, 0)
-	if err != nil {
-		return err
-	}
-	writerMng.retryable = errorWriter{writer: writerRetry, fileIndex: 0, filePath: retryFilePath}
-
-	// Init the content writer which responsible for writing skipped errors - That means errors which related to files that we skipped on during transfer, and we shouldn't try transferring them again in the next run
-	skippedPath, err := coreutils.GetJfrogTransferSkippedDir()
-	if err != nil {
-		return err
-	}
-	writerSkip, skipFilePath, err := mng.newContentWriter(skippedPath, 0)
-	if err != nil {
-		return err
-	}
-	writerMng.skipped = errorWriter{writer: writerSkip, fileIndex: 0, filePath: skipFilePath}
-	mng.errorWriterMng = writerMng
-	return nil
-}
-
 // newTransferErrorsToFile creates a manager for the files transferring process.
 // localPath - Path to the dir which error files will be written to.
 // repoKey - the repo that is being transferred
 // phase - the phase number
-// bufferSize - the total of errorsEntity instances to write in buffer before flushing to disk
-func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannel chan FileUploadStatusResponse) (*TransferErrorsMng, error) {
+// errorsChannelMng - all go routines will write to the same channel
+func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng) (*TransferErrorsMng, error) {
 	err := initTransferErrorsDir()
 	if err != nil {
 		return nil, err
 	}
-
-	mng := TransferErrorsMng{errorsChannel: errorsChannel, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime}
-	err = mng.initErrorWriterMng()
-	return &mng, err
+	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime}
+	return &mng, nil
 }
 
 // Create transfer errors directory inside the JFrog CLI home directory.
 // Inside the errors directory creates directory for retryable errors and skipped errors.
 // Return the root errors' directory path.
 func initTransferErrorsDir() error {
+	// Create transfer directory (if it doesn't exist)
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = makeDirIfDoesNotExists(transferDir)
+	if err != nil {
+		return err
+	}
 	// Create errors directory
 	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
 	if err != nil {
@@ -114,11 +96,7 @@ func initTransferErrorsDir() error {
 	if err != nil {
 		return err
 	}
-	err = makeDirIfDoesNotExists(skipped)
-	if err != nil {
-		return err
-	}
-	return nil
+	return makeDirIfDoesNotExists(skipped)
 }
 
 func makeDirIfDoesNotExists(path string) error {
@@ -132,23 +110,53 @@ func makeDirIfDoesNotExists(path string) error {
 	return err
 }
 
-func (mng *TransferErrorsMng) start() error {
-	for e := range mng.errorsChannel {
-		err := mng.writeErrorContent(e)
+func (mng *TransferErrorsMng) start() (err error) {
+	// Init content writers manager
+	writerMng := errorWriterMng{}
+	// Init the content writer which is responsible for writing 'retryable errors' into files.
+	// In the next run we would like to retry and upload those files again.
+	retryablePath, err := coreutils.GetJfrogTransferRetryableDir()
+	if err != nil {
+		return err
+	}
+	writerRetry, retryFilePath, err := mng.newContentWriter(retryablePath, 0)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := mng.errorWriterMng.retryable.closeWriter()
+		if err == nil {
+			err = e
+		}
+	}()
+	writerMng.retryable = errorWriter{writer: writerRetry, fileIndex: 0, filePath: retryFilePath}
+	// Init the content writer which is responsible for writing 'skipped errors' into files.
+	// In the next run we won't retry and upload those files.
+	skippedPath, err := coreutils.GetJfrogTransferSkippedDir()
+	if err != nil {
+		return err
+	}
+	writerSkip, skipFilePath, err := mng.newContentWriter(skippedPath, 0)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := mng.errorWriterMng.skipped.closeWriter()
+		if err == nil {
+			err = e
+		}
+	}()
+	writerMng.skipped = errorWriter{writer: writerSkip, fileIndex: 0, filePath: skipFilePath}
+	mng.errorWriterMng = writerMng
+
+	// Read errors from channel and write them to files.
+	for e := range mng.errorsChannelMng.channel {
+		err = mng.writeErrorContent(e)
 		if err != nil {
-			return err
+			return
 		}
 	}
-	err := mng.errorWriterMng.retryable.closeWriter()
-	if err != nil {
-		return err
-	}
-	err = mng.errorWriterMng.skipped.closeWriter()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
 
 func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*content.ContentWriter, string, error) {
@@ -316,4 +324,34 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 		}
 	}
 	return
+}
+
+// ErrorsChannelMng handles the uploading errors and adds them to a common channel.
+// Stops adding elements to the channel if an error occurs while handling the files.
+type ErrorsChannelMng struct {
+	channel chan FileUploadStatusResponse
+	err     error
+}
+
+func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
+	if mng.shouldStop() {
+		return true
+	}
+	mng.channel <- element
+	return false
+}
+
+// Close channel
+func (mng ErrorsChannelMng) close() {
+	close(mng.channel)
+}
+
+func (mng ErrorsChannelMng) shouldStop() bool {
+	// Stop adding elements to the channel if a 'blocking' error occurred in a different go routine.
+	return mng.err != nil
+}
+
+func createErrorsChannelMng() ErrorsChannelMng {
+	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
+	return ErrorsChannelMng{channel: errorChannel}
 }

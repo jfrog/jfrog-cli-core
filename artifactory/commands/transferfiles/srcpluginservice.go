@@ -41,6 +41,7 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
@@ -68,6 +69,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
 		return "", err
@@ -135,6 +137,7 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"handlePropertiesDiff", content, &httpDetails)
 	if err != nil {
 		return nil, err

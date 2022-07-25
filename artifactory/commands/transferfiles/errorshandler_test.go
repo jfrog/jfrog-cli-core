@@ -107,21 +107,12 @@ func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatus
 	errorsNamesMap := make(map[string]bool)
 	for _, entity := range filesErrors.Errors {
 		// Verify error's status
-		if entity.Status != status {
-			assert.Fail(t, fmt.Sprintf("expecting error status to be: %s but got %s", status, entity.Status))
-			return
-		}
+		assert.Equal(t, status, entity.Status, fmt.Sprintf("expecting error status to be: %s but got %s", status, entity.Status))
 		// Verify error's unique name
-		if errorsNamesMap[entity.Name] == true {
-			assert.Fail(t, fmt.Sprintf("an error with the uniqe name \"%s\" was written more than once", entity.Name))
-			return
-		}
+		assert.False(t, errorsNamesMap[entity.Name], fmt.Sprintf("an error with the uniqe name \"%s\" was written more than once", entity.Name))
 		errorsNamesMap[entity.Name] = true
 		// Verify time
-		if entity.Time == "" {
-			assert.Fail(t, "expecting error's time stamp, but got empty string")
-			return
-		}
+		assert.NotEmptyf(t, entity.Time, "expecting error's time stamp, but got empty string")
 	}
 	return len(filesErrors.Errors)
 }

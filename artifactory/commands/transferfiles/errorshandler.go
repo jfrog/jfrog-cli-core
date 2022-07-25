@@ -343,7 +343,7 @@ func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool)
 	if mng.shouldStop() {
 		return true
 	}
-	extendedElement := ExtendedFileUploadStatusResponse{FileUploadStatusResponse: element, Time: time.Now().Format(time.RFC822)}
+	extendedElement := ExtendedFileUploadStatusResponse{FileUploadStatusResponse: element, Time: time.Now().Format(time.RFC3339)}
 	mng.channel <- extendedElement
 	return false
 }

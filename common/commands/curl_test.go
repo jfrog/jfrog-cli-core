@@ -7,18 +7,18 @@ import (
 func TestFindNextArg(t *testing.T) {
 	command := &CurlCommand{}
 	args := [][]string{
-		{"-X", "GET", "/api/arg1", "--foo", "bar"},
+		{"-X", "GET", "arg1", "--foo", "bar"},
 		{"-X", "GET", "--server-idea", "foo", "/api/arg2"},
-		{"-XGET", "--foo", "bar", "--foo-bar", "meow", "/api/arg3"},
+		{"-XGET", "--foo", "bar", "--foo-bar", "meow", "arg3"},
 	}
 
 	expected := []struct {
 		int
 		string
 	}{
-		{2, "/api/arg1"},
+		{2, "arg1"},
 		{4, "/api/arg2"},
-		{5, "/api/arg3"},
+		{5, "arg3"},
 	}
 
 	for index, test := range args {

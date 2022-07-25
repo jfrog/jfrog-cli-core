@@ -74,7 +74,10 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	// Test child module
 	childNode := audit.GetAndAssertNode(t, rootNodes, "pytest:5.4.3")
 	// Test sub child module
-	transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")
-
-	audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
+	if assert.NotNil(t, childNode) {
+		transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")
+		if assert.NotNil(t, transitiveChildNode) {
+			audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
+		}
+	}
 }

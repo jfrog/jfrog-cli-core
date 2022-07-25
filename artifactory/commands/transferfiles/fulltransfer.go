@@ -3,14 +3,12 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
-	"sync"
 	"time"
 )
 
@@ -34,33 +32,16 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	serviceManager, err := utils.CreateServiceManager(m.getSourceDetails(), -1, 0, false)
+	tasks, err := m.repoSummary.FilesCount.Int64()
 	if err != nil {
 		return err
 	}
-	repoSummaryList, err := serviceManager.StorageInfo()
-	if err != nil {
-		return err
-	}
-	for _, repo := range repoSummaryList.RepositoriesSummaryList {
-		if m.repoKey == repo.RepoKey {
-			tasks, err := repo.FilesCount.Int64()
-			if err != nil {
-				return err
-			}
-			m.progressBar.AddPhase1(tasks)
-			return nil
-		}
-	}
-	return fmt.Errorf("repository: \"%s\" doesn't exists in Artifactory", m.repoKey)
+	m.progressBar.AddPhase1(tasks)
+	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
 	return "Full Transfer Phase"
-}
-
-func (m *fullTransferPhase) getPhaseId() int {
-	return 0
 }
 
 func (m *fullTransferPhase) phaseStarted() error {
@@ -81,7 +62,10 @@ func (m *fullTransferPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.DonePhase(m.getPhaseId())
+	if m.progressBar != nil {
+		return m.progressBar.DonePhase(m.phaseId)
+	}
+	return nil
 }
 
 func (m *fullTransferPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -118,67 +102,23 @@ func (m *fullTransferPhase) setTargetDetails(details *coreConfig.ServerDetails) 
 	m.targetRtDetails = details
 }
 
+func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
+	m.repoSummary = repoSummary
+}
+
 func (m *fullTransferPhase) run() error {
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
-	expectedChan := make(chan int, 1)
-	errorsQueue := clientUtils.NewErrorsQueue(1)
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
-	var runWaitGroup sync.WaitGroup
-	// Done channel notifies the polling go routines that no more tasks are expected.
-	doneChan := make(chan bool, 2)
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, doneChan)
-	}()
-
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		pcDetails := producerConsumerDetails{
-			producerConsumer: producerConsumer,
-			expectedChan:     expectedChan,
-			errorsQueue:      errorsQueue,
-			uploadTokensChan: uploadTokensChan,
+	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
+	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+			return nil
 		}
-		folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails)
-		_, err := producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), errorsQueue.AddError)
-		if err != nil {
-			log.Error("error occurred when adding new task to producer consumer:" + err.Error())
-		}
-	}()
-
-	var pollingError error
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		pollingError = pollUploads(m.srcUpService, uploadTokensChan, doneChan)
-	}()
-
-	var runnerErr error
-	runWaitGroup.Add(1)
-	go func() {
-		defer runWaitGroup.Done()
-		// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
-		// the work is assumed to be done.
-		runnerErr = producerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-		// Notify the other go routines that work is done.
-		doneChan <- true
-		doneChan <- true
-	}()
-	// Blocked until finish consuming
-	producerConsumer.Run()
-	runWaitGroup.Wait()
-
-	var returnedError error
-	for _, err := range []error{runnerErr, pollingError, errorsQueue.GetError()} {
-		if err != nil {
-			log.Error(err)
-			returnedError = err
-		}
+		folderHandler := m.createFolderFullTransferHandlerFunc(*pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
+		_, err := pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcDetails.errorsQueue.AddError)
+		return err
 	}
-	return returnedError
+	return manager.doTransferWithProducerConsumer(action)
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -188,91 +128,122 @@ type folderParams struct {
 	relativePath string
 }
 
-func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails) folderFullTransferHandlerFunc {
+func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcDetails producerConsumerDetails, uploadTokensChan chan string,
+	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return m.transferFolder(params, logMsgPrefix, pcDetails)
+			return m.transferFolder(params, logMsgPrefix, pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
-func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails) error {
+func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcDetails producerConsumerDetails,
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
-
-	result, err := m.getDirectoryContentsAql(params.repoKey, params.relativePath)
-	if err != nil {
-		return err
-	}
 
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 
-	for _, item := range result.Results {
-		if item.Name == "." {
-			continue
+	var result *servicesUtils.AqlSearchResult
+	paginationI := 0
+	for {
+		result, err = m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
+		if err != nil {
+			return err
 		}
-		switch item.Type {
-		case "folder":
-			newRelativePath := item.Name
-			if params.relativePath != "." {
-				newRelativePath = path.Join(params.relativePath, newRelativePath)
-			}
-			folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails)
-			_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
-			if err != nil {
-				log.Error("error occurred when adding new task to producer consumer:" + err.Error())
-			}
-		case "file":
-			curUploadChunk.appendUploadCandidate(item.Repo, item.Path, item.Name)
-			if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-				err := uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
-				if err != nil {
-					log.Error(err)
-				}
-				// Increase phase1 progress bar with the uploaded number of files.
-				if m.progressBar != nil {
-					err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
-					if err != nil {
-						return err
-					}
-				}
-				// Empty the uploaded chunk.
-				curUploadChunk.UploadCandidates = []FileRepresentation{}
-			}
-		}
-	}
 
-	// Empty folder. Add it as candidate.
-	if len(result.Results) == 0 {
-		curUploadChunk.appendUploadCandidate(params.repoKey, path.Dir(params.relativePath), path.Base(params.relativePath))
+		// Empty folder. Add it as candidate.
+		if paginationI == 0 && len(result.Results) == 0 {
+			curUploadChunk.appendUploadCandidate(FileRepresentation{
+				Repo: params.repoKey,
+				Path: path.Dir(params.relativePath),
+				Name: path.Base(params.relativePath),
+			})
+			break
+		}
+
+		for _, item := range result.Results {
+			// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
+			if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+				log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+				return
+			}
+			if item.Name == "." {
+				continue
+			}
+			switch item.Type {
+			case "folder":
+				newRelativePath := item.Name
+				if params.relativePath != "." {
+					newRelativePath = path.Join(params.relativePath, newRelativePath)
+				}
+				folderHandler := m.createFolderFullTransferHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
+				_, err = pcDetails.producerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcDetails.errorsQueue.AddError)
+				if err != nil {
+					return err
+				}
+			case "file":
+				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+				if stopped {
+					return
+				}
+				if delayed {
+					continue
+				}
+				curUploadChunk.appendUploadCandidate(file)
+				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					if stopped {
+						return
+					}
+					// Increase phase1 progress bar with the uploaded number of files.
+					if m.progressBar != nil {
+						err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
+						if err != nil {
+							return err
+						}
+					}
+					// Empty the uploaded chunk.
+					curUploadChunk.UploadCandidates = []FileRepresentation{}
+				}
+			}
+		}
+
+		if len(result.Results) < aqlPaginationLimit {
+			break
+		}
+		paginationI++
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		err = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, pcDetails.uploadTokensChan)
-		if err != nil {
-			return err
+		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
 		if m.progressBar != nil {
-			err = m.progressBar.IncrementPhaseBy(m.getPhaseId(), len(curUploadChunk.UploadCandidates))
+			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(curUploadChunk.UploadCandidates))
 			if err != nil {
-				return err
+				return
 			}
 		}
 	}
 	log.Debug(logMsgPrefix+"Done transferring folder:", path.Join(params.repoKey, params.relativePath))
-	return nil
+	return
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string) (result *artifactoryUtils.AqlSearchResult, err error) {
-	query := generateFolderContentsAqlQuery(repoKey, relativePath)
+func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	query := generateFolderContentsAqlQuery(repoKey, relativePath, paginationOffset)
 	return runAql(m.srcRtDetails, query)
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string) string {
-	return fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]}).include("repo","path","name","type")`, repoKey, relativePath)
+func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
+	query += `.include("repo","path","name","type")`
+	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	return query
 }

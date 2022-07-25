@@ -389,6 +389,85 @@
             <propagateQueryParams>false</propagateQueryParams>
             <disableUrlNormalization>false</disableUrlNormalization>
         </remoteRepository>
+        <remoteRepository>
+            <key>default-go-remote</key>
+            <type>go</type>
+            <description>(local file cache)</description>
+            <notes></notes>
+            <includesPattern>**/*</includesPattern>
+            <excludesPattern></excludesPattern>
+            <repoLayoutRef>maven-2-default</repoLayoutRef>
+            <dockerApiVersion>V2</dockerApiVersion>
+            <forceNugetAuthentication>false</forceNugetAuthentication>
+            <forceConanAuthentication>false</forceConanAuthentication>
+            <ddebSupported>false</ddebSupported>
+            <signedUrlTtl>90</signedUrlTtl>
+            <blackedOut>false</blackedOut>
+            <handleReleases>true</handleReleases>
+            <handleSnapshots>true</handleSnapshots>
+            <maxUniqueSnapshots>0</maxUniqueSnapshots>
+            <maxUniqueTags>0</maxUniqueTags>
+            <blockPushingSchema1>true</blockPushingSchema1>
+            <suppressPomConsistencyChecks>false</suppressPomConsistencyChecks>
+            <propertySets/>
+            <archiveBrowsingEnabled>false</archiveBrowsingEnabled>
+            <xray>
+                <enabled>false</enabled>
+                <dataTtl>90</dataTtl>
+            </xray>
+            <downloadRedirect>
+                <enabled>false</enabled>
+            </downloadRedirect>
+            <priorityResolution>false</priorityResolution>
+            <cdnRedirect>
+                <enabled>false</enabled>
+            </cdnRedirect>
+            <url>https://gocenter.io/</url>
+            <offline>false</offline>
+            <hardFail>false</hardFail>
+            <storeArtifactsLocally>true</storeArtifactsLocally>
+            <fetchJarsEagerly>false</fetchJarsEagerly>
+            <fetchSourcesEagerly>false</fetchSourcesEagerly>
+            <retrievalCachePeriodSecs>7200</retrievalCachePeriodSecs>
+            <metadataRetrievalTimeoutSecs>60</metadataRetrievalTimeoutSecs>
+            <assumedOfflinePeriodSecs>300</assumedOfflinePeriodSecs>
+            <missedRetrievalCachePeriodSecs>600</missedRetrievalCachePeriodSecs>
+            <remoteRepoChecksumPolicyType>generate-if-absent</remoteRepoChecksumPolicyType>
+            <unusedArtifactsCleanupPeriodHours>0</unusedArtifactsCleanupPeriodHours>
+            <shareConfiguration>false</shareConfiguration>
+            <synchronizeProperties>false</synchronizeProperties>
+            <listRemoteFolderItems>true</listRemoteFolderItems>
+            <rejectInvalidJars>false</rejectInvalidJars>
+            <vcs>
+                <type>git</type>
+                <git>
+                    <provider>github</provider>
+                </git>
+            </vcs>
+            <contentSynchronisation>
+                <enabled>false</enabled>
+                <statistics>
+                    <enabled>false</enabled>
+                </statistics>
+                <properties>
+                    <enabled>false</enabled>
+                </properties>
+                <source>
+                    <originAbsenceDetection>false</originAbsenceDetection>
+                </source>
+            </contentSynchronisation>
+            <blockMismatchingMimeTypes>false</blockMismatchingMimeTypes>
+            <bypassHeadRequests>false</bypassHeadRequests>
+            <username></username>
+            <password></password>
+            <allowAnyHostAuth>false</allowAnyHostAuth>
+            <socketTimeoutMillis>15000</socketTimeoutMillis>
+            <enableCookieManagement>false</enableCookieManagement>
+            <enableTokenAuthentication>false</enableTokenAuthentication>
+            <localAddress></localAddress>
+            <propagateQueryParams>false</propagateQueryParams>
+            <disableUrlNormalization>false</disableUrlNormalization>
+        </remoteRepository>
     </remoteRepositories>
     <virtualRepositories>
         <virtualRepository>

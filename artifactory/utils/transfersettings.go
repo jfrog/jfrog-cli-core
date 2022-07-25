@@ -13,6 +13,9 @@ import (
 )
 
 const (
+	// DefaultThreads is the default number of threads working while transferring Artifactory's data
+	DefaultThreads = 8
+
 	transferSettingsFile     = "transfer.conf"
 	transferSettingsLockFile = "transfer-settings"
 )
@@ -21,73 +24,75 @@ type TransferSettings struct {
 	ThreadsNumber int `json:"threadsNumber,omitempty"`
 }
 
-func LoadTransferSettings() (*TransferSettings, error) {
+func LoadTransferSettings() (settings *TransferSettings, err error) {
 	filePath, err := getSettingsFilePath()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
 		return nil, err
 	}
-	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
+	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := lockFile.Unlock()
+		e := unlockFunc()
 		if err == nil {
 			err = e
 		}
 	}()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	exists, err := fileutils.IsFileExists(filePath, false)
 	if err != nil || !exists {
-		return nil, err
+		return
 	}
 	content, err := fileutils.ReadFile(filePath)
 	if err != nil {
-		return nil, err
+		return
 	}
-	settings := new(TransferSettings)
 	err = json.Unmarshal(content, &settings)
-	return settings, err
+	return
 }
 
 func SaveTransferSettings(settings *TransferSettings) (err error) {
 	b, err := json.Marshal(&settings)
 	if err != nil {
-		return errorutils.CheckError(err)
+		err = errorutils.CheckError(err)
+		return
 	}
 	var contentBuffer bytes.Buffer
-	err = json.Indent(&contentBuffer, b, "", "  ")
+	err = errorutils.CheckError(json.Indent(&contentBuffer, b, "", "  "))
 	if err != nil {
-		return errorutils.CheckError(err)
+		return
 	}
 	bytesContent := contentBuffer.Bytes()
 	filePath, err := getSettingsFilePath()
 	if err != nil {
-		return err
+		return
 	}
 
 	locksDirPath, err := coreutils.GetJfrogLocksDir()
 	if err != nil {
-		return err
+		return
 	}
-	lockFile, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
+	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := lockFile.Unlock()
+		e := unlockFunc()
 		if err == nil {
 			err = e
 		}
 	}()
 	if err != nil {
-		return err
+		return
 	}
 
-	err = ioutil.WriteFile(filePath, bytesContent, 0600)
-	return errorutils.CheckError(err)
+	err = errorutils.CheckError(ioutil.WriteFile(filePath, bytesContent, 0600))
+	return
 }
 
 func getSettingsFilePath() (string, error) {

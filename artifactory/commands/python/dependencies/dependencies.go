@@ -118,8 +118,8 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 
 	// Verify checksum exist.
 	sha256 := parsedResult.Results[0].Sha256
-	sha1 := parsedResult.Results[0].Actual_sha1
-	md5 := parsedResult.Results[0].Actual_md5
+	sha1 := parsedResult.Results[0].Actual_Sha1
+	md5 := parsedResult.Results[0].Actual_Md5
 	if sha1 == "" || md5 == "" {
 		// Missing checksum.
 		log.Debug(fmt.Sprintf("Missing checksums for file: %s, sha256: '%s', sha1: '%s', md5: '%s'", dependencyFile, sha256, sha1, md5))
@@ -142,11 +142,5 @@ func promptMissingDependencies(missingDeps []string) {
 }
 
 type aqlResult struct {
-	Results []*results `json:"results,omitempty"`
-}
-
-type results struct {
-	Actual_md5  string `json:"actual_md5,omitempty"`
-	Actual_sha1 string `json:"actual_sha1,omitempty"`
-	Sha256      string `json:"sha256,omitempty"`
+	Results []*serviceutils.ResultItem `json:"results,omitempty"`
 }

@@ -26,9 +26,9 @@ func TestArchiveConfig(t *testing.T) {
 		if zipFile.Name == "artifactory.config.xml" {
 			f, err := zipFile.Open()
 			assert.NoError(t, err)
-			defer func() {
-				assert.NoError(t, f.Close())
-			}()
+			defer func(file io.ReadCloser) {
+				assert.NoError(t, file.Close())
+			}(f)
 			actualConfigXml, err := io.ReadAll(f)
 			assert.NoError(t, err)
 			assert.Equal(t, expectedConfigXml, string(actualConfigXml))

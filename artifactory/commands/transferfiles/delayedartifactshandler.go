@@ -170,8 +170,8 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 			return fileName == "conanfile.py"
 		}, func(fileName string) bool {
 			return fileName == "conaninfo.txt"
-		}, func(fileName string) bool {
-			return fileName == ".timestamp"
+			//}, func(fileName string) bool {
+			//	return fileName == ".timestamp"
 		}}
 	}
 	return []shouldDelayUpload{}

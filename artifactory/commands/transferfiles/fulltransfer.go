@@ -187,6 +187,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 			case "file":
 				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				if file.Name == ".timestamp" {
+					continue
+				}
 				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
 				if stopped {
 					return

@@ -80,5 +80,4 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 			audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
 		}
 	}
-
 }

@@ -291,9 +291,13 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		}
 		// Password/Access-Token/MTLS Certificate
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
-			authMethod, err := promptAuthMethods()
-			if err != nil {
-				return err
+			var authMethod AuthenticationMethod
+			var err error
+			if !cc.disablePromptUrls {
+				authMethod, err = promptAuthMethods()
+				if err != nil {
+					return err
+				}
 			}
 			switch authMethod {
 			case UsernameAndPass:

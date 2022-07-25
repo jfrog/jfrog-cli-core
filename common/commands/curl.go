@@ -144,13 +144,39 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 }
 
 // Find the URL argument in the Curl Command.
-// By convention, all the Artifactory and Xray URIs starts with /api/ or api/
+// A command flag is prefixed by '-' or '--'.
+// Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
+// An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
+	skipThisArg := false
 	for index, arg := range curlCmd.arguments {
-		if strings.HasPrefix(arg, "/api/") || strings.HasPrefix(arg, "api/") {
-			return index, arg
+		// Check if shouldn't check current arg.
+		if skipThisArg {
+			skipThisArg = false
+			continue
 		}
+
+		// If starts with '--', meaning a flag which its value is at next slot.
+		if strings.HasPrefix(arg, "--") {
+			skipThisArg = true
+			continue
+		}
+
+		// Check if '-'.
+		if strings.HasPrefix(arg, "-") {
+			if len(arg) > 2 {
+				// Meaning that this flag also contains its value.
+				continue
+			}
+			// If reached here, means that the flag value is at the next arg.
+			skipThisArg = true
+			continue
+		}
+
+		// Found an argument
+		return index, arg
 	}
+
 	// If reached here, didn't find an argument.
 	return -1, ""
 }

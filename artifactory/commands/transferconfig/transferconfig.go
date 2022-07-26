@@ -10,6 +10,7 @@ import (
 
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -120,7 +121,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Filter repositories to transfer
-	transferRepositories, err := utils.GetFilteredRepositories(sourceServicesManager, tcc.includeReposPatterns, tcc.excludeReposPatterns)
+	transferRepositories, err := transfer.GetFilteredRepositories(sourceServicesManager, tcc.includeReposPatterns, tcc.excludeReposPatterns, false)
 	if err != nil {
 		return
 	}

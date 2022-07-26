@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -182,7 +183,7 @@ func (tdc *TransferFilesCommand) getSrcLocalRepositories() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	return transfer.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, true)
 }
 
 func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) {
@@ -190,7 +191,7 @@ func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	return transfer.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, true)
 }
 
 func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageInfo, error) {

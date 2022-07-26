@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"path/filepath"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -38,13 +36,15 @@ func GetRepositories(artDetails *config.ServerDetails, repoType ...RepoType) ([]
 		return nil, err
 	}
 	repos := []string{}
-	for i := range repoType {
-		r, err := GetFilteredRepositories(sm, nil, nil, repoType[i])
+	for _, repoType := range repoType {
+		filterParams := services.RepositoriesFilterParams{RepoType: repoType.String()}
+
+		repositoriesDetails, err := sm.GetAllRepositoriesFiltered(filterParams)
 		if err != nil {
-			return repos, err
+			return nil, err
 		}
-		if len(r) > 0 {
-			repos = append(repos, r...)
+		for _, repositoryDetails := range *repositoriesDetails {
+			repos = append(repos, repositoryDetails.Key)
 		}
 	}
 
@@ -71,66 +71,4 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 		return false, errorutils.CheckErrorf("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error())
 	}
 	return repoDetails.GetRepoType() == "remote", nil
-}
-
-// GetFilteredRepositories returns the names of all repositories filtered by their names and types.
-// includePatterns - patterns of repository names (can contain wildcards) to include in the results. A repository's name
-// must match at least one of these patterns in order to be included in the results. If includePatterns' length is zero,
-// all repositories are included.
-// excludePatterns - patterns of repository names (can contain wildcards) to exclude from the results. A repository's name
-// must NOT match any of these patterns in order to be included in the results.
-// repoType - only repositories of this type will be returned. Only a maximum of ONE repository type can be filtered.
-// If more than one type are provided, the repositories will be filtered by the first one only.
-func GetFilteredRepositories(servicesManager artifactory.ArtifactoryServicesManager, includePatterns, excludePatterns []string, repoType ...RepoType) ([]string, error) {
-	filterParams := services.RepositoriesFilterParams{}
-	if len(repoType) > 0 {
-		filterParams.RepoType = repoType[0].String()
-	}
-	repos, err := servicesManager.GetAllRepositoriesFiltered(filterParams)
-	if err != nil {
-		return nil, err
-	}
-	return filterRepositoryNames(repos, includePatterns, excludePatterns)
-}
-
-func filterRepositoryNames(repos *[]services.RepositoryDetails, includePatterns, excludePatterns []string) ([]string, error) {
-	allIncluded := false
-	// If includePattens is empty, include all repositories.
-	if len(includePatterns) == 0 {
-		allIncluded = true
-	}
-
-	var included []string
-	for _, repo := range *repos {
-		repoIncluded := allIncluded
-
-		// Check if this repository name matches any include pattern.
-		for _, includePattern := range includePatterns {
-			matched, err := filepath.Match(includePattern, repo.Key)
-			if err != nil {
-				return nil, err
-			}
-			if matched {
-				repoIncluded = true
-				break
-			}
-		}
-		if repoIncluded {
-			// Check if this repository name matches any exclude pattern.
-			for _, excludePattern := range excludePatterns {
-				matched, err := filepath.Match(excludePattern, repo.Key)
-				if err != nil {
-					return nil, err
-				}
-				if matched {
-					repoIncluded = false
-					break
-				}
-			}
-			if repoIncluded {
-				included = append(included, repo.Key)
-			}
-		}
-	}
-	return included, nil
 }

@@ -138,7 +138,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 }
 
 func (t *TransferProgressMng) SetRunningThreads(n int) {
-	// TODO: change to shouldDisplay
+	// TODO: change to t.shouldDisplay() after the "emergency stop" changes are being merged.
 	if t.barsMng != nil {
 		t.workingThreads.SetGeneralProgressTotal(int64(n))
 	}

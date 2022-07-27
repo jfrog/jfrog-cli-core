@@ -133,7 +133,7 @@ func (bm *ProgressBarMng) IncBy(n int, prog *tasksWithHeadlineProg) {
 func (bm *ProgressBarMng) DoneTask(prog *tasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
-	diff := prog.tasksProgressBar.totalTasks - prog.tasksProgressBar.tasksCount
+	diff := prog.tasksProgressBar.total - prog.tasksProgressBar.tasksCount
 	// Handle large number of total tasks
 	for ; diff > math.MaxInt; diff -= math.MaxInt {
 		prog.tasksProgressBar.bar.IncrBy(math.MaxInt)
@@ -153,6 +153,19 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *ta
 		),
 	)
 	pb.IncGeneralProgressTotalBy(totalTasks)
+	return pb
+}
+
+func (bm *ProgressBarMng) NewCounterProgressBar(num int64, headline string) *tasksProgressBar {
+	pb := &tasksProgressBar{}
+	pb.bar = bm.container.Add(num,
+		nil,
+		mpb.BarRemoveOnComplete(),
+		mpb.PrependDecorators(
+			decor.Name(headline),
+			decor.TotalNoUnit("%d"),
+		),
+	)
 	return pb
 }
 

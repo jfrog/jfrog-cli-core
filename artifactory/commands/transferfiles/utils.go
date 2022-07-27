@@ -70,7 +70,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
+// This variable holds the total number of upload chunk that were sent to the target Artifactory instance to process.
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex

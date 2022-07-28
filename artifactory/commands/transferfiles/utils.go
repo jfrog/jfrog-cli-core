@@ -70,7 +70,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the target Artifactory instance to process.
+// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
@@ -86,9 +86,10 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 
 	for {
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
-		// 'Working threads' are determined by how many upload chunks are currently being processed by the source
-		//Artifactory instance.
-		progressbar.SetRunningThreads(curProcessedUploadChunks)
+		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
+		if progressbar != nil {
+			progressbar.SetRunningThreads(curProcessedUploadChunks)
+		}
 		curTokensBatch.fillTokensBatch(uploadTokensChan)
 
 		if len(curTokensBatch.UuidTokens) == 0 {

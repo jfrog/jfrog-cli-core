@@ -27,7 +27,7 @@ var curThreads int
 type InterruptionErr struct{}
 
 func (m *InterruptionErr) Error() string {
-	return "Interrupted"
+	return "Files transfer was interrupted by user"
 }
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {

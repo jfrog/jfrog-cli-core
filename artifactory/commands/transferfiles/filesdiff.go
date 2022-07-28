@@ -192,7 +192,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 		paginationI++
 	}
 
-	if f.progressBar != nil && f.progressBar.ShouldDisplay() {
+	if f.progressBar != nil {
 		err := f.progressBar.IncrementPhase(f.phaseId)
 		if err != nil {
 			return err
@@ -269,7 +269,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHe
 			return errorutils.CheckError(err)
 		}
 
-		if f.progressBar != nil && f.progressBar.ShouldDisplay() {
+		if f.progressBar != nil {
 			err = f.progressBar.IncrementPhase(f.phaseId)
 			if err != nil {
 				return err

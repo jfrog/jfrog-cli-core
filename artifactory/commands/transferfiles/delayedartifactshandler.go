@@ -127,7 +127,7 @@ func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan
 		}
 
 		if base.progressBar != nil {
-			if base.phaseId == 0 && base.progressBar.ShouldDisplay() {
+			if base.phaseId == 0 {
 				err = base.progressBar.IncrementPhaseBy(base.phaseId, len(delayedArtifactsFile.DelayedArtifacts))
 				if err != nil {
 					return err

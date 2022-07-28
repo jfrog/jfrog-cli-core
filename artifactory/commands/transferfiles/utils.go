@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -69,7 +70,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
+// This variable holds the total number of upload chunk that were sent to the target Artifactory instance to process.
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
@@ -79,13 +80,15 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
 	for {
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
-
+		// 'Working threads' are determined by how many upload chunks are currently being processed by the source
+		//Artifactory instance.
+		progressbar.SetRunningThreads(curProcessedUploadChunks)
 		curTokensBatch.fillTokensBatch(uploadTokensChan)
 
 		if len(curTokensBatch.UuidTokens) == 0 {

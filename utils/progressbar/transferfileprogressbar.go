@@ -172,7 +172,7 @@ func (p *generalProgressBar) IncGeneralProgressTotalBy(n int64) {
 	}
 }
 
-// SetGeneralProgressTotal set the amount of total to n.
+// SetGeneralProgressTotal sets the amount of total to n.
 func (p *generalProgressBar) SetGeneralProgressTotal(n int64) {
 	atomic.StoreInt64(&p.total, n)
 	if p.bar != nil {

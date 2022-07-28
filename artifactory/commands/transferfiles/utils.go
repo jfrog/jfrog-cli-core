@@ -86,7 +86,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 
 	for {
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
-		// 'Working threads' are determined by how many upload chunks are currently being processed by the target Artifactory instance.
+		// 'Working threads' are determined by how many upload chunks are currently being processed by the source
+		//Artifactory instance.
 		progressbar.SetRunningThreads(curProcessedUploadChunks)
 		curTokensBatch.fillTokensBatch(uploadTokensChan)
 

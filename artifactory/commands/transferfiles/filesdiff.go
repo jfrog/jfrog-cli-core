@@ -281,7 +281,7 @@ func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHe
 	return nil
 }
 
-func convertUploadStatusToFileRepresentation(statuses []FileUploadStatusResponse) (files []FileRepresentation) {
+func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
 	for _, status := range statuses {
 		files = append(files, status.FileRepresentation)
 	}

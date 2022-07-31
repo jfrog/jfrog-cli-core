@@ -2,9 +2,10 @@ package progressbar
 
 import (
 	"errors"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"sync/atomic"
 	"time"
+
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -18,6 +19,8 @@ type TransferProgressMng struct {
 	shouldDisplay bool
 	// Task bar with the total repositories transfer progress
 	totalRepositories *tasksWithHeadlineProg
+	// A bar showing the number of working transfer threads
+	workingThreads *tasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -38,6 +41,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, WHITE)
+	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
 	return &transfer, nil
 }
 
@@ -55,6 +59,10 @@ func (t *TransferProgressMng) NewRepository(name string) {
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
 	if t.ShouldDisplay() {
+		if t.workingThreads != nil {
+			t.workingThreads.bar.Abort(true)
+			t.workingThreads = nil
+		}
 		if t.currentRepoHeadline != nil {
 			t.RemoveRepository()
 		}
@@ -92,7 +100,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckError(errors.New("invalid phase id"))
 	}
-	if t.phases[id].tasksProgressBar.totalTasks == 0 {
+	if t.phases[id].tasksProgressBar.total == 0 {
 		return nil
 	}
 	if t.ShouldDisplay() {
@@ -106,10 +114,10 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckError(errors.New("invalid phase id"))
 	}
-	if t.phases[id].tasksProgressBar.totalTasks == 0 {
+	if t.phases[id].tasksProgressBar.total == 0 {
 		return nil
 	}
-	if t.phases[id].tasksProgressBar.totalTasks < t.phases[id].tasksProgressBar.tasksCount+int64(n) {
+	if t.phases[id].tasksProgressBar.total < t.phases[id].tasksProgressBar.tasksCount+int64(n) {
 		return t.DonePhase(id)
 	}
 	if t.ShouldDisplay() {
@@ -155,16 +163,27 @@ func (t *TransferProgressMng) RemoveRepository() {
 	time.Sleep(ProgressRefreshRate)
 }
 
-func (t *TransferProgressMng) StopGracefully() {
+func (t *TransferProgressMng) SetRunningThreads(n int) {
 	if t.ShouldDisplay() {
-		t.shouldDisplay = false
-		// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
-		time.Sleep(ProgressRefreshRate)
-		t.RemoveRepository()
-		t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
-		t.totalRepositories = nil
-		t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+		t.workingThreads.SetGeneralProgressTotal(int64(n))
 	}
+}
+
+func (t *TransferProgressMng) StopGracefully() {
+	if !t.ShouldDisplay() {
+		return
+	}
+	t.shouldDisplay = false
+	// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
+	time.Sleep(ProgressRefreshRate)
+	if t.workingThreads != nil {
+		t.workingThreads.bar.Abort(true)
+		t.workingThreads = nil
+	}
+	t.RemoveRepository()
+	t.barsMng.quitTasksWithHeadlineProg(t.totalRepositories)
+	t.totalRepositories = nil
+	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
 }
 
 // Progress that includes two bars:
@@ -176,16 +195,29 @@ type tasksWithHeadlineProg struct {
 	emptyLine        *mpb.Bar
 }
 
-type tasksProgressBar struct {
-	bar        *mpb.Bar
-	tasksCount int64
-	totalTasks int64
+type generalProgressBar struct {
+	bar   *mpb.Bar
+	total int64
 }
 
-// IncGeneralProgressTotalBy increments the amount of total tasks by n.
-func (p *tasksProgressBar) IncGeneralProgressTotalBy(n int64) {
-	atomic.AddInt64(&p.totalTasks, n)
+// tasksProgressBar counts tasks that have been completed, using a "%d/%d" format.
+type tasksProgressBar struct {
+	generalProgressBar
+	tasksCount int64
+}
+
+// IncGeneralProgressTotalBy increments the amount of total by n.
+func (p *generalProgressBar) IncGeneralProgressTotalBy(n int64) {
+	atomic.AddInt64(&p.total, n)
 	if p.bar != nil {
-		p.bar.SetTotal(p.totalTasks, false)
+		p.bar.SetTotal(p.total, false)
+	}
+}
+
+// SetGeneralProgressTotal sets the amount of total to n.
+func (p *generalProgressBar) SetGeneralProgressTotal(n int64) {
+	atomic.StoreInt64(&p.total, n)
+	if p.bar != nil {
+		p.bar.SetTotal(p.total, false)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -81,7 +82,7 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, trans
 	if pcDetails != nil {
 		producerConsumer = pcDetails.producerConsumer
 	}
-	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -147,7 +148,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -167,7 +168,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		ptm.pollingErr = pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
+		ptm.pollingErr = pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
 	}()
 	return nil
 }

@@ -11,12 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 )
 
-const (
-	// Max errors that will be written in a file
-	maxErrorsInFile = 50000
-)
+// Max errors that will be written in a file
+var maxErrorsInFile = 50000
 
 // TransferErrorsMng manages multi threads writing errors.
 // We want to create a file which contains all upload error statuses for each repository and phase.
@@ -66,6 +65,15 @@ func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string,
 // Inside the errors directory creates directory for retryable errors and skipped errors.
 // Return the root errors' directory path.
 func initTransferErrorsDir() error {
+	// Create transfer directory (if it doesn't exist)
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = makeDirIfDoesNotExists(transferDir)
+	if err != nil {
+		return err
+	}
 	// Create errors directory
 	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
 	if err != nil {
@@ -161,7 +169,7 @@ func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*cont
 	return writer, errorsFilePath, nil
 }
 
-func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) error {
+func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
 	var err error
 	switch e.Status {
 	case SkippedLargeProps:
@@ -172,7 +180,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) erro
 	return err
 }
 
-func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusResponse) error {
+func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatusResponse) error {
 	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
@@ -197,7 +205,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusRespons
 	return nil
 }
 
-func (mng *TransferErrorsMng) writeRetryableErrorContent(e FileUploadStatusResponse) error {
+func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadStatusResponse) error {
 	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
@@ -322,15 +330,21 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 // ErrorsChannelMng handles the uploading errors and adds them to a common channel.
 // Stops adding elements to the channel if an error occurs while handling the files.
 type ErrorsChannelMng struct {
-	channel chan FileUploadStatusResponse
+	channel chan ExtendedFileUploadStatusResponse
 	err     error
+}
+
+type ExtendedFileUploadStatusResponse struct {
+	FileUploadStatusResponse
+	Time string `json:"time,omitempty"`
 }
 
 func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
 	if mng.shouldStop() {
 		return true
 	}
-	mng.channel <- element
+	extendedElement := ExtendedFileUploadStatusResponse{FileUploadStatusResponse: element, Time: time.Now().Format(time.RFC3339)}
+	mng.channel <- extendedElement
 	return false
 }
 
@@ -345,6 +359,6 @@ func (mng ErrorsChannelMng) shouldStop() bool {
 }
 
 func createErrorsChannelMng() ErrorsChannelMng {
-	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
+	errorChannel := make(chan ExtendedFileUploadStatusResponse, fileWritersChannelSize)
 	return ErrorsChannelMng{channel: errorChannel}
 }

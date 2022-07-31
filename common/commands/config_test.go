@@ -54,6 +54,15 @@ func TestAccessToken(t *testing.T) {
 	configAndTest(t, inputDetails, true)
 }
 
+func TestMTLS(t *testing.T) {
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.ClientCertPath = "test/cert/path"
+	inputDetails.ClientCertKeyPath = "test/cert/key/path"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
+}
+
 func TestArtifactoryRefreshToken(t *testing.T) {
 	// Import after tokens were generated.
 	inputDetails := tests.CreateTestServerDetails()

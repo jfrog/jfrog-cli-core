@@ -14,7 +14,7 @@ import (
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
-// False iff the user changed the username or the url.
+// False if the user changed the username or the url.
 func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, disallowUsingSavedPassword bool) error {
 	if details.GetUser() == "" {
 		tempUser := ""

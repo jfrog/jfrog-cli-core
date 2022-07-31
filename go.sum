@@ -596,8 +596,8 @@ github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:v
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/olekukonko/tablewriter v0.0.2/go.mod h1:rSAaSIOAGT9odnlyGlUfAJaoc5w2fSBUmeGDbRWPxyQ=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
-github.com/omerzi/jfrog-client-go v1.13.2-0.20220717130446-08c7afb9b5df h1:9WZ2eGQwdQ8AOHkAK9AijdZtcbTVl64Gh9MzbNDtPCI=
-github.com/omerzi/jfrog-client-go v1.13.2-0.20220717130446-08c7afb9b5df/go.mod h1:/Dk1HHBDjwt7CNKH2FPwLs0i5lMfomiX73GdluI328c=
+github.com/omerzi/jfrog-client-go v1.13.2-0.20220731105410-fd0274e9c49f h1:AxtB94JwSOjO6TegzpnPFbLnO5o3vO3vX6RQrzQ6qp8=
+github.com/omerzi/jfrog-client-go v1.13.2-0.20220731105410-fd0274e9c49f/go.mod h1:OwYfCvG+v8iv+BtjztM6c/KhVU5uOM1Z+eLgW/vbZig=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.10.3/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.12.1/go.mod h1:zj2OWP4+oCPe1qIXoGWkgMRwljMUYCdkwsT2108oapk=

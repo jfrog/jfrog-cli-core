@@ -171,8 +171,8 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]*utils.ResultItem, b
 			if err != nil {
 				return totalDownloaded, err
 			}
-			if resp.StatusCode != http.StatusOK {
-				return totalDownloaded, errorutils.CheckErrorf("Artifactory response: " + resp.Status + "for" + string(body))
+			if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+				return totalDownloaded, err
 			}
 			totalDownloaded++
 		}

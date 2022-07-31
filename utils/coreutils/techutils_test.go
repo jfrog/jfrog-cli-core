@@ -17,7 +17,7 @@ func TestDetectTechnologiesByFilePaths(t *testing.T) {
 		{"yarnTest", []string{"./package.json", "./.yarn"}, map[Technology]bool{Yarn: true}},
 		{"windowsGradleTest", []string{"c:\\users\\test\\package\\build.gradle"}, map[Technology]bool{Gradle: true}},
 		{"windowsPipTest", []string{"c:\\users\\test\\package\\setup.py"}, map[Technology]bool{Pip: true}},
-		{"windowsPipenvTest", []string{"c:\\users\\test\\package\\pipfile"}, map[Technology]bool{Pipenv: true}},
+		{"windowsPipenvTest", []string{"c:\\users\\test\\package\\Pipfile"}, map[Technology]bool{Pipenv: true}},
 		{"golangTest", []string{"/Users/eco/dev/jfrog-cli-core/go.mod"}, map[Technology]bool{Go: true}},
 		{"windowsNugetTest", []string{"c:\\users\\test\\package\\project.sln"}, map[Technology]bool{Nuget: true, Dotnet: true}},
 		{"noTechTest", []string{"pomxml"}, map[Technology]bool{}},

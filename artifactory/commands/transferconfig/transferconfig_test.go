@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/transfer"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -17,7 +17,7 @@ import (
 
 func TestExportSourceArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		// Read body
@@ -49,7 +49,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 
 func TestImportToTargetArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		content, err := io.ReadAll(r.Body)
@@ -74,7 +74,7 @@ func TestImportToTargetArtifactory(t *testing.T) {
 
 func TestGetConfigXml(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.RequestURI == "/api/system/configuration" {
 			w.Write([]byte("<config></config>"))
@@ -92,7 +92,7 @@ func TestGetConfigXml(t *testing.T) {
 func TestSanityVerifications(t *testing.T) {
 	users := []services.User{}
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
 			w.WriteHeader(http.StatusOK)
 		} else if r.RequestURI == "/api/plugins/execute/configImportVersion" {
@@ -145,7 +145,7 @@ func TestSanityVerifications(t *testing.T) {
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	})
@@ -158,7 +158,7 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("An admin user is required"))
 	})

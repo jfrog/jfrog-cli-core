@@ -3,7 +3,7 @@ package transferfiles
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/transfer"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -22,7 +22,7 @@ type validateVersionTestSuite struct {
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 	var pluginVersion string
-	testServer, serverDetails, _ := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
@@ -59,7 +59,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 }
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
-	testServer, serverDetails, _ := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte("Not found"))
@@ -85,7 +85,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 		Name: "name-demo",
 	}
 
-	testServer, serverDetails, _ := tests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := transfer.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
 			w.WriteHeader(http.StatusAccepted)
 			content, err := json.Marshal(UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: uuidTokenForTest}})

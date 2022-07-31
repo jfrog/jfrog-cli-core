@@ -25,7 +25,7 @@ type GenericAuditCommand struct {
 	insecureTls             bool
 	args                    []string
 	technologies            []string
-	requirementFile         string
+	requirementsFile        string
 	progress                ioUtils.ProgressMgr
 }
 
@@ -111,7 +111,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.insecureTls,
 		auditCmd.args,
 		auditCmd.progress,
-		auditCmd.requirementFile,
+		auditCmd.requirementsFile,
 		auditCmd.technologies...,
 	)
 	if err != nil {
@@ -159,7 +159,7 @@ func (auditCmd *GenericAuditCommand) SetNpmScope(depType string) *GenericAuditCo
 
 func (auditCmd *GenericAuditCommand) SetPipRequirementsFile(requirementsFile string) *GenericAuditCommand {
 	if requirementsFile != "" {
-		auditCmd.requirementFile = requirementsFile
+		auditCmd.requirementsFile = requirementsFile
 	}
 	return auditCmd
 }

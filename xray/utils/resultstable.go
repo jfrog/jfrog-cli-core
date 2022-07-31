@@ -25,7 +25,7 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true)
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := PrepareViolations(violations, multipleRoots)
 	if err != nil {
 		return err
 	}
@@ -47,10 +47,6 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 
 // Prepare violations for all non-table formats (without style or emoji)
 func PrepareViolations(violations []services.Violation, multipleRoots bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
-	return prepareViolations(violations, multipleRoots, false)
-}
-
-func prepareViolations(violations []services.Violation, multipleRoots, isTable bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
@@ -69,7 +65,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
 						Summary:                  violation.Summary,
-						Severity:                 currSeverity.printableTitle(isTable),
+						Severity:                 currSeverity.printableTitle(),
 						SeverityNumValue:         currSeverity.numValue,
 						ImpactedPackageName:      impactedPackagesNames[compIndex],
 						ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
@@ -90,7 +86,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
 						LicenseKey:             violation.LicenseKey,
-						Severity:               currSeverity.printableTitle(isTable),
+						Severity:               currSeverity.printableTitle(),
 						SeverityNumValue:       currSeverity.numValue,
 						ImpactedPackageName:    impactedPackagesNames[compIndex],
 						ImpactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -103,7 +99,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:               currSeverity.printableTitle(isTable),
+					Severity:               currSeverity.printableTitle(),
 					SeverityNumValue:       currSeverity.numValue,
 					ImpactedPackageName:    impactedPackagesNames[compIndex],
 					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
@@ -149,7 +145,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
 	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
 
-	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true)
+	vulnerabilitiesRows, err := PrepareVulnerabilities(vulnerabilities, multipleRoots)
 	if err != nil {
 		return err
 	}
@@ -159,10 +155,6 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
 func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots bool) ([]formats.VulnerabilityOrViolationRow, error) {
-	return prepareVulnerabilities(vulnerabilities, multipleRoots, false)
-}
-
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, isTable bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
 
 	for _, vulnerability := range vulnerabilities {
@@ -177,7 +169,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
 					Summary:                  vulnerability.Summary,
-					Severity:                 currSeverity.printableTitle(isTable),
+					Severity:                 currSeverity.printableTitle(),
 					SeverityNumValue:         currSeverity.numValue,
 					ImpactedPackageName:      impactedPackagesNames[compIndex],
 					ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
@@ -415,8 +407,8 @@ type severity struct {
 	emoji    string
 }
 
-func (s *severity) printableTitle(isTable bool) string {
-	if isTable && log.IsStdOutTerminal() && log.IsColorsSupported() {
+func (s *severity) printableTitle() string {
+	if log.IsStdOutTerminal() && log.IsColorsSupported() {
 		return s.style.Render(s.emoji + s.title)
 	}
 	return s.title

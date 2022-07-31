@@ -101,7 +101,7 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 
 		scanResults, err := xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {
-			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
+			fmt.Errorf("scanning %s failed with error: %s", moduleName, err.Error())
 			break
 		}
 		for i := range scanResults.Vulnerabilities {

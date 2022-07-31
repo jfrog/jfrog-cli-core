@@ -116,7 +116,7 @@ func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool, req
 			clientLog.Debug("Running pip install -r ", requirementsFile)
 			output, err = exec.Command("pip", "install", "-r", requirementsFile).CombinedOutput()
 		} else {
-			clientLog.Debug("Running pip install .")
+			clientLog.Debug("Running 'pip install .'")
 			output, err = exec.Command("pip", "install", ".").CombinedOutput()
 		}
 		if err != nil {

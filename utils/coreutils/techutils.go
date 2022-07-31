@@ -71,8 +71,9 @@ var technologiesData = map[Technology]TechData{
 		indicators:  []string{"setup.py", "requirements.txt"},
 	},
 	Pipenv: {
-		PackageType: "pypi",
-		indicators:  []string{"Pipfile", "Pipfile.lock"},
+		PackageType:       "pypi",
+		indicators:        []string{"Pipfile", "Pipfile.lock"},
+		packageDescriptor: "Pipfile",
 	},
 	Nuget: {
 		PackageType: "nuget",

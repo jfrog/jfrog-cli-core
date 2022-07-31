@@ -84,7 +84,7 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 		return
 	}
 
-	restoreEnv, err := runPythonInstall(tempDirPath, pythonTool, requirementsFile)
+	restoreEnv, err := runPythonInstall(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
@@ -103,7 +103,7 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	return
 }
 
-func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool, requirementsFile string) (restoreEnv func() error, err error) {
+func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string) (restoreEnv func() error, err error) {
 	switch pythonTool {
 	case pythonutils.Pip:
 		restoreEnv, err = SetPipVirtualEnvPath()
@@ -118,6 +118,12 @@ func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool, req
 		} else {
 			clientLog.Debug("Running 'pip install .'")
 			output, err = exec.Command("pip", "install", ".").CombinedOutput()
+			if err != nil {
+				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
+				clientLog.Debug(fmt.Sprintf("Failed running 'pip install .' : \n%s\n trying 'pip install -r requirements.txt' ", err.Error()))
+				// Run pip install -r requirements
+				output, err = exec.Command("pip", "install", "-r", "requirements.txt").CombinedOutput()
+			}
 		}
 		if err != nil {
 			err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)

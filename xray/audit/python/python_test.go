@@ -31,7 +31,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
+	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNodes)
 	if rootNodes != nil {

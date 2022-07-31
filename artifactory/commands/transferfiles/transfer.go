@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -19,9 +20,10 @@ const (
 	tasksMaxCapacity = 10000
 	uploadChunkSize  = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
-	fileWritersChannelSize = 500000
-	retries                = 3
-	retriesWait            = 0
+	fileWritersChannelSize       = 500000
+	retries                      = 3
+	retriesWait                  = 0
+	dataTransferPluginMinVersion = "1.2.2"
 )
 
 type TransferFilesCommand struct {
@@ -59,12 +61,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	// Verify connection to the source Artifactory instance and that the user plugin is installed and responsive.
-	version, err := srcUpService.version()
+	// Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
+	err = getAndValidateDataTransferPlugin(srcUpService)
 	if err != nil {
 		return err
 	}
-	log.Info("data-transfer plugin version: " + version)
 
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
@@ -246,4 +247,30 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}
 	return
+}
+
+func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+	curVer := version.NewVersion(currentVersion)
+	if !curVer.AtLeast(dataTransferPluginMinVersion) {
+		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
+	}
+	return nil
+}
+
+func getMinimalVersionErrorMsg(currentVersion string) string {
+	return "You are currently using data-transfer plugin version '" +
+		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
+}
+
+func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
+	dataPluginVer, err := srcUpService.version()
+	if err != nil {
+		return err
+	}
+	err = validateDataTransferPluginMinimumVersion(dataPluginVer)
+	if err != nil {
+		return err
+	}
+	log.Info("data-transfer plugin version: " + dataPluginVer)
+	return nil
 }

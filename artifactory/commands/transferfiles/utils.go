@@ -75,7 +75,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
 
-// This function polls on chunks of files that were uploaded during one of the phases and were not checksum deployed.
+// This function polls on chunks of files that were uploaded during one of the phases.
 // It does so by requesting the status of each chunk, by sending the uuid token that was returned when the chunk was uploaded.
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
@@ -139,7 +139,7 @@ func incrCurProcessedChunksWhenPossible() bool {
 }
 
 // Reduces the current total number of upload chunks processed. Called when an upload chunks doesn't require polling for status -
-// if it's checksum deployed, or done processing.
+// if it's done processing, or an error occurred when sending it.
 func reduceCurProcessedChunks() {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
@@ -182,15 +182,11 @@ func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploa
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		err := uploadChunkAndAddToken(sup, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
 			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
-		}
-		if isChecksumDeployed {
-			// Chunk does not require polling.
-			reduceCurProcessedChunks()
 		}
 		return
 	}
@@ -211,22 +207,18 @@ func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChann
 	return
 }
 
-// Sends an upload chunk to the source Artifactory instance.
-// If not all files were successfully checksum deployed, an uuid token is returned in order to poll on it for status.
-// If such token is indeed returned, this function sends it to the uploadTokensChan for the pollUploads function to read and poll.
-func uploadChunkAndAddTokenIfNeeded(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) (bool, error) {
+// Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.
+// An uuid token is returned in order to poll on it for status.
+// This function sends the token to the uploadTokensChan for the pollUploads function to read and poll on.
+func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
-		return false, err
-	}
-	// Empty token is returned if all files were checksum deployed.
-	if uuidToken == "" {
-		return true, nil
+		return err
 	}
 
 	// Add token to polling.
 	uploadTokensChan <- uuidToken
-	return false, nil
+	return nil
 }
 
 func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
@@ -292,8 +284,8 @@ func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, re
 	return serviceUtils.RepositorySummary{}, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary of the source instance", repoKey)
 }
 
-// Collects files in chunks of size uploadChunkSize and uploads them whenever possible (the amount of chunks uploaded is limited by the number of threads).
-// If not all files were checksum deployed, an uuid token is returned and is being polled on for status.
+// Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
+// An uuid token is returned after the chunk is sent and is being polled on for status.
 func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),

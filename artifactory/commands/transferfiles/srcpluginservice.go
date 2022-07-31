@@ -59,9 +59,8 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	return statusResponse, nil
 }
 
-// Uploads a chunk of files. If no error occurred:
-// Returns empty string if all files uploaded successfully with checksum deploy.
-// Otherwise, returns uuid token to get chunk status with.
+// Uploads a chunk of files.
+// If no error occurred, returns an uuid token to get chunk status with.
 func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken string, err error) {
 	content, err := json.Marshal(chunk)
 	if err != nil {
@@ -75,18 +74,17 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 		return "", err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusAccepted); err != nil {
+	if err = errorutils.CheckResponseStatus(resp, http.StatusAccepted); err != nil {
 		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		return "", nil
 	}
 
 	var uploadResponse UploadChunkResponse
 	err = json.Unmarshal(body, &uploadResponse)
 	if err != nil {
 		return "", errorutils.CheckError(err)
+	}
+	if uploadResponse.UuidToken == "" {
+		return "", errorutils.CheckErrorf("unexpected empty token return for chunk upload")
 	}
 	return uploadResponse.UuidToken, nil
 }

@@ -16,7 +16,6 @@ require (
 	github.com/jfrog/jfrog-client-go v1.18.0
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.9.0
-	github.com/owenrumney/go-sarif/v2 v2.1.2
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.10.1

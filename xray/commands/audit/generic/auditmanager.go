@@ -66,7 +66,7 @@ func GenericAudit(
 		case coreutils.Nuget:
 			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanPrams, serverDetails, progress)
 		default:
-			log.Info(string(tech), " is currently not supported")
+			log.Info(string(tech), "is currently not supported")
 		}
 		if e != nil {
 			// Save the error but continue to audit the next tech

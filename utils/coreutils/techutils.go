@@ -184,3 +184,10 @@ func GetTechnologyPackageDescriptor(tech string) string {
 
 	return dependencyFile
 }
+
+func GetAllTechnologiesList() (technologies []string) {
+	for tech := range technologiesData {
+		technologies = append(technologies, string(tech))
+	}
+	return
+}

@@ -31,7 +31,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 		assert.NoError(t, json.Unmarshal(content, &actual))
 
 		// Make sure all parameters as expected
-		assert.True(t, *actual.IncludeMetadata)
+		assert.False(t, *actual.IncludeMetadata)
 		assert.False(t, *actual.Verbose)
 		assert.True(t, *actual.ExcludeContent)
 		assert.Nil(t, actual.CreateArchive)

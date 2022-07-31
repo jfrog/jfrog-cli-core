@@ -11,16 +11,13 @@ import (
 	"path/filepath"
 )
 
-const (
-	// Max delayedArtifacts that will be written in a file
-	maxDelayedArtifactsInFile = 50000
-)
+var maxDelayedArtifactsInFile = 50000
 
 // TransferDelayedArtifactsMng takes care of the multi-threaded-writing of artifacts to be transferred, while maintaining the correct order of the deployment.
 // This is needed because, for example, for maven repositories, pom file should be deployed last.
 type TransferDelayedArtifactsMng struct {
-	// All go routines will write delayedArtifacts to this channel
-	delayedArtifactsChannel chan FileRepresentation
+	// All go routines will write delayedArtifacts to the same channel
+	delayedArtifactsChannelMng *DelayedArtifactsChannelMng
 
 	// Files containing delayed artifacts to upload later on.
 	filesToConsume []string
@@ -33,8 +30,8 @@ type delayedArtifactWriter struct {
 }
 
 // Creates a manager for the files transferring process.
-func newTransferDelayedArtifactsToFile(delayedArtifactsChannel chan FileRepresentation) *TransferDelayedArtifactsMng {
-	return &TransferDelayedArtifactsMng{delayedArtifactsChannel: delayedArtifactsChannel}
+func newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng *DelayedArtifactsChannelMng) *TransferDelayedArtifactsMng {
+	return &TransferDelayedArtifactsMng{delayedArtifactsChannelMng: delayedArtifactsChannelMng}
 }
 
 func (mng *TransferDelayedArtifactsMng) start() (err error) {
@@ -50,7 +47,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		}
 	}()
 
-	for file := range mng.delayedArtifactsChannel {
+	for file := range mng.delayedArtifactsChannelMng.channel {
 		if mng.deployedWriter.writer == nil {
 			// Init the content writer, which is responsible for writing delayed artifacts - This means that delayed artifacts will be deployed later, to maintain the right deployment order.
 			writer, err := content.NewContentWriter("delayed_artifacts", true, false)
@@ -66,7 +63,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file.
 		if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
 			err = mng.deployedWriter.writer.Close()
-			if err == nil {
+			if err != nil {
 				return err
 			}
 			if mng.deployedWriter.writer.GetFilePath() != "" {
@@ -87,17 +84,22 @@ type DelayedArtifactsFile struct {
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
-	action := func(optionalPcDetails producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
-		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorChannel)
+	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
+		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
+			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+			return nil
+		}
+		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransfer(false, action)
+	err := manager.doTransfer(action)
 	if err == nil {
 		log.Info("Done handling delayed artifacts uploads.")
 	}
 	return err
 }
 
-func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorChannel chan FileUploadStatusResponse) error {
+func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		fileContent, err := os.ReadFile(filePath)
@@ -111,8 +113,8 @@ func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan
 			return errorutils.CheckError(err)
 		}
 
-		err = uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorChannel)
-		if err != nil {
+		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorsChannelMng)
+		if err != nil || shouldStop {
 			return err
 		}
 
@@ -167,18 +169,53 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 }
 
 type delayUploadHelper struct {
-	shouldDelayFunctions    []shouldDelayUpload
-	delayedArtifactsChannel chan FileRepresentation
+	shouldDelayFunctions       []shouldDelayUpload
+	delayedArtifactsChannelMng *DelayedArtifactsChannelMng
 }
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 // When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
-func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) bool {
+func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) (delayed, stopped bool) {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if shouldDelay(file.Name) {
-			delayHelper.delayedArtifactsChannel <- file
-			return true
+			delayed = true
+			stopped = delayHelper.delayedArtifactsChannelMng.add(file)
+			if stopped {
+				// In case an error occurred while handling delayed artifacts - stop transferring.
+				log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+				return
+			}
 		}
 	}
+	return
+}
+
+// DelayedArtifactsChannelMng is used when writing 'delayed artifacts' to a common channel.
+// If an error occurs while handling the files - this message is used to stop adding elements to the channel.
+type DelayedArtifactsChannelMng struct {
+	channel chan FileRepresentation
+	err     error
+}
+
+func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (stopped bool) {
+	if mng.shouldStop() {
+		return true
+	}
+	mng.channel <- element
 	return false
+}
+
+func (mng DelayedArtifactsChannelMng) shouldStop() bool {
+	// Stop adding elements to the channel if a 'blocking' error occurred in a different go routine.
+	return mng.err != nil
+}
+
+// Close channel
+func (mng DelayedArtifactsChannelMng) close() {
+	close(mng.channel)
+}
+
+func createdDelayedArtifactsChannelMng() DelayedArtifactsChannelMng {
+	channel := make(chan FileRepresentation, fileWritersChannelSize)
+	return DelayedArtifactsChannelMng{channel: channel}
 }

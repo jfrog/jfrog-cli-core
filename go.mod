@@ -13,7 +13,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.2
 	github.com/jfrog/build-info-go v1.4.0
 	github.com/jfrog/gofrog v1.2.0
-	github.com/jfrog/jfrog-client-go v1.16.0
+	github.com/jfrog/jfrog-client-go v1.18.0
 	github.com/magiconair/properties v1.8.5
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2

@@ -80,7 +80,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
+func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
@@ -94,7 +94,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 
 		if len(curTokensBatch.UuidTokens) == 0 {
 			if shouldStopPolling(doneChan) {
-				return nil
+				return
 			}
 			continue
 		}
@@ -102,7 +102,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 		// Send and handle.
 		chunksStatus, err := srcUpService.getUploadChunksStatus(curTokensBatch)
 		if err != nil {
-			return err
+			log.Error("error returned when getting upload chunks statuses: " + err.Error())
+			continue
 		}
 		for _, chunk := range chunksStatus.ChunksStatus {
 			if chunk.UuidToken == "" {
@@ -119,7 +120,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if stopped {
-					return nil
+					return
 				}
 			}
 		}

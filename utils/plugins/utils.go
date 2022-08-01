@@ -76,7 +76,7 @@ func readPluginsConfig() (plugins *PluginsV1, err error) {
 		if err != nil {
 			return nil, err
 		}
-
+		// Read plugins config file again inside the locked section and convert if needed
 		content, err = getPluginsConfigFileContent()
 		if err != nil && len(content) == 0 {
 			return convertPluginsV0ToV1()

@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -41,17 +40,10 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 		return
 	}
 
-	plugins, err := atomicReadPluginsConfigAndConvertIfNeeded()
-	if err != nil {
-		return
-	}
-	if plugins.Version != coreutils.GetPluginsConfigVersion() {
-		err = fmt.Errorf("expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)
-	}
-	return
+	return readPluginsConfigAndConvertV0tToV1IfNeeded()
 }
 
-func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error) {
+func readPluginsConfigAndConvertV0tToV1IfNeeded() (err error) {
 	content, err := getPluginsConfigFileContent()
 	if err != nil {
 		return
@@ -87,14 +79,8 @@ func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error)
 		if len(content) == 0 {
 			// No plugins.yaml file was found. This means that we are in v0.
 			// Convert plugins layout to the latest version.
-			plugins, err = convertPluginsV0ToV1()
-			return
+			_, err = convertPluginsV0ToV1()
 		}
-	}
-
-	err = json.Unmarshal(content, &plugins)
-	if err != nil {
-		err = errorutils.CheckError(err)
 	}
 	return
 }

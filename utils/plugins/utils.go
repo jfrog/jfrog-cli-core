@@ -76,7 +76,8 @@ func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error)
 		if err != nil {
 			return
 		}
-		// Read plugins config file again inside the locked section and convert if needed
+		// The reason behind reading the config again is that its possible that the plugins file already changed by other thread,
+		// So we read again inside that locked section to indicate that we indeed need to convert the plugins' layout.
 		content, err = getPluginsConfigFileContent()
 		if err != nil {
 			return

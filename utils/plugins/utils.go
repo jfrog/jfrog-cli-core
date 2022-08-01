@@ -31,25 +31,6 @@ type PluginsV1 struct {
 // CheckPluginsVersionAndConvertIfNeeded In case the latest plugin's layout version isn't match to the local plugins hierarchy at '.jfrog/plugins' -
 // Migrate to the latest version.
 func CheckPluginsVersionAndConvertIfNeeded() (err error) {
-	// Locking mechanism - two threads in the same process.
-	mutex.Lock()
-	defer mutex.Unlock()
-	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
-	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
-	if err != nil {
-		return
-	}
-	unlockFunc, err := lock.CreateLock(lockDirPath)
-	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
-	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
-	}()
-	if err != nil {
-		return
-	}
 	// Check if 'plugins' directory exists in .jfrog
 	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
@@ -70,16 +51,36 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 	return
 }
 
-func readPluginsConfig() (*PluginsV1, error) {
-	plugins := new(PluginsV1)
+func readPluginsConfig() (plugins *PluginsV1, err error) {
 	content, err := getPluginsConfigFileContent()
 	if err != nil {
 		return nil, err
 	}
 	if len(content) == 0 {
-		// No plugins.yaml file was found. This means that we are in v0.
-		// Convert plugins layout to the latest version.
-		return convertPluginsV0ToV1()
+		// Locking mechanism - two threads in the same process.
+		mutex.Lock()
+		defer mutex.Unlock()
+		// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
+		lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
+		if err != nil {
+			return nil, err
+		}
+		unlockFunc, err := lock.CreateLock(lockDirPath)
+		// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+		defer func() {
+			e := unlockFunc()
+			if err == nil {
+				err = e
+			}
+		}()
+		if err != nil {
+			return nil, err
+		}
+
+		content, err = getPluginsConfigFileContent()
+		if err != nil && len(content) == 0 {
+			return convertPluginsV0ToV1()
+		}
 	}
 
 	err = json.Unmarshal(content, &plugins)

@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-const maxThreadsLimit = 512
+const maxThreadsLimit = 1024
 
 type TransferSettingsCommand struct {
 }

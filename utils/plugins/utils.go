@@ -54,18 +54,20 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error) {
 	content, err := getPluginsConfigFileContent()
 	if err != nil {
-		return nil, err
+		return
 	}
 	if len(content) == 0 {
 		// Locking mechanism - two threads in the same process.
 		mutex.Lock()
 		defer mutex.Unlock()
 		// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
-		lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
+		var lockDirPath string
+		lockDirPath, err = coreutils.GetJfrogPluginsLockDir()
 		if err != nil {
 			return
 		}
-		unlockFunc, err := lock.CreateLock(lockDirPath)
+		var unlockFunc func() error
+		unlockFunc, err = lock.CreateLock(lockDirPath)
 		// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 		defer func() {
 			e := unlockFunc()

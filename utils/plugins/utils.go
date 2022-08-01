@@ -40,7 +40,8 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 	if err != nil || !exists {
 		return
 	}
-	plugins, err := readPluginsConfig()
+
+	plugins, err := atomicReadPluginsConfigAndConvertIfNeeded()
 	if err != nil {
 		return
 	}
@@ -50,59 +51,47 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 	return
 }
 
-func readPluginsConfig() (*PluginsV1, error) {
-	plugins := new(PluginsV1)
+func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error) {
 	content, err := getPluginsConfigFileContent()
 	if err != nil {
 		return nil, err
 	}
 	if len(content) == 0 {
-		return atomicReadPluginsConfigAndConvertIfNeeded()
-	}
-
-	err = json.Unmarshal(content, &plugins)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return plugins, err
-}
-
-func atomicReadPluginsConfigAndConvertIfNeeded() (plugins *PluginsV1, err error) {
-	// Locking mechanism - two threads in the same process.
-	mutex.Lock()
-	defer mutex.Unlock()
-	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
-	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
-	if err != nil {
-		return
-	}
-	unlockFunc, err := lock.CreateLock(lockDirPath)
-	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
-	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
+		// Locking mechanism - two threads in the same process.
+		mutex.Lock()
+		defer mutex.Unlock()
+		// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
+		lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
+		if err != nil {
+			return
 		}
-	}()
-	if err != nil {
-		return
-	}
-	// Read plugins config file again inside the locked section and convert if needed
-	content, err := getPluginsConfigFileContent()
-	if err != nil {
-		return
-	}
-	if len(content) == 0 {
-		// No plugins.yaml file was found. This means that we are in v0.
-		// Convert plugins layout to the latest version.
-		plugins, err = convertPluginsV0ToV1()
-		return
+		unlockFunc, err := lock.CreateLock(lockDirPath)
+		// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+		defer func() {
+			e := unlockFunc()
+			if err == nil {
+				err = e
+			}
+		}()
+		if err != nil {
+			return
+		}
+		// Read plugins config file again inside the locked section and convert if needed
+		content, err = getPluginsConfigFileContent()
+		if err != nil {
+			return
+		}
+		if len(content) == 0 {
+			// No plugins.yaml file was found. This means that we are in v0.
+			// Convert plugins layout to the latest version.
+			plugins, err = convertPluginsV0ToV1()
+			return
+		}
 	}
 
 	err = json.Unmarshal(content, &plugins)
 	if err != nil {
 		err = errorutils.CheckError(err)
-		return
 	}
 	return
 }

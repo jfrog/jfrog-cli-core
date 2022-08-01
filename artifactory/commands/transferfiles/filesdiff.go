@@ -3,6 +3,10 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -10,9 +14,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"math"
-	"os"
-	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -185,7 +186,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 			return err
 		}
 
-		if len(result.Results) < aqlPaginationLimit {
+		if len(result.Results) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -220,7 +221,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified")`
-	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }
 

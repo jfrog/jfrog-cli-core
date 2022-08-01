@@ -2,6 +2,11 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -9,19 +14,16 @@ import (
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
-	aqlPaginationLimit                           = 10000
+	DefaultAqlPaginationLimit                    = 10000
 )
 
+var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
@@ -132,7 +134,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks < getThreads() {
+	if curProcessedUploadChunks < GetThreads() {
 		curProcessedUploadChunks++
 		return true
 	}
@@ -239,7 +241,7 @@ func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
 	return false
 }
 
-func getThreads() int {
+func GetThreads() int {
 	return curThreads
 }
 

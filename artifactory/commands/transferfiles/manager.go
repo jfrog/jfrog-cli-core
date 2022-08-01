@@ -2,11 +2,12 @@ package transferfiles
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
 )
 
 const totalNumberPollingGoRoutines = 2
@@ -186,7 +187,7 @@ func (ptm *PollingTasksManager) stop() {
 }
 
 func initProducerConsumer() producerConsumerDetails {
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
+	producerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return producerConsumerDetails{

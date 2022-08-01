@@ -2,14 +2,15 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -213,7 +214,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 		}
 
-		if len(result.Results) < aqlPaginationLimit {
+		if len(result.Results) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -244,6 +245,6 @@ func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type")`
-	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

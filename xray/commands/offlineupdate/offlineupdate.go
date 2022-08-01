@@ -141,8 +141,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		err = errorutils.CheckErrorf("Response: " + err.Error())
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
 		return err
 	}
 
@@ -359,8 +358,7 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		err = errorutils.CheckErrorf("Response: " + err.Error())
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
 		return
 	}
 

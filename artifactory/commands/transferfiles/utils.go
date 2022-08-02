@@ -77,7 +77,7 @@ func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the target Artifactory instance to process.
+// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
@@ -87,17 +87,16 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
-			return nil
+			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
-		// 'Working threads' are determined by how many upload chunks are currently being processed by the source
-		//Artifactory instance.
+		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
@@ -105,7 +104,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 		if len(curTokensBatch.UuidTokens) == 0 {
 			if shouldStopPolling(doneChan) {
-				return nil
+				return
 			}
 			continue
 		}
@@ -113,7 +112,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Send and handle.
 		chunksStatus, err := srcUpService.getUploadChunksStatus(curTokensBatch)
 		if err != nil {
-			return err
+			log.Error("error returned when getting upload chunks statuses: " + err.Error())
+			continue
 		}
 		for _, chunk := range chunksStatus.ChunksStatus {
 			if chunk.UuidToken == "" {
@@ -130,7 +130,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if stopped {
-					return nil
+					return
 				}
 			}
 		}

@@ -114,7 +114,7 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, trans
 	writersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, pollingTasksManager.pollingErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getInterruptionErr()} {
+	for _, err := range []error{actionErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getInterruptionErr()} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err
@@ -132,8 +132,6 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, trans
 type PollingTasksManager struct {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChannel chan bool
-	// Error returned by the polling go routine
-	pollingErr error
 	// Number of go routines expected to write to the doneChannel
 	totalGoRoutines int
 	// The actual number of running go routines
@@ -168,7 +166,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		ptm.pollingErr = pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
+		pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
 	}()
 	return nil
 }

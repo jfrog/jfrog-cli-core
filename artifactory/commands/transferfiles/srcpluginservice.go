@@ -48,8 +48,8 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 		return UploadChunksStatusResponse{}, err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return UploadChunksStatusResponse{}, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return UploadChunksStatusResponse{}, err
 	}
 
 	var statusResponse UploadChunksStatusResponse
@@ -76,8 +76,8 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 		return "", err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusAccepted); err != nil {
-		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusAccepted); err != nil {
+		return "", err
 	}
 
 	if resp.StatusCode == http.StatusOK {
@@ -105,8 +105,8 @@ func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 		return err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return err
 	}
 
 	return nil
@@ -125,8 +125,8 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 		return nil, err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return nil, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return nil, err
 	}
 
 	var result HandlePropertiesDiffResponse

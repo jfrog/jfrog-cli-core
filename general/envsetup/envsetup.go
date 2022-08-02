@@ -330,8 +330,7 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 			return false, nil, nil
 		}
 		// If the response is not the expected 200 or 404.
-		if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusNotFound); err != nil {
-			err = errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
+		if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusNotFound); err != nil {
 			errorsCount++
 			log.Debug(fmt.Sprintf(pollingErrorMessage, errorsCount, err.Error()))
 			if errorsCount == maxConsecutiveErrors {

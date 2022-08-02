@@ -153,11 +153,10 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (buildinfo.Ch
 	if err != nil {
 		return buildinfo.Checksum{}, err
 	}
-	log.Debug("Artifactory response: ", resp.Status)
-	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
-	if errorutils.CheckError(err) != nil {
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		return buildinfo.Checksum{}, err
 	}
+	log.Debug("Artifactory response: ", resp.Status)
 
 	return details.Checksum, nil
 }

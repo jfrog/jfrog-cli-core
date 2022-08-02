@@ -20,9 +20,10 @@ const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
-	aqlPaginationLimit                           = 10000
+	DefaultAqlPaginationLimit                    = 10000
 )
 
+var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
 
 type InterruptionErr struct{}
@@ -142,7 +143,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks < getThreads() {
+	if curProcessedUploadChunks < GetThreads() {
 		curProcessedUploadChunks++
 		return true
 	}
@@ -244,7 +245,7 @@ func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
 	return false
 }
 
-func getThreads() int {
+func GetThreads() int {
 	return curThreads
 }
 

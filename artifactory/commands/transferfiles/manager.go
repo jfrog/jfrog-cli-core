@@ -186,7 +186,7 @@ func (ptm *PollingTasksManager) stop() {
 }
 
 func initProducerConsumer() producerConsumerDetails {
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
+	producerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return producerConsumerDetails{

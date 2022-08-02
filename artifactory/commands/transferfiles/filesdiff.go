@@ -186,7 +186,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 			return err
 		}
 
-		if len(result.Results) < aqlPaginationLimit {
+		if len(result.Results) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -221,7 +221,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified")`
-	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }
 

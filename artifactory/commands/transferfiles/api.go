@@ -101,7 +101,7 @@ type UuidTokenResponse struct {
 
 // Fill tokens batch till full. Return if no new tokens are available.
 func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string) {
-	for len(ucs.UuidTokens) < getThreads() {
+	for len(ucs.UuidTokens) < GetThreads() {
 		select {
 		case token := <-uploadTokensChan:
 			ucs.UuidTokens = append(ucs.UuidTokens, token)

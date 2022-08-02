@@ -84,7 +84,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 		return "", errorutils.CheckError(err)
 	}
 	if uploadResponse.UuidToken == "" {
-		return "", errorutils.CheckErrorf("unexpected empty token return for chunk upload")
+		return "", errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
 	}
 	return uploadResponse.UuidToken, nil
 }

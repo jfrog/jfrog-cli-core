@@ -10,7 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
+	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"os/exec"
@@ -23,8 +23,8 @@ const (
 	pythonPackageTypeIdentifier = "pypi://"
 )
 
-func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, pythonTool pythonutils.PythonTool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildDependencyTree(pythonTool)
+func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, pythonTool pythonutils.PythonTool, progress ioUtils.ProgressMgr, requirementsFile string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildDependencyTree(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
@@ -33,8 +33,8 @@ func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails 
 	return
 }
 
-func BuildDependencyTree(pythonTool pythonutils.PythonTool) ([]*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool)
+func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) ([]*services.GraphNode, error) {
+	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool) ([]*services.GraphNo
 	return dependencyTree, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -84,7 +84,7 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 		return
 	}
 
-	restoreEnv, err := runPythonInstall(tempDirPath, pythonTool)
+	restoreEnv, err := runPythonInstall(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
@@ -103,7 +103,7 @@ func getDependencies(pythonTool pythonutils.PythonTool) (dependenciesGraph map[s
 	return
 }
 
-func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (restoreEnv func() error, err error) {
+func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string) (restoreEnv func() error, err error) {
 	switch pythonTool {
 	case pythonutils.Pip:
 		restoreEnv, err = SetPipVirtualEnvPath()
@@ -112,21 +112,21 @@ func runPythonInstall(tempDirPath string, pythonTool pythonutils.PythonTool) (re
 		}
 		// Run pip install
 		var output []byte
-		output, err = exec.Command("pip", "install", ".").CombinedOutput()
+		if requirementsFile != "" {
+			clientLog.Debug("Running pip install -r", requirementsFile)
+			output, err = exec.Command("pip", "install", "-r", requirementsFile).CombinedOutput()
+		} else {
+			clientLog.Debug("Running 'pip install .'")
+			output, err = exec.Command("pip", "install", ".").CombinedOutput()
+			if err != nil {
+				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
+				clientLog.Debug(fmt.Sprintf("Failed running 'pip install .' : \n%s\n trying 'pip install -r requirements.txt' ", err.Error()))
+				// Run pip install -r requirements
+				output, err = exec.Command("pip", "install", "-r", "requirements.txt").CombinedOutput()
+			}
+		}
 		if err != nil {
 			err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
-			exist, requirementsErr := fileutils.IsFileExists(filepath.Join(tempDirPath, "requirements.txt"), false)
-			if requirementsErr != nil || !exist {
-				return
-			}
-			log.Debug("Failed running 'pip install .' , trying 'pip install -r requirements.txt' ")
-			// Run pip install -r requirements
-			output, requirementsErr = exec.Command("pip", "install", "-r", "requirements.txt").CombinedOutput()
-			if requirementsErr != nil {
-				log.Error(fmt.Sprintf("pip install -r requirements.txt command failed: %s - %s", err.Error(), output))
-				return
-			}
-			err = nil
 		}
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir

@@ -71,8 +71,9 @@ var technologiesData = map[Technology]TechData{
 		indicators:  []string{"setup.py", "requirements.txt"},
 	},
 	Pipenv: {
-		PackageType: "pypi",
-		indicators:  []string{"pipfile", "pipfile.lock"},
+		PackageType:       "pypi",
+		indicators:        []string{"Pipfile", "Pipfile.lock"},
+		packageDescriptor: "Pipfile",
 	},
 	Nuget: {
 		PackageType: "nuget",
@@ -172,13 +173,6 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetAllTechnologiesList() (technologies []string) {
-	for tech := range technologiesData {
-		technologies = append(technologies, string(tech))
-	}
-	return
-}
-
 func GetTechnologyPackageDescriptor(tech string) string {
 	techData, ok := technologiesData[Technology(tech)]
 	var dependencyFile string
@@ -190,4 +184,11 @@ func GetTechnologyPackageDescriptor(tech string) string {
 	}
 
 	return dependencyFile
+}
+
+func GetAllTechnologiesList() (technologies []string) {
+	for tech := range technologiesData {
+		technologies = append(technologies, string(tech))
+	}
+	return
 }

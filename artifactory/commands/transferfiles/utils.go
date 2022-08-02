@@ -2,6 +2,11 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -9,10 +14,6 @@ import (
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -23,6 +24,12 @@ const (
 )
 
 var curThreads int
+
+type InterruptionErr struct{}
+
+func (m *InterruptionErr) Error() string {
+	return "Files transfer was interrupted by user"
+}
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
@@ -80,11 +87,14 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
 
 	for {
+		if ShouldStop(phaseBase, nil, errorsChannelMng) {
+			return
+		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
 		if progressbar != nil {
@@ -94,7 +104,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 
 		if len(curTokensBatch.UuidTokens) == 0 {
 			if shouldStopPolling(doneChan) {
-				return nil
+				return
 			}
 			continue
 		}
@@ -102,7 +112,8 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 		// Send and handle.
 		chunksStatus, err := srcUpService.getUploadChunksStatus(curTokensBatch)
 		if err != nil {
-			return err
+			log.Error("error returned when getting upload chunks statuses: " + err.Error())
+			continue
 		}
 		for _, chunk := range chunksStatus.ChunksStatus {
 			if chunk.UuidToken == "" {
@@ -119,7 +130,7 @@ func pollUploads(srcUpService *srcUserPluginService, uploadTokensChan chan strin
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if stopped {
-					return nil
+					return
 				}
 			}
 		}
@@ -174,15 +185,18 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
+		if ShouldStop(phaseBase, nil, errorsChannelMng) {
+			return true
+		}
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
 		if !isIncr {
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		err := uploadChunkAndAddToken(sup, chunk, uploadTokensChan)
+		err := uploadChunkAndAddToken(phaseBase.srcUpService, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
@@ -293,14 +307,9 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 
 	for _, item := range files {
-		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
-			return
-		}
 		file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 		var delayed bool
-		delayed, shouldStop = delayHelper.delayUploadIfNecessary(file)
+		delayed, shouldStop = delayHelper.delayUploadIfNecessary(base, file)
 		if shouldStop {
 			return
 		}
@@ -309,7 +318,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+			shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
 			if shouldStop {
 				return
 			}
@@ -319,7 +328,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
 	}
 	return
 }
@@ -332,4 +341,53 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 		return true
 	}
 	return false
+}
+
+// Stop transferring if one of the following happened:
+// * Error occurred while handling errors (for example - not enough space in file system)
+// * Error occurred during delayed artifacts handling
+// * User interrupted the process (ctrl+c)
+func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelMng *ErrorsChannelMng) bool {
+	if phase != nil && phase.shouldStop() {
+		log.Debug("Stop transferring data - Interrupted.")
+		return true
+	}
+	if delayHelper != nil && delayHelper.delayedArtifactsChannelMng.shouldStop() {
+		log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
+		return true
+	}
+	if errorsChannelMng != nil && errorsChannelMng.shouldStop() {
+		log.Debug("Stop transferring data - error occurred while handling transfer's errors.")
+		return true
+	}
+	return false
+}
+
+func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	if err != nil {
+		return nil, err
+	}
+	return serviceManager.GetRunningNodes()
+}
+
+func stopAllRunningNodes(srcUpService *srcUserPluginService, runningNodes []string) {
+	remainingNodesToStop := make(map[string]string)
+	for _, s := range runningNodes {
+		remainingNodesToStop[s] = s
+	}
+	log.Debug("Running nodes to stop:", remainingNodesToStop)
+	for i := 0; i < len(runningNodes)*3; i++ {
+		if len(remainingNodesToStop) == 0 {
+			log.Debug("All running nodes stopped successfully")
+			return
+		}
+		nodeId, err := srcUpService.stop()
+		if err != nil {
+			log.Error(err)
+		} else {
+			log.Debug("Node " + nodeId + " stopped")
+			delete(remainingNodesToStop, nodeId)
+		}
+	}
 }

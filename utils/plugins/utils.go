@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -31,25 +30,6 @@ type PluginsV1 struct {
 // CheckPluginsVersionAndConvertIfNeeded In case the latest plugin's layout version isn't match to the local plugins hierarchy at '.jfrog/plugins' -
 // Migrate to the latest version.
 func CheckPluginsVersionAndConvertIfNeeded() (err error) {
-	// Locking mechanism - two threads in the same process.
-	mutex.Lock()
-	defer mutex.Unlock()
-	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
-	lockDirPath, err := coreutils.GetJfrogPluginsLockDir()
-	if err != nil {
-		return
-	}
-	unlockFunc, err := lock.CreateLock(lockDirPath)
-	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
-	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
-	}()
-	if err != nil {
-		return
-	}
 	// Check if 'plugins' directory exists in .jfrog
 	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
@@ -60,33 +40,48 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 		return
 	}
 
-	plugins, err := readPluginsConfig()
+	return readPluginsConfigAndConvertV0tToV1IfNeeded()
+}
+
+func readPluginsConfigAndConvertV0tToV1IfNeeded() (err error) {
+	content, err := getPluginsConfigFileContent()
+	// Return without converting in case of an error, or if the plugins.yml file already exists, which indicates a conversion has already been made.
+	if err != nil || len(content) != 0 {
+		return
+	}
+	// Locking mechanism - two threads in the same process.
+	mutex.Lock()
+	defer mutex.Unlock()
+	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
+	var lockDirPath string
+	lockDirPath, err = coreutils.GetJfrogPluginsLockDir()
 	if err != nil {
 		return
 	}
-	if plugins.Version != coreutils.GetPluginsConfigVersion() {
-		err = fmt.Errorf("expected plugins version in 'plugins.yaml is %d but the actual value is %d", coreutils.GetPluginsConfigVersion(), plugins.Version)
-	}
-	return
-}
-
-func readPluginsConfig() (*PluginsV1, error) {
-	plugins := new(PluginsV1)
-	content, err := getPluginsConfigFileContent()
+	var unlockFunc func() error
+	unlockFunc, err = lock.CreateLock(lockDirPath)
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+	defer func() {
+		e := unlockFunc()
+		if err == nil {
+			err = e
+		}
+	}()
 	if err != nil {
-		return nil, err
+		return
+	}
+	// The reason behind reading the config again is that it's possible that another thread or process already changed the plugins file,
+	// So we read again inside that locked section to indicate that we indeed need to convert the plugins' layout.
+	content, err = getPluginsConfigFileContent()
+	if err != nil {
+		return
 	}
 	if len(content) == 0 {
 		// No plugins.yaml file was found. This means that we are in v0.
 		// Convert plugins layout to the latest version.
-		return convertPluginsV0ToV1()
+		_, err = convertPluginsV0ToV1()
 	}
-
-	err = json.Unmarshal(content, &plugins)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return plugins, err
+	return
 }
 
 func getPluginsConfigFileContent() (content []byte, err error) {

@@ -15,6 +15,15 @@ import (
 	"time"
 )
 
+func TestHandleStopInitAndClose(t *testing.T) {
+	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+
+	shouldStop := false
+	var newPhase transferPhase
+	finishStopping := transferFilesCommand.handleStop(&shouldStop, &newPhase, nil)
+	finishStopping()
+}
+
 const uuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
@@ -104,8 +113,7 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		err = pollUploads(srcPluginManager, uploadTokensChan, doneChan, nil, nil)
-		assert.NoError(t, err)
+		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil, nil)
 	}()
 	// Let the whole process run for a few chunk status checks, then mark it as done.
 	time.Sleep(5 * waitTimeBetweenChunkStatusSeconds * time.Second)

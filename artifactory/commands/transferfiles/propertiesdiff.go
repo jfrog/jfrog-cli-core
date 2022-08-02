@@ -1,11 +1,13 @@
 package transferfiles
 
 import (
+	"time"
+
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"time"
 )
 
 const waitTimeBetweenPropertiesStatusSeconds = 5
@@ -76,7 +78,7 @@ func (p *propertiesDiffPhase) run() error {
 		EndMilliseconds:   convertTimeToEpochMilliseconds(diffEnd),
 	}
 
-	generalStatus, err := makePropsHandlingStatus()
+	generalStatus, err := p.makePropsHandlingStatus()
 	if err != nil {
 		return err
 	}
@@ -86,6 +88,9 @@ func (p *propertiesDiffPhase) run() error {
 	// Done handling when all nodes return done status.
 propertiesHandling:
 	for {
+		if *p.stop {
+			return errorutils.CheckError(&InterruptionErr{})
+		}
 		remoteNodeStatus, err := p.srcUpService.handlePropertiesDiff(requestBody)
 		if err != nil {
 			return err
@@ -126,9 +131,9 @@ type nodeStatus struct {
 	isDone              bool
 }
 
-func makePropsHandlingStatus() (propsHandlingStatus, error) {
+func (p *propertiesDiffPhase) makePropsHandlingStatus() (propsHandlingStatus, error) {
 	newStatus := propsHandlingStatus{}
-	nodes, err := getNodesList()
+	nodes, err := getRunningNodes(p.srcRtDetails)
 	if err != nil {
 		return newStatus, err
 	}

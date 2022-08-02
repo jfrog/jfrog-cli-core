@@ -2,15 +2,14 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io/ioutil"
 	"strconv"
 	"time"
-)
 
-const requestsNumForNodeDetection = 50
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+)
 
 // This struct holds the current state of the whole transfer of the source Artifactory instance.
 // It is saved to a file in JFrog CLI's home.
@@ -18,7 +17,6 @@ const requestsNumForNodeDetection = 50
 // on what time range files diffs should be fixed, etc.
 type TransferState struct {
 	Repositories []Repository `json:"repositories,omitempty"`
-	NodeIds      []string     `json:"nodes,omitempty"`
 }
 
 type Repository struct {
@@ -65,16 +63,6 @@ func getTransferState() (*TransferState, error) {
 		return nil, errorutils.CheckError(err)
 	}
 	return state, nil
-}
-
-// Checks whether this is the first run of the command, based on information saved in the command's state.
-// Currently, only needed for the properties phase.
-func isCleanStart() (bool, error) {
-	state, err := getTransferState()
-	if err != nil {
-		return false, err
-	}
-	return len(state.NodeIds) == 0, nil
 }
 
 func saveTransferState(state *TransferState) error {
@@ -270,37 +258,4 @@ func convertRFC3339ToTime(timeToConvert string) (time.Time, error) {
 
 func convertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
-}
-
-// Sends rapid requests to the user plugin and finds all existing nodes in Artifactory.
-// Writes all node ids to the state file.
-// Also notifies all nodes of a clean start, i.e. older caches (if exists) are not needed, and the nodes should start
-// tracking properties modifications (if phase 3 is enabled).
-// Nodes are expected not to change during the whole transfer process.
-func nodeDetection(srcUpService *srcUserPluginService) error {
-	var nodeIds []string
-requestsLoop:
-	for i := 0; i < requestsNumForNodeDetection; i++ {
-		curNodeId, err := srcUpService.ping()
-		if err != nil {
-			return err
-		}
-		for _, existingNode := range nodeIds {
-			if curNodeId == existingNode {
-				continue requestsLoop
-			}
-		}
-		nodeIds = append(nodeIds, curNodeId)
-	}
-
-	return saveTransferState(&TransferState{NodeIds: nodeIds})
-}
-
-func getNodesList() ([]string, error) {
-	state, err := getTransferState()
-	if err != nil {
-		return nil, err
-	}
-
-	return state.NodeIds, nil
 }

@@ -192,16 +192,3 @@ func GetAllTechnologiesList() (technologies []string) {
 	}
 	return
 }
-
-func GetTechnologyPackageDescriptor(tech string) string {
-	techData, ok := technologiesData[Technology(tech)]
-	var dependencyFile string
-	if ok {
-		dependencyFile = techData.packageDescriptor
-	}
-	if dependencyFile == "" {
-		return tech + " package descriptor"
-	}
-
-	return dependencyFile
-}

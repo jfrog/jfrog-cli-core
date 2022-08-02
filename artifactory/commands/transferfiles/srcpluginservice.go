@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"net/http"
 )
@@ -41,13 +40,14 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return UploadChunksStatusResponse{}, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return UploadChunksStatusResponse{}, err
 	}
 
 	var statusResponse UploadChunksStatusResponse
@@ -68,13 +68,14 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
 		return "", err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK, http.StatusAccepted); err != nil {
-		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusAccepted); err != nil {
+		return "", err
 	}
 
 	if resp.StatusCode == http.StatusOK {
@@ -102,8 +103,8 @@ func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 		return err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return err
 	}
 
 	return nil
@@ -116,8 +117,8 @@ func (sup *srcUserPluginService) ping() (nodeId string, err error) {
 		return "", err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return "", errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return "", err
 	}
 
 	var response NodeIdResponse
@@ -135,13 +136,14 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"handlePropertiesDiff", content, &httpDetails)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return nil, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientUtils.IndentJson(body)))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return nil, err
 	}
 
 	var result HandlePropertiesDiffResponse

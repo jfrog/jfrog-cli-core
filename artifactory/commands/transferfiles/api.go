@@ -88,7 +88,7 @@ type FileUploadStatusResponse struct {
 }
 
 type FilesErrors struct {
-	Errors []FileUploadStatusResponse `json:"errors,omitempty"`
+	Errors []ExtendedFileUploadStatusResponse `json:"errors,omitempty"`
 }
 
 type NodeIdResponse struct {

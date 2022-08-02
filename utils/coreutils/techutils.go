@@ -172,6 +172,13 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
+func GetAllTechnologiesList() (technologies []string) {
+	for tech := range technologiesData {
+		technologies = append(technologies, string(tech))
+	}
+	return
+}
+
 func GetTechnologyPackageDescriptor(tech string) string {
 	techData, ok := technologiesData[Technology(tech)]
 	var dependencyFile string

@@ -40,9 +40,8 @@ func (ftm *transferManager) doTransferWithSingleProducer(transferAction transfer
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
-// The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle.
-// The Artifactory user plugin in the source instance will try to checksum-deploy all the artifacts in the chunk.
-// If not successful, an uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
+// The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle asynchronously.
+// An uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
 // In some repositories the order of deployment is important. In these cases, any artifacts that should be delayed will be collected by
 // the delayedArtifactsMng and will later be handled by handleDelayedArtifactsFiles.
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.

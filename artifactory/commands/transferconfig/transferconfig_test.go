@@ -4,24 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-type transferConfigHandler func(w http.ResponseWriter, r *http.Request)
-
 func TestExportSourceArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		// Read body
@@ -53,7 +49,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 
 func TestImportToTargetArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		content, err := io.ReadAll(r.Body)
@@ -78,7 +74,7 @@ func TestImportToTargetArtifactory(t *testing.T) {
 
 func TestGetConfigXml(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.RequestURI == "/api/system/configuration" {
 			w.Write([]byte("<config></config>"))
@@ -96,7 +92,7 @@ func TestGetConfigXml(t *testing.T) {
 func TestSanityVerifications(t *testing.T) {
 	users := []services.User{}
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
 			w.WriteHeader(http.StatusOK)
 		} else if r.RequestURI == "/api/plugins/execute/configImportVersion" {
@@ -149,7 +145,7 @@ func TestSanityVerifications(t *testing.T) {
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	})
@@ -162,7 +158,7 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, serviceManager := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("An admin user is required"))
 	})
@@ -171,16 +167,4 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
-}
-
-// Create mock server to test transfer config commands
-// t           - The testing object
-// testHandler - The HTTP handler of the test
-func createMockServer(t *testing.T, testHandler transferConfigHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
-	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
-	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
-
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
-	assert.NoError(t, err)
-	return testServer, serverDetails, serviceManager
 }

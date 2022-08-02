@@ -45,42 +45,41 @@ func CheckPluginsVersionAndConvertIfNeeded() (err error) {
 
 func readPluginsConfigAndConvertV0tToV1IfNeeded() (err error) {
 	content, err := getPluginsConfigFileContent()
+	// Return without converting in case of an error, or if the plugins.yml file already exists, which indicates a conversion has already been made.
+	if err != nil || len(content) != 0 {
+		return
+	}
+	// Locking mechanism - two threads in the same process.
+	mutex.Lock()
+	defer mutex.Unlock()
+	// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
+	var lockDirPath string
+	lockDirPath, err = coreutils.GetJfrogPluginsLockDir()
+	if err != nil {
+		return
+	}
+	var unlockFunc func() error
+	unlockFunc, err = lock.CreateLock(lockDirPath)
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+	defer func() {
+		e := unlockFunc()
+		if err == nil {
+			err = e
+		}
+	}()
+	if err != nil {
+		return
+	}
+	// The reason behind reading the config again is that it's possible that another thread or process already changed the plugins file,
+	// So we read again inside that locked section to indicate that we indeed need to convert the plugins' layout.
+	content, err = getPluginsConfigFileContent()
 	if err != nil {
 		return
 	}
 	if len(content) == 0 {
-		// Locking mechanism - two threads in the same process.
-		mutex.Lock()
-		defer mutex.Unlock()
-		// Locking mechanism - in case two process would read/migrate local files at '.jfrog/plugins'.
-		var lockDirPath string
-		lockDirPath, err = coreutils.GetJfrogPluginsLockDir()
-		if err != nil {
-			return
-		}
-		var unlockFunc func() error
-		unlockFunc, err = lock.CreateLock(lockDirPath)
-		// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
-		defer func() {
-			e := unlockFunc()
-			if err == nil {
-				err = e
-			}
-		}()
-		if err != nil {
-			return
-		}
-		// The reason behind reading the config again is that it's possible that another thread or process already changed the plugins file,
-		// So we read again inside that locked section to indicate that we indeed need to convert the plugins' layout.
-		content, err = getPluginsConfigFileContent()
-		if err != nil {
-			return
-		}
-		if len(content) == 0 {
-			// No plugins.yaml file was found. This means that we are in v0.
-			// Convert plugins layout to the latest version.
-			_, err = convertPluginsV0ToV1()
-		}
+		// No plugins.yaml file was found. This means that we are in v0.
+		// Convert plugins layout to the latest version.
+		_, err = convertPluginsV0ToV1()
 	}
 	return
 }

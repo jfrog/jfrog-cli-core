@@ -69,6 +69,7 @@ var technologiesData = map[Technology]TechData{
 	Pip: {
 		PackageType: "pypi",
 		indicators:  []string{"setup.py", "requirements.txt"},
+		exclude:     []string{"Pipfile", "Pipfile.lock"},
 	},
 	Pipenv: {
 		PackageType:       "pypi",

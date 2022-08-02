@@ -2,14 +2,15 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -109,9 +110,7 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
 		}
 		folderHandler := m.createFolderFullTransferHandlerFunc(*pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
@@ -162,9 +161,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		}
 
 		for _, item := range result.Results {
-			// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-			if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 				return
 			}
 			if item.Name == "." {
@@ -183,7 +180,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 			case "file":
 				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 				if stopped {
 					return
 				}
@@ -192,7 +189,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 				curUploadChunk.appendUploadCandidate(file)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					stopped = uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng)
 					if stopped {
 						return
 					}
@@ -217,7 +214,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+		if uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng) {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.

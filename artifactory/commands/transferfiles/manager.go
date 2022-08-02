@@ -2,11 +2,12 @@ package transferfiles
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
 )
 
 const totalNumberPollingGoRoutines = 2
@@ -26,15 +27,15 @@ type transferActionType func(uploadTokensChan chan string, delayHelper delayUplo
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
 	pcDetails := initProducerConsumer()
-	return doTransfer(ftm, &pcDetails, transferAction)
+	return ftm.doTransfer(&pcDetails, transferAction)
 }
 
 // Transfer files using a single producer.
-func (ftm *transferManager) doTransfer(transferAction transferActionType) error {
+func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionType) error {
 	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	return doTransfer(ftm, nil, transferActionPc)
+	return ftm.doTransfer(nil, transferActionPc)
 }
 
 // This function handles a transfer process as part of a phase.
@@ -47,7 +48,7 @@ func (ftm *transferManager) doTransfer(transferAction transferActionType) error 
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
-func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
+func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
 	uploadTokensChan := make(chan string, tasksMaxCapacity)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
@@ -81,7 +82,7 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 	if pcDetails != nil {
 		producerConsumer = pcDetails.producerConsumer
 	}
-	err = pollingTasksManager.start(&runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -113,7 +114,7 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 	writersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr} {
+	for _, err := range []error{actionErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getInterruptionErr()} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err
@@ -145,7 +146,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -165,7 +166,7 @@ func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerCons
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
+		pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
 	}()
 	return nil
 }

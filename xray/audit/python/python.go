@@ -113,7 +113,7 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		// Run pip install
 		var output []byte
 		if requirementsFile != "" {
-			clientLog.Debug("Running pip install -r ", requirementsFile)
+			clientLog.Debug("Running pip install -r", requirementsFile)
 			output, err = exec.Command("pip", "install", "-r", requirementsFile).CombinedOutput()
 		} else {
 			clientLog.Debug("Running 'pip install .'")

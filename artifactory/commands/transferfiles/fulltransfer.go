@@ -193,7 +193,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 				curUploadChunk.appendUploadCandidate(file)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					stopped = uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng)
 					if stopped {
 						return
 					}
@@ -218,7 +218,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+		if uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng) {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.

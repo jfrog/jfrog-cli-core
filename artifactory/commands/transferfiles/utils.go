@@ -185,15 +185,18 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
+		if ShouldStop(phaseBase, nil, errorsChannelMng) {
+			return true
+		}
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
 		isIncr := incrCurProcessedChunksWhenPossible()
 		if !isIncr {
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
 		}
-		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(sup, chunk, uploadTokensChan)
+		isChecksumDeployed, err := uploadChunkAndAddTokenIfNeeded(phaseBase.srcUpService, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
@@ -323,7 +326,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+			shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
 			if shouldStop {
 				return
 			}
@@ -333,7 +336,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		shouldStop = uploadChunkWhenPossible(base.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
 	}
 	return
 }

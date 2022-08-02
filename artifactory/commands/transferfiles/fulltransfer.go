@@ -157,11 +157,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 		// Empty folder. Add it as candidate.
 		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.appendUploadCandidate(FileRepresentation{
-				Repo: params.repoKey,
-				Path: path.Dir(params.relativePath),
-				Name: path.Base(params.relativePath),
-			})
+			curUploadChunk.appendUploadCandidate(FileRepresentation{Repo: params.repoKey, Path: params.relativePath})
 			break
 		}
 

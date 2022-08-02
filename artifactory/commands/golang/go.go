@@ -304,8 +304,8 @@ func getPackageVersion(repoName, packageName string, details auth.ServiceDetails
 	if err != nil {
 		return "", err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return "", errorutils.CheckError(errors.New("Artifactory response: " + resp.Status))
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+		return "", err
 	}
 	// Extract version from response
 	var version PackageVersionResponseContent

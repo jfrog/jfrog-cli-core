@@ -63,6 +63,8 @@ func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err
 			format = xrutils.Json
 		case string(xrutils.SimpleJson):
 			format = xrutils.SimpleJson
+		case string(xrutils.Sarif):
+			format = xrutils.Sarif
 		default:
 			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.OutputFormats))
 		}

@@ -306,7 +306,7 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 		return err
 	}
 
-	// Sometimes, POST api/plugins/execute/configImport return unexpectedly 404 errors, altough the config-import plugin is installed.
+	// Sometimes, POST api/plugins/execute/configImport return unexpectedly 404 errors, although the config-import plugin is installed.
 	// To overcome this issue, we use a custom retryExecutor and not the default retry executor that retries only on HTTP errors >= 500.
 	retryExecutor := clientutils.RetryExecutor{
 		MaxRetries:               importStartRetries,
@@ -319,8 +319,8 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 			if err != nil {
 				return false, err
 			}
-			if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-				return true, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
+			if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+				return true, err
 			}
 
 			log.Debug("Artifactory response: ", resp.Status)
@@ -375,8 +375,8 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 		}
 
 		// Unexpected status
-		if err = errorutils.CheckResponseStatus(resp, http.StatusUnauthorized, http.StatusForbidden); err != nil {
-			return false, nil, errorutils.CheckError(errorutils.GenerateResponseError(resp.Status, clientutils.IndentJson(body)))
+		if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusUnauthorized, http.StatusForbidden); err != nil {
+			return false, nil, err
 		}
 
 		// 401 or 403 - The user used for the target Artifactory server does not exist anymore.

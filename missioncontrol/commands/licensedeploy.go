@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/jfrog/jfrog-cli-core/v2/missioncontrol/utils"
@@ -31,8 +32,8 @@ func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		return errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)
 	log.Output(clientutils.IndentJson(body))

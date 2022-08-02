@@ -2,6 +2,12 @@ package transferfiles
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"strconv"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -11,8 +17,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strconv"
 )
 
 const (
@@ -80,19 +84,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if !isPropertiesPhaseDisabled() {
-		cleanStart, err := isCleanStart()
-		if err != nil {
-			return err
-		}
-		if cleanStart {
-			err = nodeDetection(srcUpService)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	srcRepos, err := tdc.getSrcLocalRepositories()
 	if err != nil {
 		return err
@@ -114,7 +105,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	// Handle interruptions
+	shouldStop := false
+	var newPhase transferPhase
+	finishStopping := tdc.handleStop(&shouldStop, &newPhase, srcUpService)
+	defer finishStopping()
+
 	for _, repo := range srcRepos {
+		if shouldStop {
+			break
+		}
+
 		exists := verifyRepoExistsInTarget(targetRepos, repo)
 		if !exists {
 			log.Error("repository '" + repo + "' does not exist in target. Skipping...")
@@ -131,7 +132,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			tdc.progressbar.NewRepository(repo)
 		}
 		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
-			err = tdc.startPhase(currentPhaseId, repo, repoSummary, srcUpService)
+			if shouldStop {
+				break
+			}
+			newPhase = getPhaseByNum(currentPhaseId, repo)
+			err = tdc.startPhase(newPhase, repo, repoSummary, srcUpService)
 			if err != nil {
 				return tdc.cleanup(err)
 			}
@@ -141,8 +146,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	return tdc.cleanup(nil)
 }
 
-func (tdc *TransferFilesCommand) startPhase(currentPhaseId int, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
-	newPhase := getPhaseByNum(currentPhaseId, repo)
+func (tdc *TransferFilesCommand) startPhase(newPhase transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
 	tdc.initNewPhase(newPhase, srcUpService, repoSummary)
 	skip, err := newPhase.shouldSkipPhase()
 	if err != nil || skip {
@@ -163,6 +167,45 @@ func (tdc *TransferFilesCommand) startPhase(currentPhaseId int, repo string, rep
 	}
 	printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
 	return newPhase.phaseDone()
+}
+
+// Handle interrupted signal.
+// shouldStop - Pointer to boolean variable, if the process gets interrupted shouldStop will be set to true
+// newPhase - The current running phase
+// srcUpService - Source plugin service
+func (tdc *TransferFilesCommand) handleStop(shouldStop *bool, newPhase *transferPhase, srcUpService *srcUserPluginService) func() {
+	finishStop := make(chan bool)
+	stopSignal := make(chan os.Signal, 1)
+	signal.Notify(stopSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		defer close(finishStop)
+		// Wait for the stop signal or close(stopSignal) to happen
+		if <-stopSignal == nil {
+			// The stopSignal channel is closed
+			return
+		}
+		*shouldStop = true
+		if newPhase != nil {
+			(*newPhase).stopGracefully()
+		}
+		log.Info("Gracefully stopping files transfer...")
+		runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+		if err != nil {
+			log.Error(err)
+		} else {
+			stopAllRunningNodes(srcUpService, runningNodes)
+		}
+	}()
+
+	// Return a cleanup function that closes the stopSignal channel and wait for close if needed
+	return func() {
+		// Close the stop signal channel
+		close(stopSignal)
+		if *shouldStop {
+			// If should stop, wait for stop to happen
+			<-finishStop
+		}
+	}
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {

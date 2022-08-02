@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-const maxThreadsLimit = 256
+const maxThreadsLimit = 1024
 
 type TransferSettingsCommand struct {
 }
@@ -31,7 +31,7 @@ func (tst *TransferSettingsCommand) Run() error {
 		currThreadsNumber = strconv.Itoa(currSettings.ThreadsNumber)
 	}
 	var threadsNumberInput string
-	ioutils.ScanFromConsole("Enter the number of working threads", &threadsNumberInput, currThreadsNumber)
+	ioutils.ScanFromConsole("Set the maximum number of working threads", &threadsNumberInput, currThreadsNumber)
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
 	if err != nil || threadsNumber < 1 || threadsNumber > maxThreadsLimit {
 		return errorutils.CheckError(errors.New("the value must be a number between 1 and " + strconv.Itoa(maxThreadsLimit)))

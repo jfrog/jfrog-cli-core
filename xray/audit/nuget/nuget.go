@@ -1,6 +1,7 @@
 package nuget
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -22,7 +23,7 @@ func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Nuget)
 	return
 }
 

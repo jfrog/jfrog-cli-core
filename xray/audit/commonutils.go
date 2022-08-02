@@ -79,7 +79,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, err error) {
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology string) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 	}
@@ -103,6 +103,12 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 		if err != nil {
 			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
 			break
+		}
+		for i := range scanResults.Vulnerabilities {
+			scanResults.Vulnerabilities[i].Technology = technology
+		}
+		for i := range scanResults.Violations {
+			scanResults.Violations[i].Technology = technology
 		}
 		results = append(results, *scanResults)
 	}

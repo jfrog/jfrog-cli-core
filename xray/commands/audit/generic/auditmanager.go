@@ -28,6 +28,7 @@ func GenericAudit(
 	insecureTls bool,
 	args []string,
 	progress ioUtils.ProgressMgr,
+	requirementsFile string,
 	technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
 
 	// If no technologies were given, try to detect all types of technologies used.
@@ -57,9 +58,9 @@ func GenericAudit(
 		case coreutils.Go:
 			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails, progress)
 		case coreutils.Pip:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip, progress)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip, progress, requirementsFile)
 		case coreutils.Pipenv:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv, progress)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv, progress, "")
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:

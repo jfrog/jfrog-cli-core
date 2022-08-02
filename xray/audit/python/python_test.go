@@ -13,7 +13,7 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip)
+	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNodes)
 	if rootNodes != nil {
@@ -31,7 +31,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip)
+	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNodes)
 	if rootNodes != nil {
@@ -47,7 +47,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Pipenv)
+	rootNodes, err := BuildDependencyTree(pythonutils.Pipenv, "")
 	if err != nil {
 		t.Fatal(err)
 	}

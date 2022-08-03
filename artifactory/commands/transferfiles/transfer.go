@@ -194,7 +194,7 @@ func (tdc *TransferFilesCommand) handleStop(shouldStop *bool, newPhase *transfer
 		if err != nil {
 			log.Error(err)
 		} else {
-			stopAllRunningNodes(srcUpService, runningNodes)
+			stopTransferOnArtifactoryNodes(srcUpService, runningNodes)
 		}
 	}()
 

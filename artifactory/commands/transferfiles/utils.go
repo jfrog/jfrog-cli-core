@@ -372,15 +372,16 @@ func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error
 	return serviceManager.GetRunningNodes()
 }
 
-func stopAllRunningNodes(srcUpService *srcUserPluginService, runningNodes []string) {
+func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningNodes []string) {
 	remainingNodesToStop := make(map[string]string)
 	for _, s := range runningNodes {
 		remainingNodesToStop[s] = s
 	}
-	log.Debug("Running nodes to stop:", remainingNodesToStop)
-	for i := 0; i < len(runningNodes)*3; i++ {
+	log.Debug("Running Artifactory nodes to stop transfer on:", remainingNodesToStop)
+	// Send a stop command up to 5 times the number of Artifactory nodes, to make sure we reach out to all nodes
+	for i := 0; i < len(runningNodes)*5; i++ {
 		if len(remainingNodesToStop) == 0 {
-			log.Debug("All running nodes stopped successfully")
+			log.Debug("Transfer on all Artifactory nodes stopped successfully")
 			return
 		}
 		nodeId, err := srcUpService.stop()

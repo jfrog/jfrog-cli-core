@@ -20,9 +20,9 @@ type TransferState struct {
 }
 
 type Repository struct {
-	Name         string            `json:"name,omitempty"`
-	FullTransfer PhaseDetails      `json:"full_transfer,omitempty"`
-	Diffs        []FullDiffDetails `json:"diffs,omitempty"`
+	Name         string        `json:"name,omitempty"`
+	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
+	Diffs        []DiffDetails `json:"diffs,omitempty"`
 }
 
 type PhaseDetails struct {
@@ -30,7 +30,7 @@ type PhaseDetails struct {
 	Ended   string `json:"ended,omitempty"`
 }
 
-type FullDiffDetails struct {
+type DiffDetails struct {
 	FilesDiffRunTime      PhaseDetails `json:"files_diff,omitempty"`
 	PropertiesDiffRunTime PhaseDetails `json:"properties_diff,omitempty"`
 	HandledRange          PhaseDetails `json:"handled_range,omitempty"`
@@ -90,11 +90,15 @@ func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*R
 		}
 	}
 	if !createIfMissing {
-		return nil, errorutils.CheckErrorf("Could not find repository '" + repoKey + "' in state file. Aborting.")
+		return nil, errorutils.CheckErrorf(getRepoMissingErrorMsg(repoKey))
 	}
 	repo := Repository{Name: repoKey}
 	ts.Repositories = append(ts.Repositories, repo)
 	return &repo, nil
+}
+
+func getRepoMissingErrorMsg(repoKey string) string {
+	return "Could not find repository '" + repoKey + "' in state file. Aborting."
 }
 
 func doAndSaveState(action actionOnStateFunc) error {
@@ -135,22 +139,25 @@ func setRepoFullTransferCompleted(repoKey string) error {
 	return doAndSaveState(action)
 }
 
+// Adds new diff details to the repo's diff array in state.
+// Marks files handling as started, and sets the handling range.
 func addNewDiffToState(repoKey string, startTime time.Time) error {
 	action := func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		newDiff := FullDiffDetails{}
+		newDiff := DiffDetails{}
 
-		// Determines the range on which files diffs should be fixed.
-		// The beginning of the range should be the start time of the last phase completed for the same repo.
-		// For example, if the repo was just fully migrated, the start of the range would be the start time of the migration, so that we will handle files
-		// that may have been created / modified during the transfer.
-		// If the repo has already previously completed a files diff phase, we will take the start time of that phase.
+		// Set Files Diff Handling started.
+		newDiff.FilesDiffRunTime.Started = convertTimeToRFC3339(startTime)
+
+		// Determines the range on which files diffs should be handled.
+		// If the repo previously completed files diff phases, we will continue handling diffs from where the last phase finished handling.
+		// Otherwise, we will start handling diffs from the start time of the full transfer.
 		for i := len(repo.Diffs) - 1; i >= 0; i-- {
 			if repo.Diffs[i].Completed {
-				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Started
+				newDiff.HandledRange.Started = repo.Diffs[i].HandledRange.Ended
 				break
 			}
 		}
@@ -182,18 +189,6 @@ func getDiffHandlingRange(repoKey string) (start, end time.Time, err error) {
 	}
 	err = doAndSaveState(action)
 	return
-}
-
-func setFilesDiffHandlingStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
-		}
-		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Started = convertTimeToRFC3339(startTime)
-		return nil
-	}
-	return doAndSaveState(action)
 }
 
 func setFilesDiffHandlingCompleted(repoKey string) error {

@@ -86,14 +86,17 @@ func assertRepoTransferred(t *testing.T, repoKey string, expected bool) {
 func setAndAssertRepoFullyTransfer(t *testing.T, repoKey string, startTime time.Time) {
 	err := setRepoFullTransferStarted(repoKey, startTime)
 	assert.NoError(t, err)
+	assertRepoTransferred(t, repoKey, false)
+
 	time.Sleep(time.Second)
 	err = setRepoFullTransferCompleted(repoKey)
 	assert.NoError(t, err)
+	assertRepoTransferred(t, repoKey, true)
+
 	repo := getRepoFromState(t, repoKey)
 	assert.Equal(t, convertTimeToRFC3339(startTime), repo.FullTransfer.Started)
 	assert.NotEmpty(t, repo.FullTransfer.Ended)
 	assert.NotEqual(t, repo.FullTransfer.Ended, repo.FullTransfer.Started)
-	assertRepoTransferred(t, repoKey, true)
 }
 
 func addAndAssertNewDiffPhase(t *testing.T, repoKey string, expectedDiffs int, handlingExpectedTime time.Time) (diffStart time.Time) {
@@ -103,8 +106,12 @@ func addAndAssertNewDiffPhase(t *testing.T, repoKey string, expectedDiffs int, h
 	repo := getRepoFromState(t, repoKey)
 	assert.Equal(t, expectedDiffs, len(repo.Diffs))
 	assert.Equal(t, convertTimeToRFC3339(diffStart), repo.Diffs[expectedDiffs-1].FilesDiffRunTime.Started)
-	assert.Equal(t, convertTimeToRFC3339(handlingExpectedTime), repo.Diffs[expectedDiffs-1].HandledRange.Started)
-	assert.Equal(t, convertTimeToRFC3339(diffStart), repo.Diffs[expectedDiffs-1].HandledRange.Ended)
+
+	handlingStart, handlingEnd, err := getDiffHandlingRange(repoKey)
+	assert.NoError(t, err)
+	// Rounding the expected time because milliseconds are lost in conversions.
+	assert.Equal(t, handlingExpectedTime.Round(time.Second), handlingStart)
+	assert.Equal(t, diffStart.Round(time.Second), handlingEnd)
 	return
 }
 

@@ -448,6 +448,7 @@ func ShowConfig(serverName string) error {
 		if err != nil {
 			return err
 		}
+
 	}
 	printConfigs(configuration)
 	return nil
@@ -482,7 +483,28 @@ func Export(serverName string) error {
 	return nil
 }
 
+func moveDefaultConfigToSliceEnd(configuration []*config.ServerDetails) []*config.ServerDetails {
+	if len(configuration) > 1 {
+		var defaultServerIndex int
+		var defaultServer *config.ServerDetails
+		for i, server := range configuration {
+			if server.IsDefault {
+				defaultServerIndex = i
+				defaultServer = server
+				break
+			}
+		}
+		lastIndex := len(configuration) - 1
+		configuration[defaultServerIndex] = configuration[lastIndex]
+		configuration[lastIndex] = defaultServer
+	}
+	return configuration
+}
+
 func printConfigs(configuration []*config.ServerDetails) {
+	// Make default config be the last config, so it will be the first config the user sees after running the command
+	configuration = moveDefaultConfigToSliceEnd(configuration)
+
 	for _, details := range configuration {
 		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false)
 		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false)
@@ -499,7 +521,11 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true)
 		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false)
 		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false)
-		log.Output("Default:\t\t\t" + strconv.FormatBool(details.IsDefault))
+		defaultString := "Default:\t\t\t" + strconv.FormatBool(details.IsDefault)
+		if details.IsDefault {
+			defaultString = coreutils.PrintTitle(defaultString)
+		}
+		log.Output(defaultString)
 		log.Output()
 	}
 }

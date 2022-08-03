@@ -498,7 +498,7 @@ func moveDefaultConfigToSliceEnd(configuration []*config.ServerDetails) []*confi
 }
 
 func printConfigs(configuration []*config.ServerDetails) {
-	// Make default config be the last config, so it will be the first config the user sees after running the command
+	// Make default config to be the last config, so it will be easy to see on the terminal
 	configuration = moveDefaultConfigToSliceEnd(configuration)
 
 	for _, details := range configuration {

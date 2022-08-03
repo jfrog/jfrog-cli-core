@@ -85,7 +85,7 @@ func TestGetRunningNodes(t *testing.T) {
 	assert.ElementsMatch(t, runningNodes, []string{"node-1", "node-2", "node-3"})
 }
 
-func TestStopAllRunningNodes(t *testing.T) {
+func TestStopTransferOnArtifactoryNodes(t *testing.T) {
 	stoppedNodeOne, stoppedNodeTwo := false, false
 	requestNumber := 0
 	testServer, _, srcUpService := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +104,7 @@ func TestStopAllRunningNodes(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	stopAllRunningNodes(srcUpService, []string{"node-1", "node-2"})
+	stopTransferOnArtifactoryNodes(srcUpService, []string{"node-1", "node-2"})
 	assert.True(t, stoppedNodeOne)
 	assert.True(t, stoppedNodeTwo)
 }

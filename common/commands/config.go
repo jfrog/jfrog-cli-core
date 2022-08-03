@@ -448,7 +448,6 @@ func ShowConfig(serverName string) error {
 		if err != nil {
 			return err
 		}
-
 	}
 	printConfigs(configuration)
 	return nil
@@ -523,7 +522,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false)
 		defaultString := "Default:\t\t\t" + strconv.FormatBool(details.IsDefault)
 		if details.IsDefault {
-			defaultString = coreutils.PrintTitle(defaultString)
+			defaultString = coreutils.PrintTitle(coreutils.PrintBold(defaultString))
 		}
 		log.Output(defaultString)
 		log.Output()

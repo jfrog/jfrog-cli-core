@@ -110,8 +110,8 @@ func addAndAssertNewDiffPhase(t *testing.T, repoKey string, expectedDiffs int, h
 	handlingStart, handlingEnd, err := getDiffHandlingRange(repoKey)
 	assert.NoError(t, err)
 	// Truncating the expected time because milliseconds are lost in conversions.
-	assert.Equal(t, handlingExpectedTime.Truncate(time.Second), handlingStart)
-	assert.Equal(t, diffStart.Truncate(time.Second), handlingEnd)
+	assert.True(t, handlingExpectedTime.Truncate(time.Second).Equal(handlingStart))
+	assert.True(t, diffStart.Truncate(time.Second).Equal(handlingEnd))
 	return
 }
 

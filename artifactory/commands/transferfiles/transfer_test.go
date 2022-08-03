@@ -102,13 +102,12 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	doneChan := make(chan bool, 1)
 	var runWaitGroup sync.WaitGroup
 
-	err := uploadChunkAndAddToken(srcPluginManager, UploadChunk{
-		UploadCandidates: []FileRepresentation{fileSample},
-	}, uploadTokensChan)
-	if err != nil {
-		assert.NoError(t, err)
-		return
-	}
+	chunk := UploadChunk{}
+	chunk.appendUploadCandidate(fileSample)
+	shouldStop := false
+	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, stop: &shouldStop}, chunk, uploadTokensChan, nil)
+	assert.False(t, stopped)
+	assert.Equal(t, 1, curProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {

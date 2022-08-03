@@ -484,7 +484,8 @@ func Export(serverName string) error {
 
 func moveDefaultConfigToSliceEnd(configuration []*config.ServerDetails) []*config.ServerDetails {
 	lastIndex := len(configuration) - 1
-	if configuration[lastIndex].IsDefault != true {
+	// If configuration list has more than 1 config and the last one is not default, switch the last default config with the last one
+	if len(configuration) > 1 && configuration[lastIndex].IsDefault != true {
 		for i, server := range configuration {
 			if server.IsDefault {
 				configuration[i] = configuration[lastIndex]

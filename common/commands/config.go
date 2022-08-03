@@ -483,19 +483,15 @@ func Export(serverName string) error {
 }
 
 func moveDefaultConfigToSliceEnd(configuration []*config.ServerDetails) []*config.ServerDetails {
-	if len(configuration) > 1 {
-		var defaultServerIndex int
-		var defaultServer *config.ServerDetails
+	lastIndex := len(configuration) - 1
+	if configuration[lastIndex].IsDefault != true {
 		for i, server := range configuration {
 			if server.IsDefault {
-				defaultServerIndex = i
-				defaultServer = server
+				configuration[i] = configuration[lastIndex]
+				configuration[lastIndex] = server
 				break
 			}
 		}
-		lastIndex := len(configuration) - 1
-		configuration[defaultServerIndex] = configuration[lastIndex]
-		configuration[lastIndex] = defaultServer
 	}
 	return configuration
 }
@@ -505,36 +501,36 @@ func printConfigs(configuration []*config.ServerDetails) {
 	configuration = moveDefaultConfigToSliceEnd(configuration)
 
 	for _, details := range configuration {
-		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false)
-		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false)
-		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false)
-		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false)
-		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false)
-		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false)
-		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false)
-		logIfNotEmpty(details.User, "User:\t\t\t\t", false)
-		logIfNotEmpty(details.Password, "Password:\t\t\t", true)
-		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true)
-		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true)
-		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false)
-		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true)
-		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false)
-		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false)
-		defaultString := "Default:\t\t\t" + strconv.FormatBool(details.IsDefault)
-		if details.IsDefault {
-			defaultString = coreutils.PrintTitle(coreutils.PrintBold(defaultString))
-		}
-		log.Output(defaultString)
+		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false, details.IsDefault)
+		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false, false)
+		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false, false)
+		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false, false)
+		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false, false)
+		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false, false)
+		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false, false)
+		logIfNotEmpty(details.User, "User:\t\t\t\t", false, false)
+		logIfNotEmpty(details.Password, "Password:\t\t\t", true, false)
+		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true, false)
+		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true, false)
+		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false, false)
+		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true, false)
+		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false, false)
+		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false, false)
+		logIfNotEmpty(strconv.FormatBool(details.IsDefault), "Default:\t\t\t", false, details.IsDefault)
 		log.Output()
 	}
 }
 
-func logIfNotEmpty(value, prefix string, mask bool) {
+func logIfNotEmpty(value, prefix string, mask, color bool) {
 	if value != "" {
 		if mask {
 			value = "***"
 		}
-		log.Output(prefix + value)
+		fullString := prefix + value
+		if color {
+			fullString = coreutils.PrintTitle(coreutils.PrintBold(fullString))
+		}
+		log.Output(fullString)
 	}
 }
 

@@ -62,10 +62,7 @@ func (f *filesDiffPhase) phaseStarted() error {
 	if err != nil {
 		return err
 	}
-	err = setFilesDiffHandlingStarted(f.repoKey, f.startTime)
-	if err != nil {
-		return err
-	}
+
 	// Find all errors files the phase will handle.
 	f.errorsFilesToHandle, err = getErrorsFiles(f.repoKey, true)
 	return err

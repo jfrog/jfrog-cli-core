@@ -87,7 +87,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	sourceRepos, targetRepos, err := tdc.getSourceAndTargetlocalRepositories(sourceStorageInfo, targetStorageInfo)
+	sourceRepos, targetRepos, err := tdc.getSourceAndTargetLocalRepositories(sourceStorageInfo, targetStorageInfo)
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProgressBar(tdc.progressbar)
 }
 
-func (tdc *TransferFilesCommand) getSourceAndTargetlocalRepositories(sourceStorageInfo *serviceUtils.StorageInfo, targetStorageInfo *serviceUtils.StorageInfo) ([]string, []string, error) {
+func (tdc *TransferFilesCommand) getSourceAndTargetLocalRepositories(sourceStorageInfo *serviceUtils.StorageInfo, targetStorageInfo *serviceUtils.StorageInfo) ([]string, []string, error) {
 	sourceRepos, err := tdc.getLocalRepositories(sourceStorageInfo, tdc.sourceServerDetails)
 	if err != nil {
 		return []string{}, []string{}, err
@@ -225,12 +225,12 @@ func (tdc *TransferFilesCommand) getLocalRepositories(storageInfo *serviceUtils.
 	if err != nil {
 		return repoKeys, err
 	}
-	repoKeys, err = utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	repoKeys, err = utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 	if err != nil {
 		return repoKeys, err
 	}
 
-	buildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepostories(storageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+	buildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(storageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
 	if err != nil {
 		return repoKeys, err
 	}

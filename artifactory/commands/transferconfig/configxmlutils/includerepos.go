@@ -5,15 +5,14 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 // Remove non-included repositories from artifactory.config.xml
 // configXml            - artifactory.config.xml of the source Artifactory
 // includedRepositories - Selected repositories
-func RemoveNonIncludedRepositories(configXml string, includedRepositories []string) (string, error) {
-	for _, repoType := range []utils.RepoType{utils.Local, utils.Remote, utils.Virtual, utils.Federated} {
-		xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, repoType.String()+`Repositories`, true)
+func RemoveNonIncludedRepositories(configXml string, repoFilter *utils.RepositoryFilter) (string, error) {
+	for _, repoType := range append(utils.RepoTypes, "releaseBundles") {
+		xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, repoType+`Repositories`, true)
 		if err != nil {
 			return "", err
 		}
@@ -21,7 +20,7 @@ func RemoveNonIncludedRepositories(configXml string, includedRepositories []stri
 			continue
 		}
 		prefix, content, suffix := splitXmlTag(configXml, xmlTagIndices, 0)
-		includedRepositories, err := doRemoveNonIncludedRepositories(content, repoType, includedRepositories)
+		includedRepositories, err := doRemoveNonIncludedRepositories(content, repoType, repoFilter)
 		if err != nil {
 			return "", err
 		}
@@ -30,8 +29,8 @@ func RemoveNonIncludedRepositories(configXml string, includedRepositories []stri
 	return configXml, nil
 }
 
-func doRemoveNonIncludedRepositories(content string, repoType utils.RepoType, includedRepositories []string) (string, error) {
-	xmlTagIndices, exist, err := findAllXmlTagIndices(content, repoType.String()+`Repository`, false)
+func doRemoveNonIncludedRepositories(content string, repoType string, repoFilter *utils.RepositoryFilter) (string, error) {
+	xmlTagIndices, exist, err := findAllXmlTagIndices(content, repoType+`Repository`, false)
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +40,7 @@ func doRemoveNonIncludedRepositories(content string, repoType utils.RepoType, in
 	results := ""
 	for i := range xmlTagIndices {
 		prefix, content, suffix := splitXmlTag(content, xmlTagIndices, i)
-		shouldFilter, err := shouldRemoveRepository(content, includedRepositories)
+		shouldFilter, err := shouldRemoveRepository(content, repoFilter)
 		if err != nil {
 			return "", err
 		}
@@ -52,7 +51,7 @@ func doRemoveNonIncludedRepositories(content string, repoType utils.RepoType, in
 	return results, nil
 }
 
-func shouldRemoveRepository(content string, includedRepositories []string) (bool, error) {
+func shouldRemoveRepository(content string, repoFilter *utils.RepositoryFilter) (bool, error) {
 	rtRepo := &artifactoryRepository{}
 	// The content of the repository tag must be wrapped inside an outer tag in order to be unmarshalled.
 	content = fmt.Sprintf("<repo>%s</repo>", content)
@@ -60,10 +59,12 @@ func shouldRemoveRepository(content string, includedRepositories []string) (bool
 	if err != nil {
 		return false, err
 	}
-	if rtRepo.Type == "buildinfo" {
-		return false, nil
+
+	includeRepo, err := repoFilter.ShouldIncludeRepository(rtRepo.Key)
+	if err != nil {
+		return false, err
 	}
-	return !coreutils.Contains(includedRepositories, rtRepo.Key), nil
+	return !includeRepo, nil
 }
 
 type artifactoryRepository struct {

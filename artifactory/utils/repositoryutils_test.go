@@ -1,18 +1,18 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFilterRepositoryNames(t *testing.T) {
-	repos := []services.RepositoryDetails{
-		{Key: "jfrog-docker-local"},
-		{Key: "jfrog-npm-local"},
-		{Key: "docker-local"},
-		{Key: "jfrog-generic-remote"},
-		{Key: "jfrog-maven-local"},
+	repos := []string{
+		"jfrog-docker-local",
+		"jfrog-npm-local",
+		"docker-local",
+		"jfrog-generic-remote",
+		"jfrog-maven-local",
 	}
 	includePatterns := []string{
 		"jfrog-*-local",

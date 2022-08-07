@@ -256,10 +256,10 @@ func (configFile *ConfigFile) configMaven() error {
 		return err
 	}
 	if configFile.Resolver.ServerId != "" {
-		if err := configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", configFile.Resolver.ServerId, utils.REMOTE); err != nil {
+		if err := configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", configFile.Resolver.ServerId, utils.Remote); err != nil {
 			return err
 		}
-		if err := configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", configFile.Resolver.ServerId, utils.REMOTE); err != nil {
+		if err := configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", configFile.Resolver.ServerId, utils.Remote); err != nil {
 			return err
 		}
 	}
@@ -268,10 +268,10 @@ func (configFile *ConfigFile) configMaven() error {
 		return err
 	}
 	if configFile.Deployer.ServerId != "" {
-		if err := configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
+		if err := configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.Local); err != nil {
 			return err
 		}
-		if err := configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL); err != nil {
+		if err := configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.Local); err != nil {
 			return err
 		}
 		configFile.setIncludeExcludePatterns()
@@ -335,7 +335,7 @@ func (configFile *ConfigFile) setDeployer() error {
 
 	// Set deployment repository
 	if configFile.Deployer.ServerId != "" {
-		return configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", configFile.Deployer.ServerId, utils.LOCAL)
+		return configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", configFile.Deployer.ServerId, utils.Local)
 	}
 	return nil
 }
@@ -347,7 +347,7 @@ func (configFile *ConfigFile) setResolver() error {
 	}
 	// Set resolution repository
 	if configFile.Resolver.ServerId != "" {
-		return configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", configFile.Resolver.ServerId, utils.REMOTE)
+		return configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", configFile.Resolver.ServerId, utils.Remote)
 	}
 	return nil
 }
@@ -376,7 +376,7 @@ func (configFile *ConfigFile) setServerId(serverId *string, useArtifactoryQuesti
 func (configFile *ConfigFile) setRepo(repo *string, message string, serverId string, repoType utils.RepoType) error {
 	var err error
 	if *repo == "" {
-		*repo, err = readRepo(message+PressTabMsg, serverId, repoType, utils.VIRTUAL)
+		*repo, err = readRepo(message+PressTabMsg, serverId, repoType, utils.Virtual)
 	}
 	return err
 }

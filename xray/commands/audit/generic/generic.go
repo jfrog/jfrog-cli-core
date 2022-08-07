@@ -121,10 +121,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
-	if auditErr == nil || len(results) > 0 {
-		// Print Scan results on the following cases:
-		// 1. Successful Generic Audit run for all audit techs without any errors.
-		// 2. Errors accrued during the audit command, But at least one of the techs successfully ran and found vulnerabilities.
+	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
+	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
+	if printScanResults {
 		err = xrutils.PrintScanResults(results,
 			nil,
 			auditCmd.OutputFormat,

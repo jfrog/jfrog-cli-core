@@ -280,14 +280,12 @@ func CheckIfFailBuild(results []services.ScanResponse) bool {
 	return false
 }
 
-//This function is used in Frogbot context
 func IsEmptyScanResponse(results []services.ScanResponse) bool {
 	for _, result := range results {
 		if len(result.Violations) > 0 || len(result.Vulnerabilities) > 0 || len(result.Licenses) > 0 {
 			return false
 		}
 	}
-
 	return true
 }
 

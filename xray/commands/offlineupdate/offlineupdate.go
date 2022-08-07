@@ -262,10 +262,10 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 		if err != nil {
 			return err
 		}
-		log.Info("Downloading updates package from %s", url)
+		log.Info(fmt.Sprintf("Downloading updates package from %s", url))
 		client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 		if err != nil {
-			log.Error("Couldn't download from %s", url)
+			log.Error(fmt.Sprintf("Couldn't download from %s", url))
 			return err
 		}
 

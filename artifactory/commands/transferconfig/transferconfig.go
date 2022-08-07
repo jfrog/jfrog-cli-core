@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jfrog/gofrog/version"
@@ -119,14 +120,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Filter repositories to transfer
-	transferRepositories, err := utils.GetFilteredRepositories(sourceServicesManager, tcc.includeReposPatterns, tcc.excludeReposPatterns)
-	if err != nil {
-		return
+	// Create the repository filter
+	repoFilter := &utils.RepositoryFilter{
+		IncludePatterns: tcc.includeReposPatterns,
+		ExcludePatterns: tcc.excludeReposPatterns,
 	}
 
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl, transferRepositories)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl, repoFilter)
 	if err != nil {
 		return
 	}
@@ -284,13 +285,11 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string, transferRepositories []string) (string, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, error) {
 	var err error
-	if len(transferRepositories) > 0 {
-		configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, transferRepositories)
-		if err != nil {
-			return "", err
-		}
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	if err != nil {
+		return "", err
 	}
 	return configxmlutils.ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl)
 }
@@ -353,6 +352,9 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 		return err
 	}
 	log.Info(fmt.Sprintf("Logs from Artifactory:\n%s", body))
+	if strings.Contains(string(body), "[ERROR]") {
+		return errorutils.CheckErrorf("Errors detected during config import. Hint: You can skip transferring some Artifactory repositories by using the '--exclude-repos' command option. Run 'jf rt transfer-config -h' for more information.")
+	}
 	return nil
 }
 

@@ -27,7 +27,7 @@ const (
 	fileWritersChannelSize       = 500000
 	retries                      = 3
 	retriesWait                  = 0
-	dataTransferPluginMinVersion = "1.2.2"
+	dataTransferPluginMinVersion = "1.3.0"
 )
 
 type TransferFilesCommand struct {
@@ -66,8 +66,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
-	err = getAndValidateDataTransferPlugin(srcUpService)
-	if err != nil {
+	if err = getAndValidateDataTransferPlugin(srcUpService); err != nil {
 		return err
 	}
 
@@ -75,33 +74,26 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(transferDir, 0777)
-	if err != nil {
+	if err = os.MkdirAll(transferDir, 0777); err != nil {
 		return errorutils.CheckError(err)
 	}
 
-	err = tdc.initCurThreads()
+	if err = tdc.initCurThreads(); err != nil {
+		return err
+	}
+
+	sourceStorageInfo, targetStorageInfo, err := tdc.getSourceAndTargetStorageInfo()
 	if err != nil {
 		return err
 	}
 
-	srcRepos, err := tdc.getSrcLocalRepositories()
-	if err != nil {
-		return err
-	}
-
-	targetRepos, err := tdc.getTargetLocalRepositories()
-	if err != nil {
-		return err
-	}
-
-	storageInfo, err := tdc.getSourceStorageInfo()
+	sourceRepos, targetRepos, err := tdc.getSourceAndTargetLocalRepositories(sourceStorageInfo, targetStorageInfo)
 	if err != nil {
 		return err
 	}
 
 	// Set progress bar
-	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(srcRepos)))
+	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(sourceRepos)))
 	if err != nil {
 		return err
 	}
@@ -112,7 +104,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping := tdc.handleStop(&shouldStop, &newPhase, srcUpService)
 	defer finishStopping()
 
-	for _, repo := range srcRepos {
+	for _, repo := range sourceRepos {
 		if shouldStop {
 			break
 		}
@@ -123,7 +115,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			continue
 		}
 
-		repoSummary, err := getRepoSummaryFromList(storageInfo.RepositoriesSummaryList, repo)
+		repoSummary, err := getRepoSummaryFromList(sourceStorageInfo.RepositoriesSummaryList, repo)
 		if err != nil {
 			log.Error(err.Error() + ". Skipping...")
 			continue
@@ -218,24 +210,48 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProgressBar(tdc.progressbar)
 }
 
-func (tdc *TransferFilesCommand) getSrcLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+func (tdc *TransferFilesCommand) getSourceAndTargetLocalRepositories(sourceStorageInfo *serviceUtils.StorageInfo, targetStorageInfo *serviceUtils.StorageInfo) ([]string, []string, error) {
+	sourceRepos, err := tdc.getLocalRepositories(sourceStorageInfo, tdc.sourceServerDetails)
 	if err != nil {
-		return nil, err
+		return []string{}, []string{}, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+	targetRepos, err := tdc.getLocalRepositories(targetStorageInfo, tdc.targetServerDetails)
+	return sourceRepos, targetRepos, err
 }
 
-func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWait, false)
+func (tdc *TransferFilesCommand) getLocalRepositories(storageInfo *serviceUtils.StorageInfo, serverDetails *config.ServerDetails) ([]string, error) {
+	var repoKeys []string
+	serviceManager, err := utils.CreateServiceManager(serverDetails, retries, retriesWait, false)
 	if err != nil {
-		return nil, err
+		return repoKeys, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+	repoKeys, err = utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	if err != nil {
+		return repoKeys, err
+	}
+
+	buildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(storageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+	if err != nil {
+		return repoKeys, err
+	}
+	return append(buildInfoRepoKeys, repoKeys...), nil
 }
 
-func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageInfo, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+// Return the storage info of the source and target Artifactory servers
+func (tdc *TransferFilesCommand) getSourceAndTargetStorageInfo() (*serviceUtils.StorageInfo, *serviceUtils.StorageInfo, error) {
+	// Get source storage info
+	sourceStorageInfo, err := tdc.getStorageInfo(tdc.sourceServerDetails)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get target storage info
+	targetStorageInfo, err := tdc.getStorageInfo(tdc.targetServerDetails)
+	return sourceStorageInfo, targetStorageInfo, err
+}
+
+func (tdc *TransferFilesCommand) getStorageInfo(serverDetails *config.ServerDetails) (*serviceUtils.StorageInfo, error) {
+	serviceManager, err := utils.CreateServiceManager(serverDetails, retries, retriesWait, false)
 	if err != nil {
 		return nil, err
 	}

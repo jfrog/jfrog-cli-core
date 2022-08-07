@@ -3,6 +3,10 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -10,9 +14,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"math"
-	"os"
-	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -61,10 +62,7 @@ func (f *filesDiffPhase) phaseStarted() error {
 	if err != nil {
 		return err
 	}
-	err = setFilesDiffHandlingStarted(f.repoKey, f.startTime)
-	if err != nil {
-		return err
-	}
+
 	// Find all errors files the phase will handle.
 	f.errorsFilesToHandle, err = getErrorsFiles(f.repoKey, true)
 	return err
@@ -127,7 +125,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
-		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !delayHelper.delayedArtifactsChannelMng.shouldStop() && !errorsChannelMng.shouldStop() {
+		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(uploadTokensChan, delayHelper, errorsChannelMng)
 			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
@@ -185,7 +183,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(params timeFrameParams, logMsg
 			return err
 		}
 
-		if len(result.Results) < aqlPaginationLimit {
+		if len(result.Results) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -220,7 +218,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified")`
-	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }
 
@@ -231,14 +229,9 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
-			return nil
-		}
 		return f.handleErrorsFiles(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransfer(action)
+	err := manager.doTransferWithSingleProducer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}
@@ -247,6 +240,9 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 
 func (f *filesDiffPhase) handleErrorsFiles(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range f.errorsFilesToHandle {
+		if ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
+			return nil
+		}
 		log.Debug("Handling errors file: '" + path + "'")
 		content, err := os.ReadFile(path)
 		if err != nil {

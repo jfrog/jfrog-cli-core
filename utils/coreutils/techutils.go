@@ -32,40 +32,49 @@ type TechData struct {
 	exclude []string
 	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
+	// The file that handles the project's dependencies.
+	packageDescriptor string
 }
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		PackageType:    "Maven",
-		indicators:     []string{"pom.xml"},
-		ciSetupSupport: true,
+		PackageType:       "Maven",
+		indicators:        []string{"pom.xml"},
+		ciSetupSupport:    true,
+		packageDescriptor: "pom.xml",
 	},
 	Gradle: {
-		PackageType:    "Gradle",
-		indicators:     []string{".gradle"},
-		ciSetupSupport: true,
+		PackageType:       "Gradle",
+		indicators:        []string{".gradle"},
+		ciSetupSupport:    true,
+		packageDescriptor: "build.gradle",
 	},
 	Npm: {
-		PackageType:    "npm",
-		indicators:     []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
-		exclude:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		ciSetupSupport: true,
+		PackageType:       "npm",
+		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		ciSetupSupport:    true,
+		packageDescriptor: "package.json",
 	},
 	Yarn: {
-		PackageType: "npm",
-		indicators:  []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		PackageType:       "npm",
+		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor: "package.json",
 	},
 	Go: {
-		PackageType: "go",
-		indicators:  []string{"go.mod"},
+		PackageType:       "go",
+		indicators:        []string{"go.mod"},
+		packageDescriptor: "go.mod",
 	},
 	Pip: {
 		PackageType: "pypi",
 		indicators:  []string{"setup.py", "requirements.txt"},
+		exclude:     []string{"Pipfile", "Pipfile.lock"},
 	},
 	Pipenv: {
-		PackageType: "pypi",
-		indicators:  []string{"pipfile", "pipfile.lock"},
+		PackageType:       "pypi",
+		indicators:        []string{"Pipfile", "Pipfile.lock"},
+		packageDescriptor: "Pipfile",
 	},
 	Nuget: {
 		PackageType: "nuget",
@@ -163,6 +172,19 @@ func ToTechnologies(args []string) (technologies []Technology) {
 		technologies = append(technologies, Technology(argument))
 	}
 	return
+}
+
+func GetTechnologyPackageDescriptor(tech string) string {
+	techData, ok := technologiesData[Technology(tech)]
+	var dependencyFile string
+	if ok {
+		dependencyFile = techData.packageDescriptor
+	}
+	if dependencyFile == "" {
+		return tech + " package descriptor"
+	}
+
+	return dependencyFile
 }
 
 func GetAllTechnologiesList() (technologies []string) {

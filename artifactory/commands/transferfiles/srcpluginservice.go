@@ -2,12 +2,13 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"net/http"
+
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"net/http"
 )
 
 const pluginsExecuteRestApi = "api/plugins/execute/"
@@ -58,9 +59,8 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 	return statusResponse, nil
 }
 
-// Uploads a chunk of files. If no error occurred:
-// Returns empty string if all files uploaded successfully with checksum deploy.
-// Otherwise, returns uuid token to get chunk status with.
+// Uploads a chunk of files.
+// If no error occurred, returns an uuid token to get chunk status with.
 func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken string, err error) {
 	content, err := json.Marshal(chunk)
 	if err != nil {
@@ -74,18 +74,17 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 		return "", err
 	}
 
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusAccepted); err != nil {
+	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusAccepted); err != nil {
 		return "", err
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		return "", nil
 	}
 
 	var uploadResponse UploadChunkResponse
 	err = json.Unmarshal(body, &uploadResponse)
 	if err != nil {
 		return "", errorutils.CheckError(err)
+	}
+	if uploadResponse.UuidToken == "" {
+		return "", errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
 	}
 	return uploadResponse.UuidToken, nil
 }
@@ -108,25 +107,6 @@ func (sup *srcUserPluginService) storeProperties(repoKey string) error {
 	}
 
 	return nil
-}
-
-func (sup *srcUserPluginService) ping() (nodeId string, err error) {
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, _, err := sup.client.SendGet(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"pingDataTransfer", true, &httpDetails)
-	if err != nil {
-		return "", err
-	}
-
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return "", err
-	}
-
-	var response NodeIdResponse
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return response.NodeId, nil
 }
 
 func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandlePropertiesDiff) (*HandlePropertiesDiffResponse, error) {
@@ -158,4 +138,23 @@ func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", &httpDetails)
+}
+
+func (sup *srcUserPluginService) stop() (nodeId string, err error) {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"stop", []byte{}, &httpDetails)
+	if err != nil {
+		return "", err
+	}
+
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		return "", err
+	}
+
+	var result NodeIdResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return result.NodeId, nil
 }

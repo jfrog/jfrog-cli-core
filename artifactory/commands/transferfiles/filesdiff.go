@@ -64,7 +64,7 @@ func (f *filesDiffPhase) phaseStarted() error {
 	}
 
 	// Find all errors files the phase will handle.
-	f.errorsFilesToHandle, err = getErrorsFiles(f.repoKey, true)
+	f.errorsFilesToHandle, err = getErrorsFiles([]string{f.repoKey}, true)
 	return err
 }
 

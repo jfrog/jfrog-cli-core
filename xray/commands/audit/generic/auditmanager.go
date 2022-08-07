@@ -1,11 +1,13 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -39,7 +41,7 @@ func GenericAudit(
 			return
 		}
 	}
-
+	var errorList []string
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		var techResults []services.ScanResponse
 		var isMultipleRootProject bool
@@ -70,13 +72,15 @@ func GenericAudit(
 			log.Info(string(tech), "is currently not supported")
 		}
 		if e != nil {
-			log.Error(e.Error())
 			// Save the error but continue to audit the next tech
-			err = e
+			errorList = append(errorList, fmt.Sprintf("%s Audit command failed: %s", tech, e.Error()))
 		} else {
 			results = append(results, techResults...)
 			isMultipleRoot = isMultipleRootProject
 		}
+	}
+	if len(errorList) > 0 {
+		err = errors.New(strings.Join(errorList, "\n"))
 	}
 	return
 }

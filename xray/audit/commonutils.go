@@ -98,7 +98,7 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 	if err != nil {
 		return
 	}
-	log.Debug("JFrog Xray version is:", xrayVersion)
+	log.Info("JFrog Xray version is:", xrayVersion)
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		xrayGraphScanPrams.Graph = moduleDependencyTree
 		// Log the scanned module ID

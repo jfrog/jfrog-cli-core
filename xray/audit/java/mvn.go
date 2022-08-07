@@ -13,8 +13,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildMvnDependencyTree(insecureTls)
+func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, insecureTls, ignoreConfigFile bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildMvnDependencyTree(insecureTls, ignoreConfigFile)
 	if err != nil {
 		return
 	}
@@ -23,11 +23,11 @@ func AuditMvn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *co
 	return
 }
 
-func BuildMvnDependencyTree(insecureTls bool) (modules []*services.GraphNode, err error) {
+func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
-	err = runMvn(buildConfiguration, insecureTls)
+	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile)
 	if err != nil {
 		return
 	}
@@ -35,17 +35,19 @@ func BuildMvnDependencyTree(insecureTls bool) (modules []*services.GraphNode, er
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls bool) error {
+func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile bool) (err error) {
 	goals := []string{"-B", "compile", "test-compile"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
-	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Maven)
-	if err != nil {
-		return err
-	}
-	if exists {
-		log.Debug("Using resolver config from " + configFilePath)
-	} else {
-		configFilePath = ""
+	configFilePath := ""
+	if !ignoreConfigFile {
+		var exists bool
+		configFilePath, exists, err = utils.GetProjectConfFilePath(utils.Maven)
+		if err != nil {
+			return
+		}
+		if exists {
+			log.Debug("Using resolver config from " + configFilePath)
+		}
 	}
 	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, insecureTls, true)
 }

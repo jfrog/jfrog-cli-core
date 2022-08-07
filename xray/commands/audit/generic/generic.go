@@ -137,7 +137,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		}
 	}
 	if auditErr != nil {
-		auditErr = err
+		err = auditErr
 		return
 	}
 

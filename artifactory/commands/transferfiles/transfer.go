@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"strconv"
 
@@ -37,10 +38,11 @@ type TransferFilesCommand struct {
 	progressbar               *progressbar.TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
+	timeStarted               time.Time
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
-	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer, timeStarted: time.Now()}
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
@@ -131,12 +133,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			newPhase = getPhaseByNum(currentPhaseId, repo)
 			err = tdc.startPhase(newPhase, repo, repoSummary, srcUpService)
 			if err != nil {
-				return tdc.cleanup(err)
+				return tdc.cleanup(err, sourceRepos)
 			}
 		}
 	}
 	// Close progressBar and create CSV errors summary file
-	return tdc.cleanup(nil)
+	return tdc.cleanup(nil, sourceRepos)
 }
 
 func (tdc *TransferFilesCommand) startPhase(newPhase transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
@@ -284,7 +286,7 @@ type producerConsumerDetails struct {
 // If an error occurred cleanup will:
 // 1. Close progressBar
 // 2. Create CSV errors summary file
-func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
+func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string) (err error) {
 	err = originalErr
 	// Quit progress bar (before printing logs)
 	if tdc.progressbar != nil {
@@ -298,7 +300,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 		log.Info("Files transfer is complete!")
 	}
 	// Create csv errors summary file
-	csvErrorsFile, e := createErrorsCsvSummary()
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if err == nil {
 		err = e
 	}

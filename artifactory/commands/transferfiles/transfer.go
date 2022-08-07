@@ -237,6 +237,7 @@ func (tdc *TransferFilesCommand) getLocalRepositories(storageInfo *serviceUtils.
 	return append(buildInfoRepoKeys, repoKeys...), nil
 }
 
+// Return the storage info of the source and target Artifactory servers
 func (tdc *TransferFilesCommand) getSourceAndTargetStorageInfo() (*serviceUtils.StorageInfo, *serviceUtils.StorageInfo, error) {
 	// Get source storage info
 	sourceStorageInfo, err := tdc.getStorageInfo(tdc.sourceServerDetails)
@@ -246,10 +247,6 @@ func (tdc *TransferFilesCommand) getSourceAndTargetStorageInfo() (*serviceUtils.
 
 	// Get target storage info
 	targetStorageInfo, err := tdc.getStorageInfo(tdc.targetServerDetails)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	return sourceStorageInfo, targetStorageInfo, err
 }
 

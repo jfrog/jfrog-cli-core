@@ -355,7 +355,7 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 	}
 	log.Info(fmt.Sprintf("Logs from Artifactory:\n%s", body))
 	if strings.Contains(string(body), "[ERROR]") {
-		return errorutils.CheckErrorf("Errors detected during config import. Hint: To skip failed repositories, please refer to the '--exclude-repos' flag.")
+		return errorutils.CheckErrorf("Errors detected during config import. Hint: You can skip transferring some Artifactory repositories by using the '--exclude-repos' command option. Run 'jf rt transfer-config -h' for more information.")
 	}
 	return nil
 }

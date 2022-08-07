@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jfrog/gofrog/version"
@@ -351,6 +352,9 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 		return err
 	}
 	log.Info(fmt.Sprintf("Logs from Artifactory:\n%s", body))
+	if strings.Contains(string(body), "[ERROR]") {
+		return errorutils.CheckErrorf("Errors detected during config import. Hint: You can skip transferring some Artifactory repositories by using the '--exclude-repos' command option. Run 'jf rt transfer-config -h' for more information.")
+	}
 	return nil
 }
 

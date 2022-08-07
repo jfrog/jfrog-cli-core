@@ -101,7 +101,7 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGr
 func (auditCmd *GenericAuditCommand) Run() (err error) {
 	server, err := auditCmd.ServerDetails()
 	if err != nil {
-		return err
+		return
 	}
 	results, isMultipleRootProject, err := GenericAudit(
 		auditCmd.CreateXrayGraphScanParams(),
@@ -115,13 +115,13 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.technologies...,
 	)
 	if err != nil {
-		return err
+		return
 	}
 
 	if auditCmd.progress != nil {
 		err = auditCmd.progress.Quit()
 		if err != nil {
-			return err
+			return
 		}
 	}
 
@@ -134,13 +134,13 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.PrintExtendedTable,
 	)
 	if err != nil {
-		return err
+		return
 	}
 	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities) and the user asked to fail the build accordingly, do so.
 	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(results) {
-		return xrutils.NewFailBuildError()
+		err = xrutils.NewFailBuildError()
 	}
-	return nil
+	return
 }
 
 func (auditCmd *GenericAuditCommand) CommandName() string {

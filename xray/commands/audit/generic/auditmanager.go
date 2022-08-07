@@ -29,7 +29,7 @@ func GenericAudit(
 	args []string,
 	progress ioUtils.ProgressMgr,
 	requirementsFile string,
-	technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
@@ -42,6 +42,7 @@ func GenericAudit(
 
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		var techResults []services.ScanResponse
+		var isMultipleRootProject bool
 		var e error
 		if progress != nil {
 			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech))
@@ -69,10 +70,12 @@ func GenericAudit(
 			log.Info(string(tech), "is currently not supported")
 		}
 		if e != nil {
+			log.Error(e.Error())
 			// Save the error but continue to audit the next tech
 			err = e
 		} else {
 			results = append(results, techResults...)
+			isMultipleRoot = isMultipleRootProject
 		}
 	}
 	return

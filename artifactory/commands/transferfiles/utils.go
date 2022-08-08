@@ -232,6 +232,7 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 	}
 
 	// Add token to polling.
+	log.Debug("Chunk uploaded. Adding chunk token '" + uuidToken + "' to poll on for status.")
 	uploadTokensChan <- uuidToken
 	return nil
 }

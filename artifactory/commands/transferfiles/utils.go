@@ -261,7 +261,7 @@ func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan b
 
 func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
 	settings, err := utils.LoadTransferSettings()
-	if err != nil {
+	if err != nil || settings == nil {
 		return err
 	}
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)

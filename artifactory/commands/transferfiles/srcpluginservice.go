@@ -137,7 +137,7 @@ func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandleProperti
 func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", &httpDetails)
+	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

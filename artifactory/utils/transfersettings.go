@@ -3,13 +3,14 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 const (

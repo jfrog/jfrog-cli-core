@@ -77,10 +77,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return errorutils.CheckError(err)
 	}
 
-	if err = tdc.initCurThreads(); err != nil {
-		return err
-	}
-
 	sourceStorageInfo, targetStorageInfo, err := tdc.getSourceAndTargetStorageInfo()
 	if err != nil {
 		return err
@@ -128,7 +124,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			tdc.progressbar.NewRepository(repo)
 		}
 
-		tdc.updateCurThreads(buildInfoRepo)
+		if err = tdc.initCurThreads(buildInfoRepo); err != nil {
+			return err
+		}
 		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
 			if shouldStop {
 				break
@@ -263,7 +261,7 @@ func (tdc *TransferFilesCommand) getStorageInfo(serverDetails *config.ServerDeta
 	return serviceManager.StorageInfo(true)
 }
 
-func (tdc *TransferFilesCommand) initCurThreads() error {
+func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	// Use default threads if settings file doesn't exist or an error occurred.
 	curThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
@@ -271,17 +269,13 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 		return err
 	}
 	if settings != nil {
-		curThreads = settings.CalcNumberOfThreads(false)
+		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+	}
+	if buildInfoRepo && curThreads < settings.ThreadsNumber {
+		log.Info("Build info transferring - using reduced number of threads")
 	}
 	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
-}
-
-func (tdc *TransferFilesCommand) updateCurThreads(buildInfoRepo bool) {
-	if curThreads > utils.MaxBuildInfoThreads {
-		log.Info(fmt.Sprintf("Build info transferring - using up to %d threads", utils.MaxBuildInfoThreads))
-		curThreads = utils.MaxBuildInfoThreads
-	}
 }
 
 func printPhaseChange(message string) {

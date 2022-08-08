@@ -37,6 +37,7 @@ type TransferFilesCommand struct {
 	progressbar               *progressbar.TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
+	ignoreState               bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -57,6 +58,10 @@ func (tdc *TransferFilesCommand) SetIncludeReposPatterns(includeReposPatterns []
 
 func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []string) {
 	tdc.excludeReposPatterns = excludeReposPatterns
+}
+
+func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
+	tdc.ignoreState = ignoreState
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
@@ -132,6 +137,14 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		if tdc.progressbar != nil {
 			tdc.progressbar.NewRepository(repo)
 		}
+
+		if tdc.ignoreState {
+			err = resetRepoState(repo)
+			if err != nil {
+				return tdc.cleanup(err)
+			}
+		}
+
 		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
 			if shouldStop {
 				break

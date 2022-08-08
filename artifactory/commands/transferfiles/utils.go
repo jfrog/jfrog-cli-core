@@ -238,15 +238,6 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 	return nil
 }
 
-func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
-	for _, targetRepo := range targetRepos {
-		if targetRepo == srcRepoKey {
-			return true
-		}
-	}
-	return false
-}
-
 func GetThreads() int {
 	return curThreads
 }

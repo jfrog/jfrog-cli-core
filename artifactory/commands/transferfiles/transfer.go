@@ -270,10 +270,11 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	}
 	if settings != nil {
 		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+		if buildInfoRepo && curThreads < settings.ThreadsNumber {
+			log.Info("Build info transferring - using reduced number of threads")
+		}
 	}
-	if buildInfoRepo && curThreads < settings.ThreadsNumber {
-		log.Info("Build info transferring - using reduced number of threads")
-	}
+
 	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }

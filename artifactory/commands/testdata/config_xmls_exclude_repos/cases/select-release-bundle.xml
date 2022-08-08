@@ -78,7 +78,37 @@
     <remoteRepositories></remoteRepositories>
     <virtualRepositories></virtualRepositories>
     <federatedRepositories/>
-    <releaseBundlesRepositories></releaseBundlesRepositories>
+    <releaseBundlesRepositories>
+        <releaseBundlesRepository>
+            <key>release-bundles</key>
+            <type>releasebundles</type>
+            <includesPattern>**/*</includesPattern>
+            <dockerApiVersion>V2</dockerApiVersion>
+            <forceNugetAuthentication>false</forceNugetAuthentication>
+            <forceConanAuthentication>false</forceConanAuthentication>
+            <ddebSupported>false</ddebSupported>
+            <signedUrlTtl>90</signedUrlTtl>
+            <blackedOut>false</blackedOut>
+            <handleReleases>true</handleReleases>
+            <handleSnapshots>true</handleSnapshots>
+            <maxUniqueSnapshots>0</maxUniqueSnapshots>
+            <maxUniqueTags>0</maxUniqueTags>
+            <blockPushingSchema1>true</blockPushingSchema1>
+            <suppressPomConsistencyChecks>true</suppressPomConsistencyChecks>
+            <propertySets/>
+            <archiveBrowsingEnabled>false</archiveBrowsingEnabled>
+            <priorityResolution>false</priorityResolution>
+            <snapshotVersionBehavior>unique</snapshotVersionBehavior>
+            <localRepoChecksumPolicyType>client-checksums</localRepoChecksumPolicyType>
+            <calculateYumMetadata>false</calculateYumMetadata>
+            <yumRootDepth>0</yumRootDepth>
+            <debianTrivialLayout>false</debianTrivialLayout>
+            <enableFileListsIndexing>false</enableFileListsIndexing>
+            <dockerTagRetention>1</dockerTagRetention>
+            <enableComposerV1Indexing>false</enableComposerV1Indexing>
+            <terraformType>MODULE</terraformType>
+        </releaseBundlesRepository>
+    </releaseBundlesRepositories>
     <proxies/>
     <reverseProxies>
         <reverseProxy>

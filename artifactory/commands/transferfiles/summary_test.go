@@ -8,17 +8,21 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestCreateErrorsSummaryFile(t *testing.T) {
-	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
-	defer createTempDirCallback()
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
 	testDataDir := filepath.Join("..", "testdata", "transfer_summary")
 	logFiles := []string{filepath.Join(testDataDir, "logs1.json"), filepath.Join(testDataDir, "logs2.json")}
 
 	// Create Errors Summary Csv File from given JSON log files
-	createdCsvPath, err := createErrorsSummaryCsvFile(logFiles, tmpDir)
+	createdCsvPath, err := createErrorsSummaryCsvFile(logFiles, time.Now())
 	assert.NoError(t, err)
+	assert.NotEmpty(t, createdCsvPath)
 	createdFile, err := os.Open(createdCsvPath)
 	assert.NoError(t, err)
 	defer func() {

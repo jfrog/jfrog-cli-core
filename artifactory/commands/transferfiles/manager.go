@@ -2,15 +2,18 @@ package transferfiles
 
 import (
 	"fmt"
-	"sync"
-
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"sync"
 )
 
-const totalNumberPollingGoRoutines = 2
+const (
+	totalNumberPollingGoRoutines = 2
+	tasksMaxCapacity             = 5000000
+)
 
 type transferManager struct {
 	phaseBase
@@ -48,7 +51,7 @@ func (ftm *transferManager) doTransferWithSingleProducer(transferAction transfer
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
+	uploadTokensChan := make(chan string, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -183,6 +186,11 @@ func (ptm *PollingTasksManager) stop() {
 	for i := 0; i < ptm.totalRunningGoRoutines; i++ {
 		ptm.doneChannel <- true
 	}
+}
+
+type producerConsumerDetails struct {
+	producerConsumer parallel.Runner
+	errorsQueue      *clientUtils.ErrorsQueue
 }
 
 func initProducerConsumer() producerConsumerDetails {

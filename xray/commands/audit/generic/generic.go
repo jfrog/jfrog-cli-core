@@ -101,9 +101,9 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGr
 func (auditCmd *GenericAuditCommand) Run() (err error) {
 	server, err := auditCmd.ServerDetails()
 	if err != nil {
-		return err
+		return
 	}
-	results, isMultipleRootProject, err := GenericAudit(
+	results, isMultipleRootProject, auditErr := GenericAudit(
 		auditCmd.CreateXrayGraphScanParams(),
 		server,
 		auditCmd.excludeTestDependencies,
@@ -114,33 +114,38 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.requirementsFile,
 		auditCmd.technologies...,
 	)
-	if err != nil {
-		return err
-	}
 
 	if auditCmd.progress != nil {
 		err = auditCmd.progress.Quit()
 		if err != nil {
-			return err
+			return
 		}
 	}
-
-	err = xrutils.PrintScanResults(results,
-		nil,
-		auditCmd.OutputFormat,
-		auditCmd.IncludeVulnerabilities,
-		auditCmd.IncludeLicenses,
-		isMultipleRootProject,
-		auditCmd.PrintExtendedTable,
-	)
-	if err != nil {
-		return err
+	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
+	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
+	if printScanResults {
+		err = xrutils.PrintScanResults(results,
+			nil,
+			auditCmd.OutputFormat,
+			auditCmd.IncludeVulnerabilities,
+			auditCmd.IncludeLicenses,
+			isMultipleRootProject,
+			auditCmd.PrintExtendedTable,
+		)
+		if err != nil {
+			return
+		}
 	}
+	if auditErr != nil {
+		err = auditErr
+		return
+	}
+
 	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities) and the user asked to fail the build accordingly, do so.
 	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(results) {
-		return xrutils.NewFailBuildError()
+		err = xrutils.NewFailBuildError()
 	}
-	return nil
+	return
 }
 
 func (auditCmd *GenericAuditCommand) CommandName() string {

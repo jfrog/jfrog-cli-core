@@ -9,21 +9,18 @@ import (
 
 	"strconv"
 
-	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
-	tasksMaxCapacity = 10000
-	uploadChunkSize  = 16
+	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
 	retries                      = 3
@@ -276,11 +273,6 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 
 func printPhaseChange(message string) {
 	log.Info("========== " + message + " ==========")
-}
-
-type producerConsumerDetails struct {
-	producerConsumer parallel.Runner
-	errorsQueue      *clientUtils.ErrorsQueue
 }
 
 // If an error occurred cleanup will:

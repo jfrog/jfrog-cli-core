@@ -132,7 +132,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		if tdc.ignoreState {
 			err = resetRepoState(repo)
 			if err != nil {
-				return tdc.cleanup(err)
+				return tdc.cleanup(err, sourceRepos)
 			}
 		}
 

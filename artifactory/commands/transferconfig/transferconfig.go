@@ -195,7 +195,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 
 	// Get config-import plugin version
 	configImportVersionUrl := artifactoryUrl + "api/plugins/execute/configImportVersion"
-	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(targetServicesManager.Client(), configImportVersionUrl, "config-import", rtDetails)
+	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(targetServicesManager.Client(), configImportVersionUrl, "config-import", commandsUtils.Target, rtDetails)
 	if err != nil {
 		return err
 	}

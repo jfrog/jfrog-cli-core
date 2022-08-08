@@ -3,10 +3,13 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"math"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -72,7 +75,7 @@ func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errors
 
 // Ensure that all retryable/skipped errors files have been created and that they contain the expected content
 func validateErrorsFiles(t *testing.T, filesNum, errorsNum int, isRetryable bool) {
-	errorsFiles, err := getErrorsFiles(testRepoKey, isRetryable)
+	errorsFiles, err := getErrorsFiles([]string{testRepoKey}, isRetryable)
 	status := getStatusType(isRetryable)
 	assert.NoError(t, err)
 	assert.Lenf(t, errorsFiles, filesNum, "unexpected number of error files.")
@@ -115,4 +118,45 @@ func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatus
 		assert.NotEmptyf(t, entity.Time, "expecting error's time stamp, but got empty string")
 	}
 	return len(filesErrors.Errors)
+}
+
+func TestGetErrorsFiles(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	retryableErrorsDirPath, err := coreutils.GetJfrogTransferRetryableDir()
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(retryableErrorsDirPath))
+
+	skippedErrorsDirPath, err := coreutils.GetJfrogTransferSkippedDir()
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(skippedErrorsDirPath))
+
+	repoKey := "my-repo-local"
+	// Create 3 retryable errors files that belong to the repo.
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 0, 0)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 0, 1)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 1, 123)
+	// Create a few retryable errors files that are distractions.
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, "wrong"+repoKey, 0, 0)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"wrong", 0, 1)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, "wrong-"+repoKey+"-wrong", 1, 0)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"-0", 1, 0)
+	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"-0-1", 1, 0)
+
+	// Create 1 skipped errors file that belongs to the repo.
+	writeEmptyErrorsFile(t, skippedErrorsDirPath, repoKey, 0, 1)
+
+	paths, err := getErrorsFiles([]string{repoKey}, true)
+	assert.NoError(t, err)
+	assert.Len(t, paths, 3)
+	paths, err = getErrorsFiles([]string{repoKey}, false)
+	assert.NoError(t, err)
+	assert.Len(t, paths, 1)
+}
+
+func writeEmptyErrorsFile(t *testing.T, path, repoKey string, phase, counter int) {
+	fileName := getErrorsFileName(repoKey, phase, convertTimeToEpochMilliseconds(time.Now()), counter)
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(path, fileName), nil, 0644))
 }

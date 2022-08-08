@@ -157,7 +157,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel)
+		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel, phaseBase.buildInfoRepo)
 	}()
 
 	// Check status of uploaded chunks.

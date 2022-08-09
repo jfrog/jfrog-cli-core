@@ -95,7 +95,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.18.1-0.20220731163434-83bf7f62d04e
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.18.2-0.20220809085432-4437966c6d64
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.3.1-0.20220623084021-a61432b84f63
 

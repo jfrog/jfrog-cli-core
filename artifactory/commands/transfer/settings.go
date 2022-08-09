@@ -2,12 +2,14 @@ package transfer
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strconv"
 )
 
 const MaxThreadsLimit = 1024
@@ -42,6 +44,7 @@ func (tst *TransferSettingsCommand) Run() error {
 		return err
 	}
 	log.Output("The settings were saved successfully. It might take a few moments for the new settings to take effect.")
+	log.Output(fmt.Sprintf("Notice - For Build Info repositories, the number of threads is limited by %d.", utils.MaxBuildInfoThreads))
 	return nil
 }
 

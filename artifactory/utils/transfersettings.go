@@ -3,18 +3,20 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 const (
 	// DefaultThreads is the default number of threads working while transferring Artifactory's data
-	DefaultThreads = 8
+	DefaultThreads      = 8
+	MaxBuildInfoThreads = 8
 
 	transferSettingsFile     = "transfer.conf"
 	transferSettingsLockFile = "transfer-settings"
@@ -22,6 +24,13 @@ const (
 
 type TransferSettings struct {
 	ThreadsNumber int `json:"threadsNumber,omitempty"`
+}
+
+func (ts *TransferSettings) CalcNumberOfThreads(buildInfoRepo bool) int {
+	if buildInfoRepo && MaxBuildInfoThreads < ts.ThreadsNumber {
+		return MaxBuildInfoThreads
+	}
+	return ts.ThreadsNumber
 }
 
 func LoadTransferSettings() (settings *TransferSettings, err error) {

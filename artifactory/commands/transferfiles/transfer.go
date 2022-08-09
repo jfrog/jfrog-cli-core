@@ -82,16 +82,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return errorutils.CheckError(err)
 	}
 
-	if err = tdc.initCurThreads(); err != nil {
-		return err
-	}
-
 	sourceStorageInfo, targetStorageInfo, err := tdc.getSourceAndTargetStorageInfo()
 	if err != nil {
 		return err
 	}
 
-	sourceRepos, targetRepos, err := tdc.getSourceAndTargetLocalRepositories(sourceStorageInfo, targetStorageInfo)
+	sourceRepos, err := tdc.getLocalRepositories(sourceStorageInfo, tdc.sourceServerDetails)
+	if err != nil {
+		return err
+	}
+
+	targetRepos, err := tdc.getLocalRepositories(targetStorageInfo, tdc.targetServerDetails)
 	if err != nil {
 		return err
 	}
@@ -108,13 +109,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping := tdc.handleStop(&shouldStop, &newPhase, srcUpService)
 	defer finishStopping()
 
-	for _, repo := range sourceRepos {
+	for repo, buildInfoRepo := range sourceRepos {
 		if shouldStop {
 			break
 		}
 
-		exists := verifyRepoExistsInTarget(targetRepos, repo)
-		if !exists {
+		if _, exists := targetRepos[repo]; !exists {
 			log.Error("repository '" + repo + "' does not exist in target. Skipping...")
 			continue
 		}
@@ -136,11 +136,15 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			}
 		}
 
+		if err = tdc.initCurThreads(buildInfoRepo); err != nil {
+			return err
+		}
 		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
 			if shouldStop {
 				break
 			}
-			newPhase = getPhaseByNum(currentPhaseId, repo)
+
+			newPhase = getPhaseByNum(currentPhaseId, repo, buildInfoRepo)
 			err = tdc.startPhase(newPhase, repo, repoSummary, srcUpService)
 			if err != nil {
 				return tdc.cleanup(err, sourceRepos)
@@ -222,31 +226,30 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProgressBar(tdc.progressbar)
 }
 
-func (tdc *TransferFilesCommand) getSourceAndTargetLocalRepositories(sourceStorageInfo *serviceUtils.StorageInfo, targetStorageInfo *serviceUtils.StorageInfo) ([]string, []string, error) {
-	sourceRepos, err := tdc.getLocalRepositories(sourceStorageInfo, tdc.sourceServerDetails)
-	if err != nil {
-		return []string{}, []string{}, err
-	}
-	targetRepos, err := tdc.getLocalRepositories(targetStorageInfo, tdc.targetServerDetails)
-	return sourceRepos, targetRepos, err
-}
-
-func (tdc *TransferFilesCommand) getLocalRepositories(storageInfo *serviceUtils.StorageInfo, serverDetails *config.ServerDetails) ([]string, error) {
+func (tdc *TransferFilesCommand) getLocalRepositories(storageInfo *serviceUtils.StorageInfo, serverDetails *config.ServerDetails) (map[string]bool, error) {
+	allLocalRepos := map[string]bool{}
 	var repoKeys []string
 	serviceManager, err := utils.CreateServiceManager(serverDetails, retries, retriesWait, false)
 	if err != nil {
-		return repoKeys, err
+		return allLocalRepos, err
 	}
 	repoKeys, err = utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 	if err != nil {
-		return repoKeys, err
+		return allLocalRepos, err
 	}
 
 	buildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(storageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
 	if err != nil {
-		return repoKeys, err
+		return allLocalRepos, err
 	}
-	return append(buildInfoRepoKeys, repoKeys...), nil
+
+	for _, repoKey := range repoKeys {
+		allLocalRepos[repoKey] = false
+	}
+	for _, repoKey := range buildInfoRepoKeys {
+		allLocalRepos[repoKey] = true
+	}
+	return allLocalRepos, nil
 }
 
 // Return the storage info of the source and target Artifactory servers
@@ -270,7 +273,7 @@ func (tdc *TransferFilesCommand) getStorageInfo(serverDetails *config.ServerDeta
 	return serviceManager.StorageInfo(true)
 }
 
-func (tdc *TransferFilesCommand) initCurThreads() error {
+func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	// Use default threads if settings file doesn't exist or an error occurred.
 	curThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
@@ -278,8 +281,12 @@ func (tdc *TransferFilesCommand) initCurThreads() error {
 		return err
 	}
 	if settings != nil {
-		curThreads = settings.ThreadsNumber
+		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+		if buildInfoRepo && curThreads < settings.ThreadsNumber {
+			log.Info("Build info transferring - using reduced number of threads")
+		}
 	}
+
 	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }
@@ -291,7 +298,7 @@ func printPhaseChange(message string) {
 // If an error occurred cleanup will:
 // 1. Close progressBar
 // 2. Create CSV errors summary file
-func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string) (err error) {
+func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos map[string]bool) (err error) {
 	err = originalErr
 	// Quit progress bar (before printing logs)
 	if tdc.progressbar != nil {
@@ -305,7 +312,11 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 		log.Info("Files transfer is complete!")
 	}
 	// Create csv errors summary file
-	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
+	sourceRepoKeys := make([]string, 0, len(sourceRepos))
+	for repoKey := range sourceRepos {
+		sourceRepoKeys = append(sourceRepoKeys, repoKey)
+	}
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepoKeys, tdc.timeStarted)
 	if err == nil {
 		err = e
 	}

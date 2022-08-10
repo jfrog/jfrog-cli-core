@@ -63,7 +63,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
-func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color) *tasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, jobType TransferJobType) *tasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := tasksWithHeadlineProg{}
 	if spinner {
@@ -76,7 +76,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	if totalTasks == 0 {
 		prog.tasksProgressBar = bm.NewDoneTasksProgressBar()
 	} else {
-		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color)
+		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color, jobType)
 	}
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
@@ -141,14 +141,14 @@ func (bm *ProgressBarMng) DoneTask(prog *tasksWithHeadlineProg) {
 	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
-func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *tasksProgressBar {
+func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color, jobType TransferJobType) *tasksProgressBar {
 	pb := &tasksProgressBar{}
 	filter := filterColor(color)
 	pb.bar = bm.container.New(0,
 		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(" Tasks: "),
+			decor.Name(" "+jobType.String()+": "),
 			decor.CountersNoUnit("%d/%d"),
 		),
 	)

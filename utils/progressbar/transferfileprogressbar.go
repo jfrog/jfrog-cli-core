@@ -12,6 +12,18 @@ import (
 	"github.com/vbauerster/mpb/v7"
 )
 
+type TransferJobType string
+
+const (
+	Repositories TransferJobType = "Repositories"
+	Files        TransferJobType = "Files"
+	TimeSlots    TransferJobType = "Time Slots"
+)
+
+func (tt *TransferJobType) String() string {
+	return string(*tt)
+}
+
 // TransferProgressMng provides progress indication for the jf rt transfer-files command.
 // Transferring one repository's data at a time.
 type TransferProgressMng struct {
@@ -40,7 +52,7 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	}
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
-	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, WHITE)
+	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, WHITE, Repositories)
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
 	return &transfer, nil
 }
@@ -135,11 +147,11 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 }
 
 func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, GREEN))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, GREEN, Files))
 }
 
 func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, GREEN))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, GREEN, TimeSlots))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

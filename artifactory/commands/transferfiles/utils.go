@@ -21,6 +21,7 @@ const (
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
 	DefaultAqlPaginationLimit                    = 10000
+	maxBuildInfoRepoThreads                      = 8
 )
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
@@ -232,17 +233,9 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 	}
 
 	// Add token to polling.
+	log.Debug("Chunk uploaded. Adding chunk token '" + uuidToken + "' to poll on for status.")
 	uploadTokensChan <- uuidToken
 	return nil
-}
-
-func verifyRepoExistsInTarget(targetRepos []string, srcRepoKey string) bool {
-	for _, targetRepo := range targetRepos {
-		if targetRepo == srcRepoKey {
-			return true
-		}
-	}
-	return false
 }
 
 func GetThreads() int {
@@ -253,28 +246,29 @@ func GetThreads() int {
 // Number of threads in the settings files is expected to change by running a separate command.
 // The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
-func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool) {
+func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool, buildInfoRepo bool) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
 		if shouldStopPolling(doneChan) {
 			return
 		}
-		err := updateThreads(producerConsumer)
+		err := updateThreads(producerConsumer, buildInfoRepo)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 }
 
-func updateThreads(producerConsumer parallel.Runner) error {
+func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
 	settings, err := utils.LoadTransferSettings()
-	if err != nil {
+	if err != nil || settings == nil {
 		return err
 	}
-	if settings != nil && curThreads != settings.ThreadsNumber {
-		curThreads = settings.ThreadsNumber
+	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
+	if settings != nil && curThreads != calculatedNumberOfThreads {
+		curThreads = calculatedNumberOfThreads
 		if producerConsumer != nil {
-			producerConsumer.SetMaxParallel(settings.ThreadsNumber)
+			producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
 		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}

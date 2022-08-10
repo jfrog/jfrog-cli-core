@@ -2,15 +2,17 @@ package transfer
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strconv"
 )
 
-const maxThreadsLimit = 1024
+const MaxThreadsLimit = 1024
 
 type TransferSettingsCommand struct {
 }
@@ -33,8 +35,8 @@ func (tst *TransferSettingsCommand) Run() error {
 	var threadsNumberInput string
 	ioutils.ScanFromConsole("Set the maximum number of working threads", &threadsNumberInput, currThreadsNumber)
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
-	if err != nil || threadsNumber < 1 || threadsNumber > maxThreadsLimit {
-		return errorutils.CheckError(errors.New("the value must be a number between 1 and " + strconv.Itoa(maxThreadsLimit)))
+	if err != nil || threadsNumber < 1 || threadsNumber > MaxThreadsLimit {
+		return errorutils.CheckError(errors.New("the value must be a number between 1 and " + strconv.Itoa(MaxThreadsLimit)))
 	}
 	conf := &utils.TransferSettings{ThreadsNumber: threadsNumber}
 	err = utils.SaveTransferSettings(conf)
@@ -42,6 +44,7 @@ func (tst *TransferSettingsCommand) Run() error {
 		return err
 	}
 	log.Output("The settings were saved successfully. It might take a few moments for the new settings to take effect.")
+	log.Output(fmt.Sprintf("Notice - For Build Info repositories, the number of threads is limited by %d.", utils.MaxBuildInfoThreads))
 	return nil
 }
 

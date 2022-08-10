@@ -74,7 +74,7 @@ func GenericAudit(
 		}
 		if e != nil {
 			// Save the error but continue to audit the next tech
-			errorList = append(errorList, fmt.Sprintf("%s Audit command failed: %s", tech, e.Error()))
+			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed: %s", tech, e.Error()))
 		} else {
 			results = append(results, techResults...)
 			isMultipleRoot = isMultipleRootProject

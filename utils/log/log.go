@@ -40,16 +40,21 @@ func SetDefaultLogger() {
 	log.SetLogger(log.NewLoggerWithFlags(GetCliLogLevel(), nil, getJfrogCliLogTimestamp()))
 }
 
+const DefaultLogTimeLayout = "2006-01-02.15-04-05"
+
 func CreateLogFile() (*os.File, error) {
+	currentTime := time.Now().Format(DefaultLogTimeLayout)
+	pid := os.Getpid()
+	return CreateCustomLogFile("jfrog-cli." + currentTime + "." + strconv.Itoa(pid) + ".log")
+}
+
+func CreateCustomLogFile(fileNameWithExt string) (*os.File, error) {
 	logDir, err := coreutils.CreateDirInJfrogHome(coreutils.JfrogLogsDirName)
 	if err != nil {
 		return nil, err
 	}
 
-	currentTime := time.Now().Format("2006-01-02.15-04-05")
-	pid := os.Getpid()
-
-	fileName := filepath.Join(logDir, "jfrog-cli."+currentTime+"."+strconv.Itoa(pid)+".log")
+	fileName := filepath.Join(logDir, fileNameWithExt)
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, errorutils.CheckError(err)

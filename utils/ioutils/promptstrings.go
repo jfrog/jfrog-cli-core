@@ -56,7 +56,7 @@ func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) 
 func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *promptui.Select) {
 	selectionIcon := "🐸"
 	if !log.IsColorsSupported() {
-		selectionIcon = ">"
+		selectionIcon = "> "
 	}
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}",

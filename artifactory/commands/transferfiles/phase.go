@@ -4,7 +4,6 @@ import (
 	"time"
 
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 )
 
@@ -22,7 +21,7 @@ type transferPhase interface {
 	setTargetDetails(*coreConfig.ServerDetails)
 	setRepoSummary(serviceUtils.RepositorySummary)
 	getPhaseName() string
-	setProgressBar(*progressbar.TransferProgressMng)
+	setProgressBar(*TransferProgressMng)
 	initProgressBar() error
 	stopGracefully()
 }
@@ -36,7 +35,7 @@ type phaseBase struct {
 	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
-	progressBar               *progressbar.TransferProgressMng
+	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
 	stop                      *bool
 }

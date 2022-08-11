@@ -13,7 +13,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -32,7 +31,7 @@ type TransferFilesCommand struct {
 	sourceServerDetails       *config.ServerDetails
 	targetServerDetails       *config.ServerDetails
 	checkExistenceInFilestore bool
-	progressbar               *progressbar.TransferProgressMng
+	progressbar               *TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
 	timeStarted               time.Time
@@ -93,7 +92,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar
-	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(sourceRepos)))
+	tdc.progressbar, err = NewTransferProgressMng(int64(len(sourceRepos)))
 	if err != nil {
 		return err
 	}

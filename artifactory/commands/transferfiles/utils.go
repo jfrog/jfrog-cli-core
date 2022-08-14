@@ -32,6 +32,23 @@ func (m *InterruptionErr) Error() string {
 	return "Files transfer was interrupted by user"
 }
 
+type StoppableComponent interface {
+	Stop()
+	ShouldStop() bool
+}
+
+type Stoppable struct {
+	stop bool
+}
+
+func (s *Stoppable) Stop() {
+	s.stop = true
+}
+
+func (s *Stoppable) ShouldStop() bool {
+	return s.stop
+}
+
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
 	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
 	if err != nil {
@@ -203,7 +220,7 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadToke
 			reduceCurProcessedChunks()
 			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
 		}
-		return
+		return ShouldStop(phaseBase, nil, errorsChannelMng)
 	}
 }
 
@@ -342,7 +359,7 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 // * Error occurred during delayed artifacts handling
 // * User interrupted the process (ctrl+c)
 func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelMng *ErrorsChannelMng) bool {
-	if phase != nil && phase.shouldStop() {
+	if phase != nil && phase.ShouldStop() {
 		log.Debug("Stop transferring data - Interrupted.")
 		return true
 	}

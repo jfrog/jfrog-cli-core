@@ -87,7 +87,7 @@ func (p *propertiesDiffPhase) run() error {
 	// Done handling when all nodes return done status.
 propertiesHandling:
 	for {
-		if *p.stop {
+		if p.ShouldStop() {
 			return errorutils.CheckError(&InterruptionErr{})
 		}
 		remoteNodeStatus, err := p.srcUpService.handlePropertiesDiff(requestBody)

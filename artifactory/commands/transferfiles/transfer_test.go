@@ -2,26 +2,30 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
 	transferFilesCommand := NewTransferFilesCommand(nil, nil)
 
-	shouldStop := false
-	var newPhase transferPhase
-	finishStopping := transferFilesCommand.handleStop(&shouldStop, &newPhase, nil)
+	finishStopping, _ := transferFilesCommand.handleStop(nil)
 	finishStopping()
+	assert.False(t, transferFilesCommand.ShouldStop())
 }
 
 const uuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
@@ -104,8 +108,7 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidate(fileSample)
-	shouldStop := false
-	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, stop: &shouldStop}, chunk, uploadTokensChan, nil)
+	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 1, curProcessedUploadChunks)
 
@@ -183,4 +186,88 @@ func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, fi
 			}
 		}
 	})
+}
+
+func TestGetSourceLocalRepositories(t *testing.T) {
+	// Prepare mock server
+	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/repositories?type=local&packageType=" {
+			// Reponse for GetWithFilter
+			w.WriteHeader(http.StatusOK)
+			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
+			bytes, err := json.Marshal(response)
+			assert.NoError(t, err)
+			_, err = w.Write(bytes)
+			assert.NoError(t, err)
+		}
+	})
+	defer testServer.Close()
+
+	// Get and assert local repositories
+	transferFilesCommand := NewTransferFilesCommand(serverDetails, nil)
+	localRepos, err := transferFilesCommand.getSourceLocalRepositories()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"repo-1", "repo-2"}, localRepos)
+}
+
+func TestGetAllTargetLocalRepositories(t *testing.T) {
+	// Prepare mock server
+	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/storageinfo/calculate" {
+			// Reponse for CalculateStorageInfo
+			w.WriteHeader(http.StatusAccepted)
+		} else if r.RequestURI == "/api/storageinfo" {
+			// Reponse for GetStorageInfo
+			w.WriteHeader(http.StatusOK)
+			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}}}
+			bytes, err := json.Marshal(response)
+			assert.NoError(t, err)
+			_, err = w.Write(bytes)
+			assert.NoError(t, err)
+		} else if r.RequestURI == "/api/repositories?type=local&packageType=" {
+			// Reponse for GetWithFilter
+			w.WriteHeader(http.StatusOK)
+			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}, {Key: "artifactory-build-info"}, {Key: "proj-build-info"}}
+			bytes, err := json.Marshal(response)
+			assert.NoError(t, err)
+			_, err = w.Write(bytes)
+			assert.NoError(t, err)
+		}
+	})
+	defer testServer.Close()
+
+	// Get and assert regular local and build info repositories of the target server
+	transferFilesCommand := NewTransferFilesCommand(nil, serverDetails)
+	transferFilesCommand.targetStorageInfoManager = coreUtils.NewStorageInfoManager(serverDetails)
+	localRepos, err := transferFilesCommand.getAllTargetLocalRepositories()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"repo-1", "repo-2", "artifactory-build-info", "proj-build-info"}, localRepos)
+}
+
+func TestInitStorageInfoManagers(t *testing.T) {
+	sourceServerCalculated, targetServerCalculated := false, false
+	// Prepare source mock server
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/storageinfo/calculate" {
+			w.WriteHeader(http.StatusAccepted)
+			sourceServerCalculated = true
+		}
+	})
+	defer sourceTestServer.Close()
+
+	// Prepare target mock server
+	targetTestServer, targetserverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/storageinfo/calculate" {
+			w.WriteHeader(http.StatusAccepted)
+			targetServerCalculated = true
+		}
+	})
+	defer targetTestServer.Close()
+
+	// Init and assert storage info managers
+	transferFilesCommand := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	err := transferFilesCommand.initStorageInfoManagers()
+	assert.NoError(t, err)
+	assert.True(t, sourceServerCalculated)
+	assert.True(t, targetServerCalculated)
 }

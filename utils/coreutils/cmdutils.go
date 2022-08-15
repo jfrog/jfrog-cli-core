@@ -308,3 +308,13 @@ func colorStr(str string, c color.Color) string {
 	}
 	return str
 }
+
+// Remove emojis from non-supported terminals
+func RemoveEmojisIfNonSupportedTerminal(msg string) string {
+	if !(log.IsStdOutTerminal() && log.IsColorsSupported()) {
+		if gomoji.ContainsEmoji(msg) {
+			msg = gomoji.RemoveEmojis(msg)
+		}
+	}
+	return msg
+}

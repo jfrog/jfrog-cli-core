@@ -3,18 +3,16 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/content"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const (
-	// Max delayedArtifacts that will be written in a file
-	maxDelayedArtifactsInFile = 50000
-)
+var maxDelayedArtifactsInFile = 50000
 
 // TransferDelayedArtifactsMng takes care of the multi-threaded-writing of artifacts to be transferred, while maintaining the correct order of the deployment.
 // This is needed because, for example, for maven repositories, pom file should be deployed last.
@@ -66,7 +64,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		// If file contains maximum number of delayedArtifacts - create and write to a new delayedArtifacts file.
 		if mng.deployedWriter.delayedArtifactCount == maxDelayedArtifactsInFile {
 			err = mng.deployedWriter.writer.Close()
-			if err == nil {
+			if err != nil {
 				return err
 			}
 			if mng.deployedWriter.writer.GetFilePath() != "" {
@@ -88,14 +86,12 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
 	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling delayed artifacts or errors files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+		if ShouldStop(&base, &delayHelper, errorsChannelMng) {
 			return nil
 		}
 		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransfer(action)
+	err := manager.doTransferWithSingleProducer(action)
 	if err == nil {
 		log.Info("Done handling delayed artifacts uploads.")
 	}
@@ -145,6 +141,7 @@ const (
 	gradle = "Gradle"
 	ivy    = "Ivy"
 	docker = "Docker"
+	conan  = "Conan"
 )
 
 // A function to determine whether the file deployment should be delayed.
@@ -167,6 +164,14 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 		}, func(fileName string) bool {
 			return fileName == "list.manifest.json"
 		}}
+	case conan:
+		return []shouldDelayUpload{func(fileName string) bool {
+			return fileName == "conanfile.py"
+		}, func(fileName string) bool {
+			return fileName == "conaninfo.txt"
+		}, func(fileName string) bool {
+			return fileName == ".timestamp"
+		}}
 	}
 	return []shouldDelayUpload{}
 }
@@ -178,16 +183,14 @@ type delayUploadHelper struct {
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 // When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
-func (delayHelper delayUploadHelper) delayUploadIfNecessary(file FileRepresentation) (delayed, stopped bool) {
+func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file FileRepresentation) (delayed, stopped bool) {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
+		if ShouldStop(&phase, &delayHelper, nil) {
+			return delayed, true
+		}
 		if shouldDelay(file.Name) {
 			delayed = true
-			stopped = delayHelper.delayedArtifactsChannelMng.add(file)
-			if stopped {
-				// In case an error occurred while handling delayed artifacts - stop transferring.
-				log.Debug("Stop transferring data - error occurred while handling transfer's delayed artifacts files.")
-				return
-			}
+			delayHelper.delayedArtifactsChannelMng.add(file)
 		}
 	}
 	return
@@ -200,12 +203,8 @@ type DelayedArtifactsChannelMng struct {
 	err     error
 }
 
-func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) (stopped bool) {
-	if mng.shouldStop() {
-		return true
-	}
+func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) {
 	mng.channel <- element
-	return false
 }
 
 func (mng DelayedArtifactsChannelMng) shouldStop() bool {

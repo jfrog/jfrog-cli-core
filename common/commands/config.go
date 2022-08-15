@@ -30,6 +30,14 @@ const (
 	Clear     ConfigAction = "Clear"
 )
 
+type AuthenticationMethod string
+
+const (
+	AccessToken     AuthenticationMethod = "Access Token"
+	UsernameAndPass AuthenticationMethod = "Username and Password / API Key"
+	MTLS            AuthenticationMethod = "Mutual TLS"
+)
+
 // Internal golang locking for the same process.
 var mutex sync.Mutex
 
@@ -232,7 +240,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 	// Remove and get the server details from the configurations list
 	tempConfiguration, configurations := config.GetAndRemoveConfiguration(cc.details.ServerId, configurations)
 
-	// Change default server details if the server was existed in the configurations list
+	// Change default server details if the server existed in the configurations list
 	if tempConfiguration != nil {
 		cc.defaultDetails = tempConfiguration
 		cc.details.IsDefault = tempConfiguration.IsDefault
@@ -268,46 +276,77 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		ioutils.ScanFromConsole("JFrog platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
-	if cc.details.Url != "" {
-		if fileutils.IsSshUrl(cc.details.Url) {
-			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
-		} else {
-			cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
-			disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
-		}
+	if fileutils.IsSshUrl(cc.details.Url) {
+		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+	} else {
+		cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
 		if err := getSshKeyPath(cc.details); err != nil {
 			return err
 		}
-	} else {
-		if !cc.disablePromptUrls {
-			if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-				return err
-			}
+	} else if !cc.disablePromptUrls {
+		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+			return err
 		}
-		// Password/Access-Token
+		// Password/Access-Token/MTLS Certificate
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
-			err := readAccessTokenFromConsole(cc.details)
-			if err != nil {
-				return err
-			}
-			if len(cc.details.GetAccessToken()) == 0 {
-				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+			var authMethod AuthenticationMethod
+			var err error
+			if !cc.disablePromptUrls {
+				authMethod, err = promptAuthMethods()
 				if err != nil {
 					return err
 				}
 			}
+			switch authMethod {
+			case UsernameAndPass:
+				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+			case AccessToken:
+				err = readAccessTokenFromConsole(cc.details)
+			case MTLS:
+				checkCertificateForMTLS(cc)
+			}
+			if err != nil {
+				return err
+			}
 		}
+
+		checkClientCertForReverseProxy(cc)
 	}
 
-	cc.readClientCertInfoFromConsole()
 	return nil
+}
+
+func checkCertificateForMTLS(cc *ConfigCommand) {
+	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
+		return
+	}
+	cc.readClientCertInfoFromConsole()
+}
+
+func promptAuthMethods() (method AuthenticationMethod, err error) {
+	var selected string
+	authMethod := []AuthenticationMethod{
+		UsernameAndPass,
+		AccessToken,
+		MTLS,
+	}
+	var selectableItems []ioutils.PromptItem
+	for _, method := range authMethod {
+		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(method), TargetValue: &selected})
+	}
+	err = ioutils.SelectString(selectableItems, "Select one of the following authentication methods:", false, func(item ioutils.PromptItem) {
+		*item.TargetValue = item.Option
+		method = AuthenticationMethod(*item.TargetValue)
+	})
+	return
 }
 
 func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
@@ -325,21 +364,25 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 }
 
 func (cc *ConfigCommand) readClientCertInfoFromConsole() {
+	if cc.details.ClientCertPath == "" {
+		ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
+	}
+	if cc.details.ClientCertKeyPath == "" {
+		ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
+	}
+}
+
+func checkClientCertForReverseProxy(cc *ConfigCommand) {
 	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
 		return
 	}
 	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
-		if cc.details.ClientCertPath == "" {
-			ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
-		}
-		if cc.details.ClientCertKeyPath == "" {
-			ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
-		}
+		cc.readClientCertInfoFromConsole()
 	}
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
-	token, err := ioutils.ScanPasswordFromConsole("JFrog access token (Leave blank for username and password/API key): ")
+	token, err := ioutils.ScanPasswordFromConsole("JFrog access token:")
 	if err == nil {
 		details.SetAccessToken(token)
 	}
@@ -410,8 +453,8 @@ func ShowConfig(serverName string) error {
 	return nil
 }
 
-func Import(serverToken string) error {
-	serverDetails, err := config.Import(serverToken)
+func Import(configTokenString string) error {
+	serverDetails, err := config.Import(configTokenString)
 	if err != nil {
 		return err
 	}
@@ -431,42 +474,65 @@ func Export(serverName string) error {
 	if serverDetails.ServerId == "" {
 		return errorutils.CheckErrorf("cannot export config, because it is empty. Run 'jf c add' and then export again")
 	}
-	serverToken, err := config.Export(serverDetails)
+	configTokenString, err := config.Export(serverDetails)
 	if err != nil {
 		return err
 	}
-	log.Output(serverToken)
+	log.Output(configTokenString)
 	return nil
 }
 
+func moveDefaultConfigToSliceEnd(configuration []*config.ServerDetails) []*config.ServerDetails {
+	lastIndex := len(configuration) - 1
+	// If configuration list has more than one config and the last one is not default, switch the last default config with the last one
+	if len(configuration) > 1 && !configuration[lastIndex].IsDefault {
+		for i, server := range configuration {
+			if server.IsDefault {
+				configuration[i] = configuration[lastIndex]
+				configuration[lastIndex] = server
+				break
+			}
+		}
+	}
+	return configuration
+}
+
 func printConfigs(configuration []*config.ServerDetails) {
+	// Make default config to be the last config, so it will be easy to see on the terminal
+	configuration = moveDefaultConfigToSliceEnd(configuration)
+
 	for _, details := range configuration {
-		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false)
-		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false)
-		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false)
-		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false)
-		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false)
-		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false)
-		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false)
-		logIfNotEmpty(details.User, "User:\t\t\t\t", false)
-		logIfNotEmpty(details.Password, "Password:\t\t\t", true)
-		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true)
-		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true)
-		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false)
-		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true)
-		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false)
-		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false)
-		log.Output("Default:\t\t\t" + strconv.FormatBool(details.IsDefault))
+		isDefault := details.IsDefault
+		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false, isDefault)
+		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false, isDefault)
+		logIfNotEmpty(details.MissionControlUrl, "Mission Control URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false, isDefault)
+		logIfNotEmpty(details.User, "User:\t\t\t\t", false, isDefault)
+		logIfNotEmpty(details.Password, "Password:\t\t\t", true, isDefault)
+		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true, isDefault)
+		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true, isDefault)
+		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false, isDefault)
+		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true, isDefault)
+		logIfNotEmpty(details.ClientCertPath, "Client certificate file path:\t", false, isDefault)
+		logIfNotEmpty(details.ClientCertKeyPath, "Client certificate key path:\t", false, isDefault)
+		logIfNotEmpty(strconv.FormatBool(details.IsDefault), "Default:\t\t\t", false, isDefault)
 		log.Output()
 	}
 }
 
-func logIfNotEmpty(value, prefix string, mask bool) {
+func logIfNotEmpty(value, prefix string, mask, isDefault bool) {
 	if value != "" {
 		if mask {
 			value = "***"
 		}
-		log.Output(prefix + value)
+		fullString := prefix + value
+		if isDefault {
+			fullString = coreutils.PrintTitle(coreutils.PrintBold(fullString))
+		}
+		log.Output(fullString)
 	}
 }
 

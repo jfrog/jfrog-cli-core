@@ -3,12 +3,16 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sync"
 )
 
-const totalNumberPollingGoRoutines = 2
+const (
+	totalNumberPollingGoRoutines = 2
+	tasksMaxCapacity             = 5000000
+)
 
 type transferManager struct {
 	phaseBase
@@ -25,29 +29,28 @@ type transferActionType func(uploadTokensChan chan string, delayHelper delayUplo
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
 	pcDetails := initProducerConsumer()
-	return doTransfer(ftm, &pcDetails, transferAction)
+	return ftm.doTransfer(&pcDetails, transferAction)
 }
 
 // Transfer files using a single producer.
-func (ftm *transferManager) doTransfer(transferAction transferActionType) error {
+func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionType) error {
 	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	return doTransfer(ftm, nil, transferActionPc)
+	return ftm.doTransfer(nil, transferActionPc)
 }
 
 // This function handles a transfer process as part of a phase.
 // As part of the process, the transferAction gets executed. It may utilize a producer consumer or not.
-// The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle.
-// The Artifactory user plugin in the source instance will try to checksum-deploy all the artifacts in the chunk.
-// If not successful, an uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
+// The transferAction collects artifacts to be uploaded into chunks, and sends them to the source Artifactory instance to handle asynchronously.
+// An uuid token will be returned and sent in a channel to be polled on for status in pollUploads.
 // In some repositories the order of deployment is important. In these cases, any artifacts that should be delayed will be collected by
 // the delayedArtifactsMng and will later be handled by handleDelayedArtifactsFiles.
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
-func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
-	uploadTokensChan := make(chan string, tasksMaxCapacity)
+func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, transferAction transferActionWithProducerConsumerType) error {
+	uploadTokensChan := make(chan string, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -80,7 +83,7 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 	if pcDetails != nil {
 		producerConsumer = pcDetails.producerConsumer
 	}
-	err = pollingTasksManager.start(&runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -112,7 +115,7 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 	writersWaitGroup.Wait()
 
 	var returnedError error
-	for _, err := range []error{actionErr, pollingTasksManager.pollingErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr} {
+	for _, err := range []error{actionErr, errorsChannelMng.err, delayedArtifactsChannelMng.err, runnerErr, executionErr, ftm.getInterruptionErr()} {
 		if err != nil {
 			log.Error(err)
 			returnedError = err
@@ -130,8 +133,6 @@ func doTransfer(ftm *transferManager, pcDetails *producerConsumerDetails, transf
 type PollingTasksManager struct {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChannel chan bool
-	// Error returned by the polling go routine
-	pollingErr error
 	// Number of go routines expected to write to the doneChannel
 	totalGoRoutines int
 	// The actual number of running go routines
@@ -146,7 +147,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -155,7 +156,7 @@ func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerCons
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel)
+		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel, phaseBase.buildInfoRepo)
 	}()
 
 	// Check status of uploaded chunks.
@@ -166,7 +167,7 @@ func (ptm *PollingTasksManager) start(runWaitGroup *sync.WaitGroup, producerCons
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		ptm.pollingErr = pollUploads(srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
+		pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
 	}()
 	return nil
 }
@@ -186,8 +187,13 @@ func (ptm *PollingTasksManager) stop() {
 	}
 }
 
+type producerConsumerDetails struct {
+	producerConsumer parallel.Runner
+	errorsQueue      *clientUtils.ErrorsQueue
+}
+
 func initProducerConsumer() producerConsumerDetails {
-	producerConsumer := parallel.NewRunner(getThreads(), tasksMaxCapacity, false)
+	producerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return producerConsumerDetails{

@@ -1,11 +1,13 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -28,7 +30,8 @@ func GenericAudit(
 	insecureTls bool,
 	args []string,
 	progress ioUtils.ProgressMgr,
-	technologies ...string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	requirementsFile string,
+	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
@@ -38,9 +41,10 @@ func GenericAudit(
 			return
 		}
 	}
-
+	var errorList []string
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		var techResults []services.ScanResponse
+		var isMultipleRootProject bool
 		var e error
 		if progress != nil {
 			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech))
@@ -57,22 +61,26 @@ func GenericAudit(
 		case coreutils.Go:
 			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails, progress)
 		case coreutils.Pip:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip, progress)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pip, progress, requirementsFile)
 		case coreutils.Pipenv:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv, progress)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.Pipenv, progress, "")
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:
 			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanPrams, serverDetails, progress)
 		default:
-			log.Info(string(tech), " is currently not supported")
+			e = errors.New(string(tech) + " is currently not supported")
 		}
 		if e != nil {
 			// Save the error but continue to audit the next tech
-			err = e
+			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed: %s", tech, e.Error()))
 		} else {
 			results = append(results, techResults...)
+			isMultipleRoot = isMultipleRootProject
 		}
+	}
+	if len(errorList) > 0 {
+		err = errors.New(strings.Join(errorList, "\n"))
 	}
 	return
 }

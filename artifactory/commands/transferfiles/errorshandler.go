@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 )
 
-const (
-	// Max errors that will be written in a file
-	maxErrorsInFile = 50000
-)
+// Max errors that will be written in a file
+var maxErrorsInFile = 50000
+
+// Expected error file format: <repoKey>-<phaseId>-<phaseStartTime in epoch millisecond>-<fileIndex>.json
+var errorsFilesRegexp = regexp.MustCompile(`^(.+)-([0-9])-([0-9]{13})-([0-9]+)\.json$`)
 
 // TransferErrorsMng manages multi threads writing errors.
 // We want to create a file which contains all upload error statuses for each repository and phase.
@@ -63,9 +64,18 @@ func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string,
 }
 
 // Create transfer errors directory inside the JFrog CLI home directory.
-// Inside the errors directory creates directory for retryable errors and skipped errors.
+// Inside the errors' directory creates directory for retryable errors and skipped errors.
 // Return the root errors' directory path.
 func initTransferErrorsDir() error {
+	// Create transfer directory (if it doesn't exist)
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	err = makeDirIfDoesNotExists(transferDir)
+	if err != nil {
+		return err
+	}
 	// Create errors directory
 	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
 	if err != nil {
@@ -157,11 +167,15 @@ func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*cont
 	if err != nil {
 		return nil, "", err
 	}
-	errorsFilePath := filepath.Join(dirPath, fmt.Sprintf("%s-%d-%s-%d.json", mng.repoKey, mng.phaseId, mng.phaseStartTime, index))
+	errorsFilePath := filepath.Join(dirPath, getErrorsFileName(mng.repoKey, mng.phaseId, mng.phaseStartTime, index))
 	return writer, errorsFilePath, nil
 }
 
-func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) error {
+func getErrorsFileName(repoKey string, phaseId int, phaseStartTime string, index int) string {
+	return fmt.Sprintf("%s-%d-%s-%d.json", repoKey, phaseId, phaseStartTime, index)
+}
+
+func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
 	var err error
 	switch e.Status {
 	case SkippedLargeProps:
@@ -172,7 +186,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e FileUploadStatusResponse) erro
 	return err
 }
 
-func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusResponse) error {
+func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatusResponse) error {
 	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
@@ -197,7 +211,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e FileUploadStatusRespons
 	return nil
 }
 
-func (mng *TransferErrorsMng) writeRetryableErrorContent(e FileUploadStatusResponse) error {
+func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadStatusResponse) error {
 	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
@@ -244,45 +258,27 @@ func (writerMng *errorWriter) closeWriter() error {
 
 // Creates the csv errors files - contains the retryable and skipped errors.
 // In case no errors were written returns empty string
-func createErrorsCsvSummary() (string, error) {
-	// Create csv errors file
-	csvTempDIr, err := fileutils.CreateTempDir()
+func createErrorsCsvSummary(sourceRepos []string, timeStarted time.Time) (string, error) {
+	errorsFiles, err := getErrorsFiles(sourceRepos, true)
 	if err != nil {
 		return "", err
 	}
 
-	// Get a list of retryable errors files from the errors directory
-	retryable, err := coreutils.GetJfrogTransferRetryableDir()
-	if err != nil {
-		return "", err
-	}
-	errorsFiles, err := fileutils.ListFiles(retryable, false)
+	skippedErrorsFiles, err := getErrorsFiles(sourceRepos, false)
 	if err != nil {
 		return "", err
 	}
 
-	// Get a list of skipped errors files from the errors directory
-	skipped, err := coreutils.GetJfrogTransferSkippedDir()
-	if err != nil {
-		return "", err
-	}
-	skippedFilesList, err := fileutils.ListFiles(skipped, false)
-	if err != nil {
-		return "", err
-	}
-
-	errorsFiles = append(errorsFiles, skippedFilesList...)
+	errorsFiles = append(errorsFiles, skippedErrorsFiles...)
 	if len(errorsFiles) == 0 {
 		return "", nil
 	}
-	return createErrorsSummaryCsvFile(errorsFiles, csvTempDIr)
+	return createErrorsSummaryCsvFile(errorsFiles, timeStarted)
 }
-
-const errorsFilesRegexFormat = `^(%s)-([0-9]+)-([0-9]+)-([0-9]+)\.json$`
 
 // Gets a list of all errors files from the CLI's cache.
 // Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
-func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err error) {
+func getErrorsFiles(repoKeys []string, isRetry bool) (filesPaths []string, err error) {
 	var dirPath string
 	if isRetry {
 		dirPath, err = coreutils.GetJfrogTransferRetryableDir()
@@ -297,23 +293,24 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 		return []string{}, err
 	}
 
-	errorsFilesRegex := fmt.Sprintf(errorsFilesRegexFormat, repoKey)
-
-	regExp, err := regexp.Compile(errorsFilesRegex)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-
 	files, err := utils.ListFiles(dirPath, false)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, file := range files {
-		matchAndGroups := regExp.FindStringSubmatch(filepath.Base(file))
+		matchAndGroups := errorsFilesRegexp.FindStringSubmatch(filepath.Base(file))
 		// Expecting a match and 4 groups. A total of 5 results.
-		if len(matchAndGroups) == 5 {
-			filesPaths = append(filesPaths, file)
+		if len(matchAndGroups) != 5 {
+			log.Error("unexpected errors file file-name:", file)
+			continue
+		}
+		// Append the errors file if the first group matches any of the requested repo keys.
+		for _, repoKey := range repoKeys {
+			if matchAndGroups[1] == repoKey {
+				filesPaths = append(filesPaths, file)
+				break
+			}
 		}
 	}
 	return
@@ -322,15 +319,21 @@ func getErrorsFiles(repoKey string, isRetry bool) (filesPaths []string, err erro
 // ErrorsChannelMng handles the uploading errors and adds them to a common channel.
 // Stops adding elements to the channel if an error occurs while handling the files.
 type ErrorsChannelMng struct {
-	channel chan FileUploadStatusResponse
+	channel chan ExtendedFileUploadStatusResponse
 	err     error
+}
+
+type ExtendedFileUploadStatusResponse struct {
+	FileUploadStatusResponse
+	Time string `json:"time,omitempty"`
 }
 
 func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
 	if mng.shouldStop() {
 		return true
 	}
-	mng.channel <- element
+	extendedElement := ExtendedFileUploadStatusResponse{FileUploadStatusResponse: element, Time: time.Now().Format(time.RFC3339)}
+	mng.channel <- extendedElement
 	return false
 }
 
@@ -345,6 +348,6 @@ func (mng ErrorsChannelMng) shouldStop() bool {
 }
 
 func createErrorsChannelMng() ErrorsChannelMng {
-	errorChannel := make(chan FileUploadStatusResponse, fileWritersChannelSize)
+	errorChannel := make(chan ExtendedFileUploadStatusResponse, fileWritersChannelSize)
 	return ErrorsChannelMng{channel: errorChannel}
 }

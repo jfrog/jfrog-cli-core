@@ -74,74 +74,11 @@
         <enabled>false</enabled>
         <cronExp>0 23 5 * * ?</cronExp>
     </indexer>
-    <localRepositories>
-        <localRepository>
-            <key>artifactory-build-info</key>
-            <type>buildinfo</type>
-            <description>Build Info repository</description>
-            <includesPattern>**/*</includesPattern>
-            <repoLayoutRef>simple-default</repoLayoutRef>
-            <dockerApiVersion>V2</dockerApiVersion>
-            <forceNugetAuthentication>false</forceNugetAuthentication>
-            <forceConanAuthentication>false</forceConanAuthentication>
-            <ddebSupported>false</ddebSupported>
-            <signedUrlTtl>30</signedUrlTtl>
-            <blackedOut>false</blackedOut>
-            <handleReleases>true</handleReleases>
-            <handleSnapshots>true</handleSnapshots>
-            <maxUniqueSnapshots>0</maxUniqueSnapshots>
-            <maxUniqueTags>0</maxUniqueTags>
-            <blockPushingSchema1>true</blockPushingSchema1>
-            <suppressPomConsistencyChecks>true</suppressPomConsistencyChecks>
-            <propertySets>
-                <propertySetRef>artifactory</propertySetRef>
-            </propertySets>
-            <archiveBrowsingEnabled>false</archiveBrowsingEnabled>
-            <priorityResolution>false</priorityResolution>
-            <snapshotVersionBehavior>unique</snapshotVersionBehavior>
-            <localRepoChecksumPolicyType>client-checksums</localRepoChecksumPolicyType>
-            <calculateYumMetadata>false</calculateYumMetadata>
-            <yumRootDepth>0</yumRootDepth>
-            <debianTrivialLayout>false</debianTrivialLayout>
-            <enableFileListsIndexing>false</enableFileListsIndexing>
-            <dockerTagRetention>1</dockerTagRetention>
-            <enableComposerV1Indexing>false</enableComposerV1Indexing>
-            <terraformType>MODULE</terraformType>
-        </localRepository>
-        <localRepository>
-            <key>ecosys-build-info</key>
-            <type>buildinfo</type>
-            <includesPattern>**/*</includesPattern>
-            <dockerApiVersion>V2</dockerApiVersion>
-            <forceNugetAuthentication>false</forceNugetAuthentication>
-            <forceConanAuthentication>false</forceConanAuthentication>
-            <ddebSupported>false</ddebSupported>
-            <signedUrlTtl>90</signedUrlTtl>
-            <blackedOut>false</blackedOut>
-            <handleReleases>true</handleReleases>
-            <handleSnapshots>true</handleSnapshots>
-            <maxUniqueSnapshots>0</maxUniqueSnapshots>
-            <maxUniqueTags>0</maxUniqueTags>
-            <blockPushingSchema1>true</blockPushingSchema1>
-            <suppressPomConsistencyChecks>true</suppressPomConsistencyChecks>
-            <propertySets/>
-            <archiveBrowsingEnabled>false</archiveBrowsingEnabled>
-            <priorityResolution>false</priorityResolution>
-            <snapshotVersionBehavior>unique</snapshotVersionBehavior>
-            <localRepoChecksumPolicyType>client-checksums</localRepoChecksumPolicyType>
-            <calculateYumMetadata>false</calculateYumMetadata>
-            <yumRootDepth>0</yumRootDepth>
-            <debianTrivialLayout>false</debianTrivialLayout>
-            <enableFileListsIndexing>false</enableFileListsIndexing>
-            <dockerTagRetention>1</dockerTagRetention>
-            <enableComposerV1Indexing>false</enableComposerV1Indexing>
-            <terraformType>MODULE</terraformType>
-        </localRepository>
-        </localRepositories>
+    <localRepositories></localRepositories>
     <remoteRepositories></remoteRepositories>
     <virtualRepositories></virtualRepositories>
     <federatedRepositories/>
-    <releaseBundlesRepositories/>
+    <releaseBundlesRepositories></releaseBundlesRepositories>
     <proxies/>
     <reverseProxies>
         <reverseProxy>

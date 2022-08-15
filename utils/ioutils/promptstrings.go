@@ -2,6 +2,7 @@ package ioutils
 
 import (
 	"bytes"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os"
 	"strings"
@@ -14,7 +15,7 @@ import (
 const (
 	// Example:
 	// JFrog Artifactory URL (http://localhost:8080/artifactory/)
-	promtItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	promptItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
 	// Npm-remote ()
 	selectableItemTemplate = " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
 )
@@ -38,7 +39,7 @@ type PromptItem struct {
 // JFrog Pipelines URL ()
 func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
-	prompt := createSelectableList(len(items), label, promtItemTemplate)
+	prompt := createSelectableList(len(items), label, promptItemTemplate)
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()
@@ -53,9 +54,13 @@ func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) 
 }
 
 func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *promptui.Select) {
+	selectionIcon := "🐸"
+	if !log.IsColorsSupported() {
+		selectionIcon = ">"
+	}
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}",
-		Active:   "🐸" + itemTemplate,
+		Active:   selectionIcon + itemTemplate,
 		Inactive: "  " + itemTemplate,
 	}
 	return &promptui.Select{
@@ -67,15 +72,17 @@ func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *p
 	}
 }
 
-func SelectString(items []PromptItem, label string, onSelect func(PromptItem)) error {
+func SelectString(items []PromptItem, label string, needSearch bool, onSelect func(PromptItem)) error {
 	selectableList := createSelectableList(len(items), label, selectableItemTemplate)
 	selectableList.Items = items
-	selectableList.StartInSearchMode = true
-	selectableList.Searcher = func(input string, index int) bool {
-		if found := strings.Index(items[index].Option, input); found != -1 {
-			return true
+	if needSearch {
+		selectableList.StartInSearchMode = true
+		selectableList.Searcher = func(input string, index int) bool {
+			if found := strings.Index(strings.ToLower(items[index].Option), strings.ToLower(input)); found != -1 {
+				return true
+			}
+			return false
 		}
-		return false
 	}
 	i, _, err := selectableList.Run()
 	if err != nil {

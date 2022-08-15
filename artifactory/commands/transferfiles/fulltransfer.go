@@ -2,14 +2,14 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -24,7 +24,7 @@ func (m *fullTransferPhase) getSourceDetails() *coreConfig.ServerDetails {
 	return m.srcRtDetails
 }
 
-func (m *fullTransferPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+func (m *fullTransferPhase) setProgressBar(progressbar *TransferProgressMng) {
 	m.progressBar = progressbar
 }
 
@@ -109,9 +109,7 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-		if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-			log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
 		}
 		folderHandler := m.createFolderFullTransferHandlerFunc(*pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
@@ -157,18 +155,12 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 		// Empty folder. Add it as candidate.
 		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.appendUploadCandidate(FileRepresentation{
-				Repo: params.repoKey,
-				Path: path.Dir(params.relativePath),
-				Name: path.Base(params.relativePath),
-			})
+			curUploadChunk.appendUploadCandidate(FileRepresentation{Repo: params.repoKey, Path: params.relativePath})
 			break
 		}
 
 		for _, item := range result.Results {
-			// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
-			if delayHelper.delayedArtifactsChannelMng.shouldStop() || errorsChannelMng.shouldStop() {
-				log.Debug("Stop transferring data - error occurred while handling transfer's errors/delayed artifacts files.")
+			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 				return
 			}
 			if item.Name == "." {
@@ -187,7 +179,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 			case "file":
 				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
-				delayed, stopped := delayHelper.delayUploadIfNecessary(file)
+				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 				if stopped {
 					return
 				}
@@ -196,7 +188,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 				curUploadChunk.appendUploadCandidate(file)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					stopped = uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng)
+					stopped = uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng)
 					if stopped {
 						return
 					}
@@ -213,7 +205,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 		}
 
-		if len(result.Results) < aqlPaginationLimit {
+		if len(result.Results) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -221,7 +213,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		if uploadChunkWhenPossible(m.srcUpService, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+		if uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng) {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.
@@ -244,6 +236,6 @@ func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type")`
-	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*aqlPaginationLimit, aqlPaginationLimit)
+	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

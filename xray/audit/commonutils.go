@@ -79,9 +79,10 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, err error) {
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology string) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
-		return results, errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
+		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
+		return
 	}
 
 	if progress != nil {
@@ -91,8 +92,13 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 	// Get Xray version
 	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
-		return results, err
+		return
 	}
+	err = xraycommands.ValidateXrayMinimumVersion(xrayVersion, xraycommands.GraphScanMinXrayVersion)
+	if err != nil {
+		return
+	}
+	log.Info("JFrog Xray version is:", xrayVersion)
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		xrayGraphScanPrams.Graph = moduleDependencyTree
 		// Log the scanned module ID
@@ -103,6 +109,12 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 		if err != nil {
 			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
 			break
+		}
+		for i := range scanResults.Vulnerabilities {
+			scanResults.Vulnerabilities[i].Technology = technology
+		}
+		for i := range scanResults.Violations {
+			scanResults.Violations[i].Technology = technology
 		}
 		results = append(results, *scanResults)
 	}

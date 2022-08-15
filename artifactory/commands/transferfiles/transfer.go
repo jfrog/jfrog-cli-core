@@ -2,41 +2,47 @@ package transferfiles
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/parallel"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"strconv"
+
+	buildInfoUtils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strconv"
 )
 
 const (
-	tasksMaxCapacity = 10000
-	uploadChunkSize  = 100
-	// Default number of threads working while transferring Artifactory's data
-	defaultThreads = 16
+	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
-	fileWritersChannelSize = 500000
-	retries                = 3
-	retriesWait            = 0
+	fileWritersChannelSize       = 500000
+	retries                      = 3
+	retriesWait                  = 0
+	dataTransferPluginMinVersion = "1.3.1"
 )
 
 type TransferFilesCommand struct {
+	Stoppable
 	sourceServerDetails       *config.ServerDetails
 	targetServerDetails       *config.ServerDetails
+	sourceStorageInfoManager  *utils.StorageInfoManager
+	targetStorageInfoManager  *utils.StorageInfoManager
 	checkExistenceInFilestore bool
-	progressbar               *progressbar.TransferProgressMng
+	progressbar               *TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
+	timeStarted               time.Time
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
-	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+	return &TransferFilesCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer, timeStarted: time.Now()}
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
@@ -61,110 +67,192 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	// Verify connection to the source Artifactory instance and that the user plugin is installed and responsive.
-	version, err := srcUpService.version()
-	if err != nil {
-		return err
-	}
-	log.Info("data-transfer plugin version: " + version)
-
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(transferDir, 0777)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	err = tdc.initCurThreads()
-	if err != nil {
+	// Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
+	if err = getAndValidateDataTransferPlugin(srcUpService); err != nil {
 		return err
 	}
 
-	if !isPropertiesPhaseDisabled() {
-		cleanStart, err := isCleanStart()
-		if err != nil {
-			return err
+	if err := tdc.createTransferDir(); err != nil {
+		return err
+	}
+
+	if err = tdc.initStorageInfoManagers(); err != nil {
+		return err
+	}
+
+	sourceLocalRepos, err := tdc.getSourceLocalRepositories()
+	if err != nil {
+		return err
+	}
+	targetAllLocalRepos, err := tdc.getAllTargetLocalRepositories()
+	if err != nil {
+		return err
+	}
+
+	// Handle interruptions
+	finishStopping, newPhase := tdc.handleStop(srcUpService)
+	defer finishStopping()
+
+	// Set progress bar with the length of the taget local and build info repositories
+	tdc.progressbar, err = NewTransferProgressMng(int64(len(targetAllLocalRepos)))
+	if err != nil {
+		return err
+	}
+
+	// Transfer local repositories
+	if err := tdc.transferRepos(sourceLocalRepos, targetAllLocalRepos, false, newPhase, srcUpService); err != nil {
+		return tdc.cleanup(err, sourceLocalRepos)
+	}
+
+	// Transfer build-info repositories
+	sourceLocalRepos, err = tdc.transferBuildInfoRepos(sourceLocalRepos, targetAllLocalRepos, newPhase, srcUpService)
+
+	// Close progressBar and create CSV errors summary file
+	return tdc.cleanup(err, sourceLocalRepos)
+}
+
+func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
+	// Init source storage info manager
+	storageInfoManager, err := utils.NewStorageInfoManager(tdc.sourceServerDetails)
+	if err != nil {
+		return err
+	}
+	tdc.sourceStorageInfoManager = storageInfoManager
+	if err := storageInfoManager.CalculateStorageInfo(); err != nil {
+		return err
+	}
+
+	// Init target storage info manager
+	storageInfoManager, err = utils.NewStorageInfoManager(tdc.targetServerDetails)
+	if err != nil {
+		return err
+	}
+	tdc.targetStorageInfoManager = storageInfoManager
+	return storageInfoManager.CalculateStorageInfo()
+}
+
+func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
+	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) error {
+	for _, repoKey := range sourceRepos {
+		if tdc.ShouldStop() {
+			return nil
 		}
-		if cleanStart {
-			err = nodeDetection(srcUpService)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	srcRepos, err := tdc.getSrcLocalRepositories()
-	if err != nil {
-		return err
-	}
-
-	targetRepos, err := tdc.getTargetLocalRepositories()
-	if err != nil {
-		return err
-	}
-
-	storageInfo, err := tdc.getSourceStorageInfo()
-	if err != nil {
-		return err
-	}
-
-	// Set progress bar
-	tdc.progressbar, err = progressbar.NewTransferProgressMng(int64(len(srcRepos)))
-	if err != nil {
-		return err
-	}
-
-	for _, repo := range srcRepos {
-		exists := verifyRepoExistsInTarget(targetRepos, repo)
-		if !exists {
-			log.Error("repository '" + repo + "' does not exist in target. Skipping...")
+		if !buildInfoUtils.IsStringInSlice(repoKey, targetRepos) {
+			log.Error("repository '" + repoKey + "' does not exist in target. Skipping...")
 			continue
 		}
 
-		repoSummary, err := getRepoSummaryFromList(storageInfo.RepositoriesSummaryList, repo)
+		repoSummary, err := tdc.sourceStorageInfoManager.GetRepoSummary(repoKey)
 		if err != nil {
 			log.Error(err.Error() + ". Skipping...")
 			continue
 		}
 
 		if tdc.progressbar != nil {
-			tdc.progressbar.NewRepository(repo)
+			tdc.progressbar.NewRepository(repoKey)
+		}
+
+		if err = tdc.initCurThreads(buildInfoRepo); err != nil {
+			return err
 		}
 		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
-			err = tdc.startPhase(currentPhaseId, repo, repoSummary, srcUpService)
-			if err != nil {
-				return tdc.cleanup(err)
+			if tdc.ShouldStop() {
+				return nil
+			}
+
+			*newPhase = getPhaseByNum(currentPhaseId, repoKey, buildInfoRepo)
+			if err = tdc.startPhase(newPhase, repoKey, *repoSummary, srcUpService); err != nil {
+				return err
 			}
 		}
 	}
-	// Close progressBar and create CSV errors summary file
-	return tdc.cleanup(nil)
+	return nil
 }
 
-func (tdc *TransferFilesCommand) startPhase(currentPhaseId int, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
-	newPhase := getPhaseByNum(currentPhaseId, repo)
-	tdc.initNewPhase(newPhase, srcUpService, repoSummary)
-	skip, err := newPhase.shouldSkipPhase()
+func (tdc *TransferFilesCommand) transferBuildInfoRepos(sourceRepos []string, targetRepos []string, newPhase *transferPhase, srcUpService *srcUserPluginService) ([]string, error) {
+	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
+	if err != nil {
+		return sourceRepos, err
+	}
+
+	sourceBuildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(sourceStorageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+	if err != nil {
+		return sourceRepos, err
+	}
+	allSourceRepos := append(sourceRepos, sourceBuildInfoRepoKeys...)
+
+	return allSourceRepos, tdc.transferRepos(sourceBuildInfoRepoKeys, targetRepos, true, newPhase, srcUpService)
+}
+
+func (tdc *TransferFilesCommand) createTransferDir() error {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
+}
+
+func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
+	tdc.initNewPhase(*newPhase, srcUpService, repoSummary)
+	skip, err := (*newPhase).shouldSkipPhase()
 	if err != nil || skip {
 		return err
 	}
-	err = newPhase.phaseStarted()
+	err = (*newPhase).phaseStarted()
 	if err != nil {
 		return err
 	}
-	err = newPhase.initProgressBar()
+	err = (*newPhase).initProgressBar()
 	if err != nil {
 		return err
 	}
-	printPhaseChange("Running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'...")
-	err = newPhase.run()
+	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
+	err = (*newPhase).run()
 	if err != nil {
 		return err
 	}
-	printPhaseChange("Done running '" + newPhase.getPhaseName() + "' for repo '" + repo + "'.")
-	return newPhase.phaseDone()
+	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
+	return (*newPhase).phaseDone()
+}
+
+// Handle interrupted signal.
+// shouldStop - Pointer to boolean variable, if the process gets interrupted shouldStop will be set to true
+// newPhase - The current running phase
+// srcUpService - Source plugin service
+func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) (func(), *transferPhase) {
+	var newPhase transferPhase
+	finishStop := make(chan bool)
+	stopSignal := make(chan os.Signal, 1)
+	signal.Notify(stopSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		defer close(finishStop)
+		// Wait for the stop signal or close(stopSignal) to happen
+		if <-stopSignal == nil {
+			// The stopSignal channel is closed
+			return
+		}
+		tdc.Stop()
+		if newPhase != nil {
+			newPhase.Stop()
+		}
+		log.Info("Gracefully stopping files transfer...")
+		runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+		if err != nil {
+			log.Error(err)
+		} else {
+			stopTransferOnArtifactoryNodes(srcUpService, runningNodes)
+		}
+	}()
+
+	// Return a cleanup function that closes the stopSignal channel and wait for close if needed
+	return func() {
+		// Close the stop signal channel
+		close(stopSignal)
+		if tdc.ShouldStop() {
+			// If should stop, wait for stop to happen
+			<-finishStop
+		}
+	}, &newPhase
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {
@@ -176,40 +264,51 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProgressBar(tdc.progressbar)
 }
 
-func (tdc *TransferFilesCommand) getSrcLocalRepositories() ([]string, error) {
+func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
 	if err != nil {
-		return nil, err
+		return []string{}, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
+	return utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 }
 
-func (tdc *TransferFilesCommand) getTargetLocalRepositories() ([]string, error) {
+func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, error) {
 	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWait, false)
 	if err != nil {
-		return nil, err
+		return []string{}, err
 	}
-	return utils.GetFilteredRepositories(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.LOCAL)
-}
-
-func (tdc *TransferFilesCommand) getSourceStorageInfo() (*serviceUtils.StorageInfo, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+	targetRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 	if err != nil {
-		return nil, err
+		return []string{}, err
 	}
-	return serviceManager.StorageInfo(true)
+
+	targetStorageInfo, err := tdc.targetStorageInfoManager.GetStorageInfo()
+	if err != nil {
+		return []string{}, err
+	}
+
+	targetBuildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(targetStorageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return append(targetRepos, targetBuildInfoRepoKeys...), err
 }
 
-func (tdc *TransferFilesCommand) initCurThreads() error {
+func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = defaultThreads
+	curThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err
 	}
 	if settings != nil {
-		curThreads = settings.ThreadsNumber
+		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+		if buildInfoRepo && curThreads < settings.ThreadsNumber {
+			log.Info("Build info transferring - using reduced number of threads")
+		}
 	}
+
 	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
 	return nil
 }
@@ -218,15 +317,10 @@ func printPhaseChange(message string) {
 	log.Info("========== " + message + " ==========")
 }
 
-type producerConsumerDetails struct {
-	producerConsumer parallel.Runner
-	errorsQueue      *clientUtils.ErrorsQueue
-}
-
 // If an error occurred cleanup will:
 // 1. Close progressBar
 // 2. Create CSV errors summary file
-func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
+func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string) (err error) {
 	err = originalErr
 	// Quit progress bar (before printing logs)
 	if tdc.progressbar != nil {
@@ -239,8 +333,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 	if originalErr == nil {
 		log.Info("Files transfer is complete!")
 	}
-	// Create csv errors summary file
-	csvErrorsFile, e := createErrorsCsvSummary()
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if err == nil {
 		err = e
 	}
@@ -248,4 +341,30 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error) (err error) {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}
 	return
+}
+
+func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+	curVer := version.NewVersion(currentVersion)
+	if !curVer.AtLeast(dataTransferPluginMinVersion) {
+		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
+	}
+	return nil
+}
+
+func getMinimalVersionErrorMsg(currentVersion string) string {
+	return "You are currently using data-transfer plugin version '" +
+		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
+}
+
+func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
+	dataPluginVer, err := srcUpService.version()
+	if err != nil {
+		return err
+	}
+	err = validateDataTransferPluginMinimumVersion(dataPluginVer)
+	if err != nil {
+		return err
+	}
+	log.Info("data-transfer plugin version: " + dataPluginVer)
+	return nil
 }

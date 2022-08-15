@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestArchiveConfig(t *testing.T) {
 	expectedConfigXml := "<config></config>"
-	exportPath := filepath.Join("..", "testdata", "artifactory_export", "regular")
+	exportPath := filepath.Join("..", "testdata", "artifactory_export")
 	buf, err := archiveConfig(exportPath, expectedConfigXml)
 	assert.NoError(t, err)
 
@@ -37,16 +38,25 @@ func TestArchiveConfig(t *testing.T) {
 	}
 }
 
-// In some versions of Artifactory, the file access.bootstrap.json has a typo in its name: access.boostrap.json.
-// This tests this scenario.
-func TestArchiveConfigWithTypoInAccessBootstrap(t *testing.T) {
+func TestHandleTypoInAccessBootstrap(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	defer assert.NoError(t, fileutils.RemoveTempDir(tmpDir), "Couldn't remove temp dir")
-	testDataPath := filepath.Join("..", "testdata", "artifactory_export", "access_bootstrap_typo")
+	testDataPath := filepath.Join("..", "testdata", "artifactory_export")
 	defer assert.NoError(t, fileutils.CopyDir(testDataPath, tmpDir, true, nil))
 
-	expectedConfigXml := "<config></config>"
-	_, err = archiveConfig(tmpDir, expectedConfigXml)
-	assert.NoError(t, err)
+	accessBootstrapPath := filepath.Join(tmpDir, "etc", "access.bootstrap.json")
+
+	// Test access.bootstrap.json
+	assert.NoError(t, handleTypoInAccessBootstrap(tmpDir))
+	assert.FileExists(t, accessBootstrapPath)
+
+	// Test access.boostrap.json
+	assert.NoError(t, fileutils.MoveFile(accessBootstrapPath, filepath.Join(tmpDir, "etc", "access.boostrap.json")))
+	assert.NoError(t, handleTypoInAccessBootstrap(tmpDir))
+	assert.FileExists(t, accessBootstrapPath)
+
+	// Test access.bootstrap.json doesn't exist
+	assert.NoError(t, os.Remove(accessBootstrapPath))
+	assert.Error(t, handleTypoInAccessBootstrap(tmpDir))
 }

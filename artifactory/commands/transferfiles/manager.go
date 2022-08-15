@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sync"
@@ -148,7 +147,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *progressbar.TransferProgressMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()

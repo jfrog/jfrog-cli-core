@@ -112,12 +112,23 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 }
 
 func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
-	tdc.sourceStorageInfoManager = utils.NewStorageInfoManager(tdc.sourceServerDetails)
-	if err := tdc.sourceStorageInfoManager.CalculateStorageInfo(); err != nil {
+	// Init source storage info manager
+	storageInfoManager, err := utils.NewStorageInfoManager(tdc.sourceServerDetails)
+	if err != nil {
 		return err
 	}
-	tdc.targetStorageInfoManager = utils.NewStorageInfoManager(tdc.targetServerDetails)
-	return tdc.targetStorageInfoManager.CalculateStorageInfo()
+	tdc.sourceStorageInfoManager = storageInfoManager
+	if err := storageInfoManager.CalculateStorageInfo(); err != nil {
+		return err
+	}
+
+	// Init target storage info manager
+	storageInfoManager, err = utils.NewStorageInfoManager(tdc.targetServerDetails)
+	if err != nil {
+		return err
+	}
+	tdc.targetStorageInfoManager = storageInfoManager
+	return storageInfoManager.CalculateStorageInfo()
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
@@ -134,7 +145,7 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 		repoSummary, err := tdc.sourceStorageInfoManager.GetRepoSummary(repoKey)
 		if err != nil {
 			log.Error(err.Error() + ". Skipping...")
-			return nil
+			continue
 		}
 
 		if tdc.progressbar != nil {

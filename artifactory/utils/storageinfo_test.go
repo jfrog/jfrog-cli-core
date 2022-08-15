@@ -25,11 +25,11 @@ func TestCalculateStorageInfo(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfoManager := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	storageInfoManager, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t, err)
 
 	// Calculate and assert storage info
-	err := storageInfoManager.CalculateStorageInfo()
-	assert.NoError(t, err)
+	assert.NoError(t, storageInfoManager.CalculateStorageInfo())
 	assert.True(t, calculated)
 }
 
@@ -49,7 +49,8 @@ func TestGetStorageInfo(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfoManager := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	storageInfoManager, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t, err)
 
 	// Get and assert storage info
 	storageInfo, err := storageInfoManager.GetStorageInfo()
@@ -77,7 +78,8 @@ func TestGetSourceRepoSummary(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfo := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	storageInfo, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t ,err)
 
 	// Get repo summary of repo-1
 	repoSummary, err := storageInfo.GetRepoSummary("repo-1")

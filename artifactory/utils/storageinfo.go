@@ -23,12 +23,12 @@ type StorageInfoManager struct {
 	serviceManager artifactory.ArtifactoryServicesManager
 }
 
-func NewStorageInfoManager(serverDetails *config.ServerDetails) *StorageInfoManager {
+func NewStorageInfoManager(serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
 	serviceManager, err := CreateServiceManager(serverDetails, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequest, false)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &StorageInfoManager{serviceManager: serviceManager}
+	return &StorageInfoManager{serviceManager: serviceManager}, nil
 }
 
 // Start calculating storage info in Artifactory
@@ -42,7 +42,7 @@ func (sim *StorageInfoManager) GetStorageInfo() (*utils.StorageInfo, error) {
 }
 
 // Get repository summary from the storage info.
-// This method must be running after CalculateStorageInfo.
+// This method must be called after CalculateStorageInfo.
 // repoKey - The repository key
 func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*serviceUtils.RepositorySummary, error) {
 	var retVal *serviceUtils.RepositorySummary
@@ -56,9 +56,9 @@ func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*serviceUtils.Rep
 				return true, []byte{}, err
 			}
 
-			for _, repoSummary := range storageInfo.RepositoriesSummaryList {
+			for i, repoSummary := range storageInfo.RepositoriesSummaryList {
 				if repoSummary.RepoKey == repoKey {
-					retVal = &repoSummary
+					retVal = &storageInfo.RepositoriesSummaryList[i]
 					return true, []byte{}, nil
 				}
 			}

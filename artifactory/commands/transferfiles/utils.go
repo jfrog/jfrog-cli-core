@@ -300,15 +300,6 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func getRepoSummaryFromList(repoSummaryList []serviceUtils.RepositorySummary, repoKey string) (serviceUtils.RepositorySummary, error) {
-	for i := range repoSummaryList {
-		if repoKey == repoSummaryList[i].RepoKey {
-			return repoSummaryList[i], nil
-		}
-	}
-	return serviceUtils.RepositorySummary{}, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary of the source instance", repoKey)
-}
-
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
 func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {

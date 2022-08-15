@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 )
@@ -44,8 +43,8 @@ func (sim *StorageInfoManager) GetStorageInfo() (*utils.StorageInfo, error) {
 // Get repository summary from the storage info.
 // This method must be called after CalculateStorageInfo.
 // repoKey - The repository key
-func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*serviceUtils.RepositorySummary, error) {
-	var retVal *serviceUtils.RepositorySummary
+func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*utils.RepositorySummary, error) {
+	var retVal *utils.RepositorySummary
 	pollingExecutor := &httputils.PollingExecutor{
 		Timeout:         getRepoSummaryPollingTimeout,
 		PollingInterval: getRepoSummaryPollingInterval,

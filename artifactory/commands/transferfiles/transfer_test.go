@@ -108,7 +108,7 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidate(fileSample)
-	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
+	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 1, curProcessedUploadChunks)
 
@@ -238,7 +238,9 @@ func TestGetAllTargetLocalRepositories(t *testing.T) {
 
 	// Get and assert regular local and build info repositories of the target server
 	transferFilesCommand := NewTransferFilesCommand(nil, serverDetails)
-	transferFilesCommand.targetStorageInfoManager = coreUtils.NewStorageInfoManager(serverDetails)
+	storageInfoManager, err := coreUtils.NewStorageInfoManager(serverDetails)
+	assert.NoError(t, err)
+	transferFilesCommand.targetStorageInfoManager = storageInfoManager
 	localRepos, err := transferFilesCommand.getAllTargetLocalRepositories()
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"repo-1", "repo-2", "artifactory-build-info", "proj-build-info"}, localRepos)

@@ -278,6 +278,9 @@ func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, erro
 		return []string{}, err
 	}
 	targetRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	if err != nil {
+		return []string{}, err
+	}
 
 	targetStorageInfo, err := tdc.targetStorageInfoManager.GetStorageInfo()
 	if err != nil {

@@ -3,6 +3,7 @@ package transferconfig
 import (
 	"archive/zip"
 	"bytes"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 func TestArchiveConfig(t *testing.T) {
 	expectedConfigXml := "<config></config>"
-	exportPath := filepath.Join("..", "testdata", "artifactory_export")
+	exportPath := filepath.Join("..", "testdata", "artifactory_export", "regular")
 	buf, err := archiveConfig(exportPath, expectedConfigXml)
 	assert.NoError(t, err)
 
@@ -34,4 +35,18 @@ func TestArchiveConfig(t *testing.T) {
 			assert.Equal(t, expectedConfigXml, string(actualConfigXml))
 		}
 	}
+}
+
+// In some versions of Artifactory, the file access.bootstrap.json has a typo in its name: access.boostrap.json.
+// This tests this scenario.
+func TestArchiveConfigWithTypoInAccessBootstrap(t *testing.T) {
+	tmpDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	defer assert.NoError(t, fileutils.RemoveTempDir(tmpDir), "Couldn't remove temp dir")
+	testDataPath := filepath.Join("..", "testdata", "artifactory_export", "access_bootstrap_typo")
+	defer assert.NoError(t, fileutils.CopyDir(testDataPath, tmpDir, true, nil))
+
+	expectedConfigXml := "<config></config>"
+	_, err = archiveConfig(tmpDir, expectedConfigXml)
+	assert.NoError(t, err)
 }

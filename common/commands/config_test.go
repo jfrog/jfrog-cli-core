@@ -159,9 +159,9 @@ func TestExportEmptyConfig(t *testing.T) {
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
-	serverToken, err := config.Export(inputDetails)
+	configToken, err := config.Export(inputDetails)
 	assert.NoError(t, err)
-	outputDetails, err := config.Import(serverToken)
+	outputDetails, err := config.Import(configToken)
 	assert.NoError(t, err)
 	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputDetails), "unexpected configuration was saved to file")
 }

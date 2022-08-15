@@ -104,8 +104,8 @@ func Export(details *ServerDetails) (string, error) {
 	return base64.StdEncoding.EncodeToString(buffer), nil
 }
 
-func Import(serverToken string) (*ServerDetails, error) {
-	decoded, err := base64.StdEncoding.DecodeString(serverToken)
+func Import(configTokenString string) (*ServerDetails, error) {
+	decoded, err := base64.StdEncoding.DecodeString(configTokenString)
 	if err != nil {
 		return nil, err
 	}

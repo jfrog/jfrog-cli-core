@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"errors"
 	"github.com/gookit/color"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -108,7 +107,7 @@ func (t *TransferProgressMng) ShouldDisplay() bool {
 // IncrementPhase increments completed tasks count for a specific phase by 1.
 func (t *TransferProgressMng) IncrementPhase(id int) error {
 	if id < 0 || id > len(t.phases)-1 {
-		return errorutils.CheckError(errors.New("invalid phase id"))
+		return errorutils.CheckErrorf("IncrementPhase: invalid phase id %d", id)
 	}
 	if t.phases[id].GetTasksProgressBar().GetTotal() == 0 {
 		return nil
@@ -122,7 +121,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 // IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if id < 0 || id > len(t.phases)-1 {
-		return errorutils.CheckError(errors.New("invalid phase id"))
+		return errorutils.CheckErrorf("IncrementPhaseBy: invalid phase id %d", id)
 	}
 	if t.phases[id].GetTasksProgressBar().GetTotal() == 0 {
 		return nil
@@ -138,7 +137,7 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 
 func (t *TransferProgressMng) DonePhase(id int) error {
 	if id < 0 || id > len(t.phases)-1 {
-		return errorutils.CheckError(errors.New("invalid phase id"))
+		return errorutils.CheckErrorf("DonePhase: invalid phase id %d", id)
 	}
 	t.barsMng.DoneTask(t.phases[id])
 	return nil

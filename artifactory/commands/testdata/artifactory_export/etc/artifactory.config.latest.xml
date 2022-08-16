@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<config xmlns="http://artifactory.jfrog.org/xsd/3.1.29" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.jfrog.org/xsd/artifactory-v3_1_29.xsd">
+<config xmlns="http://artifactory.jfrog.org/xsd/3.1.29" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.jfrog.org/xsd/artifactory-v3_1_29.xsd">
     <offlineMode>false</offlineMode>
     <archiveIndexEnabled>true</archiveIndexEnabled>
     <helpLinksEnabled>true</helpLinksEnabled>
@@ -542,32 +541,23 @@
     <repoLayouts>
         <repoLayout>
             <name>maven-2-default</name>
-            <artifactPathPattern>
-                [orgPath]/[module]/[baseRev](-[folderItegRev])/[module]-[baseRev](-[fileItegRev])(-[classifier]).[ext]
-            </artifactPathPattern>
+            <artifactPathPattern>[orgPath]/[module]/[baseRev](-[folderItegRev])/[module]-[baseRev](-[fileItegRev])(-[classifier]).[ext]</artifactPathPattern>
             <distinctiveDescriptorPathPattern>true</distinctiveDescriptorPathPattern>
-            <descriptorPathPattern>
-                [orgPath]/[module]/[baseRev](-[folderItegRev])/[module]-[baseRev](-[fileItegRev])(-[classifier]).pom
-            </descriptorPathPattern>
+            <descriptorPathPattern>[orgPath]/[module]/[baseRev](-[folderItegRev])/[module]-[baseRev](-[fileItegRev])(-[classifier]).pom</descriptorPathPattern>
             <folderIntegrationRevisionRegExp>SNAPSHOT</folderIntegrationRevisionRegExp>
             <fileIntegrationRevisionRegExp>SNAPSHOT|(?:(?:[0-9]{8}.[0-9]{6})-(?:[0-9]+))</fileIntegrationRevisionRegExp>
         </repoLayout>
         <repoLayout>
             <name>ivy-default</name>
-            <artifactPathPattern>
-                [org]/[module]/[baseRev](-[folderItegRev])/[type]s/[module](-[classifier])-[baseRev](-[fileItegRev]).[ext]
-            </artifactPathPattern>
+            <artifactPathPattern>[org]/[module]/[baseRev](-[folderItegRev])/[type]s/[module](-[classifier])-[baseRev](-[fileItegRev]).[ext]</artifactPathPattern>
             <distinctiveDescriptorPathPattern>true</distinctiveDescriptorPathPattern>
-            <descriptorPathPattern>
-                [org]/[module]/[baseRev](-[folderItegRev])/[type]s/ivy-[baseRev](-[fileItegRev]).xml
-            </descriptorPathPattern>
+            <descriptorPathPattern>[org]/[module]/[baseRev](-[folderItegRev])/[type]s/ivy-[baseRev](-[fileItegRev]).xml</descriptorPathPattern>
             <folderIntegrationRevisionRegExp>\d{14}</folderIntegrationRevisionRegExp>
             <fileIntegrationRevisionRegExp>\d{14}</fileIntegrationRevisionRegExp>
         </repoLayout>
         <repoLayout>
             <name>maven-1-default</name>
-            <artifactPathPattern>[org]/[type]s/[module]-[baseRev](-[fileItegRev])(-[classifier]).[ext]
-            </artifactPathPattern>
+            <artifactPathPattern>[org]/[type]s/[module]-[baseRev](-[fileItegRev])(-[classifier]).[ext]</artifactPathPattern>
             <distinctiveDescriptorPathPattern>true</distinctiveDescriptorPathPattern>
             <descriptorPathPattern>[org]/[type]s/[module]-[baseRev](-[fileItegRev]).pom</descriptorPathPattern>
             <folderIntegrationRevisionRegExp>.+</folderIntegrationRevisionRegExp>

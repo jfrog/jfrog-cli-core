@@ -202,7 +202,7 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 	downParams.Symlink = configuration.Symlink
 	downParams.MinSplitSize = configuration.MinSplitSize
 	downParams.SplitCount = configuration.SplitCount
-	downParams.IgnoreHashCheck = configuration.IgnoreHashCheck
+	downParams.SkipChecksum = configuration.SkipChecksum
 
 	downParams.Recursive, err = f.IsRecursive(true)
 	if err != nil {

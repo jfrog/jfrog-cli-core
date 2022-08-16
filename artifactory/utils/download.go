@@ -16,5 +16,5 @@ type DownloadConfiguration struct {
 	MinSplitSize    int64
 	Symlink         bool
 	ValidateSymlink bool
-	IgnoreHashCheck bool
+	SkipChecksum    bool
 }

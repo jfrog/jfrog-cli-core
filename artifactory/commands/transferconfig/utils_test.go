@@ -38,25 +38,41 @@ func TestArchiveConfig(t *testing.T) {
 	}
 }
 
-func TestHandleTypoInAccessBootstrap(t *testing.T) {
-	tmpDir, err := fileutils.CreateTempDir()
+func initHandleTypoInAccessBootstrapTest(t *testing.T) (exportDir string, cleanupFunc func()) {
+	exportDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	defer assert.NoError(t, fileutils.RemoveTempDir(tmpDir), "Couldn't remove temp dir")
 	testDataPath := filepath.Join("..", "testdata", "artifactory_export")
-	defer assert.NoError(t, fileutils.CopyDir(testDataPath, tmpDir, true, nil))
+	assert.NoError(t, fileutils.CopyDir(testDataPath, exportDir, true, nil))
+	cleanupFunc = func() {
+		assert.NoError(t, fileutils.RemoveTempDir(exportDir), "Couldn't remove temp dir")
+	}
+	return
+}
 
-	accessBootstrapPath := filepath.Join(tmpDir, "etc", "access.bootstrap.json")
+func TestHandleTypoInAccessBootstrapNoTypo(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
 
 	// Test access.bootstrap.json
-	assert.NoError(t, handleTypoInAccessBootstrap(tmpDir))
-	assert.FileExists(t, accessBootstrapPath)
+	assert.NoError(t, handleTypoInAccessBootstrap(exportDir))
+	assert.FileExists(t, filepath.Join(exportDir, "etc", "access.bootstrap.json"))
+}
 
-	// Test access.boostrap.json
-	assert.NoError(t, fileutils.MoveFile(accessBootstrapPath, filepath.Join(tmpDir, "etc", "access.boostrap.json")))
-	assert.NoError(t, handleTypoInAccessBootstrap(tmpDir))
-	assert.FileExists(t, accessBootstrapPath)
+func TestHandleTypoInAccessBootstrapWithTypo(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
 
-	// Test access.bootstrap.json doesn't exist
-	assert.NoError(t, os.Remove(accessBootstrapPath))
-	assert.Error(t, handleTypoInAccessBootstrap(tmpDir))
+	accessBootstrapPath := filepath.Join(exportDir, "etc", "access.bootstrap.json")
+	assert.NoError(t, fileutils.MoveFile(accessBootstrapPath, filepath.Join(exportDir, "etc", "access.boostrap.json")))
+
+	assert.NoError(t, handleTypoInAccessBootstrap(exportDir))
+	assert.FileExists(t, accessBootstrapPath)
+}
+
+func TestHandleTypoInAccessBootstrapNotExist(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
+
+	assert.NoError(t, os.Remove(filepath.Join(exportDir, "etc", "access.bootstrap.json")))
+	assert.Error(t, handleTypoInAccessBootstrap(exportDir))
 }

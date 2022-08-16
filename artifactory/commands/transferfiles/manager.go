@@ -24,7 +24,7 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 }
 
 type transferActionWithProducerConsumerType func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
-type transferActionType func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionType func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
@@ -35,9 +35,10 @@ func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transf
 // Transfer files using a single producer.
 func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionType) error {
 	transferActionPc := func(pcDetails *producerConsumerDetails, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		return transferAction(uploadTokensChan, delayHelper, errorsChannelMng)
+		return transferAction(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	return ftm.doTransfer(nil, transferActionPc)
+	pcDetails := initProducerConsumer()
+	return ftm.doTransfer(&pcDetails, transferActionPc)
 }
 
 // This function handles a transfer process as part of a phase.

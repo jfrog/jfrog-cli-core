@@ -2,6 +2,8 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
 	"sync"
@@ -300,9 +302,22 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+	return func(threadId int) error {
+		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
+		log.Debug(logMsgPrefix + "Handling chunk upload")
+		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		var err error
+		if shouldStop {
+			err = errors.New("transfer has been stopped due to user cancellation or an error has occurred")
+		}
+		return err
+	}
+}
+
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcDetails *producerConsumerDetails) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -320,8 +335,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
-			if shouldStop {
+			_, err = pcDetails.producerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcDetails.errorsQueue.AddError)
+			if err != nil {
 				return
 			}
 			// Empty the uploaded chunk.

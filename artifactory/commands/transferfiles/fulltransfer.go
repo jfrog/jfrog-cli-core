@@ -188,8 +188,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 				curUploadChunk.appendUploadCandidate(file)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					stopped = uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng)
-					if stopped {
+					_, err = pcDetails.producerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng), pcDetails.errorsQueue.AddError)
+					if err != nil {
 						return
 					}
 					// Increase phase1 progress bar with the uploaded number of files.
@@ -213,7 +213,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		if uploadChunkWhenPossible(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng) {
+		_, err = pcDetails.producerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng), pcDetails.errorsQueue.AddError)
+		if err != nil {
 			return
 		}
 		// Increase phase1 progress bar with the uploaded number of files.

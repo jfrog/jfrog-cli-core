@@ -202,7 +202,7 @@ func (tcc *TransferConfigCommand) isDefaultCredentials(manager artifactory.Artif
 		return false, err
 	}
 	for _, lockedUser := range lockedUsers {
-		if *lockedUser == adminUsername {
+		if lockedUser == adminUsername {
 			return false, nil
 		}
 	}

@@ -83,7 +83,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return err
 	}
 
-	continueTransfer, err := tcc.promptWarnings(sourceServicesManager)
+	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
 	if err != nil || !continueTransfer {
 		return err
 	}
@@ -162,7 +162,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	return nil
 }
 
-func (tcc *TransferConfigCommand) promptWarnings(sourceServicesManager artifactory.ArtifactoryServicesManager) (continueTransfer bool, err error) {
+func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactory.ArtifactoryServicesManager) (continueTransfer bool, err error) {
 	// Prompt message
 	promptMsg := "This command will transfer Artifactory config data:\n" +
 		fmt.Sprintf("From %s - <%s>\n", coreutils.PrintBold("Source"), tcc.sourceServerDetails.ArtifactoryUrl) +

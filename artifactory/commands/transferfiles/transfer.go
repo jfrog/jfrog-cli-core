@@ -209,7 +209,9 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		return err
+		// We do not return the error returned from the phase's run function,
+		// because the phase is expected to recover from some errors, such as HTTP connection errors.
+		log.Error(err.Error())
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()

@@ -104,7 +104,7 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerWrapper, trans
 	var runnerErr error
 	var executionErr error
 	if pcDetails != nil {
-		executionErr = runProducerConsumer(*pcDetails, &runWaitGroup)
+		executionErr = runProducerConsumer(pcDetails, &runWaitGroup)
 		pollingTasksManager.stop()
 	}
 	// After done is sent, wait for polling go routines to exit.
@@ -206,7 +206,7 @@ func initProducerConsumer() producerConsumerWrapper {
 	}
 }
 
-func runProducerConsumer(pcDetails producerConsumerWrapper, runWaitGroup *sync.WaitGroup) (executionErr error) {
+func runProducerConsumer(pcDetails *producerConsumerWrapper, runWaitGroup *sync.WaitGroup) (executionErr error) {
 	runWaitGroup.Add(2)
 	// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (no tasks are being handled)
 	// the work is assumed to be done.

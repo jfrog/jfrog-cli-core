@@ -9,7 +9,6 @@ import (
 
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -30,7 +29,7 @@ func (f *filesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
 	return f.srcRtDetails
 }
 
-func (f *filesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+func (f *filesDiffPhase) setProgressBar(progressbar *TransferProgressMng) {
 	f.progressBar = progressbar
 }
 

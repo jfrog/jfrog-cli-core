@@ -208,7 +208,7 @@ func (tcc *TransferConfigCommand) isDefaultCredentials(manager artifactory.Artif
 	}
 
 	// Ping Artifactory with the default admin:password credentials
-	artDetails := config.ServerDetails{ArtifactoryUrl: tcc.sourceServerDetails.ArtifactoryUrl, User: "admin", Password: "password"}
+	artDetails := config.ServerDetails{ArtifactoryUrl: tcc.sourceServerDetails.ArtifactoryUrl, User: adminUsername, Password: "password"}
 	pingCmd := generic.NewPingCommand().SetServerDetails(&artDetails)
 	// This cannot be executed with commands.Exec()! Doing so will cause usage report being sent with admin:password as well.
 	err = pingCmd.Run()

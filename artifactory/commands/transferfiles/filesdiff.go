@@ -126,7 +126,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcDetails, uploadTokensChan, delayHelper, errorsChannelMng)
-			_, err = pcDetails.producerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
+			_, err = pcDetails.chunkBuilderProducerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcDetails.errorsQueue.AddError)
 			if err != nil {
 				return err
 			}

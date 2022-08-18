@@ -82,7 +82,7 @@ func (ftm *transferManager) doTransfer(pcDetails *producerConsumerDetails, trans
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
 	var producerConsumer parallel.Runner
 	if pcDetails != nil {
-		producerConsumer = pcDetails.producerConsumer
+		producerConsumer = pcDetails.chunkUploaderProducerConsumer
 	}
 	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, producerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
 	if err != nil {
@@ -189,30 +189,41 @@ func (ptm *PollingTasksManager) stop() {
 }
 
 type producerConsumerDetails struct {
-	producerConsumer parallel.Runner
-	errorsQueue      *clientUtils.ErrorsQueue
+	chunkBuilderProducerConsumer  parallel.Runner
+	chunkUploaderProducerConsumer parallel.Runner
+	errorsQueue                   *clientUtils.ErrorsQueue
 }
 
 func initProducerConsumer() producerConsumerDetails {
-	producerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return producerConsumerDetails{
-		producerConsumer: producerConsumer,
-		errorsQueue:      errorsQueue,
+		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
+		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
+		errorsQueue:                   errorsQueue,
 	}
 }
 
 func runProducerConsumer(pcDetails producerConsumerDetails, runWaitGroup *sync.WaitGroup) (runnerErr error, executionErr error) {
-	runWaitGroup.Add(1)
+	runWaitGroup.Add(2)
+	// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
+	// the work is assumed to be done.
 	go func() {
 		defer runWaitGroup.Done()
-		// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (not tasks are being handled)
-		// the work is assumed to be done.
-		runnerErr = pcDetails.producerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
+		runnerErr = pcDetails.chunkUploaderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
 	}()
-	// Blocked until finish consuming
-	pcDetails.producerConsumer.Run()
+	go func() {
+		defer runWaitGroup.Done()
+		runnerErr = pcDetails.chunkBuilderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
+	}()
+
+	go func() {
+		pcDetails.chunkBuilderProducerConsumer.Run()
+	}()
+	// Run() is a blocking method, so once all uploading threads are idle, the tasks queue closes and Run() stops running
+	pcDetails.chunkUploaderProducerConsumer.Run()
 	executionErr = pcDetails.errorsQueue.GetError()
 	return
 }

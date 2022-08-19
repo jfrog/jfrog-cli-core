@@ -16,6 +16,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -298,20 +299,33 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 	if phase == nil {
 		return nil
 	}
-	includedInTotalSize := false
 	if phase.phaseId == FullTransferPhase || phase.phaseId == ErrorsPhase {
-		includedInTotalSize = true
 		if progressbar != nil {
 			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
 			if err != nil {
 				return err
 			}
 		}
+		if err := updateChunkInState(phase.stateManager, phase.repoKey, &chunk); err != nil {
+			return err
+		}
 	}
 	if timeEstMng != nil {
-		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize)
+		timeEstMng.addChunkStatus(chunk, workingThreads)
 	}
 	return nil
+}
+
+func updateChunkInState(stateManager *state.TransferStateManager, repoKey string, chunk *ChunkStatus) error {
+	var totalSizeInBytes int64 = 0
+	var totalFiles int = 0
+	for _, file := range chunk.Files {
+		if file.Status == Success {
+			totalSizeInBytes += file.SizeBytes
+			totalFiles++
+		}
+	}
+	return stateManager.IncTransferredSizeAndFiles(repoKey, totalFiles, totalSizeInBytes)
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.

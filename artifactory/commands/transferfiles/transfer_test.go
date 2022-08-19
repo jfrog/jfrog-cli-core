@@ -22,13 +22,15 @@ import (
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	finishStopping, _ := transferFilesCommand.handleStop(nil)
 	finishStopping()
 }
 
 func TestCancelFunc(t *testing.T) {
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	assert.False(t, transferFilesCommand.shouldStop())
 
 	transferFilesCommand.cancelFunc()
@@ -78,8 +80,9 @@ func TestVerifySourceTargetConnectivity(t *testing.T) {
 	})
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
-	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
-	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	transferFilesCommand, err := NewTransferFilesCommand(serverDetails, serverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
 	assert.NoError(t, err)
 }
 
@@ -93,8 +96,9 @@ func TestVerifySourceTargetConnectivityError(t *testing.T) {
 	})
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
-	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
-	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	transferFilesCommand, err := NewTransferFilesCommand(serverDetails, serverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
 	assert.ErrorContains(t, err, "No connection to target")
 }
 
@@ -289,7 +293,8 @@ func TestGetAllLocalRepositories(t *testing.T) {
 	defer testServer.Close()
 
 	// Get and assert regular local and build info repositories
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	storageInfoManager, err := coreUtils.NewStorageInfoManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	localRepos, localBuildInfoRepo, err := transferFilesCommand.getAllLocalRepos(serverDetails, storageInfoManager)
@@ -319,8 +324,9 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer targetTestServer.Close()
 
 	// Init and assert storage info managers
-	transferFilesCommand := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
-	err := transferFilesCommand.initStorageInfoManagers()
+	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.initStorageInfoManagers()
 	assert.NoError(t, err)
 	assert.True(t, sourceServerCalculated)
 	assert.True(t, targetServerCalculated)

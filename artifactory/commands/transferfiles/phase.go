@@ -5,11 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 )
 
-const numberOfPhases = 3
+const NumberOfPhases = 3
 
 const (
 	FullTransferPhase int = 0
@@ -21,6 +22,8 @@ type transferPhase interface {
 	run() error
 	phaseStarted() error
 	phaseDone() error
+	setContext(context context.Context)
+	setRepoKey(repoKey string)
 	setCheckExistenceInFilestore(bool)
 	shouldSkipPhase() (bool, error)
 	setSrcUserPluginService(*srcUserPluginService)
@@ -31,7 +34,10 @@ type transferPhase interface {
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
 	setTimeEstMng(timeEstMng *timeEstimationManager)
+	setStateManager(stateManager *state.TransferStateManager)
 	initProgressBar() error
+	setProxyKey(proxyKey string)
+	setBuildInfo(setBuildInfo bool)
 	StopGracefully()
 }
 
@@ -51,6 +57,7 @@ type phaseBase struct {
 	proxyKey                  string
 	pcDetails                 *producerConsumerWrapper
 	transferManager           *transferManager
+	stateManager              *state.TransferStateManager
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -82,6 +89,14 @@ func (pb *phaseBase) getSourceDetails() *coreConfig.ServerDetails {
 	return pb.srcRtDetails
 }
 
+func (pb *phaseBase) setContext(context context.Context) {
+	pb.context = context
+}
+
+func (pb *phaseBase) setRepoKey(repoKey string) {
+	pb.repoKey = repoKey
+}
+
 func (pb *phaseBase) setCheckExistenceInFilestore(shouldCheck bool) {
 	pb.checkExistenceInFilestore = shouldCheck
 }
@@ -110,14 +125,27 @@ func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
 	pb.progressBar = progressbar
 }
 
-func getPhaseByNum(context context.Context, i int, repoKey, proxyKey string, buildInfoRepo bool) transferPhase {
+func (pb *phaseBase) setProxyKey(proxyKey string) {
+	pb.proxyKey = proxyKey
+}
+
+func (pb *phaseBase) setStateManager(stateManager *state.TransferStateManager) {
+	pb.stateManager = stateManager
+}
+
+func (pb *phaseBase) setBuildInfo(buildInfoRepo bool) {
+	pb.buildInfoRepo = buildInfoRepo
+}
+
+func createTransferPhase(i int) transferPhase {
+	phaseBase := phaseBase{phaseId: i}
 	switch i {
-	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo}}
-	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
-	case 2:
-		return &errorsRetryPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: ErrorsPhase, buildInfoRepo: buildInfoRepo}}
+	case FullTransferPhase:
+		return &fullTransferPhase{phaseBase: phaseBase}
+	case FilesDiffPhase:
+		return &filesDiffPhase{phaseBase: phaseBase}
+	case ErrorsPhase:
+		return &errorsRetryPhase{phaseBase: phaseBase}
 	}
 	return nil
 }

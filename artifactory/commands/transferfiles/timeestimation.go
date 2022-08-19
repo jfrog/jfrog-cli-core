@@ -2,6 +2,8 @@ package transferfiles
 
 import (
 	"fmt"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 )
 
 const (
@@ -30,43 +32,33 @@ type timeEstimationManager struct {
 	lastSpeedsSum float64
 	// The last calculated sum of speeds, in bytes/ms
 	speedsAverage float64
-	// Total transferred data, in bytes
-	transferredSizeBytes int64
-	// Total size to transfer, in bytes
-	totalSizeBytes int64
 	// True if remaining time estimation is unavailable
 	timeEstimationUnavailable bool
-	// Map of repository keys and the amount of data (in bytes) transferred in each of them since the last update of the state.
-	transferredSizeSinceStateUpdate map[string]int64
+	// The state manager
+	stateManager *state.TransferStateManager
 }
 
-func newTimeEstimationManager(totalSizeBytes, transferredSizeBytes int64) *timeEstimationManager {
-	return &timeEstimationManager{totalSizeBytes: totalSizeBytes, transferredSizeBytes: transferredSizeBytes, transferredSizeSinceStateUpdate: make(map[string]int64)}
+func newTimeEstimationManager(stateManager *state.TransferStateManager) *timeEstimationManager {
+	return &timeEstimationManager{stateManager: stateManager}
 }
 
-func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool) {
+func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int) {
 	if chunkStatus.DurationMillis == 0 {
 		return
 	}
-	var sizeSum int64
+	var chunkSizeBytes int64
 	for _, file := range chunkStatus.Files {
-		if file.Status == Success {
-			if includedInTotalSize {
-				tem.transferredSizeBytes += file.SizeBytes
-				tem.transferredSizeSinceStateUpdate[file.Repo] += file.SizeBytes
-			}
-			if !file.ChecksumDeployed {
-				sizeSum += file.SizeBytes
-			}
+		if file.Status == Success && !file.ChecksumDeployed {
+			chunkSizeBytes += file.SizeBytes
 		}
 	}
 
 	// If no files were uploaded regularly (with no errors and not checksum-deployed), don't use this chunk for the time estimation calculation.
-	if sizeSum == 0 {
+	if chunkSizeBytes == 0 {
 		return
 	}
 
-	speed := calculateChunkSpeed(workingThreads, sizeSum, chunkStatus.DurationMillis)
+	speed := calculateChunkSpeed(workingThreads, chunkSizeBytes, chunkStatus.DurationMillis)
 	tem.lastSpeeds = append(tem.lastSpeeds, speed)
 	tem.lastSpeedsSum += speed
 	lastSpeedsSliceLen := workingThreads * numOfSpeedsToKeepPerWorkingThread
@@ -98,14 +90,18 @@ func (tem *timeEstimationManager) getSpeedString() string {
 }
 
 // getEstimatedRemainingTime gets the estimated remaining time in seconds.
-func (tem *timeEstimationManager) getEstimatedRemainingTime() int64 {
+func (tem *timeEstimationManager) getEstimatedRemainingTime() (int64, error) {
 	if tem.speedsAverage == 0 {
-		return 0
+		return 0, nil
+	}
+	var transferredSizeBytes int64
+	if err := tem.stateManager.GetTransferredSizeBytes(&transferredSizeBytes); err != nil {
+		return 0, err
 	}
 	// We only convert to int64 at the end to avoid a scenario where the conversion of speedsAverage returns zero.
-	remainingTime := float64(tem.totalSizeBytes-tem.transferredSizeBytes) / tem.speedsAverage
+	remainingTime := float64(tem.stateManager.TotalSizeBytes-transferredSizeBytes) / tem.speedsAverage
 	// Convert from milliseconds to seconds.
-	return int64(remainingTime) / milliSecsInSecond
+	return int64(remainingTime) / milliSecsInSecond, nil
 }
 
 // getEstimatedRemainingTimeString gets the estimated remaining time in an easy-to-read string.
@@ -116,7 +112,10 @@ func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
 	if len(tem.lastSpeeds) == 0 {
 		return "Not available yet"
 	}
-	remainingTimeSec := tem.getEstimatedRemainingTime()
+	remainingTimeSec, err := tem.getEstimatedRemainingTime()
+	if err != nil {
+		return err.Error()
+	}
 	remainingDays := remainingTimeSec / secondsInDay
 	remainingDaysInSecs := remainingDays * secondsInDay
 	remainingHours := (remainingTimeSec - remainingDaysInSecs) / secondsInHour
@@ -158,19 +157,6 @@ func getTimeSingularOrPlural(timeAmount int64, timeType timeTypeSingular) string
 
 func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUnavailable bool) {
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
-}
-
-// TODO remove when used.
-//lint:ignore U1000 will be used in a different pull request
-func (tem *timeEstimationManager) saveTransferredSizeInState() error {
-	for repoKey, sizeToAdd := range tem.transferredSizeSinceStateUpdate {
-		err := incRepoTransferredSizeBytes(repoKey, sizeToAdd)
-		if err != nil {
-			return err
-		}
-	}
-	tem.transferredSizeSinceStateUpdate = make(map[string]int64)
-	return nil
 }
 
 // TODO revert when ready.

@@ -1,54 +1,83 @@
 package transferfiles
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/stretchr/testify/assert"
 )
 
+const (
+	repo1Key = "repo1"
+	repo2Key = "repo2"
+)
+
+func initTimeEstimationTest(t *testing.T) (*timeEstimationManager, func()) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+
+	// Create transfer directory
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	assert.NoError(t, err)
+	err = utils.CreateDirIfNotExist(transferDir)
+	assert.NoError(t, err)
+
+	return newDefaultTimeEstimationManager(t), cleanUpJfrogHome
+}
+
 func TestGetEstimatedRemainingTime(t *testing.T) {
-	timeEstMng := newDefaultTimeEstimationManager()
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
+	defer cleanUp()
 
 	// Chunk 1: one of the files is checksum-deployed
 	chunkStatus1 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			createFileUploadStatusResponse("", 10*bytesInMB, false, Success),
-			createFileUploadStatusResponse("", 15*bytesInMB, false, Success),
-			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
+			createFileUploadStatusResponse(repo1Key, 10*bytesInMB, false, Success),
+			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, false, Success),
+			createFileUploadStatusResponse(repo1Key, 8*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	addChunkStatus(timeEstMng, chunkStatus1, 3, true)
 	assert.Equal(t, 7.5, timeEstMng.getSpeed())
 	assert.Equal(t, "7.500 MB/s", timeEstMng.getSpeedString())
-	assert.Equal(t, int64(62), timeEstMng.getEstimatedRemainingTime())
+	estimatedRemainingTime, err := timeEstMng.getEstimatedRemainingTime()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(62), estimatedRemainingTime)
 	assert.Equal(t, "About 1 minute", timeEstMng.getEstimatedRemainingTimeString())
 
 	// Chunk 2: the upload of one of the files failed and the files are not included in the repository's total size (includedInTotalSize == false)
 	chunkStatus2 := ChunkStatus{
 		DurationMillis: 5 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			createFileUploadStatusResponse("", 21.25*bytesInMB, false, Success),
-			createFileUploadStatusResponse("", 6*bytesInMB, false, Fail),
+			createFileUploadStatusResponse(repo1Key, 21.25*bytesInMB, false, Success),
+			createFileUploadStatusResponse(repo1Key, 6*bytesInMB, false, Fail),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus2, 2, false)
+	addChunkStatus(timeEstMng, chunkStatus2, 2, false)
 	assert.Equal(t, float64(8), timeEstMng.getSpeed())
 	assert.Equal(t, "8.000 MB/s", timeEstMng.getSpeedString())
-	assert.Equal(t, int64(58), timeEstMng.getEstimatedRemainingTime())
+	estimatedRemainingTime, err = timeEstMng.getEstimatedRemainingTime()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(58), estimatedRemainingTime)
 	assert.Equal(t, "Less than a minute", timeEstMng.getEstimatedRemainingTimeString())
 }
 
 func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
-	timeEstMng := newDefaultTimeEstimationManager()
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
+	defer cleanUp()
 
 	// Chunk 1: one of the files is checksum-deployed
 	chunkStatus1 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
+			createFileUploadStatusResponse(repo1Key, 8*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	addChunkStatus(timeEstMng, chunkStatus1, 3, true)
 	assert.Equal(t, "Not available yet", timeEstMng.getSpeedString())
 	assert.Equal(t, "Not available yet", timeEstMng.getEstimatedRemainingTimeString())
 }
@@ -88,8 +117,12 @@ func getTimeInSecs(days, hours, minutes, seconds int64) int64 {
 }
 
 func assertGetEstimatedRemainingTimeString(t *testing.T, totalBytes int64, expectedEstimation string) {
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
+	defer cleanUp()
+
 	// For tests convenience, we use 0 transferred bytes and 1/milliseconds speedsAverage because then the total bytes equals the remaining time.
-	timeEstMng := newTimeEstimationManager(totalBytes, 0)
+	timeEstMng.stateManager.TransferredSizeBytes = 0
+	timeEstMng.stateManager.TotalSizeBytes = totalBytes
 	timeEstMng.speedsAverage = 1.0 / milliSecsInSecond
 	// Not taken into account in calculation, just needed to mark the transfer has started and estimation should be done.
 	timeEstMng.timeEstimationUnavailable = false
@@ -99,7 +132,9 @@ func assertGetEstimatedRemainingTimeString(t *testing.T, totalBytes int64, expec
 }
 
 func TestEstimationNotAvailable(t *testing.T) {
-	timeEstMng := newDefaultTimeEstimationManager()
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
+	defer cleanUp()
+
 	// Assert unavailable if set.
 	timeEstMng.setTimeEstimationUnavailable(true)
 	assert.Equal(t, "Not available in this phase", timeEstMng.getEstimatedRemainingTimeString())
@@ -112,12 +147,21 @@ func TestEstimationNotAvailable(t *testing.T) {
 	assert.Equal(t, "Less than a minute", timeEstMng.getEstimatedRemainingTimeString())
 }
 
-func newDefaultTimeEstimationManager() *timeEstimationManager {
-	return newTimeEstimationManager(600*bytesInMB, 100*bytesInMB)
+func newDefaultTimeEstimationManager(t *testing.T) *timeEstimationManager {
+	stateManager, err := state.NewTransferStateManager(true)
+	assert.NoError(t, err)
+	assert.NoError(t, stateManager.ResetRepoState(repo1Key, 0, 0))
+	assert.NoError(t, stateManager.ResetRepoState(repo2Key, 0, 0))
+
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 0, 100*bytesInMB))
+	stateManager.TotalSizeBytes = 600 * bytesInMB
+	return newTimeEstimationManager(stateManager)
 }
 
 func TestAddingToFullLastSpeedsSlice(t *testing.T) {
-	timeEstMng := newDefaultTimeEstimationManager()
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
+	defer cleanUp()
+
 	numOfSpeedsToKeepPerWorkingThread = 3
 
 	// Fill the last speeds slice (up to threads * numOfSpeedsToKeepPerWorkingThread).
@@ -146,20 +190,18 @@ func addOneFileChunk(timeEstMng *timeEstimationManager, workingThreads, chunkDur
 			createFileUploadStatusResponse("", chunkSize, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus, workingThreads, true)
+	addChunkStatus(timeEstMng, chunkStatus, workingThreads, true)
 	return calculateChunkSpeed(workingThreads, chunkSize, chunkDuration)
 }
 
 func TestTransferredSizeInState(t *testing.T) {
-	cleanUp := initStateTest(t)
+	timeEstMng, cleanUp := initTimeEstimationTest(t)
 	defer cleanUp()
 
-	timeEstMng := newDefaultTimeEstimationManager()
-
 	// Create repos in state.
-	assert.NoError(t, resetRepoState(repo1Key))
-	assert.NoError(t, resetRepoState(repo2Key))
-	saveAndAssertTransferredSizes(t, timeEstMng, 0, 0)
+	assert.NoError(t, timeEstMng.stateManager.ResetRepoState(repo1Key, 0, 0))
+	assert.NoError(t, timeEstMng.stateManager.ResetRepoState(repo2Key, 0, 0))
+	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, 0, 0)
 
 	// Add a chunk of repo1 with multiple successful files, which are included in total.
 	chunkStatus1 := ChunkStatus{
@@ -170,7 +212,7 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	addChunkStatus(timeEstMng, chunkStatus1, 3, true)
 
 	// Add another chunk of repo1 which is not included in total. Expected not to be included in update.
 	chunkStatus2 := ChunkStatus{
@@ -179,7 +221,7 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 21*bytesInMB, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus2, 3, false)
+	addChunkStatus(timeEstMng, chunkStatus2, 3, false)
 
 	// Add a chunk of repo2 which is included in total. The failed file should be ignored.
 	chunkStatus3 := ChunkStatus{
@@ -189,8 +231,8 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo2Key, 133*bytesInMB, false, Fail),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus3, 3, true)
-	saveAndAssertTransferredSizes(t, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes)
+	addChunkStatus(timeEstMng, chunkStatus3, 3, true)
+	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes)
 
 	// Add one more chunk of repo2.
 	chunkStatus4 := ChunkStatus{
@@ -199,18 +241,25 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo2Key, 9*bytesInMB, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus4, 3, true)
-	saveAndAssertTransferredSizes(t, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
+	addChunkStatus(timeEstMng, chunkStatus4, 3, true)
+	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
 }
 
-func saveAndAssertTransferredSizes(t *testing.T, timeEstMng *timeEstimationManager, repo1expected, repo2expected int64) {
-	assert.NoError(t, timeEstMng.saveTransferredSizeInState())
-	assertTransferredSize(t, repo1expected, repo1Key)
-	assertTransferredSize(t, repo2expected, repo2Key)
+func addChunkStatus(timeEstMng *timeEstimationManager, chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool) {
+	if includedInTotalSize {
+		updateChunkInState(timeEstMng.stateManager, chunkStatus.Files[0].Repo, &chunkStatus)
+	}
+	timeEstMng.addChunkStatus(chunkStatus, workingThreads)
 }
 
-func assertTransferredSize(t *testing.T, expectedSize int64, repoKeys ...string) {
-	totalTransferredSize, err := getReposTransferredSizeBytes(repoKeys...)
+func assertTransferredSizes(t *testing.T, stateManager *state.TransferStateManager, timeEstMng *timeEstimationManager, repo1expected, repo2expected int64) {
+	assertTransferredSize(t, stateManager, repo1expected, repo1Key)
+	assertTransferredSize(t, stateManager, repo2expected, repo2Key)
+}
+
+func assertTransferredSize(t *testing.T, stateManager *state.TransferStateManager, expectedSize int64, repoKeys ...string) {
+	var totalTransferredSize int64
+	err := stateManager.GetReposTransferredSizeBytes(&totalTransferredSize, repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
 }

@@ -3,16 +3,18 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"math"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -32,7 +34,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	maxErrorsInFile = 20
 	defer func() { maxErrorsInFile = originalMaxErrorsInFile }()
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil)
+	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil)
 	assert.NoError(t, err)
 
 	var writeWaitGroup sync.WaitGroup
@@ -161,6 +163,6 @@ func TestGetErrorsFiles(t *testing.T) {
 }
 
 func writeEmptyErrorsFile(t *testing.T, path, repoKey string, phase, counter int) {
-	fileName := getErrorsFileName(repoKey, phase, convertTimeToEpochMilliseconds(time.Now()), counter)
+	fileName := getErrorsFileName(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now()), counter)
 	assert.NoError(t, ioutil.WriteFile(filepath.Join(path, fileName), nil, 0644))
 }

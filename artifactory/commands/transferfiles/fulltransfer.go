@@ -38,13 +38,13 @@ func (m *fullTransferPhase) getPhaseName() string {
 
 func (m *fullTransferPhase) phaseStarted() error {
 	m.startTime = time.Now()
-	return setRepoFullTransferStarted(m.repoKey, m.startTime)
+	return m.stateManager.SetRepoFullTransferStarted(m.repoKey, m.startTime)
 }
 
 func (m *fullTransferPhase) phaseDone() error {
 	// If the phase stopped gracefully, don't mark the phase as completed
 	if !m.ShouldStop() {
-		if err := setRepoFullTransferCompleted(m.repoKey); err != nil {
+		if err := m.stateManager.SetRepoFullTransferCompleted(m.repoKey); err != nil {
 			return err
 		}
 	}
@@ -56,14 +56,15 @@ func (m *fullTransferPhase) phaseDone() error {
 }
 
 func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
-	skip, err := isRepoTransferred(m.repoKey)
+	var repoTransferred bool
+	err := m.stateManager.IsRepoTransferred(m.repoKey, &repoTransferred)
 	if err != nil {
 		return false, err
 	}
-	if skip {
+	if repoTransferred {
 		m.skipPhase()
 	}
-	return skip, nil
+	return repoTransferred, nil
 }
 
 func (m *fullTransferPhase) skipPhase() {

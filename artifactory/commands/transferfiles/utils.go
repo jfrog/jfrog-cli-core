@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
 	"sync"
@@ -50,7 +51,7 @@ func (s *Stoppable) ShouldStop() bool {
 }
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 }
 
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,6 @@ var processedUploadChunksMutex sync.Mutex
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
-
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
@@ -144,6 +144,13 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			case Done:
 				reduceCurProcessedChunks()
 				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
+				if progressbar != nil && phaseBase.phaseId == FullTransferPhase {
+					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, len(chunk.Files))
+					if err != nil {
+						log.Error("Progressbar unexpected error: " + err.Error())
+						continue
+					}
+				}
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
@@ -249,7 +256,7 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 	}
 
 	// Add token to polling.
-	log.Debug("Chunk uploaded. Adding chunk token '" + uuidToken + "' to poll on for status.")
+	log.Debug("Chunk sent. Adding chunk token '" + uuidToken + "' to poll on for status.")
 	uploadTokensChan <- uuidToken
 	return nil
 }
@@ -300,9 +307,22 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+	return func(threadId int) error {
+		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
+		log.Debug(logMsgPrefix + "Handling chunk upload")
+		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		if shouldStop {
+			// The specific error that triggered the stop is already in the errors channel
+			return errorutils.CheckErrorf("%s stopped.", logMsgPrefix)
+		}
+		return nil
+	}
+}
+
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -320,8 +340,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
-			if shouldStop {
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			if err != nil {
 				return
 			}
 			// Empty the uploaded chunk.
@@ -330,7 +350,10 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -345,7 +368,7 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 	return false
 }
 
-// Stop transferring if one of the following happened:
+// ShouldStop Stop transferring if one of the following happened:
 // * Error occurred while handling errors (for example - not enough space in file system)
 // * Error occurred during delayed artifacts handling
 // * User interrupted the process (ctrl+c)
@@ -366,7 +389,7 @@ func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelM
 }
 
 func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}

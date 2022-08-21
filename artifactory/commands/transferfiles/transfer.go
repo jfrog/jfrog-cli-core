@@ -23,8 +23,8 @@ const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 3
-	retriesWait                  = 0
+	retries                      = 1000
+	retriesWaitMilliSecs         = 1000
 	dataTransferPluginMinVersion = "1.3.2"
 )
 
@@ -221,7 +221,9 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		return err
+		// We do not return the error returned from the phase's run function,
+		// because the phase is expected to recover from some errors, such as HTTP connection errors.
+		log.Error(err.Error())
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()
@@ -277,7 +279,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 }
 
 func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -285,7 +287,7 @@ func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) 
 }
 
 func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -321,7 +323,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 		}
 	}
 
-	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
+	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
 	return nil
 }
 

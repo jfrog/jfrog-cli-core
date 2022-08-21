@@ -100,12 +100,11 @@ type UuidTokenResponse struct {
 }
 
 // Fill tokens batch till full. Return if no new tokens are available.
-func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan PollingChunk, uuidsToChunkSizeMap map[string]int) {
+func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string) {
 	for len(ucs.UuidTokens) < GetThreads() {
 		select {
 		case token := <-uploadTokensChan:
-			ucs.UuidTokens = append(ucs.UuidTokens, token.uuidToken)
-			uuidsToChunkSizeMap[token.uuidToken] = token.chunkSize
+			ucs.UuidTokens = append(ucs.UuidTokens, token)
 		default:
 			// No new tokens are waiting.
 			return

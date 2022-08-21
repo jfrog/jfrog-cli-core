@@ -9,6 +9,12 @@ import (
 
 const numberOfPhases = 3
 
+const (
+	FullTransferPhase   int = 0
+	FilesDiffPhase      int = 1
+	PropertiesDiffPhase int = 2
+)
+
 type transferPhase interface {
 	StoppableComponent
 	run() error
@@ -60,11 +66,11 @@ func getPhaseByNum(i int, repoKey string, buildInfoRepo bool) transferPhase {
 	stoppable := new(Stoppable)
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 0, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 1, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 2, Stoppable: stoppable}}
+		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: PropertiesDiffPhase, Stoppable: stoppable}}
 	}
 	return nil
 }

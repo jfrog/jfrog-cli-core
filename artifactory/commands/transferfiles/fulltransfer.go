@@ -108,7 +108,7 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 
 func (m *fullTransferPhase) run() error {
 	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan PollingChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
 		}
@@ -126,7 +126,7 @@ type folderParams struct {
 	relativePath string
 }
 
-func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper producerConsumerWrapper, uploadTokensChan chan PollingChunk,
+func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper producerConsumerWrapper, uploadTokensChan chan string,
 	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
@@ -137,7 +137,7 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper produc
 }
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
-	uploadTokensChan chan PollingChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	curUploadChunk := UploadChunk{

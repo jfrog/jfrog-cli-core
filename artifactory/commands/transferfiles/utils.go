@@ -2,7 +2,6 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"errors"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
@@ -29,11 +28,6 @@ var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
 
 type InterruptionErr struct{}
-
-type PollingChunk struct {
-	uuidToken string
-	chunkSize int
-}
 
 func (m *InterruptionErr) Error() string {
 	return "Files transfer was interrupted by user"
@@ -112,10 +106,9 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan PollingChunk, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
-	uuidsToChunkSizeMap := make(map[string]int)
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
@@ -125,7 +118,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
-		curTokensBatch.fillTokensBatch(uploadTokensChan, uuidsToChunkSizeMap)
+		curTokensBatch.fillTokensBatch(uploadTokensChan)
 
 		if len(curTokensBatch.UuidTokens) == 0 {
 			if shouldStopPolling(doneChan) {
@@ -151,15 +144,14 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			case Done:
 				reduceCurProcessedChunks()
 				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-				if progressbar != nil {
-					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, uuidsToChunkSizeMap[chunk.UuidToken])
+				if progressbar != nil && phaseBase.phaseId == FullTransferPhase {
+					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, len(chunk.Files))
 					if err != nil {
 						log.Error("Progressbar unexpected error: " + err.Error())
 						continue
 					}
 				}
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				delete(uuidsToChunkSizeMap, chunk.UuidToken)
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if stopped {
@@ -218,7 +210,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan PollingChunk, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
@@ -257,20 +249,15 @@ func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChann
 // Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.
 // An uuid token is returned in order to poll on it for status.
 // This function sends the token to the uploadTokensChan for the pollUploads function to read and poll on.
-func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan PollingChunk) error {
+func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
 	uuidToken, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return err
 	}
 
-	chunkSize := len(chunk.UploadCandidates)
-	sentChunk := PollingChunk{
-		uuidToken: uuidToken,
-		chunkSize: chunkSize,
-	}
 	// Add token to polling.
 	log.Debug("Chunk sent. Adding chunk token '" + uuidToken + "' to poll on for status.")
-	uploadTokensChan <- sentChunk
+	uploadTokensChan <- uuidToken
 	return nil
 }
 
@@ -320,7 +307,7 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan PollingChunk, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
@@ -328,7 +315,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 		var err error
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
-			err = errors.New(logMsgPrefix + " stopped.")
+			return errorutils.CheckErrorf("%s stopped.", logMsgPrefix)
 		}
 		return err
 	}
@@ -336,7 +323,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan PollingChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,

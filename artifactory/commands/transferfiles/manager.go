@@ -23,21 +23,21 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan PollingChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
-type transferActionType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan PollingChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
-	pcWrapper := initProducerConsumer()
+	pcWrapper := newProducerConsumerWrapper()
 	return ftm.doTransfer(&pcWrapper, transferAction)
 }
 
 // Transfer files using a single producer.
 func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionType) error {
-	transferActionPc := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan PollingChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	transferActionPc := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	pcWrapper := initProducerConsumer()
+	pcWrapper := newProducerConsumerWrapper()
 	return ftm.doTransfer(&pcWrapper, transferActionPc)
 }
 
@@ -51,7 +51,7 @@ func (ftm *transferManager) doTransferWithSingleProducer(transferAction transfer
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType) error {
-	uploadTokensChan := make(chan PollingChunk, transfer.MaxThreadsLimit)
+	uploadTokensChan := make(chan string, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -139,7 +139,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan PollingChunk, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -185,7 +185,7 @@ type producerConsumerWrapper struct {
 	errorsQueue                   *clientUtils.ErrorsQueue
 }
 
-func initProducerConsumer() producerConsumerWrapper {
+func newProducerConsumerWrapper() producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)

@@ -311,7 +311,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 		}
 	}
 
-	log.Info("Running with maximum " + strconv.Itoa(curThreads) + " working threads...")
+	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
 	return nil
 }
 

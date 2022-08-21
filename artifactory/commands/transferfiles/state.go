@@ -92,7 +92,7 @@ func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*R
 	if !createIfMissing {
 		return nil, errorutils.CheckErrorf(getRepoMissingErrorMsg(repoKey))
 	}
-	repo := Repository{Name: repoKey}
+	repo := newRepositoryState(repoKey)
 	ts.Repositories = append(ts.Repositories, repo)
 	return &repo, nil
 }
@@ -241,6 +241,22 @@ func isRepoTransferred(repoKey string) (bool, error) {
 	}
 	err := doAndSaveState(action)
 	return isTransferred, err
+}
+
+func resetRepoState(repoKey string) error {
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, true)
+		if err != nil || repo == nil {
+			return err
+		}
+		*repo = newRepositoryState(repoKey)
+		return nil
+	}
+	return doAndSaveState(action)
+}
+
+func newRepositoryState(repoKey string) Repository {
+	return Repository{Name: repoKey}
 }
 
 func convertTimeToRFC3339(timeToConvert time.Time) string {

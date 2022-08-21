@@ -63,9 +63,9 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
-func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color) *tasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
-	prog := tasksWithHeadlineProg{}
+	prog := TasksWithHeadlineProg{}
 	if spinner {
 		prog.headlineBar = bm.NewHeadlineBarWithSpinner(headline)
 	} else {
@@ -76,13 +76,13 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	if totalTasks == 0 {
 		prog.tasksProgressBar = bm.NewDoneTasksProgressBar()
 	} else {
-		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color)
+		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color, taskType)
 	}
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
 
-func (bm *ProgressBarMng) quitTasksWithHeadlineProg(prog *tasksWithHeadlineProg) {
+func (bm *ProgressBarMng) QuitTasksWithHeadlineProg(prog *TasksWithHeadlineProg) {
 	prog.headlineBar.Abort(true)
 	prog.headlineBar = nil
 	prog.tasksProgressBar.bar.Abort(true)
@@ -114,7 +114,7 @@ func (bm *ProgressBarMng) NewHeadlineBar(msg string) *mpb.Bar {
 }
 
 // Increment increments completed tasks count by 1.
-func (bm *ProgressBarMng) Increment(prog *tasksWithHeadlineProg) {
+func (bm *ProgressBarMng) Increment(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
 	prog.tasksProgressBar.bar.Increment()
@@ -122,7 +122,7 @@ func (bm *ProgressBarMng) Increment(prog *tasksWithHeadlineProg) {
 }
 
 // Increment increments completed tasks count by n.
-func (bm *ProgressBarMng) IncBy(n int, prog *tasksWithHeadlineProg) {
+func (bm *ProgressBarMng) IncBy(n int, prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
 	prog.tasksProgressBar.bar.IncrBy(n)
@@ -130,7 +130,7 @@ func (bm *ProgressBarMng) IncBy(n int, prog *tasksWithHeadlineProg) {
 }
 
 // DoneTask increase tasks counter to the number of totalTasks.
-func (bm *ProgressBarMng) DoneTask(prog *tasksWithHeadlineProg) {
+func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
 	diff := prog.tasksProgressBar.total - prog.tasksProgressBar.tasksCount
@@ -141,14 +141,17 @@ func (bm *ProgressBarMng) DoneTask(prog *tasksWithHeadlineProg) {
 	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
-func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *tasksProgressBar {
-	pb := &tasksProgressBar{}
+func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color, taskType string) *TasksProgressBar {
+	pb := &TasksProgressBar{}
 	filter := filterColor(color)
+	if taskType == "" {
+		taskType = "Tasks"
+	}
 	pb.bar = bm.container.New(0,
 		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(" Tasks: "),
+			decor.Name(" "+taskType+": "),
 			decor.CountersNoUnit("%d/%d"),
 		),
 	)
@@ -156,8 +159,8 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color) *ta
 	return pb
 }
 
-func (bm *ProgressBarMng) NewCounterProgressBar(num int64, headline string) *tasksProgressBar {
-	pb := &tasksProgressBar{}
+func (bm *ProgressBarMng) NewCounterProgressBar(num int64, headline string) *TasksProgressBar {
+	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(num,
 		nil,
 		mpb.BarRemoveOnComplete(),
@@ -169,8 +172,8 @@ func (bm *ProgressBarMng) NewCounterProgressBar(num int64, headline string) *tas
 	return pb
 }
 
-func (bm *ProgressBarMng) NewDoneTasksProgressBar() *tasksProgressBar {
-	pb := &tasksProgressBar{}
+func (bm *ProgressBarMng) NewDoneTasksProgressBar() *TasksProgressBar {
+	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(1,
 		nil,
 		mpb.BarRemoveOnComplete(),
@@ -179,6 +182,14 @@ func (bm *ProgressBarMng) NewDoneTasksProgressBar() *tasksProgressBar {
 		),
 	)
 	return pb
+}
+
+func (bm *ProgressBarMng) GetBarsWg() *sync.WaitGroup {
+	return bm.barsWg
+}
+
+func (bm *ProgressBarMng) GetLogFile() *os.File {
+	return bm.logFile
 }
 
 func filterColor(color Color) (filter string) {

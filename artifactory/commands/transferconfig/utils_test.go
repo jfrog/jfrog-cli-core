@@ -3,7 +3,9 @@ package transferconfig
 import (
 	"archive/zip"
 	"bytes"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -34,4 +36,43 @@ func TestArchiveConfig(t *testing.T) {
 			assert.Equal(t, expectedConfigXml, string(actualConfigXml))
 		}
 	}
+}
+
+func initHandleTypoInAccessBootstrapTest(t *testing.T) (exportDir string, cleanupFunc func()) {
+	exportDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	testDataPath := filepath.Join("..", "testdata", "artifactory_export")
+	assert.NoError(t, fileutils.CopyDir(testDataPath, exportDir, true, nil))
+	cleanupFunc = func() {
+		assert.NoError(t, fileutils.RemoveTempDir(exportDir), "Couldn't remove temp dir")
+	}
+	return
+}
+
+func TestHandleTypoInAccessBootstrapNoTypo(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
+
+	// Test access.bootstrap.json
+	assert.NoError(t, handleTypoInAccessBootstrap(exportDir))
+	assert.FileExists(t, filepath.Join(exportDir, "etc", "access.bootstrap.json"))
+}
+
+func TestHandleTypoInAccessBootstrapWithTypo(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
+
+	accessBootstrapPath := filepath.Join(exportDir, "etc", "access.bootstrap.json")
+	assert.NoError(t, fileutils.MoveFile(accessBootstrapPath, filepath.Join(exportDir, "etc", "access.boostrap.json")))
+
+	assert.NoError(t, handleTypoInAccessBootstrap(exportDir))
+	assert.FileExists(t, accessBootstrapPath)
+}
+
+func TestHandleTypoInAccessBootstrapNotExist(t *testing.T) {
+	exportDir, cleanupFunc := initHandleTypoInAccessBootstrapTest(t)
+	defer cleanupFunc()
+
+	assert.NoError(t, os.Remove(filepath.Join(exportDir, "etc", "access.bootstrap.json")))
+	assert.Error(t, handleTypoInAccessBootstrap(exportDir))
 }

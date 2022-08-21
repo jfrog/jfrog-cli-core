@@ -342,7 +342,7 @@ func promptAuthMethods() (method AuthenticationMethod, err error) {
 	for _, method := range authMethod {
 		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(method), TargetValue: &selected})
 	}
-	err = ioutils.SelectString(selectableItems, "Select one of the following authentication methods:", func(item ioutils.PromptItem) {
+	err = ioutils.SelectString(selectableItems, "Select one of the following authentication methods:", false, func(item ioutils.PromptItem) {
 		*item.TargetValue = item.Option
 		method = AuthenticationMethod(*item.TargetValue)
 	})
@@ -453,8 +453,8 @@ func ShowConfig(serverName string) error {
 	return nil
 }
 
-func Import(serverToken string) error {
-	serverDetails, err := config.Import(serverToken)
+func Import(configTokenString string) error {
+	serverDetails, err := config.Import(configTokenString)
 	if err != nil {
 		return err
 	}
@@ -474,11 +474,11 @@ func Export(serverName string) error {
 	if serverDetails.ServerId == "" {
 		return errorutils.CheckErrorf("cannot export config, because it is empty. Run 'jf c add' and then export again")
 	}
-	serverToken, err := config.Export(serverDetails)
+	configTokenString, err := config.Export(serverDetails)
 	if err != nil {
 		return err
 	}
-	log.Output(serverToken)
+	log.Output(configTokenString)
 	return nil
 }
 

@@ -100,7 +100,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 		log.Output(title)
 	}
 
-	if log.IsStdOutTerminal() && log.IsColorsSupported() {
+	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
 	tableWriter.Style().Options.SeparateRows = true
@@ -327,9 +327,11 @@ type embeddedTableCell struct {
 func PrintMessage(message string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
-	if log.IsStdOutTerminal() && log.IsColorsSupported() {
+	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
+	// Remove emojis from non-supported terminals
+	message = RemoveEmojisIfNonSupportedTerminal(message)
 	tableWriter.AppendRow(table.Row{message})
 	tableWriter.Render()
 }

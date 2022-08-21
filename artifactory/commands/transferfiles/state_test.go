@@ -51,7 +51,7 @@ func getAndAssertNonExistingRepo(t *testing.T, state *TransferState, repoKey str
 }
 
 func TestFilesDiffRange(t *testing.T) {
-	cleanUp := setupStateTest(t)
+	cleanUp := initStateTest(t)
 	defer cleanUp()
 
 	repoKey := "repo"
@@ -123,12 +123,12 @@ func getRepoFromState(t *testing.T, repoKey string) *Repository {
 	return repo
 }
 
-func setupStateTest(t *testing.T) (cleanUp func()) {
+func initStateTest(t *testing.T) (cleanUp func()) {
 	cleanUpJfrogHome, err := tests.SetJfrogHome()
 	assert.NoError(t, err)
 	cleanUp = cleanUpJfrogHome
 
-	// Create transfer dir.
+	// Create transfer directory
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	assert.NoError(t, err)
 	err = utils.CreateDirIfNotExist(transferDir)
@@ -137,7 +137,7 @@ func setupStateTest(t *testing.T) (cleanUp func()) {
 }
 
 func TestResetRepoState(t *testing.T) {
-	cleanUp := setupStateTest(t)
+	cleanUp := initStateTest(t)
 	defer cleanUp()
 	repo1Key, repo2Key := "repo1", "repo2"
 

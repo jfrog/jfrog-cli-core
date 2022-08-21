@@ -160,7 +160,7 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 		if tdc.ignoreState {
 			err = resetRepoState(repoKey)
 			if err != nil {
-				return tdc.cleanup(err, sourceRepos)
+				return err
 			}
 		}
 

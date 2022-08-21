@@ -102,7 +102,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 // Sends chunk to upload, polls on chunk twice - once when it is still in progress, and once after it is done.
 func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
 	curThreads = 8
-	uploadTokensChan := make(chan PollingChunk, 3)
+	uploadTokensChan := make(chan string, 3)
 	doneChan := make(chan bool, 1)
 	var runWaitGroup sync.WaitGroup
 

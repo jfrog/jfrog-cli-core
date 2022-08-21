@@ -24,7 +24,7 @@ const (
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
 	retries                      = 1000
-	retriesWait                  = 1000
+	retriesWaitMilliSecs         = 1000
 	dataTransferPluginMinVersion = "1.3.2"
 )
 
@@ -267,7 +267,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 }
 
 func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -275,7 +275,7 @@ func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) 
 }
 
 func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}

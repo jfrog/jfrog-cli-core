@@ -51,7 +51,7 @@ func (s *Stoppable) ShouldStop() bool {
 }
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 }
 
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelM
 }
 
 func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}

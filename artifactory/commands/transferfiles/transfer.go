@@ -39,6 +39,7 @@ type TransferFilesCommand struct {
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
 	timeStarted               time.Time
+	ignoreState               bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -59,6 +60,10 @@ func (tdc *TransferFilesCommand) SetIncludeReposPatterns(includeReposPatterns []
 
 func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []string) {
 	tdc.excludeReposPatterns = excludeReposPatterns
+}
+
+func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
+	tdc.ignoreState = ignoreState
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
@@ -150,6 +155,13 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 
 		if tdc.progressbar != nil {
 			tdc.progressbar.NewRepository(repoKey)
+		}
+
+		if tdc.ignoreState {
+			err = resetRepoState(repoKey)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err = tdc.initCurThreads(buildInfoRepo); err != nil {

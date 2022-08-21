@@ -13,7 +13,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.5
 	github.com/jfrog/build-info-go v1.4.1
 	github.com/jfrog/gofrog v1.2.0
-	github.com/jfrog/jfrog-client-go v1.20.1
+	github.com/jfrog/jfrog-client-go v1.21.0
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -95,7 +95,7 @@ exclude (
 	github.com/pkg/sftp v1.10.1
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.20.2-0.20220818095957-e8efb324798a
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.20.2-0.20220818095957-e8efb324798a
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.4.1-0.20220815064747-507baf9c3b23
 

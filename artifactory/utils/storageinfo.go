@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	serviceManagerRetriesPerRequest         = 3
-	serviceManagerRetriesWaitPerRequest int = int(1 * time.Second)
+	serviceManagerRetriesPerRequest                  = 3
+	serviceManagerRetriesWaitPerRequestMilliSecs int = 1000
 )
 
 var getRepoSummaryPollingTimeout = 10 * time.Minute
@@ -23,7 +23,7 @@ type StorageInfoManager struct {
 }
 
 func NewStorageInfoManager(serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
-	serviceManager, err := CreateServiceManager(serverDetails, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequest, false)
+	serviceManager, err := CreateServiceManager(serverDetails, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}

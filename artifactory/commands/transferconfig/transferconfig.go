@@ -78,12 +78,17 @@ func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns [
 }
 
 func (tcc *TransferConfigCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
-	// Create config managers
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
-		return
+		return err
 	}
+
+	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
+	if err != nil || !continueTransfer {
+		return err
+	}
+
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
 	if err != nil {
 		return
@@ -146,7 +151,75 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Update the server details of the target Artifactory in the CLI configuration
-	return tcc.updateServerDetails()
+	err = tcc.updateServerDetails()
+	if err != nil {
+		return
+	}
+
+	// If config transfer passed successfully, add conclusion message
+	log.Info("Config transfer completed successfully!")
+	log.Info("☝️  Please make sure to disable configuration transfer in MyJFrog before running the 'jf transfer-files' command.")
+	return nil
+}
+
+func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactory.ArtifactoryServicesManager) (continueTransfer bool, err error) {
+	// Prompt message
+	promptMsg := "This command will transfer Artifactory config data:\n" +
+		fmt.Sprintf("From %s - <%s>\n", coreutils.PrintBold("Source"), tcc.sourceServerDetails.ArtifactoryUrl) +
+		fmt.Sprintf("To %s - <%s>\n", coreutils.PrintBold("Target"), tcc.targetServerDetails.ArtifactoryUrl) +
+		"This action will wipe out all Artifactory content in the target.\n" +
+		"Make sure that you're using strong credentials in your source platform (for example - having the default admin:password credentials isn't recommended).\n" +
+		"Those credentials will be transferred to your SaaS target platform.\n" +
+		"Are you sure you want to continue?"
+
+	if !coreutils.AskYesNo(promptMsg, false) {
+		return false, nil
+	}
+
+	// Check if there is a configured user using default credentials in the source platform.
+	isDefaultCredentials, err := tcc.isDefaultCredentials(sourceServicesManager)
+	if err != nil {
+		return false, err
+	}
+	if isDefaultCredentials {
+		log.Output()
+		log.Warn("The default 'admin:password' credentials are used by a configured user in your source platform.\n" +
+			"Those credentials will be transferred to your SaaS target platform.")
+		if !coreutils.AskYesNo("Are you sure you want to continue?", false) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// Check if there is a configured user using default credentials 'admin:password' by pinging Artifactory.
+func (tcc *TransferConfigCommand) isDefaultCredentials(manager artifactory.ArtifactoryServicesManager) (bool, error) {
+	adminUsername := "admin"
+
+	// Check if admin is locked
+	lockedUsers, err := manager.GetLockedUsers()
+	if err != nil {
+		return false, err
+	}
+	for _, lockedUser := range lockedUsers {
+		if lockedUser == adminUsername {
+			return false, nil
+		}
+	}
+
+	// Ping Artifactory with the default admin:password credentials
+	artDetails := config.ServerDetails{ArtifactoryUrl: tcc.sourceServerDetails.ArtifactoryUrl, User: adminUsername, Password: "password"}
+	pingCmd := generic.NewPingCommand().SetServerDetails(&artDetails)
+	// This cannot be executed with commands.Exec()! Doing so will cause usage report being sent with admin:password as well.
+	err = pingCmd.Run()
+	if err == nil {
+		return true, nil
+	}
+
+	// If the password of the admin user is not the default one, reset the failed login attempts counter in Artifactory
+	// by unlocking the user. We do that to avoid login suspension to the admin user.
+	err = manager.UnlockUser(adminUsername)
+	return false, err
 }
 
 // Make sure source and target Artifactory URLs are different.

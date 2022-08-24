@@ -14,17 +14,18 @@ import (
 )
 
 type MvnCommand struct {
-	goals                     []string
-	configPath                string
-	insecureTls               bool
-	configuration             *utils.BuildConfiguration
-	serverDetails             *config.ServerDetails
-	threads                   int
-	detailedSummary           bool
-	xrayScan                  bool
-	scanOutputFormat          xrutils.OutputFormat
-	result                    *commandsutils.Result
-	disableDeploy             bool
+	goals              []string
+	configPath         string
+	insecureTls        bool
+	configuration      *utils.BuildConfiguration
+	serverDetails      *config.ServerDetails
+	threads            int
+	detailedSummary    bool
+	xrayScan           bool
+	scanOutputFormat   xrutils.OutputFormat
+	result             *commandsutils.Result
+	deploymentDisabled bool
+	// File path for Maven extractor in which all build's artifacts details will be listed at the end of the build.
 	buildArtifactsDetailsFile string
 }
 
@@ -100,8 +101,8 @@ func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	if err != nil {
 		return
 	}
-	// enable artifact deployments
-	mc.disableDeploy = mc.IsXrayScan() || !vConfig.IsSet("deployer")
+	// Maven extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	mc.deploymentDisabled = mc.IsXrayScan() || !vConfig.IsSet("deployer")
 	if mc.shouldCreateBuildArtifactsFile() {
 		// Created a file that will contain all the details about the build's artifacts
 		tempFile, err := fileutils.CreateTempFile()
@@ -117,8 +118,11 @@ func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	return
 }
 
+// Maven extractor generates the details of the build's artifacts.
+// This is required for Xray scan and for the detailed summary.
+// We can either scan or print the generated artifacts.
 func (mc *MvnCommand) shouldCreateBuildArtifactsFile() bool {
-	return (mc.IsDetailedSummary() && !mc.disableDeploy) || mc.IsXrayScan()
+	return (mc.IsDetailedSummary() && !mc.deploymentDisabled) || mc.IsXrayScan()
 }
 
 func (mc *MvnCommand) Run() error {
@@ -127,7 +131,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.disableDeploy)
+	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.deploymentDisabled)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,8 @@ type GradleCommand struct {
 	xrayScan                  bool
 	scanOutputFormat          xrutils.OutputFormat
 	result                    *commandsutils.Result
-	disableDeploy             bool
+	deploymentDisabled        bool
+	// File path for Gradle extractor in which all build's artifacts details will be listed at the end of the build.
 	buildArtifactsDetailsFile string
 }
 
@@ -59,8 +60,9 @@ func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	if err != nil {
 		return
 	}
-	// enable artifact deployments
-	gc.disableDeploy = gc.IsXrayScan() || !vConfig.IsSet("deployer")
+	// Gradle extractor is needed to run, in order to get the details of the build's artifacts.
+	// Gradle extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	gc.deploymentDisabled = gc.IsXrayScan() || !vConfig.IsSet("deployer")
 	if gc.shouldCreateBuildArtifactsFile() {
 		// Created a file that will contain all the details about the build's artifacts
 		tempFile, err := fileutils.CreateTempFile()
@@ -76,8 +78,11 @@ func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	return
 }
 
+// Gradle extractor generates the details of the build's artifacts.
+// This is required for Xray scan and for the detailed summary.
+// We can either scan or print the generated artifacts.
 func (gc *GradleCommand) shouldCreateBuildArtifactsFile() bool {
-	return (gc.IsDetailedSummary() && !gc.disableDeploy) || gc.IsXrayScan()
+	return (gc.IsDetailedSummary() && !gc.deploymentDisabled) || gc.IsXrayScan()
 }
 
 func (gc *GradleCommand) Run() error {

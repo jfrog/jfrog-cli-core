@@ -49,7 +49,6 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 }
 
 func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
-
 	wrapper = vConfig.GetBool(useWrapper)
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)

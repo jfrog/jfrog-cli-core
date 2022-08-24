@@ -1,6 +1,6 @@
 name: JFrog CLI Core Tests
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   test:
@@ -8,25 +8,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
     env:
       GOPROXY: direct
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Python3
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
-          
+
       - name: Install pipenv
         run: pip3 install pipenv
-        
+
       - name: Install Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17.x
+          go-version: 1.18.x
 
       - name: Install NuGet
         uses: nuget/setup-nuget@v1
@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '3.x'
-          
+
       - name: Go Cache
         uses: actions/cache@v3
         with:
@@ -45,9 +45,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-            
+
       - name: Lint
         run: go vet ./...
-        
+
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race

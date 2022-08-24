@@ -1,6 +1,6 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.17
+go 1.18
 
 require (
 	github.com/buger/jsonparser v1.1.1
@@ -87,12 +87,6 @@ require (
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-// Exclude vulnerable dependencies
-exclude (
-	github.com/miekg/dns v1.0.14
-	github.com/pkg/sftp v1.10.1
 )
 
 // replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.20.2-0.20220818095957-e8efb324798a

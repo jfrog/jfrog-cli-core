@@ -134,6 +134,8 @@ const (
 	ivy    = "Ivy"
 	docker = "Docker"
 	conan  = "Conan"
+	nuget  = "NuGet"
+	sbt    = "SBT"
 )
 
 // A function to determine whether the file deployment should be delayed.

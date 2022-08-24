@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
@@ -416,4 +417,121 @@ func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningN
 			delete(remainingNodesToStop, nodeId)
 		}
 	}
+}
+
+// getMaxUniqueSnapshots gets the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
+// or max unique tags (Docker).
+// On repositories of other package types or if an error is thrown, this function returns -1.
+func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary) (maxUniqueSnapshots int, err error) {
+	maxUniqueSnapshots = -1
+	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+	if err != nil {
+		return
+	}
+	switch repoSummary.PackageType {
+	case maven:
+		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &mavenLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *mavenLocalRepoParams.MaxUniqueSnapshots
+	case gradle:
+		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &gradleLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *gradleLocalRepoParams.MaxUniqueSnapshots
+	case nuget:
+		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &nugetLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *nugetLocalRepoParams.MaxUniqueSnapshots
+	case ivy:
+		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &ivyLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *ivyLocalRepoParams.MaxUniqueSnapshots
+	case sbt:
+		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &sbtLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *sbtLocalRepoParams.MaxUniqueSnapshots
+	case docker:
+		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &dockerLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *dockerLocalRepoParams.MaxUniqueTags
+	}
+	return
+}
+
+// updateMaxUniqueSnapshots updates the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
+// or max unique tags (Docker).
+// On repositories of other package types, this function does nothing.
+func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+	if err != nil {
+		return err
+	}
+	switch repoSummary.PackageType {
+	case maven:
+		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
+		mavenLocalRepoParams.Key = repoSummary.RepoKey
+		mavenLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Maven(mavenLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case gradle:
+		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
+		gradleLocalRepoParams.Key = repoSummary.RepoKey
+		gradleLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Gradle(gradleLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case nuget:
+		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
+		nugetLocalRepoParams.Key = repoSummary.RepoKey
+		nugetLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Nuget(nugetLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case ivy:
+		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
+		ivyLocalRepoParams.Key = repoSummary.RepoKey
+		ivyLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Ivy(ivyLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case sbt:
+		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
+		sbtLocalRepoParams.Key = repoSummary.RepoKey
+		sbtLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Sbt(sbtLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case docker:
+		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
+		dockerLocalRepoParams.Key = repoSummary.RepoKey
+		dockerLocalRepoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Docker(dockerLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -164,6 +164,20 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 			}
 		}
 
+		// Get the source repository's max unique snapshots setting
+		srcMaxUniqueSnapshots, err := getMaxUniqueSnapshots(tdc.sourceServerDetails, repoSummary)
+		if err != nil {
+			return err
+		}
+
+		// If it's a Maven, Gradle, NuGet, Ivy, SBT or Docker repository, update its max unique snapshots setting to 0.
+		if srcMaxUniqueSnapshots != -1 {
+			err = updateMaxUniqueSnapshots(tdc.targetServerDetails, repoSummary, 0)
+			if err != nil {
+				return err
+			}
+		}
+
 		if err = tdc.initCurThreads(buildInfoRepo); err != nil {
 			return err
 		}
@@ -174,6 +188,14 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 
 			*newPhase = getPhaseByNum(currentPhaseId, repoKey, buildInfoRepo)
 			if err = tdc.startPhase(newPhase, repoKey, *repoSummary, srcUpService); err != nil {
+				return err
+			}
+		}
+
+		// Update the target repository's max unique snapshots setting to be the same as in the source, only if it's not 0.
+		if srcMaxUniqueSnapshots > 0 {
+			err = updateMaxUniqueSnapshots(tdc.targetServerDetails, repoSummary, srcMaxUniqueSnapshots)
+			if err != nil {
 				return err
 			}
 		}

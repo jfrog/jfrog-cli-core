@@ -171,6 +171,7 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 		}
 
 		// If it's a Maven, Gradle, NuGet, Ivy, SBT or Docker repository, update its max unique snapshots setting to 0.
+		// srcMaxUniqueSnapshots == -1 means it's a repository of another package type.
 		if srcMaxUniqueSnapshots != -1 {
 			err = updateMaxUniqueSnapshots(tdc.targetServerDetails, repoSummary, 0)
 			if err != nil {

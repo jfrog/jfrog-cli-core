@@ -12,7 +12,7 @@ require (
 	github.com/jfrog/jfrog-client-go v0.28.0
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
-	github.com/mattn/go-shellwords v1.0.12
+	github.com/mattn/go-shellwords v1.0.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0

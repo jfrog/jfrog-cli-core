@@ -5,12 +5,13 @@ on: [ push, pull_request ]
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-      strategy:
-        fail-fast: false
-        matrix:
-          os: [ ubuntu-latest, windows-latest, macOS-latest ]
-      env:
-        GOPROXY: direct
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+    env:
+      GOPROXY: direct
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - name: Install Go
         uses: actions/setup-go@v3

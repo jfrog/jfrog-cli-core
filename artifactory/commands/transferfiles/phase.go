@@ -4,13 +4,19 @@ import (
 	"time"
 
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 )
 
 const numberOfPhases = 3
 
+const (
+	FullTransferPhase   int = 0
+	FilesDiffPhase      int = 1
+	PropertiesDiffPhase int = 2
+)
+
 type transferPhase interface {
+	StoppableComponent
 	run() error
 	phaseStarted() error
 	phaseDone() error
@@ -22,53 +28,49 @@ type transferPhase interface {
 	setTargetDetails(*coreConfig.ServerDetails)
 	setRepoSummary(serviceUtils.RepositorySummary)
 	getPhaseName() string
-	setProgressBar(*progressbar.TransferProgressMng)
+	setProgressBar(*TransferProgressMng)
 	initProgressBar() error
-	stopGracefully()
 }
 
 type phaseBase struct {
+	*Stoppable
 	repoKey                   string
+	buildInfoRepo             bool
 	phaseId                   int
 	checkExistenceInFilestore bool
 	startTime                 time.Time
 	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
-	progressBar               *progressbar.TransferProgressMng
+	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
-	stop                      *bool
-}
-
-func (pb *phaseBase) shouldStop() bool {
-	return *pb.stop
 }
 
 // Return InterruptionError, if stop is true
 func (pb *phaseBase) getInterruptionErr() error {
-	if pb.shouldStop() {
+	if pb.ShouldStop() {
 		return new(InterruptionErr)
 	}
 	return nil
 }
 
 // Stop the phase gracefully and show it in the progressbar
-func (pb *phaseBase) stopGracefully() {
-	*pb.stop = true
+func (pb *phaseBase) Stop() {
+	pb.Stoppable.Stop()
 	if pb.progressBar != nil {
 		pb.progressBar.StopGracefully()
 	}
 }
 
-func getPhaseByNum(i int, repoKey string) transferPhase {
-	stopValue := false
+func getPhaseByNum(i int, repoKey string, buildInfoRepo bool) transferPhase {
+	stoppable := new(Stoppable)
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 0, stop: &stopValue}}
+		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 1, stop: &stopValue}}
+		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: 2, stop: &stopValue}}
+		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: PropertiesDiffPhase, Stoppable: stoppable}}
 	}
 	return nil
 }

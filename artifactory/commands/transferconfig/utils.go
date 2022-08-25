@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,6 +38,11 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 		}
 	}()
 
+	err := handleTypoInAccessBootstrap(exportPath)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, neededFile := range neededFiles {
 		neededFilePath := filepath.Join(exportPath, neededFile)
 		log.Debug("Archiving " + neededFile)
@@ -62,6 +68,26 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 	}
 	_, retErr = fileWriter.Write([]byte(configXml))
 	return
+}
+
+// In some versions of Artifactory, the file access.bootstrap.json has a typo in its name: access.boostrap.json.
+// If this is the case, rename the file to the right name.
+func handleTypoInAccessBootstrap(exportPath string) error {
+	accessBootstrapPath := filepath.Join(exportPath, "etc", "access.bootstrap.json")
+	accessBootstrapExists, err := fileutils.IsFileExists(accessBootstrapPath, false)
+	if err != nil {
+		return err
+	}
+	if !accessBootstrapExists {
+		err = fileutils.MoveFile(filepath.Join(exportPath, "etc", "access.boostrap.json"), accessBootstrapPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return errorutils.CheckErrorf("%s: the file was not found or is not accessible", accessBootstrapPath)
+			}
+			return err
+		}
+	}
+	return nil
 }
 
 func createArtifactoryClientDetails(serviceManager artifactory.ArtifactoryServicesManager) (*httputils.HttpClientDetails, error) {

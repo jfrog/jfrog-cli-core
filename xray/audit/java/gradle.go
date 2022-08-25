@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
@@ -54,5 +55,10 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 			log.Debug("Using resolver config from", configFilePath)
 		}
 	}
-	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, useWrapper, true)
+	// Read config
+	vConfig, err := utils.ReadGradleConfig(configFilePath, useWrapper)
+	if err != nil {
+		return err
+	}
+	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
 }

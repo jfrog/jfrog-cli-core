@@ -10,20 +10,23 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/spf13/viper"
 )
 
 type MvnCommand struct {
-	goals            []string
-	configPath       string
-	insecureTls      bool
-	configuration    *utils.BuildConfiguration
-	serverDetails    *config.ServerDetails
-	threads          int
-	detailedSummary  bool
-	xrayScan         bool
-	scanOutputFormat xrutils.OutputFormat
-	result           *commandsutils.Result
-	disableDeploy    bool
+	goals              []string
+	configPath         string
+	insecureTls        bool
+	configuration      *utils.BuildConfiguration
+	serverDetails      *config.ServerDetails
+	threads            int
+	detailedSummary    bool
+	xrayScan           bool
+	scanOutputFormat   xrutils.OutputFormat
+	result             *commandsutils.Result
+	deploymentDisabled bool
+	// File path for Maven extractor in which all build's artifacts details will be listed at the end of the build.
+	buildArtifactsDetailsFile string
 }
 
 func NewMvnCommand() *MvnCommand {
@@ -92,38 +95,54 @@ func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 	return mc
 }
 
-func (mc *MvnCommand) SetDisableDeploy(disableDeploy bool) *MvnCommand {
-	mc.disableDeploy = disableDeploy
-	return mc
+func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
+	// Read config
+	vConfig, err = utils.ReadMavenConfig(mc.configPath)
+	if err != nil {
+		return
+	}
+	// Maven extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	mc.deploymentDisabled = mc.IsXrayScan() || !vConfig.IsSet("deployer")
+	if mc.shouldCreateBuildArtifactsFile() {
+		// Created a file that will contain all the details about the build's artifacts
+		tempFile, err := fileutils.CreateTempFile()
+		if err != nil {
+			return nil, err
+		}
+		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
+		mc.buildArtifactsDetailsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
+		if err = tempFile.Close(); errorutils.CheckError(err) != nil {
+			return nil, err
+		}
+	}
+	return
+}
+
+// Maven extractor generates the details of the build's artifacts.
+// This is required for Xray scan and for the detailed summary.
+// We can either scan or print the generated artifacts.
+func (mc *MvnCommand) shouldCreateBuildArtifactsFile() bool {
+	return (mc.IsDetailedSummary() && !mc.deploymentDisabled) || mc.IsXrayScan()
 }
 
 func (mc *MvnCommand) Run() error {
-	deployableArtifactsFile := ""
-	if mc.IsDetailedSummary() || mc.IsXrayScan() {
-		tempFile, err := fileutils.CreateTempFile()
-		if err != nil {
-			return err
-		}
-		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
-		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
-		if err = tempFile.Close(); err != nil {
-			return errorutils.CheckError(err)
-		}
-	}
-
-	err := mvnutils.RunMvn(mc.configPath, deployableArtifactsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.IsXrayScan())
+	vConfig, err := mc.init()
 	if err != nil {
 		return err
 	}
-	if mc.IsXrayScan() {
-		err = mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+
+	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.deploymentDisabled)
+	if err != nil {
+		return err
+	}
+	if mc.buildArtifactsDetailsFile != "" {
+		err = mc.unmarshalDeployableArtifacts(mc.buildArtifactsDetailsFile)
 		if err != nil {
 			return err
 		}
-		return mc.conditionalUpload()
-	}
-	if mc.IsDetailedSummary() {
-		return mc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+		if mc.IsXrayScan() {
+			return mc.conditionalUpload()
+		}
 	}
 	return nil
 }

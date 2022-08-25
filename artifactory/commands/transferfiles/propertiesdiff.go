@@ -4,7 +4,6 @@ import (
 	"time"
 
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -20,7 +19,7 @@ func (p *propertiesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
 	return p.srcRtDetails
 }
 
-func (p *propertiesDiffPhase) setProgressBar(progressbar *progressbar.TransferProgressMng) {
+func (p *propertiesDiffPhase) setProgressBar(progressbar *TransferProgressMng) {
 	p.progressBar = progressbar
 }
 
@@ -88,7 +87,7 @@ func (p *propertiesDiffPhase) run() error {
 	// Done handling when all nodes return done status.
 propertiesHandling:
 	for {
-		if *p.stop {
+		if p.ShouldStop() {
 			return errorutils.CheckError(&InterruptionErr{})
 		}
 		remoteNodeStatus, err := p.srcUpService.handlePropertiesDiff(requestBody)

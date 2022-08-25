@@ -51,15 +51,8 @@ func getAndAssertNonExistingRepo(t *testing.T, state *TransferState, repoKey str
 }
 
 func TestFilesDiffRange(t *testing.T) {
-	cleanUpJfrogHome, err := tests.SetJfrogHome()
-	assert.NoError(t, err)
-	defer cleanUpJfrogHome()
-
-	// Create transfer dir.
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	assert.NoError(t, err)
-	err = utils.CreateDirIfNotExist(transferDir)
-	assert.NoError(t, err)
+	cleanUp := initStateTest(t)
+	defer cleanUp()
 
 	repoKey := "repo"
 	transferStartTime := time.Now()
@@ -128,4 +121,39 @@ func getRepoFromState(t *testing.T, repoKey string) *Repository {
 	repo, err := state.getRepository(repoKey, false)
 	assert.NoError(t, err)
 	return repo
+}
+
+func initStateTest(t *testing.T) (cleanUp func()) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	cleanUp = cleanUpJfrogHome
+
+	// Create transfer directory
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	assert.NoError(t, err)
+	err = utils.CreateDirIfNotExist(transferDir)
+	assert.NoError(t, err)
+	return
+}
+
+func TestResetRepoState(t *testing.T) {
+	cleanUp := initStateTest(t)
+	defer cleanUp()
+	repo1Key, repo2Key := "repo1", "repo2"
+
+	// Reset a repository state on an empty state
+	err := resetRepoState(repo1Key)
+	assert.NoError(t, err)
+	// Set repository fully transferred. It will fail the test if the repository is not in the state.
+	setAndAssertRepoFullyTransfer(t, repo1Key, time.Now())
+
+	// Create another repository state
+	err = resetRepoState(repo2Key)
+	assert.NoError(t, err)
+	setAndAssertRepoFullyTransfer(t, repo2Key, time.Now())
+
+	// Reset repo1 only
+	err = resetRepoState(repo1Key)
+	assert.NoError(t, err)
+	assertRepoTransferred(t, repo1Key, false)
 }

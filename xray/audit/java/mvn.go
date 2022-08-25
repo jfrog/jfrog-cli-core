@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
@@ -47,5 +48,10 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls bool) erro
 	} else {
 		configFilePath = ""
 	}
-	return mvnutils.RunMvn(configFilePath, "", buildConfiguration, goals, 0, insecureTls, true)
+	// Read config
+	vConfig, err := utils.ReadMavenConfig(configFilePath)
+	if err != nil {
+		return err
+	}
+	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, true)
 }

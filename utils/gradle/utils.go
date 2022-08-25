@@ -17,7 +17,7 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(tasks, configPath, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) error {
+func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {
@@ -35,7 +35,7 @@ func RunGradle(tasks, configPath, deployableArtifactsFile string, configuration 
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	props, wrapper, plugin, err := createGradleRunConfig(configPath, deployableArtifactsFile, configuration, threads, useWrapperIfMissingConfig, disableDeploy)
+	props, wrapper, plugin, err := createGradleRunConfig(vConfig, deployableArtifactsFile, configuration, threads, useWrapperIfMissingConfig, disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -48,19 +48,7 @@ func RunGradle(tasks, configPath, deployableArtifactsFile string, configuration 
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 
-func createGradleRunConfig(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
-	var vConfig *viper.Viper
-	if configPath == "" {
-		vConfig = viper.New()
-		vConfig.SetConfigType(string(utils.YAML))
-		vConfig.Set("type", utils.Gradle.String())
-		vConfig.Set(useWrapper, useWrapperIfMissingConfig)
-	} else {
-		vConfig, err = utils.ReadConfigFile(configPath, utils.YAML)
-		if err != nil {
-			return
-		}
-	}
+func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
 	wrapper = vConfig.GetBool(useWrapper)
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)

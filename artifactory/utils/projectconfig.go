@@ -80,26 +80,31 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 	confFileName := filepath.Join("projects", projectType.String()+".yaml")
 	projectDir, exists, err := fileutils.FindUpstream(".jfrog", fileutils.Dir)
 	if err != nil {
-		return "", false, err
+		return
 	}
 	if exists {
-		confFilePath = filepath.Join(projectDir, ".jfrog", confFileName)
+		filePath := filepath.Join(projectDir, ".jfrog", confFileName)
 		exists, err = fileutils.IsFileExists(confFilePath, false)
 		if err != nil {
-			return "", false, err
+			return
 		}
 
 		if exists {
+			confFilePath = filePath
 			return
 		}
 	}
 	// If missing in the root project, check in the home dir
 	jfrogHomeDir, err := coreutils.GetJfrogHomeDir()
 	if err != nil {
-		return "", exists, err
+		return
 	}
-	confFilePath = filepath.Join(jfrogHomeDir, confFileName)
+	filePath := filepath.Join(jfrogHomeDir, confFileName)
 	exists, err = fileutils.IsFileExists(confFilePath, false)
+	if exists {
+		confFilePath = filePath
+		return
+	}
 	return
 }
 

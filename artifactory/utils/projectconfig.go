@@ -84,7 +84,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 	}
 	if exists {
 		filePath := filepath.Join(projectDir, ".jfrog", confFileName)
-		exists, err = fileutils.IsFileExists(confFilePath, false)
+		exists, err = fileutils.IsFileExists(filePath, false)
 		if err != nil {
 			return
 		}
@@ -100,7 +100,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 		return
 	}
 	filePath := filepath.Join(jfrogHomeDir, confFileName)
-	exists, err = fileutils.IsFileExists(confFilePath, false)
+	exists, err = fileutils.IsFileExists(filePath, false)
 	if exists {
 		confFilePath = filePath
 	}

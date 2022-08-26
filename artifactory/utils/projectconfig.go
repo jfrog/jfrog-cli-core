@@ -103,7 +103,6 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 	exists, err = fileutils.IsFileExists(confFilePath, false)
 	if exists {
 		confFilePath = filePath
-		return
 	}
 	return
 }

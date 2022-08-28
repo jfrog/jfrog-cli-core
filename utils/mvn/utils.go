@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
+func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := buildConf.GetBuildName()
 	if err != nil {
@@ -36,7 +36,7 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	if err != nil {
 		return err
 	}
-	props, err := createMvnRunProps(configPath, deployableArtifactsFile, buildConf, goals, threads, insecureTls, disableDeploy)
+	props, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, buildConf, goals, threads, insecureTls, disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -52,37 +52,20 @@ func RunMvn(configPath, deployableArtifactsFile string, buildConf *utils.BuildCo
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 
-func createMvnRunProps(configPath, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (map[string]string, error) {
-	var err error
-	var vConfig *viper.Viper
-	if configPath == "" {
-		vConfig = viper.New()
-		vConfig.SetConfigType(string(utils.YAML))
-		vConfig.Set("type", utils.Maven.String())
-	} else {
-		vConfig, err = utils.ReadConfigFile(configPath, utils.YAML)
-		if err != nil {
-			return nil, err
-		}
-	}
+func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (map[string]string, error) {
 	vConfig.Set(utils.InsecureTls, insecureTls)
-
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)
 	}
 
-	if !vConfig.IsSet("deployer") {
-		setEmptyDeployer(vConfig)
-	}
-
 	if disableDeploy {
-		setDeployFalse(vConfig)
+		setEmptyDeployer(vConfig)
 	}
 
 	if vConfig.IsSet("resolver") {
 		vConfig.Set("buildInfoConfig.artifactoryResolutionEnabled", "true")
 	}
-	return utils.CreateBuildInfoProps(deployableArtifactsFile, vConfig, utils.Maven)
+	return utils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, utils.Maven)
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {
@@ -90,17 +73,4 @@ func setEmptyDeployer(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
 	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
 	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
-}
-
-func setDeployFalse(vConfig *viper.Viper) {
-	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
-	}
-	if vConfig.GetString(utils.DeployerPrefix+utils.ReleaseRepo) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
-	}
-	if vConfig.GetString(utils.DeployerPrefix+utils.SnapshotRepo) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
-	}
 }

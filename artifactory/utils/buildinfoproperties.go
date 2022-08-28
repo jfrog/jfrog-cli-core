@@ -155,6 +155,39 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	return config, errorutils.CheckError(err)
 }
 
+func ReadGradleConfig(path string, useWrapperIfMissingConfig bool) (config *viper.Viper, err error) {
+	if path == "" {
+		config = createDefaultGradleConfig(useWrapperIfMissingConfig)
+	} else {
+		config, err = ReadConfigFile(path, YAML)
+	}
+	return
+}
+
+func ReadMavenConfig(path string) (config *viper.Viper, err error) {
+	if path == "" {
+		config = createDefaultMavenConfig()
+	} else {
+		config, err = ReadConfigFile(path, YAML)
+	}
+	return
+}
+
+func createDefaultMavenConfig() *viper.Viper {
+	vConfig := viper.New()
+	vConfig.SetConfigType(string(YAML))
+	vConfig.Set("type", Maven.String())
+	return vConfig
+}
+
+func createDefaultGradleConfig(useWrapperIfMissingConfig bool) *viper.Viper {
+	vConfig := viper.New()
+	vConfig.SetConfigType(string(YAML))
+	vConfig.Set("type", Gradle.String())
+	vConfig.Set("usewrapper", useWrapperIfMissingConfig)
+	return vConfig
+}
+
 // Returns the Artifactory details
 // Checks first for the deployer information if exists and if not, checks for the resolver information.
 func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
@@ -170,7 +203,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoProps(deployableArtifactsFile string, config *viper.Viper, projectType ProjectType) (map[string]string, error) {
+func CreateBuildInfoProps(buildArtifactsDetailsFile string, config *viper.Viper, projectType ProjectType) (map[string]string, error) {
 	if config.GetString("type") != projectType.String() {
 		return nil, errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
 	}
@@ -183,8 +216,8 @@ func CreateBuildInfoProps(deployableArtifactsFile string, config *viper.Viper, p
 	if err := setProxyIfDefined(config); err != nil {
 		return nil, err
 	}
-	if deployableArtifactsFile != "" {
-		config.Set(DeployableArtifacts, deployableArtifactsFile)
+	if buildArtifactsDetailsFile != "" {
+		config.Set(DeployableArtifacts, buildArtifactsDetailsFile)
 	}
 	return createProps(config, projectType), nil
 }

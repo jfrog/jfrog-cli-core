@@ -1,0 +1,6 @@
+version: 1
+type: maven
+resolver:
+  serverId: ci-setup-cmdf
+  snapshotRepo: mavenmaven
+  releaseRepo: mavenmaven

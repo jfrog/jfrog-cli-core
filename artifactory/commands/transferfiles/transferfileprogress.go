@@ -106,6 +106,10 @@ func (t *TransferProgressMng) ShouldDisplay() bool {
 
 // IncrementPhase increments completed tasks count for a specific phase by 1.
 func (t *TransferProgressMng) IncrementPhase(id int) error {
+	if len(t.phases) == 0 {
+		// Progress bar was terminated
+		return nil
+	}
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckErrorf("IncrementPhase: invalid phase id %d", id)
 	}
@@ -120,6 +124,10 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 
 // IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
+	if len(t.phases) == 0 {
+		// Progress bar was terminated
+		return nil
+	}
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckErrorf("IncrementPhaseBy: invalid phase id %d", id)
 	}
@@ -136,6 +144,10 @@ func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 }
 
 func (t *TransferProgressMng) DonePhase(id int) error {
+	if len(t.phases) == 0 {
+		// Progress bar was terminated
+		return nil
+	}
 	if id < 0 || id > len(t.phases)-1 {
 		return errorutils.CheckErrorf("DonePhase: invalid phase id %d", id)
 	}

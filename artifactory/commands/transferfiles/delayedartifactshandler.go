@@ -85,11 +85,11 @@ type DelayedArtifactsFile struct {
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
 	log.Info("Starting to handle delayed artifacts uploads...")
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
-	action := func(uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&base, &delayHelper, errorsChannelMng) {
 			return nil
 		}
-		return consumeDelayedArtifactsFiles(filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
+		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
 	}
 	err := manager.doTransferWithSingleProducer(action)
 	if err == nil {
@@ -98,7 +98,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	return err
 }
 
-func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		fileContent, err := os.ReadFile(filePath)
@@ -112,7 +112,7 @@ func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan
 			return errorutils.CheckError(err)
 		}
 
-		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorsChannelMng)
+		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadTokensChan, base, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}
@@ -123,14 +123,6 @@ func consumeDelayedArtifactsFiles(filesToConsume []string, uploadTokensChan chan
 			return errorutils.CheckError(err)
 		}
 
-		if base.progressBar != nil {
-			if base.phaseId == 0 {
-				err = base.progressBar.IncrementPhaseBy(base.phaseId, len(delayedArtifactsFile.DelayedArtifacts))
-				if err != nil {
-					return err
-				}
-			}
-		}
 		log.Debug("Done handling delayed artifacts file: '" + filePath + "'")
 	}
 	return nil
@@ -142,6 +134,8 @@ const (
 	ivy    = "Ivy"
 	docker = "Docker"
 	conan  = "Conan"
+	nuget  = "NuGet"
+	sbt    = "SBT"
 )
 
 // A function to determine whether the file deployment should be delayed.

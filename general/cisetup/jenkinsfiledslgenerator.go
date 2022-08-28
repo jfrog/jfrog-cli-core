@@ -2,6 +2,8 @@ package cisetup
 
 import (
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -190,7 +192,7 @@ func generateRtConfigSteps(techInfo *TechnologyInfo, rtUrl string) string {
 	buildType := string(techInfo.Type)
 	resolverId := fmt.Sprintf(resolverIdTemplate, strings.ToUpper(buildType))
 	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType))
-	return fmt.Sprintf(rtConfigServerStepTemplate, ConfigServerId, rtUrl, strings.Title(buildType), deployerId, deployerRepos, resolverId, resolverRepos)
+	return fmt.Sprintf(rtConfigServerStepTemplate, ConfigServerId, rtUrl, cases.Title(language.Und, cases.NoLower).String(buildType), deployerId, deployerRepos, resolverId, resolverRepos)
 }
 
 func generateBuildStages(buildCmd, buildType string) (buildStages string) {

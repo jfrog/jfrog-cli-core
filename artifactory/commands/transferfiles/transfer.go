@@ -23,9 +23,9 @@ const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 3
-	retriesWait                  = 0
-	dataTransferPluginMinVersion = "1.3.1"
+	retries                      = 1000
+	retriesWaitMilliSecs         = 1000
+	dataTransferPluginMinVersion = "1.3.2"
 )
 
 type TransferFilesCommand struct {
@@ -39,6 +39,7 @@ type TransferFilesCommand struct {
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
 	timeStarted               time.Time
+	ignoreState               bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -59,6 +60,10 @@ func (tdc *TransferFilesCommand) SetIncludeReposPatterns(includeReposPatterns []
 
 func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []string) {
 	tdc.excludeReposPatterns = excludeReposPatterns
+}
+
+func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
+	tdc.ignoreState = ignoreState
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
@@ -137,36 +142,63 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 		if tdc.ShouldStop() {
 			return nil
 		}
-		if !buildInfoUtils.IsStringInSlice(repoKey, targetRepos) {
-			log.Error("repository '" + repoKey + "' does not exist in target. Skipping...")
-			continue
-		}
-
-		repoSummary, err := tdc.sourceStorageInfoManager.GetRepoSummary(repoKey)
+		err := tdc.transferSingleRepo(repoKey, targetRepos, buildInfoRepo, newPhase, srcUpService)
 		if err != nil {
-			log.Error(err.Error() + ". Skipping...")
-			continue
-		}
-
-		if tdc.progressbar != nil {
-			tdc.progressbar.NewRepository(repoKey)
-		}
-
-		if err = tdc.initCurThreads(buildInfoRepo); err != nil {
 			return err
-		}
-		for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
-			if tdc.ShouldStop() {
-				return nil
-			}
-
-			*newPhase = getPhaseByNum(currentPhaseId, repoKey, buildInfoRepo)
-			if err = tdc.startPhase(newPhase, repoKey, *repoSummary, srcUpService); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
+}
+
+func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, targetRepos []string,
+	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) (err error) {
+	if !buildInfoUtils.IsStringInSlice(sourceRepoKey, targetRepos) {
+		log.Error("repository '" + sourceRepoKey + "' does not exist in target. Skipping...")
+		return
+	}
+
+	repoSummary, err := tdc.sourceStorageInfoManager.GetRepoSummary(sourceRepoKey)
+	if err != nil {
+		log.Error(err.Error() + ". Skipping...")
+		return nil
+	}
+
+	if tdc.progressbar != nil {
+		tdc.progressbar.NewRepository(sourceRepoKey)
+	}
+
+	if tdc.ignoreState {
+		err = resetRepoState(sourceRepoKey)
+		if err != nil {
+			return
+		}
+	}
+
+	restoreFunc, err := tdc.handleMaxUniqueSnapshots(repoSummary)
+	if err != nil {
+		return
+	}
+	defer func() {
+		e := restoreFunc()
+		if err == nil {
+			err = e
+		}
+	}()
+
+	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
+		return
+	}
+	for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
+		if tdc.ShouldStop() {
+			return
+		}
+
+		*newPhase = getPhaseByNum(currentPhaseId, sourceRepoKey, buildInfoRepo)
+		if err = tdc.startPhase(newPhase, sourceRepoKey, *repoSummary, srcUpService); err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (tdc *TransferFilesCommand) transferBuildInfoRepos(sourceRepos []string, targetRepos []string, newPhase *transferPhase, srcUpService *srcUserPluginService) ([]string, error) {
@@ -209,7 +241,9 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		return err
+		// We do not return the error returned from the phase's run function,
+		// because the phase is expected to recover from some errors, such as HTTP connection errors.
+		log.Error(err.Error())
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()
@@ -265,7 +299,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 }
 
 func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.sourceServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -273,7 +307,7 @@ func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) 
 }
 
 func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(tdc.targetServerDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -309,7 +343,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 		}
 	}
 
-	log.Info("Running with " + strconv.Itoa(curThreads) + " threads...")
+	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
 	return nil
 }
 
@@ -339,6 +373,45 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	}
 	if csvErrorsFile != "" {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
+	}
+	return
+}
+
+// handleMaxUniqueSnapshots handles special cases regarding the Max Unique Snapshots/Tags setting of repositories of
+// these package types: Maven, Gradle, NuGet, Ivy, SBT and Docker.
+// TL;DR: we might have repositories in the source with more snapshots than the maximum (in Max Unique Snapshots/Tags),
+// so he turn it off at the beginning of the transfer and turn it back on at the end.
+//
+// And in more detail:
+// The cleanup of old snapshots in Artifactory is triggered by uploading a new snapshot only, so we might have
+// repositories with more snapshots than the maximum (by setting the Max Unique Snapshots/Tags on a repository with more
+// snapshots than the maximum without uploading a new snapshot afterwards).
+// In such repositories, the transfer process uploads the snapshots to the target instance and triggers the cleanup, so
+// eventually the repository in the target might have fewer snapshots than in the source.
+// To handle this, we turn off the Max Unique Snapshots/Tags setting (by setting it 0) at the beginning of the transfer
+// of the repository, and copy it from the source at the end.
+func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUtils.RepositorySummary) (restoreFunc func() error, err error) {
+	// Get the source repository's max unique snapshots setting
+	srcMaxUniqueSnapshots, err := getMaxUniqueSnapshots(tdc.sourceServerDetails, repoSummary)
+	if err != nil {
+		return
+	}
+
+	// If it's a Maven, Gradle, NuGet, Ivy, SBT or Docker repository, update its max unique snapshots setting to 0.
+	// srcMaxUniqueSnapshots == -1 means it's a repository of another package type.
+	if srcMaxUniqueSnapshots != -1 {
+		err = updateMaxUniqueSnapshots(tdc.targetServerDetails, repoSummary, 0)
+		if err != nil {
+			return
+		}
+	}
+
+	restoreFunc = func() (err error) {
+		// Update the target repository's max unique snapshots setting to be the same as in the source, only if it's not 0.
+		if srcMaxUniqueSnapshots > 0 {
+			err = updateMaxUniqueSnapshots(tdc.targetServerDetails, repoSummary, srcMaxUniqueSnapshots)
+		}
+		return
 	}
 	return
 }

@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
@@ -14,8 +15,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildGradleDependencyTree(excludeTestDeps, useWrapper)
+func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, excludeTestDeps, useWrapper, ignoreConfigFile bool, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
+	graph, err := BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile)
 	if err != nil {
 		return
 	}
@@ -24,11 +25,11 @@ func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails 
 	return
 }
 
-func BuildGradleDependencyTree(excludeTestDeps, useWrapper bool) (modules []*services.GraphNode, err error) {
+func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 
-	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper)
+	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile)
 	if err != nil {
 		return
 	}
@@ -36,21 +37,28 @@ func BuildGradleDependencyTree(excludeTestDeps, useWrapper bool) (modules []*ser
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, useWrapper bool) error {
+func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile bool) (err error) {
 	tasks := "clean compileJava "
 	if !excludeTestDeps {
 		tasks += "compileTestJava "
 	}
 	tasks += "artifactoryPublish"
 	log.Debug(fmt.Sprintf("gradle command tasks: %v", tasks))
-	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Gradle)
+	configFilePath := ""
+	if !ignoreConfigFile {
+		var exists bool
+		configFilePath, exists, err = utils.GetProjectConfFilePath(utils.Gradle)
+		if err != nil {
+			return
+		}
+		if exists {
+			log.Debug("Using resolver config from", configFilePath)
+		}
+	}
+	// Read config
+	vConfig, err := utils.ReadGradleConfig(configFilePath, useWrapper)
 	if err != nil {
 		return err
 	}
-	if exists {
-		log.Debug("Using resolver config from " + configFilePath)
-	} else {
-		configFilePath = ""
-	}
-	return gradleutils.RunGradle(tasks, configFilePath, "", buildConfiguration, 0, useWrapper, true)
+	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
 }

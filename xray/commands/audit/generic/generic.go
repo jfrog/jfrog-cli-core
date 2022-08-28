@@ -112,6 +112,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.args,
 		auditCmd.progress,
 		auditCmd.requirementsFile,
+		false,
 		auditCmd.technologies...,
 	)
 

@@ -36,6 +36,7 @@ const (
 	ReportUsage        = "JFROG_CLI_REPORT_USAGE"
 	DependenciesDir    = "JFROG_CLI_DEPENDENCIES_DIR"
 	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
+	FailNoOp           = "JFROG_CLI_FAIL_NO_OP"
 	CI                 = "CI"
 )
 

@@ -10,18 +10,22 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/spf13/viper"
 )
 
 type GradleCommand struct {
-	tasks            string
-	configPath       string
-	configuration    *utils.BuildConfiguration
-	serverDetails    *config.ServerDetails
-	threads          int
-	detailedSummary  bool
-	xrayScan         bool
-	scanOutputFormat xrutils.OutputFormat
-	result           *commandsutils.Result
+	tasks                     string
+	configPath                string
+	configuration             *utils.BuildConfiguration
+	serverDetails             *config.ServerDetails
+	threads                   int
+	detailedSummary           bool
+	xrayScan                  bool
+	scanOutputFormat          xrutils.OutputFormat
+	result                    *commandsutils.Result
+	deploymentDisabled        bool
+	// File path for Gradle extractor in which all build's artifacts details will be listed at the end of the build.
+	buildArtifactsDetailsFile string
 }
 
 func NewGradleCommand() *GradleCommand {
@@ -50,33 +54,54 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 	return gc
 }
 
-func (gc *GradleCommand) Run() error {
-	deployableArtifactsFile := ""
-	if gc.IsDetailedSummary() || gc.IsXrayScan() {
+func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
+	// Read config
+	vConfig, err = utils.ReadGradleConfig(gc.configPath, false)
+	if err != nil {
+		return
+	}
+	// Gradle extractor is needed to run, in order to get the details of the build's artifacts.
+	// Gradle extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	gc.deploymentDisabled = gc.IsXrayScan() || !vConfig.IsSet("deployer")
+	if gc.shouldCreateBuildArtifactsFile() {
+		// Created a file that will contain all the details about the build's artifacts
 		tempFile, err := fileutils.CreateTempFile()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// If this is a Windows machine there is a need to modify the path for the build info file to match Java syntax with double \\
-		deployableArtifactsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
-		if err = tempFile.Close(); err != nil {
-			return errorutils.CheckError(err)
+		gc.buildArtifactsDetailsFile = ioutils.DoubleWinPathSeparator(tempFile.Name())
+		if err = tempFile.Close(); errorutils.CheckError(err) != nil {
+			return nil, err
 		}
 	}
+	return
+}
 
-	err := gradleutils.RunGradle(gc.tasks, gc.configPath, deployableArtifactsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
+// Gradle extractor generates the details of the build's artifacts.
+// This is required for Xray scan and for the detailed summary.
+// We can either scan or print the generated artifacts.
+func (gc *GradleCommand) shouldCreateBuildArtifactsFile() bool {
+	return (gc.IsDetailedSummary() && !gc.deploymentDisabled) || gc.IsXrayScan()
+}
+
+func (gc *GradleCommand) Run() error {
+	vConfig, err := gc.init()
 	if err != nil {
 		return err
 	}
-	if gc.IsXrayScan() {
-		err = gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+	err = gradleutils.RunGradle(vConfig, gc.tasks, gc.buildArtifactsDetailsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
+	if err != nil {
+		return err
+	}
+	if gc.buildArtifactsDetailsFile != "" {
+		err = gc.unmarshalDeployableArtifacts(gc.buildArtifactsDetailsFile)
 		if err != nil {
 			return err
 		}
-		return gc.conditionalUpload()
-	}
-	if gc.IsDetailedSummary() {
-		return gc.unmarshalDeployableArtifacts(deployableArtifactsFile)
+		if gc.IsXrayScan() {
+			return gc.conditionalUpload()
+		}
 	}
 	return nil
 }

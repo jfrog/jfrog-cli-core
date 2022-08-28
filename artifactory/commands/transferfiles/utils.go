@@ -2,6 +2,8 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
 	"sync"
@@ -50,7 +52,7 @@ func (s *Stoppable) ShouldStop() bool {
 }
 
 func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +60,7 @@ func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetai
 }
 
 func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +110,6 @@ var processedUploadChunksMutex sync.Mutex
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	curProcessedUploadChunks = 0
-
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
@@ -144,6 +145,13 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			case Done:
 				reduceCurProcessedChunks()
 				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
+				if progressbar != nil && phaseBase.phaseId == FullTransferPhase {
+					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, len(chunk.Files))
+					if err != nil {
+						log.Error("Progressbar unexpected error: " + err.Error())
+						continue
+					}
+				}
 				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
@@ -249,7 +257,7 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 	}
 
 	// Add token to polling.
-	log.Debug("Chunk uploaded. Adding chunk token '" + uuidToken + "' to poll on for status.")
+	log.Debug("Chunk sent. Adding chunk token '" + uuidToken + "' to poll on for status.")
 	uploadTokensChan <- uuidToken
 	return nil
 }
@@ -300,9 +308,22 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+	return func(threadId int) error {
+		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
+		log.Debug(logMsgPrefix + "Handling chunk upload")
+		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		if shouldStop {
+			// The specific error that triggered the stop is already in the errors channel
+			return errorutils.CheckErrorf("%s stopped.", logMsgPrefix)
+		}
+		return nil
+	}
+}
+
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -320,8 +341,8 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
-			if shouldStop {
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			if err != nil {
 				return
 			}
 			// Empty the uploaded chunk.
@@ -330,7 +351,10 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		shouldStop = uploadChunkWhenPossible(&base, curUploadChunk, uploadTokensChan, errorsChannelMng)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -345,7 +369,7 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 	return false
 }
 
-// Stop transferring if one of the following happened:
+// ShouldStop Stop transferring if one of the following happened:
 // * Error occurred while handling errors (for example - not enough space in file system)
 // * Error occurred during delayed artifacts handling
 // * User interrupted the process (ctrl+c)
@@ -366,7 +390,7 @@ func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelM
 }
 
 func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWait, false)
+	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -393,4 +417,121 @@ func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningN
 			delete(remainingNodesToStop, nodeId)
 		}
 	}
+}
+
+// getMaxUniqueSnapshots gets the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
+// or max unique tags (Docker).
+// For repositories of other package types or if an error is thrown, this function returns -1.
+func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary) (maxUniqueSnapshots int, err error) {
+	maxUniqueSnapshots = -1
+	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+	if err != nil {
+		return
+	}
+	switch repoSummary.PackageType {
+	case maven:
+		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &mavenLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *mavenLocalRepoParams.MaxUniqueSnapshots
+	case gradle:
+		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &gradleLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *gradleLocalRepoParams.MaxUniqueSnapshots
+	case nuget:
+		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &nugetLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *nugetLocalRepoParams.MaxUniqueSnapshots
+	case ivy:
+		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &ivyLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *ivyLocalRepoParams.MaxUniqueSnapshots
+	case sbt:
+		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &sbtLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *sbtLocalRepoParams.MaxUniqueSnapshots
+	case docker:
+		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
+		err = serviceManager.GetRepository(repoSummary.RepoKey, &dockerLocalRepoParams)
+		if err != nil {
+			return
+		}
+		maxUniqueSnapshots = *dockerLocalRepoParams.MaxUniqueTags
+	}
+	return
+}
+
+// updateMaxUniqueSnapshots updates the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
+// or max unique tags (Docker).
+// For repositories of other package types, this function does nothing.
+func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+	if err != nil {
+		return err
+	}
+	switch repoSummary.PackageType {
+	case maven:
+		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
+		mavenLocalRepoParams.Key = repoSummary.RepoKey
+		mavenLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Maven(mavenLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case gradle:
+		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
+		gradleLocalRepoParams.Key = repoSummary.RepoKey
+		gradleLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Gradle(gradleLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case nuget:
+		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
+		nugetLocalRepoParams.Key = repoSummary.RepoKey
+		nugetLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Nuget(nugetLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case ivy:
+		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
+		ivyLocalRepoParams.Key = repoSummary.RepoKey
+		ivyLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Ivy(ivyLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case sbt:
+		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
+		sbtLocalRepoParams.Key = repoSummary.RepoKey
+		sbtLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Sbt(sbtLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	case docker:
+		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
+		dockerLocalRepoParams.Key = repoSummary.RepoKey
+		dockerLocalRepoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+		err = serviceManager.UpdateLocalRepository().Docker(dockerLocalRepoParams)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

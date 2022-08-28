@@ -93,4 +93,4 @@ replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.
 
 replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.4.2-0.20220824162930-2f2a2893d4a7
 
-// replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.1.3-0.20220630130242-df9cdb0c9e2d
+replace github.com/jfrog/gofrog => github.com/omerzi/gofrog v1.1.3-0.20220828054853-76d43ada39a7

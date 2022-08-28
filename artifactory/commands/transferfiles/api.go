@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 )
 
 type ProcessStatusType string
@@ -66,7 +67,8 @@ type UploadChunkResponse struct {
 }
 
 type UploadChunksStatusBody struct {
-	UuidTokens []string `json:"uuid_tokens,omitempty"`
+	AwaitingStatusChunks []string `json:"awaiting_status_chunks,omitempty"`
+	ChunksToDelete       []string `json:"chunks_to_delete,omitempty"`
 }
 
 type UploadChunksStatusResponse struct {
@@ -100,11 +102,11 @@ type UuidTokenResponse struct {
 }
 
 // Fill tokens batch till full. Return if no new tokens are available.
-func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string) {
-	for len(ucs.UuidTokens) < GetThreads() {
+func fillTokensBatch(awaitingStatusChunksSet *datastructures.Set[string], uploadTokensChan chan string) {
+	for awaitingStatusChunksSet.Size() < GetThreads() {
 		select {
 		case token := <-uploadTokensChan:
-			ucs.UuidTokens = append(ucs.UuidTokens, token)
+			awaitingStatusChunksSet.Add(token)
 		default:
 			// No new tokens are waiting.
 			return

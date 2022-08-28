@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -298,7 +300,7 @@ func getIncludeExcludePatterns(patternType string) string {
 	var patterns []string
 	patternNum := 1
 	for {
-		newPattern := AskString("", strings.Title(patternType)+" pattern "+strconv.Itoa(patternNum)+" (leave empty to continue):", true, false)
+		newPattern := AskString("", cases.Title(language.Und, cases.NoLower).String(patternType)+" pattern "+strconv.Itoa(patternNum)+" (leave empty to continue):", true, false)
 		if newPattern == "" {
 			return strings.Join(patterns, ", ")
 		}

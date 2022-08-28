@@ -25,7 +25,7 @@ const (
 	fileWritersChannelSize       = 500000
 	retries                      = 1000
 	retriesWaitMilliSecs         = 1000
-	dataTransferPluginMinVersion = "1.3.2"
+	dataTransferPluginMinVersion = "1.4.0"
 )
 
 type TransferFilesCommand struct {

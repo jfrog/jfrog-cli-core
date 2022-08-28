@@ -198,6 +198,13 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 			return
 		}
 	}
+	// Performing a reset on the source if chunks were not removed
+	runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+	if err != nil {
+		log.Error(err)
+	} else {
+		stopTransferOnArtifactoryNodes(srcUpService, runningNodes)
+	}
 	return
 }
 

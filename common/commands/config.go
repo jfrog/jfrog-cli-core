@@ -2,14 +2,15 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
@@ -49,8 +50,8 @@ type ConfigCommand struct {
 	useBasicAuthOnly bool
 	serverId         string
 	// For unit tests
-	disablePromptUrls bool
-	cmdType           ConfigAction
+	disablePrompts bool
+	cmdType        ConfigAction
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
@@ -163,6 +164,9 @@ func (cc *ConfigCommand) config() error {
 			coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
 			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+			if cc.isUrlUnsafe() {
+				log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider replacing it with HTTPS.")
+			}
 		}
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -197,6 +201,17 @@ func (cc *ConfigCommand) config() error {
 	}
 
 	return config.SaveServersConf(configurations)
+}
+
+func (cc *ConfigCommand) isUrlUnsafe() bool {
+	artifactoryUrl := cc.details.Url
+	if !strings.HasPrefix(artifactoryUrl, "http://") {
+		return false
+	}
+	if strings.Contains(artifactoryUrl, "127.0.0.1") || strings.Contains(artifactoryUrl, "localhost") {
+		return false
+	}
+	return true
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
@@ -285,13 +300,19 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
+
+		if cc.isUrlUnsafe() {
+			if cc.disablePrompts || !coreutils.AskYesNo("We noticed that your JFrog URL uses an insecure HTTP connection. Are you sure you want to continue?", false) {
+				return errorutils.CheckErrorf("config was aborted due to an insecure HTTP connection")
+			}
+		}
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
 		if err := getSshKeyPath(cc.details); err != nil {
 			return err
 		}
-	} else if !cc.disablePromptUrls {
+	} else if !cc.disablePrompts {
 		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
 			return err
 		}
@@ -299,7 +320,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
 			var authMethod AuthenticationMethod
 			var err error
-			if !cc.disablePromptUrls {
+			if !cc.disablePrompts {
 				authMethod, err = promptAuthMethods()
 				if err != nil {
 					return err

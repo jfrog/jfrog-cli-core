@@ -2,10 +2,11 @@ package commands
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -142,6 +143,18 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 }
 
+func TestUnsafeUrl(t *testing.T) {
+	// Test non-interactive - should pass with a warning message
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.Url = "http://acme.jfrog.io"
+	configAndTest(t, inputDetails, false)
+
+	// Test interactive - should fail with an error
+	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetInteractive(true)
+	configCmd.disablePrompts = true
+	assert.ErrorContains(t, configCmd.Run(), "config was aborted due to an insecure HTTP connection")
+}
+
 func TestExportEmptyConfig(t *testing.T) {
 	cliHome, exist := os.LookupEnv(coreutils.HomeDir)
 	defer func() {
@@ -176,7 +189,7 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 
 func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, basicAuthOnly, interactive bool) (*config.ServerDetails, error) {
 	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
-	configCmd.disablePromptUrls = true
+	configCmd.disablePrompts = true
 	assert.NoError(t, configCmd.Run())
 	return GetConfig("test", false)
 }

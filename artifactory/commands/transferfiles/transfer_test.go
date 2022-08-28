@@ -138,8 +138,8 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 	assert.NoError(t, json.Unmarshal(content, &actual))
 
 	// Make sure all parameters as expected
-	assert.Len(t, actual.UuidTokens, 1)
-	assert.Equal(t, uuidTokenForTest, actual.UuidTokens[0])
+	assert.Len(t, actual.AwaitingStatusChunks, 1)
+	assert.Equal(t, uuidTokenForTest, actual.AwaitingStatusChunks[0])
 }
 
 func getChunkStatusMockInProgressResponse(t *testing.T, w http.ResponseWriter) {

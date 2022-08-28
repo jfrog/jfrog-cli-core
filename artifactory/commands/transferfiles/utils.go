@@ -2,8 +2,8 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
@@ -121,7 +121,13 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
+		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on it's status
 		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
+		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source
+		// ChunksToDelete is used to notify the source that these chunks can be deleted from the source's status map
+		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunk uuids.
+		// When both ChunksToDelete and awaitingStatusChunksSet length is zero means that all the tokens has been uploaded,
+		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory
 		if awaitingStatusChunksSet.Size() == 0 && len(curTokensBatch.ChunksToDelete) == 0 {
 			if shouldStopPolling(doneChan) {
 				return
@@ -131,11 +137,13 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 		// Send and handle.
 		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
-		chunksStatus, err := srcUpService.syncChunks(&curTokensBatch)
+		chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 		if err != nil {
 			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
 		}
+		// Clear arrays for the next request body
+		curTokensBatch = UploadChunksStatusBody{}
 		for _, chunk := range chunksStatus.ChunksStatus {
 			if chunk.UuidToken == "" {
 				log.Error("Unexpected empty uuid token in status")

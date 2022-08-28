@@ -35,7 +35,7 @@ func (sup *srcUserPluginService) IsDryRun() bool {
 	return false
 }
 
-func (sup *srcUserPluginService) syncChunks(ucStatus *UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
+func (sup *srcUserPluginService) syncChunks(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
 	content, err := json.Marshal(ucStatus)
 	if err != nil {
 		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
@@ -48,9 +48,6 @@ func (sup *srcUserPluginService) syncChunks(ucStatus *UploadChunksStatusBody) (U
 		return UploadChunksStatusResponse{}, err
 	}
 
-	// clear arrays for the next request body
-	ucStatus.AwaitingStatusChunks = nil
-	ucStatus.ChunksToDelete = nil
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
 		return UploadChunksStatusResponse{}, err
 	}

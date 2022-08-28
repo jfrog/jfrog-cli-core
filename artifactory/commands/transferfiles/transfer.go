@@ -383,9 +383,9 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 // so he turn it off at the beginning of the transfer and turn it back on at the end.
 //
 // And in more detail:
-// The cleanup of old snapshots is triggered by uploading a new snapshot only, so we might have repositories with more
-// snapshots than the maximum (by setting the Max Unique Snapshots/Tags on a repository with more snapshots than the
-// maximum without uploading a new snapshot afterwards).
+// The cleanup of old snapshots in Artifactory is triggered by uploading a new snapshot only, so we might have
+// repositories with more snapshots than the maximum (by setting the Max Unique Snapshots/Tags on a repository with more
+// snapshots than the maximum without uploading a new snapshot afterwards).
 // In such repositories, the transfer process uploads the snapshots to the target instance and triggers the cleanup, so
 // eventually the repository in the target might have fewer snapshots than in the source.
 // To handle this, we turn off the Max Unique Snapshots/Tags setting (by setting it 0) at the beginning of the transfer

@@ -421,7 +421,7 @@ func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningN
 
 // getMaxUniqueSnapshots gets the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
 // or max unique tags (Docker).
-// On repositories of other package types or if an error is thrown, this function returns -1.
+// For repositories of other package types or if an error is thrown, this function returns -1.
 func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary) (maxUniqueSnapshots int, err error) {
 	maxUniqueSnapshots = -1
 	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
@@ -477,7 +477,7 @@ func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *ser
 
 // updateMaxUniqueSnapshots updates the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
 // or max unique tags (Docker).
-// On repositories of other package types, this function does nothing.
+// For repositories of other package types, this function does nothing.
 func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
 	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
 	if err != nil {

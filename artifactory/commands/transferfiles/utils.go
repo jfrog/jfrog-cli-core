@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
@@ -108,6 +109,7 @@ var processedUploadChunksMutex sync.Mutex
 // and a new token to be polled on.
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
+	awaitingStatusChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
@@ -118,9 +120,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
-		curTokensBatch.fillTokensBatch(uploadTokensChan)
-
-		if len(curTokensBatch.UuidTokens) == 0 {
+		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
+		if awaitingStatusChunksSet.Size() == 0 && len(curTokensBatch.ChunksToDelete) == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
@@ -128,7 +129,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		}
 
 		// Send and handle.
-		chunksStatus, err := srcUpService.getUploadChunksStatus(curTokensBatch)
+		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
+		chunksStatus, err := srcUpService.syncChunks(&curTokensBatch)
 		if err != nil {
 			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
@@ -151,7 +153,12 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 						continue
 					}
 				}
-				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
+				err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+				if err != nil {
+					log.Error("removal from upload status set issue occurred: " + err.Error())
+					continue
+				}
+				curTokensBatch.ChunksToDelete = append(curTokensBatch.ChunksToDelete, chunk.UuidToken)
 				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 				// In case an error occurred while writing errors status's to the errors file - stop transferring.
 				if stopped {
@@ -180,16 +187,6 @@ func reduceCurProcessedChunks() {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
 	curProcessedUploadChunks--
-}
-
-func removeTokenFromBatch(uuidTokens []string, token string) []string {
-	for i := 0; i < len(uuidTokens); i++ {
-		if token == uuidTokens[i] {
-			return append(uuidTokens[:i], uuidTokens[i+1:]...)
-		}
-	}
-	log.Error("Unexpected uuid token found: " + token)
-	return uuidTokens
 }
 
 func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {

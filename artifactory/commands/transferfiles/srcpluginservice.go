@@ -12,6 +12,7 @@ import (
 )
 
 const pluginsExecuteRestApi = "api/plugins/execute/"
+const syncChunks = "syncChunks"
 
 type srcUserPluginService struct {
 	client     *jfroghttpclient.JfrogHttpClient
@@ -34,7 +35,7 @@ func (sup *srcUserPluginService) IsDryRun() bool {
 	return false
 }
 
-func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
+func (sup *srcUserPluginService) syncChunks(ucStatus *UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
 	content, err := json.Marshal(ucStatus)
 	if err != nil {
 		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
@@ -42,11 +43,14 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
 	}
 
+	// clear arrays for the next request body
+	ucStatus.AwaitingStatusChunks = nil
+	ucStatus.ChunksToDelete = nil
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
 		return UploadChunksStatusResponse{}, err
 	}

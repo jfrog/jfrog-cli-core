@@ -549,6 +549,5 @@ func stopTransferInArtifactory(serverDetails *coreConfig.ServerDetails, srcUpSer
 	} else {
 		stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 	}
-
 	return nil
 }

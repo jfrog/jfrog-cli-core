@@ -275,11 +275,9 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 			newPhase.Stop()
 		}
 		log.Info("Gracefully stopping files transfer...")
-		runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+		err := stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
-		} else {
-			stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 		}
 	}()
 

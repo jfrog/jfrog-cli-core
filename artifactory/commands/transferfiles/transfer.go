@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -438,11 +438,10 @@ func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error 
 		return err
 	}
 
-	// TODO: Activate validation once the the verifyCompatibility request is finished on the data plugin side
-	//err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
-	//if err != nil {
-	//	return err
-	//}
+	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
+	if err != nil {
+		return err
+	}
 	log.Info("data-transfer plugin version: " + verifyResponse.Version)
 	return nil
 }

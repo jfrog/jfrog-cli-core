@@ -419,13 +419,14 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 	return
 }
 
-func validateDataTransferPluginMinimumVersion(currentVersion string) error {
-	curVer := version.NewVersion(currentVersion)
-	if !curVer.AtLeast(dataTransferPluginMinVersion) {
-		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
-	}
-	return nil
-}
+// TODO: enable this function once the data-plugin verifyCompatibility is ready
+//func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+//	curVer := version.NewVersion(currentVersion)
+//	if !curVer.AtLeast(dataTransferPluginMinVersion) {
+//		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
+//	}
+//	return nil
+//}
 
 func getMinimalVersionErrorMsg(currentVersion string) string {
 	return "You are currently using data-transfer plugin version '" +

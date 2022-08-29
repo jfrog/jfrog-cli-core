@@ -36,6 +36,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 		testValidateDataTransferPluginMinimumVersion(t, dataTransferPluginMinVersion, false)
 	})
 	t.Run("invalid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "1.0.0", true) })
+	t.Run("snapshot version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "1.0.x-SNAPSHOT", true) })
 }
 
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {

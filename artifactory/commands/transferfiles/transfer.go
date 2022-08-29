@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -422,6 +423,9 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 }
 
 func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+	if strings.Contains(dataTransferPluginMinVersion, "SNAPSHOT") {
+		return nil
+	}
 	curVer := version.NewVersion(currentVersion)
 	if !curVer.AtLeast(dataTransferPluginMinVersion) {
 		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))

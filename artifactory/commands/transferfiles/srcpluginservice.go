@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -14,7 +15,7 @@ import (
 const pluginsExecuteRestApi = "api/plugins/execute/"
 const syncChunks = "syncChunks"
 
-type VerifyCompatabilityResponse struct {
+type VerifyCompatibilityResponse struct {
 	Version string `json:"version,omitempty"`
 	Message string `json:"message,omitempty"`
 }
@@ -146,19 +147,24 @@ func (sup *srcUserPluginService) version() (string, error) {
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
 }
 
-func (sup *srcUserPluginService) verifyCompatabilityRequest() (*VerifyCompatabilityResponse, *http.Response, error) {
+func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatability", []byte{}, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte{}, &httpDetails)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	var result VerifyCompatabilityResponse
+	var result VerifyCompatibilityResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return nil, nil, errorutils.CheckError(err)
+		return nil, errorutils.CheckError(err)
 	}
 
-	return &result, resp, nil
+	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+
+	return &result, nil
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

@@ -1,9 +1,7 @@
 package transferfiles
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -435,13 +433,9 @@ func getMinimalVersionErrorMsg(currentVersion string) string {
 }
 
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
-	verifyResponse, httpResponse, err := srcUpService.verifyCompatabilityRequest()
+	verifyResponse, err := srcUpService.verifyCompatibilityRequest()
 	if err != nil {
 		return err
-	}
-	err = errorutils.CheckResponseStatus(httpResponse, http.StatusOK)
-	if err != nil {
-		return errors.New(verifyResponse.Message)
 	}
 
 	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)

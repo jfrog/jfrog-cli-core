@@ -12,6 +12,12 @@ import (
 )
 
 const pluginsExecuteRestApi = "api/plugins/execute/"
+const syncChunks = "syncChunks"
+
+type VerifyCompatabilityResponse struct {
+	Version string `json:"version,omitempty"`
+	Message string `json:"message,omitempty"`
+}
 
 type srcUserPluginService struct {
 	client     *jfroghttpclient.JfrogHttpClient
@@ -34,7 +40,7 @@ func (sup *srcUserPluginService) IsDryRun() bool {
 	return false
 }
 
-func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
+func (sup *srcUserPluginService) syncChunks(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
 	content, err := json.Marshal(ucStatus)
 	if err != nil {
 		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
@@ -42,7 +48,7 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
 	}
@@ -138,6 +144,21 @@ func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
+}
+
+func (sup *srcUserPluginService) verifyCompatabilityRequest() (*VerifyCompatabilityResponse, *http.Response, error) {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatability", []byte{}, &httpDetails)
+	if err != nil {
+		return nil, nil, err
+	}
+	var result VerifyCompatabilityResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, nil, errorutils.CheckError(err)
+	}
+
+	return &result, resp, nil
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

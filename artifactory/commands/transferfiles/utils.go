@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
@@ -109,6 +110,8 @@ var processedUploadChunksMutex sync.Mutex
 // and a new token to be polled on.
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
+	awaitingStatusChunksSet := datastructures.MakeSet[string]()
+	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
@@ -119,9 +122,15 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
-		curTokensBatch.fillTokensBatch(uploadTokensChan)
+		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
 
-		if len(curTokensBatch.UuidTokens) == 0 {
+		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
+		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
+		// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
+		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
+		// When both deletedChunksSet and awaitingStatusChunksSet length is zero, it means that all the tokens are uploaded,
+		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
+		if awaitingStatusChunksSet.Size() == 0 && deletedChunksSet.Size() == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
@@ -129,38 +138,65 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		}
 
 		// Send and handle.
-		chunksStatus, err := srcUpService.getUploadChunksStatus(curTokensBatch)
+		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
+		curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
+		chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 		if err != nil {
 			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
 		}
-		for _, chunk := range chunksStatus.ChunksStatus {
-			if chunk.UuidToken == "" {
-				log.Error("Unexpected empty uuid token in status")
-				continue
+		// Clear body for the next request
+		curTokensBatch = UploadChunksStatusBody{}
+		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		if toStop {
+			return
+		}
+	}
+}
+
+func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {
+	for _, deletedChunk := range deletedChunks {
+		err := deletedChunksSet.Remove(deletedChunk)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+	}
+}
+
+func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+	for _, chunk := range chunksStatus {
+		if chunk.UuidToken == "" {
+			log.Error("Unexpected empty uuid token in status")
+			continue
+		}
+		switch chunk.Status {
+		case InProgress:
+			continue
+		case Done:
+			reduceCurProcessedChunks()
+			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
+			if progressbar != nil && phase != nil && phase.phaseId == FullTransferPhase {
+				err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
+				if err != nil {
+					log.Error("Progressbar unexpected error: " + err.Error())
+					continue
+				}
 			}
-			switch chunk.Status {
-			case InProgress:
-				continue
-			case Done:
-				reduceCurProcessedChunks()
-				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-				if progressbar != nil && phaseBase.phaseId == FullTransferPhase {
-					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, len(chunk.Files))
-					if err != nil {
-						log.Error("Progressbar unexpected error: " + err.Error())
-						continue
-					}
-				}
-				curTokensBatch.UuidTokens = removeTokenFromBatch(curTokensBatch.UuidTokens, chunk.UuidToken)
-				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
-				// In case an error occurred while writing errors status's to the errors file - stop transferring.
-				if stopped {
-					return
-				}
+			err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+			if err != nil {
+				log.Error(err.Error())
+			}
+			deletedChunksSet.Add(chunk.UuidToken)
+			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
+			// In case an error occurred while writing errors status's to the errors file - stop transferring.
+			if stopped {
+				return true
 			}
 		}
 	}
+	return false
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
@@ -181,16 +217,6 @@ func reduceCurProcessedChunks() {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
 	curProcessedUploadChunks--
-}
-
-func removeTokenFromBatch(uuidTokens []string, token string) []string {
-	for i := 0; i < len(uuidTokens); i++ {
-		if token == uuidTokens[i] {
-			return append(uuidTokens[:i], uuidTokens[i+1:]...)
-		}
-	}
-	log.Error("Unexpected uuid token found: " + token)
-	return uuidTokens
 }
 
 func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
@@ -397,7 +423,7 @@ func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error
 	return serviceManager.GetRunningNodes()
 }
 
-func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningNodes []string) {
+func stopTransferInArtifactoryNodes(srcUpService *srcUserPluginService, runningNodes []string) {
 	remainingNodesToStop := make(map[string]string)
 	for _, s := range runningNodes {
 		remainingNodesToStop[s] = s
@@ -532,6 +558,16 @@ func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func stopTransferInArtifactory(serverDetails *coreConfig.ServerDetails, srcUpService *srcUserPluginService) error {
+	runningNodes, err := getRunningNodes(serverDetails)
+	if err != nil {
+		return err
+	} else {
+		stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 	}
 	return nil
 }

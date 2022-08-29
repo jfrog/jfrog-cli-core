@@ -41,7 +41,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
+		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatability" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
@@ -93,14 +93,14 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
 
-	uploadChunkAndPollTwice(t, srcPluginManager, fileSample)
+	uploadChunkAndPollThreeTimes(t, srcPluginManager, fileSample)
 
-	// Assert that exactly 2 requests to chunk status were made - once when still in progress, and once when done.
-	assert.Equal(t, 2, totalChunkStatusVisits)
+	// Assert that exactly 3 requests to chunk status were made - once when it is still in progress, once after done received and once to notify back to the source.
+	assert.Equal(t, 3, totalChunkStatusVisits)
 }
 
-// Sends chunk to upload, polls on chunk twice - once when it is still in progress, and once after it is done.
-func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
+// Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
+func uploadChunkAndPollThreeTimes(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
 	curThreads = 8
 	uploadTokensChan := make(chan string, 3)
 	doneChan := make(chan bool, 1)
@@ -138,8 +138,14 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 	assert.NoError(t, json.Unmarshal(content, &actual))
 
 	// Make sure all parameters as expected
-	assert.Len(t, actual.UuidTokens, 1)
-	assert.Equal(t, uuidTokenForTest, actual.UuidTokens[0])
+	if len(actual.ChunksToDelete) == 0 {
+		assert.Len(t, actual.AwaitingStatusChunks, 1)
+		assert.Equal(t, uuidTokenForTest, actual.AwaitingStatusChunks[0])
+	} else {
+		assert.Len(t, actual.ChunksToDelete, 1)
+		assert.Equal(t, uuidTokenForTest, actual.ChunksToDelete[0])
+	}
+
 }
 
 func getChunkStatusMockInProgressResponse(t *testing.T, w http.ResponseWriter) {
@@ -163,6 +169,11 @@ func getChunkStatusMockDoneResponse(t *testing.T, w http.ResponseWriter, file Fi
 	writeMockResponse(t, w, resp)
 }
 
+func getChunkStatusMockChunksDeletedResponse(t *testing.T, w http.ResponseWriter) {
+	resp := UploadChunksStatusResponse{DeletedChunks: []string{uuidTokenForTest}}
+	writeMockResponse(t, w, resp)
+}
+
 func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 	content, err := json.Marshal(resp)
 	assert.NoError(t, err)
@@ -174,15 +185,16 @@ func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, fi
 	return commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
 			getUploadChunkMockResponse(t, w)
-		} else if r.RequestURI == "/"+pluginsExecuteRestApi+"getUploadChunksStatus" {
+		} else if r.RequestURI == "/"+pluginsExecuteRestApi+syncChunks {
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
-
 			// If already visited chunk status, return status done this time.
-			if *totalChunkStatusVisits > 1 {
+			if *totalChunkStatusVisits == 1 {
+				getChunkStatusMockInProgressResponse(t, w)
+			} else if *totalChunkStatusVisits == 2 {
 				getChunkStatusMockDoneResponse(t, w, file)
 			} else {
-				getChunkStatusMockInProgressResponse(t, w)
+				getChunkStatusMockChunksDeletedResponse(t, w)
 			}
 		}
 	})

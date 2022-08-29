@@ -148,7 +148,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase.phaseId, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -165,7 +165,7 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phaseId int, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
 	for _, chunk := range chunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -177,8 +177,8 @@ func handleChunksStatuses(phaseId int, chunksStatus []ChunkStatus, progressbar *
 		case Done:
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-			if progressbar != nil && phaseId == FullTransferPhase {
-				err := progressbar.IncrementPhaseBy(phaseId, len(chunk.Files))
+			if progressbar != nil && phase != nil && phase.phaseId == FullTransferPhase {
+				err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
 				if err != nil {
 					log.Error("Progressbar unexpected error: " + err.Error())
 					continue

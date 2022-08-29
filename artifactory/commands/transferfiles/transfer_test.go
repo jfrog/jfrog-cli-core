@@ -169,6 +169,11 @@ func getChunkStatusMockDoneResponse(t *testing.T, w http.ResponseWriter, file Fi
 	writeMockResponse(t, w, resp)
 }
 
+func getChunkStatusMockChunksDeletedResponse(t *testing.T, w http.ResponseWriter) {
+	resp := UploadChunksStatusResponse{DeletedChunks: []string{uuidTokenForTest}}
+	writeMockResponse(t, w, resp)
+}
+
 func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 	content, err := json.Marshal(resp)
 	assert.NoError(t, err)
@@ -183,12 +188,13 @@ func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, fi
 		} else if r.RequestURI == "/"+pluginsExecuteRestApi+syncChunks {
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
-
 			// If already visited chunk status, return status done this time.
-			if *totalChunkStatusVisits > 1 {
+			if *totalChunkStatusVisits == 1 {
+				getChunkStatusMockInProgressResponse(t, w)
+			} else if *totalChunkStatusVisits == 2 {
 				getChunkStatusMockDoneResponse(t, w, file)
 			} else {
-				getChunkStatusMockInProgressResponse(t, w)
+				getChunkStatusMockChunksDeletedResponse(t, w)
 			}
 		}
 	})

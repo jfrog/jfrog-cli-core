@@ -4,16 +4,15 @@ go 1.18
 
 require (
 	github.com/buger/jsonparser v1.1.1
-	github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.6
-	github.com/gocarina/gocsv v0.0.0-20220729221910-a7386ae0b221
+	github.com/gocarina/gocsv v0.0.0-20220823132111-71f3a5cb2654
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
-	github.com/jedib0t/go-pretty/v6 v6.3.5
+	github.com/jedib0t/go-pretty/v6 v6.3.7
 	github.com/jfrog/build-info-go v1.5.0
 	github.com/jfrog/gofrog v1.2.1
-	github.com/jfrog/jfrog-client-go v1.21.0
+	github.com/jfrog/jfrog-client-go v0.0.0-00010101000000-000000000000
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -22,12 +21,13 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
-	github.com/vbauerster/mpb/v7 v7.4.2
+	github.com/vbauerster/mpb/v7 v7.5.2
 	golang.org/x/mod v0.5.1
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	golang.org/x/text v0.3.7
+	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035
 	gopkg.in/yaml.v2 v2.4.0
 )
+
+require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.6.0 // indirect
@@ -83,6 +83,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect

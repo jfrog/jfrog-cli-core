@@ -42,7 +42,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatability" {
+		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatibility" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)

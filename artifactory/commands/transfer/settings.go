@@ -44,7 +44,7 @@ func (tst *TransferSettingsCommand) Run() error {
 		return err
 	}
 	log.Output("The settings were saved successfully. It might take a few moments for the new settings to take effect.")
-	log.Output(fmt.Sprintf("Notice - For Build Info repositories, the number of threads is limited by %d.", utils.MaxBuildInfoThreads))
+	log.Output(fmt.Sprintf("Note - For Build Info repositories, the number of worker threads will be limited to %d.", utils.MaxBuildInfoThreads))
 	return nil
 }
 

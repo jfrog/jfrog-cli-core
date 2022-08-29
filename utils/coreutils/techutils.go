@@ -1,6 +1,8 @@
 package coreutils
 
 import (
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strings"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -9,17 +11,41 @@ import (
 type Technology string
 
 const (
-	Maven  = "Maven"
-	Gradle = "Gradle"
-	Npm    = "npm"
-	Yarn   = "Yarn"
-	Go     = "go"
-	Pip    = "pip"
-	Pipenv = "pipenv"
-	Nuget  = "nuget"
-	Dotnet = "dotnet"
-	Docker = "docker"
+	Maven  Technology = "Maven"
+	Mvn    Technology = "mvn"
+	Gradle Technology = "Gradle"
+	Npm    Technology = "npm"
+	Yarn   Technology = "Yarn"
+	Go     Technology = "go"
+	Pip    Technology = "pip"
+	Pipenv Technology = "pipenv"
+	Nuget  Technology = "nuget"
+	Dotnet Technology = "dotnet"
+	Docker Technology = "docker"
 )
+
+func (tech Technology) ToFormal() string {
+	switch tech {
+	case Nuget:
+		return "NuGet"
+	case Dotnet:
+		return ".NET"
+	case Npm:
+		return "NPM"
+	case Mvn:
+		return "Maven"
+	default:
+		return tech.ToCapitalize()
+	}
+}
+
+func (tech Technology) ToString() string {
+	return string(tech)
+}
+
+func (tech Technology) ToCapitalize() string {
+	return cases.Title(language.Und).String(tech.ToString())
+}
 
 type TechData struct {
 	// The name of the package type used in this technology.

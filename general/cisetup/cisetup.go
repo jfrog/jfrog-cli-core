@@ -68,7 +68,7 @@ const (
 )
 
 var execNames = map[coreutils.Technology]string{
-	coreutils.Maven:  "mvn",
-	coreutils.Gradle: "gradle",
-	coreutils.Npm:    "npm",
+	coreutils.Maven:  coreutils.Mvn.ToString(),
+	coreutils.Gradle: coreutils.Gradle.ToString(),
+	coreutils.Npm:    coreutils.Npm.ToString(),
 }

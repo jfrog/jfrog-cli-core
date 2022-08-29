@@ -149,7 +149,7 @@ func (sup *srcUserPluginService) version() (string, error) {
 
 func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte{}, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
 		return nil, err
 	}

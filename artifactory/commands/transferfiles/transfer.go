@@ -438,10 +438,11 @@ func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error 
 		return err
 	}
 
-	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
-	if err != nil {
-		return err
-	}
+	// TODO: Activate validation once the the verifyCompatibility request is finished on the data plugin side
+	//err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
+	//if err != nil {
+	//	return err
+	//}
 	log.Info("data-transfer plugin version: " + verifyResponse.Version)
 	return nil
 }

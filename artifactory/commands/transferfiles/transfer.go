@@ -198,12 +198,10 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 			return
 		}
 	}
-	// Performing a reset on the source if chunks were not removed
-	runningNodes, err := getRunningNodes(tdc.sourceServerDetails)
+	// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean, in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
+	err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 	if err != nil {
 		log.Error(err)
-	} else {
-		stopTransferOnArtifactoryNodes(srcUpService, runningNodes)
 	}
 	return
 }
@@ -281,7 +279,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 		if err != nil {
 			log.Error(err)
 		} else {
-			stopTransferOnArtifactoryNodes(srcUpService, runningNodes)
+			stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 		}
 	}()
 

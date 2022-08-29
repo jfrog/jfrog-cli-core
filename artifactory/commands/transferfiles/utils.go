@@ -121,13 +121,14 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
-		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on it's status
+		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
+
 		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
-		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source
-		// ChunksToDelete is used to notify the source that these chunks can be deleted from the source's status map
-		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunk uuids.
-		// When both ChunksToDelete and awaitingStatusChunksSet length is zero means that all the tokens has been uploaded,
-		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory
+		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
+		// ChunksToDelete is used to notify the source that these chunks can be deleted from the source's status map.
+		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
+		// When both ChunksToDelete and awaitingStatusChunksSet length is zero, it means that all the tokens are uploaded,
+		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
 		if awaitingStatusChunksSet.Size() == 0 && len(curTokensBatch.ChunksToDelete) == 0 {
 			if shouldStopPolling(doneChan) {
 				return
@@ -402,7 +403,7 @@ func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error
 	return serviceManager.GetRunningNodes()
 }
 
-func stopTransferOnArtifactoryNodes(srcUpService *srcUserPluginService, runningNodes []string) {
+func stopTransferInArtifactoryNodes(srcUpService *srcUserPluginService, runningNodes []string) {
 	remainingNodesToStop := make(map[string]string)
 	for _, s := range runningNodes {
 		remainingNodesToStop[s] = s
@@ -538,5 +539,16 @@ func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *
 			return err
 		}
 	}
+	return nil
+}
+
+func stopTransferInArtifactory(serverDetails *coreConfig.ServerDetails, srcUpService *srcUserPluginService) error {
+	runningNodes, err := getRunningNodes(serverDetails)
+	if err != nil {
+		return err
+	} else {
+		stopTransferInArtifactoryNodes(srcUpService, runningNodes)
+	}
+
 	return nil
 }

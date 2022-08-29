@@ -2,7 +2,6 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -161,7 +160,7 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 
 	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
 	if err != nil {
-		return nil, errors.New(string(body))
+		return nil, err
 	}
 
 	return &result, nil

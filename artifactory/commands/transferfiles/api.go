@@ -73,7 +73,8 @@ type UploadChunksStatusBody struct {
 
 type UploadChunksStatusResponse struct {
 	NodeIdResponse
-	ChunksStatus []ChunkStatus `json:"chunks_status,omitempty"`
+	ChunksStatus  []ChunkStatus `json:"chunks_status,omitempty"`
+	DeletedChunks []string      `json:"deleted_chunks,omitempty"`
 }
 
 type ChunkStatus struct {

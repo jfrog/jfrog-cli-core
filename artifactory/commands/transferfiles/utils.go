@@ -111,6 +111,7 @@ var processedUploadChunksMutex sync.Mutex
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
+	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
@@ -125,11 +126,11 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
 		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
-		// ChunksToDelete is used to notify the source that these chunks can be deleted from the source's status map.
+		// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
 		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-		// When both ChunksToDelete and awaitingStatusChunksSet length is zero, it means that all the tokens are uploaded,
+		// When both deletedChunksSet and awaitingStatusChunksSet length is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
-		if awaitingStatusChunksSet.Size() == 0 && len(curTokensBatch.ChunksToDelete) == 0 {
+		if awaitingStatusChunksSet.Size() == 0 && deletedChunksSet.Size() == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
@@ -138,45 +139,64 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 		// Send and handle.
 		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
+		curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
 		chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 		if err != nil {
 			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
 		}
-		// Clear arrays for the next request body
+		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
-		for _, chunk := range chunksStatus.ChunksStatus {
-			if chunk.UuidToken == "" {
-				log.Error("Unexpected empty uuid token in status")
-				continue
-			}
-			switch chunk.Status {
-			case InProgress:
-				continue
-			case Done:
-				reduceCurProcessedChunks()
-				log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-				if progressbar != nil && phaseBase.phaseId == FullTransferPhase {
-					err = progressbar.IncrementPhaseBy(phaseBase.phaseId, len(chunk.Files))
-					if err != nil {
-						log.Error("Progressbar unexpected error: " + err.Error())
-						continue
-					}
-				}
-				err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
+		toStop := handleChunksStatuses(phaseBase.phaseId, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		if toStop {
+			return
+		}
+	}
+}
+
+func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {
+	for _, deletedChunk := range deletedChunks {
+		err := deletedChunksSet.Remove(deletedChunk)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+	}
+}
+
+func handleChunksStatuses(phaseId int, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+	for _, chunk := range chunksStatus {
+		if chunk.UuidToken == "" {
+			log.Error("Unexpected empty uuid token in status")
+			continue
+		}
+		switch chunk.Status {
+		case InProgress:
+			continue
+		case Done:
+			reduceCurProcessedChunks()
+			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
+			if progressbar != nil && phaseId == FullTransferPhase {
+				err := progressbar.IncrementPhaseBy(phaseId, len(chunk.Files))
 				if err != nil {
-					log.Error("removal from upload status set issue occurred: " + err.Error())
+					log.Error("Progressbar unexpected error: " + err.Error())
 					continue
 				}
-				curTokensBatch.ChunksToDelete = append(curTokensBatch.ChunksToDelete, chunk.UuidToken)
-				stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
-				// In case an error occurred while writing errors status's to the errors file - stop transferring.
-				if stopped {
-					return
-				}
+			}
+			err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+			if err != nil {
+				log.Error(err.Error())
+			}
+			deletedChunksSet.Add(chunk.UuidToken)
+			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
+			// In case an error occurred while writing errors status's to the errors file - stop transferring.
+			if stopped {
+				return true
 			}
 		}
 	}
+	return false
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.

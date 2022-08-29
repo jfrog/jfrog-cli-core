@@ -1,7 +1,9 @@
 package transferfiles
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -192,16 +194,16 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		if tdc.ShouldStop() {
 			return
 		}
-
+		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
+		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
+		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
+		if err != nil {
+			log.Error(err)
+		}
 		*newPhase = getPhaseByNum(currentPhaseId, sourceRepoKey, buildInfoRepo)
 		if err = tdc.startPhase(newPhase, sourceRepoKey, *repoSummary, srcUpService); err != nil {
 			return
 		}
-	}
-	// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean, in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
-	err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
-	if err != nil {
-		log.Error(err)
 	}
 	return
 }
@@ -433,14 +435,19 @@ func getMinimalVersionErrorMsg(currentVersion string) string {
 }
 
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
-	dataPluginVer, err := srcUpService.version()
+	verifyResponse, httpResponse, err := srcUpService.verifyCompatabilityRequest()
 	if err != nil {
 		return err
 	}
-	err = validateDataTransferPluginMinimumVersion(dataPluginVer)
+	err = errorutils.CheckResponseStatus(httpResponse, http.StatusOK)
+	if err != nil {
+		return errors.New(verifyResponse.Message)
+	}
+
+	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
 	if err != nil {
 		return err
 	}
-	log.Info("data-transfer plugin version: " + dataPluginVer)
+	log.Info("data-transfer plugin version: " + verifyResponse.Version)
 	return nil
 }

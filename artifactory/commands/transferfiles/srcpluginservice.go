@@ -14,6 +14,11 @@ import (
 const pluginsExecuteRestApi = "api/plugins/execute/"
 const syncChunks = "syncChunks"
 
+type VerifyCompatabilityResponse struct {
+	Version string `json:"version,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 type srcUserPluginService struct {
 	client     *jfroghttpclient.JfrogHttpClient
 	artDetails *auth.ServiceDetails
@@ -139,6 +144,21 @@ func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
+}
+
+func (sup *srcUserPluginService) verifyCompatabilityRequest() (*VerifyCompatabilityResponse, *http.Response, error) {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatability", []byte{}, &httpDetails)
+	if err != nil {
+		return nil, nil, err
+	}
+	var result VerifyCompatabilityResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, nil, errorutils.CheckError(err)
+	}
+
+	return &result, resp, nil
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

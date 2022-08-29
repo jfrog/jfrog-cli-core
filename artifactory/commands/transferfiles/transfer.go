@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -419,13 +418,14 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 	return
 }
 
-func validateDataTransferPluginMinimumVersion(currentVersion string) error {
-	curVer := version.NewVersion(currentVersion)
-	if !curVer.AtLeast(dataTransferPluginMinVersion) {
-		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
-	}
-	return nil
-}
+// TODO: enable this function once the data-plugin verifyCompatibility is ready
+//func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+//	curVer := version.NewVersion(currentVersion)
+//	if !curVer.AtLeast(dataTransferPluginMinVersion) {
+//		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
+//	}
+//	return nil
+//}
 
 func getMinimalVersionErrorMsg(currentVersion string) string {
 	return "You are currently using data-transfer plugin version '" +

@@ -2,21 +2,23 @@ package audit
 
 import (
 	"fmt"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 )
 
 func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
@@ -58,20 +60,18 @@ func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *ser
 
 func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *services.GraphNode {
 	nodeId := impactPath[len(impactPath)-1]
-
 	// Initialize the new node
 	xrDependencyTree := &services.GraphNode{}
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*services.GraphNode{}
+	if len(impactPath) >= buildinfo.RequestedByMaxLength {
+		log.Debug("buildXrayDependencyTree exceeded max tree depth")
+		return xrDependencyTree
+	}
 	// Recursively create & append all node's dependencies.
 	for _, dependency := range treeHelper[nodeId] {
-		circularDep := false
-		for _, impactPathNode := range impactPath {
-			if dependency == impactPathNode {
-				circularDep = true
-			}
-		}
-		if circularDep {
+		// Prevent circular dependencies parsing
+		if slices.Contains(impactPath, dependency) {
 			continue
 		}
 		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency)))

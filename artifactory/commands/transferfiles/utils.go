@@ -136,12 +136,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			continue
 		}
 
-		// Send and handle.
-		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
-		curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
-		chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
 		if err != nil {
-			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
 		}
 		// Clear body for the next request
@@ -152,6 +148,17 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			return
 		}
 	}
+}
+
+// Send and handle.
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+	curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
+	curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
+	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
+	if err != nil {
+		log.Error("error returned when getting upload chunks statuses: " + err.Error())
+	}
+	return chunksStatus, err
 }
 
 func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {

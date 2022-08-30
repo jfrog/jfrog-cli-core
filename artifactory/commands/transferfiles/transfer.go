@@ -421,7 +421,7 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 }
 
 func validateDataTransferPluginMinimumVersion(currentVersion string) error {
-	if strings.Contains(dataTransferPluginMinVersion, "SNAPSHOT") {
+	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
 	curVer := version.NewVersion(currentVersion)

@@ -2,15 +2,22 @@ package transferfiles
 
 import (
 	"fmt"
-	"path"
-	"time"
-
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/parallel"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/repostate"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
+	"path"
+	"path/filepath"
+	"time"
 )
+
+const saveRepositoryTreeStateMinutes = 10
 
 // Manages the phase of performing a full transfer of the repository.
 // This phase is only executed once per repository if its completed.
@@ -46,7 +53,19 @@ func (m *fullTransferPhase) getPhaseName() string {
 
 func (m *fullTransferPhase) phaseStarted() error {
 	m.startTime = time.Now()
-	err := setRepoFullTransferStarted(m.repoKey, m.startTime)
+
+	repoStateFile, err := GetRepoStateFilePath(m.repoKey)
+	if err != nil {
+		return err
+	}
+	// Loads repository state if exists, and updates started time accordingly.
+	stateCreated := false
+	m.stateManager, stateCreated, err = repostate.LoadOrCreateRepoStateManager(m.repoKey, repoStateFile)
+	if err != nil {
+		return err
+	}
+
+	err = setRepoFullTransferStarted(m.repoKey, m.startTime, !stateCreated)
 	if err != nil {
 		return err
 	}
@@ -62,10 +81,40 @@ func (m *fullTransferPhase) phaseDone() error {
 	if err != nil {
 		return err
 	}
+	// Deletes the repo state as it is no longer needed after full transfer is completed (state is also collapsed, so no info is provided there).
+	err = m.removeRepoState()
+	if err != nil {
+		return err
+	}
+
 	if m.progressBar != nil {
 		return m.progressBar.DonePhase(m.phaseId)
 	}
 	return nil
+}
+
+func (m *fullTransferPhase) removeRepoState() error {
+	repoStateFile, err := GetRepoStateFilePath(m.repoKey)
+	if err != nil {
+		return err
+	}
+	exists, err := fileutils.IsFileExists(repoStateFile, false)
+	if err != nil || !exists {
+		return err
+	}
+	return os.Remove(repoStateFile)
+}
+
+func GetRepoStateFilePath(repoKey string) (string, error) {
+	statesDir, err := coreutils.GetJfrogTransferRepositoriesStateDir()
+	if err != nil {
+		return "", err
+	}
+	err = utils.CreateDirIfNotExist(statesDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(statesDir, repoKey+".json"), nil
 }
 
 func (m *fullTransferPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
@@ -138,7 +187,12 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper produc
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
 	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
-	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
+	log.Debug(logMsgPrefix+"Handling folder:", path.Join(params.repoKey, params.relativePath))
+
+	node, done, previousChildrenMap, err := m.getNodeAndHandleByState(params, logMsgPrefix, pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+	if err != nil || done {
+		return err
+	}
 
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails),
@@ -168,10 +222,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 			}
 			switch item.Type {
 			case "folder":
-				newRelativePath := item.Name
-				if params.relativePath != "." {
-					newRelativePath = path.Join(params.relativePath, newRelativePath)
-				}
+				newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
+				node.AddChildNode(item.Name, previousChildrenMap)
 				folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 				_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
 				if err != nil {
@@ -183,12 +235,13 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				if stopped {
 					return
 				}
+				node.AddFileName(item.Name)
 				if delayed {
 					continue
 				}
 				curUploadChunk.appendUploadCandidate(file)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng, m.stateManager), pcWrapper.errorsQueue.AddError)
 					if err != nil {
 						return
 					}
@@ -204,15 +257,24 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		paginationI++
 	}
 
+	node.DoneExploring = true
+
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng, m.stateManager), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}
 	}
 	log.Debug(logMsgPrefix+"Done transferring folder:", path.Join(params.repoKey, params.relativePath))
 	return
+}
+
+func getFolderRelativePath(folderName, relativeLocation string) string {
+	if relativeLocation == "." {
+		return folderName
+	}
+	return path.Join(relativeLocation, folderName)
 }
 
 func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
@@ -225,4 +287,69 @@ func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffs
 	query += `.include("repo","path","name","type")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
+}
+
+func convertRepoStateToFileRepresentation(repoKey, relativePath string, state *repostate.Node) (files []FileRepresentation) {
+	for file := range state.FilesNames {
+		files = append(files, FileRepresentation{
+			repoKey, relativePath, file,
+		})
+	}
+	return
+}
+
+// If previous repo state exists, uses the known info to handle the current directory.
+// Decides how to continue handling the directory by the node's state in the repository state (completed / done exploring / requires exploring)
+// Outputs:
+// node - node in repository state.
+// done - whether the node directory is requires exploring or not.
+// previousChildrenMap - if the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
+func (m *fullTransferPhase) getNodeAndHandleByState(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (node *repostate.Node, done bool, previousChildrenMap map[string]*repostate.Node, err error) {
+	node, err = m.stateManager.LookUpNode(params.relativePath)
+	if err != nil {
+		return
+	}
+	if node.Completed {
+		log.Debug(logMsgPrefix+"Skipping completed folder: ", path.Join(params.repoKey, params.relativePath))
+		return nil, true, nil, nil
+	}
+	if node.DoneExploring {
+		return nil, true, nil, m.handleNodeExplored(node, params, logMsgPrefix, pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+	}
+	return node, false, m.handleNodeRequiresExploring(node), nil
+}
+
+// If a node was fully explored before but not completed, complete it by adding all its children as tasks and upload all its files.
+func (m *fullTransferPhase) handleNodeExplored(node *repostate.Node, params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
+	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
+
+	log.Debug(logMsgPrefix + "Folder '" + path.Join(params.repoKey, params.relativePath) + "' was already explored. Uploading remaining files...")
+	for childName := range node.Children {
+		folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+		_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: params.repoKey, relativePath: getFolderRelativePath(childName, params.relativePath)}), pcWrapper.errorsQueue.AddError)
+		if err != nil {
+			return
+		}
+	}
+	if len(node.FilesNames) > 0 {
+		_, err = uploadByChunks(convertRepoStateToFileRepresentation(params.repoKey, params.relativePath, node), uploadTokensChan, m.phaseBase, delayHelper, errorsChannelMng, &pcWrapper)
+		if m.progressBar != nil {
+			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(node.FilesNames))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return
+}
+
+func (m *fullTransferPhase) handleNodeRequiresExploring(node *repostate.Node) (previousChildrenMap map[string]*repostate.Node) {
+	// If not done exploring, remove all files names because we will begin exploring from the beginning.
+	node.FilesNames = nil
+	// Return old children map to add every found child with its previous data and references.
+	previousChildrenMap = node.Children
+	// Clear children map to avoid handling directories that may have been deleted.
+	node.Children = nil
+	return
 }

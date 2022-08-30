@@ -1,10 +1,10 @@
 package transferfiles
 
 import (
-	"time"
-
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/repostate"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"time"
 )
 
 const numberOfPhases = 3
@@ -44,6 +44,7 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
+	stateManager              *repostate.RepoStateManager
 }
 
 // Return InterruptionError, if stop is true

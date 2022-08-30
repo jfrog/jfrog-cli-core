@@ -115,13 +115,16 @@ func doAndSaveState(action actionOnStateFunc) error {
 	return saveTransferState(state)
 }
 
-func setRepoFullTransferStarted(repoKey string, startTime time.Time) error {
+func setRepoFullTransferStarted(repoKey string, startTime time.Time, repoStateExists bool) error {
 	action := func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.FullTransfer.Started = convertTimeToRFC3339(startTime)
+		// We do not want to change the start time if repo state exists, because some dirs will not be scanned again (if done exploring / transferring), so handling their diffs is required.
+		if !repoStateExists || repo.FullTransfer.Started == "" {
+			repo.FullTransfer.Started = convertTimeToRFC3339(startTime)
+		}
 		return nil
 	}
 	return doAndSaveState(action)

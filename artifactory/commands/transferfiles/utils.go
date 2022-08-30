@@ -3,19 +3,19 @@ package transferfiles
 import (
 	"encoding/json"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/repostate"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/ioutil"
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -23,7 +23,6 @@ const (
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
 	DefaultAqlPaginationLimit                    = 10000
-	maxBuildInfoRepoThreads                      = 8
 )
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
@@ -108,13 +107,21 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
+// If a repo state manager is provided, files done are removed from the state. The repo state is saved to file periodically.
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng, repoStateManager *repostate.RepoStateManager) {
 	curTokensBatch := UploadChunksStatusBody{}
 	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
 	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
 	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
+
+	var repoStateLru *repostate.RepoStateLruCache
+	repoStateLastSaveTime := time.Now()
+	if repoStateManager != nil {
+		repoStateLru = repostate.NewRepoStateLruCache()
+	}
+
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
@@ -143,10 +150,11 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng, repoStateManager, repoStateLru)
 		if toStop {
 			return
 		}
+		writeRepoStateToFile(repoStateManager, &repoStateLastSaveTime)
 	}
 }
 
@@ -173,7 +181,8 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string],
+	deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng, repoStateManager *repostate.RepoStateManager, repoStateLru *repostate.RepoStateLruCache) bool {
 	for _, chunk := range chunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -198,7 +207,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 			}
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
 			deletedChunksSet.Add(chunk.UuidToken)
-			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
+			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng, repoStateManager, repoStateLru)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
 				return true
@@ -206,6 +215,45 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		}
 	}
 	return false
+}
+
+// If tracking repository state, save state to file every saveRepositoryTreeStateMinutes.
+func writeRepoStateToFile(stateManager *repostate.RepoStateManager, stateLastSaveTime *time.Time) {
+	if stateManager != nil && time.Since(*stateLastSaveTime) > saveRepositoryTreeStateMinutes*time.Minute {
+		err := stateManager.SaveToFile()
+		if err != nil {
+			log.Error("failed saving repo state to file:", err)
+		}
+		*stateLastSaveTime = time.Now()
+	}
+}
+
+// Gets the node that represents the directory from the repo state.
+// repoStateManager - expected not to be nil.
+// relativePath - relative path of the directory.
+// stateLru - [Optional] if lru is available, use it to get node.
+func getDirectoryStateNode(repoStateManager *repostate.RepoStateManager, relativePath string, stateLru *repostate.RepoStateLruCache) (*repostate.Node, error) {
+	if stateLru != nil {
+		return getDirectoryStateNodeWithLru(repoStateManager, relativePath, stateLru)
+	}
+	return repoStateManager.LookUpNode(relativePath)
+}
+
+// Gets the node that represents the directory from the repo state. Gets / Updates the lru cache.
+// repoStateManager - expected not to be nil.
+// relativePath - relative path of the directory.
+// stateLru - look for the node in the lru. If it doesn't exist, get it from the repo state and add it to the lru.
+func getDirectoryStateNodeWithLru(stateManager *repostate.RepoStateManager, relativePath string, stateLru *repostate.RepoStateLruCache) (*repostate.Node, error) {
+	node := stateLru.Get(relativePath)
+	if node != nil {
+		return node, nil
+	}
+	node, err := stateManager.LookUpNode(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	stateLru.Add(relativePath, node)
+	return node, nil
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
@@ -228,7 +276,7 @@ func reduceCurProcessedChunks() {
 	curProcessedUploadChunks--
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng, stateManager *repostate.RepoStateManager, stateLru *repostate.RepoStateLruCache) (stopped bool) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
@@ -240,13 +288,34 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 				return
 			}
 		}
+		markFileCompletedInRepoState(stateManager, file, stateLru)
 	}
 	return
 }
 
+// If repo state is tracked, remove completed file from its directory node and check if node completed.
+func markFileCompletedInRepoState(stateManager *repostate.RepoStateManager, file FileUploadStatusResponse, stateLru *repostate.RepoStateLruCache) {
+	if stateManager == nil {
+		return
+	}
+
+	folderState, err := getDirectoryStateNode(stateManager, file.Path, stateLru)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	err = folderState.FileCompleted(file.Name)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	folderState.CheckCompleted()
+}
+
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng, stateManager *repostate.RepoStateManager) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
@@ -261,23 +330,26 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadToke
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
-			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			return sendAllChunkToErrorChannelAndMarkCompleted(chunk, errorsChannelMng, err, stateManager)
 		}
 		return ShouldStop(phaseBase, nil, errorsChannelMng)
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChannelMng, err error) (stopped bool) {
+// Send all files of the chunk to error channel to be retried on next run.
+// If repo state is tracked, mark those files as completed.
+func sendAllChunkToErrorChannelAndMarkCompleted(chunk UploadChunk, errorsChannelMng *ErrorsChannelMng, err error, stateManager *repostate.RepoStateManager) (stopped bool) {
 	for _, file := range chunk.UploadCandidates {
-		err := FileUploadStatusResponse{
+		failure := FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             err.Error(),
 		}
 		// In case an error occurred while handling errors files - stop transferring.
-		stopped = addErrorToChannel(errorsChannelMng, err)
+		stopped = addErrorToChannel(errorsChannelMng, failure)
 		if stopped {
 			return
 		}
+		markFileCompletedInRepoState(stateManager, failure, nil)
 	}
 	return
 }
@@ -343,11 +415,11 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng, stateManager *repostate.RepoStateManager) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
-		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng, stateManager)
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
 			return errorutils.CheckErrorf("%s stopped.", logMsgPrefix)
@@ -376,7 +448,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		}
 		curUploadChunk.appendUploadCandidate(file)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng, nil), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -386,7 +458,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng, nil), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}

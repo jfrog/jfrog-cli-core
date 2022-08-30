@@ -77,7 +77,7 @@ func assertRepoTransferred(t *testing.T, repoKey string, expected bool) {
 }
 
 func setAndAssertRepoFullyTransfer(t *testing.T, repoKey string, startTime time.Time) {
-	err := setRepoFullTransferStarted(repoKey, startTime)
+	err := setRepoFullTransferStarted(repoKey, startTime, false)
 	assert.NoError(t, err)
 	assertRepoTransferred(t, repoKey, false)
 

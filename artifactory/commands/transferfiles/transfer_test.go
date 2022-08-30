@@ -2,13 +2,6 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
-	"time"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
@@ -16,8 +9,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-
 	"github.com/stretchr/testify/assert"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
@@ -113,16 +111,16 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidate(fileSample)
-	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
+	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil, nil)
 	assert.False(t, stopped)
-	stopped = uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
+	stopped = uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 2, curProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil, nil)
+		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil, nil, nil)
 	}()
 	// Let the whole process run for a few chunk status checks, then mark it as done.
 	time.Sleep(5 * waitTimeBetweenChunkStatusSeconds * time.Second)
@@ -221,7 +219,7 @@ func TestGetSourceLocalRepositories(t *testing.T) {
 	// Prepare mock server
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/repositories?type=local&packageType=" {
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
 			bytes, err := json.Marshal(response)
@@ -243,10 +241,10 @@ func TestGetAllTargetLocalRepositories(t *testing.T) {
 	// Prepare mock server
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
-			// Reponse for CalculateStorageInfo
+			// Response for CalculateStorageInfo
 			w.WriteHeader(http.StatusAccepted)
 		} else if r.RequestURI == "/api/storageinfo" {
-			// Reponse for GetStorageInfo
+			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
 			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}}}
 			bytes, err := json.Marshal(response)
@@ -254,7 +252,7 @@ func TestGetAllTargetLocalRepositories(t *testing.T) {
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
 		} else if r.RequestURI == "/api/repositories?type=local&packageType=" {
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}, {Key: "artifactory-build-info"}, {Key: "proj-build-info"}}
 			bytes, err := json.Marshal(response)
@@ -287,7 +285,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer sourceTestServer.Close()
 
 	// Prepare target mock server
-	targetTestServer, targetserverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
 			w.WriteHeader(http.StatusAccepted)
 			targetServerCalculated = true
@@ -296,7 +294,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer targetTestServer.Close()
 
 	// Init and assert storage info managers
-	transferFilesCommand := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	transferFilesCommand := NewTransferFilesCommand(sourceServerDetails, targetServerDetails)
 	err := transferFilesCommand.initStorageInfoManagers()
 	assert.NoError(t, err)
 	assert.True(t, sourceServerCalculated)

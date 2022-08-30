@@ -152,8 +152,7 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 	// Make sure all parameters as expected
 	if len(actual.ChunksToDelete) == 0 {
 		assert.Len(t, actual.AwaitingStatusChunks, 2)
-		assert.Equal(t, firstUuidTokenForTest, actual.AwaitingStatusChunks[0])
-		assert.Equal(t, secondUuidTokenForTest, actual.AwaitingStatusChunks[1])
+		assert.ElementsMatch(t, []string{firstUuidTokenForTest, secondUuidTokenForTest}, actual.AwaitingStatusChunks)
 	} else {
 		assert.Len(t, actual.ChunksToDelete, 1)
 		assert.Len(t, actual.AwaitingStatusChunks, 1)

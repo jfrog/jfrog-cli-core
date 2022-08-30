@@ -12,7 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.7
 	github.com/jfrog/build-info-go v1.5.0
 	github.com/jfrog/gofrog v1.2.1
-	github.com/jfrog/jfrog-client-go v0.0.0-00010101000000-000000000000
+	github.com/jfrog/jfrog-client-go v1.22.0
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -90,7 +90,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.21.1-0.20220828160454-7c617b0d1582
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.21.1-0.20220828160454-7c617b0d1582
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.4.2-0.20220824162930-2f2a2893d4a7
 

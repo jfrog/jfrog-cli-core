@@ -110,7 +110,9 @@ var processedUploadChunksMutex sync.Mutex
 // and a new token to be polled on.
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
 	curTokensBatch := UploadChunksStatusBody{}
+	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
+	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
 	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
 	for {
@@ -122,27 +124,20 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if progressbar != nil {
 			progressbar.SetRunningThreads(curProcessedUploadChunks)
 		}
-		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
 
+		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
 		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
-		// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
-		// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
-		// After we receive 'DONE', we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-		// When both deletedChunksSet and awaitingStatusChunksSet length is zero, it means that all the tokens are uploaded,
+		// When awaitingStatusChunksSet size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
-		if awaitingStatusChunksSet.Size() == 0 && deletedChunksSet.Size() == 0 {
+		if awaitingStatusChunksSet.Size() == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
 			continue
 		}
 
-		// Send and handle.
-		curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
-		curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
-		chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
 		if err != nil {
-			log.Error("error returned when getting upload chunks statuses: " + err.Error())
 			continue
 		}
 		// Clear body for the next request
@@ -155,7 +150,20 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	}
 }
 
+// Send and handle.
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+	curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
+	curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
+	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
+	if err != nil {
+		log.Error("error returned when getting upload chunks statuses: " + err.Error())
+	}
+	return chunksStatus, err
+}
+
 func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {
+	// deletedChunks is an array received from the source, confirming which chunks were deleted from the source side.
+	// In deletedChunksSet, we keep only chunks for which we have yet to receive confirmation
 	for _, deletedChunk := range deletedChunks {
 		err := deletedChunksSet.Remove(deletedChunk)
 		if err != nil {
@@ -188,6 +196,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 			if err != nil {
 				log.Error(err.Error())
 			}
+			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
 			deletedChunksSet.Add(chunk.UuidToken)
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.

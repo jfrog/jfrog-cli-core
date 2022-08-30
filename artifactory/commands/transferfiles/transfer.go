@@ -1,18 +1,17 @@
 package transferfiles
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"strconv"
 
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -422,6 +421,9 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 }
 
 func validateDataTransferPluginMinimumVersion(currentVersion string) error {
+	if strings.Contains(currentVersion, "SNAPSHOT") {
+		return nil
+	}
 	curVer := version.NewVersion(currentVersion)
 	if !curVer.AtLeast(dataTransferPluginMinVersion) {
 		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
@@ -435,13 +437,9 @@ func getMinimalVersionErrorMsg(currentVersion string) string {
 }
 
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
-	verifyResponse, httpResponse, err := srcUpService.verifyCompatabilityRequest()
+	verifyResponse, err := srcUpService.verifyCompatibilityRequest()
 	if err != nil {
 		return err
-	}
-	err = errorutils.CheckResponseStatus(httpResponse, http.StatusOK)
-	if err != nil {
-		return errors.New(verifyResponse.Message)
 	}
 
 	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)

@@ -14,7 +14,7 @@ import (
 const pluginsExecuteRestApi = "api/plugins/execute/"
 const syncChunks = "syncChunks"
 
-type VerifyCompatabilityResponse struct {
+type VerifyCompatibilityResponse struct {
 	Version string `json:"version,omitempty"`
 	Message string `json:"message,omitempty"`
 }
@@ -146,19 +146,25 @@ func (sup *srcUserPluginService) version() (string, error) {
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
 }
 
-func (sup *srcUserPluginService) verifyCompatabilityRequest() (*VerifyCompatabilityResponse, *http.Response, error) {
+func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatability", []byte{}, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
-		return nil, nil, err
-	}
-	var result VerifyCompatabilityResponse
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, nil, errorutils.CheckError(err)
+		return nil, err
 	}
 
-	return &result, resp, nil
+	err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
+	if err != nil {
+		return nil, err
+	}
+
+	var result VerifyCompatibilityResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+
+	return &result, nil
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

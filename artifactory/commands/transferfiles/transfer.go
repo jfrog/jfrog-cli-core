@@ -99,7 +99,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	// Set progress bar with the length of the taget local and build info repositories
+	// Set progress bar with the length of the target local and build info repositories
 	tdc.progressbar, err = NewTransferProgressMng(int64(len(targetAllLocalRepos)))
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	}
 
 	if tdc.ignoreState {
-		err = resetRepoState(sourceRepoKey)
+		err = handleIgnoreState(sourceRepoKey)
 		if err != nil {
 			return
 		}
@@ -194,7 +194,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 			return
 		}
 		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
-		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
+		// in case some requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
 		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
@@ -287,7 +287,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 		// Close the stop signal channel
 		close(stopSignal)
 		if tdc.ShouldStop() {
-			// If should stop, wait for stop to happen
+			// If we should stop, wait for stop to happen
 			<-finishStop
 		}
 	}, &newPhase
@@ -384,7 +384,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 // handleMaxUniqueSnapshots handles special cases regarding the Max Unique Snapshots/Tags setting of repositories of
 // these package types: Maven, Gradle, NuGet, Ivy, SBT and Docker.
 // TL;DR: we might have repositories in the source with more snapshots than the maximum (in Max Unique Snapshots/Tags),
-// so he turn it off at the beginning of the transfer and turn it back on at the end.
+// so we turn it off at the beginning of the transfer and turn it back on at the end.
 //
 // And in more detail:
 // The cleanup of old snapshots in Artifactory is triggered by uploading a new snapshot only, so we might have

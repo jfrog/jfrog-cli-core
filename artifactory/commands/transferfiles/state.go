@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"time"
 
@@ -256,6 +257,26 @@ func resetRepoState(repoKey string) error {
 		return nil
 	}
 	return doAndSaveState(action)
+}
+
+func removeRepoStateFile(repoKey string) error {
+	repoStateFile, err := GetRepoStateFilePath(repoKey)
+	if err != nil {
+		return err
+	}
+	exists, err := fileutils.IsFileExists(repoStateFile, false)
+	if err != nil || !exists {
+		return err
+	}
+	return os.Remove(repoStateFile)
+}
+
+func handleIgnoreState(repoKey string) error {
+	err := resetRepoState(repoKey)
+	if err != nil {
+		return err
+	}
+	return removeRepoStateFile(repoKey)
 }
 
 func newRepositoryState(repoKey string) Repository {

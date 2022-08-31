@@ -4,7 +4,9 @@ import (
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"testing"
 	"time"
 )
@@ -142,18 +144,36 @@ func TestResetRepoState(t *testing.T) {
 	repo1Key, repo2Key := "repo1", "repo2"
 
 	// Reset a repository state on an empty state
-	err := resetRepoState(repo1Key)
-	assert.NoError(t, err)
+	assert.NoError(t, handleIgnoreState(repo1Key))
 	// Set repository fully transferred. It will fail the test if the repository is not in the state.
 	setAndAssertRepoFullyTransfer(t, repo1Key, time.Now())
+	// Repo state file should not be created until written to for the first time after saveRepositoryTreeStateMinutes.
+	assertRepoStateFileExists(t, repo1Key, false)
 
 	// Create another repository state
-	err = resetRepoState(repo2Key)
-	assert.NoError(t, err)
+	assert.NoError(t, handleIgnoreState(repo2Key))
 	setAndAssertRepoFullyTransfer(t, repo2Key, time.Now())
+	assertRepoStateFileExists(t, repo2Key, false)
 
-	// Reset repo1 only
-	err = resetRepoState(repo1Key)
-	assert.NoError(t, err)
+	// Reset repo1 only. Create a repo state file before reset and verify it is deleted.
+	createRepoStateFile(t, repo1Key)
+	assert.NoError(t, handleIgnoreState(repo1Key))
 	assertRepoTransferred(t, repo1Key, false)
+	assertRepoStateFileExists(t, repo1Key, false)
+	assertRepoTransferred(t, repo2Key, true)
+}
+
+func assertRepoStateFileExists(t *testing.T, repoKey string, expectedExists bool) {
+	repoStateFile, err := GetRepoStateFilePath(repoKey)
+	assert.NoError(t, err)
+	exists, err := fileutils.IsFileExists(repoStateFile, false)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedExists, exists)
+}
+
+func createRepoStateFile(t *testing.T, repoKey string) {
+	repoStateFile, err := GetRepoStateFilePath(repoKey)
+	assert.NoError(t, err)
+	assert.NoError(t, ioutil.WriteFile(repoStateFile, []byte("content"), 0644))
+	assertRepoStateFileExists(t, repoKey, true)
 }

@@ -9,9 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/repostate"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
 	"path"
 	"path/filepath"
 	"time"
@@ -82,7 +80,7 @@ func (m *fullTransferPhase) phaseDone() error {
 		return err
 	}
 	// Deletes the repo state as it is no longer needed after full transfer is completed (state is also collapsed, so no info is provided there).
-	err = m.removeRepoState()
+	err = removeRepoStateFile(m.repoKey)
 	if err != nil {
 		return err
 	}
@@ -91,18 +89,6 @@ func (m *fullTransferPhase) phaseDone() error {
 		return m.progressBar.DonePhase(m.phaseId)
 	}
 	return nil
-}
-
-func (m *fullTransferPhase) removeRepoState() error {
-	repoStateFile, err := GetRepoStateFilePath(m.repoKey)
-	if err != nil {
-		return err
-	}
-	exists, err := fileutils.IsFileExists(repoStateFile, false)
-	if err != nil || !exists {
-		return err
-	}
-	return os.Remove(repoStateFile)
 }
 
 func GetRepoStateFilePath(repoKey string) (string, error) {

@@ -66,7 +66,7 @@ func TestStopTransferOnArtifactoryNodes(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	stopTransferOnArtifactoryNodes(srcUpService, []string{"node-1", "node-2"})
+	stopTransferInArtifactoryNodes(srcUpService, []string{"node-1", "node-2"})
 	assert.True(t, stoppedNodeOne)
 	assert.True(t, stoppedNodeTwo)
 }

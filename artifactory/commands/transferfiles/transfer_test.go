@@ -28,7 +28,8 @@ func TestHandleStopInitAndClose(t *testing.T) {
 	assert.False(t, transferFilesCommand.ShouldStop())
 }
 
-const uuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
+const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
+const secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "9.9.9", false) })
@@ -36,12 +37,13 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 		testValidateDataTransferPluginMinimumVersion(t, dataTransferPluginMinVersion, false)
 	})
 	t.Run("invalid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "1.0.0", true) })
+	t.Run("snapshot version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "1.0.x-SNAPSHOT", false) })
 }
 
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
+		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatibility" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
@@ -83,23 +85,26 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 func TestUploadChunkAndPollUploads(t *testing.T) {
 	totalChunkStatusVisits := 0
+	totalUploadChunkVisits := 0
 	fileSample := FileRepresentation{
 		Repo: "my-repo-local",
 		Path: "rel-path",
 		Name: "name-demo",
 	}
 
-	testServer, serverDetails, _ := initPollUploadsTestMockServer(t, &totalChunkStatusVisits, fileSample)
+	testServer, serverDetails, _ := initPollUploadsTestMockServer(t, &totalChunkStatusVisits, &totalUploadChunkVisits, fileSample)
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
 
 	uploadChunkAndPollTwice(t, srcPluginManager, fileSample)
 
-	// Assert that exactly 2 requests to chunk status were made - once when still in progress, and once when done.
+	// Assert that exactly 2 requests to chunk status were made
+	// First request - get one DONE chunk and one IN PROGRESS
+	// Second Request - get DONE for the other chunk
 	assert.Equal(t, 2, totalChunkStatusVisits)
 }
 
-// Sends chunk to upload, polls on chunk twice - once when it is still in progress, and once after it is done.
+// Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
 func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
 	curThreads = 8
 	uploadTokensChan := make(chan string, 3)
@@ -110,7 +115,9 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	chunk.appendUploadCandidate(fileSample)
 	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
-	assert.Equal(t, 1, curProcessedUploadChunks)
+	stopped = uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
+	assert.False(t, stopped)
+	assert.Equal(t, 2, curProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {
@@ -124,9 +131,14 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	runWaitGroup.Wait()
 }
 
-func getUploadChunkMockResponse(t *testing.T, w http.ResponseWriter) {
+func getUploadChunkMockResponse(t *testing.T, w http.ResponseWriter, totalUploadChunkVisits *int) {
 	w.WriteHeader(http.StatusAccepted)
-	resp := UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: uuidTokenForTest}}
+	var resp UploadChunkResponse
+	if *totalUploadChunkVisits == 1 {
+		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest}}
+	} else {
+		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest}}
+	}
 	writeMockResponse(t, w, resp)
 }
 
@@ -138,28 +150,45 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 	assert.NoError(t, json.Unmarshal(content, &actual))
 
 	// Make sure all parameters as expected
-	assert.Len(t, actual.UuidTokens, 1)
-	assert.Equal(t, uuidTokenForTest, actual.UuidTokens[0])
+	if len(actual.ChunksToDelete) == 0 {
+		assert.Len(t, actual.AwaitingStatusChunks, 2)
+		assert.ElementsMatch(t, []string{firstUuidTokenForTest, secondUuidTokenForTest}, actual.AwaitingStatusChunks)
+	} else {
+		assert.Len(t, actual.ChunksToDelete, 1)
+		assert.Len(t, actual.AwaitingStatusChunks, 1)
+		assert.Equal(t, firstUuidTokenForTest, actual.ChunksToDelete[0])
+		assert.Equal(t, secondUuidTokenForTest, actual.AwaitingStatusChunks[0])
+	}
+
 }
 
-func getChunkStatusMockInProgressResponse(t *testing.T, w http.ResponseWriter) {
+func getChunkStatusMockFirstResponse(t *testing.T, w http.ResponseWriter) {
 	resp := UploadChunksStatusResponse{ChunksStatus: []ChunkStatus{
 		{
-			UuidTokenResponse: UuidTokenResponse{UuidToken: uuidTokenForTest},
+			UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest},
+			Status:            Done,
+		},
+		{
+			UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest},
 			Status:            InProgress,
 		},
 	}}
 	writeMockResponse(t, w, resp)
 }
 
-func getChunkStatusMockDoneResponse(t *testing.T, w http.ResponseWriter, file FileRepresentation) {
-	resp := UploadChunksStatusResponse{ChunksStatus: []ChunkStatus{
-		{
-			UuidTokenResponse: UuidTokenResponse{UuidToken: uuidTokenForTest},
-			Status:            Done,
-			Files:             []FileUploadStatusResponse{{FileRepresentation: file, Status: Success, StatusCode: http.StatusOK}},
+func getChunkStatusMockSecondResponse(t *testing.T, w http.ResponseWriter, file FileRepresentation) {
+	resp := UploadChunksStatusResponse{
+		ChunksStatus: []ChunkStatus{
+			{
+				UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest},
+				Status:            Done,
+				Files:             []FileUploadStatusResponse{{FileRepresentation: file, Status: Success, StatusCode: http.StatusOK}},
+			},
 		},
-	}}
+		DeletedChunks: []string{
+			firstUuidTokenForTest,
+		},
+	}
 	writeMockResponse(t, w, resp)
 }
 
@@ -170,19 +199,19 @@ func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 	assert.NoError(t, err)
 }
 
-func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, file FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
+func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, totalUploadChunkVisits *int, file FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	return commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
-			getUploadChunkMockResponse(t, w)
-		} else if r.RequestURI == "/"+pluginsExecuteRestApi+"getUploadChunksStatus" {
+			*totalUploadChunkVisits++
+			getUploadChunkMockResponse(t, w, totalUploadChunkVisits)
+		} else if r.RequestURI == "/"+pluginsExecuteRestApi+syncChunks {
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
-
 			// If already visited chunk status, return status done this time.
-			if *totalChunkStatusVisits > 1 {
-				getChunkStatusMockDoneResponse(t, w, file)
+			if *totalChunkStatusVisits == 1 {
+				getChunkStatusMockFirstResponse(t, w)
 			} else {
-				getChunkStatusMockInProgressResponse(t, w)
+				getChunkStatusMockSecondResponse(t, w, file)
 			}
 		}
 	})

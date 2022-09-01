@@ -12,7 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.7
 	github.com/jfrog/build-info-go v1.5.0
 	github.com/jfrog/gofrog v1.2.1
-	github.com/jfrog/jfrog-client-go v0.0.0-00010101000000-000000000000
+	github.com/jfrog/jfrog-client-go v1.22.0
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -22,8 +22,10 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
 	github.com/vbauerster/mpb/v7 v7.5.2
-	golang.org/x/mod v0.5.1
+	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035
+	golang.org/x/text v0.3.7
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -82,15 +84,13 @@ require (
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.21.1-0.20220828160454-7c617b0d1582
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.21.1-0.20220828160454-7c617b0d1582
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.4.2-0.20220824162930-2f2a2893d4a7
 

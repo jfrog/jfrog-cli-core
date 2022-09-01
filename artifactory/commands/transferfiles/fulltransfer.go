@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// Time to periodically write the repository tree state to file.
 const saveRepositoryTreeStateMinutes = 10
 
 // Manages the phase of performing a full transfer of the repository.
@@ -284,12 +285,14 @@ func convertRepoStateToFileRepresentation(repoKey, relativePath string, state *r
 	return
 }
 
-// If previous repo state exists, uses the known info to handle the current directory.
+// A repository state stores the progress of transferring a repository, as explained in RepoStateManager.
+// In case a transfer is interrupted, the transfer can continue from it's saved state instead of starting from scratch.
+// If such previous repo state does exist, use the known info to handle the current directory.
 // Decides how to continue handling the directory by the node's state in the repository state (completed / done exploring / requires exploring)
 // Outputs:
-// node - node in repository state.
-// done - whether the node directory is requires exploring or not.
-// previousChildrenMap - if the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
+// node - A node in the repository state tree, which represents the current directory.
+// done - Whether the node directory should be explored or not. Exploring means searching for the directory contents. If all contents were previously found, there's no need to search again.
+// previousChildrenMap - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
 func (m *fullTransferPhase) getNodeAndHandleByState(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
 	uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (node *repostate.Node, done bool, previousChildrenMap map[string]*repostate.Node, err error) {
 	node, err = m.stateManager.LookUpNode(params.relativePath)
@@ -300,6 +303,7 @@ func (m *fullTransferPhase) getNodeAndHandleByState(params folderParams, logMsgP
 		log.Debug(logMsgPrefix+"Skipping completed folder: ", path.Join(params.repoKey, params.relativePath))
 		return nil, true, nil, nil
 	}
+	// All directory contents were already found, but not handled.
 	if node.DoneExploring {
 		return nil, true, nil, m.handleNodeExplored(node, params, logMsgPrefix, pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
@@ -320,12 +324,6 @@ func (m *fullTransferPhase) handleNodeExplored(node *repostate.Node, params fold
 	}
 	if len(node.FilesNames) > 0 {
 		_, err = uploadByChunks(convertRepoStateToFileRepresentation(params.repoKey, params.relativePath, node), uploadTokensChan, m.phaseBase, delayHelper, errorsChannelMng, &pcWrapper)
-		if m.progressBar != nil {
-			err = m.progressBar.IncrementPhaseBy(m.phaseId, len(node.FilesNames))
-			if err != nil {
-				return err
-			}
-		}
 	}
 	return
 }

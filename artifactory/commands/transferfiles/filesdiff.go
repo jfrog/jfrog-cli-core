@@ -189,7 +189,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 	}
 
 	if f.progressBar != nil {
-		err := f.progressBar.IncrementPhase(f.phaseId)
+		err := f.progressBar.IncrementPhaseBy(f.phaseId, 1)
 		if err != nil {
 			return err
 		}
@@ -266,7 +266,7 @@ func (f *filesDiffPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, u
 		}
 
 		if f.progressBar != nil {
-			err = f.progressBar.IncrementPhase(f.phaseId)
+			err = f.progressBar.IncrementPhaseBy(f.phaseId, 1)
 			if err != nil {
 				return err
 			}

@@ -104,24 +104,6 @@ func (t *TransferProgressMng) ShouldDisplay() bool {
 	return t.shouldDisplay
 }
 
-// IncrementPhase increments completed tasks count for a specific phase by 1.
-func (t *TransferProgressMng) IncrementPhase(id int) error {
-	if len(t.phases) == 0 {
-		// Progress bar was terminated
-		return nil
-	}
-	if id < 0 || id > len(t.phases)-1 {
-		return errorutils.CheckErrorf("IncrementPhase: invalid phase id %d", id)
-	}
-	if t.phases[id].GetTasksProgressBar().GetTotal() == 0 {
-		return nil
-	}
-	if t.ShouldDisplay() {
-		t.barsMng.Increment(t.phases[id])
-	}
-	return nil
-}
-
 // IncrementPhaseBy increments completed tasks count for a specific phase by n.
 func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
 	if len(t.phases) == 0 {

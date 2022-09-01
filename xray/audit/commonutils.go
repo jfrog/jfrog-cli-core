@@ -1,7 +1,11 @@
 package audit
 
 import (
-	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -14,10 +18,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
@@ -73,8 +73,7 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 
 		scanResults, err := xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {
-			log.Error(fmt.Sprintf("Scanning %s failed with error: %s", moduleName, err.Error()))
-			break
+			return results, errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
 		}
 		for i := range scanResults.Vulnerabilities {
 			scanResults.Vulnerabilities[i].Technology = technology
@@ -83,10 +82,6 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 			scanResults.Violations[i].Technology = technology
 		}
 		results = append(results, *scanResults)
-	}
-	if results == nil || len(results) < 1 {
-		// If all scans failed, fail the audit command
-		return results, errorutils.CheckErrorf("Audit command failed due to Xray internal error")
 	}
 	return results, nil
 }

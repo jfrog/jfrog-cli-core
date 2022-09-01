@@ -2,11 +2,6 @@ package audit
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
-
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -19,40 +14,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
 )
-
-func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
-	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
-	assert.NoError(t, fileutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
-	wd, err := os.Getwd()
-	assert.NoError(t, err, "Failed to get current dir")
-	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tempDirPath)
-	return tempDirPath, func() {
-		chdirCallback()
-		createTempDirCallback()
-	}
-}
-
-func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
-	module := GetModule(modules, moduleId)
-	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
-	return module
-}
-
-// Get a specific module from the provided modules list
-func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
-	for _, module := range modules {
-		splitIdentifier := strings.Split(module.Id, "//")
-		id := splitIdentifier[0]
-		if len(splitIdentifier) > 1 {
-			id = splitIdentifier[1]
-		}
-		if id == moduleId {
-			return module
-		}
-	}
-	return nil
-}
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
 	return buildXrayDependencyTree(treeHelper, []string{nodeId})
@@ -123,4 +89,37 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 		return results, errorutils.CheckErrorf("Audit command failed due to Xray internal error")
 	}
 	return results, nil
+}
+
+func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	assert.NoError(t, fileutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tempDirPath)
+	return tempDirPath, func() {
+		chdirCallback()
+		createTempDirCallback()
+	}
+}
+
+func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
+	module := GetModule(modules, moduleId)
+	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
+	return module
+}
+
+// Get a specific module from the provided modules list
+func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
+	for _, module := range modules {
+		splitIdentifier := strings.Split(module.Id, "//")
+		id := splitIdentifier[0]
+		if len(splitIdentifier) > 1 {
+			id = splitIdentifier[1]
+		}
+		if id == moduleId {
+			return module
+		}
+	}
+	return nil
 }

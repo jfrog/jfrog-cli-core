@@ -37,6 +37,9 @@ func (p *propertiesDiffPhase) phaseStarted() error {
 }
 
 func (p *propertiesDiffPhase) phaseDone() error {
+	if p.ShouldStop() {
+		return nil
+	}
 	return setPropsDiffHandlingCompleted(p.repoKey)
 }
 
@@ -132,7 +135,7 @@ type nodeStatus struct {
 
 func (p *propertiesDiffPhase) makePropsHandlingStatus() (propsHandlingStatus, error) {
 	newStatus := propsHandlingStatus{}
-	nodes, err := getRunningNodes(p.srcRtDetails)
+	nodes, err := getRunningNodes(p.context, p.srcRtDetails)
 	if err != nil {
 		return newStatus, err
 	}

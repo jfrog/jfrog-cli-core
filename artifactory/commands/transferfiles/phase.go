@@ -1,6 +1,8 @@
 package transferfiles
 
 import (
+	"context"
+	"errors"
 	"time"
 
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -16,7 +18,6 @@ const (
 )
 
 type transferPhase interface {
-	StoppableComponent
 	run() error
 	phaseStarted() error
 	phaseDone() error
@@ -30,10 +31,11 @@ type transferPhase interface {
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
 	initProgressBar() error
+	StopGracefully()
 }
 
 type phaseBase struct {
-	*Stoppable
+	context                   context.Context
 	repoKey                   string
 	buildInfoRepo             bool
 	phaseId                   int
@@ -46,31 +48,33 @@ type phaseBase struct {
 	repoSummary               serviceUtils.RepositorySummary
 }
 
+func (pb *phaseBase) ShouldStop() bool {
+	return pb.context.Err() != nil
+}
+
 // Return InterruptionError, if stop is true
 func (pb *phaseBase) getInterruptionErr() error {
-	if pb.ShouldStop() {
+	if errors.Is(pb.context.Err(), context.Canceled) {
 		return new(InterruptionErr)
 	}
 	return nil
 }
 
-// Stop the phase gracefully and show it in the progressbar
-func (pb *phaseBase) Stop() {
-	pb.Stoppable.Stop()
+// Indicate graceful stopping in the progress bar
+func (pb *phaseBase) StopGracefully() {
 	if pb.progressBar != nil {
 		pb.progressBar.StopGracefully()
 	}
 }
 
-func getPhaseByNum(i int, repoKey string, buildInfoRepo bool) transferPhase {
-	stoppable := new(Stoppable)
+func getPhaseByNum(context context.Context, i int, repoKey string, buildInfoRepo bool) transferPhase {
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &fullTransferPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: PropertiesDiffPhase, Stoppable: stoppable}}
+		return &propertiesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: PropertiesDiffPhase}}
 	}
 	return nil
 }

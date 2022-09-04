@@ -68,14 +68,17 @@ func (f *filesDiffPhase) phaseStarted() error {
 }
 
 func (f *filesDiffPhase) phaseDone() error {
-	err := setFilesDiffHandlingCompleted(f.repoKey)
-	if err != nil {
-		return err
+	// If the phase stopped gracefully (with ctrl+c), don't mark the phase as completed
+	if !f.ShouldStop() {
+		if err := setFilesDiffHandlingCompleted(f.repoKey); err != nil {
+			return err
+		}
 	}
+
 	if f.progressBar != nil {
-		err = f.progressBar.DonePhase(f.phaseId)
+		return f.progressBar.DonePhase(f.phaseId)
 	}
-	return err
+	return nil
 }
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
@@ -211,7 +214,7 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 
 func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
-	return runAql(f.srcRtDetails, query)
+	return runAql(f.context, f.srcRtDetails, query)
 }
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {

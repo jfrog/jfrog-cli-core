@@ -18,6 +18,7 @@ import (
 // New folders found are handled as a separate task, and files are uploaded in chunks and polled on for status.
 type fullTransferPhase struct {
 	phaseBase
+	transferManager *transferManager
 }
 
 func (m *fullTransferPhase) getSourceDetails() *coreConfig.ServerDetails {
@@ -58,10 +59,13 @@ func (m *fullTransferPhase) phaseStarted() error {
 }
 
 func (m *fullTransferPhase) phaseDone() error {
-	err := setRepoFullTransferCompleted(m.repoKey)
-	if err != nil {
-		return err
+	// If the phase stopped gracefully (with ctrl+c), don't mark the phase as completed
+	if !m.ShouldStop() {
+		if err := setRepoFullTransferCompleted(m.repoKey); err != nil {
+			return err
+		}
 	}
+
 	if m.progressBar != nil {
 		return m.progressBar.DonePhase(m.phaseId)
 	}
@@ -107,7 +111,7 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 }
 
 func (m *fullTransferPhase) run() error {
-	manager := newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
+	m.transferManager = newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
@@ -116,7 +120,14 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	return manager.doTransferWithProducerConsumer(action)
+	return m.transferManager.doTransferWithProducerConsumer(action)
+}
+
+func (m *fullTransferPhase) StopGracefully() {
+	m.phaseBase.StopGracefully()
+	if m.transferManager != nil {
+		m.transferManager.stopProcuderConsumer()
+	}
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -148,6 +159,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	var result *servicesUtils.AqlSearchResult
 	paginationI := 0
 	for {
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+			return
+		}
 		result, err = m.getDirectoryContentsAql(params.repoKey, params.relativePath, paginationI)
 		if err != nil {
 			return err
@@ -217,7 +231,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 func (m *fullTransferPhase) getDirectoryContentsAql(repoKey, relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
 	query := generateFolderContentsAqlQuery(repoKey, relativePath, paginationOffset)
-	return runAql(m.srcRtDetails, query)
+	return runAql(m.context, m.srcRtDetails, query)
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {

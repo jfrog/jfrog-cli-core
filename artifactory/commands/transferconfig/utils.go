@@ -48,8 +48,8 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 		log.Debug("Archiving " + neededFile)
 		fileContent, err := os.ReadFile(neededFilePath)
 		if err != nil {
-			if os.IsNotExist(err) && strings.HasSuffix(neededFile, "url.signing.key") {
-				log.Info("url.signing.key file is missing in the source Artifactory server. Skipping...")
+			if os.IsNotExist(err) && strings.Contains(neededFile, "security") {
+				log.Info(neededFile + " file is missing in the source Artifactory server. Skipping...")
 				continue
 			}
 			return nil, errorutils.CheckError(err)

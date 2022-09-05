@@ -96,11 +96,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	sourceLocalRepos, err := tdc.getSourceLocalRepositories()
+	sourceLocalRepos, sourceBuildInfoRepos, err := tdc.getAllLocalRepos(tdc.sourceServerDetails, tdc.sourceStorageInfoManager)
 	if err != nil {
 		return err
 	}
-	targetAllLocalRepos, err := tdc.getAllTargetLocalRepositories()
+	allSourceLocalRepos := append(sourceLocalRepos, sourceBuildInfoRepos...)
+	targetLocalRepos, targetBuildInfoRepos, err := tdc.getAllLocalRepos(tdc.targetServerDetails, tdc.targetStorageInfoManager)
 	if err != nil {
 		return err
 	}
@@ -110,21 +111,23 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	defer finishStopping()
 
 	// Set progress bar with the length of the taget local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(int64(len(targetAllLocalRepos)))
+	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)))
 	if err != nil {
 		return err
 	}
 
 	// Transfer local repositories
-	if err := tdc.transferRepos(sourceLocalRepos, targetAllLocalRepos, false, newPhase, srcUpService); err != nil {
+	if err := tdc.transferRepos(sourceLocalRepos, targetLocalRepos, false, newPhase, srcUpService); err != nil {
 		return tdc.cleanup(err, sourceLocalRepos)
 	}
 
 	// Transfer build-info repositories
-	sourceLocalRepos, err = tdc.transferBuildInfoRepos(sourceLocalRepos, targetAllLocalRepos, newPhase, srcUpService)
+	if err := tdc.transferRepos(sourceBuildInfoRepos, targetBuildInfoRepos, true, newPhase, srcUpService); err != nil {
+		return tdc.cleanup(err, allSourceLocalRepos)
+	}
 
 	// Close progressBar and create CSV errors summary file
-	return tdc.cleanup(err, sourceLocalRepos)
+	return tdc.cleanup(err, allSourceLocalRepos)
 }
 
 func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
@@ -217,21 +220,6 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	return
 }
 
-func (tdc *TransferFilesCommand) transferBuildInfoRepos(sourceRepos []string, targetRepos []string, newPhase *transferPhase, srcUpService *srcUserPluginService) ([]string, error) {
-	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
-	if err != nil {
-		return sourceRepos, err
-	}
-
-	sourceBuildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(sourceStorageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
-	if err != nil {
-		return sourceRepos, err
-	}
-	allSourceRepos := append(sourceRepos, sourceBuildInfoRepoKeys...)
-
-	return allSourceRepos, tdc.transferRepos(sourceBuildInfoRepoKeys, targetRepos, true, newPhase, srcUpService)
-}
-
 func (tdc *TransferFilesCommand) createTransferDir() error {
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
@@ -312,35 +300,30 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProgressBar(tdc.progressbar)
 }
 
-func (tdc *TransferFilesCommand) getSourceLocalRepositories() ([]string, error) {
-	serviceManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
+// Get all local and build-info repositories of the input server
+// serverDetails      - Source or target server details
+// storageInfoManager - Source or target storage info manager
+func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDetails, storageInfoManager *utils.StorageInfoManager) ([]string, []string, error) {
+	serviceManager, err := createTransferServiceManager(tdc.context, serverDetails)
 	if err != nil {
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
-	return utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
-}
-
-func (tdc *TransferFilesCommand) getAllTargetLocalRepositories() ([]string, error) {
-	serviceManager, err := createTransferServiceManager(tdc.context, tdc.targetServerDetails)
+	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
 	if err != nil {
-		return []string{}, err
-	}
-	targetRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
-	if err != nil {
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
 
-	targetStorageInfo, err := tdc.targetStorageInfoManager.GetStorageInfo()
+	storageInfo, err := storageInfoManager.GetStorageInfo()
 	if err != nil {
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
 
-	targetBuildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(targetStorageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+	buildInfoRepoKeys, err := utils.GetFilteredBuildInfoRepositories(storageInfo, tdc.includeReposPatterns, tdc.excludeReposPatterns)
 	if err != nil {
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
 
-	return append(targetRepos, targetBuildInfoRepoKeys...), err
+	return localRepos, buildInfoRepoKeys, err
 }
 
 func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {

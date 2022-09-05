@@ -224,10 +224,24 @@ func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, to
 	})
 }
 
-func TestGetSourceLocalRepositories(t *testing.T) {
+func TestGetAllLocalRepositories(t *testing.T) {
 	// Prepare mock server
 	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/repositories?type=local&packageType=" {
+		if r.RequestURI == "/api/storageinfo/calculate" {
+			// Reponse for CalculateStorageInfo
+			w.WriteHeader(http.StatusAccepted)
+		} else if r.RequestURI == "/api/storageinfo" {
+			// Reponse for GetStorageInfo
+			w.WriteHeader(http.StatusOK)
+			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{
+				{RepoKey: "repo-1"}, {RepoKey: "repo-2"},
+				{RepoKey: "artifactory-build-info", PackageType: "BuildInfo"}, {RepoKey: "proj-build-info", PackageType: "BuildInfo"}},
+			}
+			bytes, err := json.Marshal(response)
+			assert.NoError(t, err)
+			_, err = w.Write(bytes)
+			assert.NoError(t, err)
+		} else if r.RequestURI == "/api/repositories?type=local&packageType=" {
 			// Reponse for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
@@ -239,47 +253,14 @@ func TestGetSourceLocalRepositories(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	// Get and assert local repositories
-	transferFilesCommand := NewTransferFilesCommand(serverDetails, nil)
-	localRepos, err := transferFilesCommand.getSourceLocalRepositories()
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []string{"repo-1", "repo-2"}, localRepos)
-}
-
-func TestGetAllTargetLocalRepositories(t *testing.T) {
-	// Prepare mock server
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/storageinfo/calculate" {
-			// Reponse for CalculateStorageInfo
-			w.WriteHeader(http.StatusAccepted)
-		} else if r.RequestURI == "/api/storageinfo" {
-			// Reponse for GetStorageInfo
-			w.WriteHeader(http.StatusOK)
-			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}}}
-			bytes, err := json.Marshal(response)
-			assert.NoError(t, err)
-			_, err = w.Write(bytes)
-			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/repositories?type=local&packageType=" {
-			// Reponse for GetWithFilter
-			w.WriteHeader(http.StatusOK)
-			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}, {Key: "artifactory-build-info"}, {Key: "proj-build-info"}}
-			bytes, err := json.Marshal(response)
-			assert.NoError(t, err)
-			_, err = w.Write(bytes)
-			assert.NoError(t, err)
-		}
-	})
-	defer testServer.Close()
-
-	// Get and assert regular local and build info repositories of the target server
-	transferFilesCommand := NewTransferFilesCommand(nil, serverDetails)
+	// Get and assert regular local and build info repositories
+	transferFilesCommand := NewTransferFilesCommand(nil, nil)
 	storageInfoManager, err := coreUtils.NewStorageInfoManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
-	transferFilesCommand.targetStorageInfoManager = storageInfoManager
-	localRepos, err := transferFilesCommand.getAllTargetLocalRepositories()
+	localRepos, localBuildInfoRepo, err := transferFilesCommand.getAllLocalRepos(serverDetails, storageInfoManager)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []string{"repo-1", "repo-2", "artifactory-build-info", "proj-build-info"}, localRepos)
+	assert.ElementsMatch(t, []string{"repo-1", "repo-2"}, localRepos)
+	assert.ElementsMatch(t, []string{"artifactory-build-info", "proj-build-info"}, localBuildInfoRepo)
 }
 
 func TestInitStorageInfoManagers(t *testing.T) {

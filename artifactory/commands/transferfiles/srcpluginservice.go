@@ -152,15 +152,16 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 	if err != nil {
 		return nil, err
 	}
+
+	err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
+	if err != nil {
+		return nil, err
+	}
+
 	var result VerifyCompatibilityResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
-	}
-
-	err = errorutils.CheckResponseStatus(resp, http.StatusOK)
-	if err != nil {
-		return nil, err
 	}
 
 	return &result, nil

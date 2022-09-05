@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/version"
+	"golang.org/x/exp/slices"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,7 +12,6 @@ import (
 
 	"strconv"
 
-	buildInfoUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -153,7 +153,7 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 
 func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, targetRepos []string,
 	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) (err error) {
-	if !buildInfoUtils.IsStringInSlice(sourceRepoKey, targetRepos) {
+	if !slices.Contains(targetRepos, sourceRepoKey) {
 		log.Error("repository '" + sourceRepoKey + "' does not exist in target. Skipping...")
 		return
 	}
@@ -421,7 +421,7 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 }
 
 func validateDataTransferPluginMinimumVersion(currentVersion string) error {
-	if strings.Contains(dataTransferPluginMinVersion, "SNAPSHOT") {
+	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
 	curVer := version.NewVersion(currentVersion)

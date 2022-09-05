@@ -44,8 +44,8 @@ func BuildNugetDependencyTree() (nodes []*services.GraphNode, err error) {
 }
 
 func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.GraphNode) {
-	treeMap := make(map[string][]string)
 	for _, module := range buildInfo.Modules {
+		treeMap := make(map[string][]string)
 		for _, dependency := range module.Dependencies {
 			dependencyId := nugetPackageTypeIdentifier + dependency.Id
 			parent := nugetPackageTypeIdentifier + dependency.RequestedBy[0][0]

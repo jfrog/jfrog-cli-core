@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -164,9 +165,6 @@ func (cc *ConfigCommand) config() error {
 			coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
 			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
-			if cc.isUrlUnsafe() {
-				log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider replacing it with HTTPS.")
-			}
 		}
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -189,6 +187,10 @@ func (cc *ConfigCommand) config() error {
 		return err
 	}
 
+	if err = cc.assertUrlsSafe(); err != nil {
+		return err
+	}
+
 	if cc.encPassword && cc.details.ArtifactoryUrl != "" {
 		err = cc.encryptPassword()
 		if err != nil {
@@ -201,17 +203,6 @@ func (cc *ConfigCommand) config() error {
 	}
 
 	return config.SaveServersConf(configurations)
-}
-
-func (cc *ConfigCommand) isUrlUnsafe() bool {
-	artifactoryUrl := cc.details.Url
-	if !strings.HasPrefix(artifactoryUrl, "http://") {
-		return false
-	}
-	if strings.Contains(artifactoryUrl, "127.0.0.1") || strings.Contains(artifactoryUrl, "localhost") {
-		return false
-	}
-	return true
 }
 
 func (cc *ConfigCommand) configRefreshableToken() {
@@ -300,12 +291,6 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
 		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
-
-		if cc.isUrlUnsafe() {
-			if cc.disablePrompts || !coreutils.AskYesNo("We noticed that your JFrog URL uses an insecure HTTP connection. Are you sure you want to continue?", false) {
-				return errorutils.CheckErrorf("config was aborted due to an insecure HTTP connection")
-			}
-		}
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
@@ -645,6 +630,47 @@ func (cc *ConfigCommand) encryptPassword() error {
 	}
 	cc.details.Password = encPassword
 	return err
+}
+
+// Assert all services URLs are safe
+func (cc *ConfigCommand) assertUrlsSafe() error {
+	for _, url := range []string{cc.details.Url, cc.details.AccessUrl, cc.details.ArtifactoryUrl,
+		cc.details.DistributionUrl, cc.details.MissionControlUrl, cc.details.PipelinesUrl, cc.details.XrayUrl} {
+		if isUrlSafe(url) {
+			continue
+		}
+		if cc.interactive {
+			if cc.disablePrompts || !coreutils.AskYesNo("We noticed that your JFrog URL uses an insecure HTTP connection. Are you sure you want to continue?", false) {
+				return errorutils.CheckErrorf("config was aborted due to an insecure HTTP connection")
+			}
+		} else {
+			log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider replacing it with HTTPS.")
+		}
+		return nil
+	}
+	return nil
+}
+
+// Return true if a URL is safe. URL is considered not safe if the following conditions are met:
+// 1. The URL uses an http:// scheme
+// 2. The URL leads to a URL outside of the local machine
+func isUrlSafe(urlToCheck string) bool {
+	url, err := url.Parse(urlToCheck)
+	if err != nil {
+		// Unparseable URL is not unsafe
+		return true
+	}
+
+	if url.Scheme != "http" {
+		return true
+	}
+
+	hostName := url.Hostname()
+	if hostName == "127.0.0.1" || hostName == "localhost" {
+		return true
+	}
+
+	return false
 }
 
 func checkSingleAuthMethod(details *config.ServerDetails) error {

@@ -68,7 +68,7 @@ func (f *filesDiffPhase) phaseStarted() error {
 }
 
 func (f *filesDiffPhase) phaseDone() error {
-	// If the phase stopped gracefully (with ctrl+c), don't mark the phase as completed
+	// If the phase stopped gracefully, don't mark the phase as completed
 	if !f.ShouldStop() {
 		if err := setFilesDiffHandlingCompleted(f.repoKey); err != nil {
 			return err

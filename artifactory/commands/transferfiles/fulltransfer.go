@@ -59,7 +59,7 @@ func (m *fullTransferPhase) phaseStarted() error {
 }
 
 func (m *fullTransferPhase) phaseDone() error {
-	// If the phase stopped gracefully (with ctrl+c), don't mark the phase as completed
+	// If the phase stopped gracefully, don't mark the phase as completed
 	if !m.ShouldStop() {
 		if err := setRepoFullTransferCompleted(m.repoKey); err != nil {
 			return err

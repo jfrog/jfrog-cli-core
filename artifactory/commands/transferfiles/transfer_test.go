@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -22,10 +23,16 @@ import (
 
 func TestHandleStopInitAndClose(t *testing.T) {
 	transferFilesCommand := NewTransferFilesCommand(nil, nil)
-
 	finishStopping, _ := transferFilesCommand.handleStop(nil)
 	finishStopping()
-	assert.False(t, transferFilesCommand.ShouldStop())
+}
+
+func TestCancelFunc(t *testing.T) {
+	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	assert.False(t, transferFilesCommand.shouldStop())
+
+	transferFilesCommand.cancelFunc()
+	assert.True(t, transferFilesCommand.shouldStop())
 }
 
 const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
@@ -63,7 +70,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 }
 
 func initSrcUserPluginServiceManager(t *testing.T, serverDetails *coreConfig.ServerDetails) *srcUserPluginService {
-	srcPluginManager, err := createSrcRtUserPluginServiceManager(serverDetails)
+	srcPluginManager, err := createSrcRtUserPluginServiceManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	return srcPluginManager
 }
@@ -113,9 +120,9 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidate(fileSample)
-	stopped := uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
+	stopped := uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
-	stopped = uploadChunkWhenPossible(&phaseBase{srcUpService: srcPluginManager, Stoppable: &Stoppable{}}, chunk, uploadTokensChan, nil)
+	stopped = uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 2, curProcessedUploadChunks)
 
@@ -267,7 +274,7 @@ func TestGetAllTargetLocalRepositories(t *testing.T) {
 
 	// Get and assert regular local and build info repositories of the target server
 	transferFilesCommand := NewTransferFilesCommand(nil, serverDetails)
-	storageInfoManager, err := coreUtils.NewStorageInfoManager(serverDetails)
+	storageInfoManager, err := coreUtils.NewStorageInfoManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	transferFilesCommand.targetStorageInfoManager = storageInfoManager
 	localRepos, err := transferFilesCommand.getAllTargetLocalRepositories()

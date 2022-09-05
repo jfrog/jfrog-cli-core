@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ func TestCalculateStorageInfo(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfoManager, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	storageInfoManager, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
 	assert.NoError(t, err)
 
 	// Calculate and assert storage info
@@ -49,7 +50,7 @@ func TestGetStorageInfo(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfoManager, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	storageInfoManager, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
 	assert.NoError(t, err)
 
 	// Get and assert storage info
@@ -78,8 +79,8 @@ func TestGetSourceRepoSummary(t *testing.T) {
 	defer testServer.Close()
 
 	// Create storage info manager
-	storageInfo, err := NewStorageInfoManager(&config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
-	assert.NoError(t ,err)
+	storageInfo, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t, err)
 
 	// Get repo summary of repo-1
 	repoSummary, err := storageInfo.GetRepoSummary("repo-1")

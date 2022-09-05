@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -85,12 +86,16 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithThreads(serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs)
+	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs)
 }
 
 // Create a service manager with threads.
 // If the value sent for httpRetries is negative, the default will be used.
 func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, threads, httpRetries, httpRetryWaitMilliSecs)
+}
+
+func CreateServiceManagerWithContext(context context.Context, serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -103,7 +108,8 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 		SetServiceDetails(artAuth).
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(serverDetails.InsecureTls).
-		SetDryRun(isDryRun)
+		SetDryRun(isDryRun).
+		SetContext(context)
 	if httpRetries >= 0 {
 		config.SetHttpRetries(httpRetries)
 		config.SetHttpRetryWaitMilliSecs(httpRetryWaitMilliSecs)

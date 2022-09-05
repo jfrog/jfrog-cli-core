@@ -2,11 +2,12 @@ package transferfiles
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
 )
 
 const (
@@ -17,10 +18,11 @@ const (
 type transferManager struct {
 	phaseBase
 	delayUploadComparisonFunctions []shouldDelayUpload
+	pcDetails                      *producerConsumerWrapper
 }
 
-func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) transferManager {
-	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
+func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) *transferManager {
+	return &transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
 type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
@@ -28,8 +30,8 @@ type transferActionType func(pcWrapper *producerConsumerWrapper, uploadTokensCha
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
-	pcWrapper := newProducerConsumerWrapper()
-	return ftm.doTransfer(&pcWrapper, transferAction)
+	ftm.pcDetails = newProducerConsumerWrapper()
+	return ftm.doTransfer(ftm.pcDetails, transferAction)
 }
 
 // Transfer files using a single producer.
@@ -37,8 +39,8 @@ func (ftm *transferManager) doTransferWithSingleProducer(transferAction transfer
 	transferActionPc := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return transferAction(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	pcWrapper := newProducerConsumerWrapper()
-	return ftm.doTransfer(&pcWrapper, transferActionPc)
+	ftm.pcDetails = newProducerConsumerWrapper()
+	return ftm.doTransfer(ftm.pcDetails, transferActionPc)
 }
 
 // This function handles a transfer process as part of a phase.
@@ -122,6 +124,13 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	return returnedError
 }
 
+func (ftm *transferManager) stopProcuderConsumer() {
+	if ftm.pcDetails != nil {
+		ftm.pcDetails.chunkBuilderProducerConsumer.Cancel()
+		ftm.pcDetails.chunkUploaderProducerConsumer.Cancel()
+	}
+}
+
 type PollingTasksManager struct {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChannel chan bool
@@ -185,12 +194,12 @@ type producerConsumerWrapper struct {
 	errorsQueue                   *clientUtils.ErrorsQueue
 }
 
-func newProducerConsumerWrapper() producerConsumerWrapper {
+func newProducerConsumerWrapper() *producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
-	return producerConsumerWrapper{
+	return &producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
 		errorsQueue:                   errorsQueue,

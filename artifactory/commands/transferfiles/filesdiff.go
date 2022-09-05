@@ -228,6 +228,9 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, pagination
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
 func (f *filesDiffPhase) handlePreviousUploadFailures() error {
+	if len(f.errorsFilesToHandle) == 0 {
+		return nil
+	}
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {

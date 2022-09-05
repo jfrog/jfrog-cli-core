@@ -42,7 +42,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	}
 	var mvnOpts []string
 	if v := os.Getenv("MAVEN_OPTS"); v != "" {
-		mvnOpts = strings.Split(v, " ")
+		mvnOpts = strings.Fields(v)
 	}
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)

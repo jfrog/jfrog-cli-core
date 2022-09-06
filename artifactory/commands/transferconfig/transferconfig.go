@@ -292,18 +292,14 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 // Download and decrypt artifactory.config.xml from the source Artifactory server.
 // It is safer to not store the decrypted artifactory.config.xml file in the file system, and therefore we only keep it in memory.
 func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) (configXml string, err error) {
-	// For Artifactory 6, in some cases, the artifactory.config.xml may not be decrypted and the following error returned:
-	// 409: Cannot decrypt without artifactory key file
-	if !version.NewVersion(sourceArtifactoryVersion).AtLeast("7.0.0") {
-		if err = sourceServiceManager.ActivateKeyEncryption(); err != nil {
-			return
-		}
-	}
-
-	if err = sourceServiceManager.DeactivateKeyEncryption(); err != nil {
+	var wasEncrypted bool
+	if wasEncrypted, err = sourceServiceManager.DeactivateKeyEncryption(); err != nil {
 		return "", err
 	}
 	defer func() {
+		if !wasEncrypted {
+			return
+		}
 		activationErr := sourceServiceManager.ActivateKeyEncryption()
 		if err == nil {
 			err = activationErr

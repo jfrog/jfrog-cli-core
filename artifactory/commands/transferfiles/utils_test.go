@@ -1,15 +1,17 @@
 package transferfiles
 
 import (
+	"context"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 type transferFilesHandler func(w http.ResponseWriter, r *http.Request)
@@ -42,7 +44,7 @@ func TestGetRunningNodes(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	runningNodes, err := getRunningNodes(serverDetails)
+	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, runningNodes, []string{"node-1", "node-2", "node-3"})
 }
@@ -153,7 +155,7 @@ func TestGetMaxUniqueSnapshots(t *testing.T) {
 		t.Run(testCase.packageType, func(t *testing.T) {
 			lowerPackageType := strings.ToLower(testCase.packageType)
 			repoSummary := &utils.RepositorySummary{RepoKey: lowerPackageType + "-local", PackageType: testCase.packageType}
-			maxUniqueSnapshots, err := getMaxUniqueSnapshots(serverDetails, repoSummary)
+			maxUniqueSnapshots, err := getMaxUniqueSnapshots(context.Background(), serverDetails, repoSummary)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expectedMaxUniqueSnapshots, maxUniqueSnapshots)
 		})
@@ -193,7 +195,7 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 		t.Run(packageType, func(t *testing.T) {
 			lowerPackageType := strings.ToLower(packageType)
 			repoSummary := &utils.RepositorySummary{RepoKey: lowerPackageType + "-local", PackageType: packageType}
-			err := updateMaxUniqueSnapshots(serverDetails, repoSummary, 5)
+			err := updateMaxUniqueSnapshots(context.Background(), serverDetails, repoSummary, 5)
 			assert.NoError(t, err)
 		})
 	}
@@ -206,7 +208,7 @@ func createMockServer(t *testing.T, testHandler transferFilesHandler) (*httptest
 	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
 
-	serviceManager, err := createSrcRtUserPluginServiceManager(serverDetails)
+	serviceManager, err := createSrcRtUserPluginServiceManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	return testServer, serverDetails, serviceManager
 }

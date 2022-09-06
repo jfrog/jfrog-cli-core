@@ -1,18 +1,21 @@
 package transferfiles
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"io/ioutil"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -35,33 +38,20 @@ func (m *InterruptionErr) Error() string {
 	return "Files transfer was interrupted by user"
 }
 
-type StoppableComponent interface {
-	Stop()
-	ShouldStop() bool
+func createTransferServiceManager(ctx context.Context, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
+	return utils.CreateServiceManagerWithContext(ctx, serverDetails, false, 0, retries, retriesWaitMilliSecs)
 }
 
-type Stoppable struct {
-	stop bool
-}
-
-func (s *Stoppable) Stop() {
-	s.stop = true
-}
-
-func (s *Stoppable) ShouldStop() bool {
-	return s.stop
-}
-
-func createSrcRtUserPluginServiceManager(sourceRtDetails *coreConfig.ServerDetails) (*srcUserPluginService, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
+func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *config.ServerDetails) (*srcUserPluginService, error) {
+	serviceManager, err := createTransferServiceManager(ctx, sourceRtDetails)
 	if err != nil {
 		return nil, err
 	}
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
 }
 
-func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
+func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
+	serviceManager, err := createTransferServiceManager(ctx, sourceRtDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +78,7 @@ func runAql(sourceRtDetails *coreConfig.ServerDetails, query string) (result *se
 	return result, errorutils.CheckError(err)
 }
 
-func createTargetAuth(targetRtDetails *coreConfig.ServerDetails) TargetAuth {
+func createTargetAuth(targetRtDetails *config.ServerDetails) TargetAuth {
 	targetAuth := TargetAuth{TargetArtifactoryUrl: targetRtDetails.ArtifactoryUrl,
 		TargetToken: targetRtDetails.AccessToken}
 	if targetAuth.TargetToken == "" {
@@ -350,7 +340,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
-			return errorutils.CheckErrorf("%s stopped.", logMsgPrefix)
+			return errorutils.CheckErrorf("%sstopped.", logMsgPrefix)
 		}
 		return nil
 	}
@@ -424,8 +414,8 @@ func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelM
 	return false
 }
 
-func getRunningNodes(sourceRtDetails *coreConfig.ServerDetails) ([]string, error) {
-	serviceManager, err := utils.CreateServiceManager(sourceRtDetails, retries, retriesWaitMilliSecs, false)
+func getRunningNodes(ctx context.Context, sourceRtDetails *config.ServerDetails) ([]string, error) {
+	serviceManager, err := createTransferServiceManager(ctx, sourceRtDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -457,9 +447,9 @@ func stopTransferInArtifactoryNodes(srcUpService *srcUserPluginService, runningN
 // getMaxUniqueSnapshots gets the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
 // or max unique tags (Docker).
 // For repositories of other package types or if an error is thrown, this function returns -1.
-func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary) (maxUniqueSnapshots int, err error) {
+func getMaxUniqueSnapshots(ctx context.Context, rtDetails *config.ServerDetails, repoSummary *serviceUtils.RepositorySummary) (maxUniqueSnapshots int, err error) {
 	maxUniqueSnapshots = -1
-	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+	serviceManager, err := createTransferServiceManager(ctx, rtDetails)
 	if err != nil {
 		return
 	}
@@ -513,8 +503,8 @@ func getMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *ser
 // updateMaxUniqueSnapshots updates the local repository's setting of max unique snapshots (Maven, Gradle, NuGet, Ivy and SBT)
 // or max unique tags (Docker).
 // For repositories of other package types, this function does nothing.
-func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
-	serviceManager, err := utils.CreateServiceManager(rtDetails, retries, retriesWaitMilliSecs, false)
+func updateMaxUniqueSnapshots(ctx context.Context, rtDetails *config.ServerDetails, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	serviceManager, err := createTransferServiceManager(ctx, rtDetails)
 	if err != nil {
 		return err
 	}
@@ -571,8 +561,8 @@ func updateMaxUniqueSnapshots(rtDetails *coreConfig.ServerDetails, repoSummary *
 	return nil
 }
 
-func stopTransferInArtifactory(serverDetails *coreConfig.ServerDetails, srcUpService *srcUserPluginService) error {
-	runningNodes, err := getRunningNodes(serverDetails)
+func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
+	runningNodes, err := getRunningNodes(ctx, serverDetails)
 	if err != nil {
 		return err
 	} else {

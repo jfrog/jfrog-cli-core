@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -22,8 +23,8 @@ type StorageInfoManager struct {
 	serviceManager artifactory.ArtifactoryServicesManager
 }
 
-func NewStorageInfoManager(serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
-	serviceManager, err := CreateServiceManager(serverDetails, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs, false)
+func NewStorageInfoManager(ctx context.Context, serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
+	serviceManager, err := CreateServiceManagerWithContext(ctx, serverDetails, false, 0, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs)
 	if err != nil {
 		return nil, err
 	}

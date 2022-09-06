@@ -14,16 +14,16 @@ import (
 )
 
 type GradleCommand struct {
-	tasks                     string
-	configPath                string
-	configuration             *utils.BuildConfiguration
-	serverDetails             *config.ServerDetails
-	threads                   int
-	detailedSummary           bool
-	xrayScan                  bool
-	scanOutputFormat          xrutils.OutputFormat
-	result                    *commandsutils.Result
-	deploymentDisabled        bool
+	tasks              string
+	configPath         string
+	configuration      *utils.BuildConfiguration
+	serverDetails      *config.ServerDetails
+	threads            int
+	detailedSummary    bool
+	xrayScan           bool
+	scanOutputFormat   xrutils.OutputFormat
+	result             *commandsutils.Result
+	deploymentDisabled bool
 	// File path for Gradle extractor in which all build's artifacts details will be listed at the end of the build.
 	buildArtifactsDetailsFile string
 }

@@ -51,69 +51,55 @@ type TechData struct {
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		packageType:       string(Maven),
 		indicators:        []string{"pom.xml"},
 		ciSetupSupport:    true,
 		packageDescriptor: "pom.xml",
 		techName:          string(Maven),
-		capitalized:       cases.Title(language.Und).String(string(Maven)),
 		execCommand:       "mvn",
 	},
 	Gradle: {
-		packageType:       string(Gradle),
 		indicators:        []string{".gradle"},
 		ciSetupSupport:    true,
 		packageDescriptor: "build.gradle",
 		techName:          string(Gradle),
-		capitalized:       cases.Title(language.Und).String(string(Gradle)),
 	},
 	Npm: {
-		packageType:       string(Npm),
 		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:    true,
 		packageDescriptor: "package.json",
 		techName:          string(Npm),
-		capitalized:       cases.Title(language.Und).String(string(Npm)),
 		formal:            string(Npm),
 	},
 	Yarn: {
-		packageType:       string(Npm),
 		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor: "package.json",
 		techName:          string(Yarn),
-		capitalized:       cases.Title(language.Und).String(string(Yarn)),
 	},
 	Go: {
-		packageType:       string(Go),
 		indicators:        []string{"go.mod"},
 		packageDescriptor: "go.mod",
 		techName:          string(Go),
-		capitalized:       cases.Title(language.Und).String(string(Go)),
 	},
 	Pip: {
 		packageType: Pypi,
 		indicators:  []string{"setup.py", "requirements.txt"},
 		exclude:     []string{"Pipfile", "Pipfile.lock"},
 		techName:    string(Pip),
-		capitalized: cases.Title(language.Und).String(string(Pip)),
 	},
 	Pipenv: {
 		packageType:       Pypi,
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
 		techName:          string(Pipenv),
-		capitalized:       cases.Title(language.Und).String(string(Pipenv)),
 	},
 	Nuget: {
-		packageType: string(Nuget),
 		indicators:  []string{".sln", ".csproj"},
 		techName:    string(Nuget),
 		capitalized: cases.Title(language.Und).String(string(Nuget)),
 		formal:      "NuGet",
 	},
 	Dotnet: {
-		packageType: string(Nuget),
 		indicators:  []string{".sln", ".csproj"},
 		techName:    string(Dotnet),
 		capitalized: cases.Title(language.Und).String(string(Dotnet)),
@@ -125,7 +111,6 @@ func (tech Technology) ToFormal() string {
 	if technologiesData[tech].formal == "" {
 		return technologiesData[tech].capitalized
 	}
-
 	return technologiesData[tech].formal
 }
 
@@ -134,22 +119,27 @@ func (tech Technology) ToString() string {
 }
 
 func (tech Technology) ToCapitalize() string {
-	return technologiesData[tech].capitalized
+	return cases.Title(language.Und).String(technologiesData[tech].techName)
 }
 
 func (tech Technology) GetExecCommandName() string {
 	if technologiesData[tech].execCommand == "" {
 		return technologiesData[tech].techName
 	}
-
 	return technologiesData[tech].execCommand
 }
 
 func (tech Technology) GetPackageType() string {
+	if technologiesData[tech].packageType == "" {
+		return technologiesData[tech].techName
+	}
 	return technologiesData[tech].packageType
 }
 
 func (tech Technology) GetPackageDescriptor() string {
+	if technologiesData[tech].packageDescriptor == "" {
+		return tech.ToString() + " Package Descriptor"
+	}
 	return technologiesData[tech].packageDescriptor
 }
 

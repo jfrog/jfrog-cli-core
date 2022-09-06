@@ -23,7 +23,7 @@ func AuditNuget(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Nuget)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Nuget.ToString())
 	return
 }
 

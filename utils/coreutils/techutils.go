@@ -11,17 +11,18 @@ import (
 type Technology string
 
 const (
-	Maven  Technology = "Maven"
+	Maven  Technology = "maven"
 	Mvn    Technology = "mvn"
-	Gradle Technology = "Gradle"
+	Gradle Technology = "gradle"
 	Npm    Technology = "npm"
-	Yarn   Technology = "Yarn"
+	Yarn   Technology = "yarn"
 	Go     Technology = "go"
 	Pip    Technology = "pip"
 	Pipenv Technology = "pipenv"
 	Nuget  Technology = "nuget"
 	Dotnet Technology = "dotnet"
 	Docker Technology = "docker"
+	Pypi   Technology = "pypi"
 )
 
 func (tech Technology) ToFormal() string {
@@ -64,50 +65,50 @@ type TechData struct {
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		PackageType:       "Maven",
+		PackageType:       Maven.ToString(),
 		indicators:        []string{"pom.xml"},
 		ciSetupSupport:    true,
 		packageDescriptor: "pom.xml",
 	},
 	Gradle: {
-		PackageType:       "Gradle",
+		PackageType:       Gradle.ToString(),
 		indicators:        []string{".gradle"},
 		ciSetupSupport:    true,
 		packageDescriptor: "build.gradle",
 	},
 	Npm: {
-		PackageType:       "npm",
+		PackageType:       Npm.ToString(),
 		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:    true,
 		packageDescriptor: "package.json",
 	},
 	Yarn: {
-		PackageType:       "npm",
+		PackageType:       Npm.ToString(),
 		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor: "package.json",
 	},
 	Go: {
-		PackageType:       "go",
+		PackageType:       Go.ToString(),
 		indicators:        []string{"go.mod"},
 		packageDescriptor: "go.mod",
 	},
 	Pip: {
-		PackageType: "pypi",
+		PackageType: Pypi.ToString(),
 		indicators:  []string{"setup.py", "requirements.txt"},
 		exclude:     []string{"Pipfile", "Pipfile.lock"},
 	},
 	Pipenv: {
-		PackageType:       "pypi",
+		PackageType:       Pypi.ToString(),
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
 	},
 	Nuget: {
-		PackageType: "nuget",
+		PackageType: Nuget.ToString(),
 		indicators:  []string{".sln", ".csproj"},
 	},
 	Dotnet: {
-		PackageType: "nuget",
+		PackageType: Nuget.ToString(),
 		indicators:  []string{".sln", ".csproj"},
 	},
 }

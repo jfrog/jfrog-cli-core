@@ -207,9 +207,9 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetAllTechnologiesList() (technologies []string) {
+func GetAllTechnologiesList() (technologies []Technology) {
 	for tech := range technologiesData {
-		technologies = append(technologies, string(tech))
+		technologies = append(technologies, tech)
 	}
 	return
 }

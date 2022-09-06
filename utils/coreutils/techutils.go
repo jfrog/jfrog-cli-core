@@ -1,6 +1,8 @@
 package coreutils
 
 import (
+	"errors"
+	"fmt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"strings"
@@ -12,7 +14,6 @@ type Technology string
 
 const (
 	Maven  Technology = "maven"
-	Mvn    Technology = "mvn"
 	Gradle Technology = "gradle"
 	Npm    Technology = "npm"
 	Yarn   Technology = "yarn"
@@ -22,44 +23,13 @@ const (
 	Nuget  Technology = "nuget"
 	Dotnet Technology = "dotnet"
 	Docker Technology = "docker"
-	Pypi   Technology = "pypi"
 )
 
-func (tech Technology) ToFormal() string {
-	switch tech {
-	case Nuget:
-		return "NuGet"
-	case Dotnet:
-		return ".NET"
-	case Npm:
-		return "NPM"
-	case Mvn:
-		return "Maven"
-	default:
-		return tech.ToCapitalize()
-	}
-}
-
-func (tech Technology) ToString() string {
-	return string(tech)
-}
-
-func (tech Technology) ToCapitalize() string {
-	return cases.Title(language.Und).String(tech.ToString())
-}
-
-func (tech Technology) ConvertFromXrayScan() string {
-	switch tech {
-	case "Maven":
-		return Maven.ToString()
-	default:
-		return tech.ToString()
-	}
-}
+const Pypi = "pipy"
 
 type TechData struct {
 	// The name of the package type used in this technology.
-	PackageType string
+	packageType string
 	// Suffixes of file/directory names that indicate if a project uses this technology.
 	// The name of at least one of the files/directories in the project's directory must end with one of these suffixes.
 	indicators []string
@@ -70,65 +40,122 @@ type TechData struct {
 	ciSetupSupport bool
 	// The file that handles the project's dependencies.
 	packageDescriptor string
+	// Name of the technology as string
+	techName string
+	// Name of the technology with capital first letter
+	capitalized string
+	// Formal name of the technology
+	formal string
+	// The executable name of the technology
+	execCommand string
 }
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		PackageType:       Maven.ToString(),
+		packageType:       string(Maven),
 		indicators:        []string{"pom.xml"},
 		ciSetupSupport:    true,
 		packageDescriptor: "pom.xml",
+		techName:          string(Maven),
+		capitalized:       cases.Title(language.Und).String(string(Maven)),
+		execCommand:       "mvn",
 	},
 	Gradle: {
-		PackageType:       Gradle.ToString(),
+		packageType:       string(Gradle),
 		indicators:        []string{".gradle"},
 		ciSetupSupport:    true,
 		packageDescriptor: "build.gradle",
+		techName:          string(Gradle),
+		capitalized:       cases.Title(language.Und).String(string(Gradle)),
 	},
 	Npm: {
-		PackageType:       Npm.ToString(),
+		packageType:       string(Npm),
 		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:    true,
 		packageDescriptor: "package.json",
+		techName:          string(Npm),
+		capitalized:       cases.Title(language.Und).String(string(Npm)),
+		formal:            string(Npm),
 	},
 	Yarn: {
-		PackageType:       Npm.ToString(),
+		packageType:       string(Npm),
 		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor: "package.json",
+		techName:          string(Yarn),
+		capitalized:       cases.Title(language.Und).String(string(Yarn)),
 	},
 	Go: {
-		PackageType:       Go.ToString(),
+		packageType:       string(Go),
 		indicators:        []string{"go.mod"},
 		packageDescriptor: "go.mod",
+		techName:          string(Go),
+		capitalized:       cases.Title(language.Und).String(string(Go)),
 	},
 	Pip: {
-		PackageType: Pypi.ToString(),
+		packageType: Pypi,
 		indicators:  []string{"setup.py", "requirements.txt"},
 		exclude:     []string{"Pipfile", "Pipfile.lock"},
+		techName:    string(Pip),
+		capitalized: cases.Title(language.Und).String(string(Pip)),
 	},
 	Pipenv: {
-		PackageType:       Pypi.ToString(),
+		packageType:       Pypi,
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
+		techName:          string(Pipenv),
+		capitalized:       cases.Title(language.Und).String(string(Pipenv)),
 	},
 	Nuget: {
-		PackageType: Nuget.ToString(),
+		packageType: string(Nuget),
 		indicators:  []string{".sln", ".csproj"},
+		techName:    string(Nuget),
+		capitalized: cases.Title(language.Und).String(string(Nuget)),
+		formal:      "NuGet",
 	},
 	Dotnet: {
-		PackageType: Nuget.ToString(),
+		packageType: string(Nuget),
 		indicators:  []string{".sln", ".csproj"},
+		techName:    string(Dotnet),
+		capitalized: cases.Title(language.Und).String(string(Dotnet)),
+		formal:      ".NET",
 	},
 }
 
-func GetTechnologyPackageType(techName Technology) string {
-	techData, ok := technologiesData[techName]
-	if ok {
-		return techData.PackageType
-	} else {
-		return string(techName)
+func (tech Technology) ToFormal() string {
+	if technologiesData[tech].formal == "" {
+		return technologiesData[tech].capitalized
 	}
+
+	return technologiesData[tech].formal
+}
+
+func (tech Technology) ToString() string {
+	return technologiesData[tech].techName
+}
+
+func (tech Technology) ToCapitalize() string {
+	return technologiesData[tech].capitalized
+}
+
+func (tech Technology) GetExecCommandName() string {
+	if technologiesData[tech].execCommand == "" {
+		return technologiesData[tech].techName
+	}
+
+	return technologiesData[tech].execCommand
+}
+
+func (tech Technology) GetPackageType() string {
+	return technologiesData[tech].packageType
+}
+
+func (tech Technology) GetPackageDescriptor() string {
+	return technologiesData[tech].packageDescriptor
+}
+
+func (tech Technology) IsCiSetup() bool {
+	return technologiesData[tech].ciSetupSupport
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
@@ -210,22 +237,18 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetTechnologyPackageDescriptor(tech string) string {
-	techData, ok := technologiesData[Technology(tech)]
-	var dependencyFile string
-	if ok {
-		dependencyFile = techData.packageDescriptor
-	}
-	if dependencyFile == "" {
-		return tech + " package descriptor"
-	}
-
-	return dependencyFile
-}
-
 func GetAllTechnologiesList() (technologies []string) {
 	for tech := range technologiesData {
 		technologies = append(technologies, string(tech))
 	}
 	return
+}
+
+func ConvertStrToTechnology(tech string) (Technology, error) {
+	_, ok := technologiesData[Technology(strings.ToLower(tech))]
+	if ok {
+		return Technology(tech), nil
+	}
+
+	return "", errors.New(fmt.Sprintf("conversion of %s to Technology type failed", tech))
 }

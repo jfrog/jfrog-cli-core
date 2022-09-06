@@ -39,7 +39,11 @@ func (sd *CiSetupData) GetRepoFullName() string {
 // Trim technology name from command prefix. (example: mvn clean install >> clean install)
 func (sd *CiSetupData) GetBuildCmdForNativeStep() string {
 	// Remove exec name.
-	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), sd.BuiltTechnology.Type.ToString()+" ")
+	if sd.BuiltTechnology.Type.IsCiSetup() {
+		return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), sd.BuiltTechnology.Type.GetExecCommandName()+" ")
+	}
+
+	return strings.TrimSpace(sd.BuiltTechnology.BuildCmd)
 }
 
 type VcsServerDetails struct {

@@ -41,8 +41,6 @@ type TechData struct {
 	packageDescriptor string
 	// Name of the technology as string
 	techName string
-	// Name of the technology with capital first letter
-	capitalized string
 	// Formal name of the technology
 	formal string
 	// The executable name of the technology
@@ -94,22 +92,20 @@ var technologiesData = map[Technology]TechData{
 		techName:          string(Pipenv),
 	},
 	Nuget: {
-		indicators:  []string{".sln", ".csproj"},
-		techName:    string(Nuget),
-		capitalized: cases.Title(language.Und).String(string(Nuget)),
-		formal:      "NuGet",
+		indicators: []string{".sln", ".csproj"},
+		techName:   string(Nuget),
+		formal:     "NuGet",
 	},
 	Dotnet: {
-		indicators:  []string{".sln", ".csproj"},
-		techName:    string(Dotnet),
-		capitalized: cases.Title(language.Und).String(string(Dotnet)),
-		formal:      ".NET",
+		indicators: []string{".sln", ".csproj"},
+		techName:   string(Dotnet),
+		formal:     ".NET",
 	},
 }
 
 func (tech Technology) ToFormal() string {
 	if technologiesData[tech].formal == "" {
-		return technologiesData[tech].capitalized
+		return tech.ToCapitalize()
 	}
 	return technologiesData[tech].formal
 }

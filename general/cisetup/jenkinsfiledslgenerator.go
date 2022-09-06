@@ -133,7 +133,7 @@ func (jg *JenkinsfileDslGenerator) GenerateDsl() (jenkinsfileBytes []byte, jenki
 		return nil, "", err
 	}
 	// Generate environments sections
-	environments := generateEnvironments(string(jg.SetupData.BuiltTechnology.Type))
+	environments := generateEnvironments(jg.SetupData.BuiltTechnology.Type)
 	// Generate Stages Section
 	cloneStage := generateStage("Clone", fmt.Sprintf(cloneStepsTemplate, jg.SetupData.GitBranch, jg.SetupData.VcsCredentials.Url))
 	rtConfigStage := generateStage("Artifactory configuration", generateRtConfigSteps(jg.SetupData.BuiltTechnology, serviceDetails.ArtifactoryUrl))
@@ -157,13 +157,13 @@ func generateAllStages(stages ...string) (allStagesString string) {
 	return fmt.Sprintf(allStagesTemplate, allStagesString)
 }
 
-func generateEnvironments(buildType string) string {
+func generateEnvironments(buildType coreutils.Technology) string {
 	envs := ""
 	switch buildType {
-	case coreutils.Maven.ToString():
+	case coreutils.Maven:
 		fallthrough
-	case coreutils.Gradle.ToString():
-		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType))
+	case coreutils.Gradle:
+		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType.ToString()))
 	default:
 		envs += ""
 	}

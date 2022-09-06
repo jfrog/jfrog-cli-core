@@ -21,7 +21,7 @@ func AuditGradle(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails 
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Gradle)
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Gradle.ToString())
 	return
 }
 

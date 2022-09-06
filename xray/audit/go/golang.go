@@ -21,7 +21,7 @@ func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *con
 		return
 	}
 	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress, coreutils.Go)
+	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress, coreutils.Go.ToString())
 	return
 }
 

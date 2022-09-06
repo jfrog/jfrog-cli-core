@@ -160,9 +160,9 @@ func generateAllStages(stages ...string) (allStagesString string) {
 func generateEnvironments(buildType string) string {
 	envs := ""
 	switch buildType {
-	case coreutils.Maven:
+	case coreutils.Maven.ToString():
 		fallthrough
-	case coreutils.Gradle:
+	case coreutils.Gradle.ToString():
 		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType))
 	default:
 		envs += ""
@@ -200,11 +200,11 @@ func generateBuildStages(buildCmd, buildType string) (buildStages string) {
 	resolverId := fmt.Sprintf(resolverIdTemplate, strings.ToUpper(buildType))
 	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType))
 	switch buildType {
-	case coreutils.Maven:
+	case coreutils.Maven.ToString():
 		buildStages += generateStage("Exec Maven", fmt.Sprintf(mavenRunStepTemplate, buildCmd, resolverId, deployerId))
-	case coreutils.Gradle:
+	case coreutils.Gradle.ToString():
 		buildStages += generateStage("Exec Gradle", fmt.Sprintf(gradleRunStepTemplate, buildCmd, resolverId, deployerId))
-	case coreutils.Npm:
+	case coreutils.Npm.ToString():
 		buildStages += generateStage("Exec Npm install", fmt.Sprintf(npmInstallStepTemplate, resolverId))
 		buildStages += generateStage("Exec Npm publish", fmt.Sprintf(npmPublishStepTemplate, deployerId))
 	default:

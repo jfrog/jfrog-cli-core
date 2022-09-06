@@ -39,8 +39,6 @@ type TechData struct {
 	ciSetupSupport bool
 	// The file that handles the project's dependencies.
 	packageDescriptor string
-	// Name of the technology as string
-	techName string
 	// Formal name of the technology
 	formal string
 	// The executable name of the technology
@@ -52,53 +50,44 @@ var technologiesData = map[Technology]TechData{
 		indicators:        []string{"pom.xml"},
 		ciSetupSupport:    true,
 		packageDescriptor: "pom.xml",
-		techName:          string(Maven),
 		execCommand:       "mvn",
 	},
 	Gradle: {
 		indicators:        []string{".gradle"},
 		ciSetupSupport:    true,
 		packageDescriptor: "build.gradle",
-		techName:          string(Gradle),
 	},
 	Npm: {
 		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:    true,
 		packageDescriptor: "package.json",
-		techName:          string(Npm),
 		formal:            string(Npm),
 	},
 	Yarn: {
 		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor: "package.json",
-		techName:          string(Yarn),
 	},
 	Go: {
 		indicators:        []string{"go.mod"},
 		packageDescriptor: "go.mod",
-		techName:          string(Go),
 	},
 	Pip: {
 		packageType: Pypi,
 		indicators:  []string{"setup.py", "requirements.txt"},
 		exclude:     []string{"Pipfile", "Pipfile.lock"},
-		techName:    string(Pip),
 	},
 	Pipenv: {
 		packageType:       Pypi,
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
-		techName:          string(Pipenv),
 	},
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
-		techName:   string(Nuget),
 		formal:     "NuGet",
 	},
 	Dotnet: {
 		indicators: []string{".sln", ".csproj"},
-		techName:   string(Dotnet),
 		formal:     ".NET",
 	},
 }
@@ -111,23 +100,23 @@ func (tech Technology) ToFormal() string {
 }
 
 func (tech Technology) ToString() string {
-	return technologiesData[tech].techName
+	return string(tech)
 }
 
 func (tech Technology) ToCapitalize() string {
-	return cases.Title(language.Und).String(technologiesData[tech].techName)
+	return cases.Title(language.Und).String(tech.ToString())
 }
 
 func (tech Technology) GetExecCommandName() string {
 	if technologiesData[tech].execCommand == "" {
-		return technologiesData[tech].techName
+		return tech.ToString()
 	}
 	return technologiesData[tech].execCommand
 }
 
 func (tech Technology) GetPackageType() string {
 	if technologiesData[tech].packageType == "" {
-		return technologiesData[tech].techName
+		return tech.ToString()
 	}
 	return technologiesData[tech].packageType
 }

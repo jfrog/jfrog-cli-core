@@ -24,7 +24,7 @@ const (
 	Docker Technology = "docker"
 )
 
-const Pypi = "pipy"
+const Pypi = "pypi"
 
 type TechData struct {
 	// The name of the package type used in this technology.
@@ -94,17 +94,13 @@ var technologiesData = map[Technology]TechData{
 
 func (tech Technology) ToFormal() string {
 	if technologiesData[tech].formal == "" {
-		return tech.ToCapitalize()
+		return cases.Title(language.Und).String(tech.ToString())
 	}
 	return technologiesData[tech].formal
 }
 
 func (tech Technology) ToString() string {
 	return string(tech)
-}
-
-func (tech Technology) ToCapitalize() string {
-	return cases.Title(language.Und).String(tech.ToString())
 }
 
 func (tech Technology) GetExecCommandName() string {

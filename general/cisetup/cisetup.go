@@ -39,7 +39,7 @@ func (sd *CiSetupData) GetRepoFullName() string {
 // Trim technology name from command prefix. (example: mvn clean install >> clean install)
 func (sd *CiSetupData) GetBuildCmdForNativeStep() string {
 	// Remove exec name.
-	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), execNames[sd.BuiltTechnology.Type]+" ")
+	return strings.TrimPrefix(strings.TrimSpace(sd.BuiltTechnology.BuildCmd), sd.BuiltTechnology.Type.ToString()+" ")
 }
 
 type VcsServerDetails struct {
@@ -66,9 +66,3 @@ const (
 	GithubActions = "GitHub Actions"
 	Pipelines     = "JFrog Pipelines"
 )
-
-var execNames = map[coreutils.Technology]string{
-	coreutils.Maven:  coreutils.Mvn.ToString(),
-	coreutils.Gradle: coreutils.Gradle.ToString(),
-	coreutils.Npm:    coreutils.Npm.ToString(),
-}

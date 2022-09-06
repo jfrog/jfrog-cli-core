@@ -48,6 +48,15 @@ func (tech Technology) ToCapitalize() string {
 	return cases.Title(language.Und).String(tech.ToString())
 }
 
+func (tech Technology) ConvertFromXrayScan() string {
+	switch tech {
+	case "Maven":
+		return Maven.ToString()
+	default:
+		return tech.ToString()
+	}
+}
+
 type TechData struct {
 	// The name of the package type used in this technology.
 	PackageType string

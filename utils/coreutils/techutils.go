@@ -1,7 +1,6 @@
 package coreutils
 
 import (
-	"fmt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"strings"
@@ -207,18 +206,9 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetAllTechnologiesList() (technologies []string) {
+func GetAllTechnologiesList() (technologies []Technology) {
 	for tech := range technologiesData {
-		technologies = append(technologies, string(tech))
+		technologies = append(technologies, tech)
 	}
 	return
-}
-
-func ConvertStrToTechnology(tech string) (Technology, error) {
-	_, ok := technologiesData[Technology(strings.ToLower(tech))]
-	if ok {
-		return Technology(tech), nil
-	}
-
-	return "", fmt.Errorf("conversion of %s to Technology type failed", tech)
 }

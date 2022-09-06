@@ -152,7 +152,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			if err != nil {
 				return err
 			}
-			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
+			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, coreutils.Technology(strings.ToLower(licenses[i].ImpactedPackageType)))
 			if err != nil {
 				return err
 			}
@@ -182,12 +182,8 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 }
 
 // Adding the Xray scan results details to the sarif struct, for each issue found in the scan
-func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) error {
-	techType, err := coreutils.ConvertStrToTechnology(technology)
-	if err != nil {
-		return err
-	}
-	techPackageDescriptor := techType.GetPackageDescriptor()
+func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology coreutils.Technology) error {
+	techPackageDescriptor := technology.GetPackageDescriptor()
 	pb := sarif.NewPropertyBag()
 	pb.Add("security-severity", severity)
 	run.AddRule(issueId).

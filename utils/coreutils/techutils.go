@@ -1,7 +1,6 @@
 package coreutils
 
 import (
-	"errors"
 	"fmt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -250,5 +249,5 @@ func ConvertStrToTechnology(tech string) (Technology, error) {
 		return Technology(tech), nil
 	}
 
-	return "", errors.New(fmt.Sprintf("conversion of %s to Technology type failed", tech))
+	return "", fmt.Errorf("conversion of %s to Technology type failed", tech)
 }

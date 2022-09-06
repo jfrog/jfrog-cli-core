@@ -312,6 +312,10 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 	if err != nil {
 		return []string{}, []string{}, err
 	}
+	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	if err != nil {
+		return []string{}, []string{}, err
+	}
 
 	storageInfo, err := storageInfoManager.GetStorageInfo()
 	if err != nil {
@@ -323,7 +327,7 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 		return []string{}, []string{}, err
 	}
 
-	return localRepos, buildInfoRepoKeys, err
+	return append(localRepos, federatedRepos...), buildInfoRepoKeys, err
 }
 
 func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {

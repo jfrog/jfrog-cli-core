@@ -132,7 +132,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = tcc.modifyConfigXml(configXml, tcc.sourceServerDetails.ArtifactoryUrl, tcc.targetServerDetails.AccessUrl, repoFilter)
+	configXml, err = tcc.modifyConfigXml(configXml, tcc.targetServerDetails.ArtifactoryUrl, repoFilter)
 	if err != nil {
 		return
 	}
@@ -353,14 +353,14 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
-// 2. Replace URL of federated repositories from sourceBaseUrl to targetBaseUrl
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, sourceBaseUrl, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, error) {
+// 2. Remove federated members of federated repositories
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, error) {
 	var err error
 	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
 	if err != nil {
 		return "", err
 	}
-	return configxmlutils.ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl)
+	return configxmlutils.RemoveFederatedMembers(configXml)
 }
 
 // Import from the input buffer to the target Artifactory

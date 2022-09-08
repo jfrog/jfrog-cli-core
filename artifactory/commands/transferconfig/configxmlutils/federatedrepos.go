@@ -1,17 +1,11 @@
 package configxmlutils
 
-import (
-	"strings"
-)
+import "github.com/jfrog/jfrog-client-go/utils/log"
 
-// Replace URL of federated repositories in artifactory.config.xml
+// Remove federated members of federated repositories in artifactory.config.xml
 // configXml     - artifactory.config.xml of the source Artifactory
-// sourceBaseUrl - Base URL of the source Artifactory
 // targetBaseUrl - Base URL of the target Artifactory
-func ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl string) (string, error) {
-	sourceBaseUrl = strings.TrimSuffix(sourceBaseUrl, "/")
-	targetBaseUrl = strings.TrimSuffix(targetBaseUrl, "/")
-
+func RemoveFederatedMembers(configXml string) (string, error) {
 	xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, `federatedRepositories`, true)
 	if err != nil {
 		return "", err
@@ -21,7 +15,7 @@ func ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl string)
 	}
 	results := ""
 	prefix, content, suffix := splitXmlTag(configXml, xmlTagIndices, 0)
-	federatedRepositories, err := fixFederatedRepositories(content, sourceBaseUrl, targetBaseUrl)
+	federatedRepositories, err := fixFederatedRepositories(content)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +23,7 @@ func ReplaceUrlsInFederatedrepos(configXml, sourceBaseUrl, targetBaseUrl string)
 	return results, nil
 }
 
-func fixFederatedRepositories(content, sourceBaseUrl, targetBaseUrl string) (string, error) {
+func fixFederatedRepositories(content string) (string, error) {
 	xmlTagIndices, exist, err := findAllXmlTagIndices(content, `federatedRepository`, false)
 	if err != nil {
 		return "", err
@@ -37,71 +31,31 @@ func fixFederatedRepositories(content, sourceBaseUrl, targetBaseUrl string) (str
 	if !exist {
 		return content, nil
 	}
+	federatedMembersRemoved := false
 	results := ""
 	for i := range xmlTagIndices {
 		prefix, content, suffix := splitXmlTag(content, xmlTagIndices, i)
-		federatedRepository, err := fixFederatedRepository(content, sourceBaseUrl, targetBaseUrl)
+		federatedRepository, removed, err := removeFederatedMembers(content)
 		if err != nil {
 			return "", err
 		}
 		results += prefix + federatedRepository + suffix
+		federatedMembersRemoved = federatedMembersRemoved || removed
+	}
+	if federatedMembersRemoved {
+		log.Info("☝️  All federated members have been excluded from your federated repositories. Please configure your federation in the target server repositories.")
 	}
 	return results, nil
 }
 
-func fixFederatedRepository(content, sourceBaseUrl, targetBaseUrl string) (string, error) {
+func removeFederatedMembers(content string) (string, bool, error) {
 	xmlTagIndices, exist, err := findAllXmlTagIndices(content, `federatedMembers`, false)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if !exist {
-		return content, nil
+		return content, false, nil
 	}
-	results := ""
-	for i := range xmlTagIndices {
-		prefix, content, suffix := splitXmlTag(content, xmlTagIndices, i)
-		federatedMembers, err := fixFederatedMembers(content, sourceBaseUrl, targetBaseUrl)
-		if err != nil {
-			return "", err
-		}
-		results += prefix + federatedMembers + suffix
-	}
-	return results, nil
-}
-
-func fixFederatedMembers(content, sourceBaseUrl, targetBaseUrl string) (string, error) {
-	xmlTagIndices, exist, err := findAllXmlTagIndices(content, `federatedMember`, false)
-	if err != nil {
-		return "", err
-	}
-	if !exist {
-		return content, nil
-	}
-	results := ""
-	for i := range xmlTagIndices {
-		prefix, content, suffix := splitXmlTag(content, xmlTagIndices, i)
-		federatedMember, err := fixFederatedMemberUrl(content, sourceBaseUrl, targetBaseUrl)
-		if err != nil {
-			return "", err
-		}
-		results += prefix + federatedMember + suffix
-	}
-	return results, nil
-}
-
-func fixFederatedMemberUrl(content, sourceBaseUrl, targetBaseUrl string) (string, error) {
-	xmlTagIndices, exist, err := findAllXmlTagIndices(content, `url`, true)
-	if err != nil {
-		return "", err
-	}
-	if !exist {
-		return content, nil
-	}
-
-	prefix, content, suffix := splitXmlTag(content, xmlTagIndices, 0)
-	url := strings.TrimSpace(content)
-	if strings.HasPrefix(url, sourceBaseUrl) {
-		return prefix + strings.Replace(url, sourceBaseUrl, targetBaseUrl, 1) + suffix, nil
-	}
-	return prefix + content + suffix, nil
+	prefix, _, suffix := splitXmlTag(content, xmlTagIndices, 0)
+	return prefix + suffix, true, nil
 }

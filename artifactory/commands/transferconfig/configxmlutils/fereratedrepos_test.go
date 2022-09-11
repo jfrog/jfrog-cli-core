@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,8 +26,9 @@ func TestRemoveFederatedMembers(t *testing.T) {
 			expectedConfigXml, err := os.ReadFile(expectedConfigXmlPath)
 			assert.NoError(t, err)
 
-			result, err := RemoveFederatedMembers(string(inputConfigXml))
+			result, federatedMembersRemoved, err := RemoveFederatedMembers(string(inputConfigXml))
 			assert.NoError(t, err)
+			assert.Equal(t, federatedMembersRemoved, strings.Contains(string(inputConfigXml), "federatedMembers"))
 			assert.Equal(t, string(expectedConfigXml), result)
 		})
 	}

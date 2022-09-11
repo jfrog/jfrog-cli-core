@@ -132,7 +132,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Prepare the config XML to be imported to SaaS
-	configXml, err = tcc.modifyConfigXml(configXml, tcc.targetServerDetails.ArtifactoryUrl, repoFilter)
+	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml, tcc.targetServerDetails.ArtifactoryUrl, repoFilter)
 	if err != nil {
 		return
 	}
@@ -158,6 +158,10 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 
 	// If config transfer passed successfully, add conclusion message
 	log.Info("Config transfer completed successfully!")
+	if federatedMembersRemoved {
+		log.Info("☝️  Your Federated repositories have been transferred to your target instance, but their members have been removed on the target. " +
+			"You should add members to your Federated repositories on your target instance as described here - https://www.jfrog.com/confluence/display/JFROG/Federated+Repositories.")
+	}
 	log.Info("☝️  Please make sure to disable configuration transfer in MyJFrog before running the 'jf transfer-files' command.")
 	return nil
 }
@@ -354,11 +358,11 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Remove federated members of federated repositories
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, bool, error) {
 	var err error
 	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	return configxmlutils.RemoveFederatedMembers(configXml)
 }

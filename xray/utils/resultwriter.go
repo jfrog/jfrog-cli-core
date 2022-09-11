@@ -209,6 +209,7 @@ func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, i
 
 func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 	maxCve := 0.0
+	maxPossibleCve := 10.0
 	for _, cve := range cves {
 		if cve.CvssV3 == "" {
 			continue
@@ -219,6 +220,10 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 		}
 		if floatCve > maxCve {
 			maxCve = floatCve
+			// if found maximum possible cve score, no need to keep iterating
+			if maxCve == maxPossibleCve {
+				break
+			}
 		}
 	}
 	strCve := fmt.Sprintf("%.1f", maxCve)

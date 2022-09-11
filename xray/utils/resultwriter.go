@@ -26,6 +26,8 @@ const (
 	Sarif      OutputFormat = "sarif"
 )
 
+const MissingCveScore = "0"
+
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
 // PrintScanResults prints Xray scan results in the given format.
@@ -185,7 +187,9 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) error {
 	techPackageDescriptor := coreutils.GetTechnologyPackageDescriptor(technology)
 	pb := sarif.NewPropertyBag()
-	pb.Add("security-severity", severity)
+	if severity != MissingCveScore {
+		pb.Add("security-severity", severity)
+	}
 	run.AddRule(issueId).
 		WithProperties(pb.Properties).
 		WithFullDescription(sarif.NewMultiformatMessageString(description))
@@ -206,6 +210,9 @@ func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, i
 func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 	maxCve := 0.0
 	for _, cve := range cves {
+		if cve.CvssV3 == "" {
+			continue
+		}
 		floatCve, err := strconv.ParseFloat(cve.CvssV3, 32)
 		if err != nil {
 			return "", err
@@ -214,7 +221,7 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 			maxCve = floatCve
 		}
 	}
-	strCve := fmt.Sprintf("%v", maxCve)
+	strCve := fmt.Sprintf("%.1f", maxCve)
 
 	return strCve, nil
 }

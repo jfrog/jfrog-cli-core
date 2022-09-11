@@ -48,7 +48,7 @@ func GenericAudit(
 		var isMultipleRootProject bool
 		var e error
 		if progress != nil {
-			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech))
+			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 		}
 		switch tech {
 		case coreutils.Maven:

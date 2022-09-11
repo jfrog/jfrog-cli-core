@@ -364,7 +364,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, ba
 		if delayed {
 			continue
 		}
-		curUploadChunk.appendUploadCandidate(file)
+		curUploadChunk.appendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {

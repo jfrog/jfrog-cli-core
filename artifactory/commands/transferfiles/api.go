@@ -2,7 +2,10 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"fmt"
+
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type ProcessStatusType string
@@ -115,6 +118,13 @@ func fillTokensBatch(awaitingStatusChunksSet *datastructures.Set[string], upload
 	}
 }
 
-func (uc *UploadChunk) appendUploadCandidate(file FileRepresentation) {
+// Append upload candidate to the list of upload candidates. Skip empty directories in build-info repositories.
+// file          - The upload candidate
+// buildInfoRepo - True if this is a build-info repository
+func (uc *UploadChunk) appendUploadCandidateIfNeeded(file FileRepresentation, buildInfoRepo bool) {
+	if buildInfoRepo && file.Name == "" {
+		log.Debug(fmt.Sprintf("Skipping unneeded empty dir '%s' in the build-info repository '%s'", file.Path, file.Repo))
+		return
+	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }

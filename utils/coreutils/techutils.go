@@ -118,7 +118,7 @@ func (tech Technology) GetPackageType() string {
 
 func (tech Technology) GetPackageDescriptor() string {
 	if technologiesData[tech].packageDescriptor == "" {
-		return tech.ToString() + " Package Descriptor"
+		return tech.ToFormal() + " Package Descriptor"
 	}
 	return technologiesData[tech].packageDescriptor
 }

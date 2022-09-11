@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"os"
 	"os/signal"
 	"strings"
@@ -47,9 +48,9 @@ type TransferFilesCommand struct {
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
-	context, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &TransferFilesCommand{
-		context:             context,
+		context:             ctx,
 		cancelFunc:          cancelFunc,
 		sourceServerDetails: sourceServer,
 		targetServerDetails: targetServer,
@@ -75,6 +76,10 @@ func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []
 
 func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
 	tdc.ignoreState = ignoreState
+}
+
+func (tdc *TransferFilesCommand) ServerDetails() (*config.ServerDetails, error) {
+	return tdc.targetServerDetails, nil
 }
 
 func (tdc *TransferFilesCommand) Run() (err error) {
@@ -110,24 +115,54 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	// Set progress bar with the length of the taget local and build info repositories
+	// Set progress bar with the length of the target local and build info repositories
 	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)))
 	if err != nil {
 		return err
 	}
 
+	usageReportSent := make(chan error)
+	go tdc.ReportTransferFilesUsage(usageReportSent)
+
 	// Transfer local repositories
 	if err := tdc.transferRepos(sourceLocalRepos, targetLocalRepos, false, newPhase, srcUpService); err != nil {
+		<-usageReportSent
 		return tdc.cleanup(err, sourceLocalRepos)
 	}
 
 	// Transfer build-info repositories
 	if err := tdc.transferRepos(sourceBuildInfoRepos, targetBuildInfoRepos, true, newPhase, srcUpService); err != nil {
+		<-usageReportSent
 		return tdc.cleanup(err, allSourceLocalRepos)
 	}
 
 	// Close progressBar and create CSV errors summary file
+	<-usageReportSent
 	return tdc.cleanup(err, allSourceLocalRepos)
+}
+
+func (tdc *TransferFilesCommand) ReportTransferFilesUsage(usageReportSent chan<- error) {
+	var err error
+	defer func() {
+		usageReportSent <- err
+	}()
+	log.Debug(usage.ReportUsagePrefix + "Sending Transfer File info...")
+	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
+	if err != nil {
+		log.Debug(err.Error())
+		return
+	}
+	sourceServiceId, err := tdc.sourceStorageInfoManager.GetServiceId()
+	if err != nil {
+		log.Debug(err.Error())
+		return
+	}
+
+	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), sourceServiceId, sourceStorageInfo.BinariesSize, tdc.sourceStorageInfoManager.GetServiceManager())
+	if err != nil {
+		log.Debug(err.Error())
+		return
+	}
 }
 
 func (tdc *TransferFilesCommand) initStorageInfoManagers() error {

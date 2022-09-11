@@ -26,7 +26,8 @@ const (
 	Sarif      OutputFormat = "sarif"
 )
 
-const MissingCveScore = "0"
+const missingCveScore = "0"
+const maxPossibleCve = 10.0
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
@@ -187,7 +188,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology coreutils.Technology) error {
 	techPackageDescriptor := technology.GetPackageDescriptor()
 	pb := sarif.NewPropertyBag()
-	if severity != MissingCveScore {
+	if severity != missingCveScore {
 		pb.Add("security-severity", severity)
 	}
 	run.AddRule(issueId).
@@ -209,7 +210,6 @@ func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, i
 
 func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 	maxCve := 0.0
-	maxPossibleCve := 10.0
 	for _, cve := range cves {
 		if cve.CvssV3 == "" {
 			continue

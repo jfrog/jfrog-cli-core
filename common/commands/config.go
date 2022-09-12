@@ -640,11 +640,11 @@ func (cc *ConfigCommand) assertUrlsSafe() error {
 			continue
 		}
 		if cc.interactive {
-			if cc.disablePrompts || !coreutils.AskYesNo("We noticed that your JFrog URL uses an insecure HTTP connection. Are you sure you want to continue?", false) {
+			if cc.disablePrompts || !coreutils.AskYesNo("Your JFrog URL uses an insecure HTTP connection, instead of HTTPS. Are you sure you want to continue?", false) {
 				return errorutils.CheckErrorf("config was aborted due to an insecure HTTP connection")
 			}
 		} else {
-			log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider replacing it with HTTPS.")
+			log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider using SSL (HTTPS instead of HTTP).")
 		}
 		return nil
 	}

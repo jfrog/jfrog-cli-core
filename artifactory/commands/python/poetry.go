@@ -81,9 +81,9 @@ func (pc *PoetryCommand) Run() (err error) {
 		case "install":
 			return pc.install(buildConfiguration, pythonBuildInfo)
 		case "publish":
-			return pc.publish()
+			return pc.publish(buildConfiguration, pythonBuildInfo)
 		default:
-			// Python native command
+			// poetry native command
 			return gofrogcmd.RunCmd(pc)
 
 		}
@@ -108,9 +108,17 @@ func (pc *PoetryCommand) install(buildConfiguration *utils.BuildConfiguration, p
 	return errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
 }
 
-func (pc *PoetryCommand) publish() error {
-	pc.args = append(pc.args, "-r "+pc.poetryConfigRepoName)
-	return nil
+func (pc *PoetryCommand) publish(buildConfiguration *utils.BuildConfiguration, pythonBuildInfo *build.Build) error {
+	publishCmdArgs := append(pc.args, "-r "+pc.poetryConfigRepoName)
+	// Collect build info by running the jf poetry install cmd
+	pc.args = []string{}
+	err := pc.install(buildConfiguration, pythonBuildInfo)
+	if err != nil {
+		return err
+	}
+	// Run the publish cmd
+	pc.args = publishCmdArgs
+	return gofrogcmd.RunCmd(pc)
 }
 
 func (pc *PoetryCommand) UpdateDepsChecksumInfoFunc(dependenciesMap map[string]entities.Dependency, srcPath string) error {

@@ -35,7 +35,6 @@ require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/CycloneDX/cyclonedx-go v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect

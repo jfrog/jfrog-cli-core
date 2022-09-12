@@ -81,7 +81,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 						References:               violation.References,
 						JfrogResearchInformation: jfrogResearchInfo,
 						ImpactPaths:              impactPaths[compIndex],
-						Technology:               violation.Technology,
+						Technology:               coreutils.Technology(violation.Technology),
 					},
 				)
 			}
@@ -189,7 +189,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 					References:               vulnerability.References,
 					JfrogResearchInformation: jfrogResearchInfo,
 					ImpactPaths:              impactPaths[compIndex],
-					Technology:               vulnerability.Technology,
+					Technology:               coreutils.Technology(vulnerability.Technology),
 				},
 			)
 		}

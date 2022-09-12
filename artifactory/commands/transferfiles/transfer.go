@@ -78,10 +78,6 @@ func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
 	tdc.ignoreState = ignoreState
 }
 
-func (tdc *TransferFilesCommand) ServerDetails() (*config.ServerDetails, error) {
-	return tdc.targetServerDetails, nil
-}
-
 func (tdc *TransferFilesCommand) Run() (err error) {
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {

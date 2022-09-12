@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -29,7 +30,7 @@ func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails 
 		return
 	}
 	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, string(pythonTool))
+	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Technology(pythonTool))
 	return
 }
 

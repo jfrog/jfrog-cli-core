@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +46,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology string) (results []services.ScanResponse, err error) {
+func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -76,10 +77,10 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 			return results, errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
 		}
 		for i := range scanResults.Vulnerabilities {
-			scanResults.Vulnerabilities[i].Technology = technology
+			scanResults.Vulnerabilities[i].Technology = technology.ToString()
 		}
 		for i := range scanResults.Violations {
-			scanResults.Violations[i].Technology = technology
+			scanResults.Violations[i].Technology = technology.ToString()
 		}
 		results = append(results, *scanResults)
 	}

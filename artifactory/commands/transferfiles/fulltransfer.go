@@ -169,7 +169,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 		// Empty folder. Add it as candidate.
 		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.appendUploadCandidate(FileRepresentation{Repo: params.repoKey, Path: params.relativePath})
+			curUploadChunk.appendUploadCandidateIfNeeded(FileRepresentation{Repo: params.repoKey, Path: params.relativePath}, m.buildInfoRepo)
 			break
 		}
 
@@ -200,7 +200,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				if delayed {
 					continue
 				}
-				curUploadChunk.appendUploadCandidate(file)
+				curUploadChunk.appendUploadCandidateIfNeeded(file, m.buildInfoRepo)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 					if err != nil {

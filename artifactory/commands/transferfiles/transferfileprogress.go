@@ -61,8 +61,7 @@ func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationM
 		return fmt.Sprintf("%.3f MB/s", currSpeed)
 	})
 	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-		currSpeed := timeEstMng.getEstimatedRemainingTimeString()
-		return fmt.Sprintf("%s", currSpeed)
+		return timeEstMng.getEstimatedRemainingTimeString()
 	})
 	return &transfer, nil
 }

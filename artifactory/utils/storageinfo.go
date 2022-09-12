@@ -94,7 +94,7 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 				reposMap[repoKey] = true
 			}
 			for _, repoSummary := range storageInfo.RepositoriesSummaryList {
-				if reposMap[repoSummary.RepoKey] == true {
+				if reposMap[repoSummary.RepoKey] {
 					reposCounted++
 					if repoSummary.UsedSpaceInBytes.String() != "" {
 						sizeToAdd, err := repoSummary.UsedSpaceInBytes.Int64()

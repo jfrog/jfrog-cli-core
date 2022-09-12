@@ -28,7 +28,7 @@ func newTimeEstimationManager(totalSizeBytes, transferredSizeBytes int64) *timeE
 	return &timeEstimationManager{totalSizeBytes: totalSizeBytes, transferredSizeBytes: transferredSizeBytes, maxSpeedsSliceLength: utils.DefaultThreads}
 }
 
-func (tem *timeEstimationManager) addChunkStatus(chunkStatus *ChunkStatus, workingThreads int) {
+func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int) {
 	if chunkStatus.DurationMillis == 0 {
 		return
 	}

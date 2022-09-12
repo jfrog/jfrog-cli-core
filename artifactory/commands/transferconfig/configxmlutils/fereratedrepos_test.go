@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReplaceUrlInFederatedrepos(t *testing.T) {
+func TestRemoveFederatedMembers(t *testing.T) {
 	testCasesDir := filepath.Join("..", "..", "testdata", "config_xmls_federated_repos")
 	files, err := os.ReadDir(filepath.Join(testCasesDir, "input"))
 	assert.NoError(t, err)
@@ -25,8 +26,9 @@ func TestReplaceUrlInFederatedrepos(t *testing.T) {
 			expectedConfigXml, err := os.ReadFile(expectedConfigXmlPath)
 			assert.NoError(t, err)
 
-			result, err := ReplaceUrlsInFederatedrepos(string(inputConfigXml), "http://localhost:8081/artifactory", "https://acme.jfrog.io/artifactory")
+			result, federatedMembersRemoved, err := RemoveFederatedMembers(string(inputConfigXml))
 			assert.NoError(t, err)
+			assert.Equal(t, federatedMembersRemoved, strings.Contains(string(inputConfigXml), "federatedMembers"))
 			assert.Equal(t, string(expectedConfigXml), result)
 		})
 	}

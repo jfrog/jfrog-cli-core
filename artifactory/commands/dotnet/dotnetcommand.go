@@ -18,7 +18,10 @@ import (
 	"strings"
 )
 
-const SourceName = "JFrogCli"
+const (
+	SourceName        = "JFrogCli"
+	configFilePattern = "jfrog.cli.nuget."
+)
 
 type DotnetCommand struct {
 	toolchainType      dotnet.ToolchainType
@@ -26,11 +29,9 @@ type DotnetCommand struct {
 	argAndFlags        []string
 	repoName           string
 	solutionPath       string
-	useNugetAddSource  bool
 	useNugetV2         bool
 	buildConfiguration *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
-	buildInfoModule    *build.DotnetModule
 }
 
 func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *DotnetCommand {
@@ -73,11 +74,6 @@ func (dc *DotnetCommand) SetBasicCommand(subCommand string) *DotnetCommand {
 	return dc
 }
 
-func (dc *DotnetCommand) SetUseNugetAddSource(useNugetAddSource bool) *DotnetCommand {
-	dc.useNugetAddSource = useNugetAddSource
-	return dc
-}
-
 func (dc *DotnetCommand) ServerDetails() (*config.ServerDetails, error) {
 	return dc.serverDetails, nil
 }
@@ -107,22 +103,23 @@ func (dc *DotnetCommand) Exec() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	dc.buildInfoModule, err = dotnetBuild.AddDotnetModules(dc.solutionPath)
+	buildInfoModule, err := dotnetBuild.AddDotnetModules(dc.solutionPath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	fallbackFunc, err := dc.prepareDotnetBuildInfoModule()
+	callbackFunc, err := dc.prepareDotnetBuildInfoModule(buildInfoModule)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		e := fallbackFunc()
-		if err == nil {
-			err = e
+		if callbackFunc != nil {
+			e := callbackFunc()
+			if err == nil {
+				err = e
+			}
 		}
 	}()
-	dc.buildInfoModule.SetArgsAndFlags(dc.argAndFlags)
-	if err = dc.buildInfoModule.CalcDependencies(); err != nil {
+	if err = buildInfoModule.CalcDependencies(); err != nil {
 		return err
 	}
 	log.Info(fmt.Sprintf("%s finished successfully.", dc.toolchainType))
@@ -131,28 +128,16 @@ func (dc *DotnetCommand) Exec() (err error) {
 
 // prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
 // In case no config file was provided - creates a temporary one.
-func (dc *DotnetCommand) prepareDotnetBuildInfoModule() (func() error, error) {
-	dc.buildInfoModule.SetName(dc.buildConfiguration.GetModule())
-	dc.buildInfoModule.SetSubcommand(dc.subCommand)
-	dc.buildInfoModule.SetArgAndFlags(dc.argAndFlags)
-	dc.buildInfoModule.SetToolchainType(dc.toolchainType)
-	cmd, err := dc.createCmd()
+func (dc *DotnetCommand) prepareDotnetBuildInfoModule(buildInfoModule *build.DotnetModule) (func() error, error) {
+	callbackFunc, err := dc.prepareConfigFile()
 	if err != nil {
 		return nil, err
 	}
-	return dc.prepareConfigFile(cmd)
-}
-
-func (dc *DotnetCommand) createCmd() (*dotnet.Cmd, error) {
-	c, err := dotnet.NewToolchainCmd(dc.toolchainType)
-	if err != nil {
-		return nil, err
-	}
-	if dc.subCommand != "" {
-		c.Command = append(c.Command, strings.Split(dc.subCommand, " ")...)
-	}
-	c.CommandFlags = dc.argAndFlags
-	return c, nil
+	buildInfoModule.SetName(dc.buildConfiguration.GetModule())
+	buildInfoModule.SetSubcommand(dc.subCommand)
+	buildInfoModule.SetArgAndFlags(dc.argAndFlags)
+	buildInfoModule.SetToolchainType(dc.toolchainType)
+	return callbackFunc, nil
 }
 
 // Changes the working directory if provided.
@@ -203,7 +188,29 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (cleanup func() error, err error) {
+func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
+	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
+	if err != nil {
+		return
+	}
+	cmdFlag := dc.GetToolchain().GetTypeFlagPrefix() + "configfile"
+	currentConfigPath, err := getFlagValueIfExists(cmdFlag, dc.argAndFlags)
+	if err != nil {
+		return
+	}
+	if currentConfigPath != "" {
+		return
+	}
+
+	cmdFlag = dc.GetToolchain().GetTypeFlagPrefix() + "source"
+	sourceCommandValue, err := getFlagValueIfExists(cmdFlag, dc.argAndFlags)
+	if err != nil {
+		return
+	}
+	if sourceCommandValue != "" {
+		return
+	}
+
 	// Use temp dir to save config file, so that config will be removed at the end.
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -212,45 +219,24 @@ func (dc *DotnetCommand) prepareConfigFile(cmd *dotnet.Cmd) (cleanup func() erro
 	cleanup = func() error {
 		return fileutils.RemoveTempDir(tempDirPath)
 	}
-	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
-	if err != nil {
-		return
-	}
-	cmdFlag := dc.GetToolchain().GetTypeFlagPrefix() + "configfile"
-	currentConfigPath, err := getFlagValueIfExists(cmdFlag, cmd)
-	if err != nil {
-		return
-	}
-	if currentConfigPath != "" {
-		return
-	}
-
-	cmdFlag = cmd.GetToolchain().GetTypeFlagPrefix() + "source"
-	sourceCommandValue, err := getFlagValueIfExists(cmdFlag, cmd)
-	if err != nil {
-		return
-	}
-	if sourceCommandValue != "" {
-		return
-	}
 
 	configFile, err := dc.InitNewConfig(tempDirPath)
 	if err == nil {
-		cmd.CommandFlags = append(cmd.CommandFlags, cmd.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
+		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
 	return
 }
 
 // Returns the value of the flag if exists
-func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
-	for i := 0; i < len(cmd.CommandFlags); i++ {
-		if !strings.EqualFold(cmd.CommandFlags[i], cmdFlag) {
+func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) {
+	for i := 0; i < len(argAndFlags); i++ {
+		if !strings.EqualFold(argAndFlags[i], cmdFlag) {
 			continue
 		}
-		if i+1 == len(cmd.CommandFlags) {
+		if i+1 == len(argAndFlags) {
 			return "", errorutils.CheckErrorf(cmdFlag, " flag was provided without value")
 		}
-		return cmd.CommandFlags[i+1], nil
+		return argAndFlags[i+1], nil
 	}
 
 	return "", nil
@@ -259,7 +245,7 @@ func getFlagValueIfExists(cmdFlag string, cmd *dotnet.Cmd) (string, error) {
 // The fact that we here, means that neither of the flags were provided, and we need to init our own config.
 func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
-	configFile, err = ioutil.TempFile(configDirPath, "jfrog.cli.nuget.")
+	configFile, err = ioutil.TempFile(configDirPath, configFilePattern)
 	if errorutils.CheckError(err) != nil {
 		return
 	}
@@ -271,8 +257,8 @@ func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.Fil
 		}
 	}()
 
-	// We will prefer to write the NuGet configuration using the `nuget add source` command (addSourceToNugetConfig)
-	// Currently the NuGet configuration utility doesn't allow setting protocolVersion.
+	// We would prefer to write the NuGet configuration using the `nuget add source` command,
+	// but the NuGet configuration utility doesn't currently allow setting protocolVersion.
 	// Until that is supported, the templated method must be used.
 	err = dc.addSourceToNugetTemplate(configFile)
 	return

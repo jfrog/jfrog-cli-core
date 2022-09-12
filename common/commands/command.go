@@ -30,7 +30,7 @@ func Exec(command Command) error {
 }
 
 func reportUsage(command Command, channel chan<- bool) {
-	defer SignalReportUsageFinished(channel)
+	defer signalReportUsageFinished(channel)
 	reportUsage, err := clientutils.GetBoolEnvValue(coreutils.ReportUsage, true)
 	if err != nil {
 		log.Debug(usage.ReportUsagePrefix + err.Error())
@@ -61,6 +61,6 @@ func reportUsage(command Command, channel chan<- bool) {
 }
 
 // Set to true when the report usage func exits
-func SignalReportUsageFinished(ch chan<- bool) {
+func signalReportUsageFinished(ch chan<- bool) {
 	ch <- true
 }

@@ -138,6 +138,9 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		if toStop {
 			return
 		}
+		//// TODO: Saving to file should be here, only if 10 minutes passed since the last saving to the state OR if the transfer of this repo ended.
+		//// TODO: Pay attention to Robi's PR #496!
+		//err = incRepoTransferredSizeBytes(phaseBase.repoKey)
 	}
 }
 
@@ -181,7 +184,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 			if phase.phaseId == FullTransferPhase {
 				if timeEstMng != nil {
-					timeEstMng.addChunkStatus(&chunk, initialWorkingThreads)
+					timeEstMng.addChunkStatus(chunk, initialWorkingThreads)
 				}
 				if progressbar != nil && phase != nil {
 					err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))

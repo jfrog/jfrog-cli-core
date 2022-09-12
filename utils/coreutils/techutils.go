@@ -1,6 +1,8 @@
 package coreutils
 
 import (
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strings"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -9,21 +11,23 @@ import (
 type Technology string
 
 const (
-	Maven  = "Maven"
-	Gradle = "Gradle"
-	Npm    = "npm"
-	Yarn   = "Yarn"
-	Go     = "go"
-	Pip    = "pip"
-	Pipenv = "pipenv"
-	Nuget  = "nuget"
-	Dotnet = "dotnet"
-	Docker = "docker"
+	Maven  Technology = "maven"
+	Gradle Technology = "gradle"
+	Npm    Technology = "npm"
+	Yarn   Technology = "yarn"
+	Go     Technology = "go"
+	Pip    Technology = "pip"
+	Pipenv Technology = "pipenv"
+	Nuget  Technology = "nuget"
+	Dotnet Technology = "dotnet"
+	Docker Technology = "docker"
 )
+
+const Pypi = "pypi"
 
 type TechData struct {
 	// The name of the package type used in this technology.
-	PackageType string
+	packageType string
 	// Suffixes of file/directory names that indicate if a project uses this technology.
 	// The name of at least one of the files/directories in the project's directory must end with one of these suffixes.
 	indicators []string
@@ -34,65 +38,93 @@ type TechData struct {
 	ciSetupSupport bool
 	// The file that handles the project's dependencies.
 	packageDescriptor string
+	// Formal name of the technology
+	formal string
+	// The executable name of the technology
+	execCommand string
 }
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		PackageType:       "Maven",
 		indicators:        []string{"pom.xml"},
 		ciSetupSupport:    true,
 		packageDescriptor: "pom.xml",
+		execCommand:       "mvn",
 	},
 	Gradle: {
-		PackageType:       "Gradle",
 		indicators:        []string{".gradle"},
 		ciSetupSupport:    true,
 		packageDescriptor: "build.gradle",
 	},
 	Npm: {
-		PackageType:       "npm",
 		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:    true,
 		packageDescriptor: "package.json",
+		formal:            string(Npm),
 	},
 	Yarn: {
-		PackageType:       "npm",
 		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor: "package.json",
 	},
 	Go: {
-		PackageType:       "go",
 		indicators:        []string{"go.mod"},
 		packageDescriptor: "go.mod",
 	},
 	Pip: {
-		PackageType: "pypi",
+		packageType: Pypi,
 		indicators:  []string{"setup.py", "requirements.txt"},
 		exclude:     []string{"Pipfile", "Pipfile.lock"},
 	},
 	Pipenv: {
-		PackageType:       "pypi",
+		packageType:       Pypi,
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
 	},
 	Nuget: {
-		PackageType: "nuget",
-		indicators:  []string{".sln", ".csproj"},
+		indicators: []string{".sln", ".csproj"},
+		formal:     "NuGet",
 	},
 	Dotnet: {
-		PackageType: "nuget",
-		indicators:  []string{".sln", ".csproj"},
+		indicators: []string{".sln", ".csproj"},
+		formal:     ".NET",
 	},
 }
 
-func GetTechnologyPackageType(techName Technology) string {
-	techData, ok := technologiesData[techName]
-	if ok {
-		return techData.PackageType
-	} else {
-		return string(techName)
+func (tech Technology) ToFormal() string {
+	if technologiesData[tech].formal == "" {
+		return cases.Title(language.Und).String(tech.ToString())
 	}
+	return technologiesData[tech].formal
+}
+
+func (tech Technology) ToString() string {
+	return string(tech)
+}
+
+func (tech Technology) GetExecCommandName() string {
+	if technologiesData[tech].execCommand == "" {
+		return tech.ToString()
+	}
+	return technologiesData[tech].execCommand
+}
+
+func (tech Technology) GetPackageType() string {
+	if technologiesData[tech].packageType == "" {
+		return tech.ToString()
+	}
+	return technologiesData[tech].packageType
+}
+
+func (tech Technology) GetPackageDescriptor() string {
+	if technologiesData[tech].packageDescriptor == "" {
+		return tech.ToFormal() + " Package Descriptor"
+	}
+	return technologiesData[tech].packageDescriptor
+}
+
+func (tech Technology) IsCiSetup() bool {
+	return technologiesData[tech].ciSetupSupport
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
@@ -174,22 +206,9 @@ func ToTechnologies(args []string) (technologies []Technology) {
 	return
 }
 
-func GetTechnologyPackageDescriptor(tech string) string {
-	techData, ok := technologiesData[Technology(tech)]
-	var dependencyFile string
-	if ok {
-		dependencyFile = techData.packageDescriptor
-	}
-	if dependencyFile == "" {
-		return tech + " package descriptor"
-	}
-
-	return dependencyFile
-}
-
-func GetAllTechnologiesList() (technologies []string) {
+func GetAllTechnologiesList() (technologies []Technology) {
 	for tech := range technologiesData {
-		technologies = append(technologies, string(tech))
+		technologies = append(technologies, tech)
 	}
 	return
 }

@@ -172,16 +172,7 @@
             <dockerTagRetention>1</dockerTagRetention>
             <enableComposerV1Indexing>false</enableComposerV1Indexing>
             <terraformType>MODULE</terraformType>
-            <federatedMembers>
-                <federatedMember>
-                    <url>https://acme.jfrog.io/artifactory/federated-generic-local</url>
-                    <enabled>true</enabled>
-                </federatedMember>
-                <federatedMember>
-                    <url>http://localhost:8082/artifactory/federated-generic-local</url>
-                    <enabled>true</enabled>
-                </federatedMember>
-            </federatedMembers>
+            <federatedMembers></federatedMembers>
             <modificationDate>1652778886914</modificationDate>
         </federatedRepository>
     </federatedRepositories>

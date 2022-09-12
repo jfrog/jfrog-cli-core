@@ -2,14 +2,16 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"io/ioutil"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 
@@ -49,8 +51,8 @@ type ConfigCommand struct {
 	useBasicAuthOnly bool
 	serverId         string
 	// For unit tests
-	disablePromptUrls bool
-	cmdType           ConfigAction
+	disablePrompts bool
+	cmdType        ConfigAction
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
@@ -185,6 +187,10 @@ func (cc *ConfigCommand) config() error {
 		return err
 	}
 
+	if err = cc.assertUrlsSafe(); err != nil {
+		return err
+	}
+
 	if cc.encPassword && cc.details.ArtifactoryUrl != "" {
 		err = cc.encryptPassword()
 		if err != nil {
@@ -291,7 +297,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		if err := getSshKeyPath(cc.details); err != nil {
 			return err
 		}
-	} else if !cc.disablePromptUrls {
+	} else if !cc.disablePrompts {
 		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
 			return err
 		}
@@ -299,7 +305,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
 			var authMethod AuthenticationMethod
 			var err error
-			if !cc.disablePromptUrls {
+			if !cc.disablePrompts {
 				authMethod, err = promptAuthMethods()
 				if err != nil {
 					return err
@@ -624,6 +630,47 @@ func (cc *ConfigCommand) encryptPassword() error {
 	}
 	cc.details.Password = encPassword
 	return err
+}
+
+// Assert all services URLs are safe
+func (cc *ConfigCommand) assertUrlsSafe() error {
+	for _, url := range []string{cc.details.Url, cc.details.AccessUrl, cc.details.ArtifactoryUrl,
+		cc.details.DistributionUrl, cc.details.MissionControlUrl, cc.details.PipelinesUrl, cc.details.XrayUrl} {
+		if isUrlSafe(url) {
+			continue
+		}
+		if cc.interactive {
+			if cc.disablePrompts || !coreutils.AskYesNo("Your JFrog URL uses an insecure HTTP connection, instead of HTTPS. Are you sure you want to continue?", false) {
+				return errorutils.CheckErrorf("config was aborted due to an insecure HTTP connection")
+			}
+		} else {
+			log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider using SSL (HTTPS instead of HTTP).")
+		}
+		return nil
+	}
+	return nil
+}
+
+// Return true if a URL is safe. URL is considered not safe if the following conditions are met:
+// 1. The URL uses an http:// scheme
+// 2. The URL leads to a URL outside of the local machine
+func isUrlSafe(urlToCheck string) bool {
+	url, err := url.Parse(urlToCheck)
+	if err != nil {
+		// Unparseable URL is not unsafe
+		return true
+	}
+
+	if url.Scheme != "http" {
+		return true
+	}
+
+	hostName := url.Hostname()
+	if hostName == "127.0.0.1" || hostName == "localhost" {
+		return true
+	}
+
+	return false
 }
 
 func checkSingleAuthMethod(details *config.ServerDetails) error {

@@ -172,8 +172,7 @@
             <dockerTagRetention>1</dockerTagRetention>
             <enableComposerV1Indexing>false</enableComposerV1Indexing>
             <terraformType>MODULE</terraformType>
-            <federatedMembers>
-            </federatedMembers>
+            <federatedMembers></federatedMembers>
             <modificationDate>1652778886914</modificationDate>
         </federatedRepository>
     </federatedRepositories>

@@ -119,7 +119,7 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	var runWaitGroup sync.WaitGroup
 
 	chunk := UploadChunk{}
-	chunk.appendUploadCandidate(fileSample)
+	chunk.appendUploadCandidateIfNeeded(fileSample, false)
 	stopped := uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
 	assert.False(t, stopped)
 	stopped = uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)

@@ -164,7 +164,7 @@ func (tdc *TransferFilesCommand) ReportTransferFilesUsage(usageReportErrors chan
 			AttributeValue: sourceStorageInfo.BinariesSize,
 		},
 	}
-	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.sourceStorageInfoManager.GetServiceManager(), reportUsageAttributes...)
+	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...)
 	if err != nil {
 		log.Debug(err.Error())
 		return

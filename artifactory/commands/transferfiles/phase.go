@@ -32,6 +32,7 @@ type transferPhase interface {
 	setProgressBar(*TransferProgressMng)
 	initProgressBar() error
 	StopGracefully()
+	setTimeEstMng(timeEstMng *timeEstimationManager)
 }
 
 type phaseBase struct {
@@ -46,6 +47,7 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
+	timeEstMng                *timeEstimationManager
 }
 
 func (pb *phaseBase) ShouldStop() bool {

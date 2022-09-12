@@ -98,7 +98,8 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool,
+	errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager) {
 	curTokensBatch := UploadChunksStatusBody{}
 	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
@@ -133,7 +134,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -163,7 +164,10 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng,
+	awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string],
+	timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
+	initialWorkingThreads := curProcessedUploadChunks
 	for _, chunk := range chunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -175,11 +179,16 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		case Done:
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-			if progressbar != nil && phase != nil && phase.phaseId == FullTransferPhase {
-				err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-				if err != nil {
-					log.Error("Progressbar unexpected error: " + err.Error())
-					continue
+			if phase.phaseId == FullTransferPhase {
+				if timeEstMng != nil {
+					timeEstMng.addChunkStatus(&chunk, initialWorkingThreads)
+				}
+				if progressbar != nil && phase != nil {
+					err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
+					if err != nil {
+						log.Error("Progressbar unexpected error: " + err.Error())
+						continue
+					}
 				}
 			}
 			err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
@@ -295,29 +304,32 @@ func GetThreads() int {
 // Number of threads in the settings files is expected to change by running a separate command.
 // The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
-func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool, buildInfoRepo bool) {
+func periodicallyUpdateThreads(producerConsumer parallel.Runner, timeEstMng *timeEstimationManager, doneChan chan bool, buildInfoRepo bool) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
 		if shouldStopPolling(doneChan) {
 			return
 		}
-		err := updateThreads(producerConsumer, buildInfoRepo)
+		err := updateThreads(producerConsumer, timeEstMng, buildInfoRepo)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 }
 
-func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
+func updateThreads(producerConsumer parallel.Runner, timeEstMng *timeEstimationManager, buildInfoRepo bool) error {
 	settings, err := utils.LoadTransferSettings()
 	if err != nil || settings == nil {
 		return err
 	}
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
-	if settings != nil && curThreads != calculatedNumberOfThreads {
+	if curThreads != calculatedNumberOfThreads {
 		curThreads = calculatedNumberOfThreads
 		if producerConsumer != nil {
 			producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
+		}
+		if timeEstMng != nil {
+			timeEstMng.setMaxSpeedsSliceLength(calculatedNumberOfThreads)
 		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}

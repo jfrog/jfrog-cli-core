@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -70,4 +72,79 @@ func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*utils.Repository
 		return nil, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary", repoKey)
 	}
 	return retVal, err
+}
+
+// GetReposTotalSize gets the total size of all passed repositories, in bytes.
+// This method must be called after CalculateStorageInfo.
+// The result of this function might not be accurate!
+func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, error) {
+	var totalSize int64
+	reposCounted := 0
+	pollingExecutor := &httputils.PollingExecutor{
+		Timeout:         getRepoSummaryPollingTimeout,
+		PollingInterval: getRepoSummaryPollingInterval,
+		MsgPrefix:       "Waiting for storage info calculation completion",
+		PollingAction: func() (shouldStop bool, responseBody []byte, err error) {
+			storageInfo, err := sim.GetStorageInfo()
+			if err != nil {
+				return true, nil, err
+			}
+			reposMap := make(map[string]bool)
+			for _, repoKey := range repoKeys {
+				reposMap[repoKey] = true
+			}
+			for _, repoSummary := range storageInfo.RepositoriesSummaryList {
+				if reposMap[repoSummary.RepoKey] == true {
+					reposCounted++
+					if repoSummary.UsedSpaceInBytes.String() != "" {
+						sizeToAdd, err := repoSummary.UsedSpaceInBytes.Int64()
+						if err != nil {
+							totalSize += sizeToAdd
+							continue
+						}
+					}
+
+					sizeToAdd, err := convertStorageSizeStringToBytes(repoSummary.UsedSpace)
+					if err != nil {
+						return true, nil, err
+					}
+					totalSize += sizeToAdd
+				}
+			}
+			return reposCounted == len(repoKeys), nil, nil
+		},
+	}
+	_, err := pollingExecutor.Execute()
+	if reposCounted < len(repoKeys) && err == nil {
+		return totalSize, errorutils.CheckErrorf("one or more of the requested repositories were not found")
+	}
+	return totalSize, err
+}
+
+func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
+	usedSpaceParts := strings.Split(sizeStr, " ")
+	if len(usedSpaceParts) != 2 {
+		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
+	}
+	sizeInUnit, err := strconv.ParseFloat(usedSpaceParts[0], 64)
+	if err != nil {
+		return 0, err
+	}
+	var sizeInBytes float64
+
+	switch usedSpaceParts[1] {
+	case "bytes":
+		sizeInBytes = sizeInUnit
+	case "KB":
+		sizeInBytes = sizeInUnit * 1024
+	case "MB":
+		sizeInBytes = sizeInUnit * 1024 * 1024
+	case "GB":
+		sizeInBytes = sizeInUnit * 1024 * 1024 * 1024
+	case "TB":
+		sizeInBytes = sizeInUnit * 1024 * 1024 * 1024 * 1024
+	default:
+		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
+	}
+	return int64(sizeInBytes), nil
 }

@@ -67,6 +67,10 @@ func (p *propertiesDiffPhase) setRepoSummary(repoSummary servicesUtils.Repositor
 	p.repoSummary = repoSummary
 }
 
+func (p *propertiesDiffPhase) setTimeEstMng(timeEstMng *timeEstimationManager) {
+	p.timeEstMng = timeEstMng
+}
+
 func (p *propertiesDiffPhase) run() error {
 	diffStart, diffEnd, err := getDiffHandlingRange(p.repoKey)
 	if err != nil {

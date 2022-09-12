@@ -105,6 +105,10 @@ func (f *filesDiffPhase) setRepoSummary(repoSummary servicesUtils.RepositorySumm
 	f.repoSummary = repoSummary
 }
 
+func (f *filesDiffPhase) setTimeEstMng(timeEstMng *timeEstimationManager) {
+	f.timeEstMng = timeEstMng
+}
+
 func (f *filesDiffPhase) run() error {
 	err := f.handlePreviousUploadFailures()
 	if err != nil {

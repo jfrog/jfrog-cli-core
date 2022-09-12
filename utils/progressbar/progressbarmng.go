@@ -184,6 +184,21 @@ func (bm *ProgressBarMng) NewDoneTasksProgressBar() *TasksProgressBar {
 	return pb
 }
 
+func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() string) *TasksProgressBar {
+	pb := &TasksProgressBar{}
+	pb.bar = bm.container.Add(1,
+		nil,
+		mpb.BarRemoveOnComplete(),
+		mpb.PrependDecorators(
+			decor.Name(headline),
+			decor.Any(func(statistics decor.Statistics) string {
+				return updateFn()
+			}),
+		),
+	)
+	return pb
+}
+
 func (bm *ProgressBarMng) GetBarsWg() *sync.WaitGroup {
 	return bm.barsWg
 }

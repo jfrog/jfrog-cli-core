@@ -44,6 +44,7 @@ type TransferFilesCommand struct {
 	excludeReposPatterns      []string
 	timeStarted               time.Time
 	ignoreState               bool
+	timeEstMng                *timeEstimationManager
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -110,8 +111,18 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	// Set progress bar with the length of the taget local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)))
+	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	transferredSize, err := getReposTransferredSizeBytes(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.timeEstMng = newTimeEstimationManager(totalSize, transferredSize)
+
+	// Set progress bar with the length of the source local and build info repositories
+	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)), tdc.timeEstMng)
 	if err != nil {
 		return err
 	}
@@ -202,6 +213,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
 		return
 	}
+	tdc.timeEstMng.setMaxSpeedsSliceLength(curThreads)
 	for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
 		if tdc.shouldStop() {
 			return
@@ -298,6 +310,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setSrcUserPluginService(srcUpService)
 	newPhase.setRepoSummary(repoSummary)
 	newPhase.setProgressBar(tdc.progressbar)
+	newPhase.setTimeEstMng(tdc.timeEstMng)
 }
 
 // Get all local and build-info repositories of the input server

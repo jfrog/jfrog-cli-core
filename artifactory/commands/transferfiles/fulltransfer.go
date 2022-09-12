@@ -110,6 +110,10 @@ func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositoryS
 	m.repoSummary = repoSummary
 }
 
+func (m *fullTransferPhase) setTimeEstMng(timeEstMng *timeEstimationManager) {
+	m.timeEstMng = timeEstMng
+}
+
 func (m *fullTransferPhase) run() error {
 	m.transferManager = newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {

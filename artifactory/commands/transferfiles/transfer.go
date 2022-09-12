@@ -117,30 +117,30 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	usageReportSent := make(chan error)
-	go tdc.ReportTransferFilesUsage(usageReportSent)
+	usageReportErrors := make(chan error)
+	go tdc.ReportTransferFilesUsage(usageReportErrors)
 
 	// Transfer local repositories
 	if err := tdc.transferRepos(sourceLocalRepos, targetLocalRepos, false, newPhase, srcUpService); err != nil {
-		<-usageReportSent
+		<-usageReportErrors
 		return tdc.cleanup(err, sourceLocalRepos)
 	}
 
 	// Transfer build-info repositories
 	if err := tdc.transferRepos(sourceBuildInfoRepos, targetBuildInfoRepos, true, newPhase, srcUpService); err != nil {
-		<-usageReportSent
+		<-usageReportErrors
 		return tdc.cleanup(err, allSourceLocalRepos)
 	}
 
 	// Close progressBar and create CSV errors summary file
-	<-usageReportSent
+	<-usageReportErrors
 	return tdc.cleanup(err, allSourceLocalRepos)
 }
 
-func (tdc *TransferFilesCommand) ReportTransferFilesUsage(usageReportSent chan<- error) {
+func (tdc *TransferFilesCommand) ReportTransferFilesUsage(usageReportErrors chan<- error) {
 	var err error
 	defer func() {
-		usageReportSent <- err
+		usageReportErrors <- err
 	}()
 	log.Debug(usage.ReportUsagePrefix + "Sending Transfer File info...")
 	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()

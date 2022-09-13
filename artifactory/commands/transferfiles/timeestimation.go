@@ -70,7 +70,7 @@ func (tem *timeEstimationManager) getSpeed() float64 {
 // getSpeed gets the transfer speed in an easy-to-read string.
 func (tem *timeEstimationManager) getSpeedString() string {
 	if len(tem.lastSpeeds) == 0 {
-		return "Data is not yet available, since only metadata has been transferred till now"
+		return "Not available yet"
 	}
 	return fmt.Sprintf("%.3f MB/s", tem.getSpeed())
 }
@@ -91,7 +91,7 @@ func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
 		return "Not available in this phase"
 	}
 	if len(tem.lastSpeeds) == 0 {
-		return "Data is not yet available, since only metadata has been transferred till now"
+		return "Not available yet"
 	}
 	remainingTimeSec := tem.getEstimatedRemainingTime()
 	remainingDays := remainingTimeSec / secondsInDay

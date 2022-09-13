@@ -98,8 +98,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool,
-	errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager) {
+func pollUploads(phaseBase *phaseBase, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
@@ -112,8 +111,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		if progressbar != nil {
-			progressbar.SetRunningThreads(curProcessedUploadChunks)
+		if phaseBase.progressBar != nil {
+			phaseBase.progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
 		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
@@ -127,14 +126,14 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			continue
 		}
 
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, phaseBase.srcUpService)
 		if err != nil {
 			continue
 		}
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, phaseBase.progressBar, awaitingStatusChunksSet, deletedChunksSet, phaseBase.timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}

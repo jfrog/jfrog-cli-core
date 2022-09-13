@@ -7,6 +7,9 @@ import (
 const secondsInMinute = 60
 const secondsInHour = 60 * secondsInMinute
 const secondsInDay = 24 * secondsInHour
+const millisecsInSecond = 1000
+const bytesInMB = 1024 * 1024
+const bytesPerMillisecToMBPerSec = float64(millisecsInSecond) / float64(bytesInMB)
 
 type timeEstimationManager struct {
 	// Speeds of the last done chunks, in bytes/ms
@@ -64,7 +67,7 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workin
 // getSpeed gets the transfer speed, in MB/s.
 func (tem *timeEstimationManager) getSpeed() float64 {
 	// Convert from bytes/ms to MB/s
-	return tem.speedsAverage * 1000 / 1024 / 1024
+	return tem.speedsAverage * bytesPerMillisecToMBPerSec
 }
 
 // getSpeed gets the transfer speed in an easy-to-read string.
@@ -101,11 +104,14 @@ func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
 		return fmt.Sprintf("About %d days and %d hours", remainingDays, remainingHours)
 	}
 	remainingHoursInSecs := remainingHours * secondsInHour
-	remainingMinutes := (remainingTimeSec - remainingDaysInSecs - remainingHoursInSecs) / secondsInMinute
+	remainingMinutes := (remainingTimeSec - remainingHoursInSecs) / secondsInMinute
 	if remainingHours >= 1 {
 		return fmt.Sprintf("About %d hours and %d minutes", remainingHours, remainingMinutes)
 	}
-	return fmt.Sprintf("About %d minutes", remainingMinutes)
+	if remainingMinutes >= 1 {
+		return fmt.Sprintf("About %d minutes", remainingMinutes)
+	}
+	return "Less than a minute"
 }
 
 func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUnavailable bool) {

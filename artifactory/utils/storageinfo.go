@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"github.com/jfrog/gofrog/datastructures"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,11 @@ import (
 const (
 	serviceManagerRetriesPerRequest                  = 3
 	serviceManagerRetriesWaitPerRequestMilliSecs int = 1000
+
+	bytesInKB = 1024
+	bytesInMB = 1024 * bytesInKB
+	bytesInGB = 1024 * bytesInMB
+	bytesInTB = 1024 * bytesInGB
 )
 
 var getRepoSummaryPollingTimeout = 10 * time.Minute
@@ -80,6 +86,10 @@ func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*utils.Repository
 func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, error) {
 	var totalSize int64
 	reposCounted := 0
+	reposSet := datastructures.MakeSet[string]()
+	for _, repoKey := range repoKeys {
+		reposSet.Add(repoKey)
+	}
 	pollingExecutor := &httputils.PollingExecutor{
 		Timeout:         getRepoSummaryPollingTimeout,
 		PollingInterval: getRepoSummaryPollingInterval,
@@ -89,12 +99,8 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 			if err != nil {
 				return true, nil, err
 			}
-			reposMap := make(map[string]bool)
-			for _, repoKey := range repoKeys {
-				reposMap[repoKey] = true
-			}
 			for _, repoSummary := range storageInfo.RepositoriesSummaryList {
-				if reposMap[repoSummary.RepoKey] {
+				if reposSet.Exists(repoSummary.RepoKey) {
 					reposCounted++
 					if repoSummary.UsedSpaceInBytes.String() != "" {
 						sizeToAdd, err := repoSummary.UsedSpaceInBytes.Int64()
@@ -136,13 +142,13 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 	case "bytes":
 		sizeInBytes = sizeInUnit
 	case "KB":
-		sizeInBytes = sizeInUnit * 1024
+		sizeInBytes = sizeInUnit * bytesInKB
 	case "MB":
-		sizeInBytes = sizeInUnit * 1024 * 1024
+		sizeInBytes = sizeInUnit * bytesInMB
 	case "GB":
-		sizeInBytes = sizeInUnit * 1024 * 1024 * 1024
+		sizeInBytes = sizeInUnit * bytesInGB
 	case "TB":
-		sizeInBytes = sizeInUnit * 1024 * 1024 * 1024 * 1024
+		sizeInBytes = sizeInUnit * bytesInTB
 	default:
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}

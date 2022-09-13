@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -153,13 +154,13 @@ func incRepoTransferredSizeBytes(repoKey string, sizeToAdd int64) error {
 }
 
 func getReposTransferredSizeBytes(repoKeys ...string) (transferredSizeBytes int64, err error) {
-	reposMap := make(map[string]bool)
+	reposSet := datastructures.MakeSet[string]()
 	for _, repoKey := range repoKeys {
-		reposMap[repoKey] = true
+		reposSet.Add(repoKey)
 	}
 	action := func(state *TransferState) error {
 		for i := range state.Repositories {
-			if reposMap[state.Repositories[i].Name] {
+			if reposSet.Exists(state.Repositories[i].Name) {
 				transferredSizeBytes += state.Repositories[i].TransferredSizeBytes
 			}
 		}

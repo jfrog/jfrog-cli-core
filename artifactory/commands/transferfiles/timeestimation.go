@@ -121,6 +121,7 @@ func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUna
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
 }
 
+//lint:ignore U1000
 func (tem *timeEstimationManager) saveTransferredSizeInState() error {
 	for repoKey, sizeToAdd := range tem.transferredSizeSinceStateUpdate {
 		err := incRepoTransferredSizeBytes(repoKey, sizeToAdd)

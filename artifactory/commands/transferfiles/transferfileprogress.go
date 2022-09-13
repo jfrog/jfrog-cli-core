@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"fmt"
 	"github.com/gookit/color"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -57,11 +56,10 @@ func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationM
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
 	transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
-		currSpeed := timeEstMng.getSpeed()
-		return fmt.Sprintf("%.3f MB/s", currSpeed)
+		return color.Green.Render(timeEstMng.getSpeedString())
 	})
 	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-		return timeEstMng.getEstimatedRemainingTimeString()
+		return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
 	})
 	return &transfer, nil
 }
@@ -73,25 +71,14 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
+	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("\nCurrent repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 }
 
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
 	if t.ShouldDisplay() {
-		if t.workingThreads != nil {
-			t.workingThreads.GetBar().Abort(true)
-			t.workingThreads = nil
-		}
-		if t.speedBar != nil {
-			t.speedBar.GetBar().Abort(true)
-			t.speedBar = nil
-		}
-		if t.timeEstBar != nil {
-			t.timeEstBar.GetBar().Abort(true)
-			t.timeEstBar = nil
-		}
+		t.abortMetricsBars()
 		if t.currentRepoHeadline != nil {
 			t.RemoveRepository()
 		}
@@ -217,6 +204,14 @@ func (t *TransferProgressMng) StopGracefully() {
 	t.shouldDisplay = false
 	// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
 	time.Sleep(progressbar.ProgressRefreshRate)
+	t.abortMetricsBars()
+	t.RemoveRepository()
+	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
+	t.totalRepositories = nil
+	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+}
+
+func (t *TransferProgressMng) abortMetricsBars() {
 	if t.workingThreads != nil {
 		t.workingThreads.GetBar().Abort(true)
 		t.workingThreads = nil
@@ -229,8 +224,4 @@ func (t *TransferProgressMng) StopGracefully() {
 		t.timeEstBar.GetBar().Abort(true)
 		t.timeEstBar = nil
 	}
-	t.RemoveRepository()
-	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
-	t.totalRepositories = nil
-	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
 }

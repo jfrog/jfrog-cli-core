@@ -179,19 +179,13 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		case Done:
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-			if phase.phaseId == FullTransferPhase {
-				if timeEstMng != nil {
-					timeEstMng.addChunkStatus(chunk, initialWorkingThreads)
-				}
-				if progressbar != nil && phase != nil {
-					err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-					if err != nil {
-						log.Error("Progressbar unexpected error: " + err.Error())
-						continue
-					}
-				}
+
+			err := updateProgress(phase, progressbar, timeEstMng, chunk, initialWorkingThreads)
+			if err != nil {
+				log.Error("Unexpected error in progress update: " + err.Error())
+				continue
 			}
-			err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+			err = awaitingStatusChunksSet.Remove(chunk.UuidToken)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -205,6 +199,26 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		}
 	}
 	return false
+}
+
+func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
+	if phase == nil {
+		return nil
+	}
+	includedInTotalSize := false
+	if phase.phaseId == FullTransferPhase {
+		includedInTotalSize = true
+		if progressbar != nil {
+			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if timeEstMng != nil {
+		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize)
+	}
+	return nil
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
@@ -304,20 +318,20 @@ func GetThreads() int {
 // Number of threads in the settings files is expected to change by running a separate command.
 // The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
-func periodicallyUpdateThreads(producerConsumer parallel.Runner, timeEstMng *timeEstimationManager, doneChan chan bool, buildInfoRepo bool) {
+func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool, buildInfoRepo bool) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
 		if shouldStopPolling(doneChan) {
 			return
 		}
-		err := updateThreads(producerConsumer, timeEstMng, buildInfoRepo)
+		err := updateThreads(producerConsumer, buildInfoRepo)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 }
 
-func updateThreads(producerConsumer parallel.Runner, timeEstMng *timeEstimationManager, buildInfoRepo bool) error {
+func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
 	settings, err := utils.LoadTransferSettings()
 	if err != nil || settings == nil {
 		return err
@@ -327,9 +341,6 @@ func updateThreads(producerConsumer parallel.Runner, timeEstMng *timeEstimationM
 		curThreads = calculatedNumberOfThreads
 		if producerConsumer != nil {
 			producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
-		}
-		if timeEstMng != nil {
-			timeEstMng.setMaxSpeedsSliceLength(calculatedNumberOfThreads)
 		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}

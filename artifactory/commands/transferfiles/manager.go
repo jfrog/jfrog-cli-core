@@ -80,6 +80,12 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}()
 	}
 
+	if ftm.phaseId == FullTransferPhase {
+		ftm.timeEstMng.setTimeEstimationUnavailable(false)
+	} else {
+		ftm.timeEstMng.setTimeEstimationUnavailable(true)
+	}
+
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
 	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper.chunkUploaderProducerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar, ftm.timeEstMng)
 	if err != nil {
@@ -157,7 +163,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, timeEstMng, ptm.doneChannel, phaseBase.buildInfoRepo)
+		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel, phaseBase.buildInfoRepo)
 	}()
 
 	// Check status of uploaded chunks.

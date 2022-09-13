@@ -21,7 +21,7 @@ type transferPhase interface {
 	run() error
 	phaseStarted() error
 	phaseDone() error
-	shouldCheckExistenceInFilestore(bool)
+	setCheckExistenceInFilestore(bool)
 	shouldSkipPhase() (bool, error)
 	setSrcUserPluginService(*srcUserPluginService)
 	setSourceDetails(*coreConfig.ServerDetails)
@@ -30,9 +30,9 @@ type transferPhase interface {
 	setRepoSummary(serviceUtils.RepositorySummary)
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
+	setTimeEstMng(timeEstMng *timeEstimationManager)
 	initProgressBar() error
 	StopGracefully()
-	setTimeEstMng(timeEstMng *timeEstimationManager)
 }
 
 type phaseBase struct {
@@ -67,6 +67,38 @@ func (pb *phaseBase) StopGracefully() {
 	if pb.progressBar != nil {
 		pb.progressBar.StopGracefully()
 	}
+}
+
+func (pb *phaseBase) getSourceDetails() *coreConfig.ServerDetails {
+	return pb.srcRtDetails
+}
+
+func (pb *phaseBase) setCheckExistenceInFilestore(shouldCheck bool) {
+	pb.checkExistenceInFilestore = shouldCheck
+}
+
+func (pb *phaseBase) setSrcUserPluginService(service *srcUserPluginService) {
+	pb.srcUpService = service
+}
+
+func (pb *phaseBase) setSourceDetails(details *coreConfig.ServerDetails) {
+	pb.srcRtDetails = details
+}
+
+func (pb *phaseBase) setTargetDetails(details *coreConfig.ServerDetails) {
+	pb.targetRtDetails = details
+}
+
+func (pb *phaseBase) setRepoSummary(repoSummary serviceUtils.RepositorySummary) {
+	pb.repoSummary = repoSummary
+}
+
+func (pb *phaseBase) setTimeEstMng(timeEstMng *timeEstimationManager) {
+	pb.timeEstMng = timeEstMng
+}
+
+func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
+	pb.progressBar = progressbar
 }
 
 func getPhaseByNum(context context.Context, i int, repoKey string, buildInfoRepo bool) transferPhase {

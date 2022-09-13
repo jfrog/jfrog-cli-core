@@ -98,7 +98,7 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 					reposCounted++
 					if repoSummary.UsedSpaceInBytes.String() != "" {
 						sizeToAdd, err := repoSummary.UsedSpaceInBytes.Int64()
-						if err != nil {
+						if err == nil {
 							totalSize += sizeToAdd
 							continue
 						}
@@ -128,7 +128,7 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 	}
 	sizeInUnit, err := strconv.ParseFloat(usedSpaceParts[0], 64)
 	if err != nil {
-		return 0, err
+		return 0, errorutils.CheckError(err)
 	}
 	var sizeInBytes float64
 

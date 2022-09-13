@@ -111,15 +111,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
-	if err != nil {
+	if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
 		return err
 	}
-	transferredSize, err := getReposTransferredSizeBytes(sourceLocalRepos...)
-	if err != nil {
-		return err
-	}
-	tdc.timeEstMng = newTimeEstimationManager(totalSize, transferredSize)
 
 	// Set progress bar with the length of the source local and build info repositories
 	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)), tdc.timeEstMng)
@@ -159,6 +153,19 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	}
 	tdc.targetStorageInfoManager = storageInfoManager
 	return storageInfoManager.CalculateStorageInfo()
+}
+
+func (tdc *TransferFilesCommand) initTimeEstimationManager(sourceLocalRepos []string) error {
+	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	transferredSize, err := getReposTransferredSizeBytes(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.timeEstMng = newTimeEstimationManager(totalSize, transferredSize)
+	return nil
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
@@ -213,7 +220,6 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
 		return
 	}
-	tdc.timeEstMng.setMaxSpeedsSliceLength(curThreads)
 	for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
 		if tdc.shouldStop() {
 			return
@@ -304,7 +310,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {
-	newPhase.shouldCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
+	newPhase.setCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)
 	newPhase.setSrcUserPluginService(srcUpService)

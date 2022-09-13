@@ -174,7 +174,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(phaseBase, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
+		pollUploads(phaseBase, phaseBase.srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
 	}()
 	return nil
 }

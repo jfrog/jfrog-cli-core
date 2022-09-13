@@ -71,7 +71,7 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("\nCurrent repository: " + color.Green.Render(name))
+	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 }
 

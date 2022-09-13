@@ -3,8 +3,6 @@ package transferfiles
 import (
 	"time"
 
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -13,14 +11,6 @@ const waitTimeBetweenPropertiesStatusSeconds = 5
 
 type propertiesDiffPhase struct {
 	phaseBase
-}
-
-func (p *propertiesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
-	return p.srcRtDetails
-}
-
-func (p *propertiesDiffPhase) setProgressBar(progressbar *TransferProgressMng) {
-	p.progressBar = progressbar
 }
 
 func (p *propertiesDiffPhase) initProgressBar() error {
@@ -43,28 +33,8 @@ func (p *propertiesDiffPhase) phaseDone() error {
 	return setPropsDiffHandlingCompleted(p.repoKey)
 }
 
-func (p *propertiesDiffPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
-	p.checkExistenceInFilestore = shouldCheck
-}
-
 func (p *propertiesDiffPhase) shouldSkipPhase() (bool, error) {
 	return isPropertiesPhaseDisabled(), nil
-}
-
-func (p *propertiesDiffPhase) setSrcUserPluginService(service *srcUserPluginService) {
-	p.srcUpService = service
-}
-
-func (p *propertiesDiffPhase) setSourceDetails(details *coreConfig.ServerDetails) {
-	p.srcRtDetails = details
-}
-
-func (p *propertiesDiffPhase) setTargetDetails(details *coreConfig.ServerDetails) {
-	p.targetRtDetails = details
-}
-
-func (p *propertiesDiffPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
-	p.repoSummary = repoSummary
 }
 
 func (p *propertiesDiffPhase) run() error {

@@ -98,21 +98,27 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
 	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
 	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
+	var progressBar *TransferProgressMng
+	var timeEstMng *timeEstimationManager
+	if phaseBase != nil {
+		progressBar = phaseBase.progressBar
+		timeEstMng = phaseBase.timeEstMng
+	}
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		if progressbar != nil {
-			progressbar.SetRunningThreads(curProcessedUploadChunks)
+		if progressBar != nil {
+			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
 		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
@@ -133,7 +139,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressbar, awaitingStatusChunksSet, deletedChunksSet, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressBar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -163,7 +169,10 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], errorsChannelMng *ErrorsChannelMng) bool {
+func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng,
+	awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string],
+	timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
+	initialWorkingThreads := curProcessedUploadChunks
 	for _, chunk := range chunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -175,14 +184,13 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		case Done:
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-			if progressbar != nil && phase != nil && phase.phaseId == FullTransferPhase {
-				err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-				if err != nil {
-					log.Error("Progressbar unexpected error: " + err.Error())
-					continue
-				}
+
+			err := updateProgress(phase, progressbar, timeEstMng, chunk, initialWorkingThreads)
+			if err != nil {
+				log.Error("Unexpected error in progress update: " + err.Error())
+				continue
 			}
-			err := awaitingStatusChunksSet.Remove(chunk.UuidToken)
+			err = awaitingStatusChunksSet.Remove(chunk.UuidToken)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -196,6 +204,26 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		}
 	}
 	return false
+}
+
+func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
+	if phase == nil {
+		return nil
+	}
+	includedInTotalSize := false
+	if phase.phaseId == FullTransferPhase {
+		includedInTotalSize = true
+		if progressbar != nil {
+			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if timeEstMng != nil {
+		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize)
+	}
+	return nil
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
@@ -314,7 +342,7 @@ func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
 		return err
 	}
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
-	if settings != nil && curThreads != calculatedNumberOfThreads {
+	if curThreads != calculatedNumberOfThreads {
 		curThreads = calculatedNumberOfThreads
 		if producerConsumer != nil {
 			producerConsumer.SetMaxParallel(calculatedNumberOfThreads)

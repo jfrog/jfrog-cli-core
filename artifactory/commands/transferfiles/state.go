@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -20,9 +21,10 @@ type TransferState struct {
 }
 
 type Repository struct {
-	Name         string        `json:"name,omitempty"`
-	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
-	Diffs        []DiffDetails `json:"diffs,omitempty"`
+	Name                 string        `json:"name,omitempty"`
+	FullTransfer         PhaseDetails  `json:"full_transfer,omitempty"`
+	Diffs                []DiffDetails `json:"diffs,omitempty"`
+	TransferredSizeBytes int64         `json:"transferred_size_bytes,omitempty"`
 }
 
 type PhaseDetails struct {
@@ -137,6 +139,35 @@ func setRepoFullTransferCompleted(repoKey string) error {
 		return nil
 	}
 	return doAndSaveState(action)
+}
+
+func incRepoTransferredSizeBytes(repoKey string, sizeToAdd int64) error {
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.TransferredSizeBytes += sizeToAdd
+		return nil
+	}
+	return doAndSaveState(action)
+}
+
+func getReposTransferredSizeBytes(repoKeys ...string) (transferredSizeBytes int64, err error) {
+	reposSet := datastructures.MakeSet[string]()
+	for _, repoKey := range repoKeys {
+		reposSet.Add(repoKey)
+	}
+	action := func(state *TransferState) error {
+		for i := range state.Repositories {
+			if reposSet.Exists(state.Repositories[i].Name) {
+				transferredSizeBytes += state.Repositories[i].TransferredSizeBytes
+			}
+		}
+		return nil
+	}
+	err = doAndSaveState(action)
+	return
 }
 
 // Adds new diff details to the repo's diff array in state.

@@ -163,13 +163,7 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() (err error) {
 	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
 	if username != "" && password != "" {
-		err = pc.configPoetryRepo(rtUrl.Path, username, password)
-		defer func() {
-			e := pc.cleanup()
-			if err == nil {
-				err = e
-			}
-		}()
+		err = pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
 		if err != nil {
 			return err
 		}
@@ -215,7 +209,13 @@ func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
 		return errorutils.CheckErrorf("Failed to add tool.poetry.source to pyproject.toml: %s", err.Error())
 	}
 	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
-	return nil
+	log.Info("Running Poetry update")
+	cmd := buildinfoutils.NewCommand("poetry", "update", []string{})
+	err = gofrogcmd.RunCmd(cmd)
+	if err != nil {
+		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
+	}
+	return err
 }
 
 func (pc *PoetryCommand) cleanup() error {
@@ -239,7 +239,7 @@ func (pc *PoetryCommand) cleanup() error {
 	if err != nil {
 		return errorutils.CheckErrorf("Cleanup modified pyproject.toml failed with: %s", err.Error())
 	}
-	return fileutils.MoveFile(filepath.Join(currentDir, pyprojectBackup), filepath.Join(currentDir, pyproject))
+	return fileutils.MoveFile(filepath.Join(currentDir, pyprojectBackup, pyproject), filepath.Join(currentDir, pyproject))
 }
 
 func (pc *PoetryCommand) CommandName() string {

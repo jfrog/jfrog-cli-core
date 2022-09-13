@@ -140,10 +140,6 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 	return nil
 }
 
-func (pc *PythonCommand) CommandName() string {
-	return "rt_python_command"
-}
-
 func (pc *PythonCommand) SetServerDetails(serverDetails *config.ServerDetails) *PythonCommand {
 	pc.serverDetails = serverDetails
 	return pc

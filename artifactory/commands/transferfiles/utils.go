@@ -105,14 +105,20 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
 	deletedChunksSet := datastructures.MakeSet[string]()
 	curProcessedUploadChunks = 0
+	var progressBar *TransferProgressMng
+	var timeEstMng *timeEstimationManager
+	if phaseBase != nil {
+		progressBar = phaseBase.progressBar
+		timeEstMng = phaseBase.timeEstMng
+	}
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		if phaseBase != nil && phaseBase.progressBar != nil {
-			phaseBase.progressBar.SetRunningThreads(curProcessedUploadChunks)
+		if progressBar != nil {
+			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
 		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
@@ -133,7 +139,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, phaseBase.progressBar, awaitingStatusChunksSet, deletedChunksSet, phaseBase.timeEstMng, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressBar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}

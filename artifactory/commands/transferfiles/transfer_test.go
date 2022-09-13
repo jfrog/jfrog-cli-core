@@ -129,7 +129,7 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil, nil, nil)
+		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil)
 	}()
 	// Let the whole process run for a few chunk status checks, then mark it as done.
 	time.Sleep(5 * waitTimeBetweenChunkStatusSeconds * time.Second)

@@ -98,7 +98,7 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
 	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
 	awaitingStatusChunksSet := datastructures.MakeSet[string]()
@@ -126,7 +126,7 @@ func pollUploads(phaseBase *phaseBase, uploadTokensChan chan string, doneChan ch
 			continue
 		}
 
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, phaseBase.srcUpService)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
 		if err != nil {
 			continue
 		}

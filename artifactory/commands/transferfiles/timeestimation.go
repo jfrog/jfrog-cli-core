@@ -24,10 +24,12 @@ type timeEstimationManager struct {
 	totalSizeBytes int64
 	// True if remaining time estimation is unavailable
 	timeEstimationUnavailable bool
+	// Map of repository keys and the amount of data (in bytes) transferred in each of them since the last update of the state.
+	transferredSizeSinceStateUpdate map[string]int64
 }
 
 func newTimeEstimationManager(totalSizeBytes, transferredSizeBytes int64) *timeEstimationManager {
-	return &timeEstimationManager{totalSizeBytes: totalSizeBytes, transferredSizeBytes: transferredSizeBytes}
+	return &timeEstimationManager{totalSizeBytes: totalSizeBytes, transferredSizeBytes: transferredSizeBytes, transferredSizeSinceStateUpdate: make(map[string]int64)}
 }
 
 func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool) {
@@ -39,6 +41,7 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workin
 		if file.Status == Success {
 			if includedInTotalSize {
 				tem.transferredSizeBytes += file.SizeBytes
+				tem.transferredSizeSinceStateUpdate[file.Repo] += file.SizeBytes
 			}
 			if !file.ChecksumDeployed {
 				sizeSum += file.SizeBytes
@@ -116,4 +119,15 @@ func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
 
 func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUnavailable bool) {
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
+}
+
+func (tem *timeEstimationManager) saveTransferredSizeInState() error {
+	for repoKey, sizeToAdd := range tem.transferredSizeSinceStateUpdate {
+		err := incRepoTransferredSizeBytes(repoKey, sizeToAdd)
+		if err != nil {
+			return err
+		}
+	}
+	tem.transferredSizeSinceStateUpdate = make(map[string]int64)
+	return nil
 }

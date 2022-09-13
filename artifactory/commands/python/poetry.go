@@ -94,6 +94,9 @@ func (pc *PoetryCommand) Run() (err error) {
 func (pc *PoetryCommand) install(buildConfiguration *utils.BuildConfiguration, pythonBuildInfo *build.Build) (err error) {
 	var pythonModule *build.PythonModule
 	pythonModule, err = pythonBuildInfo.AddPythonModule("", pc.pythonTool)
+	if err != nil {
+		return
+	}
 	if buildConfiguration.GetModule() != "" {
 		pythonModule.SetName(buildConfiguration.GetModule())
 	}

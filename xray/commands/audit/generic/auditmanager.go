@@ -60,9 +60,9 @@ func GenericAudit(
 		case coreutils.Yarn:
 			techResults, isMultipleRootProject, e = yarn.AuditYarn(xrayGraphScanParams, serverDetails, progress)
 		case coreutils.Go:
-			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanPrams, serverDetails, progress)
+			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanParams, serverDetails, progress)
 		case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanPrams, serverDetails, pythonutils.PythonTool(tech), progress, requirementsFile)
+			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanParams, serverDetails, pythonutils.PythonTool(tech), progress, requirementsFile)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:

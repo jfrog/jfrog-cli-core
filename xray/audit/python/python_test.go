@@ -65,7 +65,7 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Poetry)
+	rootNodes, err := BuildDependencyTree(pythonutils.Poetry, "")
 	if err != nil {
 		t.Fatal(err)
 	}

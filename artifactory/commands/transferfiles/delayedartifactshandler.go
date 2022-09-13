@@ -3,7 +3,6 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 	"path"
 	"path/filepath"
@@ -145,7 +144,7 @@ type shouldDelayUpload func(string) bool
 // Returns an array of functions to control the order of deployment.
 func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
-	case coreutils.Maven.ToFormal():
+	case maven:
 		fallthrough
 	case gradle:
 		fallthrough

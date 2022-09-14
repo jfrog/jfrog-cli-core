@@ -24,9 +24,8 @@ import (
 const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
-	assumeProducerConsumerDoneWhenIdleForSeconds = 15
+	assumeProducerConsumerDoneWhenIdleForSeconds = 7
 	DefaultAqlPaginationLimit                    = 10000
-	maxBuildInfoRepoThreads                      = 8
 )
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
@@ -323,20 +322,20 @@ func GetThreads() int {
 // Number of threads in the settings files is expected to change by running a separate command.
 // The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
-func periodicallyUpdateThreads(producerConsumer parallel.Runner, doneChan chan bool, buildInfoRepo bool) {
+func periodicallyUpdateThreads(pcWrapper *producerConsumerWrapper, doneChan chan bool, buildInfoRepo bool) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
 		if shouldStopPolling(doneChan) {
 			return
 		}
-		err := updateThreads(producerConsumer, buildInfoRepo)
+		err := updateThreads(pcWrapper, buildInfoRepo)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 }
 
-func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
+func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error {
 	settings, err := utils.LoadTransferSettings()
 	if err != nil || settings == nil {
 		return err
@@ -344,12 +343,19 @@ func updateThreads(producerConsumer parallel.Runner, buildInfoRepo bool) error {
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
 	if curThreads != calculatedNumberOfThreads {
 		curThreads = calculatedNumberOfThreads
-		if producerConsumer != nil {
-			producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
+		if pcWrapper != nil {
+			updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedNumberOfThreads)
+			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedNumberOfThreads)
 		}
 		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
 	}
 	return nil
+}
+
+func updateProducerConsumerMaxParallel(producerConsumer parallel.Runner, calculatedNumberOfThreads int) {
+	if producerConsumer != nil {
+		producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
+	}
 }
 
 func shouldStopPolling(doneChan chan bool) bool {

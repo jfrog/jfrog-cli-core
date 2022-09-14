@@ -80,8 +80,14 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}()
 	}
 
+	if ftm.phaseId == FullTransferPhase {
+		ftm.timeEstMng.setTimeEstimationUnavailable(false)
+	} else {
+		ftm.timeEstMng.setTimeEstimationUnavailable(true)
+	}
+
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
-	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper.chunkUploaderProducerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper.chunkUploaderProducerConsumer, uploadTokensChan, &errorsChannelMng)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -148,7 +154,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -168,7 +174,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
+		pollUploads(phaseBase, phaseBase.srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
 	}()
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/jfrog/gofrog/parallel"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -19,14 +18,6 @@ import (
 type fullTransferPhase struct {
 	phaseBase
 	transferManager *transferManager
-}
-
-func (m *fullTransferPhase) getSourceDetails() *coreConfig.ServerDetails {
-	return m.srcRtDetails
-}
-
-func (m *fullTransferPhase) setProgressBar(progressbar *TransferProgressMng) {
-	m.progressBar = progressbar
 }
 
 func (m *fullTransferPhase) initProgressBar() error {
@@ -69,10 +60,6 @@ func (m *fullTransferPhase) phaseDone() error {
 	return nil
 }
 
-func (m *fullTransferPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
-	m.checkExistenceInFilestore = shouldCheck
-}
-
 func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 	skip, err := isRepoTransferred(m.repoKey)
 	if err != nil {
@@ -89,22 +76,6 @@ func (m *fullTransferPhase) skipPhase() {
 	if m.progressBar != nil {
 		m.progressBar.AddPhase1(0)
 	}
-}
-
-func (m *fullTransferPhase) setSrcUserPluginService(service *srcUserPluginService) {
-	m.srcUpService = service
-}
-
-func (m *fullTransferPhase) setSourceDetails(details *coreConfig.ServerDetails) {
-	m.srcRtDetails = details
-}
-
-func (m *fullTransferPhase) setTargetDetails(details *coreConfig.ServerDetails) {
-	m.targetRtDetails = details
-}
-
-func (m *fullTransferPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
-	m.repoSummary = repoSummary
 }
 
 func (m *fullTransferPhase) run() error {

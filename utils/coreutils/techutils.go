@@ -1,9 +1,10 @@
 package coreutils
 
 import (
+	"strings"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"strings"
 
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
@@ -18,6 +19,7 @@ const (
 	Go     Technology = "go"
 	Pip    Technology = "pip"
 	Pipenv Technology = "pipenv"
+	Poetry Technology = "poetry"
 	Nuget  Technology = "nuget"
 	Dotnet Technology = "dotnet"
 	Docker Technology = "docker"
@@ -80,6 +82,10 @@ var technologiesData = map[Technology]TechData{
 		packageType:       Pypi,
 		indicators:        []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptor: "Pipfile",
+	},
+	Poetry: {
+		packageType: Pypi,
+		indicators:  []string{"pyproject.toml", "poetry.lock"},
 	},
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},

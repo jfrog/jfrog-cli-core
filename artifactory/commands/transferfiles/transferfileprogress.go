@@ -30,6 +30,10 @@ type TransferProgressMng struct {
 	totalRepositories *progressbar.TasksWithHeadlineProg
 	// A bar showing the number of working transfer threads
 	workingThreads *progressbar.TasksProgressBar
+	// A bar showing the speed of the data transfer
+	speedBar *progressbar.TasksProgressBar
+	// A bar showing the estimated remaining time for the transfer
+	timeEstBar *progressbar.TasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -42,7 +46,7 @@ type TransferProgressMng struct {
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, error) {
+func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationManager) (*TransferProgressMng, error) {
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
 		return nil, err
@@ -51,6 +55,12 @@ func NewTransferProgressMng(totalRepositories int64) (*TransferProgressMng, erro
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
+	transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
+		return color.Green.Render(timeEstMng.getSpeedString())
+	})
+	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
+		return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
+	})
 	return &transfer, nil
 }
 
@@ -68,10 +78,7 @@ func (t *TransferProgressMng) NewRepository(name string) {
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
 	if t.ShouldDisplay() {
-		if t.workingThreads != nil {
-			t.workingThreads.GetBar().Abort(true)
-			t.workingThreads = nil
-		}
+		t.abortMetricsBars()
 		if t.currentRepoHeadline != nil {
 			t.RemoveRepository()
 		}
@@ -201,12 +208,24 @@ func (t *TransferProgressMng) StopGracefully() {
 	t.shouldDisplay = false
 	// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
 	time.Sleep(progressbar.ProgressRefreshRate)
-	if t.workingThreads != nil {
-		t.workingThreads.GetBar().Abort(true)
-		t.workingThreads = nil
-	}
+	t.abortMetricsBars()
 	t.RemoveRepository()
 	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
 	t.totalRepositories = nil
 	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+}
+
+func (t *TransferProgressMng) abortMetricsBars() {
+	if t.workingThreads != nil {
+		t.workingThreads.GetBar().Abort(true)
+		t.workingThreads = nil
+	}
+	if t.speedBar != nil {
+		t.speedBar.GetBar().Abort(true)
+		t.speedBar = nil
+	}
+	if t.timeEstBar != nil {
+		t.timeEstBar.GetBar().Abort(true)
+		t.timeEstBar = nil
+	}
 }

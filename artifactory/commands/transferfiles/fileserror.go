@@ -1,8 +1,6 @@
 package transferfiles
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -122,34 +120,4 @@ func (e *errorsRetryPhase) phaseDone() error {
 		return e.progressBar.DonePhase(e.phaseId)
 	}
 	return nil
-}
-
-// Getters & Setters
-
-func (e *errorsRetryPhase) getSourceDetails() *config.ServerDetails {
-	return e.srcRtDetails
-}
-
-func (e *errorsRetryPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
-	e.checkExistenceInFilestore = shouldCheck
-}
-
-func (e *errorsRetryPhase) setSrcUserPluginService(service *srcUserPluginService) {
-	e.srcUpService = service
-}
-
-func (e *errorsRetryPhase) setSourceDetails(details *config.ServerDetails) {
-	e.srcRtDetails = details
-}
-
-func (e *errorsRetryPhase) setTargetDetails(details *config.ServerDetails) {
-	e.targetRtDetails = details
-}
-
-func (e *errorsRetryPhase) setRepoSummary(summary utils.RepositorySummary) {
-	e.repoSummary = summary
-}
-
-func (e *errorsRetryPhase) setProgressBar(progressbar *TransferProgressMng) {
-	e.progressBar = progressbar
 }

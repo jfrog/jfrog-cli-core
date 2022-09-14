@@ -44,6 +44,7 @@ type TransferFilesCommand struct {
 	excludeReposPatterns      []string
 	timeStarted               time.Time
 	ignoreState               bool
+	timeEstMng                *timeEstimationManager
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -110,8 +111,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	// Set progress bar with the length of the taget local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)))
+	if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
+		return err
+	}
+
+	// Set progress bar with the length of the source local and build info repositories
+	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)), tdc.timeEstMng)
 	if err != nil {
 		return err
 	}
@@ -148,6 +153,19 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	}
 	tdc.targetStorageInfoManager = storageInfoManager
 	return storageInfoManager.CalculateStorageInfo()
+}
+
+func (tdc *TransferFilesCommand) initTimeEstimationManager(sourceLocalRepos []string) error {
+	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	transferredSize, err := getReposTransferredSizeBytes(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.timeEstMng = newTimeEstimationManager(totalSize, transferredSize)
+	return nil
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
@@ -292,12 +310,13 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 }
 
 func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {
-	newPhase.shouldCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
+	newPhase.setCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)
 	newPhase.setSrcUserPluginService(srcUpService)
 	newPhase.setRepoSummary(repoSummary)
 	newPhase.setProgressBar(tdc.progressbar)
+	newPhase.setTimeEstMng(tdc.timeEstMng)
 }
 
 // Get all local and build-info repositories of the input server

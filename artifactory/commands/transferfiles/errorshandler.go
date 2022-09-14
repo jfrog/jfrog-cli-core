@@ -1,9 +1,11 @@
 package transferfiles
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -314,6 +316,23 @@ func getErrorsFiles(repoKeys []string, isRetry bool) (filesPaths []string, err e
 		}
 	}
 	return
+}
+
+// reads an error file from a given path, parse and populate a given FilesErrors instance with the file information
+func readErrorFile(path string) (FilesErrors, error) {
+	// read from os
+	var failedFiles FilesErrors
+
+	fContent, err := os.ReadFile(path)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+	// parse to struct
+	err = json.Unmarshal(fContent, &failedFiles)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+	return failedFiles, nil
 }
 
 // ErrorsChannelMng handles the uploading errors and adds them to a common channel.

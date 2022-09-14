@@ -52,9 +52,6 @@ func (m *fullTransferPhase) phaseStarted() error {
 		return err
 	}
 
-	if !isPropertiesPhaseDisabled() {
-		return m.srcUpService.storeProperties(m.repoKey)
-	}
 	return nil
 }
 

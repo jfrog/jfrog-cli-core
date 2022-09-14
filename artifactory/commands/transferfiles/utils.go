@@ -175,7 +175,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 		case Done:
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-			if progressbar != nil && phase != nil && phase.phaseId == FullTransferPhase {
+			if progressbar != nil && phase != nil && (phase.phaseId == FullTransferPhase || phase.phaseId == ErrorsPhase) {
 				err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
 				if err != nil {
 					log.Error("Progressbar unexpected error: " + err.Error())

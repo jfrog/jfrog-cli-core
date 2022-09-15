@@ -12,21 +12,9 @@ func TestGetEstimatedRemainingTime(t *testing.T) {
 	chunkStatus1 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        10 * bytesInMB,
-			},
-			{
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        15 * bytesInMB,
-			},
-			{
-				Status:           Success,
-				ChecksumDeployed: true,
-				SizeBytes:        8 * bytesInMB,
-			},
+			createFileUploadStatusResponse("", 10*bytesInMB, false, Success),
+			createFileUploadStatusResponse("", 15*bytesInMB, false, Success),
+			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
@@ -39,16 +27,8 @@ func TestGetEstimatedRemainingTime(t *testing.T) {
 	chunkStatus2 := ChunkStatus{
 		DurationMillis: 5 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        21.25 * bytesInMB,
-			},
-			{
-				Status:           Fail,
-				ChecksumDeployed: false,
-				SizeBytes:        6 * bytesInMB,
-			},
+			createFileUploadStatusResponse("", 21.25*bytesInMB, false, Success),
+			createFileUploadStatusResponse("", 6*bytesInMB, false, Fail),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus2, 2, false)
@@ -65,11 +45,7 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 	chunkStatus1 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				Status:           Success,
-				ChecksumDeployed: true,
-				SizeBytes:        8 * bytesInMB,
-			},
+			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
@@ -108,11 +84,7 @@ func addOneFileChunk(timeEstMng *timeEstimationManager, workingThreads, chunkDur
 	chunkStatus := ChunkStatus{
 		DurationMillis: chunkDuration,
 		Files: []FileUploadStatusResponse{
-			{
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        chunkSize,
-			},
+			createFileUploadStatusResponse("", chunkSize, false, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus, workingThreads, true)
@@ -134,23 +106,9 @@ func TestTransferredSizeInState(t *testing.T) {
 	chunkStatus1 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo1Key,
-				},
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        10 * bytesInMB,
-			},
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo1Key,
-				},
-				Status: Success,
-				// Checksum-deploy should not affect the update size.
-				ChecksumDeployed: true,
-				SizeBytes:        15 * bytesInMB,
-			},
+			createFileUploadStatusResponse(repo1Key, 10*bytesInMB, false, Success),
+			// Checksum-deploy should not affect the update size.
+			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, true, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
@@ -159,14 +117,7 @@ func TestTransferredSizeInState(t *testing.T) {
 	chunkStatus2 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo1Key,
-				},
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        21 * bytesInMB,
-			},
+			createFileUploadStatusResponse(repo1Key, 21*bytesInMB, false, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus2, 3, false)
@@ -175,22 +126,8 @@ func TestTransferredSizeInState(t *testing.T) {
 	chunkStatus3 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo2Key,
-				},
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        13 * bytesInMB,
-			},
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo2Key,
-				},
-				Status:           Fail,
-				ChecksumDeployed: false,
-				SizeBytes:        133 * bytesInMB,
-			},
+			createFileUploadStatusResponse(repo2Key, 13*bytesInMB, false, Success),
+			createFileUploadStatusResponse(repo2Key, 133*bytesInMB, false, Fail),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus3, 3, true)
@@ -200,14 +137,7 @@ func TestTransferredSizeInState(t *testing.T) {
 	chunkStatus4 := ChunkStatus{
 		DurationMillis: 10 * milliSecsInSecond,
 		Files: []FileUploadStatusResponse{
-			{
-				FileRepresentation: FileRepresentation{
-					Repo: repo2Key,
-				},
-				Status:           Success,
-				ChecksumDeployed: false,
-				SizeBytes:        9 * bytesInMB,
-			},
+			createFileUploadStatusResponse(repo2Key, 9*bytesInMB, false, Success),
 		},
 	}
 	timeEstMng.addChunkStatus(chunkStatus4, 3, true)
@@ -224,4 +154,15 @@ func assertTransferredSize(t *testing.T, expectedSize int64, repoKeys ...string)
 	totalTransferredSize, err := getReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
+}
+
+func createFileUploadStatusResponse(repoKey string, sizeBytes int64, checksumDeployed bool, status ChunkFileStatusType) FileUploadStatusResponse {
+	return FileUploadStatusResponse{
+		FileRepresentation: FileRepresentation{
+			Repo: repoKey,
+		},
+		SizeBytes:        sizeBytes,
+		ChecksumDeployed: checksumDeployed,
+		Status:           status,
+	}
 }

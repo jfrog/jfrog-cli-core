@@ -93,15 +93,27 @@ func TestGetSourceRepoSummary(t *testing.T) {
 }
 
 func TestConvertStorageSizeStringToBytes(t *testing.T) {
-	t.Run("bytes", func(t *testing.T) { assertConvertedStorageSize(t, "2.22 bytes", false, 2.22) })
-	t.Run("KB", func(t *testing.T) { assertConvertedStorageSize(t, "3.333 KB", false, 3.333*bytesInKB) })
-	t.Run("MB", func(t *testing.T) { assertConvertedStorageSize(t, "4.4444 MB", false, 4.4444*bytesInMB) })
-	t.Run("GB", func(t *testing.T) { assertConvertedStorageSize(t, "5.55555 GB", false, 5.55555*bytesInGB) })
-	t.Run("TB", func(t *testing.T) { assertConvertedStorageSize(t, "6.666666 TB", false, 6.666666*bytesInTB) })
-	t.Run("int", func(t *testing.T) { assertConvertedStorageSize(t, "7 KB", false, 7*bytesInKB) })
-	t.Run("size missing", func(t *testing.T) { assertConvertedStorageSize(t, "8", true, -1) })
-	t.Run("unexpected size", func(t *testing.T) { assertConvertedStorageSize(t, "8 kb", true, -1) })
-	t.Run("too many separators", func(t *testing.T) { assertConvertedStorageSize(t, "8 K B", true, -1) })
+	convertStorageSizeStringToBytesCases := []struct {
+		name                         string
+		size                         string
+		errorExpected                bool
+		expectedSizeBeforeConversion float64
+	}{
+		{"bytes", "2.22 bytes", false, 2.22},
+		{"KB", "3.333 KB", false, 3.333 * bytesInKB},
+		{"MB", "4.4444 MB", false, 4.4444 * bytesInMB},
+		{"GB", "5.55555 GB", false, 5.55555 * bytesInGB},
+		{"TB", "6.666666 TB", false, 6.666666 * bytesInTB},
+		{"int", "7 KB", false, 7 * bytesInKB},
+		{"size missing", "8", true, -1},
+		{"unexpected size", "8 kb", true, -1},
+		{"too many separators", "8 K B", true, -1},
+	}
+	for _, testCase := range convertStorageSizeStringToBytesCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assertConvertedStorageSize(t, testCase.size, testCase.errorExpected, testCase.expectedSizeBeforeConversion)
+		})
+	}
 }
 
 func assertConvertedStorageSize(t *testing.T, size string, errorExpected bool, expectedSizeBeforeConversion float64) {

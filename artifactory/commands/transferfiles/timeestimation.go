@@ -129,6 +129,7 @@ func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUna
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
 }
 
+// TODO remove when used.
 //lint:ignore U1000 will be used in a different pull request
 func (tem *timeEstimationManager) saveTransferredSizeInState() error {
 	for repoKey, sizeToAdd := range tem.transferredSizeSinceStateUpdate {
@@ -141,6 +142,7 @@ func (tem *timeEstimationManager) saveTransferredSizeInState() error {
 	return nil
 }
 
+// TODO revert when ready.
 func isTimeEstimationEnabled() bool {
 	return false
 }

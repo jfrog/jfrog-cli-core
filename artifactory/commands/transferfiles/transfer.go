@@ -111,8 +111,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
-		return err
+	if isTimeEstimationEnabled() {
+		if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
+			return err
+		}
 	}
 
 	// Set progress bar with the length of the source local and build info repositories

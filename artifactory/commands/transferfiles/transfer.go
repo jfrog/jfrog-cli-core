@@ -122,7 +122,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	go tdc.ReportTransferFilesUsage()
+	go tdc.reportTransferFilesUsage()
 
 	// Transfer local repositories
 	if err := tdc.transferRepos(sourceLocalRepos, targetLocalRepos, false, newPhase, srcUpService); err != nil {
@@ -138,9 +138,8 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	return tdc.cleanup(err, allSourceLocalRepos)
 }
 
-func (tdc *TransferFilesCommand) ReportTransferFilesUsage() {
-	var err error
-	log.Debug(usage.ReportUsagePrefix + "Sending Transfer File info...")
+func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
+	log.Debug(usage.ReportUsagePrefix + "Sending Transfer Files info...")
 	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
 	if err != nil {
 		log.Debug(err.Error())
@@ -165,7 +164,6 @@ func (tdc *TransferFilesCommand) ReportTransferFilesUsage() {
 	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...)
 	if err != nil {
 		log.Debug(err.Error())
-		return
 	}
 }
 

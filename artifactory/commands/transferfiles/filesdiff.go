@@ -94,12 +94,12 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	}
 
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
-			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 			_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return err
@@ -122,16 +122,16 @@ type timeFrameParams struct {
 	fromTime time.Time
 }
 
-func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
+func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadTokensChan, delayHelper, errorsChannelMng)
+			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
-func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWrapper, params timeFrameParams, logMsgPrefix string, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWrapper, params timeFrameParams, logMsgPrefix string, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	fromTimestamp := params.fromTime.Format(time.RFC3339)
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
@@ -151,7 +151,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		}
 
 		files := convertResultsToFileRepresentation(result.Results)
-		shouldStop, err := uploadByChunks(files, uploadTokensChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+		shouldStop, err := uploadByChunks(files, uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}
@@ -204,8 +204,8 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	}
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		return f.handleErrorsFiles(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		return f.handleErrorsFiles(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 	}
 	err := manager.doTransferWithProducerConsumer(action)
 	if err == nil {
@@ -214,7 +214,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	return err
 }
 
-func (f *filesDiffPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (f *filesDiffPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range f.errorsFilesToHandle {
 		if ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
@@ -231,7 +231,7 @@ func (f *filesDiffPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, u
 			return errorutils.CheckError(err)
 		}
 
-		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}

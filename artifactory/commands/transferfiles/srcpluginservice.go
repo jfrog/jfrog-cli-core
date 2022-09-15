@@ -67,32 +67,35 @@ func (sup *srcUserPluginService) syncChunks(ucStatus UploadChunksStatusBody) (Up
 
 // Uploads a chunk of files.
 // If no error occurred, returns an uuid token to get chunk status with.
-func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken string, err error) {
+func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uploadChunkResponse UploadChunkResponse, err error) {
 	content, err := json.Marshal(chunk)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
-		return "", err
+		return UploadChunkResponse{}, err
 	}
 
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusAccepted); err != nil {
-		return "", err
+		return UploadChunkResponse{}, err
 	}
 
 	var uploadResponse UploadChunkResponse
 	err = json.Unmarshal(body, &uploadResponse)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 	if uploadResponse.UuidToken == "" {
-		return "", errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
+		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
 	}
-	return uploadResponse.UuidToken, nil
+	if uploadResponse.NodeId == "" {
+		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty node id returned for chunk upload")
+	}
+	return uploadResponse, nil
 }
 
 func (sup *srcUserPluginService) storeProperties(repoKey string) error {

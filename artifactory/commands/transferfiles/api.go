@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -109,12 +108,18 @@ type UuidTokenResponse struct {
 	UuidToken string `json:"uuid_token,omitempty"`
 }
 
-// Fill tokens batch till full. Return if no new tokens are available.
-func fillTokensBatch(awaitingStatusChunksSet *datastructures.Set[string], uploadTokensChan chan string) {
-	for awaitingStatusChunksSet.Size() < GetThreads() {
+// Fill chunk data batch till full. Return if no new chunk data is available.
+func fillChunkDataBatch(chunksResilientManager *ChunksResilientManager, uploadChunkChan chan UploadedChunkData) {
+	for chunksResilientManager.numChunksInMap < GetThreads() {
 		select {
-		case token := <-uploadTokensChan:
-			awaitingStatusChunksSet.Add(token)
+		case data := <-uploadChunkChan:
+			if _, exist := chunksResilientManager.nodeToChunksMap[data.NodeId]; !exist {
+				chunksResilientManager.nodeToChunksMap[data.NodeId] = map[string][]FileRepresentation{}
+			}
+			if _, exist := chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid]; !exist {
+				chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid] = append(chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid], data.ChunkFiles...)
+				chunksResilientManager.numChunksInMap++
+			}
 		default:
 			// No new tokens are waiting.
 			return

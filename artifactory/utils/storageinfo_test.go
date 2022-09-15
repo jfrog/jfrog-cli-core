@@ -18,7 +18,7 @@ func TestCalculateStorageInfo(t *testing.T) {
 	// Prepare mock server
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
-			// Reponse for CalculateStorageInfo
+			// Response for CalculateStorageInfo
 			w.WriteHeader(http.StatusAccepted)
 			calculated = true
 		}
@@ -38,7 +38,7 @@ func TestGetStorageInfo(t *testing.T) {
 	// Prepare mock server
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo" {
-			// Reponse for CalculateStorageInfo
+			// Response for CalculateStorageInfo
 			w.WriteHeader(http.StatusOK)
 			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}}}
 			body, err := json.Marshal(response)
@@ -67,7 +67,7 @@ func TestGetSourceRepoSummary(t *testing.T) {
 	// Prepare mock server
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo" {
-			// Reponse for GetStorageInfo
+			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
 			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}}}
 			bytes, err := json.Marshal(response)
@@ -90,4 +90,26 @@ func TestGetSourceRepoSummary(t *testing.T) {
 	// Get repo summary of non-existed repo
 	_, err = storageInfo.GetRepoSummary("not-existed")
 	assert.ErrorContains(t, err, "could not find repository 'not-existed' in the repositories summary")
+}
+
+func TestConvertStorageSizeStringToBytes(t *testing.T) {
+	t.Run("bytes", func(t *testing.T) { assertConvertedStorageSize(t, "2.22 bytes", false, 2.22) })
+	t.Run("KB", func(t *testing.T) { assertConvertedStorageSize(t, "3.333 KB", false, 3.333*bytesInKB) })
+	t.Run("MB", func(t *testing.T) { assertConvertedStorageSize(t, "4.4444 MB", false, 4.4444*bytesInMB) })
+	t.Run("GB", func(t *testing.T) { assertConvertedStorageSize(t, "5.55555 GB", false, 5.55555*bytesInGB) })
+	t.Run("TB", func(t *testing.T) { assertConvertedStorageSize(t, "6.666666 TB", false, 6.666666*bytesInTB) })
+	t.Run("int", func(t *testing.T) { assertConvertedStorageSize(t, "7 KB", false, 7*bytesInKB) })
+	t.Run("size missing", func(t *testing.T) { assertConvertedStorageSize(t, "8", true, -1) })
+	t.Run("unexpected size", func(t *testing.T) { assertConvertedStorageSize(t, "8 kb", true, -1) })
+	t.Run("too many separators", func(t *testing.T) { assertConvertedStorageSize(t, "8 K B", true, -1) })
+}
+
+func assertConvertedStorageSize(t *testing.T, size string, errorExpected bool, expectedSizeBeforeConversion float64) {
+	converted, err := convertStorageSizeStringToBytes(size)
+	if errorExpected {
+		assert.Error(t, err)
+		return
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, int64(expectedSizeBeforeConversion), converted)
 }

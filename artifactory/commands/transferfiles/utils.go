@@ -26,11 +26,49 @@ const (
 	waitTimeBetweenThreadsUpdateSeconds          = 20
 	assumeProducerConsumerDoneWhenIdleForSeconds = 15
 	DefaultAqlPaginationLimit                    = 10000
-	maxBuildInfoRepoThreads                      = 8
 )
+
+const SyncErrorReason = "unsynchronized chunk status due to network issue"
+const SyncErrorStatusCode = 404
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
+
+type UploadedChunkData struct {
+	ChunkUuid  string
+	ChunkFiles []FileRepresentation
+	NodeIdResponse
+}
+
+type ChunksResilientManager struct {
+	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
+	deletedChunksSet *datastructures.Set[string]
+	// nodeToChunksMap keeps track of chunks in progress, in case network fails, and the uploaded chunks data is lost,
+	// These chunks will be written to the errors file using this map
+	nodeToChunksMap map[string]map[string][]FileRepresentation
+	// Keep track of many chunk uuids are currently in progress state
+	numChunksInMap int
+}
+
+func (crm *ChunksResilientManager) GetInProgressTokensSlice() []string {
+	var inProgressTokens []string
+	for _, node := range crm.nodeToChunksMap {
+		for chunkId := range node {
+			inProgressTokens = append(inProgressTokens, chunkId)
+		}
+	}
+
+	return inProgressTokens
+}
+
+func (crm *ChunksResilientManager) GetInProgressTokensSliceByNodeId(nodeId string) []string {
+	var inProgressTokens []string
+	for chunkId := range crm.nodeToChunksMap[nodeId] {
+		inProgressTokens = append(inProgressTokens, chunkId)
+	}
+
+	return inProgressTokens
+}
 
 type InterruptionErr struct{}
 
@@ -98,12 +136,12 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunkData, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
-	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
-	awaitingStatusChunksSet := datastructures.MakeSet[string]()
-	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
-	deletedChunksSet := datastructures.MakeSet[string]()
+	chunksResilientManager := ChunksResilientManager{
+		deletedChunksSet: datastructures.MakeSet[string](),
+		nodeToChunksMap:  map[string]map[string][]FileRepresentation{},
+	}
 	curProcessedUploadChunks = 0
 	var progressBar *TransferProgressMng
 	var timeEstMng *timeEstimationManager
@@ -121,35 +159,67 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
-		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
-		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
-		// When awaitingStatusChunksSet size is zero, it means that all the tokens are uploaded,
+		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
+		fillChunkDataBatch(&chunksResilientManager, uploadChunkChan)
+		// When numChunksInMap size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
-		if awaitingStatusChunksSet.Size() == 0 {
+		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,
+		// it will be written to the error channel
+		if chunksResilientManager.numChunksInMap == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
 			continue
 		}
 
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, &chunksResilientManager, srcUpService)
 		if err != nil {
 			continue
 		}
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
-		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressBar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
+		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksResilientManager.deletedChunksSet)
+		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksResilientManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
 	}
 }
 
+// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap
+// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, There is missing data on the source side.
+// ErrorsChannelMg will receive this data, and it will be uploaded again in phase 3 or in an additional transfer file run.
+func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *ChunksResilientManager, errorsChannelMng *ErrorsChannelMng) {
+	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[chunkStatus.NodeId]) {
+		chunksUuidsSetFromResponse := datastructures.MakeSet[string]()
+		for _, chunk := range chunkStatus.ChunksStatus {
+			chunksUuidsSetFromResponse.Add(chunk.UuidToken)
+		}
+
+		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(chunkStatus.NodeId)
+		failedFile := FileUploadStatusResponse{
+			Status:     Fail,
+			StatusCode: SyncErrorStatusCode,
+			Reason:     SyncErrorReason,
+		}
+		for _, chunkUuid := range chunksUuidsSliceFromMap {
+			if !chunksUuidsSetFromResponse.Exists(chunkUuid) {
+				for _, file := range manager.nodeToChunksMap[chunkStatus.NodeId][chunkUuid] {
+					failedFile.FileRepresentation = file
+					addErrorToChannel(errorsChannelMng, failedFile)
+				}
+				delete(manager.nodeToChunksMap[chunkStatus.NodeId], chunkUuid)
+				manager.numChunksInMap--
+				reduceCurProcessedChunks()
+			}
+		}
+	}
+}
+
 // Send and handle.
-func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
-	curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
-	curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksResilientManager *ChunksResilientManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+	curTokensBatch.AwaitingStatusChunks = chunksResilientManager.GetInProgressTokensSlice()
+	curTokensBatch.ChunksToDelete = chunksResilientManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 	if err != nil {
 		log.Error("error returned when getting upload chunks statuses: " + err.Error())
@@ -169,11 +239,11 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng,
-	awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string],
-	timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
+func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResponse, progressbar *TransferProgressMng,
+	chunksResilientManager *ChunksResilientManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
 	initialWorkingThreads := curProcessedUploadChunks
-	for _, chunk := range chunksStatus {
+	checkChunkStatusSync(chunksStatus, chunksResilientManager, errorsChannelMng)
+	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
 			continue
@@ -190,12 +260,10 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
 			}
-			err = awaitingStatusChunksSet.Remove(chunk.UuidToken)
-			if err != nil {
-				log.Error(err.Error())
-			}
+			delete(chunksResilientManager.nodeToChunksMap[chunksStatus.NodeId], chunk.UuidToken)
+			chunksResilientManager.numChunksInMap--
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-			deletedChunksSet.Add(chunk.UuidToken)
+			chunksResilientManager.deletedChunksSet.Add(chunk.UuidToken)
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
@@ -264,7 +332,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
@@ -303,15 +371,20 @@ func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChann
 // Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.
 // An uuid token is returned in order to poll on it for status.
 // This function sends the token to the uploadTokensChan for the pollUploads function to read and poll on.
-func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
-	uuidToken, err := sup.uploadChunk(chunk)
+func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan UploadedChunkData) error {
+	uploadResponse, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return err
 	}
 
-	// Add token to polling.
-	log.Debug("Chunk sent. Adding chunk token '" + uuidToken + "' to poll on for status.")
-	uploadTokensChan <- uuidToken
+	// Add chunk data to polling.
+	log.Debug("Chunk sent to node" + uploadResponse.NodeId + ". Adding chunk token '" + uploadResponse.UuidToken + "' to poll on for status.")
+	uploadedChunkData := UploadedChunkData{
+		ChunkUuid:      uploadResponse.UuidToken,
+		ChunkFiles:     chunk.UploadCandidates,
+		NodeIdResponse: uploadResponse.NodeIdResponse,
+	}
+	uploadTokensChan <- uploadedChunkData
 	return nil
 }
 
@@ -361,7 +434,7 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
@@ -376,7 +449,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedChunkData, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,

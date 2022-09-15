@@ -167,6 +167,20 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 	return &result, nil
 }
 
+func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth TargetAuth) error {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	content, err := json.Marshal(targetAuth)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifySourceTargetConnectivity", content, &httpDetails)
+	if err != nil {
+		return err
+	}
+
+	return errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
+}
+
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"stop", []byte{}, &httpDetails)

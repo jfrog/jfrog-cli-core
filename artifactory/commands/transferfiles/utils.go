@@ -78,9 +78,12 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 	return result, errorutils.CheckError(err)
 }
 
-func createTargetAuth(targetRtDetails *config.ServerDetails) TargetAuth {
-	targetAuth := TargetAuth{TargetArtifactoryUrl: targetRtDetails.ArtifactoryUrl,
-		TargetToken: targetRtDetails.AccessToken}
+func createTargetAuth(targetRtDetails *config.ServerDetails, proxyKey string) TargetAuth {
+	targetAuth := TargetAuth{
+		TargetArtifactoryUrl: targetRtDetails.ArtifactoryUrl,
+		TargetToken:          targetRtDetails.AccessToken,
+		TargetProxyKey:       proxyKey,
+	}
 	if targetAuth.TargetToken == "" {
 		targetAuth.TargetUsername = targetRtDetails.User
 		targetAuth.TargetPassword = targetRtDetails.Password
@@ -378,7 +381,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 // An uuid token is returned after the chunk is sent and is being polled on for status.
 func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
-		TargetAuth:                createTargetAuth(base.targetRtDetails),
+		TargetAuth:                createTargetAuth(base.targetRtDetails, base.proxyKey),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
 	}
 

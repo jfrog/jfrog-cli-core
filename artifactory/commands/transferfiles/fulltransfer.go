@@ -97,7 +97,7 @@ func (m *fullTransferPhase) run() error {
 func (m *fullTransferPhase) StopGracefully() {
 	m.phaseBase.StopGracefully()
 	if m.transferManager != nil {
-		m.transferManager.stopProcuderConsumer()
+		m.transferManager.stopProducerConsumer()
 	}
 }
 

@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -13,11 +19,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 )
 
 const (
@@ -143,6 +144,19 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		output, err = exec.Command("pipenv", "install", "-d").CombinedOutput()
 		if err != nil {
 			err = errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
+		}
+
+	case pythonutils.Poetry:
+		// No changes to env here.
+		restoreEnv = func() error {
+			return nil
+		}
+		// Run poetry install
+		var output []byte
+		output, err = exec.Command("poetry", "install").CombinedOutput()
+		if err != nil {
+			err = errorutils.CheckErrorf("poetry install command failed: %s - %s", err.Error(), output)
+			return
 		}
 	}
 	return

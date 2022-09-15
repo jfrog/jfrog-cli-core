@@ -82,15 +82,18 @@ type UploadChunksStatusResponse struct {
 
 type ChunkStatus struct {
 	UuidTokenResponse
-	Status ProcessStatusType          `json:"status,omitempty"`
-	Files  []FileUploadStatusResponse `json:"files,omitempty"`
+	Status         ProcessStatusType          `json:"status,omitempty"`
+	Files          []FileUploadStatusResponse `json:"files,omitempty"`
+	DurationMillis int64                      `json:"duration_millis,omitempty"`
 }
 
 type FileUploadStatusResponse struct {
 	FileRepresentation
-	Status     ChunkFileStatusType `json:"status,omitempty"`
-	StatusCode int                 `json:"status_code,omitempty"`
-	Reason     string              `json:"reason,omitempty"`
+	SizeBytes        int64               `json:"size_bytes,omitempty"`
+	ChecksumDeployed bool                `json:"checksum_deployed,omitempty"`
+	Status           ChunkFileStatusType `json:"status,omitempty"`
+	StatusCode       int                 `json:"status_code,omitempty"`
+	Reason           string              `json:"reason,omitempty"`
 }
 
 type FilesErrors struct {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jfrog/gofrog/parallel"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -23,14 +22,6 @@ const searchTimeFramesMinutes = 15
 type filesDiffPhase struct {
 	phaseBase
 	errorsFilesToHandle []string
-}
-
-func (f *filesDiffPhase) getSourceDetails() *coreConfig.ServerDetails {
-	return f.srcRtDetails
-}
-
-func (f *filesDiffPhase) setProgressBar(progressbar *TransferProgressMng) {
-	f.progressBar = progressbar
 }
 
 func (f *filesDiffPhase) initProgressBar() error {
@@ -83,26 +74,6 @@ func (f *filesDiffPhase) phaseDone() error {
 
 func (f *filesDiffPhase) shouldSkipPhase() (bool, error) {
 	return false, nil
-}
-
-func (f *filesDiffPhase) shouldCheckExistenceInFilestore(shouldCheck bool) {
-	f.checkExistenceInFilestore = shouldCheck
-}
-
-func (f *filesDiffPhase) setSrcUserPluginService(service *srcUserPluginService) {
-	f.srcUpService = service
-}
-
-func (f *filesDiffPhase) setSourceDetails(details *coreConfig.ServerDetails) {
-	f.srcRtDetails = details
-}
-
-func (f *filesDiffPhase) setTargetDetails(details *coreConfig.ServerDetails) {
-	f.targetRtDetails = details
-}
-
-func (f *filesDiffPhase) setRepoSummary(repoSummary servicesUtils.RepositorySummary) {
-	f.repoSummary = repoSummary
 }
 
 func (f *filesDiffPhase) run() error {
@@ -236,7 +207,7 @@ func (f *filesDiffPhase) handlePreviousUploadFailures() error {
 	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return f.handleErrorsFiles(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransferWithSingleProducer(action)
+	err := manager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}

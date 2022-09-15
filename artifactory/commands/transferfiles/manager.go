@@ -92,8 +92,8 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}
 	}()
 
-	// Run producer consumers. Pass the runWaitGroup to allow waiting for the producer consumer before closing the writer channels.
-	executionErr := runProducerConsumers(pcWrapper, &runWaitGroup)
+	// Run producer consumers. This is a blocking function, which makes sure the producer consumers are closed before anything else.
+	executionErr := runProducerConsumers(pcWrapper)
 	pollingTasksManager.stop()
 	// Wait for 'transferAction', producer consumers and polling go routines to exit.
 	runWaitGroup.Wait()
@@ -204,18 +204,13 @@ func newProducerConsumerWrapper() *producerConsumerWrapper {
 // Run the two producer consumer that run the transfer.
 // When a producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (no tasks are being handled)
 // the work is assumed to be done.
-// We use the runWaitGroup in order to wait till the producer consumer are done before closing the writers channels.
 // Order in this function matters! We want to make sure chunkUploaderProducerConsumer is only done after chunkBuilderProducerConsumer is done.
-func runProducerConsumers(pcWrapper *producerConsumerWrapper, runWaitGroup *sync.WaitGroup) (executionErr error) {
-	runWaitGroup.Add(1)
+func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr error) {
 	go func() {
-		defer runWaitGroup.Done()
 		pcWrapper.chunkUploaderProducerConsumer.Run()
 	}()
 
-	runWaitGroup.Add(1)
 	go func() {
-		defer runWaitGroup.Done()
 		err := pcWrapper.chunkBuilderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
 		if err != nil {
 			log.Error("pcWrapper.chunkBuilderProducerConsumer.DoneWhenAllIdle API failed", err.Error())

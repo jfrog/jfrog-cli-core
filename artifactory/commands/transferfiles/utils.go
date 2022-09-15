@@ -24,7 +24,7 @@ import (
 const (
 	waitTimeBetweenChunkStatusSeconds            = 3
 	waitTimeBetweenThreadsUpdateSeconds          = 20
-	assumeProducerConsumerDoneWhenIdleForSeconds = 7
+	assumeProducerConsumerDoneWhenIdleForSeconds = 15
 	DefaultAqlPaginationLimit                    = 10000
 )
 

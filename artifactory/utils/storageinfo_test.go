@@ -36,22 +36,8 @@ func TestCalculateStorageInfo(t *testing.T) {
 
 func TestGetStorageInfo(t *testing.T) {
 	// Prepare mock server
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/storageinfo" {
-			// Response for CalculateStorageInfo
-			w.WriteHeader(http.StatusOK)
-			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}}}
-			body, err := json.Marshal(response)
-			assert.NoError(t, err)
-			_, err = w.Write(body)
-			assert.NoError(t, err)
-		}
-	}))
+	testServer, storageInfoManager := mockGetStorageInfoAndInitManager(t, []clientUtils.RepositorySummary{{RepoKey: "repo-1"}})
 	defer testServer.Close()
-
-	// Create storage info manager
-	storageInfoManager, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
-	assert.NoError(t, err)
 
 	// Get and assert storage info
 	storageInfo, err := storageInfoManager.GetStorageInfo()
@@ -61,34 +47,17 @@ func TestGetStorageInfo(t *testing.T) {
 }
 
 func TestGetSourceRepoSummary(t *testing.T) {
-	getRepoSummaryPollingInterval = 10 * time.Millisecond
-	getRepoSummaryPollingTimeout = 30 * time.Millisecond
-
 	// Prepare mock server
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/storageinfo" {
-			// Response for GetStorageInfo
-			w.WriteHeader(http.StatusOK)
-			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}}}
-			bytes, err := json.Marshal(response)
-			assert.NoError(t, err)
-			_, err = w.Write(bytes)
-			assert.NoError(t, err)
-		}
-	}))
+	testServer, storageInfoManager := mockGetStorageInfoAndInitManager(t, []clientUtils.RepositorySummary{{RepoKey: "repo-1"}, {RepoKey: "repo-2"}})
 	defer testServer.Close()
 
-	// Create storage info manager
-	storageInfo, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
-	assert.NoError(t, err)
-
 	// Get repo summary of repo-1
-	repoSummary, err := storageInfo.GetRepoSummary("repo-1")
+	repoSummary, err := storageInfoManager.GetRepoSummary("repo-1")
 	assert.NoError(t, err)
 	assert.Equal(t, "repo-1", repoSummary.RepoKey)
 
 	// Get repo summary of non-existed repo
-	_, err = storageInfo.GetRepoSummary("not-existed")
+	_, err = storageInfoManager.GetRepoSummary("not-existed")
 	assert.ErrorContains(t, err, "could not find repository 'not-existed' in the repositories summary")
 }
 
@@ -124,4 +93,67 @@ func assertConvertedStorageSize(t *testing.T, size string, errorExpected bool, e
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, int64(expectedSizeBeforeConversion), converted)
+}
+
+func TestGetReposTotalSize(t *testing.T) {
+	getRepoSummaryPollingInterval = 10 * time.Millisecond
+	getRepoSummaryPollingTimeout = 30 * time.Millisecond
+
+	repositoriesSummaryList := []clientUtils.RepositorySummary{
+		{RepoKey: "repo-1", UsedSpaceInBytes: "12345"},
+		{RepoKey: "repo-2", UsedSpace: "678 bytes"},
+	}
+	// Prepare mock server.
+	firstRequest := true
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// In order to test the polling, on the first request we return only one repo, and on the second both of them.
+		// If the polling does not work properly, we should see a wrong total returned.
+		if firstRequest {
+			firstRequest = false
+			getStorageInfoResponse(t, w, r, repositoriesSummaryList[0:1])
+		} else {
+			getStorageInfoResponse(t, w, r, repositoriesSummaryList)
+		}
+	}))
+	defer testServer.Close()
+
+	// Create storage info manager
+	storageInfoManager, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t, err)
+
+	// Get the total size of the two repos.
+	total, err := storageInfoManager.GetReposTotalSize("repo-1", "repo-2")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(13023), total)
+
+	// Assert error is returned due to the missing repository.
+	total, err = storageInfoManager.GetReposTotalSize("repo-1", "repo-2", "repo-3")
+	assert.EqualError(t, err, getStorageInfoRepoMissingError())
+}
+
+func mockGetStorageInfoAndInitManager(t *testing.T, repositoriesSummaryList []clientUtils.RepositorySummary) (*httptest.Server, *StorageInfoManager) {
+	getRepoSummaryPollingInterval = 10 * time.Millisecond
+	getRepoSummaryPollingTimeout = 30 * time.Millisecond
+
+	// Prepare mock server
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		getStorageInfoResponse(t, w, r, repositoriesSummaryList)
+	}))
+
+	// Create storage info manager
+	storageInfoManager, err := NewStorageInfoManager(context.Background(), &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"})
+	assert.NoError(t, err)
+	return testServer, storageInfoManager
+}
+
+func getStorageInfoResponse(t *testing.T, w http.ResponseWriter, r *http.Request, repositoriesSummaryList []clientUtils.RepositorySummary) {
+	if r.RequestURI == "/api/storageinfo" {
+		// Response for CalculateStorageInfo
+		w.WriteHeader(http.StatusOK)
+		response := &clientUtils.StorageInfo{RepositoriesSummaryList: repositoriesSummaryList}
+		body, err := json.Marshal(response)
+		assert.NoError(t, err)
+		_, err = w.Write(body)
+		assert.NoError(t, err)
+	}
 }

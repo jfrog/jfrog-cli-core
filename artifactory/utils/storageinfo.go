@@ -95,6 +95,10 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 		PollingInterval: getRepoSummaryPollingInterval,
 		MsgPrefix:       "Waiting for storage info calculation completion",
 		PollingAction: func() (shouldStop bool, responseBody []byte, err error) {
+			// Reset counters between polling.
+			totalSize = 0
+			reposCounted = 0
+
 			storageInfo, err := sim.GetStorageInfo()
 			if err != nil {
 				return true, nil, err
@@ -122,9 +126,13 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 	}
 	_, err := pollingExecutor.Execute()
 	if reposCounted < len(repoKeys) && err == nil {
-		return totalSize, errorutils.CheckErrorf("one or more of the requested repositories were not found")
+		return totalSize, errorutils.CheckErrorf(getStorageInfoRepoMissingError())
 	}
 	return totalSize, err
+}
+
+func getStorageInfoRepoMissingError() string {
+	return "one or more of the requested repositories were not found"
 }
 
 func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {

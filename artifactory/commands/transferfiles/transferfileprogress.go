@@ -55,12 +55,14 @@ func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationM
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
-	transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
-		return color.Green.Render(timeEstMng.getSpeedString())
-	})
-	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-		return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
-	})
+	if timeEstMng != nil {
+		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
+			return color.Green.Render(timeEstMng.getSpeedString())
+		})
+		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
+			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
+		})
+	}
 	return &transfer, nil
 }
 
@@ -168,6 +170,10 @@ func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
 
 func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, progressbar.GREEN, TimeSlots.String()))
+}
+
+func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transfer failures", false, progressbar.GREEN, Files.String()))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

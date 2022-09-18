@@ -95,51 +95,6 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken strin
 	return uploadResponse.UuidToken, nil
 }
 
-func (sup *srcUserPluginService) storeProperties(repoKey string) error {
-	params := map[string]string{"repoKey": repoKey}
-	requestFullUrl, err := utils.BuildArtifactoryUrl(sup.GetArtifactoryDetails().GetUrl(), pluginsExecuteRestApi+"storeProperties", params)
-	if err != nil {
-		return err
-	}
-
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(requestFullUrl, nil, &httpDetails)
-	if err != nil {
-		return err
-	}
-
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandlePropertiesDiff) (*HandlePropertiesDiffResponse, error) {
-	content, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"handlePropertiesDiff", content, &httpDetails)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return nil, err
-	}
-
-	var result HandlePropertiesDiffResponse
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return &result, nil
-}
-
 func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
@@ -148,6 +103,7 @@ func (sup *srcUserPluginService) version() (string, error) {
 
 func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
 		return nil, err
@@ -165,6 +121,21 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 	}
 
 	return &result, nil
+}
+
+func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth TargetAuth) error {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
+	content, err := json.Marshal(targetAuth)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifySourceTargetConnectivity", content, &httpDetails)
+	if err != nil {
+		return err
+	}
+
+	return errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

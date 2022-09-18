@@ -4,12 +4,16 @@ import (
 	"fmt"
 )
 
-const secondsInMinute = 60
-const secondsInHour = 60 * secondsInMinute
-const secondsInDay = 24 * secondsInHour
-const millisecsInSecond = 1000
-const bytesInMB = 1024 * 1024
-const bytesPerMillisecToMBPerSec = float64(millisecsInSecond) / float64(bytesInMB)
+const (
+	secondsInMinute            = 60
+	secondsInHour              = 60 * secondsInMinute
+	secondsInDay               = 24 * secondsInHour
+	milliSecsInSecond          = 1000
+	bytesInMB                  = 1024 * 1024
+	bytesPerMilliSecToMBPerSec = float64(milliSecsInSecond) / float64(bytesInMB)
+)
+
+var numOfSpeedsToKeepPerWorkingThread = 10
 
 type timeEstimationManager struct {
 	// Speeds of the last done chunks, in bytes/ms
@@ -54,10 +58,10 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workin
 		return
 	}
 
-	speed := float64(workingThreads) * float64(sizeSum) / float64(chunkStatus.DurationMillis)
+	speed := calculateChunkSpeed(workingThreads, sizeSum, chunkStatus.DurationMillis)
 	tem.lastSpeeds = append(tem.lastSpeeds, speed)
 	tem.lastSpeedsSum += speed
-	lastSpeedsSliceLen := workingThreads * 10
+	lastSpeedsSliceLen := workingThreads * numOfSpeedsToKeepPerWorkingThread
 	for len(tem.lastSpeeds) > lastSpeedsSliceLen {
 		// Remove the oldest calculated speed
 		tem.lastSpeedsSum -= tem.lastSpeeds[0]
@@ -67,10 +71,14 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workin
 	tem.speedsAverage = tem.lastSpeedsSum / float64(len(tem.lastSpeeds))
 }
 
+func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) float64 {
+	return float64(workingThreads) * float64(chunkSizeSum) / float64(chunkDuration)
+}
+
 // getSpeed gets the transfer speed, in MB/s.
 func (tem *timeEstimationManager) getSpeed() float64 {
 	// Convert from bytes/ms to MB/s
-	return tem.speedsAverage * bytesPerMillisecToMBPerSec
+	return tem.speedsAverage * bytesPerMilliSecToMBPerSec
 }
 
 // getSpeed gets the transfer speed in an easy-to-read string.
@@ -88,7 +96,7 @@ func (tem *timeEstimationManager) getEstimatedRemainingTime() int64 {
 	}
 	remainingTime := (tem.totalSizeBytes - tem.transferredSizeBytes) / int64(tem.speedsAverage)
 	// Convert from milliseconds to seconds
-	return remainingTime / 1000
+	return remainingTime / milliSecsInSecond
 }
 
 // getEstimatedRemainingTimeString gets the estimated remaining time in an easy-to-read string.
@@ -121,6 +129,7 @@ func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUna
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
 }
 
+// TODO remove when used.
 //lint:ignore U1000 will be used in a different pull request
 func (tem *timeEstimationManager) saveTransferredSizeInState() error {
 	for repoKey, sizeToAdd := range tem.transferredSizeSinceStateUpdate {
@@ -131,4 +140,9 @@ func (tem *timeEstimationManager) saveTransferredSizeInState() error {
 	}
 	tem.transferredSizeSinceStateUpdate = make(map[string]int64)
 	return nil
+}
+
+// TODO revert when ready.
+func isTimeEstimationEnabled() bool {
+	return false
 }

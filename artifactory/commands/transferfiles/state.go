@@ -229,31 +229,6 @@ func setFilesDiffHandlingCompleted(repoKey string) error {
 			return err
 		}
 		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
-		repo.Diffs[len(repo.Diffs)-1].Completed = isPropertiesPhaseDisabled()
-		return nil
-	}
-	return doAndSaveState(action)
-}
-
-func setPropsDiffHandlingStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
-		}
-		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Started = convertTimeToRFC3339(startTime)
-		return nil
-	}
-	return doAndSaveState(action)
-}
-
-func setPropsDiffHandlingCompleted(repoKey string) error {
-	action := func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
-		}
-		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
 		repo.Diffs[len(repo.Diffs)-1].Completed = true
 		return nil
 	}

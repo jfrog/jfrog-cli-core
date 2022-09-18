@@ -38,15 +38,7 @@ func (m *fullTransferPhase) getPhaseName() string {
 
 func (m *fullTransferPhase) phaseStarted() error {
 	m.startTime = time.Now()
-	err := setRepoFullTransferStarted(m.repoKey, m.startTime)
-	if err != nil {
-		return err
-	}
-
-	if !isPropertiesPhaseDisabled() {
-		return m.srcUpService.storeProperties(m.repoKey)
-	}
-	return nil
+	return setRepoFullTransferStarted(m.repoKey, m.startTime)
 }
 
 func (m *fullTransferPhase) phaseDone() error {
@@ -123,7 +115,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	curUploadChunk := UploadChunk{
-		TargetAuth:                createTargetAuth(m.targetRtDetails),
+		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 

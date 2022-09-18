@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"encoding/json"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -21,7 +22,7 @@ func (e *errorsRetryPhase) run() error {
 	return e.handlePreviousUploadFailures()
 }
 
-// Consumes errors files with upload failures from cache and tries to upload these files again.
+// Consumes errors files with upload failures from cache and tries to transfer these files again.
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
 func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
@@ -40,6 +41,13 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	return err
 }
 
+func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
+	for _, status := range statuses {
+		files = append(files, status.FileRepresentation)
+	}
+	return
+}
+
 func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range e.errorsFilesToHandle {
 		if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
@@ -48,7 +56,7 @@ func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper,
 		log.Debug("Handling errors file: '" + path + "'")
 
 		// read and parse file
-		failedFiles, err := readErrorFile(path)
+		failedFiles, err := e.readErrorFile(path)
 		if err != nil {
 			return err
 		}
@@ -65,18 +73,10 @@ func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper,
 			return errorutils.CheckError(err)
 		}
 
-		if e.progressBar != nil {
-			err = e.progressBar.IncrementPhase(e.phaseId)
-			if err != nil {
-				return err
-			}
-		}
 		log.Debug("Done handling errors file: '" + path + "'. Deleting it...")
 	}
 	return nil
 }
-
-// phase interface
 
 func (e *errorsRetryPhase) shouldSkipPhase() (bool, error) {
 	var err error
@@ -93,6 +93,23 @@ func (e *errorsRetryPhase) phaseStarted() error {
 	return nil
 }
 
+// Reads an error file from a given path, parses and populate a given FilesErrors instance with the file information
+func (e *errorsRetryPhase) readErrorFile(path string) (FilesErrors, error) {
+	// Stores the errors read from the errors file.
+	var failedFiles FilesErrors
+
+	fContent, err := os.ReadFile(path)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+	// parse to struct
+	err = json.Unmarshal(fContent, &failedFiles)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+	return failedFiles, nil
+}
+
 func (e *errorsRetryPhase) initProgressBar() error {
 	if e.progressBar == nil {
 		return nil
@@ -101,15 +118,14 @@ func (e *errorsRetryPhase) initProgressBar() error {
 	// Init progress with the number of tasks of errors file handling (fixing previous upload failures)
 	filesCount := 0
 	for _, path := range e.errorsFilesToHandle {
-		//var failedFiles FilesErrors
-		failedFiles, err := readErrorFile(path)
+
+		failedFiles, err := e.readErrorFile(path)
 		if err != nil {
 			return err
 		}
 		filesCount += len(failedFiles.Errors)
 	}
 
-	log.Debug("Starting Error-Retry Phase (3) for '", filesCount, "' files")
 	e.progressBar.AddPhase3(int64(filesCount))
 
 	return nil

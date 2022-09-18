@@ -171,7 +171,7 @@ func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 }
 
 func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transferring all files that had upload errors", false, progressbar.GREEN, Files.String()))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transfer failures", false, progressbar.GREEN, Files.String()))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

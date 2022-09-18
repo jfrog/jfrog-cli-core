@@ -38,12 +38,7 @@ func (m *fullTransferPhase) getPhaseName() string {
 
 func (m *fullTransferPhase) phaseStarted() error {
 	m.startTime = time.Now()
-	err := setRepoFullTransferStarted(m.repoKey, m.startTime)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return setRepoFullTransferStarted(m.repoKey, m.startTime)
 }
 
 func (m *fullTransferPhase) phaseDone() error {

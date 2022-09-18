@@ -15,7 +15,7 @@ import (
 const searchTimeFramesMinutes = 15
 
 // Manages the phase of fixing files diffs (files that were created/modified after they were transferred),
-// and handling upload failures that were collected during previous runs and phases.
+// and handling transfer failures that have been collected during previous runs and phases.
 type filesDiffPhase struct {
 	phaseBase
 }
@@ -44,12 +44,7 @@ func (f *filesDiffPhase) getPhaseName() string {
 
 func (f *filesDiffPhase) phaseStarted() error {
 	f.startTime = time.Now()
-	err := addNewDiffToState(f.repoKey, f.startTime)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return addNewDiffToState(f.repoKey, f.startTime)
 }
 
 func (f *filesDiffPhase) phaseDone() error {
@@ -183,11 +178,4 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, pagination
 	query += `.include("repo","path","name","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
-}
-
-func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
-	for _, status := range statuses {
-		files = append(files, status.FileRepresentation)
-	}
-	return
 }

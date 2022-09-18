@@ -12,9 +12,9 @@ import (
 const numberOfPhases = 3
 
 const (
-	FullTransferPhase   int = 0
-	FilesDiffPhase      int = 1
-	PropertiesDiffPhase int = 2
+	FullTransferPhase int = 0
+	FilesDiffPhase    int = 1
+	ErrorsPhase       int = 2
 )
 
 type transferPhase interface {
@@ -109,7 +109,7 @@ func getPhaseByNum(context context.Context, i int, repoKey, proxyKey string, bui
 	case 1:
 		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: PropertiesDiffPhase}}
+		return &errorsRetryPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: ErrorsPhase, buildInfoRepo: buildInfoRepo}}
 	}
 	return nil
 }

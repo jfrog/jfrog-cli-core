@@ -213,7 +213,7 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		return nil
 	}
 	includedInTotalSize := false
-	if phase.phaseId == FullTransferPhase {
+	if phase.phaseId == FullTransferPhase || phase.phaseId == ErrorsPhase {
 		includedInTotalSize = true
 		if progressbar != nil {
 			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))

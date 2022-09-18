@@ -70,8 +70,8 @@ type UploadChunkResponse struct {
 }
 
 type UploadChunksStatusBody struct {
-	AwaitingStatusChunks []string `json:"awaiting_status_chunks,omitempty"`
-	ChunksToDelete       []string `json:"chunks_to_delete,omitempty"`
+	AwaitingStatusChunks []chunkId `json:"awaiting_status_chunks,omitempty"`
+	ChunksToDelete       []chunkId `json:"chunks_to_delete,omitempty"`
 }
 
 type UploadChunksStatusResponse struct {
@@ -109,17 +109,18 @@ type UuidTokenResponse struct {
 }
 
 // Fill chunk data batch till full. Return if no new chunk data is available.
-func fillChunkDataBatch(chunksResilientManager *ChunksResilientManager, uploadChunkChan chan UploadedChunkData) {
-	for chunksResilientManager.numChunksInMap < GetThreads() {
+func fillChunkDataBatch(chunksResilientManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
+	for chunksResilientManager.totalChunks < GetThreads() {
 		select {
 		case data := <-uploadChunkChan:
-			if _, exist := chunksResilientManager.nodeToChunksMap[data.NodeId]; !exist {
-				chunksResilientManager.nodeToChunksMap[data.NodeId] = map[string][]FileRepresentation{}
+			currentNodeId := nodeId(data.NodeId)
+			currentChunkId := chunkId(data.ChunkUuid)
+			if _, exist := chunksResilientManager.nodeToChunksMap[currentNodeId]; !exist {
+				chunksResilientManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
 			}
-			if _, exist := chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid]; !exist {
-				chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid] = append(chunksResilientManager.nodeToChunksMap[data.NodeId][data.ChunkUuid], data.ChunkFiles...)
-				chunksResilientManager.numChunksInMap++
-			}
+			chunksResilientManager.nodeToChunksMap[currentNodeId][currentChunkId] =
+				append(chunksResilientManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
+			chunksResilientManager.totalChunks++
 		default:
 			// No new tokens are waiting.
 			return

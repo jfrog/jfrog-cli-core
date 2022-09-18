@@ -28,6 +28,11 @@ const (
 	DefaultAqlPaginationLimit                    = 10000
 )
 
+type (
+	nodeId  string
+	chunkId string
+)
+
 const SyncErrorReason = "unsynchronized chunk status due to network issue"
 const SyncErrorStatusCode = 404
 
@@ -40,30 +45,33 @@ type UploadedChunkData struct {
 	NodeIdResponse
 }
 
-type ChunksResilientManager struct {
-	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
-	deletedChunksSet *datastructures.Set[string]
-	// nodeToChunksMap keeps track of chunks in progress, in case network fails, and the uploaded chunks data is lost,
-	// These chunks will be written to the errors file using this map
-	nodeToChunksMap map[string]map[string][]FileRepresentation
-	// Keep track of many chunk uuids are currently in progress state
-	numChunksInMap int
+type ChunksLifeCycleManager struct {
+	// deletedChunksSet stores chunk uuids that have received a 'DONE' response from the source Artifactory instance
+	// It is used to notify the source Artifactory instance that these chunks can be deleted from the source's status map.
+	deletedChunksSet *datastructures.Set[chunkId]
+	// nodeToChunksMap stores a map of the node IDs of the source Artifactory instance,
+	// In each node, we store a map of the chunks that are currently in progress and their matching files.
+	// In case network fails, and the uploaded chunks data is lost,
+	// These chunks files will be written to the errors file using this map.
+	nodeToChunksMap map[nodeId]map[chunkId][]FileRepresentation
+	// Counts the total of chunks that are currently in progress by the source Artifactory instance.
+	totalChunks int
 }
 
-func (crm *ChunksResilientManager) GetInProgressTokensSlice() []string {
-	var inProgressTokens []string
-	for _, node := range crm.nodeToChunksMap {
-		for chunkId := range node {
-			inProgressTokens = append(inProgressTokens, chunkId)
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []chunkId {
+	var inProgressTokens []chunkId
+	for _, node := range clcm.nodeToChunksMap {
+		for id := range node {
+			inProgressTokens = append(inProgressTokens, id)
 		}
 	}
 
 	return inProgressTokens
 }
 
-func (crm *ChunksResilientManager) GetInProgressTokensSliceByNodeId(nodeId string) []string {
-	var inProgressTokens []string
-	for chunkId := range crm.nodeToChunksMap[nodeId] {
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId nodeId) []chunkId {
+	var inProgressTokens []chunkId
+	for chunkId := range clcm.nodeToChunksMap[nodeId] {
 		inProgressTokens = append(inProgressTokens, chunkId)
 	}
 
@@ -141,9 +149,9 @@ var processedUploadChunksMutex sync.Mutex
 // and a new token to be polled on.
 func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunkData, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
-	chunksResilientManager := ChunksResilientManager{
-		deletedChunksSet: datastructures.MakeSet[string](),
-		nodeToChunksMap:  map[string]map[string][]FileRepresentation{},
+	chunksLifeCycleManager := ChunksLifeCycleManager{
+		deletedChunksSet: datastructures.MakeSet[chunkId](),
+		nodeToChunksMap:  map[nodeId]map[chunkId][]FileRepresentation{},
 	}
 	curProcessedUploadChunks = 0
 	var progressBar *TransferProgressMng
@@ -163,26 +171,26 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		}
 
 		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
-		fillChunkDataBatch(&chunksResilientManager, uploadChunkChan)
-		// When numChunksInMap size is zero, it means that all the tokens are uploaded,
+		fillChunkDataBatch(&chunksLifeCycleManager, uploadChunkChan)
+		// When totalChunks size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
 		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,
 		// it will be written to the error channel
-		if chunksResilientManager.numChunksInMap == 0 {
+		if chunksLifeCycleManager.totalChunks == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
 			continue
 		}
 
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, &chunksResilientManager, srcUpService)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, &chunksLifeCycleManager, srcUpService)
 		if err != nil {
 			continue
 		}
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
-		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksResilientManager.deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksResilientManager, timeEstMng, errorsChannelMng)
+		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
+		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -192,14 +200,14 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 // Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap
 // If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, There is missing data on the source side.
 // ErrorsChannelMg will receive this data, and it will be uploaded again in phase 3 or in an additional transfer file run.
-func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *ChunksResilientManager, errorsChannelMng *ErrorsChannelMng) {
-	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[chunkStatus.NodeId]) {
-		chunksUuidsSetFromResponse := datastructures.MakeSet[string]()
+func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
+	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)]) {
+		chunksUuidsSetFromResponse := datastructures.MakeSet[chunkId]()
 		for _, chunk := range chunkStatus.ChunksStatus {
-			chunksUuidsSetFromResponse.Add(chunk.UuidToken)
+			chunksUuidsSetFromResponse.Add(chunkId(chunk.UuidToken))
 		}
 
-		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(chunkStatus.NodeId)
+		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(nodeId(chunkStatus.NodeId))
 		failedFile := FileUploadStatusResponse{
 			Status:     Fail,
 			StatusCode: SyncErrorStatusCode,
@@ -207,12 +215,12 @@ func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *Chun
 		}
 		for _, chunkUuid := range chunksUuidsSliceFromMap {
 			if !chunksUuidsSetFromResponse.Exists(chunkUuid) {
-				for _, file := range manager.nodeToChunksMap[chunkStatus.NodeId][chunkUuid] {
+				for _, file := range manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)][chunkUuid] {
 					failedFile.FileRepresentation = file
 					addErrorToChannel(errorsChannelMng, failedFile)
 				}
-				delete(manager.nodeToChunksMap[chunkStatus.NodeId], chunkUuid)
-				manager.numChunksInMap--
+				delete(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)], chunkUuid)
+				manager.totalChunks--
 				reduceCurProcessedChunks()
 			}
 		}
@@ -220,7 +228,7 @@ func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *Chun
 }
 
 // Send and handle.
-func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksResilientManager *ChunksResilientManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksResilientManager *ChunksLifeCycleManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
 	curTokensBatch.AwaitingStatusChunks = chunksResilientManager.GetInProgressTokensSlice()
 	curTokensBatch.ChunksToDelete = chunksResilientManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
@@ -230,11 +238,11 @@ func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksResilien
 	return chunksStatus, err
 }
 
-func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {
+func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[chunkId]) {
 	// deletedChunks is an array received from the source, confirming which chunks were deleted from the source side.
 	// In deletedChunksSet, we keep only chunks for which we have yet to receive confirmation
 	for _, deletedChunk := range deletedChunks {
-		err := deletedChunksSet.Remove(deletedChunk)
+		err := deletedChunksSet.Remove(chunkId(deletedChunk))
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -242,10 +250,13 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
+// handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
+// It syncs the chunk status between the CLI and the source Artifactory instance,
+// When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
 func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResponse, progressbar *TransferProgressMng,
-	chunksResilientManager *ChunksResilientManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
+	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
 	initialWorkingThreads := curProcessedUploadChunks
-	checkChunkStatusSync(chunksStatus, chunksResilientManager, errorsChannelMng)
+	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -263,10 +274,10 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
 			}
-			delete(chunksResilientManager.nodeToChunksMap[chunksStatus.NodeId], chunk.UuidToken)
-			chunksResilientManager.numChunksInMap--
+			delete(chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)], chunkId(chunk.UuidToken))
+			chunksLifeCycleManager.totalChunks--
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-			chunksResilientManager.deletedChunksSet.Add(chunk.UuidToken)
+			chunksLifeCycleManager.deletedChunksSet.Add(chunkId(chunk.UuidToken))
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
@@ -380,7 +391,7 @@ func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, upload
 		return err
 	}
 
-	// Add chunk data to polling.
+	// Add chunk data for polling.
 	log.Debug("Chunk sent to node" + uploadResponse.NodeId + ". Adding chunk token '" + uploadResponse.UuidToken + "' to poll on for status.")
 	uploadedChunkData := UploadedChunkData{
 		ChunkUuid:      uploadResponse.UuidToken,

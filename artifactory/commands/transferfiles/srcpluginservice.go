@@ -148,6 +148,7 @@ func (sup *srcUserPluginService) version() (string, error) {
 
 func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
 		return nil, err
@@ -169,6 +170,7 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 
 func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth TargetAuth) error {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
 	content, err := json.Marshal(targetAuth)
 	if err != nil {
 		return errorutils.CheckError(err)

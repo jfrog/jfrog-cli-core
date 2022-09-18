@@ -15,10 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      #- name: Setup Python3
-      #  uses: actions/setup-python@v4
-      #  with:
-      #    python-version: "3.x"
+      - name: Setup Python3
+        uses: actions/setup-python@v4
+        with:
+          python-version: "2.x"
 
       - name: Install pipenv
         run: pip3 install pipenv

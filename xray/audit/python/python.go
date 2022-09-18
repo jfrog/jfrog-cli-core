@@ -113,18 +113,22 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			return
 		}
 		// Run pip install
+		pipExec, _ := exec.LookPath("pip3")
+		if pipExec == "" {
+			pipExec = "pip"
+		}
 		var output []byte
 		if requirementsFile != "" {
 			clientLog.Debug("Running pip install -r", requirementsFile)
-			output, err = exec.Command("pip", "install", "-r", requirementsFile).CombinedOutput()
+			output, err = exec.Command(pipExec, "install", "-r", requirementsFile).CombinedOutput()
 		} else {
 			clientLog.Debug("Running 'pip install .'")
-			output, err = exec.Command("pip", "install", ".").CombinedOutput()
+			output, err = exec.Command(pipExec, "install", ".").CombinedOutput()
 			if err != nil {
 				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
 				clientLog.Debug(fmt.Sprintf("Failed running 'pip install .' : \n%s\n trying 'pip install -r requirements.txt' ", err.Error()))
 				// Run pip install -r requirements
-				output, err = exec.Command("pip", "install", "-r", "requirements.txt").CombinedOutput()
+				output, err = exec.Command(pipExec, "install", "-r", "requirements.txt").CombinedOutput()
 			}
 		}
 		if err != nil {

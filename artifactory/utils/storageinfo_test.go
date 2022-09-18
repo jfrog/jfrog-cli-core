@@ -127,7 +127,7 @@ func TestGetReposTotalSize(t *testing.T) {
 	assert.Equal(t, int64(13023), total)
 
 	// Assert error is returned due to the missing repository.
-	total, err = storageInfoManager.GetReposTotalSize("repo-1", "repo-2", "repo-3")
+	_, err = storageInfoManager.GetReposTotalSize("repo-1", "repo-2", "repo-3")
 	assert.EqualError(t, err, getStorageInfoRepoMissingError())
 }
 

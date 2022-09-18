@@ -106,6 +106,7 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 }
 
 func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string) (restoreEnv func() error, err error) {
+	var output []byte
 	switch pythonTool {
 	case pythonutils.Pip:
 		restoreEnv, err = SetPipVirtualEnvPath()
@@ -117,7 +118,6 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		if pipExec == "" {
 			pipExec = "pip"
 		}
-		var output []byte
 		if requirementsFile != "" {
 			clientLog.Debug("Running pip install -r", requirementsFile)
 			output, err = exec.Command(pipExec, "install", "-r", requirementsFile).CombinedOutput()
@@ -131,9 +131,7 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 				output, err = exec.Command(pipExec, "install", "-r", "requirements.txt").CombinedOutput()
 			}
 		}
-		if err != nil {
-			err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
-		}
+
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir
 		err = os.Setenv("WORKON_HOME", ".jfrog")
@@ -144,11 +142,7 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			return os.Unsetenv("WORKON_HOME")
 		}
 		// Run pipenv install
-		var output []byte
 		output, err = exec.Command("pipenv", "install", "-d").CombinedOutput()
-		if err != nil {
-			err = errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
-		}
 
 	case pythonutils.Poetry:
 		// No changes to env here.
@@ -156,12 +150,11 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			return nil
 		}
 		// Run poetry install
-		var output []byte
 		output, err = exec.Command("poetry", "install").CombinedOutput()
-		if err != nil {
-			err = errorutils.CheckErrorf("poetry install command failed: %s - %s", err.Error(), output)
-			return
-		}
+	}
+
+	if err != nil {
+		err = errorutils.CheckErrorf("%s install command failed: %s - %s", string(pythonTool), err.Error(), output)
 	}
 	return
 }

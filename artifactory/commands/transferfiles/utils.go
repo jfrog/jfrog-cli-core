@@ -197,26 +197,30 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	}
 }
 
-// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap
-// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, There is missing data on the source side.
-// ErrorsChannelMg will receive this data, and it will be uploaded again in phase 3 or in an additional transfer file run.
+// Verify and handle in progress chunks synchronization between the CLI and the Source Artifactory instance
 func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
+	// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap
+	// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, There is missing data on the source side.
 	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)]) {
+		// Get all the chunks uuids on the Artifactory side in a set of uuids
 		chunksUuidsSetFromResponse := datastructures.MakeSet[chunkId]()
 		for _, chunk := range chunkStatus.ChunksStatus {
 			chunksUuidsSetFromResponse.Add(chunkId(chunk.UuidToken))
 		}
-
+		// Get all the chunks uuids on the CLI side
 		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(nodeId(chunkStatus.NodeId))
 		failedFile := FileUploadStatusResponse{
 			Status:     Fail,
 			StatusCode: SyncErrorStatusCode,
 			Reason:     SyncErrorReason,
 		}
+		// Send all missing chunks from the source Artifactory instance to errorsChannelMng
+		// Missing chunks are those that are inside chunksUuidsSliceFromMap but not in chunksUuidsSetFromResponse
 		for _, chunkUuid := range chunksUuidsSliceFromMap {
 			if !chunksUuidsSetFromResponse.Exists(chunkUuid) {
 				for _, file := range manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)][chunkUuid] {
 					failedFile.FileRepresentation = file
+					// errorsChannelMng will upload failed files again in phase 3 or in an additional transfer file run.
 					addErrorToChannel(errorsChannelMng, failedFile)
 				}
 				delete(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)], chunkUuid)

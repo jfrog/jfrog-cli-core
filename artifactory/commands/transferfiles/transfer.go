@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"os"
 	"os/signal"
 	"strings"
@@ -49,9 +50,9 @@ type TransferFilesCommand struct {
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
-	context, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &TransferFilesCommand{
-		context:             context,
+		context:             ctx,
 		cancelFunc:          cancelFunc,
 		sourceServerDetails: sourceServer,
 		targetServerDetails: targetServer,
@@ -131,6 +132,8 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	go tdc.reportTransferFilesUsage()
+
 	// Transfer local repositories
 	if err := tdc.transferRepos(sourceLocalRepos, targetLocalRepos, false, newPhase, srcUpService); err != nil {
 		return tdc.cleanup(err, sourceLocalRepos)
@@ -143,6 +146,35 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 
 	// Close progressBar and create CSV errors summary file
 	return tdc.cleanup(err, allSourceLocalRepos)
+}
+
+func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
+	log.Debug(usage.ReportUsagePrefix + "Sending Transfer Files info...")
+	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
+	if err != nil {
+		log.Debug(err.Error())
+		return
+	}
+	sourceServiceId, err := tdc.sourceStorageInfoManager.GetServiceId()
+	if err != nil {
+		log.Debug(err.Error())
+		return
+	}
+
+	reportUsageAttributes := []usage.ReportUsageAttribute{
+		{
+			AttributeName:  "sourceServiceId",
+			AttributeValue: sourceServiceId,
+		},
+		{
+			AttributeName:  "sourceStorageSize",
+			AttributeValue: sourceStorageInfo.BinariesSize,
+		},
+	}
+	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...)
+	if err != nil {
+		log.Debug(err.Error())
+	}
 }
 
 func (tdc *TransferFilesCommand) initStorageInfoManagers() error {

@@ -34,7 +34,7 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		return e.handleErrorsFiles(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransferWithSingleProducer(action)
+	err := manager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}

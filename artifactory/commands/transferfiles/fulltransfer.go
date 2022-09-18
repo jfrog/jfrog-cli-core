@@ -89,7 +89,7 @@ func (m *fullTransferPhase) run() error {
 func (m *fullTransferPhase) StopGracefully() {
 	m.phaseBase.StopGracefully()
 	if m.transferManager != nil {
-		m.transferManager.stopProcuderConsumer()
+		m.transferManager.stopProducerConsumer()
 	}
 }
 
@@ -115,7 +115,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
 	curUploadChunk := UploadChunk{
-		TargetAuth:                createTargetAuth(m.targetRtDetails),
+		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
 

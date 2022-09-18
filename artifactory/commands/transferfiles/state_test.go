@@ -9,9 +9,15 @@ import (
 	"time"
 )
 
+const (
+	repo1Key = "repo1"
+	repo2Key = "repo2"
+	repo3Key = "repo3"
+	repo4Key = "repo4"
+)
+
 func TestGetRepositoryState(t *testing.T) {
 	state := &TransferState{}
-	repo1Key, repo2Key, repo3Key := "repo1", "repo2", "repo3"
 
 	// Get repo on empty state, without creating if missing.
 	getAndAssertNonExistingRepo(t, state, repo1Key)
@@ -22,7 +28,7 @@ func TestGetRepositoryState(t *testing.T) {
 	_ = createAndAssertRepo(t, state, repo3Key)
 
 	// Get a non-existing repo from a non-empty state, without creating if missing.
-	getAndAssertNonExistingRepo(t, state, "repo4")
+	getAndAssertNonExistingRepo(t, state, repo4Key)
 
 	// Add data to existing repo, get and assert.
 	repo2 := createAndAssertRepo(t, state, repo2Key)
@@ -139,7 +145,6 @@ func initStateTest(t *testing.T) (cleanUp func()) {
 func TestResetRepoState(t *testing.T) {
 	cleanUp := initStateTest(t)
 	defer cleanUp()
-	repo1Key, repo2Key := "repo1", "repo2"
 
 	// Reset a repository state on an empty state
 	err := resetRepoState(repo1Key)
@@ -156,4 +161,31 @@ func TestResetRepoState(t *testing.T) {
 	err = resetRepoState(repo1Key)
 	assert.NoError(t, err)
 	assertRepoTransferred(t, repo1Key, false)
+}
+
+func TestReposTransferredSizeBytes(t *testing.T) {
+	cleanUp := initStateTest(t)
+	defer cleanUp()
+
+	// Create repos in state.
+	assert.NoError(t, resetRepoState(repo1Key))
+	assert.NoError(t, resetRepoState(repo2Key))
+
+	// Inc repos transferred sizes.
+	assert.NoError(t, incRepoTransferredSizeBytes(repo1Key, 10))
+	assert.NoError(t, incRepoTransferredSizeBytes(repo1Key, 11))
+	assert.NoError(t, incRepoTransferredSizeBytes(repo2Key, 200))
+	err := incRepoTransferredSizeBytes(repo3Key, 3000)
+	assert.EqualError(t, err, getRepoMissingErrorMsg(repo3Key))
+
+	// Get repos transferred sizes, one at a time.
+	assertTransferredSize(t, 21, repo1Key)
+	assertTransferredSize(t, 200, repo2Key)
+	assertTransferredSize(t, 0, repo3Key)
+
+	// Get a combination of all repos. Pass repo2 twice to verify its size is not duplicated.
+	assertTransferredSize(t, 221, repo1Key, repo2Key, repo2Key, repo3Key)
+
+	// No repos.
+	assertTransferredSize(t, 0)
 }

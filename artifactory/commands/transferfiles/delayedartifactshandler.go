@@ -91,7 +91,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 		}
 		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, uploadTokensChan, base, delayHelper, errorsChannelMng)
 	}
-	err := manager.doTransferWithSingleProducer(action)
+	err := manager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling delayed artifacts uploads.")
 	}

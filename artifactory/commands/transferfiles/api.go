@@ -29,6 +29,7 @@ type TargetAuth struct {
 	TargetUsername       string `json:"target_username,omitempty"`
 	TargetPassword       string `json:"target_password,omitempty"`
 	TargetToken          string `json:"target_token,omitempty"`
+	TargetProxyKey       string `json:"target_proxy_key,omitempty"`
 }
 
 type HandlePropertiesDiff struct {

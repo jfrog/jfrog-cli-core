@@ -44,7 +44,7 @@ func (p *propertiesDiffPhase) run() error {
 	}
 
 	requestBody := HandlePropertiesDiff{
-		TargetAuth:        createTargetAuth(p.targetRtDetails),
+		TargetAuth:        createTargetAuth(p.targetRtDetails, p.proxyKey),
 		RepoKey:           p.repoKey,
 		StartMilliseconds: convertTimeToEpochMilliseconds(diffStart),
 		EndMilliseconds:   convertTimeToEpochMilliseconds(diffEnd),

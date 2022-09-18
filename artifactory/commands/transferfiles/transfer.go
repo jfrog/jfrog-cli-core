@@ -28,7 +28,7 @@ const (
 	fileWritersChannelSize       = 500000
 	retries                      = 1000
 	retriesWaitMilliSecs         = 1000
-	dataTransferPluginMinVersion = "1.4.1"
+	dataTransferPluginMinVersion = "1.5.0"
 )
 
 type TransferFilesCommand struct {
@@ -45,6 +45,7 @@ type TransferFilesCommand struct {
 	timeStarted               time.Time
 	ignoreState               bool
 	timeEstMng                *timeEstimationManager
+	proxyKey                  string
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
@@ -78,14 +79,21 @@ func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
 	tdc.ignoreState = ignoreState
 }
 
+func (tdc *TransferFilesCommand) SetProxyKey(proxyKey string) {
+	tdc.proxyKey = proxyKey
+}
+
 func (tdc *TransferFilesCommand) Run() (err error) {
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {
 		return err
 	}
 
-	// Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
 	if err = getAndValidateDataTransferPlugin(srcUpService); err != nil {
+		return err
+	}
+
+	if err = tdc.verifySourceTargetConnectivity(srcUpService); err != nil {
 		return err
 	}
 
@@ -232,7 +240,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		if err != nil {
 			log.Error(err)
 		}
-		*newPhase = getPhaseByNum(tdc.context, currentPhaseId, sourceRepoKey, buildInfoRepo)
+		*newPhase = getPhaseByNum(tdc.context, currentPhaseId, sourceRepoKey, tdc.proxyKey, buildInfoRepo)
 		if err = tdc.startPhase(newPhase, sourceRepoKey, *repoSummary, srcUpService); err != nil {
 			return
 		}
@@ -442,6 +450,16 @@ func (tdc *TransferFilesCommand) shouldStop() bool {
 	return tdc.context.Err() != nil
 }
 
+func (tdc *TransferFilesCommand) verifySourceTargetConnectivity(srcUpService *srcUserPluginService) error {
+	log.Info("Verifying source to target Artifactory servers connectivity...")
+	targetAuth := createTargetAuth(tdc.targetServerDetails, tdc.proxyKey)
+	err := srcUpService.verifyConnectivityRequest(targetAuth)
+	if err == nil {
+		log.Info("Connectivity check passed!")
+	}
+	return err
+}
+
 func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
@@ -458,6 +476,7 @@ func getMinimalVersionErrorMsg(currentVersion string) string {
 		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
 }
 
+// Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
 	verifyResponse, err := srcUpService.verifyCompatibilityRequest()
 	if err != nil {

@@ -48,6 +48,7 @@ type phaseBase struct {
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
 	timeEstMng                *timeEstimationManager
+	proxyKey                  string
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -101,14 +102,14 @@ func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
 	pb.progressBar = progressbar
 }
 
-func getPhaseByNum(context context.Context, i int, repoKey string, buildInfoRepo bool) transferPhase {
+func getPhaseByNum(context context.Context, i int, repoKey, proxyKey string, buildInfoRepo bool) transferPhase {
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo}}
+		return &fullTransferPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
+		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, phaseId: PropertiesDiffPhase}}
+		return &propertiesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: PropertiesDiffPhase}}
 	}
 	return nil
 }

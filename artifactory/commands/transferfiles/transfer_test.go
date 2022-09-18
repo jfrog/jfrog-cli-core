@@ -69,6 +69,34 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	assert.NoError(t, err)
 }
 
+func TestVerifySourceTargetConnectivity(t *testing.T) {
+	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+			w.WriteHeader(http.StatusOK)
+		}
+	})
+	defer testServer.Close()
+	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
+	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
+	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	assert.NoError(t, err)
+}
+
+func TestVerifySourceTargetConnectivityError(t *testing.T) {
+	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write([]byte("No connection to target"))
+			assert.NoError(t, err)
+		}
+	})
+	defer testServer.Close()
+	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
+	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
+	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	assert.ErrorContains(t, err, "No connection to target")
+}
+
 func initSrcUserPluginServiceManager(t *testing.T, serverDetails *coreConfig.ServerDetails) *srcUserPluginService {
 	srcPluginManager, err := createSrcRtUserPluginServiceManager(context.Background(), serverDetails)
 	assert.NoError(t, err)

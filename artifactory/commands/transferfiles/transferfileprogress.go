@@ -172,6 +172,10 @@ func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, progressbar.GREEN, TimeSlots.String()))
 }
 
+func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transfer failures", false, progressbar.GREEN, Files.String()))
+}
+
 func (t *TransferProgressMng) RemoveRepository() {
 	if t.currentRepoHeadline == nil {
 		return

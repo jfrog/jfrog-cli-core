@@ -199,21 +199,8 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 }
 
 func getChunkStatusMockFirstResponse(t *testing.T, w http.ResponseWriter) {
-	resp := UploadChunksStatusResponse{
-		ChunksStatus: []ChunkStatus{
-			{
-				UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest},
-				Status:            Done,
-			},
-			{
-				UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest},
-				Status:            InProgress,
-			},
-		},
-		NodeIdResponse: NodeIdResponse{
-			NodeId: nodeIdForTest,
-		},
-	}
+	resp := getSampleChunkStatus()
+	resp.ChunksStatus[0].Status = Done
 	writeMockResponse(t, w, resp)
 }
 
@@ -233,6 +220,7 @@ func getChunkStatusMockSecondResponse(t *testing.T, w http.ResponseWriter, file 
 			NodeId: nodeIdForTest,
 		},
 	}
+
 	writeMockResponse(t, w, resp)
 }
 
@@ -336,4 +324,58 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, sourceServerCalculated)
 	assert.True(t, targetServerCalculated)
+}
+
+func getSampleChunkStatus() UploadChunksStatusResponse {
+	return UploadChunksStatusResponse{
+		NodeIdResponse: NodeIdResponse{NodeId: nodeIdForTest},
+		ChunksStatus: []ChunkStatus{
+			{
+				UuidTokenResponse: UuidTokenResponse{firstUuidTokenForTest},
+				Status:            InProgress,
+				Files: []FileUploadStatusResponse{
+					{
+						FileRepresentation: FileRepresentation{
+							Repo: "my-repo-local-2",
+							Path: "rel-path-2",
+							Name: "name-demo-2",
+						},
+					},
+				},
+			},
+			{
+				UuidTokenResponse: UuidTokenResponse{secondUuidTokenForTest},
+				Status:            InProgress,
+				Files: []FileUploadStatusResponse{
+					{
+						FileRepresentation: FileRepresentation{
+							Repo: "my-repo-local-1",
+							Path: "rel-path-1",
+							Name: "name-demo-1",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestCheckChunkStatusSync(t *testing.T) {
+	chunkStatus := getSampleChunkStatus()
+	manager := ChunksLifeCycleManager{
+		nodeToChunksMap: map[nodeId]map[chunkId][]FileRepresentation{},
+		totalChunks:     2,
+	}
+	manager.nodeToChunksMap[nodeIdForTest] = map[chunkId][]FileRepresentation{}
+	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest], FileRepresentation{})
+	manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest], FileRepresentation{})
+	errChanlMng := createErrorsChannelMng()
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 2)
+	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 1)
+	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 0)
 }

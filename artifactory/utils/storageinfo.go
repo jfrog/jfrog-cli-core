@@ -39,6 +39,10 @@ func NewStorageInfoManager(ctx context.Context, serverDetails *config.ServerDeta
 	return &StorageInfoManager{serviceManager: serviceManager}, nil
 }
 
+func (sim *StorageInfoManager) GetServiceManager() artifactory.ArtifactoryServicesManager {
+	return sim.serviceManager
+}
+
 // Start calculating storage info in Artifactory
 func (sim *StorageInfoManager) CalculateStorageInfo() error {
 	return sim.serviceManager.CalculateStorageInfo()
@@ -47,6 +51,11 @@ func (sim *StorageInfoManager) CalculateStorageInfo() error {
 // Get storage info from Artifactory
 func (sim *StorageInfoManager) GetStorageInfo() (*utils.StorageInfo, error) {
 	return sim.serviceManager.GetStorageInfo()
+}
+
+// Get Service Id from Artifactory
+func (sim *StorageInfoManager) GetServiceId() (string, error) {
+	return sim.serviceManager.GetServiceId()
 }
 
 // Get repository summary from the storage info.

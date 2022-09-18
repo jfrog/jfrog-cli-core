@@ -18,7 +18,7 @@ jobs:
       - name: Setup Python3
         uses: actions/setup-python@v4
         with:
-          python-version: "3.6.8"
+          python-version: "3.x"
 
       - name: Install pipenv
         run: pip3 install pipenv

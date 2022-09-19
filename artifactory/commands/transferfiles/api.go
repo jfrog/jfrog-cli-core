@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -71,8 +70,8 @@ type UploadChunkResponse struct {
 }
 
 type UploadChunksStatusBody struct {
-	AwaitingStatusChunks []string `json:"awaiting_status_chunks,omitempty"`
-	ChunksToDelete       []string `json:"chunks_to_delete,omitempty"`
+	AwaitingStatusChunks []chunkId `json:"awaiting_status_chunks,omitempty"`
+	ChunksToDelete       []chunkId `json:"chunks_to_delete,omitempty"`
 }
 
 type UploadChunksStatusResponse struct {
@@ -109,12 +108,19 @@ type UuidTokenResponse struct {
 	UuidToken string `json:"uuid_token,omitempty"`
 }
 
-// Fill tokens batch till full. Return if no new tokens are available.
-func fillTokensBatch(awaitingStatusChunksSet *datastructures.Set[string], uploadTokensChan chan string) {
-	for awaitingStatusChunksSet.Size() < GetThreads() {
+// Fill chunk data batch till full. Return if no new chunk data is available.
+func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
+	for chunksLifeCycleManager.totalChunks < GetThreads() {
 		select {
-		case token := <-uploadTokensChan:
-			awaitingStatusChunksSet.Add(token)
+		case data := <-uploadChunkChan:
+			currentNodeId := nodeId(data.NodeId)
+			currentChunkId := chunkId(data.ChunkUuid)
+			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
+				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
+			}
+			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] =
+				append(chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
+			chunksLifeCycleManager.totalChunks++
 		default:
 			// No new tokens are waiting.
 			return

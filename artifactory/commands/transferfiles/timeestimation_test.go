@@ -21,7 +21,7 @@ func TestGetEstimatedRemainingTime(t *testing.T) {
 	assert.Equal(t, 7.5, timeEstMng.getSpeed())
 	assert.Equal(t, "7.500 MB/s", timeEstMng.getSpeedString())
 	assert.Equal(t, int64(62), timeEstMng.getEstimatedRemainingTime())
-	assert.Equal(t, "About 1 minutes", timeEstMng.getEstimatedRemainingTimeString())
+	assert.Equal(t, "About 1 minute", timeEstMng.getEstimatedRemainingTimeString())
 
 	// Chunk 2: the upload of one of the files failed and the files are not included in the repository's total size (includedInTotalSize == false)
 	chunkStatus2 := ChunkStatus{
@@ -51,6 +51,65 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
 	assert.Equal(t, "Not available yet", timeEstMng.getSpeedString())
 	assert.Equal(t, "Not available yet", timeEstMng.getEstimatedRemainingTimeString())
+}
+
+func TestGetEstimatedRemainingTimeString(t *testing.T) {
+	getEstimatedRemainingTimeStringCases := []struct {
+		name                 string
+		expectedEstimation   string
+		timeRemainingSeconds int64
+	}{
+		{"plural days and plural hours", "About 11 days and 13 hours", getTimeInSecs(11, 13, 3, 7)},
+		{"plural days and singular hour", "About 5 days and 1 hour", getTimeInSecs(5, 1, 2, 0)},
+		{"plural days", "About 3 days", getTimeInSecs(3, 0, 4, 0)},
+		{"singular day and plural hours", "About 1 day and 2 hours", getTimeInSecs(1, 2, 6, 6)},
+		{"singular day and singular hour", "About 1 day and 1 hour", getTimeInSecs(1, 1, 6, 6)},
+		{"singular day", "About 1 day", getTimeInSecs(1, 0, 4, 0)},
+		{"plural hours and plural minutes", "About 11 hours and 13 minutes", getTimeInSecs(0, 11, 13, 0)},
+		{"plural hours and singular minute", "About 5 hours and 1 minute", getTimeInSecs(0, 5, 1, 6)},
+		{"plural hours", "About 3 hours", getTimeInSecs(0, 3, 0, 3)},
+		{"singular hours and plural minutes", "About 1 hour and 13 minutes", getTimeInSecs(0, 1, 13, 0)},
+		{"singular hours and singular minute", "About 1 hour and 1 minute", getTimeInSecs(0, 1, 1, 6)},
+		{"singular hour", "About 1 hour", getTimeInSecs(0, 1, 0, 3)},
+		{"plural minutes", "About 10 minutes", getTimeInSecs(0, 0, 10, 3)},
+		{"singular minute", "About 1 minute", getTimeInSecs(0, 0, 1, 3)},
+		{"seconds", "Less than a minute", getTimeInSecs(0, 0, 0, 3)},
+	}
+
+	for _, testCase := range getEstimatedRemainingTimeStringCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assertGetEstimatedRemainingTimeString(t, testCase.timeRemainingSeconds, testCase.expectedEstimation)
+		})
+	}
+}
+
+func getTimeInSecs(days, hours, minutes, seconds int64) int64 {
+	return 86400*days + 3600*hours + 60*minutes + seconds
+}
+
+func assertGetEstimatedRemainingTimeString(t *testing.T, totalBytes int64, expectedEstimation string) {
+	// For tests convenience, we use 0 transferred bytes and 1/milliseconds speedsAverage because then the total bytes equals the remaining time.
+	timeEstMng := newTimeEstimationManager(totalBytes, 0)
+	timeEstMng.speedsAverage = 1.0 / milliSecsInSecond
+	// Not taken into account in calculation, just needed to mark the transfer has started and estimation should be done.
+	timeEstMng.timeEstimationUnavailable = false
+	timeEstMng.lastSpeeds = []float64{1.1}
+
+	assert.Equal(t, expectedEstimation, timeEstMng.getEstimatedRemainingTimeString())
+}
+
+func TestEstimationNotAvailable(t *testing.T) {
+	timeEstMng := newDefaultTimeEstimationManager()
+	// Assert unavailable if set.
+	timeEstMng.setTimeEstimationUnavailable(true)
+	assert.Equal(t, "Not available in this phase", timeEstMng.getEstimatedRemainingTimeString())
+
+	// After made available, assert not available until lastSpeeds are set.
+	timeEstMng.setTimeEstimationUnavailable(false)
+	assert.Equal(t, "Not available yet", timeEstMng.getEstimatedRemainingTimeString())
+
+	timeEstMng.lastSpeeds = []float64{1.23}
+	assert.Equal(t, "Less than a minute", timeEstMng.getEstimatedRemainingTimeString())
 }
 
 func newDefaultTimeEstimationManager() *timeEstimationManager {

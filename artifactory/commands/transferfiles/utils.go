@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -547,55 +548,97 @@ func updateMaxUniqueSnapshots(ctx context.Context, rtDetails *config.ServerDetai
 	}
 	switch repoSummary.PackageType {
 	case maven:
-		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
-		mavenLocalRepoParams.Key = repoSummary.RepoKey
-		mavenLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Maven(mavenLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxMavenUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case gradle:
-		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
-		gradleLocalRepoParams.Key = repoSummary.RepoKey
-		gradleLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Gradle(gradleLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxGradleUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case nuget:
-		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
-		nugetLocalRepoParams.Key = repoSummary.RepoKey
-		nugetLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Nuget(nugetLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxNugetUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case ivy:
-		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
-		ivyLocalRepoParams.Key = repoSummary.RepoKey
-		ivyLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Ivy(ivyLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxIvyUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case sbt:
-		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
-		sbtLocalRepoParams.Key = repoSummary.RepoKey
-		sbtLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Sbt(sbtLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxSbtUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case docker:
-		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
-		dockerLocalRepoParams.Key = repoSummary.RepoKey
-		dockerLocalRepoParams.MaxUniqueTags = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Docker(dockerLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxDockerUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	}
 	return nil
+}
+
+func updateMaxMavenUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewMavenFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Maven(repoParams)
+	}
+	repoParams := services.NewMavenLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Maven(repoParams)
+}
+
+func updateMaxGradleUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewGradleFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Gradle(repoParams)
+	}
+	repoParams := services.NewGradleLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Gradle(repoParams)
+}
+
+func updateMaxNugetUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewNugetFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Nuget(repoParams)
+	}
+	repoParams := services.NewNugetLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Nuget(repoParams)
+}
+
+func updateMaxIvyUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewIvyFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Ivy(repoParams)
+	}
+	repoParams := services.NewIvyLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Ivy(repoParams)
+}
+
+func updateMaxSbtUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewSbtFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Sbt(repoParams)
+	}
+	repoParams := services.NewSbtLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Sbt(repoParams)
+}
+
+func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewDockerFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Docker(repoParams)
+	}
+	repoParams := services.NewDockerLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Docker(repoParams)
 }
 
 func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {

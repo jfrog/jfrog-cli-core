@@ -95,7 +95,7 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 		PollingInterval: getRepoSummaryPollingInterval,
 		MsgPrefix:       "Waiting for storage info calculation completion",
 		PollingAction: func() (shouldStop bool, responseBody []byte, err error) {
-			// Reset counters between polling.
+			// Reset counters between polling attempts.
 			totalSize = 0
 			reposCounted = 0
 

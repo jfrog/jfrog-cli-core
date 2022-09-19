@@ -3,6 +3,10 @@ package python
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/url"
+	"os/exec"
+
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -13,9 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/url"
-	"os/exec"
 )
 
 type PythonCommand struct {
@@ -58,6 +59,9 @@ func (pc *PythonCommand) Run() (err error) {
 		// Need to collect build info
 		var pythonModule *build.PythonModule
 		pythonModule, err = pythonBuildInfo.AddPythonModule("", pc.pythonTool)
+		if err != nil {
+			return
+		}
 		if buildConfiguration.GetModule() != "" {
 			pythonModule.SetName(buildConfiguration.GetModule())
 		}

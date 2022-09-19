@@ -232,9 +232,9 @@ func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *Chun
 }
 
 // Send and handle.
-func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksResilientManager *ChunksLifeCycleManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
-	curTokensBatch.AwaitingStatusChunks = chunksResilientManager.GetInProgressTokensSlice()
-	curTokensBatch.ChunksToDelete = chunksResilientManager.deletedChunksSet.ToSlice()
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksLifeCycleManager *ChunksLifeCycleManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+	curTokensBatch.AwaitingStatusChunks = chunksLifeCycleManager.GetInProgressTokensSlice()
+	curTokensBatch.ChunksToDelete = chunksLifeCycleManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 	if err != nil {
 		log.Error("error returned when getting upload chunks statuses: " + err.Error())

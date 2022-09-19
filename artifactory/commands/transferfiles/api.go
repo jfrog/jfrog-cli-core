@@ -109,18 +109,18 @@ type UuidTokenResponse struct {
 }
 
 // Fill chunk data batch till full. Return if no new chunk data is available.
-func fillChunkDataBatch(chunksResilientManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
-	for chunksResilientManager.totalChunks < GetThreads() {
+func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
+	for chunksLifeCycleManager.totalChunks < GetThreads() {
 		select {
 		case data := <-uploadChunkChan:
 			currentNodeId := nodeId(data.NodeId)
 			currentChunkId := chunkId(data.ChunkUuid)
-			if _, exist := chunksResilientManager.nodeToChunksMap[currentNodeId]; !exist {
-				chunksResilientManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
+			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
+				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
 			}
-			chunksResilientManager.nodeToChunksMap[currentNodeId][currentChunkId] =
-				append(chunksResilientManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
-			chunksResilientManager.totalChunks++
+			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] =
+				append(chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
+			chunksLifeCycleManager.totalChunks++
 		default:
 			// No new tokens are waiting.
 			return

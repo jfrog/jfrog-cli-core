@@ -36,7 +36,7 @@ func (pc *PythonCommand) Run() (err error) {
 	var buildConfiguration *utils.BuildConfiguration
 	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {
-		return err
+		return
 	}
 	pythonBuildInfo, err := utils.PrepareBuildPrerequisites(buildConfiguration)
 	if err != nil {
@@ -52,7 +52,7 @@ func (pc *PythonCommand) Run() (err error) {
 	}()
 	err = pc.SetPypiRepoUrlWithCredentials()
 	if err != nil {
-		return nil
+		return
 	}
 
 	if pythonBuildInfo != nil && pc.commandName == "install" {

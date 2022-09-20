@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"

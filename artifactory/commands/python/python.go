@@ -2,7 +2,6 @@ package python
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/url"
 	"os/exec"
@@ -32,7 +31,7 @@ func NewPythonCommand(pythonTool pythonutils.PythonTool) *PythonCommand {
 }
 
 func (pc *PythonCommand) Run() (err error) {
-	log.Info(fmt.Sprintf("Running %s %s.", string(pc.pythonTool), pc.commandName))
+	log.Info("Running", string(pc.pythonTool), pc.commandName)
 	var buildConfiguration *utils.BuildConfiguration
 	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,8 +29,55 @@ const (
 	DefaultAqlPaginationLimit                    = 10000
 )
 
+type (
+	nodeId  string
+	chunkId string
+)
+
+const SyncErrorReason = "unsynchronized chunk status due to network issue"
+const SyncErrorStatusCode = 404
+
 var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
+
+type UploadedChunkData struct {
+	ChunkUuid  string
+	ChunkFiles []FileRepresentation
+	NodeIdResponse
+}
+
+type ChunksLifeCycleManager struct {
+	// deletedChunksSet stores chunk uuids that have received a 'DONE' response from the source Artifactory instance
+	// It is used to notify the source Artifactory instance that these chunks can be deleted from the source's status map.
+	deletedChunksSet *datastructures.Set[chunkId]
+	// nodeToChunksMap stores a map of the node IDs of the source Artifactory instance,
+	// In each node, we store a map of the chunks that are currently in progress and their matching files.
+	// In case network fails, and the uploaded chunks data is lost,
+	// These chunks files will be written to the errors file using this map.
+	nodeToChunksMap map[nodeId]map[chunkId][]FileRepresentation
+	// Counts the total of chunks that are currently in progress by the source Artifactory instance.
+	totalChunks int
+}
+
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []chunkId {
+	var inProgressTokens []chunkId
+	for _, node := range clcm.nodeToChunksMap {
+		for id := range node {
+			inProgressTokens = append(inProgressTokens, id)
+		}
+	}
+
+	return inProgressTokens
+}
+
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId nodeId) []chunkId {
+	var inProgressTokens []chunkId
+	for chunkId := range clcm.nodeToChunksMap[nodeId] {
+		inProgressTokens = append(inProgressTokens, chunkId)
+	}
+
+	return inProgressTokens
+}
 
 type InterruptionErr struct{}
 
@@ -100,12 +148,12 @@ var processedUploadChunksMutex sync.Mutex
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadTokensChan chan string, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
+func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunkData, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := UploadChunksStatusBody{}
-	// awaitingStatusChunksSet is used to keep all the uploaded chunks tokens in order to request their upload status from the source.
-	awaitingStatusChunksSet := datastructures.MakeSet[string]()
-	// deletedChunksSet is used to notify the source that these chunks can be deleted from the source's status map.
-	deletedChunksSet := datastructures.MakeSet[string]()
+	chunksLifeCycleManager := ChunksLifeCycleManager{
+		deletedChunksSet: datastructures.MakeSet[chunkId](),
+		nodeToChunksMap:  map[nodeId]map[chunkId][]FileRepresentation{},
+	}
 	curProcessedUploadChunks = 0
 	var progressBar *TransferProgressMng
 	var timeEstMng *timeEstimationManager
@@ -123,35 +171,71 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
-		// Each uploading thread receive a token from the source via the uploadTokensChan, so this go routine can poll on its status.
-		fillTokensBatch(awaitingStatusChunksSet, uploadTokensChan)
-		// When awaitingStatusChunksSet size is zero, it means that all the tokens are uploaded,
+		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
+		fillChunkDataBatch(&chunksLifeCycleManager, uploadChunkChan)
+		// When totalChunks size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
-		if awaitingStatusChunksSet.Size() == 0 {
+		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,
+		// it will be written to the error channel
+		if chunksLifeCycleManager.totalChunks == 0 {
 			if shouldStopPolling(doneChan) {
 				return
 			}
 			continue
 		}
 
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, awaitingStatusChunksSet, deletedChunksSet, srcUpService)
+		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, &chunksLifeCycleManager, srcUpService)
 		if err != nil {
 			continue
 		}
 		// Clear body for the next request
 		curTokensBatch = UploadChunksStatusBody{}
-		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, chunksStatus.ChunksStatus, progressBar, awaitingStatusChunksSet, deletedChunksSet, timeEstMng, errorsChannelMng)
+		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
+		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
 	}
 }
 
+// Verify and handle in progress chunks synchronization between the CLI and the Source Artifactory instance
+func checkChunkStatusSync(chunkStatus *UploadChunksStatusResponse, manager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
+	// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap
+	// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, There is missing data on the source side.
+	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)]) {
+		// Get all the chunks uuids on the Artifactory side in a set of uuids
+		chunksUuidsSetFromResponse := datastructures.MakeSet[chunkId]()
+		for _, chunk := range chunkStatus.ChunksStatus {
+			chunksUuidsSetFromResponse.Add(chunkId(chunk.UuidToken))
+		}
+		// Get all the chunks uuids on the CLI side
+		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(nodeId(chunkStatus.NodeId))
+		failedFile := FileUploadStatusResponse{
+			Status:     Fail,
+			StatusCode: SyncErrorStatusCode,
+			Reason:     SyncErrorReason,
+		}
+		// Send all missing chunks from the source Artifactory instance to errorsChannelMng
+		// Missing chunks are those that are inside chunksUuidsSliceFromMap but not in chunksUuidsSetFromResponse
+		for _, chunkUuid := range chunksUuidsSliceFromMap {
+			if !chunksUuidsSetFromResponse.Exists(chunkUuid) {
+				for _, file := range manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)][chunkUuid] {
+					failedFile.FileRepresentation = file
+					// errorsChannelMng will upload failed files again in phase 3 or in an additional transfer file run.
+					addErrorToChannel(errorsChannelMng, failedFile)
+				}
+				delete(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)], chunkUuid)
+				manager.totalChunks--
+				reduceCurProcessedChunks()
+			}
+		}
+	}
+}
+
 // Send and handle.
-func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string], srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
-	curTokensBatch.AwaitingStatusChunks = awaitingStatusChunksSet.ToSlice()
-	curTokensBatch.ChunksToDelete = deletedChunksSet.ToSlice()
+func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksLifeCycleManager *ChunksLifeCycleManager, srcUpService *srcUserPluginService) (UploadChunksStatusResponse, error) {
+	curTokensBatch.AwaitingStatusChunks = chunksLifeCycleManager.GetInProgressTokensSlice()
+	curTokensBatch.ChunksToDelete = chunksLifeCycleManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
 	if err != nil {
 		log.Error("error returned when getting upload chunks statuses: " + err.Error())
@@ -159,11 +243,11 @@ func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, awaitingStatus
 	return chunksStatus, err
 }
 
-func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[string]) {
+func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[chunkId]) {
 	// deletedChunks is an array received from the source, confirming which chunks were deleted from the source side.
 	// In deletedChunksSet, we keep only chunks for which we have yet to receive confirmation
 	for _, deletedChunk := range deletedChunks {
-		err := deletedChunksSet.Remove(deletedChunk)
+		err := deletedChunksSet.Remove(chunkId(deletedChunk))
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -171,11 +255,14 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 	}
 }
 
-func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progressbar *TransferProgressMng,
-	awaitingStatusChunksSet *datastructures.Set[string], deletedChunksSet *datastructures.Set[string],
-	timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
+// handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
+// It syncs the chunk status between the CLI and the source Artifactory instance,
+// When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
+func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResponse, progressbar *TransferProgressMng,
+	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
 	initialWorkingThreads := curProcessedUploadChunks
-	for _, chunk := range chunksStatus {
+	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
+	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
 			continue
@@ -192,12 +279,10 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus []ChunkStatus, progress
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
 			}
-			err = awaitingStatusChunksSet.Remove(chunk.UuidToken)
-			if err != nil {
-				log.Error(err.Error())
-			}
+			delete(chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)], chunkId(chunk.UuidToken))
+			chunksLifeCycleManager.totalChunks--
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-			deletedChunksSet.Add(chunk.UuidToken)
+			chunksLifeCycleManager.deletedChunksSet.Add(chunkId(chunk.UuidToken))
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
@@ -266,7 +351,7 @@ func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsCh
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
@@ -305,15 +390,20 @@ func sendAllChunkToErrorChannel(chunk UploadChunk, errorsChannelMng *ErrorsChann
 // Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.
 // An uuid token is returned in order to poll on it for status.
 // This function sends the token to the uploadTokensChan for the pollUploads function to read and poll on.
-func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan string) error {
-	uuidToken, err := sup.uploadChunk(chunk)
+func uploadChunkAndAddToken(sup *srcUserPluginService, chunk UploadChunk, uploadTokensChan chan UploadedChunkData) error {
+	uploadResponse, err := sup.uploadChunk(chunk)
 	if err != nil {
 		return err
 	}
 
-	// Add token to polling.
-	log.Debug("Chunk sent. Adding chunk token '" + uuidToken + "' to poll on for status.")
-	uploadTokensChan <- uuidToken
+	// Add chunk data for polling.
+	log.Debug("Chunk sent to node" + uploadResponse.NodeId + ". Adding chunk token '" + uploadResponse.UuidToken + "' to poll on for status.")
+	uploadedChunkData := UploadedChunkData{
+		ChunkUuid:      uploadResponse.UuidToken,
+		ChunkFiles:     chunk.UploadCandidates,
+		NodeIdResponse: uploadResponse.NodeIdResponse,
+	}
+	uploadTokensChan <- uploadedChunkData
 	return nil
 }
 
@@ -370,7 +460,7 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
@@ -385,7 +475,7 @@ func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, upl
 
 // Collects files in chunks of size uploadChunkSize and sends them to be uploaded whenever possible (the amount of chunks uploaded is limited by the number of threads).
 // An uuid token is returned after the chunk is sent and is being polled on for status.
-func uploadByChunks(files []FileRepresentation, uploadTokensChan chan string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
+func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedChunkData, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng, pcWrapper *producerConsumerWrapper) (shouldStop bool, err error) {
 	curUploadChunk := UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails, base.proxyKey),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
@@ -547,55 +637,97 @@ func updateMaxUniqueSnapshots(ctx context.Context, rtDetails *config.ServerDetai
 	}
 	switch repoSummary.PackageType {
 	case maven:
-		mavenLocalRepoParams := services.MavenLocalRepositoryParams{}
-		mavenLocalRepoParams.Key = repoSummary.RepoKey
-		mavenLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Maven(mavenLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxMavenUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case gradle:
-		gradleLocalRepoParams := services.GradleLocalRepositoryParams{}
-		gradleLocalRepoParams.Key = repoSummary.RepoKey
-		gradleLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Gradle(gradleLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxGradleUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case nuget:
-		nugetLocalRepoParams := services.NugetLocalRepositoryParams{}
-		nugetLocalRepoParams.Key = repoSummary.RepoKey
-		nugetLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Nuget(nugetLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxNugetUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case ivy:
-		ivyLocalRepoParams := services.IvyLocalRepositoryParams{}
-		ivyLocalRepoParams.Key = repoSummary.RepoKey
-		ivyLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Ivy(ivyLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxIvyUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case sbt:
-		sbtLocalRepoParams := services.SbtLocalRepositoryParams{}
-		sbtLocalRepoParams.Key = repoSummary.RepoKey
-		sbtLocalRepoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Sbt(sbtLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxSbtUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	case docker:
-		dockerLocalRepoParams := services.DockerLocalRepositoryParams{}
-		dockerLocalRepoParams.Key = repoSummary.RepoKey
-		dockerLocalRepoParams.MaxUniqueTags = &newMaxUniqueSnapshots
-		err = serviceManager.UpdateLocalRepository().Docker(dockerLocalRepoParams)
-		if err != nil {
-			return err
-		}
+		return updateMaxDockerUniqueSnapshots(serviceManager, repoSummary, newMaxUniqueSnapshots)
 	}
 	return nil
+}
+
+func updateMaxMavenUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewMavenFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Maven(repoParams)
+	}
+	repoParams := services.NewMavenLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Maven(repoParams)
+}
+
+func updateMaxGradleUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewGradleFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Gradle(repoParams)
+	}
+	repoParams := services.NewGradleLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Gradle(repoParams)
+}
+
+func updateMaxNugetUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewNugetFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Nuget(repoParams)
+	}
+	repoParams := services.NewNugetLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Nuget(repoParams)
+}
+
+func updateMaxIvyUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewIvyFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Ivy(repoParams)
+	}
+	repoParams := services.NewIvyLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Ivy(repoParams)
+}
+
+func updateMaxSbtUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewSbtFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Sbt(repoParams)
+	}
+	repoParams := services.NewSbtLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueSnapshots = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Sbt(repoParams)
+}
+
+func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServicesManager, repoSummary *serviceUtils.RepositorySummary, newMaxUniqueSnapshots int) error {
+	if strings.ToLower(repoSummary.RepoType) == services.FederatedRepositoryRepoType {
+		repoParams := services.NewDockerFederatedRepositoryParams()
+		repoParams.Key = repoSummary.RepoKey
+		repoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+		return serviceManager.UpdateFederatedRepository().Docker(repoParams)
+	}
+	repoParams := services.NewDockerLocalRepositoryParams()
+	repoParams.Key = repoSummary.RepoKey
+	repoParams.MaxUniqueTags = &newMaxUniqueSnapshots
+	return serviceManager.UpdateLocalRepository().Docker(repoParams)
 }
 
 func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {

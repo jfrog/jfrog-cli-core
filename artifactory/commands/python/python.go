@@ -2,7 +2,10 @@ package python
 
 import (
 	"errors"
-	"fmt"
+	"io"
+	"net/url"
+	"os/exec"
+
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -13,9 +16,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/url"
-	"os/exec"
 )
 
 type PythonCommand struct {
@@ -31,11 +31,11 @@ func NewPythonCommand(pythonTool pythonutils.PythonTool) *PythonCommand {
 }
 
 func (pc *PythonCommand) Run() (err error) {
-	log.Info(fmt.Sprintf("Running %s %s.", string(pc.pythonTool), pc.commandName))
+	log.Info("Running", string(pc.pythonTool), pc.commandName)
 	var buildConfiguration *utils.BuildConfiguration
 	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {
-		return err
+		return
 	}
 	pythonBuildInfo, err := utils.PrepareBuildPrerequisites(buildConfiguration)
 	if err != nil {
@@ -51,13 +51,16 @@ func (pc *PythonCommand) Run() (err error) {
 	}()
 	err = pc.SetPypiRepoUrlWithCredentials()
 	if err != nil {
-		return nil
+		return
 	}
 
 	if pythonBuildInfo != nil && pc.commandName == "install" {
 		// Need to collect build info
 		var pythonModule *build.PythonModule
 		pythonModule, err = pythonBuildInfo.AddPythonModule("", pc.pythonTool)
+		if err != nil {
+			return
+		}
 		if buildConfiguration.GetModule() != "" {
 			pythonModule.SetName(buildConfiguration.GetModule())
 		}

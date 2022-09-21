@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -46,10 +45,7 @@ func getNpmAuth(authArtDetails *auth.ServiceDetails) (npmAuth string, err error)
 	}
 
 	// Get npm token from Artifactory
-	if (*authArtDetails).GetAccessToken() == "" {
-		return getNpmAuthUsingBasicAuth(authArtDetails)
-	}
-	return getNpmAuthUsingAccessToken(authArtDetails)
+	return getNpmAuthFromArtifactory(authArtDetails)
 }
 
 func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error {
@@ -68,22 +64,7 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	return nil
 }
 
-func getNpmAuthUsingAccessToken(artDetails *auth.ServiceDetails) (npmAuth string, err error) {
-	npmAuthString := "_auth = %s\nalways-auth = true"
-	// Build npm token, consists of <username:password> encoded.
-	// Use Artifactory's access-token as username and password to create npm token.
-	username, err := auth.ExtractUsernameFromAccessToken((*artDetails).GetAccessToken())
-	if err != nil {
-		return
-	}
-
-	encodedNpmToken := base64.StdEncoding.EncodeToString([]byte(username + ":" + (*artDetails).GetAccessToken()))
-	npmAuth = fmt.Sprintf(npmAuthString, encodedNpmToken)
-
-	return
-}
-
-func getNpmAuthUsingBasicAuth(artDetails *auth.ServiceDetails) (npmAuth string, err error) {
+func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string, err error) {
 	authApiUrl := (*artDetails).GetUrl() + "api/npm/auth"
 	log.Debug("Sending npm auth request")
 

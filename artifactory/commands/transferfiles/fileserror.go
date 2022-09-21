@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"encoding/json"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -56,7 +55,7 @@ func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper,
 		log.Debug("Handling errors file: '" + path + "'")
 
 		// read and parse file
-		failedFiles, err := e.readErrorFile(path)
+		failedFiles, err := readErrorFile(path)
 		if err != nil {
 			return err
 		}
@@ -93,23 +92,6 @@ func (e *errorsRetryPhase) phaseStarted() error {
 	return nil
 }
 
-// Reads an error file from a given path, parses and populate a given FilesErrors instance with the file information
-func (e *errorsRetryPhase) readErrorFile(path string) (FilesErrors, error) {
-	// Stores the errors read from the errors file.
-	var failedFiles FilesErrors
-
-	fContent, err := os.ReadFile(path)
-	if err != nil {
-		return failedFiles, errorutils.CheckError(err)
-	}
-	// parse to struct
-	err = json.Unmarshal(fContent, &failedFiles)
-	if err != nil {
-		return failedFiles, errorutils.CheckError(err)
-	}
-	return failedFiles, nil
-}
-
 func (e *errorsRetryPhase) initProgressBar() error {
 	if e.progressBar == nil {
 		return nil
@@ -119,7 +101,7 @@ func (e *errorsRetryPhase) initProgressBar() error {
 	filesCount := 0
 	for _, path := range e.errorsFilesToHandle {
 
-		failedFiles, err := e.readErrorFile(path)
+		failedFiles, err := readErrorFile(path)
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package progressbar
 
 import (
+	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -159,14 +160,16 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, color Color, tas
 	return pb
 }
 
-func (bm *ProgressBarMng) NewCounterProgressBar(num int64, headline string) *TasksProgressBar {
+func (bm *ProgressBarMng) NewCounterProgressBar(headline string, num int64, valColor color.Color) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(num,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(headline),
-			decor.TotalNoUnit("%d"),
+			decor.Any(func(statistics decor.Statistics) string {
+				return valColor.Render(pb.GetTotal())
+			}),
 		),
 	)
 	return pb

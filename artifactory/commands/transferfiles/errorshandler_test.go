@@ -61,6 +61,10 @@ func TestTransferErrorsMng(t *testing.T) {
 	expectedNumberOfFiles := int(math.Ceil(float64(errorsNumber) / float64(maxErrorsInFile)))
 	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, true)
 	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, false)
+
+	retryEntityCount, err := getRetryErrorCount([]string{testRepoKey})
+	assert.NoError(t, err)
+	assert.Equal(t, errorsNumber, retryEntityCount)
 }
 
 func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status ChunkFileStatusType) {

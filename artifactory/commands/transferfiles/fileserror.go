@@ -30,8 +30,8 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	}
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		return e.handleErrorsFiles(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		return e.handleErrorsFiles(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 	}
 	err := manager.doTransferWithProducerConsumer(action)
 	if err == nil {
@@ -47,7 +47,7 @@ func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatus
 	return
 }
 
-func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	for _, path := range e.errorsFilesToHandle {
 		if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
@@ -61,7 +61,7 @@ func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper,
 		}
 
 		// upload
-		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadTokensChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}

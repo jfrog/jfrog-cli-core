@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
+	"strings"
 	"time"
 )
 
@@ -15,7 +16,10 @@ const (
 	Repositories TransferJobType = "Repositories"
 	Files        TransferJobType = "Files"
 	TimeSlots    TransferJobType = "Time Slots"
+	Note         string          = "Note: "
 )
+
+var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry to transfer the failed files."
 
 func (tt TransferJobType) String() string {
 	return string(tt)
@@ -36,6 +40,8 @@ type TransferProgressMng struct {
 	timeEstBar *progressbar.TasksProgressBar
 	// A bar showing the number of transfer failures in the process
 	errorBar *progressbar.TasksProgressBar
+	// shows a note to the user if errors exists
+	errorNote *progressbar.TasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -59,6 +65,15 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstima
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
 
+	if timeEstMng != nil {
+		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
+			return color.Green.Render(timeEstMng.getSpeedString())
+		})
+		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
+			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
+		})
+	}
+
 	// Init global error count for the process
 	transfer.errorBar = transfer.barsMng.NewCounterProgressBar("Transfer failures: ", 0, color.Green)
 	if !ignoreOldState {
@@ -68,15 +83,13 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstima
 		}
 		transfer.errorBar.SetGeneralProgressTotal(int64(numberInitialErrors))
 	}
-
-	if timeEstMng != nil {
-		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
-			return color.Green.Render(timeEstMng.getSpeedString())
-		})
-		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
-		})
-	}
+	transfer.errorNote = transfer.barsMng.NewStringProgressBar("", func() string {
+		if transfer.errorBar.GetTotal() > 0 {
+			return Note + color.Yellow.Render(contentNote)
+		} else {
+			return ""
+		}
+	})
 	return &transfer, nil
 }
 
@@ -87,8 +100,8 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
+	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 }
 
 // Quit terminate the TransferProgressMng process.

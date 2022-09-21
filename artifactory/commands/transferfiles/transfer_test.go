@@ -37,6 +37,7 @@ func TestCancelFunc(t *testing.T) {
 
 const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
 const secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
+const nodeIdForTest = "nodea0gwihu76sk5g-artifactory-primary-0"
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "9.9.9", false) })
@@ -142,22 +143,22 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 // Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
 func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
 	curThreads = 8
-	uploadTokensChan := make(chan string, 3)
+	uploadChunksChan := make(chan UploadedChunkData, 3)
 	doneChan := make(chan bool, 1)
 	var runWaitGroup sync.WaitGroup
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidateIfNeeded(fileSample, false)
-	stopped := uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
+	stopped := uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadChunksChan, nil)
 	assert.False(t, stopped)
-	stopped = uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadTokensChan, nil)
+	stopped = uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadChunksChan, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 2, curProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(nil, srcPluginManager, uploadTokensChan, doneChan, nil)
+		pollUploads(nil, srcPluginManager, uploadChunksChan, doneChan, nil)
 	}()
 	// Let the whole process run for a few chunk status checks, then mark it as done.
 	time.Sleep(5 * waitTimeBetweenChunkStatusSeconds * time.Second)
@@ -170,9 +171,9 @@ func getUploadChunkMockResponse(t *testing.T, w http.ResponseWriter, totalUpload
 	w.WriteHeader(http.StatusAccepted)
 	var resp UploadChunkResponse
 	if *totalUploadChunkVisits == 1 {
-		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest}}
+		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest}, NodeIdResponse: NodeIdResponse{NodeId: nodeIdForTest}}
 	} else {
-		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest}}
+		resp = UploadChunkResponse{UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest}, NodeIdResponse: NodeIdResponse{NodeId: nodeIdForTest}}
 	}
 	writeMockResponse(t, w, resp)
 }
@@ -187,27 +188,19 @@ func validateChunkStatusBody(t *testing.T, r *http.Request) {
 	// Make sure all parameters as expected
 	if len(actual.ChunksToDelete) == 0 {
 		assert.Len(t, actual.AwaitingStatusChunks, 2)
-		assert.ElementsMatch(t, []string{firstUuidTokenForTest, secondUuidTokenForTest}, actual.AwaitingStatusChunks)
+		assert.ElementsMatch(t, []chunkId{firstUuidTokenForTest, secondUuidTokenForTest}, actual.AwaitingStatusChunks)
 	} else {
 		assert.Len(t, actual.ChunksToDelete, 1)
 		assert.Len(t, actual.AwaitingStatusChunks, 1)
-		assert.Equal(t, firstUuidTokenForTest, actual.ChunksToDelete[0])
-		assert.Equal(t, secondUuidTokenForTest, actual.AwaitingStatusChunks[0])
+		assert.Equal(t, chunkId(firstUuidTokenForTest), actual.ChunksToDelete[0])
+		assert.Equal(t, chunkId(secondUuidTokenForTest), actual.AwaitingStatusChunks[0])
 	}
 
 }
 
 func getChunkStatusMockFirstResponse(t *testing.T, w http.ResponseWriter) {
-	resp := UploadChunksStatusResponse{ChunksStatus: []ChunkStatus{
-		{
-			UuidTokenResponse: UuidTokenResponse{UuidToken: firstUuidTokenForTest},
-			Status:            Done,
-		},
-		{
-			UuidTokenResponse: UuidTokenResponse{UuidToken: secondUuidTokenForTest},
-			Status:            InProgress,
-		},
-	}}
+	resp := getSampleChunkStatus()
+	resp.ChunksStatus[0].Status = Done
 	writeMockResponse(t, w, resp)
 }
 
@@ -223,7 +216,11 @@ func getChunkStatusMockSecondResponse(t *testing.T, w http.ResponseWriter, file 
 		DeletedChunks: []string{
 			firstUuidTokenForTest,
 		},
+		NodeIdResponse: NodeIdResponse{
+			NodeId: nodeIdForTest,
+		},
 	}
+
 	writeMockResponse(t, w, resp)
 }
 
@@ -327,4 +324,58 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, sourceServerCalculated)
 	assert.True(t, targetServerCalculated)
+}
+
+func getSampleChunkStatus() UploadChunksStatusResponse {
+	return UploadChunksStatusResponse{
+		NodeIdResponse: NodeIdResponse{NodeId: nodeIdForTest},
+		ChunksStatus: []ChunkStatus{
+			{
+				UuidTokenResponse: UuidTokenResponse{firstUuidTokenForTest},
+				Status:            InProgress,
+				Files: []FileUploadStatusResponse{
+					{
+						FileRepresentation: FileRepresentation{
+							Repo: "my-repo-local-2",
+							Path: "rel-path-2",
+							Name: "name-demo-2",
+						},
+					},
+				},
+			},
+			{
+				UuidTokenResponse: UuidTokenResponse{secondUuidTokenForTest},
+				Status:            InProgress,
+				Files: []FileUploadStatusResponse{
+					{
+						FileRepresentation: FileRepresentation{
+							Repo: "my-repo-local-1",
+							Path: "rel-path-1",
+							Name: "name-demo-1",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestCheckChunkStatusSync(t *testing.T) {
+	chunkStatus := getSampleChunkStatus()
+	manager := ChunksLifeCycleManager{
+		nodeToChunksMap: map[nodeId]map[chunkId][]FileRepresentation{},
+		totalChunks:     2,
+	}
+	manager.nodeToChunksMap[nodeIdForTest] = map[chunkId][]FileRepresentation{}
+	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest], FileRepresentation{})
+	manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest], FileRepresentation{})
+	errChanlMng := createErrorsChannelMng()
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 2)
+	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 1)
+	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 0)
 }

@@ -39,6 +39,10 @@ func NewStorageInfoManager(ctx context.Context, serverDetails *config.ServerDeta
 	return &StorageInfoManager{serviceManager: serviceManager}, nil
 }
 
+func (sim *StorageInfoManager) GetServiceManager() artifactory.ArtifactoryServicesManager {
+	return sim.serviceManager
+}
+
 // Start calculating storage info in Artifactory
 func (sim *StorageInfoManager) CalculateStorageInfo() error {
 	return sim.serviceManager.CalculateStorageInfo()
@@ -47,6 +51,11 @@ func (sim *StorageInfoManager) CalculateStorageInfo() error {
 // Get storage info from Artifactory
 func (sim *StorageInfoManager) GetStorageInfo() (*utils.StorageInfo, error) {
 	return sim.serviceManager.GetStorageInfo()
+}
+
+// Get Service Id from Artifactory
+func (sim *StorageInfoManager) GetServiceId() (string, error) {
+	return sim.serviceManager.GetServiceId()
 }
 
 // Get repository summary from the storage info.
@@ -95,6 +104,10 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 		PollingInterval: getRepoSummaryPollingInterval,
 		MsgPrefix:       "Waiting for storage info calculation completion",
 		PollingAction: func() (shouldStop bool, responseBody []byte, err error) {
+			// Reset counters between polling attempts.
+			totalSize = 0
+			reposCounted = 0
+
 			storageInfo, err := sim.GetStorageInfo()
 			if err != nil {
 				return true, nil, err
@@ -122,9 +135,13 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 	}
 	_, err := pollingExecutor.Execute()
 	if reposCounted < len(repoKeys) && err == nil {
-		return totalSize, errorutils.CheckErrorf("one or more of the requested repositories were not found")
+		return totalSize, errorutils.CheckErrorf(getStorageInfoRepoMissingError())
 	}
 	return totalSize, err
+}
+
+func getStorageInfoRepoMissingError() string {
+	return "one or more of the requested repositories were not found"
 }
 
 func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {

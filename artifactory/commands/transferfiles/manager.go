@@ -24,7 +24,7 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return &transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
@@ -42,7 +42,7 @@ func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transf
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType) error {
-	uploadTokensChan := make(chan string, transfer.MaxThreadsLimit)
+	uploadChunkChan := make(chan UploadedChunkData, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -74,7 +74,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	}
 
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
-	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper, uploadTokensChan, &errorsChannelMng)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper, uploadChunkChan, &errorsChannelMng)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -84,7 +84,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	var actionErr error
 	go func() {
 		defer runWaitGroup.Done()
-		actionErr = transferAction(pcWrapper, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
+		actionErr = transferAction(pcWrapper, uploadChunkChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
 		if pcWrapper == nil {
 			pollingTasksManager.stop()
 		}
@@ -141,7 +141,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, errorsChannelMng *ErrorsChannelMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -161,7 +161,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(phaseBase, phaseBase.srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng)
+		pollUploads(phaseBase, phaseBase.srcUpService, uploadChunkChan, ptm.doneChannel, errorsChannelMng)
 	}()
 	return nil
 }

@@ -119,6 +119,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
+	// prepare the directory for the process
+	if err = tdc.prepareTransferDir(allSourceLocalRepos); err != nil {
+		return err
+	}
+
 	if isTimeEstimationEnabled() {
 		if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
 			return err
@@ -126,7 +131,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)), tdc.timeEstMng)
+	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, tdc.timeEstMng, tdc.ignoreState)
 	if err != nil {
 		return err
 	}
@@ -254,6 +259,23 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 		return err
 	}
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
+}
+
+func (tdc *TransferFilesCommand) prepareTransferDir(repos []string) error {
+	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
+	if tdc.ignoreState {
+		files, err := getErrorsFiles(repos, true)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			err = os.Remove(file)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {

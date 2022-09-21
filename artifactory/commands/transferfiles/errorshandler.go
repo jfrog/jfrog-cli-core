@@ -345,7 +345,7 @@ func readErrorFile(path string) (FilesErrors, error) {
 	if err != nil {
 		return failedFiles, errorutils.CheckError(err)
 	}
-	// parse to struct
+
 	err = json.Unmarshal(fContent, &failedFiles)
 	if err != nil {
 		return failedFiles, errorutils.CheckError(err)

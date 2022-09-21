@@ -19,7 +19,7 @@ const (
 	Note         string          = "Note: "
 )
 
-var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry to transfer the failed files."
+var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry transferring the failed files."
 
 func (tt TransferJobType) String() string {
 	return string(tt)

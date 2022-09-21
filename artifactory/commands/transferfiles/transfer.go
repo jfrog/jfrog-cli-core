@@ -120,8 +120,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	// prepare the directory for the process
-	if err = tdc.prepareTransferDir(allSourceLocalRepos); err != nil {
+	if err = tdc.removeErrorFilesIfNeeded(allSourceLocalRepos); err != nil {
 		return err
 	}
 
@@ -293,7 +292,7 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
-func (tdc *TransferFilesCommand) prepareTransferDir(repos []string) error {
+func (tdc *TransferFilesCommand) removeErrorFilesIfNeeded(repos []string) error {
 	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
 	if tdc.ignoreState {
 		files, err := getErrorsFiles(repos, true)
@@ -303,7 +302,7 @@ func (tdc *TransferFilesCommand) prepareTransferDir(repos []string) error {
 		for _, file := range files {
 			err = os.Remove(file)
 			if err != nil {
-				return err
+				return errorutils.CheckError(err)
 			}
 		}
 	}

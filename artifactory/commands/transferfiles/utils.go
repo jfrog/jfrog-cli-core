@@ -374,6 +374,7 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadToke
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
+			// If the transfer is interrupted by the user, we shouldn't write it in the CSV file
 			if errors.Is(err, context.Canceled) {
 				return true
 			}

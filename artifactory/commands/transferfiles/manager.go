@@ -24,7 +24,11 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 	return &transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionWithProducerConsumerType func(
+	pcWrapper *producerConsumerWrapper,
+	uploadChunkChan chan UploadedChunkData,
+	delayHelper delayUploadHelper,
+	errorsChannelMng *ErrorsChannelMng) error
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
@@ -82,9 +86,13 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	// Transfer action to execute.
 	runWaitGroup.Add(1)
 	var actionErr error
+	var delayUploadHelper = delayUploadHelper{
+		ftm.delayUploadComparisonFunctions,
+		&delayedArtifactsChannelMng,
+	}
 	go func() {
 		defer runWaitGroup.Done()
-		actionErr = transferAction(pcWrapper, uploadChunkChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
+		actionErr = transferAction(pcWrapper, uploadChunkChan, delayUploadHelper, &errorsChannelMng)
 		if pcWrapper == nil {
 			pollingTasksManager.stop()
 		}
@@ -182,19 +190,39 @@ func (ptm *PollingTasksManager) stop() {
 }
 
 type producerConsumerWrapper struct {
-	chunkBuilderProducerConsumer  parallel.Runner
 	chunkUploaderProducerConsumer parallel.Runner
+	chunkBuilderProducerConsumer  parallel.Runner
+	uploaderFinishedNotifier      chan bool
+	builderFinishedNotifier       chan bool
 	errorsQueue                   *clientUtils.ErrorsQueue
+}
+
+// Notifies that the uploader finished if there are no builders and the current thread is the last one
+func (pcw *producerConsumerWrapper) notifyIfUploaderFinished() {
+	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 0 && pcw.chunkUploaderProducerConsumer.ActiveThreads() == 1 {
+		pcw.uploaderFinishedNotifier <- true
+	}
+}
+
+// Notifies that the builder finished if the current thread is the last one
+func (pcw *producerConsumerWrapper) notifyIfBuilderFinished() {
+	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 {
+		pcw.builderFinishedNotifier <- true
+	}
 }
 
 func newProducerConsumerWrapper() *producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+	uploaderFinishedNotifier := make(chan bool, 1)
+	builderFinishedNotifier := make(chan bool, 1)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return &producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
+		uploaderFinishedNotifier:      uploaderFinishedNotifier,
+		builderFinishedNotifier:       builderFinishedNotifier,
 		errorsQueue:                   errorsQueue,
 	}
 }
@@ -207,23 +235,20 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	go func() {
 		pcWrapper.chunkUploaderProducerConsumer.Run()
 	}()
-
 	go func() {
-		err := pcWrapper.chunkBuilderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-		if err != nil {
-			log.Error("pcWrapper.chunkBuilderProducerConsumer.DoneWhenAllIdle API failed", err.Error())
-		}
+		// Wait till notified that the builder has no further tasks and close the builder producer consumer.
+		<-pcWrapper.builderFinishedNotifier
+		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
 
 	// Run() is a blocking method, so once all chunk builders are idle, the tasks queue closes and Run() stops running.
 	pcWrapper.chunkBuilderProducerConsumer.Run()
-	// Once we are done building chunks, we can safely call DoneWhenAllIdle on the chunk uploader producer consumer.
-	// DoneWhenAllIdle is also a blocking method.
-	err := pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-	if err != nil {
-		log.Error("pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle API failed", err.Error())
+	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
+		// Wait till notified that the uploader finished its tasks, and it will no longer receive further tasks from the builder.
+		<-pcWrapper.uploaderFinishedNotifier
 	}
-
+	// Close the tasks queue with Done().
+	pcWrapper.chunkUploaderProducerConsumer.Done()
 	executionErr = pcWrapper.errorsQueue.GetError()
 	return
 }

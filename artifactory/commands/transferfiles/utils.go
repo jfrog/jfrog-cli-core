@@ -23,10 +23,9 @@ import (
 )
 
 const (
-	waitTimeBetweenChunkStatusSeconds            = 3
-	waitTimeBetweenThreadsUpdateSeconds          = 20
-	assumeProducerConsumerDoneWhenIdleForSeconds = 15
-	DefaultAqlPaginationLimit                    = 10000
+	waitTimeBetweenChunkStatusSeconds   = 3
+	waitTimeBetweenThreadsUpdateSeconds = 20
+	DefaultAqlPaginationLimit           = 10000
 )
 
 type (
@@ -460,11 +459,13 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
+	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		pcWrapper.notifyIfUploaderFinished()
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
 			return errorutils.CheckErrorf("%sstopped.", logMsgPrefix)
@@ -493,7 +494,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 		}
 		curUploadChunk.appendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -503,7 +504,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}

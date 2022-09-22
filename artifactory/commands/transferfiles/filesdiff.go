@@ -111,7 +111,9 @@ func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsu
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
+			err := f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
+			pcWrapper.notifyIfBuilderFinished()
+			return err
 		}
 	}
 }

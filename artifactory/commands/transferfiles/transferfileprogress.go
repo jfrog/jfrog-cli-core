@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
-	"strings"
 	"time"
 )
 
@@ -17,9 +16,8 @@ const (
 	Files        TransferJobType = "Files"
 	TimeSlots    TransferJobType = "Time Slots"
 	Note         string          = "Note: "
+	contentNote  string          = "In subsequent executions, the command will retry transferring the failed files."
 )
-
-var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry transferring the failed files."
 
 func (tt TransferJobType) String() string {
 	return string(tt)

@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -237,7 +238,8 @@ func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksLifeCycl
 	curTokensBatch.AwaitingStatusChunks = chunksLifeCycleManager.GetInProgressTokensSlice()
 	curTokensBatch.ChunksToDelete = chunksLifeCycleManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
-	if err != nil {
+	// Log the error only if the transfer wasn't interrupted by the user
+	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("error returned when getting upload chunks statuses: " + err.Error())
 	}
 	return chunksStatus, err
@@ -372,6 +374,10 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk UploadChunk, uploadToke
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
 			reduceCurProcessedChunks()
+			// If the transfer is interrupted by the user, we shouldn't write it in the CSV file
+			if errors.Is(err, context.Canceled) {
+				return true
+			}
 			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
 		}
 		return ShouldStop(phaseBase, nil, errorsChannelMng)

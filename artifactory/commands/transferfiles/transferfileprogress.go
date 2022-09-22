@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
+	"strings"
 	"time"
 )
 
@@ -15,7 +16,10 @@ const (
 	Repositories TransferJobType = "Repositories"
 	Files        TransferJobType = "Files"
 	TimeSlots    TransferJobType = "Time Slots"
+	Note         string          = "Note: "
 )
+
+var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry transferring the failed files."
 
 func (tt TransferJobType) String() string {
 	return string(tt)
@@ -34,6 +38,10 @@ type TransferProgressMng struct {
 	speedBar *progressbar.TasksProgressBar
 	// A bar showing the estimated remaining time for the transfer
 	timeEstBar *progressbar.TasksProgressBar
+	// A bar showing the number of transfer failures in the process
+	errorBar *progressbar.TasksProgressBar
+	// shows a note to the user if errors exists
+	errorNote *progressbar.TasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -46,7 +54,8 @@ type TransferProgressMng struct {
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationManager) (*TransferProgressMng, error) {
+func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstimationManager, ignoreOldState bool) (*TransferProgressMng, error) {
+	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
 		return nil, err
@@ -54,7 +63,8 @@ func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationM
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
-	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(0, "Working threads: ")
+	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
+
 	if timeEstMng != nil {
 		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
 			return color.Green.Render(timeEstMng.getSpeedString())
@@ -63,6 +73,23 @@ func NewTransferProgressMng(totalRepositories int64, timeEstMng *timeEstimationM
 			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
 		})
 	}
+
+	// Init global error count for the process
+	transfer.errorBar = transfer.barsMng.NewCounterProgressBar("Transfer failures: ", 0, color.Green)
+	if !ignoreOldState {
+		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
+		if e != nil {
+			return nil, e
+		}
+		transfer.errorBar.SetGeneralProgressTotal(int64(numberInitialErrors))
+	}
+	transfer.errorNote = transfer.barsMng.NewStringProgressBar("", func() string {
+		if transfer.errorBar.GetTotal() > 0 {
+			return Note + color.Yellow.Render(contentNote)
+		} else {
+			return ""
+		}
+	})
 	return &transfer, nil
 }
 
@@ -73,8 +100,8 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	if t.currentRepoHeadline != nil {
 		t.RemoveRepository()
 	}
-	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
+	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
 }
 
 // Quit terminate the TransferProgressMng process.
@@ -197,6 +224,18 @@ func (t *TransferProgressMng) RemoveRepository() {
 	time.Sleep(progressbar.ProgressRefreshRate)
 }
 
+func (t *TransferProgressMng) changeNumberOfFailuresBy(n int) {
+	if t.ShouldDisplay() {
+		old := t.errorBar.GetTotal()
+		diff := int64(n)
+		if old+diff < 0 {
+			t.errorBar.SetGeneralProgressTotal(0)
+		} else {
+			t.errorBar.SetGeneralProgressTotal(old + diff)
+		}
+	}
+}
+
 func (t *TransferProgressMng) SetRunningThreads(n int) {
 	if t.ShouldDisplay() {
 		t.workingThreads.SetGeneralProgressTotal(int64(n))
@@ -221,6 +260,10 @@ func (t *TransferProgressMng) abortMetricsBars() {
 	if t.workingThreads != nil {
 		t.workingThreads.GetBar().Abort(true)
 		t.workingThreads = nil
+	}
+	if t.errorBar != nil {
+		t.errorBar.GetBar().Abort(true)
+		t.errorBar = nil
 	}
 	if t.speedBar != nil {
 		t.speedBar.GetBar().Abort(true)

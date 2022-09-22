@@ -20,7 +20,6 @@ func NewNugetCommand() *NugetCommand {
 }
 
 func (nc *NugetCommand) Run() error {
-	nc.useNugetAddSource = true
 	return nc.Exec()
 }
 

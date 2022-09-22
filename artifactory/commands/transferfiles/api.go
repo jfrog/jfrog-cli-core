@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type ProcessStatusType string
@@ -25,6 +28,7 @@ type TargetAuth struct {
 	TargetUsername       string `json:"target_username,omitempty"`
 	TargetPassword       string `json:"target_password,omitempty"`
 	TargetToken          string `json:"target_token,omitempty"`
+	TargetProxyKey       string `json:"target_proxy_key,omitempty"`
 }
 
 type HandlePropertiesDiff struct {
@@ -66,25 +70,30 @@ type UploadChunkResponse struct {
 }
 
 type UploadChunksStatusBody struct {
-	UuidTokens []string `json:"uuid_tokens,omitempty"`
+	AwaitingStatusChunks []chunkId `json:"awaiting_status_chunks,omitempty"`
+	ChunksToDelete       []chunkId `json:"chunks_to_delete,omitempty"`
 }
 
 type UploadChunksStatusResponse struct {
 	NodeIdResponse
-	ChunksStatus []ChunkStatus `json:"chunks_status,omitempty"`
+	ChunksStatus  []ChunkStatus `json:"chunks_status,omitempty"`
+	DeletedChunks []string      `json:"deleted_chunks,omitempty"`
 }
 
 type ChunkStatus struct {
 	UuidTokenResponse
-	Status ProcessStatusType          `json:"status,omitempty"`
-	Files  []FileUploadStatusResponse `json:"files,omitempty"`
+	Status         ProcessStatusType          `json:"status,omitempty"`
+	Files          []FileUploadStatusResponse `json:"files,omitempty"`
+	DurationMillis int64                      `json:"duration_millis,omitempty"`
 }
 
 type FileUploadStatusResponse struct {
 	FileRepresentation
-	Status     ChunkFileStatusType `json:"status,omitempty"`
-	StatusCode int                 `json:"status_code,omitempty"`
-	Reason     string              `json:"reason,omitempty"`
+	SizeBytes        int64               `json:"size_bytes,omitempty"`
+	ChecksumDeployed bool                `json:"checksum_deployed,omitempty"`
+	Status           ChunkFileStatusType `json:"status,omitempty"`
+	StatusCode       int                 `json:"status_code,omitempty"`
+	Reason           string              `json:"reason,omitempty"`
 }
 
 type FilesErrors struct {
@@ -99,12 +108,19 @@ type UuidTokenResponse struct {
 	UuidToken string `json:"uuid_token,omitempty"`
 }
 
-// Fill tokens batch till full. Return if no new tokens are available.
-func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string) {
-	for len(ucs.UuidTokens) < GetThreads() {
+// Fill chunk data batch till full. Return if no new chunk data is available.
+func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
+	for chunksLifeCycleManager.totalChunks < GetThreads() {
 		select {
-		case token := <-uploadTokensChan:
-			ucs.UuidTokens = append(ucs.UuidTokens, token)
+		case data := <-uploadChunkChan:
+			currentNodeId := nodeId(data.NodeId)
+			currentChunkId := chunkId(data.ChunkUuid)
+			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
+				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
+			}
+			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] =
+				append(chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
+			chunksLifeCycleManager.totalChunks++
 		default:
 			// No new tokens are waiting.
 			return
@@ -112,6 +128,13 @@ func (ucs *UploadChunksStatusBody) fillTokensBatch(uploadTokensChan chan string)
 	}
 }
 
-func (uc *UploadChunk) appendUploadCandidate(file FileRepresentation) {
+// Append upload candidate to the list of upload candidates. Skip empty directories in build-info repositories.
+// file          - The upload candidate
+// buildInfoRepo - True if this is a build-info repository
+func (uc *UploadChunk) appendUploadCandidateIfNeeded(file FileRepresentation, buildInfoRepo bool) {
+	if buildInfoRepo && file.Name == "" {
+		log.Debug(fmt.Sprintf("Skipping unneeded empty dir '%s' in the build-info repository '%s'", file.Path, file.Repo))
+		return
+	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }

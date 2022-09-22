@@ -2,10 +2,11 @@ package commands
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -142,6 +143,47 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 }
 
+type unsafeUrlTest struct {
+	url    string
+	isSafe bool
+}
+
+var unsafeUrlTestCases = []unsafeUrlTest{
+	// Safe URLs
+	{"https://acme.jfrog.io", true},
+	{"http://127.0.0.1", true},
+	{"http://localhost", true},
+	{"http://127.0.0.1:8081", true},
+	{"http://localhost:8081", true},
+	{"ssh://localhost:1339/", true},
+
+	// Unsafe URLs:
+	{"http://acme.jfrog.io", false},
+	{"http://acme.jfrog.io:8081", false},
+	{"http://localhost-123", false},
+}
+
+func TestAssertUrlsSafe(t *testing.T) {
+	for _, testCase := range unsafeUrlTestCases {
+		t.Run(testCase.url, func(t *testing.T) {
+			// Test non-interactive - should pass with a warning message
+			inputDetails := &config.ServerDetails{Url: testCase.url, ServerId: "test"}
+			configAndTest(t, inputDetails, false)
+
+			// Test interactive - should fail with an error
+			configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetInteractive(true)
+			configCmd.disablePrompts = true
+			err := configCmd.Run()
+			if testCase.isSafe {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, "config was aborted due to an insecure HTTP connection")
+			}
+		})
+	}
+
+}
+
 func TestExportEmptyConfig(t *testing.T) {
 	cliHome, exist := os.LookupEnv(coreutils.HomeDir)
 	defer func() {
@@ -176,7 +218,7 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 
 func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, basicAuthOnly, interactive bool) (*config.ServerDetails, error) {
 	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
-	configCmd.disablePromptUrls = true
+	configCmd.disablePrompts = true
 	assert.NoError(t, configCmd.Run())
 	return GetConfig("test", false)
 }

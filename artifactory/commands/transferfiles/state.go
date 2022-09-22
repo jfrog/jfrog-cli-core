@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/datastructures"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -20,9 +21,10 @@ type TransferState struct {
 }
 
 type Repository struct {
-	Name         string        `json:"name,omitempty"`
-	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
-	Diffs        []DiffDetails `json:"diffs,omitempty"`
+	Name                 string        `json:"name,omitempty"`
+	FullTransfer         PhaseDetails  `json:"full_transfer,omitempty"`
+	Diffs                []DiffDetails `json:"diffs,omitempty"`
+	TransferredSizeBytes int64         `json:"transferred_size_bytes,omitempty"`
 }
 
 type PhaseDetails struct {
@@ -139,6 +141,35 @@ func setRepoFullTransferCompleted(repoKey string) error {
 	return doAndSaveState(action)
 }
 
+func incRepoTransferredSizeBytes(repoKey string, sizeToAdd int64) error {
+	action := func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.TransferredSizeBytes += sizeToAdd
+		return nil
+	}
+	return doAndSaveState(action)
+}
+
+func getReposTransferredSizeBytes(repoKeys ...string) (transferredSizeBytes int64, err error) {
+	reposSet := datastructures.MakeSet[string]()
+	for _, repoKey := range repoKeys {
+		reposSet.Add(repoKey)
+	}
+	action := func(state *TransferState) error {
+		for i := range state.Repositories {
+			if reposSet.Exists(state.Repositories[i].Name) {
+				transferredSizeBytes += state.Repositories[i].TransferredSizeBytes
+			}
+		}
+		return nil
+	}
+	err = doAndSaveState(action)
+	return
+}
+
 // Adds new diff details to the repo's diff array in state.
 // Marks files handling as started, and sets the handling range.
 func addNewDiffToState(repoKey string, startTime time.Time) error {
@@ -198,31 +229,6 @@ func setFilesDiffHandlingCompleted(repoKey string) error {
 			return err
 		}
 		repo.Diffs[len(repo.Diffs)-1].FilesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
-		repo.Diffs[len(repo.Diffs)-1].Completed = isPropertiesPhaseDisabled()
-		return nil
-	}
-	return doAndSaveState(action)
-}
-
-func setPropsDiffHandlingStarted(repoKey string, startTime time.Time) error {
-	action := func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
-		}
-		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Started = convertTimeToRFC3339(startTime)
-		return nil
-	}
-	return doAndSaveState(action)
-}
-
-func setPropsDiffHandlingCompleted(repoKey string) error {
-	action := func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
-		}
-		repo.Diffs[len(repo.Diffs)-1].PropertiesDiffRunTime.Ended = convertTimeToRFC3339(time.Now())
 		repo.Diffs[len(repo.Diffs)-1].Completed = true
 		return nil
 	}

@@ -1,15 +1,19 @@
 package transferfiles
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 type transferFilesHandler func(w http.ResponseWriter, r *http.Request)
@@ -42,7 +46,7 @@ func TestGetRunningNodes(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	runningNodes, err := getRunningNodes(serverDetails)
+	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, runningNodes, []string{"node-1", "node-2", "node-3"})
 }
@@ -66,7 +70,7 @@ func TestStopTransferOnArtifactoryNodes(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	stopTransferOnArtifactoryNodes(srcUpService, []string{"node-1", "node-2"})
+	stopTransferInArtifactoryNodes(srcUpService, []string{"node-1", "node-2"})
 	assert.True(t, stoppedNodeOne)
 	assert.True(t, stoppedNodeTwo)
 }
@@ -153,7 +157,7 @@ func TestGetMaxUniqueSnapshots(t *testing.T) {
 		t.Run(testCase.packageType, func(t *testing.T) {
 			lowerPackageType := strings.ToLower(testCase.packageType)
 			repoSummary := &utils.RepositorySummary{RepoKey: lowerPackageType + "-local", PackageType: testCase.packageType}
-			maxUniqueSnapshots, err := getMaxUniqueSnapshots(serverDetails, repoSummary)
+			maxUniqueSnapshots, err := getMaxUniqueSnapshots(context.Background(), serverDetails, repoSummary)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expectedMaxUniqueSnapshots, maxUniqueSnapshots)
 		})
@@ -161,26 +165,30 @@ func TestGetMaxUniqueSnapshots(t *testing.T) {
 }
 
 func TestUpdateMaxUniqueSnapshots(t *testing.T) {
-	packageTypes := []string{
-		conan,
-		maven,
-		gradle,
-		nuget,
-		ivy,
-		sbt,
-		docker,
-	}
+	packageTypes := []string{conan, maven, gradle, nuget, ivy, sbt, docker}
 
 	testServer, serverDetails, _ := createMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		packageType := strings.TrimSuffix(strings.TrimPrefix(r.RequestURI, "/api/repositories/"), "-local")
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
-		bosyStr := string(body)
-		if packageType == "docker" {
-			assert.Contains(t, bosyStr, "\"maxUniqueTags\":5")
+		repoDetails := &services.RepositoryDetails{}
+		json.Unmarshal(body, repoDetails)
+		packageType := repoDetails.PackageType
+
+		expectedPackageType := strings.TrimPrefix(r.RequestURI, "/api/repositories/")
+		if strings.HasSuffix(expectedPackageType, "-local") {
+			expectedPackageType = strings.TrimSuffix(expectedPackageType, "-local")
+			assert.Equal(t, services.LocalRepositoryRepoType, repoDetails.Rclass)
+		} else {
+			expectedPackageType = strings.TrimSuffix(expectedPackageType, "-federated")
+			assert.Equal(t, services.FederatedRepositoryRepoType, repoDetails.Rclass)
+		}
+
+		assert.Equal(t, expectedPackageType, packageType)
+		if repoDetails.PackageType == "docker" {
+			assert.Contains(t, string(body), "\"maxUniqueTags\":5")
 		} else if packageType == "maven" || packageType == "gradle" || packageType == "nuget" || packageType == "ivy" || packageType == "sbt" {
-			assert.Contains(t, bosyStr, "\"maxUniqueSnapshots\":5")
+			assert.Contains(t, string(body), "\"maxUniqueSnapshots\":5")
 		} else {
 			assert.Fail(t, "tried to update the Max Unique Snapshots setting of a repository of an unsupported package type")
 		}
@@ -192,8 +200,12 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 	for _, packageType := range packageTypes {
 		t.Run(packageType, func(t *testing.T) {
 			lowerPackageType := strings.ToLower(packageType)
-			repoSummary := &utils.RepositorySummary{RepoKey: lowerPackageType + "-local", PackageType: packageType}
-			err := updateMaxUniqueSnapshots(serverDetails, repoSummary, 5)
+			repoSummary := &utils.RepositorySummary{RepoKey: lowerPackageType + "-local", PackageType: packageType, RepoType: "LOCAL"}
+			err := updateMaxUniqueSnapshots(context.Background(), serverDetails, repoSummary, 5)
+			assert.NoError(t, err)
+
+			repoSummary = &utils.RepositorySummary{RepoKey: lowerPackageType + "-federated", PackageType: packageType, RepoType: "FEDERATED"}
+			err = updateMaxUniqueSnapshots(context.Background(), serverDetails, repoSummary, 5)
 			assert.NoError(t, err)
 		})
 	}
@@ -206,7 +218,7 @@ func createMockServer(t *testing.T, testHandler transferFilesHandler) (*httptest
 	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
 
-	serviceManager, err := createSrcRtUserPluginServiceManager(serverDetails)
+	serviceManager, err := createSrcRtUserPluginServiceManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	return testServer, serverDetails, serviceManager
 }

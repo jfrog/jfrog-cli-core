@@ -1,6 +1,8 @@
 package transferfiles
 
 import (
+	"context"
+	"errors"
 	"time"
 
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -10,17 +12,16 @@ import (
 const numberOfPhases = 3
 
 const (
-	FullTransferPhase   int = 0
-	FilesDiffPhase      int = 1
-	PropertiesDiffPhase int = 2
+	FullTransferPhase int = 0
+	FilesDiffPhase    int = 1
+	ErrorsPhase       int = 2
 )
 
 type transferPhase interface {
-	StoppableComponent
 	run() error
 	phaseStarted() error
 	phaseDone() error
-	shouldCheckExistenceInFilestore(bool)
+	setCheckExistenceInFilestore(bool)
 	shouldSkipPhase() (bool, error)
 	setSrcUserPluginService(*srcUserPluginService)
 	setSourceDetails(*coreConfig.ServerDetails)
@@ -29,11 +30,13 @@ type transferPhase interface {
 	setRepoSummary(serviceUtils.RepositorySummary)
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
+	setTimeEstMng(timeEstMng *timeEstimationManager)
 	initProgressBar() error
+	StopGracefully()
 }
 
 type phaseBase struct {
-	*Stoppable
+	context                   context.Context
 	repoKey                   string
 	buildInfoRepo             bool
 	phaseId                   int
@@ -44,33 +47,69 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
+	timeEstMng                *timeEstimationManager
+	proxyKey                  string
+}
+
+func (pb *phaseBase) ShouldStop() bool {
+	return pb.context.Err() != nil
 }
 
 // Return InterruptionError, if stop is true
 func (pb *phaseBase) getInterruptionErr() error {
-	if pb.ShouldStop() {
+	if errors.Is(pb.context.Err(), context.Canceled) {
 		return new(InterruptionErr)
 	}
 	return nil
 }
 
-// Stop the phase gracefully and show it in the progressbar
-func (pb *phaseBase) Stop() {
-	pb.Stoppable.Stop()
+// Indicate graceful stopping in the progress bar
+func (pb *phaseBase) StopGracefully() {
 	if pb.progressBar != nil {
 		pb.progressBar.StopGracefully()
 	}
 }
 
-func getPhaseByNum(i int, repoKey string, buildInfoRepo bool) transferPhase {
-	stoppable := new(Stoppable)
+func (pb *phaseBase) getSourceDetails() *coreConfig.ServerDetails {
+	return pb.srcRtDetails
+}
+
+func (pb *phaseBase) setCheckExistenceInFilestore(shouldCheck bool) {
+	pb.checkExistenceInFilestore = shouldCheck
+}
+
+func (pb *phaseBase) setSrcUserPluginService(service *srcUserPluginService) {
+	pb.srcUpService = service
+}
+
+func (pb *phaseBase) setSourceDetails(details *coreConfig.ServerDetails) {
+	pb.srcRtDetails = details
+}
+
+func (pb *phaseBase) setTargetDetails(details *coreConfig.ServerDetails) {
+	pb.targetRtDetails = details
+}
+
+func (pb *phaseBase) setRepoSummary(repoSummary serviceUtils.RepositorySummary) {
+	pb.repoSummary = repoSummary
+}
+
+func (pb *phaseBase) setTimeEstMng(timeEstMng *timeEstimationManager) {
+	pb.timeEstMng = timeEstMng
+}
+
+func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
+	pb.progressBar = progressbar
+}
+
+func getPhaseByNum(context context.Context, i int, repoKey, proxyKey string, buildInfoRepo bool) transferPhase {
 	switch i {
 	case 0:
-		return &fullTransferPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &fullTransferPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FullTransferPhase, buildInfoRepo: buildInfoRepo}}
 	case 1:
-		return &filesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo, Stoppable: stoppable}}
+		return &filesDiffPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: FilesDiffPhase, buildInfoRepo: buildInfoRepo}}
 	case 2:
-		return &propertiesDiffPhase{phaseBase: phaseBase{repoKey: repoKey, phaseId: PropertiesDiffPhase, Stoppable: stoppable}}
+		return &errorsRetryPhase{phaseBase: phaseBase{context: context, repoKey: repoKey, proxyKey: proxyKey, phaseId: ErrorsPhase, buildInfoRepo: buildInfoRepo}}
 	}
 	return nil
 }

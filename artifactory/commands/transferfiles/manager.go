@@ -17,28 +17,19 @@ const (
 type transferManager struct {
 	phaseBase
 	delayUploadComparisonFunctions []shouldDelayUpload
+	pcDetails                      *producerConsumerWrapper
 }
 
-func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) transferManager {
-	return transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
+func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) *transferManager {
+	return &transferManager{phaseBase: base, delayUploadComparisonFunctions: delayUploadComparisonFunctions}
 }
 
-type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
-type transferActionType func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
+type transferActionWithProducerConsumerType func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error
 
 // Transfer files using the 'producer-consumer' mechanism.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
-	pcWrapper := newProducerConsumerWrapper()
-	return ftm.doTransfer(&pcWrapper, transferAction)
-}
-
-// Transfer files using a single producer.
-func (ftm *transferManager) doTransferWithSingleProducer(transferAction transferActionType) error {
-	transferActionPc := func(pcWrapper *producerConsumerWrapper, uploadTokensChan chan string, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		return transferAction(pcWrapper, uploadTokensChan, delayHelper, errorsChannelMng)
-	}
-	pcWrapper := newProducerConsumerWrapper()
-	return ftm.doTransfer(&pcWrapper, transferActionPc)
+	ftm.pcDetails = newProducerConsumerWrapper()
+	return ftm.doTransfer(ftm.pcDetails, transferAction)
 }
 
 // This function handles a transfer process as part of a phase.
@@ -51,7 +42,7 @@ func (ftm *transferManager) doTransferWithSingleProducer(transferAction transfer
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType) error {
-	uploadTokensChan := make(chan string, transfer.MaxThreadsLimit)
+	uploadChunkChan := make(chan UploadedChunkData, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -78,8 +69,12 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}()
 	}
 
+	if ftm.timeEstMng != nil {
+		ftm.timeEstMng.setTimeEstimationUnavailable(ftm.phaseId != FullTransferPhase)
+	}
+
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
-	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper.chunkUploaderProducerConsumer, uploadTokensChan, ftm.srcUpService, &errorsChannelMng, ftm.progressBar)
+	err = pollingTasksManager.start(&ftm.phaseBase, &runWaitGroup, pcWrapper, uploadChunkChan, &errorsChannelMng)
 	if err != nil {
 		pollingTasksManager.stop()
 		return err
@@ -89,16 +84,16 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	var actionErr error
 	go func() {
 		defer runWaitGroup.Done()
-		actionErr = transferAction(pcWrapper, uploadTokensChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
+		actionErr = transferAction(pcWrapper, uploadChunkChan, delayUploadHelper{shouldDelayFunctions: ftm.delayUploadComparisonFunctions, delayedArtifactsChannelMng: &delayedArtifactsChannelMng}, &errorsChannelMng)
 		if pcWrapper == nil {
 			pollingTasksManager.stop()
 		}
 	}()
 
-	// Run producer consumer
-	executionErr := runProducerConsumer(pcWrapper)
+	// Run producer consumers. This is a blocking function, which makes sure the producer consumers are closed before anything else.
+	executionErr := runProducerConsumers(pcWrapper)
 	pollingTasksManager.stop()
-	// Wait for 'transferAction' and polling go routines to exit.
+	// Wait for 'transferAction', producer consumers and polling go routines to exit.
 	runWaitGroup.Wait()
 	// Close writer channels.
 	errorsChannelMng.close()
@@ -122,6 +117,13 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	return returnedError
 }
 
+func (ftm *transferManager) stopProducerConsumer() {
+	if ftm.pcDetails != nil {
+		ftm.pcDetails.chunkBuilderProducerConsumer.Cancel()
+		ftm.pcDetails.chunkUploaderProducerConsumer.Cancel()
+	}
+}
+
 type PollingTasksManager struct {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChannel chan bool
@@ -139,7 +141,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, producerConsumer parallel.Runner, uploadTokensChan chan string, srcUpService *srcUserPluginService, errorsChannelMng *ErrorsChannelMng, progressbar *TransferProgressMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()
@@ -148,7 +150,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(producerConsumer, ptm.doneChannel, phaseBase.buildInfoRepo)
+		periodicallyUpdateThreads(pcWrapper, ptm.doneChannel, phaseBase.buildInfoRepo)
 	}()
 
 	// Check status of uploaded chunks.
@@ -159,7 +161,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(phaseBase, srcUpService, uploadTokensChan, ptm.doneChannel, errorsChannelMng, progressbar)
+		pollUploads(phaseBase, phaseBase.srcUpService, uploadChunkChan, ptm.doneChannel, errorsChannelMng)
 	}()
 	return nil
 }
@@ -185,27 +187,27 @@ type producerConsumerWrapper struct {
 	errorsQueue                   *clientUtils.ErrorsQueue
 }
 
-func newProducerConsumerWrapper() producerConsumerWrapper {
+func newProducerConsumerWrapper() *producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
-	return producerConsumerWrapper{
+	return &producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
 		errorsQueue:                   errorsQueue,
 	}
 }
 
-func runProducerConsumer(pcWrapper *producerConsumerWrapper) (executionErr error) {
-	// When the producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (no tasks are being handled)
-	// the work is assumed to be done.
+// Run the two producer consumer that run the transfer.
+// When a producer consumer is idle for assumeProducerConsumerDoneWhenIdleForSeconds (no tasks are being handled)
+// the work is assumed to be done.
+// Order in this function matters! We want to make sure chunkUploaderProducerConsumer is only done after chunkBuilderProducerConsumer is done.
+func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr error) {
 	go func() {
-		err := pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
-		if err != nil {
-			log.Error("pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle API failed", err.Error())
-		}
+		pcWrapper.chunkUploaderProducerConsumer.Run()
 	}()
+
 	go func() {
 		err := pcWrapper.chunkBuilderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
 		if err != nil {
@@ -213,11 +215,15 @@ func runProducerConsumer(pcWrapper *producerConsumerWrapper) (executionErr error
 		}
 	}()
 
-	go func() {
-		pcWrapper.chunkBuilderProducerConsumer.Run()
-	}()
-	// Run() is a blocking method, so once all uploading threads are idle, the tasks queue closes and Run() stops running
-	pcWrapper.chunkUploaderProducerConsumer.Run()
+	// Run() is a blocking method, so once all chunk builders are idle, the tasks queue closes and Run() stops running.
+	pcWrapper.chunkBuilderProducerConsumer.Run()
+	// Once we are done building chunks, we can safely call DoneWhenAllIdle on the chunk uploader producer consumer.
+	// DoneWhenAllIdle is also a blocking method.
+	err := pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle(assumeProducerConsumerDoneWhenIdleForSeconds)
+	if err != nil {
+		log.Error("pcWrapper.chunkUploaderProducerConsumer.DoneWhenAllIdle API failed", err.Error())
+	}
+
 	executionErr = pcWrapper.errorsQueue.GetError()
 	return
 }

@@ -12,6 +12,12 @@ import (
 )
 
 const pluginsExecuteRestApi = "api/plugins/execute/"
+const syncChunks = "syncChunks"
+
+type VerifyCompatibilityResponse struct {
+	Version string `json:"version,omitempty"`
+	Message string `json:"message,omitempty"`
+}
 
 type srcUserPluginService struct {
 	client     *jfroghttpclient.JfrogHttpClient
@@ -34,7 +40,7 @@ func (sup *srcUserPluginService) IsDryRun() bool {
 	return false
 }
 
-func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
+func (sup *srcUserPluginService) syncChunks(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
 	content, err := json.Marshal(ucStatus)
 	if err != nil {
 		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
@@ -42,7 +48,7 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"getUploadChunksStatus", content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
 		return UploadChunksStatusResponse{}, err
 	}
@@ -61,83 +67,78 @@ func (sup *srcUserPluginService) getUploadChunksStatus(ucStatus UploadChunksStat
 
 // Uploads a chunk of files.
 // If no error occurred, returns an uuid token to get chunk status with.
-func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uuidToken string, err error) {
+func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uploadChunkResponse UploadChunkResponse, err error) {
 	content, err := json.Marshal(chunk)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
 	if err != nil {
-		return "", err
+		return UploadChunkResponse{}, err
 	}
 
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusAccepted); err != nil {
-		return "", err
+		return UploadChunkResponse{}, err
 	}
 
 	var uploadResponse UploadChunkResponse
 	err = json.Unmarshal(body, &uploadResponse)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 	if uploadResponse.UuidToken == "" {
-		return "", errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
+		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
 	}
-	return uploadResponse.UuidToken, nil
-}
-
-func (sup *srcUserPluginService) storeProperties(repoKey string) error {
-	params := map[string]string{"repoKey": repoKey}
-	requestFullUrl, err := utils.BuildArtifactoryUrl(sup.GetArtifactoryDetails().GetUrl(), pluginsExecuteRestApi+"storeProperties", params)
-	if err != nil {
-		return err
+	if uploadResponse.NodeId == "" {
+		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty node id returned for chunk upload")
 	}
-
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(requestFullUrl, nil, &httpDetails)
-	if err != nil {
-		return err
-	}
-
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (sup *srcUserPluginService) handlePropertiesDiff(requestBody HandlePropertiesDiff) (*HandlePropertiesDiffResponse, error) {
-	content, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-
-	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"handlePropertiesDiff", content, &httpDetails)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return nil, err
-	}
-
-	var result HandlePropertiesDiffResponse
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return &result, nil
+	return uploadResponse, nil
 }
 
 func (sup *srcUserPluginService) version() (string, error) {
 	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
+}
+
+func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
+	if err != nil {
+		return nil, err
+	}
+
+	err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
+	if err != nil {
+		return nil, err
+	}
+
+	var result VerifyCompatibilityResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+
+	return &result, nil
+}
+
+func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth TargetAuth) error {
+	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
+	utils.SetContentType("application/json", &httpDetails.Headers)
+	content, err := json.Marshal(targetAuth)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifySourceTargetConnectivity", content, &httpDetails)
+	if err != nil {
+		return err
+	}
+
+	return errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK)
 }
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {

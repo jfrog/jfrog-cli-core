@@ -26,6 +26,9 @@ const (
 	Sarif      OutputFormat = "sarif"
 )
 
+const missingCveScore = "0"
+const maxPossibleCve = 10.0
+
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
 // PrintScanResults prints Xray scan results in the given format.
@@ -152,7 +155,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 			if err != nil {
 				return err
 			}
-			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, licenses[i].ImpactedPackageType)
+			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, coreutils.Technology(strings.ToLower(licenses[i].ImpactedPackageType)))
 			if err != nil {
 				return err
 			}
@@ -182,10 +185,12 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 }
 
 // Adding the Xray scan results details to the sarif struct, for each issue found in the scan
-func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology string) error {
-	techPackageDescriptor := coreutils.GetTechnologyPackageDescriptor(technology)
+func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, impactedPackage string, description string, technology coreutils.Technology) error {
+	techPackageDescriptor := technology.GetPackageDescriptor()
 	pb := sarif.NewPropertyBag()
-	pb.Add("security-severity", severity)
+	if severity != missingCveScore {
+		pb.Add("security-severity", severity)
+	}
 	run.AddRule(issueId).
 		WithProperties(pb.Properties).
 		WithFullDescription(sarif.NewMultiformatMessageString(description))
@@ -206,6 +211,9 @@ func addScanResultsToSarifRun(run *sarif.Run, severity string, issueId string, i
 func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 	maxCve := 0.0
 	for _, cve := range cves {
+		if cve.CvssV3 == "" {
+			continue
+		}
 		floatCve, err := strconv.ParseFloat(cve.CvssV3, 32)
 		if err != nil {
 			return "", err
@@ -213,8 +221,12 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 		if floatCve > maxCve {
 			maxCve = floatCve
 		}
+		// if found maximum possible cve score, no need to keep iterating
+		if maxCve == maxPossibleCve {
+			break
+		}
 	}
-	strCve := fmt.Sprintf("%v", maxCve)
+	strCve := fmt.Sprintf("%.1f", maxCve)
 
 	return strCve, nil
 }

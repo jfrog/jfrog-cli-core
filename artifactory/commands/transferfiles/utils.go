@@ -238,6 +238,7 @@ func sendSyncChunksRequest(curTokensBatch UploadChunksStatusBody, chunksLifeCycl
 	curTokensBatch.AwaitingStatusChunks = chunksLifeCycleManager.GetInProgressTokensSlice()
 	curTokensBatch.ChunksToDelete = chunksLifeCycleManager.deletedChunksSet.ToSlice()
 	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
+	// Log the error only if the transfer wasn't interrupted by the user
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("error returned when getting upload chunks statuses: " + err.Error())
 	}

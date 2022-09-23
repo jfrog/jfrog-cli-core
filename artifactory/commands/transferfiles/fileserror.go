@@ -54,13 +54,19 @@ func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper,
 		}
 		log.Debug("Handling errors file: '" + path + "'")
 
-		// read and parse file
+		// Read and parse the file
 		failedFiles, err := readErrorFile(path)
 		if err != nil {
 			return err
 		}
 
-		// upload
+		if e.progressBar != nil {
+			// Since we're about to handle the transfer retry of the failed files,
+			// we should now decrement the failures counter view.
+			e.progressBar.changeNumberOfFailuresBy(-1 * len(failedFiles.Errors))
+		}
+
+		// Upload
 		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err

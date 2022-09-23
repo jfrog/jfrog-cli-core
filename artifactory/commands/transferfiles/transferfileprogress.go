@@ -16,7 +16,7 @@ const (
 	Files        TransferJobType = "Files"
 	TimeSlots    TransferJobType = "Time Slots"
 	Note         string          = "Note: "
-	contentNote  string          = "In subsequent executions, the command will retry transferring the failed files."
+	contentNote  string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )
 
 func (tt TransferJobType) String() string {
@@ -198,7 +198,7 @@ func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 }
 
 func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transfer failures", false, progressbar.GREEN, Files.String()))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retrying transfer failures", false, progressbar.GREEN, Files.String()))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {
@@ -224,13 +224,8 @@ func (t *TransferProgressMng) RemoveRepository() {
 
 func (t *TransferProgressMng) changeNumberOfFailuresBy(n int) {
 	if t.ShouldDisplay() {
-		old := t.errorBar.GetTotal()
 		diff := int64(n)
-		if old+diff < 0 {
-			t.errorBar.SetGeneralProgressTotal(0)
-		} else {
-			t.errorBar.SetGeneralProgressTotal(old + diff)
-		}
+		t.errorBar.SetGeneralProgressTotal(t.errorBar.GetTotal() + diff)
 	}
 }
 

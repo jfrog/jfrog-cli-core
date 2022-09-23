@@ -283,7 +283,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 			chunksLifeCycleManager.totalChunks--
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
 			chunksLifeCycleManager.deletedChunksSet.Add(chunkId(chunk.UuidToken))
-			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng, phase)
+			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
 				return true
@@ -333,19 +333,13 @@ func reduceCurProcessedChunks() {
 	curProcessedUploadChunks--
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng, phase *phaseBase) (stopped bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
 		switch file.Status {
 		case Success:
-			if phase != nil && phase.phaseId == ErrorsPhase {
-				phase.progressBar.changeNumberOfFailuresBy(-1)
-			}
 		case SkippedMetadataFile:
 			// Skipping metadata on purpose - no need to write error.
 		case Fail, SkippedLargeProps:
-			if phase != nil && phase.phaseId != ErrorsPhase {
-				phase.progressBar.changeNumberOfFailuresBy(1)
-			}
 			stopped = addErrorToChannel(errorsChannelMng, file)
 			if stopped {
 				return

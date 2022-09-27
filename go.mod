@@ -12,7 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.7
 	github.com/jfrog/build-info-go v1.6.0
 	github.com/jfrog/gofrog v1.2.1
-	github.com/jfrog/jfrog-client-go v1.23.3
+	github.com/jfrog/jfrog-client-go v1.23.4
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -80,7 +80,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.3.0 // indirect
 	github.com/ulikunitz/xz v0.5.9 // indirect
-	github.com/xanzy/ssh-agent v0.3.2 // indirect
+	github.com/xanzy/ssh-agent v0.3.3-0.20220920102508-0fa644ba07f4 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect

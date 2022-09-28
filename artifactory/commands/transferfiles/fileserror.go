@@ -1,14 +1,17 @@
 package transferfiles
 
 import (
+	"errors"
+	"fmt"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"strings"
 	"time"
 )
 
-type errorFileHandlerFunc func(errFile string) parallel.TaskFunc
+type errorFileHandlerFunc func() parallel.TaskFunc
 
 // Manages the phase of handling upload failures that were collected during previous runs and phases.
 type errorsRetryPhase struct {
@@ -34,12 +37,10 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	log.Info("Starting to handle previous upload failures...")
 	manager := newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		for _, errFile := range e.errorsFilesToHandle {
-			errFileHandler := e.createErrorFileHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-			_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(errFile), pcWrapper.errorsQueue.AddError)
-			if err != nil {
-				return err
-			}
+		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
+		if err != nil {
+			return err
 		}
 		return nil
 	}
@@ -85,11 +86,21 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	return nil
 }
 
-func (e *errorsRetryPhase) createErrorFileHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
-	return func(errFilePath string) parallel.TaskFunc {
+func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
+	return func() parallel.TaskFunc {
 		return func(threadId int) error {
-			err := e.handleErrorsFile(errFilePath, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+			var errList []string
+			var err error
+			for _, errFile := range e.errorsFilesToHandle {
+				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+				if err != nil {
+					errList = append(errList, fmt.Sprintf("handleErrorsFile for %s failed with error: \n%s", errFile, err.Error()))
+				}
+			}
 			pcWrapper.notifyIfBuilderFinished()
+			if len(errList) > 0 {
+				err = errors.New(strings.Join(errList, "\n"))
+			}
 			return err
 		}
 	}

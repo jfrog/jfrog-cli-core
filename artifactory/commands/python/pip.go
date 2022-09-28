@@ -47,7 +47,7 @@ func (pc *PipCommand) SetCommandName(commandName string) *PipCommand {
 }
 
 func (pc *PipCommand) CommandName() string {
-	return "rt_python_pip_command"
+	return "rt_python_pip"
 }
 
 func (pc *PipCommand) SetServerDetails(serverDetails *config.ServerDetails) *PipCommand {

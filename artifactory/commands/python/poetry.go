@@ -29,6 +29,7 @@ import (
 
 type PoetryCommand struct {
 	PythonCommand
+	// The uniq Artifactory repository name for poetry config file.
 	poetryConfigRepoName string
 }
 
@@ -68,7 +69,7 @@ func (pc *PoetryCommand) Run() (err error) {
 	}()
 	err = pc.SetPypiRepoUrlWithCredentials()
 	if err != nil {
-		return nil
+		return err
 	}
 	defer func() {
 		e := pc.cleanup()
@@ -147,10 +148,10 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 	return pc
 }
 
-func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() (err error) {
-	rtUrl, e := url.Parse(pc.serverDetails.GetArtifactoryUrl())
-	if e != nil {
-		return errorutils.CheckError(e)
+func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
+	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
+	if err != nil {
+		return errorutils.CheckError(err)
 	}
 
 	username := pc.serverDetails.GetUser()
@@ -246,7 +247,7 @@ func (pc *PoetryCommand) cleanup() error {
 }
 
 func (pc *PoetryCommand) CommandName() string {
-	return "rt_python_poetry_command"
+	return "rt_python_poetry"
 }
 
 func (pc *PoetryCommand) SetServerDetails(serverDetails *config.ServerDetails) *PoetryCommand {

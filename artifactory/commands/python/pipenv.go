@@ -47,7 +47,7 @@ func (pc *PipenvCommand) SetCommandName(commandName string) *PipenvCommand {
 }
 
 func (pc *PipenvCommand) CommandName() string {
-	return "rt_python_pipenv_command"
+	return "rt_python_pipenv"
 }
 
 func (pc *PipenvCommand) SetServerDetails(serverDetails *config.ServerDetails) *PipenvCommand {

@@ -72,15 +72,9 @@ func (pc *PythonCommand) Run() (err error) {
 		pythonModule.SetLocalDependenciesPath(localDependenciesPath)
 		pythonModule.SetUpdateDepsChecksumInfoFunc(pc.UpdateDepsChecksumInfoFunc)
 		err = errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
-		if err != nil {
-			return
-		}
 	} else {
 		// Python native command
 		err = gofrogcmd.RunCmd(pc)
-		if err != nil {
-			return
-		}
 	}
 	return
 }

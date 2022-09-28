@@ -337,11 +337,7 @@ func reduceCurProcessedChunks() {
 
 func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
-		switch file.Status {
-		case Success:
-		case SkippedMetadataFile:
-			// Skipping metadata on purpose - no need to write error.
-		case Fail, SkippedLargeProps:
+		if file.Status == Fail || file.Status == SkippedLargeProps {
 			stopped = addErrorToChannel(errorsChannelMng, file)
 			if stopped {
 				return

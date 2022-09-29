@@ -143,7 +143,9 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		}
 		// Run pipenv install
 		output, err = exec.Command("pipenv", "install", "-d").CombinedOutput()
-
+		if err != nil {
+			err = errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
+		}
 	case pythonutils.Poetry:
 		// No changes to env here.
 		restoreEnv = func() error {

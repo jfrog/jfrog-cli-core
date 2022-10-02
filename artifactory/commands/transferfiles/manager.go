@@ -192,7 +192,7 @@ func (ptm *PollingTasksManager) stop() {
 type producerConsumerWrapper struct {
 	// This Producer-Consumer is used to upload chunks, initialized in newProducerConsumerWrapper; each uploading thread waits to be given tasks from the queue.
 	chunkUploaderProducerConsumer parallel.Runner
-	// This Producer-Consumer is used to build chunks and execute AQL tasks. The chunks data is sent to the threads that will upload them.
+	// This Producer-Consumer is used to execute AQLs and build chunks from the AQLs' results. The chunks data is sent to the go routines that will upload them.
 	// Initialized in newProducerConsumerWrapper; each builder thread waits to be given tasks from the queue.
 	chunkBuilderProducerConsumer parallel.Runner
 	// This channel notifies whether uploading threads in chunkUploaderProducerConsumer have finished.

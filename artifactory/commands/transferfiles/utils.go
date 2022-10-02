@@ -468,10 +468,10 @@ func shouldStopPolling(doneChan chan bool) bool {
 func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
 	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
+		defer pcWrapper.notifyIfUploaderFinished()
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
-		pcWrapper.notifyIfUploaderFinished()
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
 			return errorutils.CheckErrorf("%sstopped.", logMsgPrefix)

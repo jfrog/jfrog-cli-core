@@ -190,23 +190,30 @@ func (ptm *PollingTasksManager) stop() {
 }
 
 type producerConsumerWrapper struct {
+	// This Producer-Consumer is used to upload chunks, initialized in newProducerConsumerWrapper; each uploading thread waits to be given tasks from the queue.
 	chunkUploaderProducerConsumer parallel.Runner
-	chunkBuilderProducerConsumer  parallel.Runner
-	uploaderFinishedNotifier      chan bool
-	builderFinishedNotifier       chan bool
-	errorsQueue                   *clientUtils.ErrorsQueue
+	// This Producer-Consumer is used to build chunks and execute AQL tasks. The chunks data is sent to the threads that will upload them.
+	// Initialized in newProducerConsumerWrapper; each builder thread waits to be given tasks from the queue.
+	chunkBuilderProducerConsumer parallel.Runner
+	// This channel notifies whether uploading threads in chunkUploaderProducerConsumer have finished.
+	uploaderFinishedNotifier chan bool
+	// This channel notifies whether building threads in chunkBuilderProducerConsumer have finished, when there are no tasks left in its queue.
+	builderFinishedNotifier chan bool
+	// Errors related to chunkUploaderProducerConsumer and chunkBuilderProducerConsumer are logged in this queue.
+	errorsQueue *clientUtils.ErrorsQueue
 }
 
-// Notifies that the uploader finished if there are no builders and the current thread is the last one
+// Sends a signal through the uploaderFinishedNotifier channel, if the chunkUploaderProducerConsumer finished running all of its tasks.
+// chunkUploaderProducerConsumer is finished if there are no more tasks in its queue, and chunkBuilderProducerConsumer is also finished, so no more tasks will be coming in.
 func (pcw *producerConsumerWrapper) notifyIfUploaderFinished() {
 	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 0 && pcw.chunkUploaderProducerConsumer.ActiveThreads() == 1 {
 		pcw.uploaderFinishedNotifier <- true
 	}
 }
 
-// Notifies that the builder finished if the current thread is the last one
+// Sends a signal through the builderFinishedNotifier channel, if the chunkBuilderProducerConsumer finished running all of its tasks.
 func (pcw *producerConsumerWrapper) notifyIfBuilderFinished() {
-	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 {
+	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 && pcw.chunkBuilderProducerConsumer.TotalTasksInQueue() == 1 {
 		pcw.builderFinishedNotifier <- true
 	}
 }
@@ -236,7 +243,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 		pcWrapper.chunkUploaderProducerConsumer.Run()
 	}()
 	go func() {
-		// Wait till notified that the builder has no further tasks and close the builder producer consumer.
+		// Wait till notified that the builder has no additional tasks, and close the builder producer consumer.
 		<-pcWrapper.builderFinishedNotifier
 		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
@@ -244,7 +251,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	// Run() is a blocking method, so once all chunk builders are idle, the tasks queue closes and Run() stops running.
 	pcWrapper.chunkBuilderProducerConsumer.Run()
 	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
-		// Wait till notified that the uploader finished its tasks, and it will no longer receive further tasks from the builder.
+		// Wait till notified that the uploader finished its tasks, and it will not receive new tasks from the builder.
 		<-pcWrapper.uploaderFinishedNotifier
 	}
 	// Close the tasks queue with Done().

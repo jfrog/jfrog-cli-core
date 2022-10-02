@@ -737,8 +737,9 @@ func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServic
 	return serviceManager.UpdateLocalRepository().Docker(repoParams)
 }
 
-func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
-	runningNodes, err := getRunningNodes(ctx, serverDetails)
+func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
+	// The context is sent as context.Background() and not context.Cancel(), so that getRunningNodes won't cancel the cancelFunc()
+	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	if err != nil {
 		return err
 	} else {

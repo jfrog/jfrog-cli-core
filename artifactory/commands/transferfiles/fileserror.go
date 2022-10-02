@@ -59,7 +59,7 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
 		return nil
 	}
-	log.Debug("Handling errors file: '" + errFilePath + "'")
+	log.Debug("Handling errors file: '", errFilePath, "'")
 
 	// Read and parse the file
 	failedFiles, err := readErrorFile(errFilePath)
@@ -85,7 +85,7 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 		return errorutils.CheckError(err)
 	}
 
-	log.Debug("Done handling errors file: '" + errFilePath + "'. Deleting it...")
+	log.Debug("Done handling errors file: '", errFilePath, "'. Deleting it...")
 	return nil
 }
 

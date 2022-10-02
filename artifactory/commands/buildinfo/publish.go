@@ -3,6 +3,11 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -15,10 +20,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type BuildPublishCommand struct {
@@ -197,12 +198,11 @@ func (bpc *BuildPublishCommand) getBuildInfoUiUrl(majorVersion int, buildTime ti
 		return fmt.Sprintf("%vartifactory/webapp/#/builds/%v/%v",
 			baseUrl, buildName, buildNumber), nil
 	}
+	timestamp := buildTime.UnixMilli()
 	if project != "" {
-		timestamp := buildTime.UnixNano() / 1000000
 		return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=%v-build-info&projectKey=%v",
 			baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10), project, project), nil
 	}
-	timestamp := buildTime.UnixNano() / 1000000
 	return fmt.Sprintf("%vui/builds/%v/%v/%v/published?buildRepo=artifactory-build-info",
 		baseUrl, buildName, buildNumber, strconv.FormatInt(timestamp, 10)), nil
 }

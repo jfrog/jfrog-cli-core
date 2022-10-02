@@ -272,7 +272,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		}
 		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
 		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
-		err = stopTransferInArtifactory(tdc.context, tdc.sourceServerDetails, srcUpService)
+		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
 		}
@@ -355,7 +355,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 			newPhase.StopGracefully()
 		}
 		log.Info("Gracefully stopping files transfer...")
-		err := stopTransferInArtifactory(tdc.context, tdc.sourceServerDetails, srcUpService)
+		err := stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
 		}

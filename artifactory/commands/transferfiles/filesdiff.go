@@ -110,6 +110,7 @@ type timeFrameParams struct {
 func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
+			defer pcWrapper.notifyIfBuilderFinished()
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
 		}

@@ -24,10 +24,9 @@ import (
 )
 
 const (
-	waitTimeBetweenChunkStatusSeconds            = 3
-	waitTimeBetweenThreadsUpdateSeconds          = 20
-	assumeProducerConsumerDoneWhenIdleForSeconds = 15
-	DefaultAqlPaginationLimit                    = 10000
+	waitTimeBetweenChunkStatusSeconds   = 3
+	waitTimeBetweenThreadsUpdateSeconds = 20
+	DefaultAqlPaginationLimit           = 10000
 )
 
 type (
@@ -462,8 +461,10 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
+	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
+		defer pcWrapper.notifyIfUploaderFinished()
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
@@ -495,7 +496,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 		}
 		curUploadChunk.appendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -505,7 +506,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}
@@ -732,8 +733,9 @@ func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServic
 	return serviceManager.UpdateLocalRepository().Docker(repoParams)
 }
 
-func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
-	runningNodes, err := getRunningNodes(ctx, serverDetails)
+func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
+	// The context is sent as context.Background() and not context.Cancel(), so that getRunningNodes won't cancel the cancelFunc()
+	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	if err != nil {
 		return err
 	} else {

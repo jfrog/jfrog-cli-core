@@ -104,7 +104,7 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper produc
 	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
-			defer pcWrapper.notifyIfBuilderFinished()
+			defer pcWrapper.notifyIfBuilderFinished(false)
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return m.transferFolder(params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		}

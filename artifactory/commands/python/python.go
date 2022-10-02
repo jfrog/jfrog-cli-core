@@ -72,15 +72,9 @@ func (pc *PythonCommand) Run() (err error) {
 		pythonModule.SetLocalDependenciesPath(localDependenciesPath)
 		pythonModule.SetUpdateDepsChecksumInfoFunc(pc.UpdateDepsChecksumInfoFunc)
 		err = errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
-		if err != nil {
-			return
-		}
 	} else {
 		// Python native command
 		err = gofrogcmd.RunCmd(pc)
-		if err != nil {
-			return
-		}
 	}
 	return
 }
@@ -138,10 +132,6 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 	}
 	pc.args = append(pc.args, rtUrl.String())
 	return nil
-}
-
-func (pc *PythonCommand) CommandName() string {
-	return "rt_python_command"
 }
 
 func (pc *PythonCommand) SetServerDetails(serverDetails *config.ServerDetails) *PythonCommand {

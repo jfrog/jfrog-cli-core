@@ -734,7 +734,7 @@ func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServic
 }
 
 func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
-	// The context is sent as context.Background() and not context.Cancel(), so that getRunningNodes won't cancel the cancelFunc()
+	// We use a new context here and not the old context of the transfer phase, to avoid situations whereby we use context that is already been canceled.
 	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	if err != nil {
 		return err

@@ -31,8 +31,6 @@ func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
 		}()
 	}
 	testBuildPipDependencyListSetuppy(t)
-	assert.NoError(t, exec.Command("pip", "install", "virtualenv").Run())
-
 }
 
 func testBuildPipDependencyListSetuppy(t *testing.T) {
@@ -42,14 +40,12 @@ func testBuildPipDependencyListSetuppy(t *testing.T) {
 	// Run getModulesDependencyTrees
 	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
 	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
-		if rootNodes != nil {
-			// Test root module
-			rootNode := audit.GetAndAssertNode(t, rootNodes, "pip-example:1.2.3")
-			// Test child module
-			childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
-			// Test sub child module
-			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
-		}
+		// Test root module
+		rootNode := audit.GetAndAssertNode(t, rootNodes, "pip-example:1.2.3")
+		// Test child module
+		childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
+		// Test sub child module
+		audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 	}
 }
 

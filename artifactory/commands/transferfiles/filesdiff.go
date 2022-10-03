@@ -78,7 +78,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		return err
 	}
 
-	manager := newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
+	f.transferManager = newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
@@ -93,7 +93,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = manager.doTransferWithProducerConsumer(action)
+	err = f.transferManager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}
@@ -110,6 +110,7 @@ type timeFrameParams struct {
 func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
+			defer pcWrapper.notifyIfBuilderFinished(false)
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
 		}

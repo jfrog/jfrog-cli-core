@@ -1,8 +1,10 @@
 package audit
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -118,4 +120,12 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 		}
 	}
 	return nil
+}
+
+func LogExecutableVersion(executable string) {
+	// Get executable version and print to log if possible
+	verString, verErr := exec.Command(executable, "--version").CombinedOutput()
+	if verErr != nil && verString != nil {
+		log.Info(fmt.Sprintf("Used %q version: %s", executable, verString))
+	}
 }

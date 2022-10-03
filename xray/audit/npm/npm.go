@@ -26,7 +26,6 @@ func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *co
 }
 
 func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err error) {
-
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -42,6 +41,7 @@ func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err
 	// Calculate npm dependencies
 	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
 	if err != nil {
+		log.Info("Used npm version:", npmVersion)
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format

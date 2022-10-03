@@ -86,13 +86,6 @@ func (m *fullTransferPhase) run() error {
 	return m.transferManager.doTransferWithProducerConsumer(action)
 }
 
-func (m *fullTransferPhase) StopGracefully() {
-	m.phaseBase.StopGracefully()
-	if m.transferManager != nil {
-		m.transferManager.stopProducerConsumer()
-	}
-}
-
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
 
 type folderParams struct {

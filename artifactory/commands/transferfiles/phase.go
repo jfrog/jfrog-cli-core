@@ -50,6 +50,7 @@ type phaseBase struct {
 	timeEstMng                *timeEstimationManager
 	proxyKey                  string
 	pcDetails                 *producerConsumerWrapper
+	transferManager           *transferManager
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -64,10 +65,16 @@ func (pb *phaseBase) getInterruptionErr() error {
 	return nil
 }
 
-// Indicate graceful stopping in the progress bar
+// Stop and indicate graceful stopping in the progress bar
 func (pb *phaseBase) StopGracefully() {
 	if pb.progressBar != nil {
 		pb.progressBar.StopGracefully()
+	}
+	if pb.pcDetails != nil {
+		pb.pcDetails.chunkBuilderProducerConsumer.Cancel()
+		pb.pcDetails.chunkUploaderProducerConsumer.Cancel()
+		pb.pcDetails.notifyIfBuilderFinished(true)
+		pb.pcDetails.notifyIfUploaderFinished(true)
 	}
 }
 

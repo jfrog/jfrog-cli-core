@@ -531,8 +531,6 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelMng *ErrorsChannelMng) bool {
 	if phase != nil && phase.ShouldStop() {
 		log.Debug("Stop transferring data - Interrupted.")
-		phase.pcDetails.notifyIfBuilderFinished(true)
-		phase.pcDetails.notifyIfUploaderFinished(true)
 		return true
 	}
 	if delayHelper != nil && delayHelper.delayedArtifactsChannelMng.shouldStop() {

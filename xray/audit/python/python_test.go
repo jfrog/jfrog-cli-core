@@ -1,7 +1,7 @@
 package python
 
 import (
-	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -11,8 +11,8 @@ import (
 )
 
 func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
-	_, exist := os.LookupEnv("virtualenv")
-	if !exist {
+	path, _ := exec.LookPath("virtualenv")
+	if path == "" {
 		assert.NoError(t, executeCommand("pip", "install", "virtualenv"))
 		defer func() {
 			assert.NoError(t, executeCommand("pip", "uninstall", "virtualenv", "-y"))
@@ -22,8 +22,8 @@ func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
 }
 
 func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
-	_, exist := os.LookupEnv("virtualenv")
-	if exist {
+	path, _ := exec.LookPath("virtualenv")
+	if path != "" {
 		assert.NoError(t, executeCommand("pip", "uninstall", "virtualenv", "-y"))
 		defer func() {
 			assert.NoError(t, executeCommand("pip", "install", "virtualenv"))

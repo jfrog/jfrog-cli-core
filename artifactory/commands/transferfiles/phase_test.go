@@ -34,7 +34,7 @@ func TestStopGracefully(t *testing.T) {
 	err := runProducerConsumers(phaseBase.pcDetails)
 	assert.NoError(t, err)
 
-	// Since we stopped the tasks after half second, expect the tasks to run exactly once
+	// Since we stopped the tasks after half second, and the tasks sleep for one second during their execution, expect the tasks to run exactly once.
 	assert.Equal(t, 1, uploaderCounter)
 	assert.Equal(t, 1, builderCounter)
 

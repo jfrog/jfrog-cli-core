@@ -124,13 +124,6 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	return returnedError
 }
 
-func (ftm *transferManager) stopProducerConsumer() {
-	if ftm.pcDetails != nil {
-		ftm.pcDetails.chunkBuilderProducerConsumer.Cancel()
-		ftm.pcDetails.chunkUploaderProducerConsumer.Cancel()
-	}
-}
-
 type PollingTasksManager struct {
 	// Done channel notifies the polling go routines that no more tasks are expected.
 	doneChannel chan bool

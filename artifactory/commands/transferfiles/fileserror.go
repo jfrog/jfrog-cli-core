@@ -35,13 +35,13 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 		return nil
 	}
 	log.Info("Starting to handle previous upload failures...")
-	manager := newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
+	e.transferManager = newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	err := manager.doTransferWithProducerConsumer(action)
+	err := e.transferManager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}

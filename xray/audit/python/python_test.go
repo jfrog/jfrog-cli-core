@@ -1,6 +1,7 @@
 package python
 
 import (
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -9,7 +10,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuildPipDependencyListSetuppy(t *testing.T) {
+func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
+	assert.NoError(t, exec.Command("pip", "install", "virtualenv").Run())
+	testBuildPipDependencyListSetuppy(t)
+	assert.NoError(t, exec.Command("pip", "uninstall", "virtualenv", "-y").Run())
+}
+
+func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
+	testBuildPipDependencyListSetuppy(t)
+}
+
+func testBuildPipDependencyListSetuppy(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()

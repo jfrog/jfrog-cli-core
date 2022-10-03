@@ -41,15 +41,15 @@ func testBuildPipDependencyListSetuppy(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
-	assert.NoError(t, err)
-	assert.NotEmpty(t, rootNodes)
-	if rootNodes != nil {
-		// Test root module
-		rootNode := audit.GetAndAssertNode(t, rootNodes, "pip-example:1.2.3")
-		// Test child module
-		childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
-		// Test sub child module
-		audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+		if rootNodes != nil {
+			// Test root module
+			rootNode := audit.GetAndAssertNode(t, rootNodes, "pip-example:1.2.3")
+			// Test child module
+			childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
+			// Test sub child module
+			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+		}
 	}
 }
 
@@ -59,9 +59,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
-	assert.NoError(t, err)
-	assert.NotEmpty(t, rootNodes)
-	if rootNodes != nil {
+	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
 		// Test root module
 		rootNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
 		// Test child module
@@ -75,15 +73,12 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	rootNodes, err := BuildDependencyTree(pythonutils.Pipenv, "")
-	if err != nil {
-		t.Fatal(err)
+	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+		// Test child module
+		childNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
+		// Test sub child module
+		audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 	}
-	assert.NotEmpty(t, rootNodes)
-
-	// Test child module
-	childNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
-	// Test sub child module
-	audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 }
 
 func TestBuildPoetryDependencyList(t *testing.T) {
@@ -92,18 +87,15 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	defer cleanUp()
 	// Run getModulesDependencyTrees
 	rootNodes, err := BuildDependencyTree(pythonutils.Poetry, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotEmpty(t, rootNodes)
-
-	// Test child module
-	childNode := audit.GetAndAssertNode(t, rootNodes, "pytest:5.4.3")
-	// Test sub child module
-	if assert.NotNil(t, childNode) {
-		transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")
-		if assert.NotNil(t, transitiveChildNode) {
-			audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
+	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+		// Test child module
+		childNode := audit.GetAndAssertNode(t, rootNodes, "pytest:5.4.3")
+		// Test sub child module
+		if assert.NotNil(t, childNode) {
+			transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")
+			if assert.NotNil(t, transitiveChildNode) {
+				audit.GetAndAssertNode(t, transitiveChildNode.Nodes, "pyparsing:3.0.9")
+			}
 		}
 	}
 }

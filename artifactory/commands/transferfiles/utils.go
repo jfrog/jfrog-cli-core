@@ -464,7 +464,7 @@ func shouldStopPolling(doneChan chan bool) bool {
 func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
 	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
-		defer pcWrapper.notifyIfUploaderFinished()
+		defer pcWrapper.notifyIfUploaderFinished(false)
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
@@ -531,6 +531,8 @@ func addErrorToChannel(errorsChannelMng *ErrorsChannelMng, file FileUploadStatus
 func ShouldStop(phase *phaseBase, delayHelper *delayUploadHelper, errorsChannelMng *ErrorsChannelMng) bool {
 	if phase != nil && phase.ShouldStop() {
 		log.Debug("Stop transferring data - Interrupted.")
+		phase.pcDetails.notifyIfBuilderFinished(true)
+		phase.pcDetails.notifyIfUploaderFinished(true)
 		return true
 	}
 	if delayHelper != nil && delayHelper.delayedArtifactsChannelMng.shouldStop() {

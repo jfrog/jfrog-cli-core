@@ -17,7 +17,6 @@ const (
 type transferManager struct {
 	phaseBase
 	delayUploadComparisonFunctions []shouldDelayUpload
-	pcDetails                      *producerConsumerWrapper
 }
 
 func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) *transferManager {
@@ -203,17 +202,25 @@ type producerConsumerWrapper struct {
 	errorsQueue *clientUtils.ErrorsQueue
 }
 
-// Sends a signal through the uploaderFinishedNotifier channel, if the chunkUploaderProducerConsumer finished running all of its tasks.
-// chunkUploaderProducerConsumer is finished if there are no more tasks in its queue, and chunkBuilderProducerConsumer is also finished, so no more tasks will be coming in.
-func (pcw *producerConsumerWrapper) notifyIfUploaderFinished() {
-	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 0 && pcw.chunkUploaderProducerConsumer.ActiveThreads() == 1 {
+// Sends a signal through the uploaderFinishedNotifier channel, to notify that chunkUploaderProducerConsumer finished its work.
+// The signal is sent if one of the following condition are met:
+// 1. The 'force' argument was sent as true.
+// 2. The chunkUploaderProducerConsumer finished running all of its tasks.
+//
+// The chunkUploaderProducerConsumer is finished (condition #2 above)
+// if there are no more tasks in its queue, and chunkBuilderProducerConsumer is also finished, so no more tasks will be coming in.
+func (pcw *producerConsumerWrapper) notifyIfUploaderFinished(force bool) {
+	if force || (pcw.chunkBuilderProducerConsumer.ActiveThreads() == 0 && pcw.chunkUploaderProducerConsumer.ActiveThreads() == 1) {
 		pcw.uploaderFinishedNotifier <- true
 	}
 }
 
-// Sends a signal through the builderFinishedNotifier channel, if the chunkBuilderProducerConsumer finished running all of its tasks.
-func (pcw *producerConsumerWrapper) notifyIfBuilderFinished() {
-	if pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 && pcw.chunkBuilderProducerConsumer.TotalTasksInQueue() == 1 {
+// Sends a signal through the builderFinishedNotifier channel, to notify that chunkBuilderProducerConsumer finished its work.
+// The signal is sent if one of the following condition are met:
+// 1. The 'force' argument was sent as true.
+// 2. The chunkBuilderProducerConsumer finished running all of its tasks.
+func (pcw *producerConsumerWrapper) notifyIfBuilderFinished(force bool) {
+	if force || (pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 && pcw.chunkBuilderProducerConsumer.TotalTasksInQueue() == 1) {
 		pcw.builderFinishedNotifier <- true
 	}
 }

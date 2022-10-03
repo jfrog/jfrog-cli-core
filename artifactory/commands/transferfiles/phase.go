@@ -49,6 +49,7 @@ type phaseBase struct {
 	repoSummary               serviceUtils.RepositorySummary
 	timeEstMng                *timeEstimationManager
 	proxyKey                  string
+	pcDetails                 *producerConsumerWrapper
 }
 
 func (pb *phaseBase) ShouldStop() bool {

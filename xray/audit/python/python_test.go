@@ -59,8 +59,10 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
 		// Test root module
 		rootNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
-		// Test child module
-		audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+		if rootNode != nil {
+			// Test child module
+			audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+		}
 	}
 }
 

@@ -103,7 +103,11 @@ func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 
 func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
 	module := GetModule(modules, moduleId)
-	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
+	if !assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist") {
+		for _, mod := range modules {
+			log.Debug(mod.Id)
+		}
+	}
 	return module
 }
 

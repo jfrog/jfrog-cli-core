@@ -212,7 +212,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	}
 
 	// Keep original value of 'PATH'.
-	origPathEnv, _ := os.LookupEnv("PATH")
+	origPathEnv := os.Getenv("PATH")
 	var newPathEnv string
 	var virtualEnvPath string
 	if runtime.GOOS == "windows" {

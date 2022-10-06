@@ -213,17 +213,15 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 
 	// Keep original value of 'PATH'.
 	origPathValue := os.Getenv("PATH")
-	var newPathValue string
 	venvPath, err := filepath.Abs("venvdir")
 	if err != nil {
 		return
 	}
+	osBinDirName := "bin"
 	if runtime.GOOS == "windows" {
-		newPathValue = fmt.Sprintf("%s;%s", filepath.Join(venvPath, "Scripts"), origPathValue)
-	} else {
-		newPathValue = fmt.Sprintf("%s:%s", filepath.Join(venvPath, "bin"), origPathValue)
+		osBinDirName = "Scripts"
 	}
-	err = os.Setenv("PATH", newPathValue)
+	err = os.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Join(venvPath, osBinDirName), os.PathListSeparator, origPathValue))
 	if err != nil {
 		return
 	}

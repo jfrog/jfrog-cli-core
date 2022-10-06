@@ -120,6 +120,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
+	if err = tdc.removeErrorFilesIfNeeded(allSourceLocalRepos); err != nil {
+		return err
+	}
+
 	if isTimeEstimationEnabled() {
 		if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
 			return err
@@ -127,7 +131,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(int64(len(allSourceLocalRepos)), tdc.timeEstMng)
+	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, tdc.timeEstMng, tdc.ignoreState)
 	if err != nil {
 		return err
 	}
@@ -268,7 +272,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		}
 		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
 		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
-		err = stopTransferInArtifactory(tdc.context, tdc.sourceServerDetails, srcUpService)
+		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
 		}
@@ -286,6 +290,23 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 		return err
 	}
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
+}
+
+func (tdc *TransferFilesCommand) removeErrorFilesIfNeeded(repos []string) error {
+	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
+	if tdc.ignoreState {
+		files, err := getErrorsFiles(repos, true)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			err = os.Remove(file)
+			if err != nil {
+				return errorutils.CheckError(err)
+			}
+		}
+	}
+	return nil
 }
 
 func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
@@ -334,7 +355,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 			newPhase.StopGracefully()
 		}
 		log.Info("Gracefully stopping files transfer...")
-		err := stopTransferInArtifactory(tdc.context, tdc.sourceServerDetails, srcUpService)
+		err := stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
 		}

@@ -1,9 +1,11 @@
 package transferfiles
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -34,6 +36,7 @@ type TransferErrorsMng struct {
 	phaseId        int
 	phaseStartTime string
 	errorWriterMng errorWriterMng
+	progressBar    *TransferProgressMng
 }
 
 type errorWriter struct {
@@ -54,12 +57,12 @@ type errorWriterMng struct {
 // repoKey - the repo that is being transferred
 // phase - the phase number
 // errorsChannelMng - all go routines will write to the same channel
-func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng) (*TransferErrorsMng, error) {
+func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng, progressBar *TransferProgressMng) (*TransferErrorsMng, error) {
 	err := initTransferErrorsDir()
 	if err != nil {
 		return nil, err
 	}
-	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime}
+	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime, progressBar: progressBar}
 	return &mng, nil
 }
 
@@ -182,6 +185,11 @@ func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusRespon
 		err = mng.writeSkippedErrorContent(e)
 	default:
 		err = mng.writeRetryableErrorContent(e)
+		if err == nil && mng.progressBar != nil {
+			// Increment the failures counter view by 1, following the addition
+			// of the file to errors file.
+			mng.progressBar.changeNumberOfFailuresBy(1)
+		}
 	}
 	return err
 }
@@ -314,6 +322,41 @@ func getErrorsFiles(repoKeys []string, isRetry bool) (filesPaths []string, err e
 		}
 	}
 	return
+}
+
+// Count the number of transfer failures of a given subset of repositories
+func getRetryErrorCount(repoKeys []string) (int, error) {
+	files, err := getErrorsFiles(repoKeys, true)
+	if err != nil {
+		return -1, err
+	}
+
+	count := 0
+	for _, file := range files {
+		failedFiles, err := readErrorFile(file)
+		if err != nil {
+			return -1, err
+		}
+		count += len(failedFiles.Errors)
+	}
+	return count, nil
+}
+
+// Reads an error file from a given path, parses and populate a given FilesErrors instance with the file information
+func readErrorFile(path string) (FilesErrors, error) {
+	// Stores the errors read from the errors file.
+	var failedFiles FilesErrors
+
+	fContent, err := os.ReadFile(path)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+
+	err = json.Unmarshal(fContent, &failedFiles)
+	if err != nil {
+		return failedFiles, errorutils.CheckError(err)
+	}
+	return failedFiles, nil
 }
 
 // ErrorsChannelMng handles the uploading errors and adds them to a common channel.

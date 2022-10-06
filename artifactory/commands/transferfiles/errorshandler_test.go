@@ -32,7 +32,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	maxErrorsInFile = 20
 	defer func() { maxErrorsInFile = originalMaxErrorsInFile }()
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng)
+	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, convertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil)
 	assert.NoError(t, err)
 
 	var writeWaitGroup sync.WaitGroup
@@ -61,6 +61,10 @@ func TestTransferErrorsMng(t *testing.T) {
 	expectedNumberOfFiles := int(math.Ceil(float64(errorsNumber) / float64(maxErrorsInFile)))
 	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, true)
 	validateErrorsFiles(t, expectedNumberOfFiles, errorsNumber, false)
+
+	retryEntityCount, err := getRetryErrorCount([]string{testRepoKey})
+	assert.NoError(t, err)
+	assert.Equal(t, errorsNumber, retryEntityCount)
 }
 
 func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status ChunkFileStatusType) {

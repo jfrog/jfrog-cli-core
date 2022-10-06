@@ -11,8 +11,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const pluginsExecuteRestApi = "api/plugins/execute/"
-const syncChunks = "syncChunks"
+const (
+	pluginsExecuteRestApi = "api/plugins/execute/"
+	syncChunks            = "syncChunks"
+	uploadChunk           = "uploadChunk"
+)
 
 type VerifyCompatibilityResponse struct {
 	Version string `json:"version,omitempty"`
@@ -75,7 +78,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uploadChunkResp
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"uploadChunk", content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+uploadChunk, content, &httpDetails)
 	if err != nil {
 		return UploadChunkResponse{}, err
 	}

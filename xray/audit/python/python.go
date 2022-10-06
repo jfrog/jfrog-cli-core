@@ -214,24 +214,23 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	// Keep original value of 'PATH'.
 	origPathValue := os.Getenv("PATH")
 	var newPathValue string
-	var virtualEnvPath string
-	if runtime.GOOS == "windows" {
-		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "Scripts"))
-		newPathValue = fmt.Sprintf("%s;%s", virtualEnvPath, origPathValue)
-	} else {
-		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "bin"))
-		newPathValue = fmt.Sprintf("%s:%s", virtualEnvPath, origPathValue)
-	}
+	venvPath, err := filepath.Abs("venvdir")
 	if err != nil {
 		return
+	}
+	if runtime.GOOS == "windows" {
+		newPathValue = fmt.Sprintf("%s;%s", filepath.Join(venvPath, "Scripts"), origPathValue)
+	} else {
+		newPathValue = fmt.Sprintf("%s:%s", filepath.Join(venvPath, "bin"), origPathValue)
 	}
 	err = os.Setenv("PATH", newPathValue)
 	if err != nil {
 		return
 	}
-	return func() error {
+	restoreEnv = func() error {
 		return os.Setenv("PATH", origPathValue)
-	}, nil
+	}
+	return
 }
 
 func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {

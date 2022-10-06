@@ -187,6 +187,7 @@ func SetPipVirtualEnvPath() (func() error, error) {
 	var stderr bytes.Buffer
 	pipVenv := exec.Command(execPath, cmdArgs...)
 	pipVenv.Stderr = &stderr
+	clientLog.Debug("running " + strings.Join(pipVenv.Args, " "))
 	err = pipVenv.Run()
 	if err != nil {
 		return nil, fmt.Errorf("pipenv install command failed: %s - %s", err.Error(), stderr.String())

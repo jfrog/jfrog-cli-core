@@ -1,6 +1,7 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -118,21 +119,27 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		if pipExec == "" {
 			pipExec = "pip"
 		}
+		var pipInstallErr error
 		if requirementsFile == "" {
 			// Run pip install
-			err = executeCommand(pipExec, "install", ".")
-			if err != nil {
+			pipInstallErr = executeCommand(pipExec, "install", ".")
+			if pipInstallErr != nil {
 				clientLog.Debug(err.Error() + "\ntrying to install using a requirements file.")
+				requirementsFile = "requirements.txt"
 			}
 		}
 		// If running pip install failed or requirementsFile is assigned, run pip install -r
-		if err != nil || requirementsFile != "" {
-			if requirementsFile == "" {
-				requirementsFile = "requirements.txt"
+		if requirementsFile != "" {
+			err = requirementsFileExists(requirementsFile)
+			if err == nil {
+				err = executeCommand(pipExec, "install", "-r", requirementsFile)
 			}
-			err = executeCommand(pipExec, "install", "-r", requirementsFile)
+			if pipInstallErr != nil {
+				// Return Pip install error and log the requirements fallback error.
+				clientLog.Debug(err.Error())
+				err = pipInstallErr
+			}
 		}
-
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir
 		err = os.Setenv("WORKON_HOME", ".jfrog")
@@ -161,6 +168,23 @@ func executeCommand(executable string, args ...string) error {
 		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
 	}
 	return nil
+}
+
+func requirementsFileExists(requirementsFile string) (err error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	exists, err := fileutils.IsFileExists(filepath.Join(wd, requirementsFile), false)
+	if err != nil || !exists {
+		errString := fmt.Sprintf("requirements file: %q couldn't be found in the root directory", requirementsFile)
+		if err != nil {
+			errString = errString + " - " + err.Error()
+		}
+		err = errors.New(errString)
+	}
+
+	return
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
@@ -193,10 +217,10 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	var virtualEnvPath string
 	if runtime.GOOS == "windows" {
 		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "Scripts"))
-		newPathEnv = virtualEnvPath + ";"
+		newPathEnv = virtualEnvPath + ";" + origPathEnv
 	} else {
 		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "bin"))
-		newPathEnv = virtualEnvPath + ":"
+		newPathEnv = virtualEnvPath + ":" + origPathEnv
 	}
 	if err != nil {
 		return

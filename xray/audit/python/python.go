@@ -122,7 +122,7 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			clientLog.Debug("Running pip install -r", requirementsFile)
 			output, err = exec.Command(pipExec, "install", "-r", requirementsFile).CombinedOutput()
 		} else {
-			clientLog.Debug("Running 'pip install .'")
+			clientLog.Debug("Running 'pip install .'", pipExec)
 			output, err = exec.Command(pipExec, "install", ".").CombinedOutput()
 			if err != nil {
 				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)

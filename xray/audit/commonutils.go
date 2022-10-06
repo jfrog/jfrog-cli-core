@@ -129,7 +129,7 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 func LogExecutableVersion(executable string) {
 	// Get executable version and print to log if possible
 	verString, _ := exec.Command(executable, "--version").CombinedOutput()
-	if verString != nil && len(verString) > 0 {
+	if len(verString) > 0 {
 		log.Info(fmt.Sprintf("Used %q version: %s", executable, verString))
 	}
 }

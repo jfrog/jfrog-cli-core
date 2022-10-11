@@ -115,6 +115,12 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		if err != nil {
 			return
 		}
+		defer func() {
+			if err == nil {
+				// Set PATH to point the Virtualenv's Bin directory only, so that the pipdeptree command will get only the project's dependencies
+				err = os.Setenv("PATH", venvBinPath+string(os.PathListSeparator))
+			}
+		}()
 		// Try getting 'pip3' executable, if not found use 'pip'
 		pipExec, _ := exec.LookPath("pip3")
 		if pipExec == "" {
@@ -140,10 +146,6 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 				clientLog.Debug(err.Error())
 				err = pipInstallErr
 			}
-		}
-		if err != nil {
-			// Set PATH to point the Virtualenv's Bin directory only, so that the pipdeptree command will get only the project's dependencies
-			err = os.Setenv("PATH", venvBinPath+string(os.PathListSeparator))
 		}
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir

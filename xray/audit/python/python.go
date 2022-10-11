@@ -100,7 +100,7 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 		return
 	}
 	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
-	if err != nil {
+	if err != nil && pythonTool == pythonutils.Pip {
 		audit.LogExecutableVersion("python")
 	}
 	return

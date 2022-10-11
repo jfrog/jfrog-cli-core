@@ -126,6 +126,6 @@ func LogExecutableVersion(executable string) {
 	// Get executable version and print to log if possible
 	verString, _ := exec.Command(executable, "--version").CombinedOutput()
 	if len(verString) > 0 {
-		log.Info(fmt.Sprintf("Used %q version: %s", executable, verString))
+		log.Debug(fmt.Sprintf("Used %q version: %s", executable, strings.TrimSpace(string(verString))))
 	}
 }

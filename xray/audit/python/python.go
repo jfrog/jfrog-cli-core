@@ -86,15 +86,15 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	}
 
 	restoreEnv, err := runPythonInstall(pythonTool, requirementsFile)
-	if err != nil {
-		return
-	}
 	defer func() {
 		e := restoreEnv()
 		if err == nil {
 			err = e
 		}
 	}()
+	if err != nil {
+		return
+	}
 
 	localDependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {

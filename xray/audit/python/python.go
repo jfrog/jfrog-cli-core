@@ -124,7 +124,7 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			// Run pip install
 			pipInstallErr = executeCommand(pipExec, "install", ".")
 			if pipInstallErr != nil {
-				clientLog.Debug(err.Error() + "\ntrying to install using a requirements file.")
+				clientLog.Debug(pipInstallErr.Error() + "\ntrying to install using a requirements file.")
 				requirementsFile = "requirements.txt"
 			}
 		}
@@ -226,6 +226,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 		return
 	}
 	restoreEnv = func() error {
+		clientLog.Debug("Restoring environment: " + origPathValue)
 		return os.Setenv("PATH", origPathValue)
 	}
 	return

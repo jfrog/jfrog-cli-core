@@ -110,7 +110,8 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 	}
 	switch pythonTool {
 	case pythonutils.Pip:
-		restoreEnv, err = SetPipVirtualEnvPath()
+		venvBinPath := ""
+		venvBinPath, restoreEnv, err = SetPipVirtualEnvPath()
 		if err != nil {
 			return
 		}
@@ -139,6 +140,10 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 				clientLog.Debug(err.Error())
 				err = pipInstallErr
 			}
+		}
+		if err != nil {
+			// Set PATH to point the Virtualenv's Bin directory only, so that the pipdeptree command will get only the project's dependencies
+			err = os.Setenv("PATH", venvBinPath+string(os.PathListSeparator))
 		}
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir
@@ -188,7 +193,7 @@ func requirementsFileExists(requirementsFile string) (err error) {
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
-func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
+func SetPipVirtualEnvPath() (venvBinPath string, restoreEnv func() error, err error) {
 	restoreEnv = func() error {
 		return nil
 	}
@@ -217,16 +222,16 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	if err != nil {
 		return
 	}
-	osBinDirName := "bin"
 	if runtime.GOOS == "windows" {
-		osBinDirName = "Scripts"
+		venvBinPath = filepath.Join(venvPath, "Scripts")
+	} else {
+		venvBinPath = filepath.Join(venvPath, "bin")
 	}
-	err = os.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Join(venvPath, osBinDirName), os.PathListSeparator, origPathValue))
+	err = os.Setenv("PATH", fmt.Sprintf("%s%c%s", venvBinPath, os.PathListSeparator, origPathValue))
 	if err != nil {
 		return
 	}
 	restoreEnv = func() error {
-		clientLog.Debug("Restoring environment: " + origPathValue)
 		return os.Setenv("PATH", origPathValue)
 	}
 	return

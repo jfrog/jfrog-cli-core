@@ -221,7 +221,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	if runtime.GOOS == "windows" {
 		osBinDirName = "Scripts"
 	}
-	err = os.Setenv("PATH", filepath.Join(venvPath, osBinDirName)+string(os.PathListSeparator))
+	err = os.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Join(venvPath, osBinDirName), os.PathListSeparator, origPathValue))
 	if err != nil {
 		return
 	}

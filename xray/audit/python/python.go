@@ -110,17 +110,10 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 	}
 	switch pythonTool {
 	case pythonutils.Pip:
-		venvBinPath := ""
-		venvBinPath, restoreEnv, err = SetPipVirtualEnvPath()
+		restoreEnv, err = SetPipVirtualEnvPath()
 		if err != nil {
 			return
 		}
-		defer func() {
-			if err == nil {
-				// Set PATH to point the Virtualenv's Bin directory only, so that the pipdeptree command will get only the project's dependencies
-				err = os.Setenv("PATH", venvBinPath+string(os.PathListSeparator))
-			}
-		}()
 		// Try getting 'pip3' executable, if not found use 'pip'
 		pipExec, _ := exec.LookPath("pip3")
 		if pipExec == "" {
@@ -195,7 +188,7 @@ func requirementsFileExists(requirementsFile string) (err error) {
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
-func SetPipVirtualEnvPath() (venvBinPath string, restoreEnv func() error, err error) {
+func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	restoreEnv = func() error {
 		return nil
 	}
@@ -224,6 +217,7 @@ func SetPipVirtualEnvPath() (venvBinPath string, restoreEnv func() error, err er
 	if err != nil {
 		return
 	}
+	venvBinPath := ""
 	if runtime.GOOS == "windows" {
 		venvBinPath = filepath.Join(venvPath, "Scripts")
 	} else {

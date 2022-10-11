@@ -1,7 +1,6 @@
 package python
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -101,6 +100,9 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 		return
 	}
 	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
+	if err != nil {
+		audit.LogExecutableVersion("python")
+	}
 	return
 }
 
@@ -114,30 +116,15 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		if err != nil {
 			return
 		}
-		// Try getting 'pip3' executable, if not found use 'pip'
-		pipExec, _ := exec.LookPath("pip3")
-		if pipExec == "" {
-			pipExec = "pip"
-		}
-		var pipInstallErr error
-		if requirementsFile == "" {
-			// Run pip install
-			pipInstallErr = executeCommand(pipExec, "install", ".")
-			if pipInstallErr != nil {
-				clientLog.Debug(pipInstallErr.Error() + "\ntrying to install using a requirements file.")
-				requirementsFile = "requirements.txt"
-			}
-		}
-		// If running pip install failed or requirementsFile is assigned, run pip install -r
-		if requirementsFile != "" {
-			err = requirementsFileExists(requirementsFile)
-			if err == nil {
-				err = executeCommand(pipExec, "install", "-r", requirementsFile)
-			}
-			if pipInstallErr != nil {
+		err = runPipInstall(requirementsFile)
+		if err != nil && requirementsFile == "" {
+			clientLog.Debug(err.Error() + "\ntrying to install using a requirements file.")
+			reqErr := runPipInstall("requirements.txt")
+			if reqErr != nil {
 				// Return Pip install error and log the requirements fallback error.
-				clientLog.Debug(err.Error())
-				err = pipInstallErr
+				clientLog.Debug(reqErr.Error())
+			} else {
+				err = nil
 			}
 		}
 	case pythonutils.Pipenv:
@@ -170,21 +157,19 @@ func executeCommand(executable string, args ...string) error {
 	return nil
 }
 
-func requirementsFileExists(requirementsFile string) (err error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return
+func runPipInstall(requirementsFile string) error {
+	// Try getting 'pip3' executable, if not found use 'pip'
+	pipExec, _ := exec.LookPath("pip3")
+	if pipExec == "" {
+		pipExec = "pip"
 	}
-	exists, err := fileutils.IsFileExists(filepath.Join(wd, requirementsFile), false)
-	if err != nil || !exists {
-		errString := fmt.Sprintf("requirements file: %q couldn't be found in the root directory", requirementsFile)
-		if err != nil {
-			errString = errString + " - " + err.Error()
-		}
-		err = errors.New(errString)
+	if requirementsFile == "" {
+		// Run 'pip install .'
+		return executeCommand(pipExec, "install", ".")
+	} else {
+		// Run pip 'install -r requirements <requirementsFile>'
+		return executeCommand(pipExec, "install", "-r", requirementsFile)
 	}
-
-	return
 }
 
 // Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path

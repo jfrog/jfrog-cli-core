@@ -45,9 +45,7 @@ func GenericAudit(
 	}
 	var errorList []string
 	for _, tech := range coreutils.ToTechnologies(technologies) {
-		var techResults []services.ScanResponse
 		var dependencyTrees []*services.GraphNode
-		var isMultipleRootProject bool
 		var e error
 		if progress != nil {
 			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
@@ -73,9 +71,10 @@ func GenericAudit(
 			e = errors.New(string(tech) + " is currently not supported")
 		}
 
+		var techResults []services.ScanResponse
 		if e == nil {
 			// If build dependency tree was successful, run Xray scan.
-			results, e = audit.Scan(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
+			techResults, e = audit.Scan(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
 		}
 
 		if e != nil {
@@ -83,7 +82,7 @@ func GenericAudit(
 			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed:\n%s", tech, e.Error()))
 		} else {
 			results = append(results, techResults...)
-			isMultipleRoot = isMultipleRootProject
+			isMultipleRoot = len(results) > 1
 		}
 	}
 	if len(errorList) > 0 {

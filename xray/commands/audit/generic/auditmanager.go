@@ -32,12 +32,13 @@ func GenericAudit(
 	progress ioUtils.ProgressMgr,
 	requirementsFile string,
 	ignoreConfigFile bool,
+	recursive bool,
 	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
 	if len(technologies) == 0 {
-		technologies, err = detectedTechnologies()
+		technologies, err = detectedTechnologies(recursive)
 		if err != nil {
 			return
 		}
@@ -84,12 +85,12 @@ func GenericAudit(
 	return
 }
 
-func detectedTechnologies() (technologies []string, err error) {
+func detectedTechnologies(recursive bool) (technologies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	detectedTechnologies, err := coreutils.DetectTechnologies(wd, false, false)
+	detectedTechnologies, err := coreutils.DetectTechnologies(wd, false, recursive)
 	if err != nil {
 		return
 	}

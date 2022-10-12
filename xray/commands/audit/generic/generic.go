@@ -1,8 +1,9 @@
 package audit
 
 import (
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
+
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -20,6 +21,7 @@ type GenericAuditCommand struct {
 	IncludeLicenses         bool
 	Fail                    bool
 	PrintExtendedTable      bool
+	Recursive               bool
 	excludeTestDependencies bool
 	useWrapper              bool
 	insecureTls             bool
@@ -82,6 +84,11 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
+func (auditCmd *GenericAuditCommand) SetRecursive(recursive bool) *GenericAuditCommand {
+	auditCmd.Recursive = recursive
+	return auditCmd
+}
+
 func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
 	params := services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
@@ -113,6 +120,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.progress,
 		auditCmd.requirementsFile,
 		false,
+		auditCmd.Recursive,
 		auditCmd.technologies...,
 	)
 

@@ -3,6 +3,7 @@ package audit
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"os"
 	"strings"
 
@@ -45,6 +46,7 @@ func GenericAudit(
 	var errorList []string
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		var techResults []services.ScanResponse
+		var dependencyTrees []*services.GraphNode
 		var isMultipleRootProject bool
 		var e error
 		if progress != nil {
@@ -52,24 +54,30 @@ func GenericAudit(
 		}
 		switch tech {
 		case coreutils.Maven:
-			techResults, isMultipleRootProject, e = java.AuditMvn(xrayGraphScanParams, serverDetails, insecureTls, ignoreConfigFile, progress)
+			dependencyTrees, e = java.BuildMvnDependencyTree(insecureTls, ignoreConfigFile)
 		case coreutils.Gradle:
-			techResults, isMultipleRootProject, e = java.AuditGradle(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, ignoreConfigFile, progress)
+			dependencyTrees, e = java.BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile)
 		case coreutils.Npm:
-			techResults, isMultipleRootProject, e = npm.AuditNpm(xrayGraphScanParams, serverDetails, args, progress)
+			dependencyTrees, e = npm.BuildDependencyTree(args)
 		case coreutils.Yarn:
-			techResults, isMultipleRootProject, e = yarn.AuditYarn(xrayGraphScanParams, serverDetails, progress)
+			dependencyTrees, e = yarn.BuildDependencyTree()
 		case coreutils.Go:
-			techResults, isMultipleRootProject, e = _go.AuditGo(xrayGraphScanParams, serverDetails, progress)
+			dependencyTrees, e = _go.BuildDependencyTree()
 		case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-			techResults, isMultipleRootProject, e = python.AuditPython(xrayGraphScanParams, serverDetails, pythonutils.PythonTool(tech), progress, requirementsFile)
+			dependencyTrees, e = python.BuildDependencyTree(pythonutils.PythonTool(tech), requirementsFile)
 		case coreutils.Dotnet:
 			continue
 		case coreutils.Nuget:
-			techResults, isMultipleRootProject, e = nuget.AuditNuget(xrayGraphScanParams, serverDetails, progress)
+			dependencyTrees, e = nuget.BuildDependencyTree()
 		default:
 			e = errors.New(string(tech) + " is currently not supported")
 		}
+
+		if e == nil {
+			// If build dependency tree was successful, run Xray scan.
+			results, e = audit.Scan(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
+		}
+
 		if e != nil {
 			// Save the error but continue to audit the next tech
 			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed:\n%s", tech, e.Error()))

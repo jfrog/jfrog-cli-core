@@ -23,20 +23,20 @@ func TestBuildGoDependencyList(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildGoDependencyTree()
+	rootNode, err := BuildDependencyTree()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rootNode)
 
 	// Check root module
-	assert.Equal(t, rootNode.Id, goPackageTypeIdentifier+"testGoList")
-	assert.Len(t, rootNode.Nodes, 2)
+	assert.Equal(t, rootNode[0].Id, goPackageTypeIdentifier+"testGoList")
+	assert.Len(t, rootNode[0].Nodes, 2)
 
 	// Test child without sub nodes
-	child1 := audit.GetAndAssertNode(t, rootNode.Nodes, "golang.org/x/text:v0.3.3")
+	child1 := audit.GetAndAssertNode(t, rootNode[0].Nodes, "golang.org/x/text:v0.3.3")
 	assert.Len(t, child1.Nodes, 0)
 
 	// Test child with 1 sub node
-	child2 := audit.GetAndAssertNode(t, rootNode.Nodes, "rsc.io/quote:v1.5.2")
+	child2 := audit.GetAndAssertNode(t, rootNode[0].Nodes, "rsc.io/quote:v1.5.2")
 	assert.Len(t, child2.Nodes, 1)
 	audit.GetAndAssertNode(t, child2.Nodes, "rsc.io/sampler:v1.3.0")
 }

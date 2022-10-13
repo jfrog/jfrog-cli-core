@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -49,7 +48,7 @@ type TransferProgressMng struct {
 	phases              []*progressbar.TasksWithHeadlineProg
 	// Progress bar manager
 	currentChunkHeadLine *mpb.Bar
-	barsMng *progressbar.ProgressBarMng
+	barsMng              *progressbar.ProgressBarMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
 	stopLine    *mpb.Bar
 	filesStatus int

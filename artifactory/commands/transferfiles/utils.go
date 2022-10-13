@@ -296,6 +296,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 }
 
 func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
+	log.Info("I'm in updateProgress")
 	if phase == nil {
 		return nil
 	}
@@ -309,9 +310,21 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 			}
 		}
 	}
-	if timeEstMng != nil {
-		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize)
+	var sizeSum int64 = 0
+	for _, file := range chunk.Files {
+		if file.Status == Success {
+			if includedInTotalSize && timeEstMng != nil {
+				timeEstMng.transferredSizeBytes += file.SizeBytes
+				timeEstMng.transferredSizeSinceStateUpdate[file.Repo] += file.SizeBytes
+			}
+			sizeSum += file.SizeBytes
+			progressbar.filesStatus++
+		}
 	}
+	if timeEstMng != nil {
+		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize, sizeSum)
+	}
+	progressbar.IncreaseTotalSize(int(sizeSum))
 	return nil
 }
 

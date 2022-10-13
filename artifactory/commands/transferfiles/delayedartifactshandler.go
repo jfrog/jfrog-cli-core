@@ -120,7 +120,7 @@ func ConsumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 		return ConsumeAllDelayFiles(phase, addedDelayFiles)
 	}
 	// Delay will be handled later at Phase3, reduce the total of progress of this phase by the amount of artifacts that were delayed
-	if addedDelayFiles != nil && len(addedDelayFiles) > 0 {
+	if len(addedDelayFiles) > 0 {
 		phaseTaskProgressBar := phase.progressBar.phases[phase.phaseId].GetTasksProgressBar()
 		oldTotal := phaseTaskProgressBar.GetTotal()
 		delayCount, err := countDelayFilesContent(addedDelayFiles)

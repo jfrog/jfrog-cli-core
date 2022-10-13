@@ -41,7 +41,8 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	err := e.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := ConsumeAllDelayFiles
+	err := e.transferManager.doTransferWithProducerConsumer(action, delayAction)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}
@@ -140,7 +141,17 @@ func (e *errorsRetryPhase) initProgressBar() error {
 		filesCount += len(failedFiles.Errors)
 	}
 
-	e.progressBar.AddPhase3(int64(filesCount))
+	// Add the number of delayed items for this repo
+	delayCount := 0
+	delayFiles, err := getDelayFiles([]string{e.repoKey})
+	if err != nil {
+		return err
+	}
+	delayCount, err = countDelayFilesContent(delayFiles)
+	if err != nil {
+		return err
+	}
+	e.progressBar.AddPhase3(int64(filesCount) + int64(delayCount))
 
 	return nil
 }

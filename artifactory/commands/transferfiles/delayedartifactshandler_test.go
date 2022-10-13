@@ -1,15 +1,20 @@
 package transferfiles
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"math"
+	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
+
+var delayTestRepoKey = "delay-local-repo"
 
 func TestDelayedArtifactsMng(t *testing.T) {
 	// Set testing environment
@@ -17,14 +22,18 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
+	delaysDirPath, err := coreutils.GetJfrogTransferDelaysDir()
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(delaysDirPath))
+
 	artifactsNumber := 50
 	// We reduce the maximum number of entities per file to test the creation of multiple delayed artifacts files.
 	originalMaxArtifactsInFile := maxDelayedArtifactsInFile
 	maxDelayedArtifactsInFile = 20
 	defer func() { maxDelayedArtifactsInFile = originalMaxArtifactsInFile }()
 	artifactsChannelMng := createdDelayedArtifactsChannelMng()
-	transferDelayedArtifactsToFile := newTransferDelayedArtifactsToFile(&artifactsChannelMng)
-
+	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsToFile(&artifactsChannelMng, testRepoKey, convertTimeToEpochMilliseconds(time.Now()))
+	assert.NoError(t, err)
 	var writeWaitGroup sync.WaitGroup
 	var readWaitGroup sync.WaitGroup
 
@@ -50,8 +59,32 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	artifactsChannelMng.close()
 	readWaitGroup.Wait()
 	assert.NoError(t, delayedArtifactsErr)
+
+	// add not relevant files to confuse
+	for i := 0; i < 4; i++ {
+
+		assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(delayTestRepoKey, i)), nil, 0644))
+	}
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName("wrong-"+testRepoKey, 1)), nil, 0644))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-wrong", 0)), nil, 0644))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-0-0", 0)), nil, 0644))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-1", 0)), nil, 0644))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName("wrong-"+testRepoKey+"-wrong", 0)), nil, 0644))
+
+	delayFiles, err := getDelayFiles([]string{testRepoKey})
+	assert.NoError(t, err)
+
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
-	validateDelayedArtifactsFiles(t, transferDelayedArtifactsToFile.filesToConsume, expectedNumberOfFiles, artifactsNumber)
+
+	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
+
+	delayCount, err := countDelayFilesContent(delayFiles)
+	assert.NoError(t, err)
+	assert.Equal(t, delayCount, artifactsNumber)
+}
+
+func getDelayMockFileName(repoName string, index int) string {
+	return fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, convertTimeToEpochMilliseconds(time.Now())), index)
 }
 
 // Ensure that all 'delayed artifacts files' have been created and that they contain the expected content
@@ -70,12 +103,8 @@ func validateDelayedArtifactsFilesContent(t *testing.T, path string) (entitiesNu
 	assert.NoError(t, err)
 	assert.True(t, exists, fmt.Sprintf("file: %s does not exist", path))
 
-	var content []byte
-	content, err = fileutils.ReadFile(path)
+	delayedArtifacts, err := readDelayFile(path)
 	assert.NoError(t, err)
-
-	delayedArtifacts := new(DelayedArtifactsFile)
-	assert.NoError(t, json.Unmarshal(content, &delayedArtifacts))
 
 	// Verify all artifacts were written with their unique name
 	artifactsNamesMap := make(map[string]bool)

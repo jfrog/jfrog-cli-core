@@ -431,7 +431,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 }
 
 func printPhaseChange(message string) {
-	log.Info("==========" + message + " ==========")
+	log.Info("========== " + message + " ==========")
 }
 
 // If an error occurred cleanup will:

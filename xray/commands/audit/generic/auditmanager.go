@@ -71,18 +71,18 @@ func GenericAudit(
 			e = errors.New(string(tech) + " is currently not supported")
 		}
 
-		var techResults []services.ScanResponse
+		var techResults services.ScanResponse
 		if e == nil {
-			// If build dependency tree was successful, run Xray scan.
-			techResults, e = audit.Scan(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
+			// If building the dependency tree was successful, run Xray scan.
+			techResults, e = audit.Audit(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
 		}
 
 		if e != nil {
 			// Save the error but continue to audit the next tech
 			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed:\n%s", tech, e.Error()))
 		} else {
-			results = append(results, techResults...)
-			isMultipleRoot = len(results) > 1
+			results = append(results, techResults)
+			isMultipleRoot = len(dependencyTrees) > 1
 		}
 	}
 	if len(errorList) > 0 {

@@ -83,7 +83,7 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	delayAction := ConsumeDelayFilesIfNoErrors
+	delayAction := consumeDelayFilesIfNoErrors
 	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
 }
 

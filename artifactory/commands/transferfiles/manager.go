@@ -65,7 +65,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's delayed artifacts writing mechanism
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
-	delayedArtifactsMng, err := newTransferDelayedArtifactsToFile(&delayedArtifactsChannelMng, ftm.repoKey, convertTimeToEpochMilliseconds(ftm.startTime))
+	delayedArtifactsMng, err := newTransferDelayedArtifactsManager(&delayedArtifactsChannelMng, ftm.repoKey, convertTimeToEpochMilliseconds(ftm.startTime))
 	if err != nil {
 		return err
 	}
@@ -121,12 +121,12 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}
 	}
 
-	// If delayed Action was provided, handle it now.
+	// If delayed action was provided, handle it now.
 	if returnedError == nil && delayAction != nil {
 		var addedDelayFiles []string
 		// If the transfer generated new delay files provide them
 		if delayedArtifactsMng.delayedWriter != nil {
-			addedDelayFiles = delayedArtifactsMng.delayedWriter.ContentFiles
+			addedDelayFiles = delayedArtifactsMng.delayedWriter.contentFiles
 		}
 		returnedError = delayAction(ftm.phaseBase, addedDelayFiles)
 	}

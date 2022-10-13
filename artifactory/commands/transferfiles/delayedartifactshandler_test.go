@@ -32,7 +32,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	maxDelayedArtifactsInFile = 20
 	defer func() { maxDelayedArtifactsInFile = originalMaxArtifactsInFile }()
 	artifactsChannelMng := createdDelayedArtifactsChannelMng()
-	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsToFile(&artifactsChannelMng, testRepoKey, convertTimeToEpochMilliseconds(time.Now()))
+	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsManager(&artifactsChannelMng, testRepoKey, convertTimeToEpochMilliseconds(time.Now()))
 	assert.NoError(t, err)
 	var writeWaitGroup sync.WaitGroup
 	var readWaitGroup sync.WaitGroup
@@ -75,7 +75,6 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
-
 	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
 
 	delayCount, err := countDelayFilesContent(delayFiles)

@@ -22,10 +22,11 @@ var maxDelayedArtifactsInFile = 50000
 type TransferDelayedArtifactsMng struct {
 	// All go routines will write delayedArtifacts to the same channel
 	delayedArtifactsChannelMng *DelayedArtifactsChannelMng
-	// Writer
+	// The Information needed to determine the file names created by the writer
 	repoKey        string
 	phaseStartTime string
-	delayedWriter  *SplitContentWriter
+	// Writes delayed artifacts from channel to files
+	delayedWriter *SplitContentWriter
 }
 
 // Create transfer delays directory inside the JFrog CLI home directory.
@@ -47,8 +48,8 @@ func initTransferDelaysDir() error {
 	return fileutils.CreateDirIfNotExist(delaysDirPath)
 }
 
-// Creates a manager for the files transferring process.
-func newTransferDelayedArtifactsToFile(delayedArtifactsChannelMng *DelayedArtifactsChannelMng, repoKey string, phaseStartTime string) (*TransferDelayedArtifactsMng, error) {
+// Creates a manager for the process of transferring delayed files. Delayed files are files that should be transferred at the very end of the transfer process, such as pom.xml and manifest.json files.
+func newTransferDelayedArtifactsManager(delayedArtifactsChannelMng *DelayedArtifactsChannelMng, repoKey string, phaseStartTime string) (*TransferDelayedArtifactsMng, error) {
 	err := initTransferDelaysDir()
 	if err != nil {
 		return nil, err
@@ -65,9 +66,11 @@ func getDelaysFilePrefix(repoKey string, phaseStartTime string) string {
 
 func (mng *TransferDelayedArtifactsMng) start() (err error) {
 	defer func() {
-		e := mng.delayedWriter.Close()
-		if e == nil {
-			err = errorutils.CheckError(e)
+		if mng.delayedWriter != nil {
+			e := mng.delayedWriter.close()
+			if err == nil {
+				err = errorutils.CheckError(e)
+			}
 		}
 	}()
 
@@ -76,11 +79,11 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		return err
 	}
 
-	mng.delayedWriter = NewSplitContentWriter("delayed_artifacts", maxDelayedArtifactsInFile, delaysDirPath, getDelaysFilePrefix(mng.repoKey, mng.phaseStartTime))
+	mng.delayedWriter = newSplitContentWriter("delayed_artifacts", maxDelayedArtifactsInFile, delaysDirPath, getDelaysFilePrefix(mng.repoKey, mng.phaseStartTime))
 
 	for file := range mng.delayedArtifactsChannelMng.channel {
 		log.Debug(fmt.Sprintf("Delaying the upload of file '%s'. Writing it to be uploaded later...", path.Join(file.Repo, file.Path, file.Name)))
-		err := mng.delayedWriter.WriteRecord(file)
+		err := mng.delayedWriter.writeRecord(file)
 		if err != nil {
 			return err
 		}
@@ -92,8 +95,8 @@ type DelayedArtifactsFile struct {
 	DelayedArtifacts []FileRepresentation `json:"delayed_artifacts,omitempty"`
 }
 
-// Action for the last phase, Upload all the delayed artifact of a given repo
-func ConsumeAllDelayFiles(base phaseBase, addedDelayFiles []string) error {
+// Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
+func consumeAllDelayFiles(base phaseBase, addedDelayFiles []string) error {
 	filesToConsume, err := getDelayFiles([]string{base.repoKey})
 	if err != nil {
 		return err
@@ -105,22 +108,24 @@ func ConsumeAllDelayFiles(base phaseBase, addedDelayFiles []string) error {
 		if err == nil {
 			log.Info("Done handling delayed artifacts uploads.")
 		}
-		return err
 	}
-	return nil
+	return err
 }
 
-func ConsumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) error {
+// Call consumeAllDelayFiles only if there are no failed transferred files for the repository up to this point.
+// In case failed files exists, we reduce the count of files for the given phase by the amount of delayed artifacts.
+func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) error {
 	errCount, err := getRetryErrorCount([]string{phase.repoKey})
 	if err != nil {
 		return err
 	}
-	// no errors - we can handle all the delay files up to this point
+	// No errors - we can handle all the delayed files created up to this point.
 	if errCount == 0 {
-		return ConsumeAllDelayFiles(phase, addedDelayFiles)
+		return consumeAllDelayFiles(phase, addedDelayFiles)
 	}
-	// Delay will be handled later at Phase3, reduce the total of progress of this phase by the amount of artifacts that were delayed
-	if addedDelayFiles != nil && len(addedDelayFiles) > 0 {
+	// There were files which we failed to transferred, and therefore we had error files.
+	// Therefore, the delayed files should be handled later, as part of Phase 3. We also reduce the count of files of this phase by the amount of files which were delayed.
+	if len(addedDelayFiles) > 0 && phase.progressBar != nil {
 		phaseTaskProgressBar := phase.progressBar.phases[phase.phaseId].GetTasksProgressBar()
 		oldTotal := phaseTaskProgressBar.GetTotal()
 		delayCount, err := countDelayFilesContent(addedDelayFiles)
@@ -145,7 +150,6 @@ func countDelayFilesContent(filePaths []string) (int, error) {
 }
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
-
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&base, &delayHelper, errorsChannelMng) {
@@ -154,7 +158,8 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, uploadChunkChan, base, delayHelper, errorsChannelMng)
 	}
 	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
-		// Remove the first delay comparison function to no longer delay it.
+		// We call this method as a recursion in order to have inner order base on the comparison function list.
+		// Remove the first delay comparison function one by one to no longer delay it until the list is empty.
 		if len(filesToConsume) > 0 && len(delayUploadComparisonFunctions) > 0 {
 			return handleDelayedArtifactsFiles(addedDelayFiles, pBase, delayUploadComparisonFunctions[1:])
 		}
@@ -182,6 +187,7 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
+
 		log.Debug("Done handling delayed artifacts file: '" + filePath + "'. Deleting it...")
 	}
 	return nil
@@ -206,19 +212,18 @@ func readDelayFile(path string) (DelayedArtifactsFile, error) {
 
 // Gets a list of all delay files from the CLI's cache for a specific repo
 func getDelayFiles(repoKeys []string) (filesPaths []string, err error) {
-
 	dirPath, err := coreutils.GetJfrogTransferDelaysDir()
 	if err != nil {
-		return []string{}, err
+		return
 	}
 	exist, err := fileutils.IsDirExists(dirPath, false)
 	if !exist || err != nil {
-		return []string{}, err
+		return
 	}
 
 	files, err := fileutils.ListFiles(dirPath, false)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	for _, file := range files {
@@ -327,26 +332,33 @@ func createdDelayedArtifactsChannelMng() DelayedArtifactsChannelMng {
 	return DelayedArtifactsChannelMng{channel: channel}
 }
 
+// SplitContentWriter writes to files a single JSON object that holds a list of records added as stream.
+// It can limit the amount of records per file and splits the content to several files if needed.
 type SplitContentWriter struct {
 	writer *content.ContentWriter
-
-	arrayKey       string
+	// JSON array key of the object
+	arrayKey string
+	// Limit for the amount of records allowed per file
 	maxRecordAllow int
-	dirPath        string
-	filePrefix     string
-
-	recordCount  int
-	fileIndex    int
-	ContentFiles []string
+	// The path for the directory that will hold the files of the content
+	dirPath string
+	// The name for the files that will be generated (a counter will added as a suffix to the files by this writer)
+	filePrefix string
+	// Counter for the amount of records at the current file
+	recordCount int
+	// Counter for amount if files generated for the content
+	fileIndex int
+	// List all the file paths of the files that were generated for the content
+	contentFiles []string
 }
 
-func NewSplitContentWriter(key string, maxRecordsPerFile int, directoryPath string, prefix string) *SplitContentWriter {
-	scw := SplitContentWriter{arrayKey: key, maxRecordAllow: maxRecordsPerFile, dirPath: directoryPath, filePrefix: prefix, ContentFiles: []string{}}
+func newSplitContentWriter(key string, maxRecordsPerFile int, directoryPath string, prefix string) *SplitContentWriter {
+	scw := SplitContentWriter{arrayKey: key, maxRecordAllow: maxRecordsPerFile, dirPath: directoryPath, filePrefix: prefix, contentFiles: []string{}}
 	return &scw
 }
 
 // Create new file if needed, writes a record and closes a file if it reached its maxRecord
-func (w *SplitContentWriter) WriteRecord(record interface{}) error {
+func (w *SplitContentWriter) writeRecord(record interface{}) error {
 	// Init the content writer, which is responsible for writing to the current file
 	if w.writer == nil {
 		writer, err := content.NewContentWriter(w.arrayKey, true, false)
@@ -366,7 +378,7 @@ func (w *SplitContentWriter) WriteRecord(record interface{}) error {
 }
 
 func (w *SplitContentWriter) closeCurrentFile() error {
-	// clean current file
+	// Close current file
 	if w.writer != nil {
 		err := w.writer.Close()
 		if err != nil {
@@ -380,7 +392,7 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 				return fmt.Errorf(fmt.Sprintf("Saving file failed! failed moving %s to %s", w.writer.GetFilePath(), fullPath), err)
 			}
 
-			w.ContentFiles = append(w.ContentFiles, fullPath)
+			w.contentFiles = append(w.contentFiles, fullPath)
 			w.fileIndex++
 		}
 	}
@@ -390,6 +402,6 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 	return nil
 }
 
-func (w *SplitContentWriter) Close() error {
+func (w *SplitContentWriter) close() error {
 	return w.closeCurrentFile()
 }

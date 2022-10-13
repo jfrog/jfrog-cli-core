@@ -10,6 +10,12 @@ type TasksWithHeadlineProg struct {
 	tasksProgressBar *TasksProgressBar
 	emptyLine        *mpb.Bar
 }
+type TasksWithTwoHeadLinesProg struct {
+	firstHeadLineBar       *mpb.Bar
+	emptyLine              *mpb.Bar
+	firstTasksProgressBar  *TasksProgressBar
+	secondTasksProgressBar *TasksProgressBar
+}
 
 func (hp *TasksWithHeadlineProg) GetTasksProgressBar() *TasksProgressBar {
 	return hp.tasksProgressBar

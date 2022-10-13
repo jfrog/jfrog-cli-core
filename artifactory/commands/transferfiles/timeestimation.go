@@ -44,21 +44,9 @@ func newTimeEstimationManager(totalSizeBytes, transferredSizeBytes int64) *timeE
 	return &timeEstimationManager{totalSizeBytes: totalSizeBytes, transferredSizeBytes: transferredSizeBytes, transferredSizeSinceStateUpdate: make(map[string]int64)}
 }
 
-func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool) {
+func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool, sizeSum int64) {
 	if chunkStatus.DurationMillis == 0 {
 		return
-	}
-	var sizeSum int64
-	for _, file := range chunkStatus.Files {
-		if file.Status == Success {
-			if includedInTotalSize {
-				tem.transferredSizeBytes += file.SizeBytes
-				tem.transferredSizeSinceStateUpdate[file.Repo] += file.SizeBytes
-			}
-			if !file.ChecksumDeployed {
-				sizeSum += file.SizeBytes
-			}
-		}
 	}
 
 	// If no files were uploaded regularly (with no errors and not checksum-deployed), don't use this chunk for the time estimation calculation.

@@ -194,11 +194,25 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(headline),
-			decor.Any(func(statistics decor.Statistics) string {
-				return updateFn()
+		),
+	)
+	return pb
+}
+
+func (bm *ProgressBarMng) NewDoubleValuesProgressBar(headLine string, color Color, totalTasks int64, updateFunc func() string) *TasksProgressBar {
+	pb := &TasksProgressBar{}
+	filter := filterColor(color)
+	pb.bar = bm.container.New(0,
+		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+		mpb.BarRemoveOnComplete(),
+		mpb.AppendDecorators(
+			decor.Name(" "+headLine+": "),
+			decor.CountersKibiByte("%.1f/%.1f"), decor.Name("  Files: "), decor.Any(func(statistics decor.Statistics) string {
+				return updateFunc()
 			}),
 		),
 	)
+	pb.IncGeneralProgressTotalBy(totalTasks)
 	return pb
 }
 

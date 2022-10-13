@@ -131,7 +131,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, tdc.timeEstMng, tdc.ignoreState)
+	err = NewTransferProgressMng(allSourceLocalRepos, tdc, 0)
 	if err != nil {
 		return err
 	}
@@ -431,7 +431,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 }
 
 func printPhaseChange(message string) {
-	log.Info("========== " + message + " ==========")
+	log.Info("==========" + message + " ==========")
 }
 
 // If an error occurred cleanup will:

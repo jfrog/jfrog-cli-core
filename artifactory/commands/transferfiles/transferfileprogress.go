@@ -17,11 +17,9 @@ const (
 	Repositories TransferJobType = "Repositories"
 	Files        TransferJobType = "Files"
 	TimeSlots    TransferJobType = "Time Slots"
-	Size         TransferJobType = "Size"
 	Note         string          = "Note: "
+	contentNote  string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )
-
-var contentNote = "In subsequent executions, the command\n" + (strings.Repeat(" ", len(Note))) + "will retry transferring the failed files."
 
 func (tt TransferJobType) String() string {
 	return string(tt)
@@ -49,10 +47,8 @@ type TransferProgressMng struct {
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
 	phases              []*progressbar.TasksWithHeadlineProg
-	// Current file progress file
-	currentChunkHeadLine *mpb.Bar
-
 	// Progress bar manager
+	currentChunkHeadLine *mpb.Bar
 	barsMng *progressbar.ProgressBarMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
 	stopLine    *mpb.Bar
@@ -222,7 +218,7 @@ func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
 }
 
 func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retry transfer failures", false, progressbar.GREEN, Files.String()))
+	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retrying transfer failures", false, progressbar.GREEN, Files.String()))
 }
 
 func (t *TransferProgressMng) RemoveRepository() {
@@ -259,13 +255,8 @@ func (t *TransferProgressMng) RemoveFile(chunkSize int) {
 
 func (t *TransferProgressMng) changeNumberOfFailuresBy(n int) {
 	if t.ShouldDisplay() {
-		old := t.errorBar.GetTotal()
 		diff := int64(n)
-		if old+diff < 0 {
-			t.errorBar.SetGeneralProgressTotal(0)
-		} else {
-			t.errorBar.SetGeneralProgressTotal(old + diff)
-		}
+		t.errorBar.SetGeneralProgressTotal(t.errorBar.GetTotal() + diff)
 	}
 }
 

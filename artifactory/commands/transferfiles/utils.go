@@ -24,10 +24,9 @@ import (
 )
 
 const (
-	waitTimeBetweenChunkStatusSeconds            = 3
-	waitTimeBetweenThreadsUpdateSeconds          = 20
-	assumeProducerConsumerDoneWhenIdleForSeconds = 15
-	DefaultAqlPaginationLimit                    = 10000
+	waitTimeBetweenChunkStatusSeconds   = 3
+	waitTimeBetweenThreadsUpdateSeconds = 20
+	DefaultAqlPaginationLimit           = 10000
 )
 
 type (
@@ -285,7 +284,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 			chunksLifeCycleManager.totalChunks--
 			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
 			chunksLifeCycleManager.deletedChunksSet.Add(chunkId(chunk.UuidToken))
-			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng, phase)
+			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
 				return true
@@ -348,19 +347,9 @@ func reduceCurProcessedChunks() {
 	curProcessedUploadChunks--
 }
 
-func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng, phase *phaseBase) (stopped bool) {
+func handleFilesOfCompletedChunk(chunkFiles []FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
-		switch file.Status {
-		case Success:
-			if phase != nil && phase.phaseId == ErrorsPhase {
-				phase.progressBar.changeNumberOfFailuresBy(-1)
-			}
-		case SkippedMetadataFile:
-			// Skipping metadata on purpose - no need to write error.
-		case Fail, SkippedLargeProps:
-			if phase != nil && phase.phaseId != ErrorsPhase {
-				phase.progressBar.changeNumberOfFailuresBy(1)
-			}
+		if file.Status == Fail || file.Status == SkippedLargeProps {
 			stopped = addErrorToChannel(errorsChannelMng, file)
 			if stopped {
 				return
@@ -485,8 +474,10 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk, uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
+func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
+	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
+		defer pcWrapper.notifyIfUploaderFinished(false)
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
@@ -518,7 +509,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 		}
 		curUploadChunk.appendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -528,7 +519,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}
@@ -755,8 +746,9 @@ func updateMaxDockerUniqueSnapshots(serviceManager artifactory.ArtifactoryServic
 	return serviceManager.UpdateLocalRepository().Docker(repoParams)
 }
 
-func stopTransferInArtifactory(ctx context.Context, serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
-	runningNodes, err := getRunningNodes(ctx, serverDetails)
+func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService *srcUserPluginService) error {
+	// To avoid situations where context has already been canceled, we use a new context here instead of the old context of the transfer phase.
+	runningNodes, err := getRunningNodes(context.Background(), serverDetails)
 	if err != nil {
 		return err
 	} else {

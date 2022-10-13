@@ -171,19 +171,25 @@ func writeContentSynchronisation(resultMap *map[string]interface{}, key, value s
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	cs.Statistics.Enabled = &enabled
+	cs.Statistics = &services.ContentSynchronisationStatistics{
+		Enabled: &enabled,
+	}
 
 	enabled, err = strconv.ParseBool(answerArray[2])
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	cs.Properties.Enabled = &enabled
+	cs.Properties = &services.ContentSynchronisationProperties{
+		Enabled: &enabled,
+	}
 
 	enabled, err = strconv.ParseBool(answerArray[3])
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	cs.Source.OriginAbsenceDetection = &enabled
+	cs.Source = &services.ContentSynchronisationSource{
+		OriginAbsenceDetection: &enabled,
+	}
 
 	(*resultMap)[key] = cs
 	return nil

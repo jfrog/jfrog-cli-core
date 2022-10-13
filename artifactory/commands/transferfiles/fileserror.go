@@ -1,11 +1,17 @@
 package transferfiles
 
 import (
+	"errors"
+	"fmt"
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"strings"
 	"time"
 )
+
+type errorFileHandlerFunc func() parallel.TaskFunc
 
 // Manages the phase of handling upload failures that were collected during previous runs and phases.
 type errorsRetryPhase struct {
@@ -29,11 +35,13 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 		return nil
 	}
 	log.Info("Starting to handle previous upload failures...")
-	manager := newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
+	e.transferManager = newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		return e.handleErrorsFiles(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
+		return err
 	}
-	err := manager.doTransferWithProducerConsumer(action)
+	err := e.transferManager.doTransferWithProducerConsumer(action)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}
@@ -47,34 +55,58 @@ func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatus
 	return
 }
 
-func (e *errorsRetryPhase) handleErrorsFiles(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-	for _, path := range e.errorsFilesToHandle {
-		if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
-			return nil
-		}
-		log.Debug("Handling errors file: '" + path + "'")
-
-		// read and parse file
-		failedFiles, err := readErrorFile(path)
-		if err != nil {
-			return err
-		}
-
-		// upload
-		shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
-		if err != nil || shouldStop {
-			return err
-		}
-
-		// Remove the file, so it won't be consumed again.
-		err = os.Remove(path)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-
-		log.Debug("Done handling errors file: '" + path + "'. Deleting it...")
+func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
+		return nil
 	}
+	log.Debug("Handling errors file: '", errFilePath, "'")
+
+	// Read and parse the file
+	failedFiles, err := readErrorFile(errFilePath)
+	if err != nil {
+		return err
+	}
+
+	if e.progressBar != nil {
+		// Since we're about to handle the transfer retry of the failed files,
+		// we should now decrement the failures counter view.
+		e.progressBar.changeNumberOfFailuresBy(-1 * len(failedFiles.Errors))
+	}
+
+	// Upload
+	shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+	if err != nil || shouldStop {
+		return err
+	}
+
+	// Remove the file, so it won't be consumed again.
+	err = os.Remove(errFilePath)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
+	log.Debug("Done handling errors file: '", errFilePath, "'. Deleting it...")
 	return nil
+}
+
+func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
+	return func() parallel.TaskFunc {
+		return func(threadId int) error {
+			var errList []string
+			var err error
+			defer pcWrapper.notifyIfBuilderFinished(false)
+			for _, errFile := range e.errorsFilesToHandle {
+				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+				if err != nil {
+					errList = append(errList, fmt.Sprintf("handleErrorsFile for %s failed with error: \n%s", errFile, err.Error()))
+				}
+			}
+			if len(errList) > 0 {
+				err = errors.New(strings.Join(errList, "\n"))
+			}
+			return err
+		}
+	}
 }
 
 func (e *errorsRetryPhase) shouldSkipPhase() (bool, error) {

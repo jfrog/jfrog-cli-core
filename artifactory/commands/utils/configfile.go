@@ -1,13 +1,14 @@
 package utils
 
 import (
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -105,13 +106,13 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 			err = configFile.configPip()
 		case utils.Pipenv:
 			err = configFile.configPipenv()
+		case utils.Poetry:
+			err = configFile.configPoetry()
 		case utils.Yarn:
 			err = configFile.configYarn()
 		case utils.Npm:
 			err = configFile.configNpm()
-		case utils.Dotnet:
-			fallthrough
-		case utils.Nuget:
+		case utils.Nuget, utils.Dotnet:
 			err = configFile.configDotnet()
 		case utils.Maven:
 			err = configFile.configMaven()
@@ -231,6 +232,10 @@ func (configFile *ConfigFile) configPip() error {
 }
 
 func (configFile *ConfigFile) configPipenv() error {
+	return configFile.setResolver()
+}
+
+func (configFile *ConfigFile) configPoetry() error {
 	return configFile.setResolver()
 }
 

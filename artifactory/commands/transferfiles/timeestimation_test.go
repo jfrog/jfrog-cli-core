@@ -137,7 +137,7 @@ func TestAddingToFullLastSpeedsSlice(t *testing.T) {
 }
 
 // Adds a chunk with one non checksum-deployed file and calculates and returns the chunk speed.
-func addOneFileChunk(timeEstMng *timeEstimationManager, workingThreads, chunkDurationMilli, chunkSizeMb int) float64 {
+func addOneFileChunk(timeEstMng *timeEstimationManager, workingThreads, chunkDurationMilli, chunkSizeMb int, totalSize int64) float64 {
 	chunkDuration := int64(chunkDurationMilli * milliSecsInSecond)
 	chunkSize := int64(chunkSizeMb * bytesInMB)
 	chunkStatus := ChunkStatus{
@@ -146,7 +146,8 @@ func addOneFileChunk(timeEstMng *timeEstimationManager, workingThreads, chunkDur
 			createFileUploadStatusResponse("", chunkSize, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus, workingThreads, true)
+
+	timeEstMng.addChunkStatus(chunkStatus, workingThreads, true, totalSize)
 	return calculateChunkSpeed(workingThreads, chunkSize, chunkDuration)
 }
 

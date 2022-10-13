@@ -258,6 +258,10 @@ func (t *TransferProgressMng) abortMetricsBars() {
 		t.errorBar.GetBar().Abort(true)
 		t.errorBar = nil
 	}
+	if t.errorNote != nil {
+		t.errorNote.GetBar().Abort(true)
+		t.errorNote = nil
+	}
 	if t.speedBar != nil {
 		t.speedBar.GetBar().Abort(true)
 		t.speedBar = nil

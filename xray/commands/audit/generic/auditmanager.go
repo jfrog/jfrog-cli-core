@@ -35,25 +35,37 @@ func GenericAudit(
 	ignoreConfigFile bool,
 	workingDirs []string,
 	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+
 	if len(workingDirs) == 0 {
-		return singleGenericAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+		log.Info("Auditing project: ")
+		return doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
 	}
 	projectDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
 	var errorList []string
-	defer os.Chdir(projectDir)
+	defer func() {
+		e := os.Chdir(projectDir)
+		if err == nil {
+			err = e
+		}
+	}()
 	for _, wd := range workingDirs {
-		absWd := filepath.Join(projectDir, wd)
-		log.Info("Audit project: " + absWd)
-		e := os.Chdir(absWd)
+		absWd, e := filepath.Abs(wd)
 		if e != nil {
 			// Save the error but continue to the other paths
-			errorList = append(errorList, fmt.Sprintf("audit command couldn't find the following path:%s\n%s", absWd, e.Error()))
+			errorList = append(errorList, fmt.Sprintf("the audit command couldn't find the following path: %s\n%s", wd, e.Error()))
 			continue
 		}
-		techResults, isMultipleRootProject, e := singleGenericAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+		log.Info("Auditing project: " + absWd)
+		e = os.Chdir(absWd)
+		if e != nil {
+			// Save the error but continue to the other paths
+			errorList = append(errorList, fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s", absWd, e.Error()))
+			continue
+		}
+		techResults, isMultipleRootProject, e := doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
 		if e != nil {
 			// Save the error but continue to the other paths
 			errorList = append(errorList, fmt.Sprintf("audit command in %s failed:\n%s", absWd, e.Error()))
@@ -68,8 +80,8 @@ func GenericAudit(
 	return
 }
 
-// GenericAudit audits the project found in the current directory using Xray.
-func singleGenericAudit(
+//  Audits the project found in the current directory using Xray.
+func doAudit(
 	xrayGraphScanParams services.XrayGraphScanParams,
 	serverDetails *config.ServerDetails,
 	excludeTestDeps,

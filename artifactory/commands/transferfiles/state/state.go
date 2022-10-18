@@ -60,7 +60,7 @@ func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*R
 	}
 	repo := newRepositoryState(repoKey)
 	ts.Repositories = append(ts.Repositories, repo)
-	return &repo, nil
+	return &ts.Repositories[len(ts.Repositories)-1], nil
 }
 
 func newRepositoryState(repoKey string) Repository {

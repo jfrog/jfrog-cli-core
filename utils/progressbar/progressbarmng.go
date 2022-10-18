@@ -12,6 +12,7 @@ import (
 	golangLog "log"
 	"math"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -199,20 +200,24 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 	return pb
 }
 
-func (bm *ProgressBarMng) NewDoubleValuesProgressBar(headLine string, color Color, totalTasks int64, updateFunc func() string) *TasksProgressBar {
+// A progress bar with two counters values shown on the right side of the progress bar, the first value controls what the bar shows
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, totalTasks2 int, doneTaks2 *int) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	filter := filterColor(color)
+
 	pb.bar = bm.container.New(0,
 		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(" "+headLine+": "),
-			decor.CountersKibiByte("%.1f/%.1f"), decor.Name("  Files: "), decor.Any(func(statistics decor.Statistics) string {
-				return updateFunc()
+			decor.Name(" "+headLine1+": "),
+			decor.CountersKibiByte("%.1f/%.1f"), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
+				s1 := strconv.Itoa(*doneTaks2)
+				s2 := strconv.Itoa(totalTasks2)
+				return s1 + "/" + s2
 			}),
 		),
 	)
-	pb.IncGeneralProgressTotalBy(totalTasks)
+	pb.IncGeneralProgressTotalBy(totalTasks1)
 	return pb
 }
 

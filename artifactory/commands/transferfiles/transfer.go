@@ -130,7 +130,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 	}
 
-	// Set progress bar with the length of the source local and build info repositories
+	// Init the progress bar
 	err = NewTransferProgressMng(allSourceLocalRepos, tdc, 0)
 	if err != nil {
 		return err

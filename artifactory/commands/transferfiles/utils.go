@@ -294,6 +294,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 	return false
 }
 
+// Updating the progress status ;storage transfered, files transfere, remaining time estimation, update progress bars
 func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
 	log.Info("I'm in updateProgress")
 	if phase == nil {

@@ -31,7 +31,8 @@ type TransferProgressMng struct {
 	shouldDisplay bool
 	// Task bar with the total repositories transfer progress
 	totalRepositories *progressbar.TasksWithHeadlineProg
-	totalSize         *progressbar.TasksProgressBar
+	// A bar showing the remaining storage to transfer in the process
+	totalSize *progressbar.TasksProgressBar
 	// A bar showing the number of working transfer threads
 	workingThreads *progressbar.TasksProgressBar
 	// A bar showing the speed of the data transfer
@@ -60,8 +61,8 @@ func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesComm
 	totalRepositories := int64(len(allSourceLocalRepos))
 	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(allSourceLocalRepos...)
 	storageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
-	totalFiles := storageInfo.BinariesCount
-	//Sara
+	totalFiles, err := strconv.Atoi(storageInfo.BinariesCount)
+
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
 		return err
@@ -70,10 +71,8 @@ func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesComm
 	// Init the total repositories transfer progress bar
 	//edit storage and files
 	transfer.filesStatus = fileStatus
-	transfer.totalSize = transfer.barsMng.NewDoubleValuesProgressBar("Storage", progressbar.GREEN, totalSize, func() string {
-		s1 := strconv.Itoa(transfer.filesStatus)
-		return s1 + "/" + totalFiles
-	})
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, totalSize, totalFiles, &fileStatus)
+
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
 
@@ -129,7 +128,7 @@ func (t *TransferProgressMng) Quit() error {
 		}
 		if t.totalSize != nil {
 			t.totalSize.GetBar().Abort(true)
-			t.totalSize = nil
+			t.totalSize.GetBar().Wait()
 		}
 		// Wait a refresh rate to make sure all aborts have finished
 		time.Sleep(progressbar.ProgressRefreshRate)
@@ -141,6 +140,7 @@ func (t *TransferProgressMng) Quit() error {
 			t.stopLine = nil
 		}
 	}
+
 	// Close log file
 	if t.barsMng.GetLogFile() != nil {
 		err := corelog.CloseLogFile(t.barsMng.GetLogFile())

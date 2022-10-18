@@ -17,7 +17,8 @@ func TestGetEstimatedRemainingTime(t *testing.T) {
 			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	size := 10*bytesInMB + 15*bytesInMB + 8*bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus1, 3, true, int64(size))
 	assert.Equal(t, 7.5, timeEstMng.getSpeed())
 	assert.Equal(t, "7.500 MB/s", timeEstMng.getSpeedString())
 	assert.Equal(t, int64(62), timeEstMng.getEstimatedRemainingTime())
@@ -31,7 +32,8 @@ func TestGetEstimatedRemainingTime(t *testing.T) {
 			createFileUploadStatusResponse("", 6*bytesInMB, false, Fail),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus2, 2, false)
+	secondsize := 21.25*bytesInMB + 6*bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus2, 2, false, int64(secondsize))
 	assert.Equal(t, float64(8), timeEstMng.getSpeed())
 	assert.Equal(t, "8.000 MB/s", timeEstMng.getSpeedString())
 	assert.Equal(t, int64(58), timeEstMng.getEstimatedRemainingTime())
@@ -48,7 +50,8 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 			createFileUploadStatusResponse("", 8*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	thirdSize := 8 * bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus1, 3, true, int64(thirdSize))
 	assert.Equal(t, "Not available yet", timeEstMng.getSpeedString())
 	assert.Equal(t, "Not available yet", timeEstMng.getEstimatedRemainingTimeString())
 }
@@ -124,15 +127,15 @@ func TestAddingToFullLastSpeedsSlice(t *testing.T) {
 	timeEstMng.lastSpeeds = []float64{1.1, 2.2, 3.3, 4.4, 5.5, 6.6}
 
 	// Add a chunk and assert the oldest speed is removed, new is added, and the chunk len remains the same.
-	firstChunkSpeed := addOneFileChunk(timeEstMng, 2, 20, 1)
+	firstChunkSpeed := addOneFileChunk(timeEstMng, 2, 20, 1, 1)
 	assert.Equal(t, []float64{2.2, 3.3, 4.4, 5.5, 6.6, firstChunkSpeed}, timeEstMng.lastSpeeds)
 
 	// Lower threads and add a chunk. Expecting the slice to shrink and the new speed to be added in the end.
-	secondChunkSpeed := addOneFileChunk(timeEstMng, 1, 30, 2)
+	secondChunkSpeed := addOneFileChunk(timeEstMng, 1, 30, 2, 1)
 	assert.Equal(t, []float64{6.6, firstChunkSpeed, secondChunkSpeed}, timeEstMng.lastSpeeds)
 
 	// Increase threads and add a chunk. Expecting the slice len to increase with the new speed.
-	thirdChunkSpeed := addOneFileChunk(timeEstMng, 3, 40, 3)
+	thirdChunkSpeed := addOneFileChunk(timeEstMng, 3, 40, 3, 1)
 	assert.Equal(t, []float64{6.6, firstChunkSpeed, secondChunkSpeed, thirdChunkSpeed}, timeEstMng.lastSpeeds)
 }
 
@@ -171,7 +174,8 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, true, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus1, 3, true)
+	firstChunkSize := 10*bytesInMB + 15*bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus1, 3, true, int64(firstChunkSize))
 
 	// Add another chunk of repo1 which is not included in total. Expected not to be included in update.
 	chunkStatus2 := ChunkStatus{
@@ -180,7 +184,8 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 21*bytesInMB, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus2, 3, false)
+	chunkSize2 := 21 * bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus2, 3, false, int64(chunkSize2))
 
 	// Add a chunk of repo2 which is included in total. The failed file should be ignored.
 	chunkStatus3 := ChunkStatus{
@@ -190,7 +195,8 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo2Key, 133*bytesInMB, false, Fail),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus3, 3, true)
+	chunkSize3 := 13*bytesInMB + 133*bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus3, 3, true, int64(chunkSize3))
 	saveAndAssertTransferredSizes(t, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes)
 
 	// Add one more chunk of repo2.
@@ -200,7 +206,8 @@ func TestTransferredSizeInState(t *testing.T) {
 			createFileUploadStatusResponse(repo2Key, 9*bytesInMB, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus4, 3, true)
+	chunkSize4 := 9 * bytesInMB
+	timeEstMng.addChunkStatus(chunkStatus4, 3, true, int64(chunkSize4))
 	saveAndAssertTransferredSizes(t, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
 }
 

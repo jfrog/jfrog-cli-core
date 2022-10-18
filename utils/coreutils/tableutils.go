@@ -198,7 +198,7 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 	colMaxWidth := DefaultMaxColWidth
 
 	// If terminal, calculate the max width.
-	if log.IsStdErrTerminal() {
+	if log.IsStdOutTerminal() {
 		colNum := len(columnConfigs)
 		termWidth, err := getTerminalAllowedWidth(colNum)
 		if err != nil {

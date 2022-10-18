@@ -101,7 +101,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()
 	}
-	if err := tdc.stateManager.LockTransferStateManager(); err != nil {
+	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
 	}
 	defer func() {

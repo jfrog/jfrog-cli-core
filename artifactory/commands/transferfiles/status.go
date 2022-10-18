@@ -52,6 +52,9 @@ func calcPercentage(transferred, total int) string {
 }
 
 func calcPercentageInt64(transferred, total int64) string {
+	if transferred == 0 || total == 0 {
+		return ""
+	}
 	return fmt.Sprintf(" (%.1f%%)", float64(transferred)/float64(total)*100)
 }
 

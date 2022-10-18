@@ -16,6 +16,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -166,7 +167,11 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
+
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
+		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
+			log.Error("Couldn't set the current number of working threads:", err.Error())
+		}
 		if progressBar != nil {
 			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
@@ -261,7 +266,6 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 // When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
 func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResponse, progressbar *TransferProgressMng,
 	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
-	initialWorkingThreads := curProcessedUploadChunks
 	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
@@ -275,7 +279,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
-			err := updateProgress(phase, progressbar, timeEstMng, chunk, initialWorkingThreads)
+			err := updateProgress(phase, progressbar, timeEstMng, chunk)
 			if err != nil {
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
@@ -294,24 +298,37 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 	return false
 }
 
-func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
+func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus) error {
 	if phase == nil {
 		return nil
 	}
-	includedInTotalSize := false
 	if phase.phaseId == FullTransferPhase || phase.phaseId == ErrorsPhase {
-		includedInTotalSize = true
 		if progressbar != nil {
 			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
 			if err != nil {
 				return err
 			}
 		}
+		if err := updateChunkInState(phase.stateManager, phase.repoKey, &chunk); err != nil {
+			return err
+		}
 	}
 	if timeEstMng != nil {
-		timeEstMng.addChunkStatus(chunk, workingThreads, includedInTotalSize)
+		timeEstMng.addChunkStatus(chunk)
 	}
 	return nil
+}
+
+func updateChunkInState(stateManager *state.TransferStateManager, repoKey string, chunk *ChunkStatus) error {
+	var totalSizeInBytes int64 = 0
+	var totalFiles int = 0
+	for _, file := range chunk.Files {
+		if file.Status == Success {
+			totalSizeInBytes += file.SizeBytes
+			totalFiles++
+		}
+	}
+	return stateManager.IncTransferredSizeAndFiles(repoKey, totalFiles, totalSizeInBytes)
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
@@ -22,13 +23,15 @@ import (
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	finishStopping, _ := transferFilesCommand.handleStop(nil)
 	finishStopping()
 }
 
 func TestCancelFunc(t *testing.T) {
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	assert.False(t, transferFilesCommand.shouldStop())
 
 	transferFilesCommand.cancelFunc()
@@ -78,8 +81,9 @@ func TestVerifySourceTargetConnectivity(t *testing.T) {
 	})
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
-	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
-	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	transferFilesCommand, err := NewTransferFilesCommand(serverDetails, serverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
 	assert.NoError(t, err)
 }
 
@@ -93,8 +97,9 @@ func TestVerifySourceTargetConnectivityError(t *testing.T) {
 	})
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
-	transferFilesCommand := NewTransferFilesCommand(serverDetails, serverDetails)
-	err := transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
+	transferFilesCommand, err := NewTransferFilesCommand(serverDetails, serverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.verifySourceTargetConnectivity(srcPluginManager)
 	assert.ErrorContains(t, err, "No connection to target")
 }
 
@@ -123,7 +128,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 	totalChunkStatusVisits := 0
 	totalUploadChunkVisits := 0
 	fileSample := FileRepresentation{
-		Repo: "my-repo-local",
+		Repo: repo1Key,
 		Path: "rel-path",
 		Name: "name-demo",
 	}
@@ -132,7 +137,10 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
 
-	uploadChunkAndPollTwice(t, srcPluginManager, fileSample)
+	stateManager := &state.TransferStateManager{TransferState: state.TransferState{}, TransferRunStatus: state.TransferRunStatus{}}
+	stateManager.SetRepoState(repo1Key, 0, 0, true)
+	phaseBase := &phaseBase{context: context.Background(), stateManager: stateManager, srcUpService: srcPluginManager, repoKey: repo1Key}
+	uploadChunkAndPollTwice(t, phaseBase, fileSample)
 
 	// Assert that exactly 2 requests to chunk status were made
 	// First request - get one DONE chunk and one IN PROGRESS
@@ -141,7 +149,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 }
 
 // Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
-func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginService, fileSample FileRepresentation) {
+func uploadChunkAndPollTwice(t *testing.T, phaseBase *phaseBase, fileSample FileRepresentation) {
 	curThreads = 8
 	uploadChunksChan := make(chan UploadedChunkData, 3)
 	doneChan := make(chan bool, 1)
@@ -149,16 +157,16 @@ func uploadChunkAndPollTwice(t *testing.T, srcPluginManager *srcUserPluginServic
 
 	chunk := UploadChunk{}
 	chunk.appendUploadCandidateIfNeeded(fileSample, false)
-	stopped := uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadChunksChan, nil)
+	stopped := uploadChunkWhenPossible(phaseBase, chunk, uploadChunksChan, nil)
 	assert.False(t, stopped)
-	stopped = uploadChunkWhenPossible(&phaseBase{context: context.Background(), srcUpService: srcPluginManager}, chunk, uploadChunksChan, nil)
+	stopped = uploadChunkWhenPossible(phaseBase, chunk, uploadChunksChan, nil)
 	assert.False(t, stopped)
 	assert.Equal(t, 2, curProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(nil, srcPluginManager, uploadChunksChan, doneChan, nil)
+		pollUploads(phaseBase, phaseBase.srcUpService, uploadChunksChan, doneChan, nil)
 	}()
 	// Let the whole process run for a few chunk status checks, then mark it as done.
 	time.Sleep(5 * waitTimeBetweenChunkStatusSeconds * time.Second)
@@ -289,7 +297,8 @@ func TestGetAllLocalRepositories(t *testing.T) {
 	defer testServer.Close()
 
 	// Get and assert regular local and build info repositories
-	transferFilesCommand := NewTransferFilesCommand(nil, nil)
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
 	storageInfoManager, err := coreUtils.NewStorageInfoManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	localRepos, localBuildInfoRepo, err := transferFilesCommand.getAllLocalRepos(serverDetails, storageInfoManager)
@@ -319,8 +328,9 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer targetTestServer.Close()
 
 	// Init and assert storage info managers
-	transferFilesCommand := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
-	err := transferFilesCommand.initStorageInfoManagers()
+	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	assert.NoError(t, err)
+	err = transferFilesCommand.initStorageInfoManagers()
 	assert.NoError(t, err)
 	assert.True(t, sourceServerCalculated)
 	assert.True(t, targetServerCalculated)

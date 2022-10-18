@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -22,8 +23,66 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-// GenericAudit audits the project found in the current directory using Xray.
+// GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(
+	xrayGraphScanParams services.XrayGraphScanParams,
+	serverDetails *config.ServerDetails,
+	excludeTestDeps,
+	useWrapper,
+	insecureTls bool,
+	args []string,
+	progress ioUtils.ProgressMgr,
+	requirementsFile string,
+	ignoreConfigFile bool,
+	workingDirs []string,
+	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+
+	if len(workingDirs) == 0 {
+		log.Info("Auditing project: ")
+		return doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+	}
+	projectDir, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	var errorList []string
+	defer func() {
+		e := os.Chdir(projectDir)
+		if err == nil {
+			err = e
+		}
+	}()
+	for _, wd := range workingDirs {
+		absWd, e := filepath.Abs(wd)
+		if e != nil {
+			// Save the error but continue to the other paths
+			errorList = append(errorList, fmt.Sprintf("the audit command couldn't find the following path: %s\n%s", wd, e.Error()))
+			continue
+		}
+		log.Info("Auditing project: " + absWd)
+		e = os.Chdir(absWd)
+		if e != nil {
+			// Save the error but continue to the other paths
+			errorList = append(errorList, fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s", absWd, e.Error()))
+			continue
+		}
+		techResults, isMultipleRootProject, e := doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+		if e != nil {
+			// Save the error but continue to the other paths
+			errorList = append(errorList, fmt.Sprintf("audit command in %s failed:\n%s", absWd, e.Error()))
+		} else {
+			results = append(results, techResults...)
+			isMultipleRoot = isMultipleRootProject
+		}
+	}
+	if len(errorList) > 0 {
+		err = errors.New(strings.Join(errorList, "\n"))
+	}
+	return
+}
+
+//  Audits the project found in the current directory using Xray.
+func doAudit(
 	xrayGraphScanParams services.XrayGraphScanParams,
 	serverDetails *config.ServerDetails,
 	excludeTestDeps,

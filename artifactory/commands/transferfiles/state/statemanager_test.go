@@ -202,3 +202,11 @@ func TestSetAndGetWorkingThreads(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, workingThreads)
 }
+
+func TestTryLockStateManager(t *testing.T) {
+	stateManager, cleanUp := initStateTest(t)
+	defer cleanUp()
+
+	assert.NoError(t, stateManager.tryLockStateManager())
+	assert.ErrorIs(t, new(AlreadyLockedError), stateManager.tryLockStateManager())
+}

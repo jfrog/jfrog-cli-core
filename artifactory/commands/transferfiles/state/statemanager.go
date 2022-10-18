@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 const saveIntervalSecs = 10
@@ -44,7 +45,7 @@ func NewTransferStateManager(loadRunStatus bool) (*TransferStateManager, error) 
 }
 
 func (ts *TransferStateManager) LockTransferStateManager() error {
-	return ts.lockStateManager()
+	return ts.tryLockStateManager()
 }
 
 func (ts *TransferStateManager) UnlockTransferStateManager() error {
@@ -245,11 +246,23 @@ func (ts *TransferStateManager) SaveState() error {
 	return ts.persistTransferState()
 }
 
-// Lock the state manager. We currently use this lock only to determine whether a transfer is in process.
-func (ts *TransferStateManager) lockStateManager() error {
+type AlreadyLockedError struct{}
+
+func (m *AlreadyLockedError) Error() string {
+	return "Files transfer is already running"
+}
+
+// Lock the state manager. We use the File Lock to acquire two purposes:
+// 1. Make sure that only one transfer-files process is running
+// 2. Check whether there is an active transfer-file process when providing the --status flag. We also extract the start timestamp (See 'GetStartTimestamp').
+func (ts *TransferStateManager) tryLockStateManager() error {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
 		return err
+	}
+	startTimestamp, err := lock.GetLastLockTimestamp(lockDirPath)
+	if startTimestamp != 0 {
+		return errorutils.CheckError(new(AlreadyLockedError))
 	}
 	unlockFunc, err := lock.CreateLock(lockDirPath)
 	if err != nil {

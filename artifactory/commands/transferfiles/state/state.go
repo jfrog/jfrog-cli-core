@@ -17,15 +17,15 @@ type ActionOnStateFunc func(state *TransferState) error
 
 // This struct holds the current state of the whole transfer of the source Artifactory instance.
 // It is saved to a file in JFrog CLI's home.
-// The command determines actions based on the state, such as if full transfer need or was completed before,
-// on what time range files diffs should be fixed, etc.
+// The transfer-files command uses this state to determine which phases need to be executed for each a repository,
+// as well as other decisions related to the process execution.
 type TransferState struct {
 	lastSaveTimestamp time.Time    `json:"-"`
 	Repositories      []Repository `json:"repositories,omitempty"`
 }
 
 type Repository struct {
-	SizeableState
+	ProgressState
 	Name         string        `json:"name,omitempty"`
 	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
 	Diffs        []DiffDetails `json:"diffs,omitempty"`
@@ -37,10 +37,12 @@ type PhaseDetails struct {
 }
 
 type DiffDetails struct {
-	FilesDiffRunTime      PhaseDetails `json:"files_diff,omitempty"`
-	PropertiesDiffRunTime PhaseDetails `json:"properties_diff,omitempty"`
-	HandledRange          PhaseDetails `json:"handled_range,omitempty"`
-	Completed             bool         `json:"completed,omitempty"`
+	// The start and end time of a complete transferring Files Diff phase
+	FilesDiffRunTime PhaseDetails `json:"files_diff,omitempty"`
+	// The start and end time of the last handled range
+	HandledRange PhaseDetails `json:"handled_range,omitempty"`
+	// If false, start the Diff phase from the start time of the full transfer
+	Completed bool `json:"completed,omitempty"`
 }
 
 func NewTransferState() *TransferState {
@@ -70,21 +72,21 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 		return err
 	}
 
-	if !saveStateMutex.TryLock() {
-		return nil
-	}
-	defer saveStateMutex.Unlock()
 	now := time.Now()
-
 	if now.Sub(ts.lastSaveTimestamp).Seconds() < saveIntervalSecs {
 		return nil
 	}
 
+	if !saveStateMutex.TryLock() {
+		return nil
+	}
+	defer saveStateMutex.Unlock()
+
 	ts.lastSaveTimestamp = now
-	return ts.saveTransferState()
+	return ts.persistTransferState()
 }
 
-func (ts *TransferState) saveTransferState() (err error) {
+func (ts *TransferState) persistTransferState() (err error) {
 	stateFilePath, err := coreutils.GetJfrogTransferStateFilePath()
 	if err != nil {
 		return err

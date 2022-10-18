@@ -238,5 +238,16 @@ func GetLastLockTimestamp(lockDirPath string) (int64, error) {
 		return 0, err
 	}
 
-	return locks[len(locks)-1].currentTime, nil
+	lastLock := locks[len(locks)-1]
+
+	// If the lock isn't aquired by a running process, an unexpected error was occured.
+	running, err := isProcessRunning(lastLock.pid)
+	if err != nil {
+		return 0, err
+	}
+	if !running {
+		return 0, nil
+	}
+
+	return lastLock.currentTime, nil
 }

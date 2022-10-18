@@ -16,9 +16,6 @@ const sizeUnits = "KMGTPE"
 
 func ShowStatus() error {
 	var output strings.Builder
-	defer func() {
-		log.Output(output.String())
-	}()
 
 	startTimestamp, err := state.GetStartTimestamp()
 	if err != nil {
@@ -26,6 +23,7 @@ func ShowStatus() error {
 	}
 	if startTimestamp == 0 {
 		addString(&output, "🔴", "Status", "Not running", 0)
+		log.Output(output.String())
 		return nil
 	}
 	stateManager, err := state.NewTransferStateManager(true)
@@ -39,15 +37,16 @@ func ShowStatus() error {
 		output.WriteString("\n")
 		setRepositoryStatus(stateManager, &output)
 	}
+	log.Output(output.String())
 	return nil
 }
 
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, startTimestamp int64) error {
 	addTitle(output, "Overall Transfer Status")
-	addString(output, "🟢", "Status", "Transferring files", 3)
+	addString(output, "🟢", "Status", "Running", 3)
 	addString(output, "⏱️ ", "Start time", time.Unix(0, startTimestamp).Format(time.Stamp), 3)
-	addString(output, "🗄 ", "Transferred size", sizeToString(stateManager.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalSizeBytes)+calcPercentageInt64(stateManager.TransferredSizeBytes, stateManager.TotalSizeBytes), 2)
-	addString(output, "📦", "Transferred repositories", fmt.Sprintf("%d / %d", stateManager.TransferredUnits, stateManager.TotalUnits)+calcPercentage(stateManager.TransferredUnits, stateManager.TotalUnits), 1)
+	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalSizeBytes)+calcPercentageInt64(stateManager.TransferredSizeBytes, stateManager.TotalSizeBytes), 2)
+	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TransferredUnits, stateManager.TotalUnits)+calcPercentage(stateManager.TransferredUnits, stateManager.TotalUnits), 1)
 
 	transferSettings, err := utils.LoadTransferSettings()
 	if err != nil {
@@ -85,8 +84,8 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		} else {
 			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 3)
 		}
-		addString(output, "🗄 ", "Transferred data", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
-		addString(output, "📄", "Transferred files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentage(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
+		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
+		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentage(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
 	case FilesDiffPhase:
 		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 3)
 	}

@@ -135,12 +135,26 @@ func TestGetLastLockTimestamp(t *testing.T) {
 	assert.NoError(t, lock.Unlock())
 }
 
+func TestGetLastLockNotRunningTimestamp(t *testing.T) {
+	// Create an empty dir and make sure we get zero timestamp
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	timestamp, err := GetLastLockTimestamp(tmpDir)
+	assert.NoError(t, err)
+	assert.Zero(t, timestamp)
+
+	// Create a lock for a non-running process and make sure the timestamp is zero
+	lock := getLock(math.MaxInt-1, t)
+	timestamp, err = GetLastLockTimestamp(testLockDirPath)
+	assert.NoError(t, err)
+	assert.Zero(t, timestamp)
+
+	// Removing the created lock file
+	assert.NoError(t, lock.Unlock())
+}
+
 func getLock(pid int, t *testing.T) Lock {
-	currentTime := time.Now().UnixNano()
-	lock := Lock{
-		pid:         pid,
-		currentTime: currentTime,
-	}
+	lock := Lock{pid: pid, currentTime: time.Now().UnixNano()}
 	assert.NotZero(t, testLockDirPath, "An error occurred while initializing testLockDirPath")
 	assert.NoError(t, fileutils.CreateDirIfNotExist(testLockDirPath))
 	assert.NoError(t, lock.createFile(testLockDirPath))

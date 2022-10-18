@@ -24,8 +24,7 @@ func (f *filesDiffPhase) initProgressBar() error {
 	if f.progressBar == nil {
 		return nil
 	}
-	var diffRangeStart, diffRangeEnd time.Time
-	err := f.stateManager.GetDiffHandlingRange(f.repoKey, &diffRangeStart, &diffRangeEnd)
+	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
 	}
@@ -74,8 +73,7 @@ func (f *filesDiffPhase) run() error {
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	log.Info("Starting to handle files diffs...")
-	var diffRangeStart, diffRangeEnd time.Time
-	err := f.stateManager.GetDiffHandlingRange(f.repoKey, &diffRangeStart, &diffRangeEnd)
+	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
 	}

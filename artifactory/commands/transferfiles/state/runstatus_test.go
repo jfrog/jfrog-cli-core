@@ -12,7 +12,7 @@ func TestSaveAndLoadRunStatus(t *testing.T) {
 	stateManager.CurrentRepo = repo4Key
 	stateManager.CurrentRepoPhase = 2
 
-	assert.NoError(t, stateManager.saveTransferRunStatus())
+	assert.NoError(t, stateManager.persistTransferRunStatus())
 	actualStatus, err := loadTransferRunStatus()
 	assert.NoError(t, err)
 	assert.Equal(t, stateManager.TransferRunStatus, *actualStatus)

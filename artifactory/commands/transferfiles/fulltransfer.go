@@ -56,8 +56,7 @@ func (m *fullTransferPhase) phaseDone() error {
 }
 
 func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
-	var repoTransferred bool
-	err := m.stateManager.IsRepoTransferred(m.repoKey, &repoTransferred)
+	repoTransferred, err := m.stateManager.IsRepoTransferred(m.repoKey)
 	if err != nil {
 		return false, err
 	}

@@ -38,8 +38,7 @@ func TestFilesDiffRange(t *testing.T) {
 }
 
 func assertRepoTransferred(t *testing.T, stateManager *TransferStateManager, repoKey string, expected bool) {
-	var transferred bool
-	err := stateManager.IsRepoTransferred(repoKey, &transferred)
+	transferred, err := stateManager.IsRepoTransferred(repoKey)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, transferred)
 }
@@ -68,8 +67,7 @@ func addAndAssertNewDiffPhase(t *testing.T, stateManager *TransferStateManager, 
 	assert.Equal(t, expectedDiffs, len(repo.Diffs))
 	assert.Equal(t, ConvertTimeToRFC3339(diffStart), repo.Diffs[expectedDiffs-1].FilesDiffRunTime.Started)
 
-	var handlingStart, handlingEnd time.Time
-	err = stateManager.GetDiffHandlingRange(repoKey, &handlingStart, &handlingEnd)
+	handlingStart, handlingEnd, err := stateManager.GetDiffHandlingRange(repoKey)
 	assert.NoError(t, err)
 	// Truncating the expected time because milliseconds are lost in conversions.
 	assert.True(t, handlingExpectedTime.Truncate(time.Second).Equal(handlingStart))
@@ -154,8 +152,8 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 	assertTransferredSize(t, stateManager, 0)
 
 	// Assert the sum bytes of repo1 + repo2 in the run-status.
-	var transferredSizeBytes int64
-	assert.NoError(t, stateManager.GetTransferredSizeBytes(&transferredSizeBytes))
+	transferredSizeBytes, err := stateManager.GetTransferredSizeBytes()
+	assert.NoError(t, err)
 	assert.Equal(t, int64(221), transferredSizeBytes)
 
 	// Assert the number of transferred files in the state.
@@ -164,8 +162,7 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 }
 
 func assertTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
-	var totalTransferredSize int64
-	err := stateManager.GetReposTransferredSizeBytes(&totalTransferredSize, repoKeys...)
+	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
 }

@@ -51,7 +51,7 @@ func TestSaveAndLoadState(t *testing.T) {
 	defer cleanUp()
 	stateManager.Repositories = []Repository{{Name: repo4Key}}
 
-	assert.NoError(t, stateManager.saveTransferState())
+	assert.NoError(t, stateManager.persistTransferState())
 	actualState, err := loadTransferState()
 	assert.NoError(t, err)
 	assert.Equal(t, stateManager.TransferState, *actualState)

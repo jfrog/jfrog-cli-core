@@ -94,8 +94,8 @@ func (tem *timeEstimationManager) getEstimatedRemainingTime() (int64, error) {
 	if tem.speedsAverage == 0 {
 		return 0, nil
 	}
-	var transferredSizeBytes int64
-	if err := tem.stateManager.GetTransferredSizeBytes(&transferredSizeBytes); err != nil {
+	transferredSizeBytes, err := tem.stateManager.GetTransferredSizeBytes()
+	if err != nil {
 		return 0, err
 	}
 	// We only convert to int64 at the end to avoid a scenario where the conversion of speedsAverage returns zero.

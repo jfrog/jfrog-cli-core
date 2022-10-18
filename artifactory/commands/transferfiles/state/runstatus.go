@@ -18,12 +18,12 @@ var saveRunStatusMutex sync.Mutex
 type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 
 // This struct holds the run status of the current transfer.
-// It is saved to a file in JFrog CLI's home, but reset every time the transfer begins.
-// This state is used to allow showing the current run status in the 'jf rt tranfer-files --status' command.
+// It is saved to a file in JFrog CLI's home, but gets reset every time the transfer begins.
+// This state is used to allow showing the current run status by the 'jf rt tranfer-files --status' command.
 // It is also used for the time estimation and more.
 type TransferRunStatus struct {
 	lastSaveTimestamp time.Time `json:"-"`
-	SizeableState
+	ProgressState
 	Version          int    `json:"version,omitempty"`
 	CurrentRepo      string `json:"current_repo,omitempty"`
 	CurrentRepoPhase int    `json:"current_repo_phase,omitempty"`
@@ -34,21 +34,21 @@ func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {
 		return err
 	}
 
-	if !saveRunStatusMutex.TryLock() {
-		return nil
-	}
-	defer saveRunStatusMutex.Unlock()
 	now := time.Now()
-
 	if now.Sub(ts.lastSaveTimestamp).Seconds() < saveIntervalSecs {
 		return nil
 	}
 
+	if !saveRunStatusMutex.TryLock() {
+		return nil
+	}
+	defer saveRunStatusMutex.Unlock()
+
 	ts.lastSaveTimestamp = now
-	return ts.saveTransferRunStatus()
+	return ts.persistTransferRunStatus()
 }
 
-func (ts *TransferRunStatus) saveTransferRunStatus() (err error) {
+func (ts *TransferRunStatus) persistTransferRunStatus() (err error) {
 	statusFilePath, err := coreutils.GetJfrogTransferRunStatusFilePath()
 	if err != nil {
 		return err

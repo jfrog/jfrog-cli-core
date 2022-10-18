@@ -258,8 +258,7 @@ func assertTransferredSizes(t *testing.T, stateManager *state.TransferStateManag
 }
 
 func assertTransferredSize(t *testing.T, stateManager *state.TransferStateManager, expectedSize int64, repoKeys ...string) {
-	var totalTransferredSize int64
-	err := stateManager.GetReposTransferredSizeBytes(&totalTransferredSize, repoKeys...)
+	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
 }

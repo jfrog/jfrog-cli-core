@@ -168,6 +168,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
+		phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks)
 		if progressBar != nil {
 			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
@@ -262,7 +263,6 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 // When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
 func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResponse, progressbar *TransferProgressMng,
 	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *timeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
-	initialWorkingThreads := curProcessedUploadChunks
 	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
@@ -276,7 +276,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 			reduceCurProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
-			err := updateProgress(phase, progressbar, timeEstMng, chunk, initialWorkingThreads)
+			err := updateProgress(phase, progressbar, timeEstMng, chunk)
 			if err != nil {
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
@@ -295,7 +295,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *UploadChunksStatusResp
 	return false
 }
 
-func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus, workingThreads int) error {
+func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *timeEstimationManager, chunk ChunkStatus) error {
 	if phase == nil {
 		return nil
 	}
@@ -311,7 +311,7 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		}
 	}
 	if timeEstMng != nil {
-		timeEstMng.addChunkStatus(chunk, workingThreads)
+		timeEstMng.addChunkStatus(chunk)
 	}
 	return nil
 }

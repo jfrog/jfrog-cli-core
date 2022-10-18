@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -30,9 +29,7 @@ func ShowStatus() error {
 	if err != nil {
 		return err
 	}
-	if err := addOverallStatus(stateManager, &output, startTimestamp); err != nil {
-		return err
-	}
+	addOverallStatus(stateManager, &output, startTimestamp)
 	if stateManager.CurrentRepo != "" {
 		output.WriteString("\n")
 		setRepositoryStatus(stateManager, &output)
@@ -41,22 +38,13 @@ func ShowStatus() error {
 	return nil
 }
 
-func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, startTimestamp int64) error {
+func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, startTimestamp int64) {
 	addTitle(output, "Overall Transfer Status")
-	addString(output, "🟢", "Status", "Running", 3)
-	addString(output, "⏱️ ", "Start time", time.Unix(0, startTimestamp).Format(time.Stamp), 3)
+	addString(output, "🟢", "Status", "Running", 2)
+	addString(output, "⏱️ ", "Start time", time.Unix(0, startTimestamp).Format(time.Stamp), 2)
 	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalSizeBytes)+calcPercentageInt64(stateManager.TransferredSizeBytes, stateManager.TotalSizeBytes), 2)
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TransferredUnits, stateManager.TotalUnits)+calcPercentage(stateManager.TransferredUnits, stateManager.TotalUnits), 1)
-
-	transferSettings, err := utils.LoadTransferSettings()
-	if err != nil {
-		return err
-	}
-	if transferSettings == nil {
-		transferSettings = &utils.TransferSettings{}
-	}
-	addString(output, "🧵", "Max working threads", strconv.Itoa(transferSettings.CalcNumberOfThreads(false)), 1)
-	return nil
+	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 1)
 }
 
 func calcPercentage(transferred, total int) string {
@@ -69,7 +57,7 @@ func calcPercentageInt64(transferred, total int64) string {
 
 func setRepositoryStatus(stateManager *state.TransferStateManager, output *strings.Builder) {
 	addTitle(output, "Current Repository Status")
-	addString(output, "🏷 ", "Name", stateManager.CurrentRepo, 3)
+	addString(output, "🏷 ", "Name", stateManager.CurrentRepo, 2)
 	var currentRepo state.Repository
 	for _, repo := range stateManager.Repositories {
 		if repo.Name == stateManager.CurrentRepo {
@@ -80,14 +68,14 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 	switch stateManager.CurrentRepoPhase {
 	case FullTransferPhase, ErrorsPhase:
 		if stateManager.CurrentRepoPhase == FullTransferPhase {
-			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 3)
+			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 2)
 		} else {
-			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 3)
+			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 2)
 		}
 		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
 		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentage(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
 	case FilesDiffPhase:
-		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 3)
+		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 2)
 	}
 }
 

@@ -51,14 +51,6 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 	return ts.unlockStateManager()
 }
 
-// Delete the transferred info from the repository and set the total info.
-// repoKey        - Repository key
-// totalSizeBytes - Repository size in bytes
-// totalFiles     - Total files in the repository
-func (ts *TransferStateManager) ResetRepoState(repoKey string, totalSizeBytes int64, totalFiles int) error {
-	return ts.SetRepoState(repoKey, totalSizeBytes, totalFiles, true)
-}
-
 // Set the repository state.
 // repoKey        - Repository key
 // totalSizeBytes - Repository size in bytes
@@ -230,6 +222,20 @@ func (ts *TransferStateManager) IncRepositoriesTransferred() error {
 func (ts *TransferStateManager) SetRepoPhase(phaseId int) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoPhase = phaseId
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) SetWorkingThreads(workingThreads int) error {
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.WorkingThreads = workingThreads
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) GetWorkingThreads() (workingThreads int, err error) {
+	return workingThreads, ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		workingThreads = transferRunStatus.WorkingThreads
 		return nil
 	})
 }

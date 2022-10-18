@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -42,7 +43,7 @@ func newTimeEstimationManager(stateManager *state.TransferStateManager) *timeEst
 	return &timeEstimationManager{stateManager: stateManager}
 }
 
-func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workingThreads int) {
+func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus) {
 	if chunkStatus.DurationMillis == 0 {
 		return
 	}
@@ -58,6 +59,11 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, workin
 		return
 	}
 
+	workingThreads, err := tem.stateManager.GetWorkingThreads()
+	if err != nil {
+		log.Error("Couldn't calculate time estimation:", err.Error())
+		return
+	}
 	speed := calculateChunkSpeed(workingThreads, chunkSizeBytes, chunkStatus.DurationMillis)
 	tem.lastSpeeds = append(tem.lastSpeeds, speed)
 	tem.lastSpeedsSum += speed

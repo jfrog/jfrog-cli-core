@@ -109,18 +109,18 @@ func TestResetRepoState(t *testing.T) {
 	defer cleanUp()
 
 	// Reset a repository state on an empty state
-	err := stateManager.ResetRepoState(repo1Key, 0, 0)
+	err := stateManager.SetRepoState(repo1Key, 0, 0, true)
 	assert.NoError(t, err)
 	// Set repository fully transferred. It will fail the test if the repository is not in the state.
 	setAndAssertRepoFullyTransfer(t, stateManager, repo1Key, time.Now())
 
 	// Create another repository state
-	err = stateManager.ResetRepoState(repo2Key, 0, 0)
+	err = stateManager.SetRepoState(repo2Key, 0, 0, true)
 	assert.NoError(t, err)
 	setAndAssertRepoFullyTransfer(t, stateManager, repo2Key, time.Now())
 
 	// Reset repo1 only
-	err = stateManager.ResetRepoState(repo1Key, 0, 0)
+	err = stateManager.SetRepoState(repo1Key, 0, 0, true)
 	assert.NoError(t, err)
 	assertRepoTransferred(t, stateManager, repo1Key, false)
 }
@@ -130,8 +130,8 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 	defer cleanUp()
 
 	// Create repos in state.
-	assert.NoError(t, stateManager.ResetRepoState(repo1Key, 0, 0))
-	assert.NoError(t, stateManager.ResetRepoState(repo2Key, 0, 0))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true))
 
 	// Inc repos transferred sizes.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 1, 10))
@@ -189,4 +189,16 @@ func TestSetRepoPhase(t *testing.T) {
 	assert.Zero(t, stateManager.CurrentRepoPhase)
 	assert.NoError(t, stateManager.SetRepoPhase(1))
 	assert.Equal(t, 1, stateManager.CurrentRepoPhase)
+}
+
+func TestSetAndGetWorkingThreads(t *testing.T) {
+	stateManager, cleanUp := initStateTest(t)
+	defer cleanUp()
+
+	assert.Zero(t, stateManager.WorkingThreads)
+	assert.NoError(t, stateManager.SetWorkingThreads(1))
+	assert.Equal(t, 1, stateManager.WorkingThreads)
+	workingThreads, err := stateManager.GetWorkingThreads()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, workingThreads)
 }

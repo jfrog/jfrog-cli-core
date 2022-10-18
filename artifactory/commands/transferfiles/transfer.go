@@ -324,11 +324,8 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if tdc.ignoreState {
-		return tdc.stateManager.ResetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount))
-	}
 
-	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), false)
+	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), tdc.ignoreState)
 }
 
 func (tdc *TransferFilesCommand) createTransferDir() error {

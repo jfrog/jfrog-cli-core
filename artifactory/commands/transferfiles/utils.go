@@ -167,8 +167,11 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
+
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks)
+		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
+			log.Error("Couldn't set the current number of working threads:", err.Error())
+		}
 		if progressBar != nil {
 			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}

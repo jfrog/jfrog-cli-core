@@ -263,6 +263,9 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 		return err
 	}
 	startTimestamp, err := lock.GetLastLockTimestamp(lockDirPath)
+	if err != nil {
+		return err
+	}
 	if startTimestamp != 0 {
 		return errorutils.CheckError(new(AlreadyLockedError))
 	}

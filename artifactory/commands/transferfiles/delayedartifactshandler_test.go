@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -32,7 +33,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	maxDelayedArtifactsInFile = 20
 	defer func() { maxDelayedArtifactsInFile = originalMaxArtifactsInFile }()
 	artifactsChannelMng := createdDelayedArtifactsChannelMng()
-	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsManager(&artifactsChannelMng, testRepoKey, convertTimeToEpochMilliseconds(time.Now()))
+	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsManager(&artifactsChannelMng, testRepoKey, state.ConvertTimeToEpochMilliseconds(time.Now()))
 	assert.NoError(t, err)
 	var writeWaitGroup sync.WaitGroup
 	var readWaitGroup sync.WaitGroup
@@ -83,7 +84,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 }
 
 func getDelayMockFileName(repoName string, index int) string {
-	return fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, convertTimeToEpochMilliseconds(time.Now())), index)
+	return fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, state.ConvertTimeToEpochMilliseconds(time.Now())), index)
 }
 
 // Ensure that all 'delayed artifacts files' have been created and that they contain the expected content

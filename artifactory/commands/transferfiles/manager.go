@@ -67,7 +67,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's delayed artifacts writing mechanism
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
-	delayedArtifactsMng, err := newTransferDelayedArtifactsManager(&delayedArtifactsChannelMng, ftm.repoKey, convertTimeToEpochMilliseconds(ftm.startTime))
+	delayedArtifactsMng, err := newTransferDelayedArtifactsManager(&delayedArtifactsChannelMng, ftm.repoKey, state.ConvertTimeToEpochMilliseconds(ftm.startTime))
 	if err != nil {
 		return err
 	}

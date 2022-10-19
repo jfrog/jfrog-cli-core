@@ -10,9 +10,9 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.3.7
-	github.com/jfrog/build-info-go v1.7.0
+	github.com/jfrog/build-info-go v1.8.0
 	github.com/jfrog/gofrog v1.2.4
-	github.com/jfrog/jfrog-client-go v1.23.4
+	github.com/jfrog/jfrog-client-go v1.24.0
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -33,7 +33,7 @@ require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
-	github.com/CycloneDX/cyclonedx-go v0.6.0 // indirect
+	github.com/CycloneDX/cyclonedx-go v0.7.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect

@@ -188,6 +188,15 @@ func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) err
 	}
 	tdc.stateManager.TotalSizeBytes = totalSizeBytes
 	tdc.stateManager.TotalUnits = len(sourceLocalRepos)
+	if !tdc.ignoreState {
+		numberInitialErrors, e := getRetryErrorCount(sourceLocalRepos)
+		if e != nil {
+			return e
+		}
+		tdc.stateManager.TransferFailures = uint(numberInitialErrors)
+	} else {
+		tdc.stateManager.TransferFailures = 0
+	}
 	return nil
 }
 

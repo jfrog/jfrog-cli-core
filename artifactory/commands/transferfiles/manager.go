@@ -2,11 +2,13 @@ package transferfiles
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
 )
 
 const (
@@ -51,7 +53,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar)
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar)
 	if err != nil {
 		return err
 	}

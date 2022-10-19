@@ -358,12 +358,29 @@ func GetJfrogPluginsLockDir() (string, error) {
 	return filepath.Join(locksDirPath, pluginsLockDirName), nil
 }
 
+func GetJfrogTransferLockDir() (string, error) {
+	transferLockDirName := "transfer"
+	locksDirPath, err := GetJfrogLocksDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(locksDirPath, transferLockDirName), nil
+}
+
 func GetJfrogTransferStateFilePath() (string, error) {
 	transferDir, err := GetJfrogTransferDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(transferDir, JfrogTransferStateFileName), nil
+}
+
+func GetJfrogTransferRunStatusFilePath() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferRunStatusFileName), nil
 }
 
 func GetJfrogTransferErrorsDir() (string, error) {

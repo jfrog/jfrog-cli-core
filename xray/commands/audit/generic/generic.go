@@ -1,8 +1,9 @@
 package audit
 
 import (
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"os"
+
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,6 +15,7 @@ type GenericAuditCommand struct {
 	serverDetails           *config.ServerDetails
 	OutputFormat            xrutils.OutputFormat
 	watches                 []string
+	workingDirs             []string
 	projectKey              string
 	targetRepoPath          string
 	IncludeVulnerabilities  bool
@@ -49,6 +51,11 @@ func (auditCmd *GenericAuditCommand) ServerDetails() (*config.ServerDetails, err
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {
 	auditCmd.watches = watches
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) SetWorkingDirs(dirs []string) *GenericAuditCommand {
+	auditCmd.workingDirs = dirs
 	return auditCmd
 }
 
@@ -113,6 +120,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		auditCmd.progress,
 		auditCmd.requirementsFile,
 		false,
+		auditCmd.workingDirs,
 		auditCmd.technologies...,
 	)
 

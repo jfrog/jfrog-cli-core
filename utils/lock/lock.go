@@ -3,15 +3,16 @@ package lock
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type Lock struct {
@@ -43,14 +44,17 @@ func (lock *Lock) createNewLockFile(lockDirPath string) error {
 	if err != nil {
 		return err
 	}
-	pid := os.Getpid()
-	lock.pid = pid
-	return lock.createFile(lockDirPath, pid)
+	lock.pid = os.Getpid()
+	return lock.createFile(lockDirPath)
 }
 
-func (lock *Lock) createFile(folderName string, pid int) error {
+func (lock *Lock) getLockFilename(folderName string) string {
+	return filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(lock.pid)+"."+strconv.FormatInt(lock.currentTime, 10))
+}
+
+func (lock *Lock) createFile(folderName string) error {
 	// We are creating an empty file with the pid and current time part of the name
-	lock.fileName = filepath.Join(folderName, "jfrog-cli.conf.lck."+strconv.Itoa(pid)+"."+strconv.FormatInt(lock.currentTime, 10))
+	lock.fileName = lock.getLockFilename(folderName)
 	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -76,7 +80,7 @@ func (lock *Lock) lock() error {
 			return nil
 		}
 
-		locks, err := lock.getLocks(filesList)
+		locks, err := getLocks(filesList)
 		if err != nil {
 			return err
 		}
@@ -157,7 +161,7 @@ func (lock *Lock) getListOfFiles() ([]string, error) {
 }
 
 // Returns a list of all available locks.
-func (lock *Lock) getLocks(filesList []string) (Locks, error) {
+func getLocks(filesList []string) (Locks, error) {
 	// Slice of all the timestamps that currently the lock directory has
 	var files Locks
 	for _, path := range filesList {
@@ -219,4 +223,31 @@ func CreateLock(lockDirPath string) (unlock func() error, err error) {
 		err = errorutils.CheckError(err)
 	}
 	return
+}
+
+func GetLastLockTimestamp(lockDirPath string) (int64, error) {
+	filesList, err := fileutils.ListFiles(lockDirPath, false)
+	if err != nil {
+		return 0, err
+	}
+	if len(filesList) == 0 {
+		return 0, nil
+	}
+	locks, err := getLocks(filesList)
+	if err != nil || len(locks) == 0 {
+		return 0, err
+	}
+
+	lastLock := locks[len(locks)-1]
+
+	// If the lock isn't aquired by a running process, an unexpected error was occured.
+	running, err := isProcessRunning(lastLock.pid)
+	if err != nil {
+		return 0, err
+	}
+	if !running {
+		return 0, nil
+	}
+
+	return lastLock.currentTime, nil
 }

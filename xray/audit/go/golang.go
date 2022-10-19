@@ -1,13 +1,10 @@
 package _go
 
 import (
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -15,35 +12,25 @@ const (
 	goPackageTypeIdentifier = "go://"
 )
 
-func AuditGo(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildGoDependencyTree()
-	if err != nil {
-		return
-	}
-	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress, coreutils.Go)
-	return
-}
-
-func BuildGoDependencyTree() (*services.GraphNode, error) {
+func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
-		return nil, err
+		return
 	}
 	// Calculate go dependencies graph
 	dependenciesGraph, err := goutils.GetDependenciesGraph(currentDir)
 	if err != nil {
-		return nil, err
+		return
 	}
 	// Calculate go dependencies list
 	dependenciesList, err := goutils.GetDependenciesList(currentDir)
 	if err != nil {
-		return nil, err
+		return
 	}
 	// Get root module name
 	rootModuleName, err := goutils.GetModuleName(currentDir)
 	if err != nil {
-		return nil, err
+		return
 	}
 	// Parse the dependencies into Xray dependency tree format
 	rootNode := &services.GraphNode{
@@ -51,7 +38,9 @@ func BuildGoDependencyTree() (*services.GraphNode, error) {
 		Nodes: []*services.GraphNode{},
 	}
 	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
-	return rootNode, err
+
+	dependencyTree = []*services.GraphNode{rootNode}
+	return
 }
 
 func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {

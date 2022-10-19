@@ -28,6 +28,7 @@ type TransferRunStatus struct {
 	CurrentRepo      string `json:"current_repo,omitempty"`
 	CurrentRepoPhase int    `json:"current_repo_phase,omitempty"`
 	WorkingThreads   int    `json:"working_threads,omitempty"`
+	TransferFailures uint   `json:"target_failures,omitempty"`
 }
 
 func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {

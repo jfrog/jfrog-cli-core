@@ -71,6 +71,7 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 		// Since we're about to handle the transfer retry of the failed files,
 		// we should now decrement the failures counter view.
 		e.progressBar.changeNumberOfFailuresBy(-1 * len(failedFiles.Errors))
+		e.stateManager.ChangeTransferFailureCountBy(uint(len(failedFiles.Errors)), false)
 	}
 
 	// Upload

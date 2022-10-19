@@ -97,7 +97,6 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper produc
 	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return m.transferFolder(params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		}
@@ -159,7 +158,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				}
 				curUploadChunk.appendUploadCandidateIfNeeded(file, m.buildInfoRepo)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&pcWrapper, &m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 					if err != nil {
 						return
 					}
@@ -177,7 +176,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&pcWrapper, &m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}

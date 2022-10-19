@@ -11,7 +11,7 @@ require (
 	github.com/gookit/color v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.3.7
 	github.com/jfrog/build-info-go v1.7.0
-	github.com/jfrog/gofrog v1.2.3
+	github.com/jfrog/gofrog v1.2.4
 	github.com/jfrog/jfrog-client-go v1.23.4
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0

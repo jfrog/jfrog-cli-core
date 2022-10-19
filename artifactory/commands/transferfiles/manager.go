@@ -196,6 +196,8 @@ type producerConsumerWrapper struct {
 func newProducerConsumerWrapper() *producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+	chunkUploaderProducerConsumer.SetFinishedNotification(true)
+	chunkBuilderProducerConsumer.SetFinishedNotification(true)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return &producerConsumerWrapper{
@@ -215,7 +217,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	}()
 	go func() {
 		// Wait till notified that the builder has no additional tasks, and close the builder producer consumer.
-		<-pcWrapper.chunkBuilderProducerConsumer.GetFinishNotification()
+		<-pcWrapper.chunkBuilderProducerConsumer.GetFinishedNotification()
 		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
 
@@ -223,7 +225,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	pcWrapper.chunkBuilderProducerConsumer.Run()
 	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
 		// Wait till notified that the uploader finished its tasks, and it will not receive new tasks from the builder.
-		<-pcWrapper.chunkUploaderProducerConsumer.GetFinishNotification()
+		<-pcWrapper.chunkUploaderProducerConsumer.GetFinishedNotification()
 	}
 	// Close the tasks queue with Done().
 	pcWrapper.chunkUploaderProducerConsumer.Done()

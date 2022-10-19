@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -142,4 +144,16 @@ func CompareTree(a, b *services.GraphNode) bool {
 		}
 	}
 	return true
+}
+
+// Set new logger with output redirection to a buffer.
+// Caller is responsible to set the old log back.
+func RedirectLogOutputToBuffer() (outputBuffer, stderrBuffer *bytes.Buffer, previousLog log.Log) {
+	stderrBuffer, outputBuffer = &bytes.Buffer{}, &bytes.Buffer{}
+	previousLog = log.Logger
+	newLog := log.NewLogger(corelog.GetCliLogLevel(), nil)
+	newLog.SetOutputWriter(outputBuffer)
+	newLog.SetLogsWriter(stderrBuffer, 0)
+	log.SetLogger(newLog)
+	return outputBuffer, stderrBuffer, previousLog
 }

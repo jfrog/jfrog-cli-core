@@ -12,10 +12,7 @@ import (
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -25,22 +22,11 @@ const (
 	pythonPackageTypeIdentifier = "pypi://"
 )
 
-func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, pythonTool pythonutils.PythonTool, progress ioUtils.ProgressMgr, requirementsFile string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildDependencyTree(pythonTool, requirementsFile)
+func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) (dependencyTree []*services.GraphNode, err error) {
+	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
-	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Technology(pythonTool))
-	return
-}
-
-func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) ([]*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool, requirementsFile)
-	if err != nil {
-		return nil, err
-	}
-	var dependencyTree []*services.GraphNode
 	for _, rootDep := range rootDependenciesList {
 		parentNode := &services.GraphNode{
 			Id:    pythonPackageTypeIdentifier + rootDep,
@@ -49,7 +35,7 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile str
 		populatePythonDependencyTree(parentNode, dependenciesGraph)
 		dependencyTree = append(dependencyTree, parentNode)
 	}
-	return dependencyTree, nil
+	return
 }
 
 func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {

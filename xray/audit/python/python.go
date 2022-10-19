@@ -122,7 +122,6 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 			clientLog.Debug("Running pip install -r", requirementsFile)
 			output, err = exec.Command(pipExec, "install", "-r", requirementsFile).CombinedOutput()
 		} else {
-			clientLog.Debug("Running 'pip install .'", pipExec)
 			output, err = exec.Command(pipExec, "install", ".").CombinedOutput()
 			if err != nil {
 				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
@@ -187,7 +186,6 @@ func SetPipVirtualEnvPath() (func() error, error) {
 	var stderr bytes.Buffer
 	pipVenv := exec.Command(execPath, cmdArgs...)
 	pipVenv.Stderr = &stderr
-	clientLog.Debug("running " + strings.Join(pipVenv.Args, " "))
 	err = pipVenv.Run()
 	if err != nil {
 		return nil, fmt.Errorf("pipenv install command failed: %s - %s", err.Error(), stderr.String())

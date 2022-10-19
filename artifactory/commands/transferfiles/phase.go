@@ -80,8 +80,6 @@ func (pb *phaseBase) StopGracefully() {
 	if pb.pcDetails != nil {
 		pb.pcDetails.chunkBuilderProducerConsumer.Cancel()
 		pb.pcDetails.chunkUploaderProducerConsumer.Cancel()
-		pb.pcDetails.notifyIfBuilderFinished(true)
-		pb.pcDetails.notifyIfUploaderFinished(true)
 	}
 }
 

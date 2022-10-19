@@ -99,7 +99,6 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunkData, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-	defer pcWrapper.notifyIfBuilderFinished(true)
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		fileContent, err := os.ReadFile(filePath)

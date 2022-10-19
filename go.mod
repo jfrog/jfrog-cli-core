@@ -95,4 +95,4 @@ require (
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.6.1-0.20220928081908-ab4690a33f68
 
-//replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.2
+replace github.com/jfrog/gofrog => github.com/omerzi/gofrog v1.1.3-0.20221019081238-12f551981f69

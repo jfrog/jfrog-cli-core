@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/utils/config"
-	"io/ioutil"
+	"io"
 	"os"
 
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -125,7 +125,7 @@ func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientuti
 		return nil, errorutils.CheckError(err)
 	}
 	// Read and convert json file to a modules map
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

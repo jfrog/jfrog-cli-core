@@ -2,7 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -209,7 +208,7 @@ func getInitScript(gradleDependenciesDir, gradlePluginFilename string) (string, 
 		}
 	}
 
-	return initScriptPath, errorutils.CheckError(ioutil.WriteFile(initScriptPath, []byte(initScriptContent), 0644))
+	return initScriptPath, errorutils.CheckError(os.WriteFile(initScriptPath, []byte(initScriptContent), 0644))
 }
 
 type gradleRunConfig struct {

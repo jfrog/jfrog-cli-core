@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -75,7 +74,7 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 		return err
 	}
 	log.Debug("Creating temp build file at:", dirPath)
-	tempFile, err := ioutil.TempFile(dirPath, "temp")
+	tempFile, err := os.CreateTemp(dirPath, "temp")
 	if err != nil {
 		return err
 	}
@@ -99,7 +98,7 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildin
 		return err
 	}
 	log.Debug("Creating temp build file at: " + dirPath)
-	tempFile, err := ioutil.TempFile(dirPath, "temp")
+	tempFile, err := os.CreateTemp(dirPath, "temp")
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -135,7 +134,7 @@ func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(detailsFilePath, []byte(content.String()), 0600)
+	err = os.WriteFile(detailsFilePath, []byte(content.String()), 0600)
 	return errorutils.CheckError(err)
 }
 

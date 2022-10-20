@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -97,7 +96,7 @@ func (sm *StreamManager) Connect() (bool, *http.Response, error) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		errorutils.CheckError(errors.New("response: " + resp.Status))
-		msgBody, _ := ioutil.ReadAll(resp.Body)
+		msgBody, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode > 400 && resp.StatusCode < 500 {
 			return false, nil, errors.New(string(msgBody))

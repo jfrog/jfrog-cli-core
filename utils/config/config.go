@@ -7,7 +7,6 @@ import (
 	"fmt"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -201,7 +200,7 @@ func saveConfig(config *ConfigV5) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(path, content, 0600)
+	err = os.WriteFile(path, content, 0600)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -301,7 +300,7 @@ func convertCertsDir() error {
 	}
 
 	// Move certs to the new location.
-	files, err := ioutil.ReadDir(securityDir)
+	files, err := os.ReadDir(securityDir)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

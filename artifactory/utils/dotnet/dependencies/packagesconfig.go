@@ -9,7 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -129,7 +129,7 @@ func createAlternativeVersionForms(originalVersion string) []string {
 }
 
 func (extractor *packagesExtractor) loadPackagesConfig(dependenciesSource string) (*packagesConfig, error) {
-	content, err := ioutil.ReadFile(dependenciesSource)
+	content, err := os.ReadFile(dependenciesSource)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func createNugetPackage(packagesPath string, nuget xmlPackage, nPackage *nugetPa
 
 	// Nuspec file that holds the metadata for the package.
 	nuspecPath := filepath.Join(packagesPath, nPackage.id, nPackage.version, strings.Join([]string{nPackage.id, "nuspec"}, "."))
-	nuspecContent, err := ioutil.ReadFile(nuspecPath)
+	nuspecContent, err := os.ReadFile(nuspecPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

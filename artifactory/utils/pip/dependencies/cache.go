@@ -5,7 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/buildinfo"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -32,7 +32,7 @@ func GetProjectDependenciesCache() (*DependenciesCache, error) {
 		return nil, err
 	}
 	defer jsonFile.Close()
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}

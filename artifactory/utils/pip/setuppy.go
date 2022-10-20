@@ -2,7 +2,7 @@ package pip
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -62,7 +62,7 @@ func getEgginfoPkginfoContent(setuppyFilePath, pythonExecutablePath string) ([]b
 
 // Parse the output of 'python egg_info' command, in order to find the path of generated file 'PKG-INFO'.
 func extractPackageNameFromEggBase(eggBase string) ([]byte, error) {
-	files, err := ioutil.ReadDir(eggBase)
+	files, err := os.ReadDir(eggBase)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func extractPackageNameFromEggBase(eggBase string) ([]byte, error) {
 				return nil, errorutils.CheckError(errors.New("File 'PKG-INFO' couldn't be found in its designated location: " + pkginfoPath))
 			}
 
-			return ioutil.ReadFile(pkginfoPath)
+			return os.ReadFile(pkginfoPath)
 		}
 	}
 

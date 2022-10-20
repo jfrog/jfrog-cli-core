@@ -21,7 +21,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -166,7 +165,7 @@ func GetDependencyInfo(name, ver string, previousBuildDependencies map[string]*b
 	}
 	defer stream.Close()
 	var result []byte
-	result, err = ioutil.ReadAll(stream)
+	result, err = io.ReadAll(stream)
 	if err != nil {
 		return
 	}

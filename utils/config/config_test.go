@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	configtests "github.com/jfrog/jfrog-cli-core/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/utils/tests"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -370,7 +369,7 @@ func assertCertsMigration(t *testing.T) {
 	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	assert.NoError(t, err)
 	assert.FileExists(t, secFile)
-	files, err := ioutil.ReadDir(certsDir)
+	files, err := os.ReadDir(certsDir)
 	assert.NoError(t, err)
 	// Verify only the certs were moved
 	assert.Len(t, files, 2)

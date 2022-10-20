@@ -10,7 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"github.com/jfrog/jfrog-client-go/xray"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -62,7 +62,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, downloadDirPath stri
 
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return errorutils.CheckError(errors.New(fmt.Sprintf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())))
 		}

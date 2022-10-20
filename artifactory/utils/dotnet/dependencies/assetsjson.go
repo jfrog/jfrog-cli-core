@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -54,7 +54,7 @@ func (extractor *assetsExtractor) ChildrenMap() (map[string][]string, error) {
 // Create new assets json extractor.
 func (extractor *assetsExtractor) new(dependenciesSource string) (Extractor, error) {
 	newExtractor := &assetsExtractor{}
-	content, err := ioutil.ReadFile(dependenciesSource)
+	content, err := os.ReadFile(dependenciesSource)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

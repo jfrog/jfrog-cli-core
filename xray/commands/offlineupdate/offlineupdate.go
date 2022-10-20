@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -129,7 +128,7 @@ func getXrayTempDir() (string, error) {
 }
 
 func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []string) error {
-	dataDir, err := ioutil.TempDir(xrayTmpDir, filesPrefix)
+	dataDir, err := os.MkdirTemp(xrayTmpDir, filesPrefix)
 	if err != nil {
 		return err
 	}

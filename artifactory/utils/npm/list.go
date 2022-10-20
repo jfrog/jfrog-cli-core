@@ -2,7 +2,6 @@ package npm
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 	"sync"
 
@@ -38,7 +37,7 @@ func (listCmd *listCommand) exec() (outData, errData []byte, err error) {
 	go func() {
 		defer wg.Done()
 		defer listCmd.outPipeReader.Close()
-		data, err := ioutil.ReadAll(listCmd.outPipeReader)
+		data, err := io.ReadAll(listCmd.outPipeReader)
 		cmdErrors[1] = err
 		outData = data
 	}()
@@ -46,7 +45,7 @@ func (listCmd *listCommand) exec() (outData, errData []byte, err error) {
 	go func() {
 		defer wg.Done()
 		defer listCmd.errPipeReader.Close()
-		data, err := ioutil.ReadAll(listCmd.errPipeReader)
+		data, err := io.ReadAll(listCmd.errPipeReader)
 		cmdErrors[2] = err
 		errData = data
 	}()

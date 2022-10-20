@@ -2,7 +2,7 @@ package npm
 
 import (
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -20,7 +20,7 @@ func TestGetPackageFileNameFromOutput(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			output, err := ioutil.ReadFile(filepath.Join(testdataDir, test.outputTestDataFile))
+			output, err := os.ReadFile(filepath.Join(testdataDir, test.outputTestDataFile))
 			if err != nil {
 				assert.NoError(t, err)
 				return

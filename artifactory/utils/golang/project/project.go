@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -257,7 +257,7 @@ func (project *goProject) readModFile() error {
 		return err
 	}
 	defer modFile.Close()
-	content, err := ioutil.ReadAll(modFile)
+	content, err := io.ReadAll(modFile)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -284,7 +284,7 @@ func (project *goProject) readModFile() error {
 // Archive the go project.
 // Returns the path of the temp archived project file.
 func (project *goProject) archiveProject(version, tempDir string) (string, error) {
-	tempFile, err := ioutil.TempFile(tempDir, "project.zip")
+	tempFile, err := os.CreateTemp(tempDir, "project.zip")
 
 	if err != nil {
 		return "", errorutils.CheckError(err)

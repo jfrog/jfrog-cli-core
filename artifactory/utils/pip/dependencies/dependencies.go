@@ -3,7 +3,7 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/artifactory/utils"
@@ -88,7 +88,7 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 		return buildinfo.Checksum{}, err
 	}
 	defer stream.Close()
-	result, err := ioutil.ReadAll(stream)
+	result, err := io.ReadAll(stream)
 	if err != nil {
 		return buildinfo.Checksum{}, err
 	}

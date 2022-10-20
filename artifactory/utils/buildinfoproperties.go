@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -189,7 +188,7 @@ func CreateBuildInfoPropertiesFile(buildName, buildNumber, projectKey string, de
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
-	propertiesFile, err := ioutil.TempFile(propertiesPath, PropertiesTempPrefix)
+	propertiesFile, err := os.CreateTemp(propertiesPath, PropertiesTempPrefix)
 	defer propertiesFile.Close()
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -313,7 +312,7 @@ func createGeneratedBuildInfoFile(buildName, buildNumber, projectKey string, con
 		return err
 	}
 	var tempFile *os.File
-	tempFile, err = ioutil.TempFile(buildPath, GeneratedBuildInfoTempPrefix)
+	tempFile, err = os.CreateTemp(buildPath, GeneratedBuildInfoTempPrefix)
 	defer tempFile.Close()
 	if err != nil {
 		return err

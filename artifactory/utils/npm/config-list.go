@@ -1,11 +1,9 @@
 package npm
 
 import (
-	"io"
-	"io/ioutil"
-
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"io"
 )
 
 // This method runs "npm c ls" command and returns the current npm configuration (calculated by all flags and .npmrc files).
@@ -21,7 +19,7 @@ func GetConfigList(npmFlags []string, executablePath string) ([]byte, error) {
 		npmError = gofrogcmd.RunCmd(configListCmdConfig)
 	}()
 
-	data, err := ioutil.ReadAll(pipeReader)
+	data, err := io.ReadAll(pipeReader)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

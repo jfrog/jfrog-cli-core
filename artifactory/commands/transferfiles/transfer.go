@@ -320,9 +320,13 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	usedSpaceInBytes, err := repoSummary.UsedSpaceInBytes.Int64()
-	if err != nil {
-		return errorutils.CheckError(err)
+
+	var usedSpaceInBytes int64
+	if repoSummary.UsedSpaceInBytes.String() != "" {
+		usedSpaceInBytes, err = repoSummary.UsedSpaceInBytes.Int64()
+		if err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 
 	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), tdc.ignoreState)

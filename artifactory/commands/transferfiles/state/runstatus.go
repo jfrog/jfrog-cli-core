@@ -21,9 +21,12 @@ type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 // It is saved to a file in JFrog CLI's home, but gets reset every time the transfer begins.
 // This state is used to allow showing the current run status by the 'jf rt tranfer-files --status' command.
 // It is also used for the time estimation and more.
+//Sara
 type TransferRunStatus struct {
 	lastSaveTimestamp time.Time `json:"-"`
 	ProgressState
+	TotalFiles       int    `json:"total_files,omitempty"`
+	TransferredFiles int    `json:"transferred_files,omitempty"`
 	Version          int    `json:"version,omitempty"`
 	CurrentRepo      string `json:"current_repo,omitempty"`
 	CurrentRepoPhase int    `json:"current_repo_phase,omitempty"`

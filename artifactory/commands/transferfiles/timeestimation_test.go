@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -191,7 +190,7 @@ func addOneFileChunk(t *testing.T, timeEstMng *timeEstimationManager, workingThr
 			createFileUploadStatusResponse("", chunkSize, false, Success),
 		},
 	}
-	timeEstMng.addChunkStatus(chunkStatus, workingThreads, true)
+	timeEstMng.addChunkStatus(chunkStatus)
 	return calculateChunkSpeed(workingThreads, chunkSize, chunkDuration)
 }
 

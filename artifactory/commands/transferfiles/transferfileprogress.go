@@ -2,11 +2,11 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
-	"strconv"
 	"time"
 )
 
@@ -52,17 +52,13 @@ type TransferProgressMng struct {
 	barsMng              *progressbar.ProgressBarMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
 	stopLine    *mpb.Bar
-	filesStatus int
+	filesStatus *int
 }
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int) error {
+func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int, ps *state.ProgressState, ts *state.TransferRunStatus) error {
 	totalRepositories := int64(len(allSourceLocalRepos))
-	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(allSourceLocalRepos...)
-	storageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
-	totalFiles, err := strconv.Atoi(storageInfo.BinariesCount)
-
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
 		return err
@@ -70,8 +66,8 @@ func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesComm
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	//edit storage and files
-	transfer.filesStatus = fileStatus
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, totalSize, totalFiles, &fileStatus)
+	transfer.filesStatus = &fileStatus
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, &ps.TotalSizeBytes, &ts.TotalFiles, &ts.TransferredFiles)
 
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)

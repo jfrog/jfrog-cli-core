@@ -160,7 +160,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Init the progress bar
-	err = NewTransferProgressMng(allSourceLocalRepos, tdc, 0)
+	err = NewTransferProgressMng(allSourceLocalRepos, tdc, 0, &tdc.stateManager.ProgressState, &tdc.stateManager.TransferRunStatus)
 	if err != nil {
 		return err
 	}
@@ -188,6 +188,9 @@ func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) err
 	}
 	tdc.stateManager.TotalSizeBytes = totalSizeBytes
 	tdc.stateManager.TotalUnits = len(sourceLocalRepos)
+	storageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
+	tdc.stateManager.TotalFiles, err = strconv.Atoi(storageInfo.BinariesCount)
+	tdc.stateManager.TransferredFiles = 0
 	return nil
 }
 

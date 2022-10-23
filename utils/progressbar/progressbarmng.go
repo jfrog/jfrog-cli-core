@@ -201,7 +201,7 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 }
 
 // A progress bar with two counters values shown on the right side of the progress bar, the first value controls what the bar shows
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, totalTasks2 int, doneTaks2 *int) *TasksProgressBar {
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 *int64, totalTasks2 *int, doneTaks2 *int) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	filter := filterColor(color)
 
@@ -212,12 +212,12 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 
 			decor.Name(" "+headLine1+": "),
 			decor.CountersKibiByte("%.1f/%.1f"), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
 				s1 := strconv.Itoa(*doneTaks2)
-				s2 := strconv.Itoa(totalTasks2)
+				s2 := strconv.Itoa(*totalTasks2)
 				return s1 + "/" + s2
 			}),
 		),
 	)
-	pb.IncGeneralProgressTotalBy(totalTasks1)
+	pb.IncGeneralProgressTotalBy(*totalTasks1)
 	return pb
 }
 

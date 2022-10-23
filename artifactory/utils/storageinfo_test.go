@@ -128,7 +128,7 @@ func TestGetReposTotalSize(t *testing.T) {
 
 	// Assert error is returned due to the missing repository.
 	_, err = storageInfoManager.GetReposTotalSize("repo-1", "repo-2", "repo-3")
-	assert.EqualError(t, err, getStorageInfoRepoMissingError())
+	assert.EqualError(t, err, storageInfoRepoMissingError)
 }
 
 func mockGetStorageInfoAndInitManager(t *testing.T, repositoriesSummaryList []clientUtils.RepositorySummary) (*httptest.Server, *StorageInfoManager) {

@@ -2,10 +2,11 @@ package utils
 
 import (
 	"context"
-	"github.com/jfrog/gofrog/datastructures"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jfrog/gofrog/datastructures"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -17,6 +18,7 @@ import (
 const (
 	serviceManagerRetriesPerRequest                  = 3
 	serviceManagerRetriesWaitPerRequestMilliSecs int = 1000
+	storageInfoRepoMissingError                      = "one or more of the requested repositories were not found"
 
 	bytesInKB = 1024
 	bytesInMB = 1024 * bytesInKB
@@ -115,15 +117,7 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 			for _, repoSummary := range storageInfo.RepositoriesSummaryList {
 				if reposSet.Exists(repoSummary.RepoKey) {
 					reposCounted++
-					if repoSummary.UsedSpaceInBytes.String() != "" {
-						sizeToAdd, err := repoSummary.UsedSpaceInBytes.Int64()
-						if err == nil {
-							totalSize += sizeToAdd
-							continue
-						}
-					}
-
-					sizeToAdd, err := convertStorageSizeStringToBytes(repoSummary.UsedSpace)
+					sizeToAdd, err := GetUsedSpaceInBytes(&repoSummary)
 					if err != nil {
 						return true, nil, err
 					}
@@ -135,17 +129,21 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 	}
 	_, err := pollingExecutor.Execute()
 	if reposCounted < len(repoKeys) && err == nil {
-		return totalSize, errorutils.CheckErrorf(getStorageInfoRepoMissingError())
+		return totalSize, errorutils.CheckErrorf(storageInfoRepoMissingError)
 	}
 	return totalSize, err
 }
 
-func getStorageInfoRepoMissingError() string {
-	return "one or more of the requested repositories were not found"
+func GetUsedSpaceInBytes(repoSummary *utils.RepositorySummary) (int64, error) {
+	if repoSummary.UsedSpaceInBytes.String() != "" {
+		return repoSummary.UsedSpaceInBytes.Int64()
+	}
+
+	return convertStorageSizeStringToBytes(repoSummary.UsedSpace)
 }
 
 func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
-	usedSpaceParts := strings.Split(sizeStr, " ")
+	usedSpaceParts := strings.Fields(sizeStr)
 	if len(usedSpaceParts) != 2 {
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}

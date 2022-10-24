@@ -93,7 +93,8 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = f.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := consumeDelayFilesIfNoErrors
+	err = f.transferManager.doTransferWithProducerConsumer(action, delayAction)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}

@@ -53,7 +53,7 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar)
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar, ftm.stateManager)
 	if err != nil {
 		return err
 	}

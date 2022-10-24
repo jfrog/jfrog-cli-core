@@ -57,6 +57,7 @@ func TestShowStatus(t *testing.T) {
 	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:	16")
+	assert.Contains(t, results, "Transfer failures:	223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -84,6 +85,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:	16")
+	assert.Contains(t, results, "Transfer failures:	223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -108,6 +110,7 @@ func createStateManager(t *testing.T, phase int) {
 	stateManager.TotalUnits = 1111
 	stateManager.TransferredUnits = 15
 	stateManager.WorkingThreads = 16
+	stateManager.TransferFailures = 223
 
 	// Increment transferred suze and files. This action also persists the run status.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 500, 5000))

@@ -98,7 +98,6 @@ func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsume
 		return func(threadId int) error {
 			var errList []string
 			var err error
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			for _, errFile := range e.errorsFilesToHandle {
 				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 				if err != nil {

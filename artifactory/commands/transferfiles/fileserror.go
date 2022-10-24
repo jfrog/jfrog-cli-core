@@ -95,7 +95,6 @@ func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsume
 		return func(threadId int) error {
 			var errList []string
 			var err error
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			for _, errFile := range e.errorsFilesToHandle {
 				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 				if err != nil {
@@ -143,12 +142,11 @@ func (e *errorsRetryPhase) initProgressBar() error {
 
 	// The progress bar will also be responsible to display the number of delayed items for this repository.
 	// Those delayed artifacts will be handled at the end of this phase in case they exist.
-	delayCount := 0
 	delayFiles, err := getDelayFiles([]string{e.repoKey})
 	if err != nil {
 		return err
 	}
-	delayCount, err = countDelayFilesContent(delayFiles)
+	delayCount, err := countDelayFilesContent(delayFiles)
 	if err != nil {
 		return err
 	}

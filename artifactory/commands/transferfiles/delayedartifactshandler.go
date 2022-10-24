@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"golang.org/x/exp/slices"
 	"os"
 	"path"
 	"path/filepath"
@@ -36,8 +37,7 @@ func initTransferDelaysDir() error {
 	if err != nil {
 		return err
 	}
-	err = fileutils.CreateDirIfNotExist(transferDir)
-	if err != nil {
+	if err = fileutils.CreateDirIfNotExist(transferDir); err != nil {
 		return err
 	}
 	// Create delays directory
@@ -50,11 +50,10 @@ func initTransferDelaysDir() error {
 
 // Creates a manager for the process of transferring delayed files. Delayed files are files that should be transferred at the very end of the transfer process, such as pom.xml and manifest.json files.
 func newTransferDelayedArtifactsManager(delayedArtifactsChannelMng *DelayedArtifactsChannelMng, repoKey string, phaseStartTime string) (*TransferDelayedArtifactsMng, error) {
-	err := initTransferDelaysDir()
-	if err != nil {
+	if err := initTransferDelaysDir(); err != nil {
 		return nil, err
 	}
-	return &TransferDelayedArtifactsMng{delayedArtifactsChannelMng: delayedArtifactsChannelMng, repoKey: repoKey, phaseStartTime: phaseStartTime}, err
+	return &TransferDelayedArtifactsMng{delayedArtifactsChannelMng: delayedArtifactsChannelMng, repoKey: repoKey, phaseStartTime: phaseStartTime}, nil
 }
 
 // Expected error file format: <repoKey>-<phaseStartTime in epoch millisecond>-<fileIndex>.json
@@ -67,8 +66,7 @@ func getDelaysFilePrefix(repoKey string, phaseStartTime string) string {
 func (mng *TransferDelayedArtifactsMng) start() (err error) {
 	defer func() {
 		if mng.delayedWriter != nil {
-			e := mng.delayedWriter.close()
-			if err == nil {
+			if e := mng.delayedWriter.close(); err == nil {
 				err = errorutils.CheckError(e)
 			}
 		}
@@ -83,8 +81,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 
 	for file := range mng.delayedArtifactsChannelMng.channel {
 		log.Debug(fmt.Sprintf("Delaying the upload of file '%s'. Writing it to be uploaded later...", path.Join(file.Repo, file.Path, file.Name)))
-		err := mng.delayedWriter.writeRecord(file)
-		if err != nil {
+		if err = mng.delayedWriter.writeRecord(file); err != nil {
 			return err
 		}
 	}
@@ -104,8 +101,7 @@ func consumeAllDelayFiles(base phaseBase, addedDelayFiles []string) error {
 	delayFunctions := getDelayUploadComparisonFunctions(base.repoSummary.PackageType)
 	if len(filesToConsume) > 0 && len(delayFunctions) > 0 {
 		log.Info("Starting to handle delayed artifacts uploads...")
-		err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:])
-		if err == nil {
+		if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err == nil {
 			log.Info("Done handling delayed artifacts uploads.")
 		}
 	}
@@ -169,7 +165,6 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunkData, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-	defer pcWrapper.notifyIfBuilderFinished(true)
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		delayedArtifactsFile, err := readDelayFile(filePath)
@@ -183,8 +178,7 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 		}
 
 		// Remove the file, so it won't be consumed again.
-		err = os.Remove(filePath)
-		if err != nil {
+		if err = os.Remove(filePath); err != nil {
 			return errorutils.CheckError(err)
 		}
 
@@ -204,10 +198,7 @@ func readDelayFile(path string) (DelayedArtifactsFile, error) {
 	}
 
 	err = json.Unmarshal(fContent, &delayedArtifactsFile)
-	if err != nil {
-		return delayedArtifactsFile, errorutils.CheckError(err)
-	}
-	return delayedArtifactsFile, nil
+	return delayedArtifactsFile, errorutils.CheckError(err)
 }
 
 // Gets a list of all delay files from the CLI's cache for a specific repo
@@ -234,11 +225,8 @@ func getDelayFiles(repoKeys []string) (filesPaths []string, err error) {
 			continue
 		}
 		// Append the errors file if the first group matches any of the requested repo keys.
-		for _, repoKey := range repoKeys {
-			if matchAndGroups[1] == repoKey {
-				filesPaths = append(filesPaths, file)
-				break
-			}
+		if slices.Contains(repoKeys, matchAndGroups[1]) {
+			filesPaths = append(filesPaths, file)
 		}
 	}
 	return
@@ -339,7 +327,7 @@ type SplitContentWriter struct {
 	// JSON array key of the object
 	arrayKey string
 	// Limit for the amount of records allowed per file
-	maxRecordAllow int
+	maxRecordsAllowed int
 	// The path for the directory that will hold the files of the content
 	dirPath string
 	// The name for the files that will be generated (a counter will added as a suffix to the files by this writer)
@@ -348,13 +336,12 @@ type SplitContentWriter struct {
 	recordCount int
 	// Counter for amount if files generated for the content
 	fileIndex int
-	// List all the file paths of the files that were generated for the content
+	// List of all the paths of the files that were generated for the content
 	contentFiles []string
 }
 
 func newSplitContentWriter(key string, maxRecordsPerFile int, directoryPath string, prefix string) *SplitContentWriter {
-	scw := SplitContentWriter{arrayKey: key, maxRecordAllow: maxRecordsPerFile, dirPath: directoryPath, filePrefix: prefix, contentFiles: []string{}}
-	return &scw
+	return &SplitContentWriter{arrayKey: key, maxRecordsAllowed: maxRecordsPerFile, dirPath: directoryPath, filePrefix: prefix, contentFiles: []string{}}
 }
 
 // Create new file if needed, writes a record and closes a file if it reached its maxRecord
@@ -371,7 +358,7 @@ func (w *SplitContentWriter) writeRecord(record interface{}) error {
 	w.writer.Write(record)
 	w.recordCount++
 	// If file contains maximum number of records - reset for next write
-	if w.recordCount == w.maxRecordAllow {
+	if w.recordCount == w.maxRecordsAllowed {
 		return w.closeCurrentFile()
 	}
 	return nil
@@ -380,18 +367,15 @@ func (w *SplitContentWriter) writeRecord(record interface{}) error {
 func (w *SplitContentWriter) closeCurrentFile() error {
 	// Close current file
 	if w.writer != nil {
-		err := w.writer.Close()
-		if err != nil {
+		if err := w.writer.Close(); err != nil {
 			return err
 		}
 		if w.writer.GetFilePath() != "" {
 			fullPath := filepath.Join(w.dirPath, fmt.Sprintf("%s-%d.json", w.filePrefix, w.fileIndex))
 			log.Debug(fmt.Sprintf("Saving split content JSON file to: %s.", fullPath))
-			err = fileutils.MoveFile(w.writer.GetFilePath(), fullPath)
-			if err != nil {
+			if err := fileutils.MoveFile(w.writer.GetFilePath(), fullPath); err != nil {
 				return fmt.Errorf(fmt.Sprintf("Saving file failed! failed moving %s to %s", w.writer.GetFilePath(), fullPath), err)
 			}
-
 			w.contentFiles = append(w.contentFiles, fullPath)
 			w.fileIndex++
 		}

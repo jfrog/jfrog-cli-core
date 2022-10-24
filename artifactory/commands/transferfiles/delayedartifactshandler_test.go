@@ -7,8 +7,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -62,15 +62,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, delayedArtifactsErr)
 
 	// add not relevant files to confuse
-	for i := 0; i < 4; i++ {
-
-		assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(delayTestRepoKey, i)), nil, 0644))
-	}
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName("wrong-"+testRepoKey, 1)), nil, 0644))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-wrong", 0)), nil, 0644))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-0-0", 0)), nil, 0644))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName(testRepoKey+"-1", 0)), nil, 0644))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(delaysDirPath, getDelayMockFileName("wrong-"+testRepoKey+"-wrong", 0)), nil, 0644))
+	writeEmptyConfuseFiles(t, delaysDirPath)
 
 	delayFiles, err := getDelayFiles([]string{testRepoKey})
 	assert.NoError(t, err)
@@ -83,8 +75,20 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.Equal(t, delayCount, artifactsNumber)
 }
 
-func getDelayMockFileName(repoName string, index int) string {
-	return fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, state.ConvertTimeToEpochMilliseconds(time.Now())), index)
+func writeEmptyConfuseFiles(t *testing.T, delaysDirPath string) {
+	for i := 0; i < 4; i++ {
+		writeEmptyFile(t, delaysDirPath, delayTestRepoKey, i)
+	}
+	writeEmptyFile(t, delaysDirPath, "wrong-"+testRepoKey, 1)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-wrong", 1)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-0-0", 0)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-1", 22)
+	writeEmptyFile(t, delaysDirPath, "wrong-"+testRepoKey+"-wrong", 0)
+}
+
+func writeEmptyFile(t *testing.T, delaysDirPath string, repoName string, index int) {
+	fullName := fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, state.ConvertTimeToEpochMilliseconds(time.Now())), index)
+	assert.NoError(t, os.WriteFile(filepath.Join(delaysDirPath, fullName), nil, 0644))
 }
 
 // Ensure that all 'delayed artifacts files' have been created and that they contain the expected content

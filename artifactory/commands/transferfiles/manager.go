@@ -31,10 +31,12 @@ type transferActionWithProducerConsumerType func(
 	delayHelper delayUploadHelper,
 	errorsChannelMng *ErrorsChannelMng) error
 
-// Transfer files using the 'producer-consumer' mechanism.
-func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
+type transferDelayAction func(phase phaseBase, addedDelayFiles []string) error
+
+// Transfer files using the 'producer-consumer' mechanism and apply a delay action.
+func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
 	ftm.pcDetails = newProducerConsumerWrapper()
-	return ftm.doTransfer(ftm.pcDetails, transferAction)
+	return ftm.doTransfer(ftm.pcDetails, transferAction, delayAction)
 }
 
 // This function handles a transfer process as part of a phase.
@@ -46,14 +48,14 @@ func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transf
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
-func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType) error {
+func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
 	uploadChunkChan := make(chan UploadedChunkData, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar)
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar, ftm.stateManager)
 	if err != nil {
 		return err
 	}
@@ -65,7 +67,10 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's delayed artifacts writing mechanism
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
-	delayedArtifactsMng := newTransferDelayedArtifactsToFile(&delayedArtifactsChannelMng)
+	delayedArtifactsMng, err := newTransferDelayedArtifactsManager(&delayedArtifactsChannelMng, ftm.repoKey, state.ConvertTimeToEpochMilliseconds(ftm.startTime))
+	if err != nil {
+		return err
+	}
 	if len(ftm.delayUploadComparisonFunctions) > 0 {
 		writersWaitGroup.Add(1)
 		go func() {
@@ -118,10 +123,14 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}
 	}
 
-	// If delayed uploads, handle them now.
-	if returnedError == nil && len(ftm.delayUploadComparisonFunctions) > 0 && len(delayedArtifactsMng.filesToConsume) > 0 {
-		// Remove the first delay comparison function to no longer delay it.
-		returnedError = handleDelayedArtifactsFiles(delayedArtifactsMng.filesToConsume, ftm.phaseBase, ftm.delayUploadComparisonFunctions[1:])
+	// If delayed action was provided, handle it now.
+	if returnedError == nil && delayAction != nil {
+		var addedDelayFiles []string
+		// If the transfer generated new delay files provide them
+		if delayedArtifactsMng.delayedWriter != nil {
+			addedDelayFiles = delayedArtifactsMng.delayedWriter.contentFiles
+		}
+		returnedError = delayAction(ftm.phaseBase, addedDelayFiles)
 	}
 	return returnedError
 }

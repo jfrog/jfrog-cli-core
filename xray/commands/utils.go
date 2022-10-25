@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	GraphScanMinXrayVersion = "3.29.0"
-	ScanTypeMinXrayVersion  = "3.37.2"
+	GraphScanMinXrayVersion           = "3.29.0"
+	ScanTypeMinXrayVersion            = "3.37.2"
+	BypassArchiveLimitsMinXrayVersion = "3.59.0"
 )
 
 func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {

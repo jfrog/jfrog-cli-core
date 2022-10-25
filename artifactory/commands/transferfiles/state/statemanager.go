@@ -215,6 +215,17 @@ func (ts *TransferStateManager) IsRepoTransferred(repoKey string) (isTransferred
 	})
 }
 
+func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increase bool) error {
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		if increase {
+			transferRunStatus.TransferFailures += count
+		} else {
+			transferRunStatus.TransferFailures -= count
+		}
+		return nil
+	})
+}
+
 func (ts *TransferStateManager) IncRepositoriesTransferred() error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.TransferredUnits++

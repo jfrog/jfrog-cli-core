@@ -26,6 +26,7 @@ const (
 	JfrogTransferStateFileName          = "state.json"
 	JfrogTransferRunStatusFileName      = "run-status.json"
 	JfrogTransferErrorsDirName          = "errors"
+	JfrogTransferDelaysDirName          = "delays"
 	JfrogTransferRetryableErrorsDirName = "retryable"
 	JfrogTransferSkippedErrorsDirName   = "skipped"
 

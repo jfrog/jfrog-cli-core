@@ -34,7 +34,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	maxErrorsInFile = 20
 	defer func() { maxErrorsInFile = originalMaxErrorsInFile }()
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil)
+	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil, nil)
 	assert.NoError(t, err)
 
 	var writeWaitGroup sync.WaitGroup

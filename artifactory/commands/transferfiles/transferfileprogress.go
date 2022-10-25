@@ -57,7 +57,7 @@ type TransferProgressMng struct {
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int, ps *state.ProgressState, ts *state.TransferRunStatus) error {
+func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int, ps *state.ProgressState, ts *state.TransferRunStatus) error {
 	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
@@ -67,7 +67,7 @@ func NewTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesComm
 	// Init the total repositories transfer progress bar
 	//edit storage and files
 	transfer.filesStatus = &fileStatus
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, &ps.TotalSizeBytes, &ts.TotalFiles, &ts.TransferredFiles)
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, ps.TotalSizeBytes, &ts.TotalFiles, &ts.TransferredFiles)
 
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)

@@ -309,10 +309,12 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 				return err
 			}
 		}
-		if err := updateChunkInState(phase.stateManager, phase.repoKey, &chunk, progressbar); err != nil {
+		if err := updateChunkInState(phase.stateManager, phase.repoKey, &chunk); err != nil {
 			return err
 		}
-
+		if progressbar != nil {
+			progressbar.totalSize.GetBar().SetCurrent(phase.stateManager.TransferredSizeBytes)
+		}
 	}
 	if timeEstMng != nil {
 		timeEstMng.addChunkStatus(chunk)
@@ -320,17 +322,16 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 	return nil
 }
 
-func updateChunkInState(stateManager *state.TransferStateManager, repoKey string, chunk *ChunkStatus, progressbar *TransferProgressMng) error {
+func updateChunkInState(stateManager *state.TransferStateManager, repoKey string, chunk *ChunkStatus) error {
 	var totalSizeInBytes int64 = 0
 	var totalFiles = 0
 	for _, file := range chunk.Files {
 		if file.Status == Success {
 			totalSizeInBytes += file.SizeBytes
-			totalFiles++
 			stateManager.TransferredFiles++
+			totalFiles++
 		}
 	}
-	progressbar.totalSize.GetBar().IncrBy(int(totalSizeInBytes))
 	return stateManager.IncTransferredSizeAndFiles(repoKey, totalFiles, totalSizeInBytes)
 }
 

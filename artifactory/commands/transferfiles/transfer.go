@@ -160,7 +160,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Init the progress bar
-	err = NewTransferProgressMng(allSourceLocalRepos, tdc, 0, &tdc.stateManager.ProgressState, &tdc.stateManager.TransferRunStatus)
+	err = initTransferProgressMng(allSourceLocalRepos, tdc, 0, &tdc.stateManager.ProgressState, &tdc.stateManager.TransferRunStatus)
 	if err != nil {
 		return err
 	}

@@ -43,7 +43,7 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile str
 	return []*services.GraphNode{root}, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNode string, directDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNodeName string, directDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -96,7 +96,12 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	if err != nil {
 		return
 	}
-	rootNode, err = pythonutils.GetPackageName(pythonTool, tempDirPath)
+	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
+	if pkgNameErr != nil {
+		clientLog.Debug("Couldn't retrieve Python package name. Reason: ", pkgNameErr.Error())
+		// If package name couldn't be determined by the Python utils, use the project dir name.
+		rootNodeName = filepath.Base(filepath.Dir(wd))
+	}
 	return
 }
 

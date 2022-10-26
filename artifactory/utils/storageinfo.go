@@ -147,7 +147,8 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 	if len(usedSpaceParts) != 2 {
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
-	sizeInUnit, err := strconv.ParseFloat(usedSpaceParts[0], 64)
+	// The ReplaceAll removes ',' from the number, for example: 1,004.64 -> 1004.64
+	sizeInUnit, err := strconv.ParseFloat(strings.ReplaceAll(usedSpaceParts[0], ",", ""), 64)
 	if err != nil {
 		return 0, errorutils.CheckError(err)
 	}

@@ -70,6 +70,7 @@ func TestConvertStorageSizeStringToBytes(t *testing.T) {
 	}{
 		{"bytes", "2.22 bytes", false, 2.22},
 		{"KB", "3.333 KB", false, 3.333 * bytesInKB},
+		{"KB with comma", "1,004.64 KB", false, 1004.64 * bytesInKB},
 		{"MB", "4.4444 MB", false, 4.4444 * bytesInMB},
 		{"GB", "5.55555 GB", false, 5.55555 * bytesInGB},
 		{"TB", "6.666666 TB", false, 6.666666 * bytesInTB},

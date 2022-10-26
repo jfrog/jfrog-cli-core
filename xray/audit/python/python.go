@@ -23,22 +23,27 @@ const (
 )
 
 func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) (dependencyTree []*services.GraphNode, err error) {
-	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool, requirementsFile)
+	dependenciesGraph, rootNode, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
-	for _, rootDep := range rootDependenciesList {
-		parentNode := &services.GraphNode{
+	directDependencies := []*services.GraphNode{}
+	for _, rootDep := range directDependenciesList {
+		directDependency := &services.GraphNode{
 			Id:    pythonPackageTypeIdentifier + rootDep,
 			Nodes: []*services.GraphNode{},
 		}
-		populatePythonDependencyTree(parentNode, dependenciesGraph)
-		dependencyTree = append(dependencyTree, parentNode)
+		populatePythonDependencyTree(directDependency, dependenciesGraph)
+		directDependencies = append(directDependencies, directDependency)
 	}
-	return
+	root := &services.GraphNode{
+		Id:    pythonPackageTypeIdentifier + rootNode,
+		Nodes: directDependencies,
+	}
+	return []*services.GraphNode{root}, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNodeName string, directDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -87,7 +92,16 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	if err != nil {
 		return
 	}
-	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
+	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
+	if err != nil {
+		return
+	}
+	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
+	if pkgNameErr != nil {
+		clientLog.Debug("Couldn't retrieve Python package name. Reason:", pkgNameErr.Error())
+		// If package name couldn't be determined by the Python utils, use the project dir name.
+		rootNodeName = filepath.Base(filepath.Dir(wd))
+	}
 	return
 }
 

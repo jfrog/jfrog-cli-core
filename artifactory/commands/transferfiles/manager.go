@@ -27,7 +27,7 @@ func newTransferManager(base phaseBase, delayUploadComparisonFunctions []shouldD
 
 type transferActionWithProducerConsumerType func(
 	pcWrapper *producerConsumerWrapper,
-	uploadChunkChan chan UploadedChunkData,
+	uploadChunkChan chan UploadedChunk,
 	delayHelper delayUploadHelper,
 	errorsChannelMng *ErrorsChannelMng) error
 
@@ -49,7 +49,7 @@ func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transf
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
 func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
-	uploadChunkChan := make(chan UploadedChunkData, transfer.MaxThreadsLimit)
+	uploadChunkChan := make(chan UploadedChunk, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
@@ -80,7 +80,8 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 	}
 
 	if ftm.timeEstMng != nil {
-		ftm.timeEstMng.setTimeEstimationUnavailable(ftm.phaseId != FullTransferPhase)
+		ftm.timeEstMng.setTimeEstimationUnavailable(ftm.phaseId != FullTransferPhase && ftm.phaseId != ErrorsPhase)
+		ftm.timeEstMng.setBuildInfoRepo(ftm.buildInfoRepo)
 	}
 
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)
@@ -152,7 +153,7 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 // Runs 2 go routines :
 // 1. Check number of threads
 // 2. Poll uploaded chunks
-func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) error {
+func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
 	err := ptm.addGoRoutine()

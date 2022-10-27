@@ -1,7 +1,6 @@
 package transferfiles
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -29,27 +28,6 @@ type TargetAuth struct {
 	TargetPassword       string `json:"target_password,omitempty"`
 	TargetToken          string `json:"target_token,omitempty"`
 	TargetProxyKey       string `json:"target_proxy_key,omitempty"`
-}
-
-type HandlePropertiesDiff struct {
-	TargetAuth
-	RepoKey           string `json:"repo_key,omitempty"`
-	StartMilliseconds string `json:"start_milliseconds,omitempty"`
-	EndMilliseconds   string `json:"end_milliseconds,omitempty"`
-}
-
-type HandlePropertiesDiffResponse struct {
-	NodeIdResponse
-	PropertiesDelivered json.Number               `json:"properties_delivered,omitempty"`
-	PropertiesTotal     json.Number               `json:"properties_total,omitempty"`
-	Status              ProcessStatusType         `json:"status,omitempty"`
-	Errors              []PropertiesHandlingError `json:"errors,omitempty"`
-}
-
-type PropertiesHandlingError struct {
-	FileRepresentation
-	StatusCode string `json:"status_code,omitempty"`
-	Reason     string `json:"reason,omitempty"`
 }
 
 type UploadChunk struct {
@@ -82,9 +60,8 @@ type UploadChunksStatusResponse struct {
 
 type ChunkStatus struct {
 	UuidTokenResponse
-	Status         ProcessStatusType          `json:"status,omitempty"`
-	Files          []FileUploadStatusResponse `json:"files,omitempty"`
-	DurationMillis int64                      `json:"duration_millis,omitempty"`
+	Status ProcessStatusType          `json:"status,omitempty"`
+	Files  []FileUploadStatusResponse `json:"files,omitempty"`
 }
 
 type FileUploadStatusResponse struct {
@@ -109,17 +86,16 @@ type UuidTokenResponse struct {
 }
 
 // Fill chunk data batch till full. Return if no new chunk data is available.
-func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunkData) {
+func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunk) {
 	for chunksLifeCycleManager.totalChunks < GetThreads() {
 		select {
 		case data := <-uploadChunkChan:
 			currentNodeId := nodeId(data.NodeId)
-			currentChunkId := chunkId(data.ChunkUuid)
+			currentChunkId := chunkId(data.UuidToken)
 			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
-				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = map[chunkId][]FileRepresentation{}
+				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = make(map[chunkId]UploadedChunkData)
 			}
-			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] =
-				append(chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId], data.ChunkFiles...)
+			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] = data.UploadedChunkData
 			chunksLifeCycleManager.totalChunks++
 		default:
 			// No new tokens are waiting.

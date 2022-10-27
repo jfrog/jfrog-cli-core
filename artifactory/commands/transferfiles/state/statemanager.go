@@ -44,7 +44,7 @@ func NewTransferStateManager(loadRunStatus bool) (*TransferStateManager, error) 
 	return &stateManager, nil
 }
 
-// Try to lock the tranfer state manager.
+// Try to lock the transfer state manager.
 // If file-transfer is already running, return "Already locked" error.
 func (ts *TransferStateManager) TryLockTransferStateManager() error {
 	return ts.tryLockStateManager()

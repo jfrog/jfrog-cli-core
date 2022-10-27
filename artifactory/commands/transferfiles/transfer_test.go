@@ -151,7 +151,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 // Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
 func uploadChunkAndPollTwice(t *testing.T, phaseBase *phaseBase, fileSample FileRepresentation) {
 	curThreads = 8
-	uploadChunksChan := make(chan UploadedChunkData, 3)
+	uploadChunksChan := make(chan UploadedChunk, 3)
 	doneChan := make(chan bool, 1)
 	var runWaitGroup sync.WaitGroup
 
@@ -373,19 +373,19 @@ func getSampleChunkStatus() UploadChunksStatusResponse {
 func TestCheckChunkStatusSync(t *testing.T) {
 	chunkStatus := getSampleChunkStatus()
 	manager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[chunkId][]FileRepresentation{},
+		nodeToChunksMap: map[nodeId]map[chunkId]UploadedChunkData{},
 		totalChunks:     2,
 	}
-	manager.nodeToChunksMap[nodeIdForTest] = map[chunkId][]FileRepresentation{}
-	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest], FileRepresentation{})
-	manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest] = append(manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest], FileRepresentation{})
-	errChanlMng := createErrorsChannelMng()
-	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	manager.nodeToChunksMap[nodeIdForTest] = map[chunkId]UploadedChunkData{}
+	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = UploadedChunkData{}
+	manager.nodeToChunksMap[nodeIdForTest][secondUuidTokenForTest] = UploadedChunkData{}
+	errChanMng := createErrorsChannelMng()
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanMng)
 	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 2)
 	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
-	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanMng)
 	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 1)
 	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
-	checkChunkStatusSync(&chunkStatus, &manager, &errChanlMng)
+	checkChunkStatusSync(&chunkStatus, &manager, &errChanMng)
 	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 0)
 }

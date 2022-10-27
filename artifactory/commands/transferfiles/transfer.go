@@ -150,11 +150,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if isTimeEstimationEnabled() {
-		if err = tdc.initTimeEstimationManager(); err != nil {
-			return err
-		}
+	if err = tdc.initTimeEstimationManager(sourceBuildInfoRepos); err != nil {
+		return err
 	}
+
 	if err = tdc.initStateManager(allSourceLocalRepos); err != nil {
 		return err
 	}
@@ -182,7 +181,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 }
 
 func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) error {
-	totalSizeBytes, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceLocalRepos...)
 	if err != nil {
 		return err
 	}
@@ -249,8 +248,12 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
-func (tdc *TransferFilesCommand) initTimeEstimationManager() error {
-	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager)
+func (tdc *TransferFilesCommand) initTimeEstimationManager(sourceBuildInfoRepos []string) error {
+	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager, totalBiFiles)
 	return nil
 }
 
@@ -308,7 +311,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 			return
 		}
 		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
-		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
+		// in case some requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
 		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
@@ -430,7 +433,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 		// Close the stop signal channel
 		close(stopSignal)
 		if tdc.shouldStop() {
-			// If should stop, wait for stop to happen
+			// If we should stop, wait for stop to happen
 			<-finishStop
 		}
 	}, &newPhase
@@ -528,7 +531,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	}
 	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if e != nil {
-		log.Error("Couldn't create the errros CSV file", e)
+		log.Error("Couldn't create the errors CSV file", e)
 		if err == nil {
 			err = e
 		}
@@ -543,7 +546,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 // handleMaxUniqueSnapshots handles special cases regarding the Max Unique Snapshots/Tags setting of repositories of
 // these package types: Maven, Gradle, NuGet, Ivy, SBT and Docker.
 // TL;DR: we might have repositories in the source with more snapshots than the maximum (in Max Unique Snapshots/Tags),
-// so he turn it off at the beginning of the transfer and turn it back on at the end.
+// so we turn it off at the beginning of the transfer and turn it back on at the end.
 //
 // And in more detail:
 // The cleanup of old snapshots in Artifactory is triggered by uploading a new snapshot only, so we might have

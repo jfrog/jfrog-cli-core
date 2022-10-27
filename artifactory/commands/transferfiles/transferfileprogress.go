@@ -12,11 +12,11 @@ import (
 type TransferJobType string
 
 const (
-	Repositories TransferJobType = "Repositories"
-	Files        TransferJobType = "Files"
-	TimeSlots    TransferJobType = "Time Slots"
-	Note         string          = "Note: "
-	contentNote  string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
+	Repositories            TransferJobType = "Repositories"
+	Files                   TransferJobType = "Files"
+	TimeSlots               TransferJobType = "Time Slots"
+	Note                    string          = "Note: "
+	RetryFailureContentNote string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )
 
 func (tt TransferJobType) String() string {
@@ -83,7 +83,7 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstima
 	}
 	transfer.errorNote = transfer.barsMng.NewStringProgressBar("", func() string {
 		if transfer.errorBar.GetTotal() > 0 {
-			return Note + color.Yellow.Render(contentNote)
+			return Note + color.Yellow.Render(RetryFailureContentNote)
 		} else {
 			return ""
 		}

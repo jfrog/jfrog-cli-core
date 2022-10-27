@@ -71,8 +71,17 @@ func verifyGradleWrapper() (bool, error) {
 		return false, err
 	}
 	filesInDir, err := fileutils.ListFiles(wd, false)
+	if err != nil {
+		return false, err
+	}
 	fullPathGradlew, err := filepath.Abs(gradlew)
+	if err != nil {
+		return false, err
+	}
 	fullPathGradlewbat, err := filepath.Abs(gradlewbat)
+	if err != nil {
+		return false, err
+	}
 	for _, file := range filesInDir {
 		if file == fullPathGradlew || file == fullPathGradlewbat {
 			return true, nil

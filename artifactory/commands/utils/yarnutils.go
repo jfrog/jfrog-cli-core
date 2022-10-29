@@ -12,7 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 )
@@ -61,7 +60,7 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*e
 		}
 	}()
 	var result []byte
-	result, err = ioutil.ReadAll(stream)
+	result, err = io.ReadAll(stream)
 	if err != nil {
 		return
 	}

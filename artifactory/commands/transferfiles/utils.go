@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -116,7 +116,7 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 		}
 	}()
 
-	respBody, err := ioutil.ReadAll(reader)
+	respBody, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

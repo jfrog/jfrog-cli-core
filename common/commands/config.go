@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -416,7 +416,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 
 	messageSuffix := ": "
 	if exists {
-		sshKeyBytes, err := ioutil.ReadFile(details.SshKeyPath)
+		sshKeyBytes, err := os.ReadFile(details.SshKeyPath)
 		if err != nil {
 			return nil
 		}

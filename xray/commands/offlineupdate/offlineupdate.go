@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -160,7 +159,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	if err != nil {
 		return err
 	}
-	dataDir, err := ioutil.TempDir(xrayTempDir, "xray_downloaded_data")
+	dataDir, err := os.MkdirTemp(xrayTempDir, "xray_downloaded_data")
 	if err != nil {
 		return err
 	}
@@ -294,7 +293,7 @@ func createZipArchive(dataDir, targetPath, filesPrefix, zipSuffix string) error 
 }
 
 func saveData(xrayTmpDir, filesPrefix, zipSuffix, targetPath string, urlsList []string) (err error) {
-	dataDir, err := ioutil.TempDir(xrayTmpDir, filesPrefix)
+	dataDir, err := os.MkdirTemp(xrayTmpDir, filesPrefix)
 	if err != nil {
 		return err
 	}

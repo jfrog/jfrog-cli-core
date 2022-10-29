@@ -1,6 +1,6 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.18
+go 1.19
 
 require (
 	github.com/buger/jsonparser v1.1.1
@@ -91,8 +91,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.23.3-0.20220918124032-958dbe265f2c
+replace github.com/jfrog/jfrog-client-go => github.com/gailazar300/jfrog-client-go v0.18.1-0.20221026141539-6bdf61ea3e78
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.6.1-0.20220928081908-ab4690a33f68
+replace github.com/jfrog/build-info-go => github.com/gailazar300/build-info-go v0.1.1-0.20221026134224-5f633ac088c3
 
-//replace github.com/jfrog/gofrog => github.com/jfrog/gofrog dev
+replace github.com/jfrog/gofrog => github.com/gailazar300/gofrog v1.1.2-0.20221026134646-c581613106c2

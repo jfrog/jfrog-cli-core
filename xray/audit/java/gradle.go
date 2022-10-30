@@ -2,19 +2,16 @@ package java
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"os"
-	"path/filepath"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 const (
-	gradlew    = "gradlew"
-	gradlewbat = "gradlew.bat"
+	gradlew = "gradlew"
 )
 
 func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool) (dependencyTree []*services.GraphNode, err error) {
@@ -51,7 +48,7 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 	// check if gradle wrapper exist
 	if useWrapper {
 		var wrapperExist bool
-		wrapperExist, err = verifyGradleWrapper()
+		wrapperExist, err = isGradleWrapperExist()
 		if err != nil {
 			return
 		}
@@ -65,28 +62,10 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
 }
 
-func verifyGradleWrapper() (bool, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return false, err
+func isGradleWrapperExist() (bool, error) {
+	wrapperName := gradlew
+	if coreutils.IsWindows() {
+		wrapperName += ".bat"
 	}
-	filesInDir, err := fileutils.ListFiles(wd, false)
-	if err != nil {
-		return false, err
-	}
-	fullPathGradlew, err := filepath.Abs(gradlew)
-	if err != nil {
-		return false, err
-	}
-	fullPathGradlewbat, err := filepath.Abs(gradlewbat)
-	if err != nil {
-		return false, err
-	}
-	for _, file := range filesInDir {
-		if file == fullPathGradlew || file == fullPathGradlewbat {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return fileutils.IsFileExists(wrapperName, false)
 }

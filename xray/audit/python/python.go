@@ -22,7 +22,7 @@ const (
 )
 
 func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) (dependencyTree []*services.GraphNode, err error) {
-	dependenciesGraph, rootNode, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
+	dependenciesGraph, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
@@ -36,13 +36,13 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile str
 		directDependencies = append(directDependencies, directDependency)
 	}
 	root := &services.GraphNode{
-		Id:    pythonPackageTypeIdentifier + rootNode,
+		Id:    pythonPackageTypeIdentifier,
 		Nodes: directDependencies,
 	}
 	return []*services.GraphNode{root}, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNodeName string, directDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, directDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -94,14 +94,6 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil && pythonTool == pythonutils.Pip {
 		audit.LogExecutableVersion("python")
-	}
-	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
-	if pkgNameErr != nil {
-		clientLog.Debug("Couldn't retrieve Python package name. Reason:", pkgNameErr.Error())
-	}
-	if rootNodeName == "" {
-		// If package name couldn't be determined by the Python utils, use the project dir name.
-		rootNodeName = filepath.Base(wd)
 	}
 	return
 }

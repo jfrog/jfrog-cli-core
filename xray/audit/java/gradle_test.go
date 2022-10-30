@@ -81,8 +81,6 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 }
 
 func TestIsGradleWrapperExist(t *testing.T) {
-	// This function assumes that the Gradle wrapper is in the root directory.
-	// There is a need to adjust this function if the audit function supports multi-dir in the future.
 	_, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
 	defer cleanUp()
 	isWrapperExist, err := isGradleWrapperExist()

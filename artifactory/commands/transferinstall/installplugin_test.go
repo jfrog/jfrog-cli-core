@@ -2,16 +2,17 @@ package transferinstall
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -19,109 +20,58 @@ import (
 	"testing"
 )
 
-func TestFile(t *testing.T) {
-	// with dirs
-	file := File{"dir", "dir2", "name.txt"}
-	dirs := file.Dirs()
-	assert.Equal(t, "name.txt", file.Name())
-	assert.Len(t, dirs, 2)
-	assert.Equal(t, "dir", dirs[0])
-	assert.Equal(t, "dir2", dirs[1])
-	// no dirs
-	file = File{"name2.txt"}
-	dirs = file.Dirs()
-	assert.Equal(t, "name2.txt", file.Name())
-	assert.Len(t, dirs, 0)
-	// empty
-	file = File{""}
-	dirs = file.Dirs()
-	assert.Equal(t, "", file.Name())
-	assert.Len(t, dirs, 0)
+func TestPluginFileItemNameAndDirs(t *testing.T) {
+	testFileItemNameDirs(t, PluginFileItem{"dir", "dir2"}, "name.txt", PluginFileItem{"dir", "dir2", "name.txt"})
+	testFileItemNameDirs(t, PluginFileItem{}, "name.txt", PluginFileItem{"name.txt"})
+	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{})
+	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{""})
+	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{"", "", ""})
+	testFileItemNameDirs(t, PluginFileItem{"dir"}, "", PluginFileItem{"", "dir", ""})
+	testFileItemNameDirs(t, PluginFileItem{"dir"}, "name", PluginFileItem{"dir", "", "name"})
 }
 
-func TestToUrl(t *testing.T) {
-	file := File{"dir", "dir2", "name.txt"}
-	url := toURL(file...)
-	assert.Equal(t, "dir/dir2/name.txt", url)
-	url = toURL(file.Dirs()...)
-	assert.Equal(t, "dir/dir2", url)
-	file = File{"name.txt"}
-	url = toURL(file...)
-	assert.Equal(t, "name.txt", url)
-	file = File{""}
-	url = toURL(file...)
-	assert.Equal(t, "", url)
+func testFileItemNameDirs(t *testing.T, expectedDirs PluginFileItem, expectedName string, file PluginFileItem) {
+	assert.Equal(t, expectedName, file.Name())
+	assert.Equal(t, &expectedDirs, file.Dirs())
+	fileName, fileDirs := file.SplitNameAndDirs()
+	assert.Equal(t, expectedName, fileName)
+	assert.Equal(t, &expectedDirs, fileDirs)
+	assert.Len(t, *fileDirs, len(expectedDirs))
+	for i, DirName := range *fileDirs {
+		assert.Equal(t, expectedDirs[i], DirName)
+	}
 }
 
-func setUpMockArtifactoryDir(dirs Directory) (rootPath string, clean func(), err error) {
-	// prepare temp dir
-	rootPath, err = fileutils.CreateTempDir()
-
-	if err != nil {
-		return
-	}
-	rootPath, err = filepath.Abs(rootPath)
-	if err != nil {
-		return
-	}
-	// populate a given dir with plugin directory
-	err = fileutils.CreateDirIfNotExist(path.Join(rootPath, path.Join(dirs...)))
-	if err != nil {
-		return
-	}
-	// set env var to new tmp dir
-	oldVal, exists := os.LookupEnv(jHomeEnvVar)
-	if err = os.Setenv(jHomeEnvVar, rootPath); err != nil {
-		return
-	}
-	clean = genericCleanFunc(rootPath, exists, oldVal)
-	return
+func TestPluginFileItemToUrlAndToPath(t *testing.T) {
+	testFileItemToUrlAndToPath(t, "dir/dir2/name.txt", filepath.Join("dir", "dir2", "name.txt"), PluginFileItem{"dir", "dir2", "name.txt"})
+	testFileItemToUrlAndToPath(t, "name.txt", filepath.Join("name.txt"), PluginFileItem{"name.txt"})
+	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{})
+	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{""})
+	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{"", ""})
+	testFileItemToUrlAndToPath(t, "dir", filepath.Join("dir", ""), PluginFileItem{"", "dir", ""})
+	testFileItemToUrlAndToPath(t, "dir/name", filepath.Join("dir", "name"), PluginFileItem{"dir", "", "name"})
 }
 
-// creates function to clean up and return to previous state
-func genericCleanFunc(rootPath string, envExisted bool, oldEnvVal string) func() {
-	return func() {
-		// clean temp dir
-		homePath, err := filepath.Abs(rootPath)
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-		errorOccurred := false
-		if err = fileutils.RemoveTempDir(homePath); err != nil {
-			errorOccurred = true
-			log.Error(err)
-		}
-		// set env to old
-		if !envExisted {
-			if err = os.Unsetenv(jHomeEnvVar); err != nil {
-				errorOccurred = true
-				log.Error(err)
-			}
-		} else {
-			if err = os.Setenv(jHomeEnvVar, oldEnvVal); err != nil {
-				errorOccurred = true
-				log.Error(err)
-			}
-		}
-		if errorOccurred {
-			os.Exit(1)
-		}
+func testFileItemToUrlAndToPath(t *testing.T, expectedUrl string, expectedPath string, file PluginFileItem) {
+	assert.Equal(t, expectedUrl, file.toURL())
+	assert.Equal(t, expectedPath, file.toPath())
+	assert.Equal(t, expectedUrl, file.toURL(""))
+	assert.Equal(t, expectedPath, file.toPath(""))
+	prefix := "prefix"
+	prefix2 := "prefix2"
+	assert.Equal(t, filepath.Join(prefix, prefix2, expectedPath), file.toPath(prefix, "", prefix2))
+	expectedPrefixUrl := prefix + "/" + prefix2
+	if expectedUrl != "" {
+		expectedPrefixUrl += "/"
 	}
+	assert.Equal(t, expectedPrefixUrl+expectedUrl, file.toURL(prefix, "", prefix2))
 }
 
 func TestValidateRequirements(t *testing.T) {
-	// root path env var
-	testValidateRootPath(t, true, "") // no env set
-	rootPath, clean, err := setUpMockArtifactoryDir(OriginalDirPath)
-	assert.NoError(t, err)
-	defer clean()
-	testValidateRootPath(t, false, rootPath) // env is set
 	// min version
 	testValidateMinimumVersion(t, "7.0.0", false)               // above
 	testValidateMinimumVersion(t, minArtifactoryVersion, false) // exact
 	testValidateMinimumVersion(t, "1.0.0", true)                // below
-	testValidateMinimumVersion(t, "", true)                     // empty
 }
 
 func testValidateMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
@@ -135,7 +85,7 @@ func testValidateMinimumVersion(t *testing.T, curVersion string, errorExpected b
 	})
 	defer testServer.Close()
 
-	ver, err := validateAndFetchArtifactoryVersion(serviceManager)
+	ver, err := validateMinArtifactoryVersion(serviceManager)
 	if errorExpected {
 		assert.EqualError(t, err, minVerErr.Error())
 		return
@@ -144,124 +94,156 @@ func testValidateMinimumVersion(t *testing.T, curVersion string, errorExpected b
 	assert.Equal(t, version.NewVersion(curVersion), ver)
 }
 
-func testValidateRootPath(t *testing.T, errorExpected bool, pathExpected string) {
-	rootPath, err := validateAndFetchRootPath()
-	if errorExpected {
-		assert.EqualError(t, err, envVarNotExists.Error())
-		return
+func populateDirWith(rootDir string, dirs ...PluginFileItem) {
+	for _, dir := range dirs {
+		coreutils.ExitOnErr(fileutils.CreateDirIfNotExist(dir.toPath(rootDir)))
 	}
-	assert.Equal(t, pathExpected, rootPath)
-	assert.NoError(t, err)
 }
 
-func TestTrySearchDestinationMatchFrom(t *testing.T) {
-	testTrySearchDestinationMatchFrom(t, OriginalDirPath)
-	testTrySearchDestinationMatchFrom(t, V7DirPath)
+func setJHomeEnvVar(val string) func() {
+	oldVal, exists := os.LookupEnv(jHomeEnvVar)
+	if exists && val == "" {
+		coreutils.ExitOnErr(os.Unsetenv(jHomeEnvVar))
+	} else if val != "" {
+		coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, val))
+	}
+
+	return func() {
+		// set env to old
+		if !exists {
+			coreutils.ExitOnErr(os.Unsetenv(jHomeEnvVar))
+		} else {
+			coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, oldVal))
+		}
+	}
 }
 
-func testTrySearchDestinationMatchFrom(t *testing.T, directory Directory) {
-	rootDir, clean, err := setUpMockArtifactoryDir(directory)
-	assert.NoError(t, err)
+func TestSearchDestinationPath(t *testing.T) {
+	testDit := PluginFileItem{"test_plugin_install_dir", "test"}
+	confuse := PluginFileItem{"test_plugin_install_dir", "test2"} // not destination at all
+	manager := &PluginTransferManager{}
+	temp, clean := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer clean()
-
-	manager := NewFileTransferManager(nil)
-	// No dest at all
-	target, err := manager.trySearchDestinationMatchFrom(rootDir)
-	assert.EqualError(t, err, EmptyDestinationErr.Error())
-	// with dest not match
-	manager.addDestination(Directory{"artifactory", "notdir"})
-	target, err = manager.trySearchDestinationMatchFrom(rootDir)
-	assert.EqualError(t, err, NotValidDestinationErr(rootDir).Error())
-	// with right destination
-	manager.addDestination(directory)
-	target, err = manager.trySearchDestinationMatchFrom(rootDir)
+	populateDirWith(temp, confuse)
+	// no destinations
+	exists, target, err := manager.trySearchDestinationMatchFrom(temp)
 	assert.NoError(t, err)
-	assert.Equal(t, Directory(append(strings.Split(rootDir, "[/\\]"), directory...)), target)
+	assert.False(t, exists, fmt.Sprintf("the match is %s", target))
+	// destination not exists
+	manager.addDestination(testDit)
+	exists, _, err = manager.trySearchDestinationMatchFrom(temp)
+	assert.NoError(t, err)
+	assert.False(t, exists)
+	// destination exists
+	populateDirWith(temp, testDit)
+	exists, dst, err := manager.trySearchDestinationMatchFrom(temp)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, testDit.toPath(temp), dst.toPath())
 }
 
-func TestGetTransferBundle(t *testing.T) {
+func TestGetPluginDirDestination(t *testing.T) {
+	// init mock and test env
+	testEnvDir := "testEnv"
+	testCustomDir := "testCustom"
+	targetDir := "plugins_test_target"
+	testHomePath, clean := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer clean()
+	revert := setJHomeEnvVar("") // reset val to not exists
+	defer revert()
+	populateDirWith(testHomePath, PluginFileItem{testEnvDir, targetDir}, PluginFileItem{testCustomDir, targetDir})
+	manager := NewArtifactoryPluginTransferManager(nil)
+	manager.addDestination(PluginFileItem{targetDir})
+	cmd := &InstallPluginCommand{transferManger: manager}
+	defaultExists, err := fileutils.IsDirExists(defalutSearchPath, false)
+	coreutils.ExitOnErr(err)
+
+	// make sure contains artifactory structures as destinations
+	assert.Contains(t, manager.destinations, OriginalDirPath)
+	assert.Contains(t, manager.destinations, V7DirPath)
+
+	// default
+	dst, err := cmd.getPluginDirDestination()
+	if defaultExists {
+		assert.NoError(t, err)
+		assert.True(t, dst.toPath() == OriginalDirPath.toPath(defalutSearchPath) || (dst.toPath() == V7DirPath.toPath(defalutSearchPath)))
+	} else {
+		assert.Errorf(t, err, NotValidDestinationErr.Error())
+	}
+
+	// env var override
+	coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, filepath.Join(testHomePath, testEnvDir)))
+	dst, err = cmd.getPluginDirDestination()
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, targetDir), dst.toPath())
+
+	// flag override
+	cmd.SetOverrideJfrogHomePath(filepath.Join(testHomePath, testCustomDir))
+	dst, err = cmd.getPluginDirDestination()
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, targetDir), dst.toPath())
+}
+
+func TestGetTransferSourceAndAction(t *testing.T) {
 	baseUrl := "baseurl"
 	v1 := "1.0.0"
 	cmd := &InstallPluginCommand{}
 
-	// err - no url provided
-	src, action, err := cmd.getTransferBundle()
+	// err - no url provided with the latest download option
+	src, action, err := cmd.getTransferSourceAndAction()
 	assert.EqualError(t, err, EmptyUrlErr.Error())
 	cmd.SetBaseDownloadUrl(baseUrl)
 
 	// latest
-	src, action, err = cmd.getTransferBundle()
+	src, action, err = cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
 	assert.Equal(t, toURL(baseUrl, latest), src)
 	assert.Contains(t, runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles")
 
 	// specific version
 	cmd.SetInstallVersion(version.NewVersion(v1))
-	src, action, err = cmd.getTransferBundle()
+	src, action, err = cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
 	assert.Equal(t, toURL(baseUrl, v1), src)
 	assert.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles"))
 
 	// local file system
 	cmd.SetLocalPluginFiles(baseUrl)
-	src, action, err = cmd.getTransferBundle()
+	src, action, err = cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
 	assert.Equal(t, baseUrl, src)
 	assert.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.CopyFiles"))
 }
 
 func TestInstallCopy(t *testing.T) {
-	fileBundle := FileBundle{
-		File{"file1"},
-		File{"file2"},
+	fileBundle := PluginFiles{
+		PluginFileItem{"file"},
+		PluginFileItem{"dir", "file1"},
+		PluginFileItem{"dir1", "dir2", "file2"},
 	}
-	testInstallCopy(t, OriginalDirPath, fileBundle)
-	testInstallCopy(t, V7DirPath, fileBundle)
-}
-
-func testInstallCopy(t *testing.T, directory Directory, fileBundle FileBundle) {
-	rootPath, clean, err := setUpMockArtifactoryDir(directory)
-	assert.NoError(t, err)
-	defer clean()
-	srcPath, cleanUpSrc, err := createTestTempPluginFiles(t, fileBundle)
-	assert.NoError(t, err)
+	srcPath, cleanUpSrc := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer cleanUpSrc()
-	dst := path.Join(rootPath, path.Join(directory...))
-	// Test when no items in plugin dir (i.e. need to create folders)
-	assert.NoError(t, CopyFiles(srcPath, dst, fileBundle))
-	// make sure all there
-	for _, file := range fileBundle {
-		assert.FileExists(t, path.Join(dst, path.Join(file...)))
-	}
-	// Test when items exist in dir already (i.e. need to override items, no error)
-	assert.NoError(t, CopyFiles(srcPath, dst, fileBundle))
-}
+	tempDst, cleanTempDst := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer cleanTempDst()
+	dstPath, cleanUpDst := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer cleanUpDst()
 
-func createTestTempPluginFiles(t *testing.T, fileBundle FileBundle) (targetPath string, cleanUp func(), err error) {
-	// prepare temp dir
-	targetPath, err = fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	targetPath, err = filepath.Abs(targetPath)
-	assert.NoError(t, err)
-	// generate empty file in dir
+	// empty
+	assert.NoError(t, CopyFiles(srcPath, tempDst, PluginFiles{}))
+	// no src files in dir
+	assert.Error(t, CopyFiles(srcPath, tempDst, fileBundle))
+	// generate empty files in dir (and another to confuse)
 	for _, file := range fileBundle {
-		assert.NoError(t, ioutil.WriteFile(path.Join(targetPath, path.Join(file.Name())), nil, 0644))
-		// create file to confuse
-		assert.NoError(t, ioutil.WriteFile(path.Join(targetPath, path.Join(file.Dirs()...), "not_"+file.Name()), nil, 0644))
+		assert.NoError(t, ioutil.WriteFile(filepath.Join(srcPath, file.Name()), nil, 0644))
+		assert.NoError(t, ioutil.WriteFile(filepath.Join(srcPath, "not_"+file.Name()), nil, 0644))
 	}
-	cleanUp = func() {
-		// clean temp dir
-		homePath, err := filepath.Abs(targetPath)
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-		if err = fileutils.RemoveTempDir(homePath); err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
+	// first time in plugin dir (i.e. need to create folders)
+	assert.NoError(t, CopyFiles(srcPath, dstPath, fileBundle))
+	for _, file := range fileBundle {
+		assert.FileExists(t, file.toPath(dstPath))
 	}
-	return
+	// dir already has plugin (i.e. need to override items, no error)
+	assert.NoError(t, CopyFiles(srcPath, dstPath, fileBundle))
 }
 
 func TestReloadPlugins(t *testing.T) {

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 )
 
@@ -26,43 +25,63 @@ const (
 )
 
 var (
+	defalutSearchPath = filepath.Join("opt", "jfrog")
 	// Plugin directory locations
-	OriginalDirPath = Directory{"artifactory", "etc", "plugins"}
-	V7DirPath       = Directory{"artifactory", "var", "etc", "artifactory", "plugins"}
+	OriginalDirPath = PluginFileItem{"artifactory", "etc", "plugins"}
+	V7DirPath       = PluginFileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
 	// Error types
-	NotValidDestinationErr = func(path string) error {
-		return errors.Errorf("can't find plugin directory from root directory '%s', must run on machine with artufactory", path)
-	}
-	EmptyDestinationErr = errors.Errorf("can't find plugin directory")
-	EmptyUrlErr         = errors.Errorf("base download URL must be provided for plugin install")
-	envVarNotExists     = errorutils.CheckErrorf("The environment variable '%s' must be defined.", jHomeEnvVar)
-	minVerErr           = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
+	EmptyUrlErr            = errors.Errorf("Base download URL must be provided to allow file downloads.")
+	NotValidDestinationErr = errors.Errorf("Can't find plugin directory with the provided information, this command must run on the Artifactory server.")
+	minVerErr              = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
 )
 
-type File []string
-type FileBundle []File
-type Directory []string
+type PluginFileItem []string
+type PluginFiles []PluginFileItem
 
-func (f *File) Name() string {
+// Get the name componenet of the item
+func (f *PluginFileItem) Name() string {
 	size := len(*f)
-	if size < 1 {
+	if size == 0 {
 		return ""
 	}
 	return (*f)[size-1]
 }
 
-func (f *File) Dirs() []string {
-	size := len(*f)
-	if size <= 1 {
-		return []string{}
+// Get the directory list of the item, ignore empty entries
+func (f *PluginFileItem) Dirs() *PluginFileItem {
+	dirs := PluginFileItem{}
+	for i := 0; i < len(*f)-1; i++ {
+		dir := (*f)[i]
+		if dir != "" {
+			dirs = append(dirs, dir)
+		}
 	}
-	return (*f)[:size-1]
+	return &dirs
 }
 
+// Split and get the componenets of the item
+func (f *PluginFileItem) SplitNameAndDirs() (string, *PluginFileItem) {
+	return f.Name(), f.Dirs()
+}
+
+// Convert the item to URL representation, ignore empty entries, adding prefix tokens as provided
+func (f *PluginFileItem) toURL(previousTokens ...string) string {
+	return toURL(toURL(previousTokens...), toURL(*f...))
+}
+
+// Convert the item to path representation, ignore empty entries, adding prefix tokens as provided
+func (f *PluginFileItem) toPath(previousTokens ...string) string {
+	return filepath.Join(filepath.Join(previousTokens...), filepath.Join(*f.Dirs()...), f.Name())
+}
+
+// Convert tokens into URL representation, ignore empty ("") entries
 func toURL(tokens ...string) string {
 	url := ""
-	for i, token := range tokens {
-		if i > 0 {
+	for _, token := range tokens {
+		if token == "" {
+			continue
+		}
+		if url != "" {
 			url += "/"
 		}
 		url += token
@@ -70,66 +89,74 @@ func toURL(tokens ...string) string {
 	return url
 }
 
-// holds all the file information needed to transfer and install plugin
-type FileTransferManager struct {
-	files        FileBundle
-	destinations []Directory
+// Holds all the plugin files and options of destinations to transfer them into
+type PluginTransferManager struct {
+	files        PluginFiles
+	destinations []PluginFileItem
 }
 
-func NewFileTransferManager(bundle FileBundle) *FileTransferManager {
-	return &FileTransferManager{
+// Create new file transfer manager for artifactory plugins
+func NewArtifactoryPluginTransferManager(bundle PluginFiles) *PluginTransferManager {
+	manager := &PluginTransferManager{
 		files:        bundle,
-		destinations: []Directory{},
+		destinations: []PluginFileItem{},
 	}
-}
-
-func NewArtifactoryPluginTransferManager(bundle FileBundle) *FileTransferManager {
-	manager := NewFileTransferManager(bundle)
 	// Add all the optional destinations for the plugin dir
 	manager.addDestination(OriginalDirPath)
 	manager.addDestination(V7DirPath)
-
 	return manager
 }
 
-func (ftm *FileTransferManager) addDestination(directory Directory) {
+// Add optional plugin directory location as destination
+func (ftm *PluginTransferManager) addDestination(directory PluginFileItem) {
 	ftm.destinations = append(ftm.destinations, directory)
 }
 
-// Search the target directory that the plugins exists in base on a given root JFrog artifactory home directory
-// we support the all the directory structures
-func (ftm *FileTransferManager) trySearchDestinationMatchFrom(rootDir string) (target Directory, err error) {
-	if len(ftm.destinations) == 0 {
-		err = EmptyDestinationErr
+// Search all the local target directories that the plugin directory can exist in base on a given root JFrog artifactory home directory
+// the first option that matched and the directory exists is returned as target
+func (ftm *PluginTransferManager) trySearchDestinationMatchFrom(rootDir string) (exists bool, target PluginFileItem, err error) {
+	if exists, err = fileutils.IsDirExists(rootDir, false); err != nil || !exists {
 		return
 	}
-	// Search artifactory directory structure
-	for _, dst := range ftm.destinations {
-		exists := false
-		exists, err = fileutils.IsDirExists(path.Join(rootDir, path.Join(dst...)), false)
-		if err != nil {
+	exists = false
+	for _, optionalPluginDirDst := range ftm.destinations {
+		if exists, err = fileutils.IsDirExists(optionalPluginDirDst.toPath(rootDir), false); err != nil {
 			return
 		}
 		if exists {
-			target = append([]string{rootDir}, dst...)
+			target = append([]string{rootDir}, optionalPluginDirDst...)
 			return
 		}
 	}
-	err = NotValidDestinationErr(rootDir)
 	return
 }
 
 type InstallPluginCommand struct {
+	// The name of the plugin the command transfer
+	pluginName string
 	// The server that the plugin will be installed on
 	targetServer *config.ServerDetails
-	// transfer manager for the plugin
-	transferManger *FileTransferManager
-	// version flag to download
-	installVersion *version.Version
-	// base url that the plugin files available from
+	// Transfer manager to manage files and destinations
+	transferManger *PluginTransferManager
+	// Source download plugin files information
+	installVersion  *version.Version
 	baseDownloadUrl string
-	// local directory to copy from
+	// Source local directory to copy from
 	localSrcDir string
+	// The Jfrog home directory path override as destination
+	localJfrogHomePath string
+}
+
+// Creeate an InstallPluginCommand
+func NewInstallPluginCommand(artifactoryServerDetails *config.ServerDetails, pluginName string, fileTransferManger *PluginTransferManager) *InstallPluginCommand {
+	return &InstallPluginCommand{
+		targetServer:       artifactoryServerDetails,
+		transferManger:     fileTransferManger,
+		pluginName:         pluginName,
+		installVersion:     nil, // latest
+		localSrcDir:        "",
+		localJfrogHomePath: "",
+	}
 }
 
 func (tic *InstallPluginCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -148,25 +175,21 @@ func (tic *InstallPluginCommand) SetInstallVersion(installVersion *version.Versi
 	return tic
 }
 
-// Set the base URL that the plugin files reside in
+// Set the base URL that the plugin files avaliable
 func (tic *InstallPluginCommand) SetBaseDownloadUrl(baseUrl string) *InstallPluginCommand {
 	tic.baseDownloadUrl = baseUrl
 	return tic
 }
 
-// Creeate an InstallPluginCommand
-func NewInstallPluginCommand(server *config.ServerDetails, transferManger *FileTransferManager) *InstallPluginCommand {
-	return &InstallPluginCommand{
-		targetServer:   server,
-		transferManger: transferManger,
-		installVersion: nil, // latest
-		localSrcDir:    "",
-	}
+// Set the Jfrog home directory path override to search in it the plugin directory as destination
+func (tic *InstallPluginCommand) SetOverrideJfrogHomePath(path string) *InstallPluginCommand {
+	tic.localJfrogHomePath = path
+	return tic
 }
 
-// Validates minimum version and fetch current (for reload API request), JFROG_HOME env var exists
-func validateAndFetchArtifactoryVersion(servicesManager artifactory.ArtifactoryServicesManager) (artifactoryVersion *version.Version, err error) {
-	// validate version and make sure server is up
+// Validates minimum version and fetch the current
+func validateMinArtifactoryVersion(servicesManager artifactory.ArtifactoryServicesManager) (artifactoryVersion *version.Version, err error) {
+	log.Debug("verifying install requirements...")
 	rawVersion, err := servicesManager.GetVersion()
 	if err != nil {
 		return
@@ -179,32 +202,40 @@ func validateAndFetchArtifactoryVersion(servicesManager artifactory.ArtifactoryS
 	return
 }
 
-// Validates JFROG_HOME env var exists and fetch it
-func validateAndFetchRootPath() (rootPath string, err error) {
-	// validate environment variable
-	rootPath, exists := os.LookupEnv(jHomeEnvVar)
-	if !exists {
-		err = envVarNotExists
-		return
-	}
-	return
-}
+// Get the plugin directory destination to install the plugin in it, search is starting from jfrog home directory
+func (tic *InstallPluginCommand) getPluginDirDestination() (target PluginFileItem, err error) {
+	var exists bool
+	var envVal string
 
-// Validates the information needed for this command.
-func validateInstallRequirements(servicesManager artifactory.ArtifactoryServicesManager) (artifactoryVersion *version.Version, rootPath string, err error) {
-	artifactoryVersion, err = validateAndFetchArtifactoryVersion(servicesManager)
-	if err != nil {
+	// Flag override
+	if tic.localJfrogHomePath != "" {
+		log.Debug(fmt.Sprintf("try searching for plugin directory with custom Jfrog home directory '%s'.", tic.localJfrogHomePath))
+		if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(tic.localJfrogHomePath); err != nil || exists {
+			return
+		}
+	}
+	// Environment variable override
+	if envVal, exists = os.LookupEnv(jHomeEnvVar); exists {
+		log.Debug(fmt.Sprintf("try searching for plugin directory with '%s=%s'.", jHomeEnvVar, envVal))
+		if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(envVal); err != nil || exists {
+			return
+		}
+	}
+	// Default value
+	log.Debug(fmt.Sprintf("try searching for plugin directory with default path '%s'.", defalutSearchPath))
+	if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(defalutSearchPath); err != nil || exists {
 		return
 	}
-	rootPath, err = validateAndFetchRootPath()
+
+	err = NotValidDestinationErr
 	return
 }
 
 // transfer the bundle from src to dst
-type TransferAction func(src string, dst string, bundle FileBundle) error
+type TransferAction func(src string, dst string, bundle PluginFiles) error
 
 // return the src path and a transfer action
-func (tic *InstallPluginCommand) getTransferBundle() (src string, transferAction TransferAction, err error) {
+func (tic *InstallPluginCommand) getTransferSourceAndAction() (src string, transferAction TransferAction, err error) {
 	// check if local directory was provided
 	if tic.localSrcDir != "" {
 		src = tic.localSrcDir
@@ -212,6 +243,7 @@ func (tic *InstallPluginCommand) getTransferBundle() (src string, transferAction
 		log.Debug("local plugin files provided. copying from file system")
 		return
 	}
+	// make sure base url is set
 	if tic.baseDownloadUrl == "" {
 		err = EmptyUrlErr
 		return
@@ -232,17 +264,16 @@ func (tic *InstallPluginCommand) getTransferBundle() (src string, transferAction
 }
 
 // Download the plugin files from the given url to the target directory (create path if needed or override existing files)
-func DownloadFiles(src string, pluginDir string, bundle FileBundle) (err error) {
+func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 	for _, file := range bundle {
-		srcURL := toURL(src, toURL(file...))
-		dstDir := path.Join(pluginDir, path.Join(file.Dirs()...))
-		name := file.Name()
-		dstPath := path.Join(dstDir, name)
-		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", name, srcURL, dstDir))
-		if err = fileutils.CreateDirIfNotExist(dstDir); err != nil {
+		fileName, fileDirs := file.SplitNameAndDirs()
+		srcURL := file.toURL(src)                // = toURL(src, toURL(file...))
+		dstDirPath := fileDirs.toPath(pluginDir) // = path.Join(pluginDir, path.Join(file.Dirs()...))
+		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, fileDirs.toURL(src), dstDirPath))
+		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = downloadutils.DownloadFile(dstPath, srcURL); err != nil {
+		if err = downloadutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
 			return
 		}
 	}
@@ -250,16 +281,16 @@ func DownloadFiles(src string, pluginDir string, bundle FileBundle) (err error) 
 }
 
 // Copy the plugin files from the given source to the target directory (create path if needed or override existing files)
-func CopyFiles(src string, pluginDir string, bundle FileBundle) (err error) {
+func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 	for _, file := range bundle {
-		srcPath := filepath.Join(src, file.Name()) // in local copy, all the files are at the same src dir, no need for all local dirs path
-		dstDir := filepath.Join(pluginDir, path.Join(file.Dirs()...))
-		name := file.Name()
-		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", name, srcPath, dstDir))
-		if err = fileutils.CreateDirIfNotExist(dstDir); err != nil {
+		fileName, fileDirs := file.SplitNameAndDirs()
+		srcPath := filepath.Join(src, fileName)  // in local copy, all the files are at the same src dir, no need for all local dirs path
+		dstDirPath := fileDirs.toPath(pluginDir) // filepath.Join(pluginDir, path.Join(file.Dirs()...))
+		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, src, dstDirPath))
+		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = fileutils.CopyFile(dstDir, srcPath); err != nil {
+		if err = fileutils.CopyFile(dstDirPath, srcPath); err != nil {
 			return
 		}
 	}
@@ -268,6 +299,7 @@ func CopyFiles(src string, pluginDir string, bundle FileBundle) (err error) {
 
 // Send reload command to the artifactory in order to reload the plugin files
 func sendReLoadCommand(servicesManager artifactory.ArtifactoryServicesManager) error {
+	log.Debug("reloading plugins")
 	serviceDetails := servicesManager.GetConfig().GetServiceDetails()
 	httpDetails := serviceDetails.CreateHttpClientDetails()
 
@@ -282,34 +314,30 @@ func sendReLoadCommand(servicesManager artifactory.ArtifactoryServicesManager) e
 }
 
 func (tic *InstallPluginCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing plugin..."))))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", tic.pluginName))))
 
-	// Phase 0: initialize and validate
+	// Initialize and validate
 	serviceManager, err := utils.CreateServiceManager(tic.targetServer, -1, 0, false)
 	if err != nil {
 		return
 	}
-	log.Debug("verifying environment and artifactory server...")
-	_, rootDir, err := validateInstallRequirements(serviceManager)
+	if _, err = validateMinArtifactoryVersion(serviceManager); err != nil {
+		return
+	}
+	// Get source, destination and transfer action
+	dst, err := tic.getPluginDirDestination()
 	if err != nil {
 		return
 	}
-	// Phase 1: check if there is a matched root in destinations
-	log.Debug(fmt.Sprintf("searching inside '%s' for plugin directory", rootDir))
-	pluginDir, err := tic.transferManger.trySearchDestinationMatchFrom(rootDir)
+	src, transferAction, err := tic.getTransferSourceAndAction()
 	if err != nil {
 		return
 	}
-	// Phase 2: get source transfer bundle and execute transferring plugin files
-	src, transferAction, err := tic.getTransferBundle()
-	if err != nil {
+	// Execute transferring action
+	if err = transferAction(src, dst.toPath(), tic.transferManger.files); err != nil {
 		return
 	}
-	if err = transferAction(src, path.Join(pluginDir...), tic.transferManger.files); err != nil {
-		return
-	}
-	// Phase 3: Reload
-	log.Debug("plugin files fetched to the target directory, reloading plugins")
+	// Reload plugins
 	if err = sendReLoadCommand(serviceManager); err != nil {
 		return
 	}

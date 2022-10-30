@@ -15,11 +15,13 @@ type InstallTransferCommand struct {
 	InstallPluginCommand
 }
 
-func NewTransferInstallFileManager() *FileTransferManager {
-	manager := NewArtifactoryPluginTransferManager(FileBundle{
-		File{groovyFileName},
-		File{libDir, jarFileName},
-	})
+var transferPluginFiles = PluginFiles{
+	PluginFileItem{groovyFileName},
+	PluginFileItem{libDir, jarFileName},
+}
+
+func NewTransferInstallFileManager() *PluginTransferManager {
+	manager := NewArtifactoryPluginTransferManager(transferPluginFiles)
 	return manager
 }
 
@@ -28,7 +30,7 @@ func (tic *InstallTransferCommand) CommandName() string {
 }
 
 func NewInstallTransferCommand(server *config.ServerDetails) *InstallTransferCommand {
-	cmd := &InstallTransferCommand{*NewInstallPluginCommand(server, NewTransferInstallFileManager())}
+	cmd := &InstallTransferCommand{*NewInstallPluginCommand(server, "Data-Transfer", NewTransferInstallFileManager())}
 	cmd.SetBaseDownloadUrl(dataTransferUrl)
 	return cmd
 }

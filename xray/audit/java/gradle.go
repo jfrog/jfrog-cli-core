@@ -62,9 +62,9 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
 }
 
+// This function assumes that the Gradle wrapper is in the root directory.
+// There is a need to adjust this function if the audit command supports multi-dir in the future
 func isGradleWrapperExist() (bool, error) {
-	// This function assumes that the Gradle wrapper is in the root directory.
-	// There is a need to adjust this function if the audit function supports multi-dir in the future.
 	wrapperName := gradlew
 	if coreutils.IsWindows() {
 		wrapperName += ".bat"

@@ -13,17 +13,6 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, args []string, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildNpmDependencyTree(args)
-	if err != nil {
-		return
-	}
-	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress, coreutils.Npm)
-	return
-}
-
-func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err error) {
 func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {

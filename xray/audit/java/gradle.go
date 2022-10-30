@@ -10,9 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-const (
-	gradlew = "gradlew"
-)
+const gradlew = "gradlew"
 
 func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool) (dependencyTree []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
@@ -63,7 +61,7 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.
-// There is a need to adjust this function if the audit command supports multi-dir in the future
+// Adapting this function is needed if the audit command supports Gradle's --project-dir option.
 func isGradleWrapperExist() (bool, error) {
 	wrapperName := gradlew
 	if coreutils.IsWindows() {

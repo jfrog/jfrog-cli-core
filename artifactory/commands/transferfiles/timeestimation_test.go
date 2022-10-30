@@ -118,8 +118,8 @@ func assertGetEstimatedRemainingTimeString(t *testing.T, totalBytes int64, expec
 	defer cleanUp()
 
 	// For tests convenience, we use 0 transferred bytes and 1/milliseconds speedsAverage because then the total bytes equals the remaining time.
-	timeEstMng.stateManager.TransferredSizeBytes = 0
-	timeEstMng.stateManager.TotalSizeBytes = totalBytes
+	timeEstMng.stateManager.TotalRepositories.TransferredSizeBytes = 0
+	timeEstMng.stateManager.TotalRepositories.TotalSizeBytes = totalBytes
 	timeEstMng.speedsAverage = 1.0 / milliSecsInSecond
 	// Not taken into account in calculation, just needed to mark the transfer has started and estimation should be done.
 	timeEstMng.timeEstimationUnavailable = false
@@ -147,12 +147,12 @@ func TestEstimationNotAvailable(t *testing.T) {
 func newDefaultTimeEstimationManager(t *testing.T) *timeEstimationManager {
 	stateManager, err := state.NewTransferStateManager(true)
 	assert.NoError(t, err)
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true))
-	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, false, true))
 
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 0, 100*bytesInMB))
-	stateManager.TotalSizeBytes = 600 * bytesInMB
-	return newTimeEstimationManager(stateManager, 0)
+	stateManager.TotalRepositories.TotalSizeBytes = 600 * bytesInMB
+	return newTimeEstimationManager(stateManager)
 }
 
 func TestAddingToFullLastSpeedsSlice(t *testing.T) {
@@ -183,7 +183,7 @@ func addOneFileChunk(t *testing.T, timeEstMng *timeEstimationManager, workingThr
 	chunkSize := int64(chunkSizeMb * bytesInMB)
 	chunkStatus := ChunkStatus{
 		Files: []FileUploadStatusResponse{
-			createFileUploadStatusResponse("", chunkSize, false, Success),
+			createFileUploadStatusResponse(repo1Key, chunkSize, false, Success),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus, workingThreads, true, chunkDuration)
@@ -195,9 +195,9 @@ func TestTransferredSizeInState(t *testing.T) {
 	defer cleanUp()
 
 	// Create repos in state.
-	assert.NoError(t, timeEstMng.stateManager.SetRepoState(repo1Key, 0, 0, true))
-	assert.NoError(t, timeEstMng.stateManager.SetRepoState(repo2Key, 0, 0, true))
-	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, 0, 0)
+	assert.NoError(t, timeEstMng.stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	assert.NoError(t, timeEstMng.stateManager.SetRepoState(repo2Key, 0, 0, false, true))
+	assertTransferredSizes(t, timeEstMng.stateManager, 0, 0)
 
 	// Add a chunk of repo1 with multiple successful files, which are included in total.
 	chunkStatus1 := ChunkStatus{
@@ -225,7 +225,7 @@ func TestTransferredSizeInState(t *testing.T) {
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus3, 3, true, 10*milliSecsInSecond)
-	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes)
+	assertTransferredSizes(t, timeEstMng.stateManager, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes)
 
 	// Add one more chunk of repo2.
 	chunkStatus4 := ChunkStatus{
@@ -234,7 +234,7 @@ func TestTransferredSizeInState(t *testing.T) {
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus4, 3, true, 10*milliSecsInSecond)
-	assertTransferredSizes(t, timeEstMng.stateManager, timeEstMng, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
+	assertTransferredSizes(t, timeEstMng.stateManager, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
 }
 
 func addChunkStatus(t *testing.T, timeEstMng *timeEstimationManager, chunkStatus ChunkStatus, workingThreads int, includedInTotalSize bool, durationMillis int64) {
@@ -245,7 +245,7 @@ func addChunkStatus(t *testing.T, timeEstMng *timeEstimationManager, chunkStatus
 	timeEstMng.addChunkStatus(chunkStatus, durationMillis)
 }
 
-func assertTransferredSizes(t *testing.T, stateManager *state.TransferStateManager, timeEstMng *timeEstimationManager, repo1expected, repo2expected int64) {
+func assertTransferredSizes(t *testing.T, stateManager *state.TransferStateManager, repo1expected, repo2expected int64) {
 	assertTransferredSize(t, stateManager, repo1expected, repo1Key)
 	assertTransferredSize(t, stateManager, repo2expected, repo2Key)
 }

@@ -150,11 +150,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err = tdc.initTimeEstimationManager(sourceBuildInfoRepos); err != nil {
+	if err = tdc.initTimeEstimationManager(); err != nil {
 		return err
 	}
 
-	if err = tdc.initStateManager(allSourceLocalRepos); err != nil {
+	if err = tdc.initStateManager(allSourceLocalRepos, sourceBuildInfoRepos); err != nil {
 		return err
 	}
 
@@ -180,15 +180,20 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	return tdc.cleanup(err, allSourceLocalRepos)
 }
 
-func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) error {
-	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceLocalRepos...)
+func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBuildInfoRepos []string) error {
+	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
 	if err != nil {
 		return err
 	}
-	tdc.stateManager.TotalSizeBytes = totalSizeBytes
-	tdc.stateManager.TotalUnits = len(sourceLocalRepos)
+	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.stateManager.TotalRepositories.TotalSizeBytes = totalSizeBytes
+	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
+	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
 	if !tdc.ignoreState {
-		numberInitialErrors, e := getRetryErrorCount(sourceLocalRepos)
+		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {
 			return e
 		}
@@ -248,12 +253,8 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
-func (tdc *TransferFilesCommand) initTimeEstimationManager(sourceBuildInfoRepos []string) error {
-	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
-	if err != nil {
-		return err
-	}
-	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager, totalBiFiles)
+func (tdc *TransferFilesCommand) initTimeEstimationManager() error {
+	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager)
 	return nil
 }
 
@@ -288,7 +289,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		tdc.progressbar.NewRepository(sourceRepoKey)
 	}
 
-	if err = tdc.updateRepoState(repoSummary); err != nil {
+	if err = tdc.updateRepoState(repoSummary, buildInfoRepo); err != nil {
 		return
 	}
 
@@ -327,10 +328,10 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	return tdc.stateManager.IncRepositoriesTransferred()
 }
 
-func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.RepositorySummary) error {
-	filesCount, err := repoSummary.FilesCount.Int64()
+func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.RepositorySummary, buildInfoRepo bool) error {
+	filesCount, err := utils.GetFilesCountFromRepositorySummary(repoSummary)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
 
 	usedSpaceInBytes, err := utils.GetUsedSpaceInBytes(repoSummary)
@@ -338,7 +339,7 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 		return err
 	}
 
-	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), tdc.ignoreState)
+	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState)
 }
 
 func (tdc *TransferFilesCommand) createTransferDir() error {

@@ -38,30 +38,22 @@ type timeEstimationManager struct {
 	speedsAverage float64
 	// True if remaining time estimation is unavailable
 	timeEstimationUnavailable bool
-	// True if handling a build info repository.
-	buildInfoRepo bool
 	// Data estimated remaining time is saved so that it can be used when handling a build-info repository and speed cannot be calculated.
 	dataEstimatedRemainingTime int64
 	// The state manager
 	stateManager *state.TransferStateManager
-	// Build info transferred and totals for the estimation.
-	transferredBuildInfoFiles int64
-	totalBuildInfoFiles       int64
 }
 
-func newTimeEstimationManager(stateManager *state.TransferStateManager, totalBiFiles int64) *timeEstimationManager {
-	return &timeEstimationManager{stateManager: stateManager, totalBuildInfoFiles: totalBiFiles}
+func newTimeEstimationManager(stateManager *state.TransferStateManager) *timeEstimationManager {
+	return &timeEstimationManager{stateManager: stateManager}
 }
 
 func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, durationMillis int64) {
-	if durationMillis == 0 {
+	// Build info repository requires no action here (transferred counter is updated in the state manager and no other calculation is needed).
+	if durationMillis == 0 || tem.stateManager.BuildInfoRepo {
 		return
 	}
 
-	if tem.buildInfoRepo {
-		tem.addBuildInfoChunkStatus(chunkStatus)
-		return
-	}
 	tem.addDataChunkStatus(chunkStatus, durationMillis)
 }
 
@@ -96,14 +88,6 @@ func (tem *timeEstimationManager) addDataChunkStatus(chunkStatus ChunkStatus, du
 	tem.speedsAverage = tem.lastSpeedsSum / float64(len(tem.lastSpeeds))
 }
 
-func (tem *timeEstimationManager) addBuildInfoChunkStatus(chunkStatus ChunkStatus) {
-	for _, file := range chunkStatus.Files {
-		if file.Status == Success {
-			tem.transferredBuildInfoFiles++
-		}
-	}
-}
-
 func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) float64 {
 	return float64(workingThreads) * float64(chunkSizeSum) / float64(chunkDuration)
 }
@@ -116,7 +100,7 @@ func (tem *timeEstimationManager) getSpeed() float64 {
 
 // getSpeed gets the transfer speed in an easy-to-read string.
 func (tem *timeEstimationManager) getSpeedString() string {
-	if tem.buildInfoRepo {
+	if tem.stateManager.BuildInfoRepo {
 		return "Not available when handling a build-info repository"
 	}
 	if len(tem.lastSpeeds) == 0 {
@@ -142,7 +126,7 @@ func (tem *timeEstimationManager) getEstimatedRemainingTime() (int64, error) {
 func (tem *timeEstimationManager) calculateDataEstimatedRemainingTime() error {
 	// If a build info repository is currently being handled, use the data estimated time previously calculated.
 	// Else, start calculating when the speeds average is set.
-	if tem.buildInfoRepo || tem.speedsAverage == 0 {
+	if tem.stateManager.BuildInfoRepo || tem.speedsAverage == 0 {
 		return nil
 	}
 	transferredSizeBytes, err := tem.stateManager.GetTransferredSizeBytes()
@@ -150,20 +134,20 @@ func (tem *timeEstimationManager) calculateDataEstimatedRemainingTime() error {
 		return err
 	}
 
-	if tem.stateManager.TotalSizeBytes <= transferredSizeBytes {
+	if tem.stateManager.TotalRepositories.TotalSizeBytes <= transferredSizeBytes {
 		tem.dataEstimatedRemainingTime = 0
 		return nil
 	}
 
 	// We only convert to int64 at the end to avoid a scenario where the conversion of speedsAverage returns zero.
-	remainingTime := float64(tem.stateManager.TotalSizeBytes-transferredSizeBytes) / tem.speedsAverage
+	remainingTime := float64(tem.stateManager.TotalRepositories.TotalSizeBytes-transferredSizeBytes) / tem.speedsAverage
 	// Convert from milliseconds to seconds.
 	tem.dataEstimatedRemainingTime = int64(remainingTime) / milliSecsInSecond
 	return nil
 }
 
 func (tem *timeEstimationManager) getBuildInfoEstimatedRemainingTime() int64 {
-	if tem.totalBuildInfoFiles <= tem.transferredBuildInfoFiles {
+	if tem.stateManager.OverallBiFiles.TotalUnits <= tem.stateManager.OverallBiFiles.TransferredUnits {
 		return 0
 	}
 
@@ -173,7 +157,7 @@ func (tem *timeEstimationManager) getBuildInfoEstimatedRemainingTime() int64 {
 		return 0
 	}
 
-	remainingBiFiles := float64(tem.totalBuildInfoFiles - tem.transferredBuildInfoFiles)
+	remainingBiFiles := float64(tem.stateManager.OverallBiFiles.TotalUnits - tem.stateManager.OverallBiFiles.TransferredUnits)
 	remainingTime := remainingBiFiles * buildInfoAverageIndexTimeSec / float64(workingThreads)
 	return int64(remainingTime)
 }
@@ -199,7 +183,7 @@ func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
 	if tem.timeEstimationUnavailable {
 		return "Not available in this phase"
 	}
-	if !tem.buildInfoRepo && len(tem.lastSpeeds) == 0 {
+	if !tem.stateManager.BuildInfoRepo && len(tem.lastSpeeds) == 0 {
 		return "Not available yet"
 	}
 	remainingTimeSec, err := tem.getEstimatedRemainingTime()
@@ -247,8 +231,4 @@ func getTimeSingularOrPlural(timeAmount int64, timeType timeTypeSingular) string
 
 func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUnavailable bool) {
 	tem.timeEstimationUnavailable = timeEstimationUnavailable
-}
-
-func (tem *timeEstimationManager) setBuildInfoRepo(buildInfoRepo bool) {
-	tem.buildInfoRepo = buildInfoRepo
 }

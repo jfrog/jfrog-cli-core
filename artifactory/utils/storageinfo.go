@@ -123,7 +123,7 @@ func (sim *StorageInfoManager) GetReposTotalSizeAndFiles(repoKeys ...string) (to
 					}
 					totalSize += sizeToAdd
 
-					filesToAdd, err := getFilesCountFromRepositorySummary(repoSummary)
+					filesToAdd, err := GetFilesCountFromRepositorySummary(&storageInfo.RepositoriesSummaryList[i])
 					if err != nil {
 						return true, nil, err
 					}
@@ -140,13 +140,15 @@ func (sim *StorageInfoManager) GetReposTotalSizeAndFiles(repoKeys ...string) (to
 	return totalSize, totalFiles, err
 }
 
-func getFilesCountFromRepositorySummary(repoSummary utils.RepositorySummary) (int64, error) {
-	return repoSummary.FilesCount.Int64()
+func GetFilesCountFromRepositorySummary(repoSummary *utils.RepositorySummary) (int64, error) {
+	files, err := repoSummary.FilesCount.Int64()
+	return files, errorutils.CheckError(err)
 }
 
 func GetUsedSpaceInBytes(repoSummary *utils.RepositorySummary) (int64, error) {
 	if repoSummary.UsedSpaceInBytes.String() != "" {
-		return repoSummary.UsedSpaceInBytes.Int64()
+		size, err := repoSummary.UsedSpaceInBytes.Int64()
+		return size, errorutils.CheckError(err)
 	}
 
 	return convertStorageSizeStringToBytes(repoSummary.UsedSpace)

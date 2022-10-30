@@ -138,7 +138,7 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
 
 	stateManager := &state.TransferStateManager{TransferState: state.TransferState{}, TransferRunStatus: state.TransferRunStatus{}}
-	stateManager.SetRepoState(repo1Key, 0, 0, true)
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
 	phaseBase := &phaseBase{context: context.Background(), stateManager: stateManager, srcUpService: srcPluginManager, repoKey: repo1Key}
 	uploadChunkAndPollTwice(t, phaseBase, fileSample)
 

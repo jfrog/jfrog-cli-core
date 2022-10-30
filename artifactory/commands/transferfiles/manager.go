@@ -81,7 +81,6 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	if ftm.timeEstMng != nil {
 		ftm.timeEstMng.setTimeEstimationUnavailable(ftm.phaseId != FullTransferPhase && ftm.phaseId != ErrorsPhase)
-		ftm.timeEstMng.setBuildInfoRepo(ftm.buildInfoRepo)
 	}
 
 	pollingTasksManager := newPollingTasksManager(totalNumberPollingGoRoutines)

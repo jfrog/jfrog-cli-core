@@ -9,13 +9,19 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const saveIntervalSecs = 10
+const saveIntervalSecsDefault = 10
+
+var SaveIntervalSecs = saveIntervalSecsDefault
 
 type ProgressState struct {
 	TotalSizeBytes       int64 `json:"total_size_bytes,omitempty"`
 	TransferredSizeBytes int64 `json:"transferred_size_bytes,omitempty"`
-	TotalUnits           int   `json:"total_units,omitempty"`
-	TransferredUnits     int   `json:"transferred_units,omitempty"`
+	ProgressStateUnits
+}
+
+type ProgressStateUnits struct {
+	TotalUnits       int64 `json:"total_units,omitempty"`
+	TransferredUnits int64 `json:"transferred_units,omitempty"`
 }
 
 type TransferStateManager struct {
@@ -59,8 +65,8 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // totalSizeBytes - Repository size in bytes
 // totalFiles     - Total files in the repository
 // reset          - Delete the transferred info
-func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes int64, totalFiles int, reset bool) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
+	err := ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, true)
 		if err != nil || repo == nil {
 			return err
@@ -72,24 +78,24 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes int6
 		repo.TotalUnits = totalFiles
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.CurrentRepo = repoKey
+		transferRunStatus.BuildInfoRepo = buildInfoRepo
+		return nil
+	})
 }
 
 func (ts *TransferStateManager) SetRepoFullTransferStarted(repoKey string, startTime time.Time) error {
 	// Set the start time in the Transfer State
-	err := ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
 		repo.FullTransfer.Started = ConvertTimeToRFC3339(startTime)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	// Set the current repository key in the Run Status
-	return ts.TransferRunStatus.action(func(state *TransferRunStatus) error {
-		state.CurrentRepo = repoKey
 		return nil
 	})
 }
@@ -105,21 +111,24 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted(repoKey string) err
 	})
 }
 
-func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, totalFiles int, totalSizeInBytes int64) error {
+func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.TransferredSizeBytes += totalSizeInBytes
-		repo.TransferredUnits += totalFiles
+		repo.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.TransferredSizeBytes += totalSizeInBytes
+		transferRunStatus.TotalRepositories.TransferredSizeBytes += chunkTotalSizeInBytes
+		if transferRunStatus.BuildInfoRepo {
+			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
+		}
 		return nil
 	})
 }
@@ -184,7 +193,7 @@ func (ts *TransferStateManager) GetReposTransferredSizeBytes(repoKeys ...string)
 
 func (ts *TransferStateManager) GetTransferredSizeBytes() (transferredSizeBytes int64, err error) {
 	return transferredSizeBytes, ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferredSizeBytes = transferRunStatus.TransferredSizeBytes
+		transferredSizeBytes = transferRunStatus.TotalRepositories.TransferredSizeBytes
 		return nil
 	})
 }
@@ -228,7 +237,7 @@ func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increas
 
 func (ts *TransferStateManager) IncRepositoriesTransferred() error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.TransferredUnits++
+		transferRunStatus.TotalRepositories.TransferredUnits++
 		return nil
 	})
 }

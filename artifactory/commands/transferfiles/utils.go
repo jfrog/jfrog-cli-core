@@ -326,15 +326,15 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 }
 
 func updateChunkInState(stateManager *state.TransferStateManager, repoKey string, chunk *ChunkStatus) error {
-	var totalSizeInBytes int64 = 0
-	var totalFiles int = 0
+	var chunkTotalSizeInBytes int64 = 0
+	var chunkTotalFiles int64 = 0
 	for _, file := range chunk.Files {
 		if file.Status == Success {
-			totalSizeInBytes += file.SizeBytes
-			totalFiles++
+			chunkTotalSizeInBytes += file.SizeBytes
+			chunkTotalFiles++
 		}
 	}
-	return stateManager.IncTransferredSizeAndFiles(repoKey, totalFiles, totalSizeInBytes)
+	return stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 }
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.

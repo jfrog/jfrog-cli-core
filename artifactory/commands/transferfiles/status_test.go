@@ -2,14 +2,13 @@ package transferfiles
 
 import (
 	"bytes"
-	"testing"
-
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
@@ -24,7 +23,12 @@ func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
 
 	// Redirect log to buffer
 	buffer, _, previousLog := tests.RedirectLogOutputToBuffer()
+
+	// Set save interval to 0 so every action will be persisted and data can be asserted.
+	previousSaveInterval := state.SaveIntervalSecs
+	state.SaveIntervalSecs = 0
 	return buffer, func() {
+		state.SaveIntervalSecs = previousSaveInterval
 		log.SetLogger(previousLog)
 		cleanUpJfrogHome()
 	}
@@ -102,17 +106,17 @@ func createStateManager(t *testing.T, phase int) {
 	stateManager, err := state.NewTransferStateManager(false)
 	assert.NoError(t, err)
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, false))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, false, false))
 
 	stateManager.CurrentRepo = repo1Key
 	stateManager.CurrentRepoPhase = phase
-	stateManager.TotalSizeBytes = 11111
-	stateManager.TotalUnits = 1111
-	stateManager.TransferredUnits = 15
+	stateManager.TotalRepositories.TotalSizeBytes = 11111
+	stateManager.TotalRepositories.TotalUnits = 1111
+	stateManager.TotalRepositories.TransferredUnits = 15
 	stateManager.WorkingThreads = 16
 	stateManager.TransferFailures = 223
 
-	// Increment transferred suze and files. This action also persists the run status.
+	// Increment transferred size and files. This action also persists the run status.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 500, 5000))
 
 	// Save transfer state.

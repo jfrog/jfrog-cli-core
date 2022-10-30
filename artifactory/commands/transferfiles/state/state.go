@@ -73,7 +73,7 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < saveIntervalSecs {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(SaveIntervalSecs) {
 		return nil
 	}
 

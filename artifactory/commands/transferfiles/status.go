@@ -42,18 +42,14 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addTitle(output, "Overall Transfer Status")
 	addString(output, "🟢", "Status", "Running", 2)
 	addString(output, "⏱️ ", "Start time", time.Unix(0, startTimestamp).Format(time.Stamp), 2)
-	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalSizeBytes)+calcPercentageInt64(stateManager.TransferredSizeBytes, stateManager.TotalSizeBytes), 2)
-	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TransferredUnits, stateManager.TotalUnits)+calcPercentage(stateManager.TransferredUnits, stateManager.TotalUnits), 1)
+	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TotalRepositories.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalRepositories.TotalSizeBytes)+calcPercentageInt64(stateManager.TotalRepositories.TransferredSizeBytes, stateManager.TotalRepositories.TotalSizeBytes), 2)
+	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 1)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 1)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 1)
-}
-
-func calcPercentage(transferred, total int) string {
-	return calcPercentageInt64(int64(transferred), int64(total))
 }
 
 func calcPercentageInt64(transferred, total int64) string {
@@ -81,7 +77,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 2)
 		}
 		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
-		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentage(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
+		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentageInt64(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
 	case FilesDiffPhase:
 		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 2)
 	}

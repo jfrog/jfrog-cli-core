@@ -98,8 +98,10 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
 	if pkgNameErr != nil {
 		clientLog.Debug("Couldn't retrieve Python package name. Reason:", pkgNameErr.Error())
+	}
+	if rootNodeName == "" {
 		// If package name couldn't be determined by the Python utils, use the project dir name.
-		rootNodeName = filepath.Base(filepath.Dir(wd))
+		rootNodeName = filepath.Base(wd)
 	}
 	return
 }

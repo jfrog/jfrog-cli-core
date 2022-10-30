@@ -60,13 +60,14 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
-	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
-		// Test root module
-		rootNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
-		if rootNode != nil {
+	rootNode, err := BuildDependencyTree(pythonutils.Pip, "")
+	assert.NoError(t, err)
+	assert.Len(t, rootNode, 1)
+	if len(rootNode[0].Nodes) > 2 {
+		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
+		if childNode != nil {
 			// Test child module
-			audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 		}
 	}
 }

@@ -267,8 +267,8 @@ func (tic *InstallPluginCommand) getTransferSourceAndAction() (src string, trans
 func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 	for _, file := range bundle {
 		fileName, fileDirs := file.SplitNameAndDirs()
-		srcURL := file.toURL(src)                // = toURL(src, toURL(file...))
-		dstDirPath := fileDirs.toPath(pluginDir) // = path.Join(pluginDir, path.Join(file.Dirs()...))
+		srcURL := file.toURL(src)
+		dstDirPath := fileDirs.toPath(pluginDir)
 		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, fileDirs.toURL(src), dstDirPath))
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
@@ -284,8 +284,8 @@ func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error)
 func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 	for _, file := range bundle {
 		fileName, fileDirs := file.SplitNameAndDirs()
-		srcPath := filepath.Join(src, fileName)  // in local copy, all the files are at the same src dir, no need for all local dirs path
-		dstDirPath := fileDirs.toPath(pluginDir) // filepath.Join(pluginDir, path.Join(file.Dirs()...))
+		srcPath := filepath.Join(src, fileName)
+		dstDirPath := fileDirs.toPath(pluginDir)
 		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, src, dstDirPath))
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return

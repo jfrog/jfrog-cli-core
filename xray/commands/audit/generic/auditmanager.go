@@ -130,7 +130,7 @@ func doAudit(
 			e = errors.New(string(tech) + " is currently not supported")
 		}
 
-		var techResults services.ScanResponse
+		var techResults []services.ScanResponse
 		if e == nil {
 			// If building the dependency tree was successful, run Xray scan.
 			techResults, e = audit.Audit(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
@@ -140,7 +140,7 @@ func doAudit(
 			// Save the error but continue to audit the next tech
 			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed:\n%s", tech, e.Error()))
 		} else {
-			results = append(results, techResults)
+			results = append(results, techResults...)
 			isMultipleRoot = len(dependencyTrees) > 1
 		}
 	}

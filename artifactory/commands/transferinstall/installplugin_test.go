@@ -190,12 +190,12 @@ func TestGetTransferSourceAndAction(t *testing.T) {
 	cmd := &InstallPluginCommand{}
 
 	// err - no url provided with the latest download option
-	src, action, err := cmd.getTransferSourceAndAction()
+	_, _, err := cmd.getTransferSourceAndAction()
 	assert.EqualError(t, err, EmptyUrlErr.Error())
 	cmd.SetBaseDownloadUrl(baseUrl)
 
 	// latest
-	src, action, err = cmd.getTransferSourceAndAction()
+	src, action, err := cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
 	assert.Equal(t, toURL(baseUrl, latest), src)
 	assert.Contains(t, runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles")

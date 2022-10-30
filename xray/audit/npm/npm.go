@@ -3,10 +3,8 @@ package npm
 import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -26,6 +24,7 @@ func AuditNpm(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *co
 }
 
 func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err error) {
+func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -45,7 +44,7 @@ func BuildNpmDependencyTree(npmArgs []string) (rootNode *services.GraphNode, err
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	rootNode = parseNpmDependenciesList(dependenciesList, packageInfo)
+	dependencyTree = []*services.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
 	return
 }
 

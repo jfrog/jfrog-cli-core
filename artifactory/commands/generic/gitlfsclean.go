@@ -61,7 +61,11 @@ func (glc *GitLfsCommand) CommandName() string {
 }
 
 func (glc *GitLfsCommand) deleteLfsFilesFromArtifactory(deleteItems *content.ContentReader) error {
-	log.Info("Deleting", deleteItems.Length, "files from", glc.configuration.Repo, "...")
+	length, err := deleteItems.Length()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Info("Deleting", length, "files from", glc.configuration.Repo, "...")
 	servicesManager, err := utils.CreateServiceManager(glc.serverDetails, glc.retries, glc.retryWaitTimeMilliSecs, glc.DryRun())
 	if err != nil {
 		return err

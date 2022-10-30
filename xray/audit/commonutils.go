@@ -48,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -73,10 +73,11 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 		// Log the scanned module ID
 		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
 		log.Info("Scanning module " + moduleName + "...")
-
-		scanResults, err := xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
+		var scanResults *services.ScanResponse
+		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {
-			return results, errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
+			err = errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
+			return
 		}
 		for i := range scanResults.Vulnerabilities {
 			scanResults.Vulnerabilities[i].Technology = technology.ToString()
@@ -86,7 +87,7 @@ func Scan(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams servi
 		}
 		results = append(results, *scanResults)
 	}
-	return results, nil
+	return
 }
 
 func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {

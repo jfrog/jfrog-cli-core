@@ -10,10 +10,7 @@ import (
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -23,34 +20,28 @@ const (
 	pythonPackageTypeIdentifier = "pypi://"
 )
 
-func AuditPython(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, pythonTool pythonutils.PythonTool, progress ioUtils.ProgressMgr, requirementsFile string) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := BuildDependencyTree(pythonTool, requirementsFile)
+func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) (dependencyTree []*services.GraphNode, err error) {
+	dependenciesGraph, rootNode, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
-	isMultipleRootProject = len(graph) > 1
-	results, err = audit.Scan(graph, xrayGraphScanPrams, serverDetails, progress, coreutils.Technology(pythonTool))
-	return
-}
-
-func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) ([]*services.GraphNode, error) {
-	dependenciesGraph, rootDependenciesList, err := getDependencies(pythonTool, requirementsFile)
-	if err != nil {
-		return nil, err
-	}
-	var dependencyTree []*services.GraphNode
-	for _, rootDep := range rootDependenciesList {
-		parentNode := &services.GraphNode{
+	directDependencies := []*services.GraphNode{}
+	for _, rootDep := range directDependenciesList {
+		directDependency := &services.GraphNode{
 			Id:    pythonPackageTypeIdentifier + rootDep,
 			Nodes: []*services.GraphNode{},
 		}
-		populatePythonDependencyTree(parentNode, dependenciesGraph)
-		dependencyTree = append(dependencyTree, parentNode)
+		populatePythonDependencyTree(directDependency, dependenciesGraph)
+		directDependencies = append(directDependencies, directDependency)
 	}
-	return dependencyTree, nil
+	root := &services.GraphNode{
+		Id:    pythonPackageTypeIdentifier + rootNode,
+		Nodes: directDependencies,
+	}
+	return []*services.GraphNode{root}, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNodeName string, directDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -99,9 +90,15 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	if err != nil {
 		return
 	}
-	dependenciesGraph, rootDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
+	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil && pythonTool == pythonutils.Pip {
 		audit.LogExecutableVersion("python")
+	}
+	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
+	if pkgNameErr != nil {
+		clientLog.Debug("Couldn't retrieve Python package name. Reason:", pkgNameErr.Error())
+		// If package name couldn't be determined by the Python utils, use the project dir name.
+		rootNodeName = filepath.Base(filepath.Dir(wd))
 	}
 	return
 }

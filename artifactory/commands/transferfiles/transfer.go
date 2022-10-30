@@ -3,18 +3,20 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/jfrog/jfrog-client-go/artifactory/usage"
+
 	"github.com/jfrog/gofrog/version"
 	"golang.org/x/exp/slices"
 
 	"strconv"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -47,9 +49,15 @@ type TransferFilesCommand struct {
 	ignoreState               bool
 	timeEstMng                *timeEstimationManager
 	proxyKey                  string
+	status                    bool
+	stateManager              *state.TransferStateManager
 }
 
-func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *TransferFilesCommand {
+func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
+	stateManager, err := state.NewTransferStateManager(false)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &TransferFilesCommand{
 		context:             ctx,
@@ -57,7 +65,8 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) *
 		sourceServerDetails: sourceServer,
 		targetServerDetails: targetServer,
 		timeStarted:         time.Now(),
-	}
+		stateManager:        stateManager,
+	}, nil
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
@@ -84,7 +93,24 @@ func (tdc *TransferFilesCommand) SetProxyKey(proxyKey string) {
 	tdc.proxyKey = proxyKey
 }
 
+func (tdc *TransferFilesCommand) SetStatus(status bool) {
+	tdc.status = status
+}
+
 func (tdc *TransferFilesCommand) Run() (err error) {
+	if tdc.status {
+		return ShowStatus()
+	}
+	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
+		return err
+	}
+	defer func() {
+		unlockErr := tdc.stateManager.UnlockTransferStateManager()
+		if err == nil {
+			err = unlockErr
+		}
+	}()
+
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {
 		return err
@@ -120,14 +146,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	finishStopping, newPhase := tdc.handleStop(srcUpService)
 	defer finishStopping()
 
-	if err = tdc.removeErrorFilesIfNeeded(allSourceLocalRepos); err != nil {
+	if err = tdc.removeOldFilesIfNeeded(allSourceLocalRepos); err != nil {
 		return err
 	}
 
 	if isTimeEstimationEnabled() {
-		if err = tdc.initTimeEstimationManager(sourceLocalRepos); err != nil {
+		if err = tdc.initTimeEstimationManager(); err != nil {
 			return err
 		}
+	}
+	if err = tdc.initStateManager(allSourceLocalRepos); err != nil {
+		return err
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
@@ -150,6 +179,25 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 
 	// Close progressBar and create CSV errors summary file
 	return tdc.cleanup(err, allSourceLocalRepos)
+}
+
+func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) error {
+	totalSizeBytes, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.stateManager.TotalSizeBytes = totalSizeBytes
+	tdc.stateManager.TotalUnits = len(sourceLocalRepos)
+	if !tdc.ignoreState {
+		numberInitialErrors, e := getRetryErrorCount(sourceLocalRepos)
+		if e != nil {
+			return e
+		}
+		tdc.stateManager.TransferFailures = uint(numberInitialErrors)
+	} else {
+		tdc.stateManager.TransferFailures = 0
+	}
+	return nil
 }
 
 func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
@@ -201,16 +249,8 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
-func (tdc *TransferFilesCommand) initTimeEstimationManager(sourceLocalRepos []string) error {
-	totalSize, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
-	if err != nil {
-		return err
-	}
-	transferredSize, err := getReposTransferredSizeBytes(sourceLocalRepos...)
-	if err != nil {
-		return err
-	}
-	tdc.timeEstMng = newTimeEstimationManager(totalSize, transferredSize)
+func (tdc *TransferFilesCommand) initTimeEstimationManager() error {
+	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager)
 	return nil
 }
 
@@ -245,11 +285,8 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		tdc.progressbar.NewRepository(sourceRepoKey)
 	}
 
-	if tdc.ignoreState {
-		err = resetRepoState(sourceRepoKey)
-		if err != nil {
-			return
-		}
+	if err = tdc.updateRepoState(repoSummary); err != nil {
+		return
 	}
 
 	restoreFunc, err := tdc.handleMaxUniqueSnapshots(repoSummary)
@@ -266,7 +303,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
 		return
 	}
-	for currentPhaseId := 0; currentPhaseId < numberOfPhases; currentPhaseId++ {
+	for currentPhaseId := 0; currentPhaseId < NumberOfPhases; currentPhaseId++ {
 		if tdc.shouldStop() {
 			return
 		}
@@ -276,12 +313,29 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		if err != nil {
 			log.Error(err)
 		}
-		*newPhase = getPhaseByNum(tdc.context, currentPhaseId, sourceRepoKey, tdc.proxyKey, buildInfoRepo)
-		if err = tdc.startPhase(newPhase, sourceRepoKey, *repoSummary, srcUpService); err != nil {
+		*newPhase = createTransferPhase(currentPhaseId)
+		if err = tdc.stateManager.SetRepoPhase(currentPhaseId); err != nil {
+			return
+		}
+		if err = tdc.startPhase(newPhase, sourceRepoKey, buildInfoRepo, *repoSummary, srcUpService); err != nil {
 			return
 		}
 	}
-	return
+	return tdc.stateManager.IncRepositoriesTransferred()
+}
+
+func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.RepositorySummary) error {
+	filesCount, err := repoSummary.FilesCount.Int64()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
+	usedSpaceInBytes, err := utils.GetUsedSpaceInBytes(repoSummary)
+	if err != nil {
+		return err
+	}
+
+	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), tdc.ignoreState)
 }
 
 func (tdc *TransferFilesCommand) createTransferDir() error {
@@ -292,14 +346,24 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
-func (tdc *TransferFilesCommand) removeErrorFilesIfNeeded(repos []string) error {
+func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
 	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
 	if tdc.ignoreState {
-		files, err := getErrorsFiles(repos, true)
+		errFiles, err := getErrorsFiles(repos, true)
 		if err != nil {
 			return err
 		}
-		for _, file := range files {
+		for _, file := range errFiles {
+			err = os.Remove(file)
+			if err != nil {
+				return errorutils.CheckError(err)
+			}
+		}
+		delayFiles, err := getDelayFiles(repos)
+		if err != nil {
+			return err
+		}
+		for _, file := range delayFiles {
 			err = os.Remove(file)
 			if err != nil {
 				return errorutils.CheckError(err)
@@ -309,8 +373,8 @@ func (tdc *TransferFilesCommand) removeErrorFilesIfNeeded(repos []string) error 
 	return nil
 }
 
-func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
-	tdc.initNewPhase(*newPhase, srcUpService, repoSummary)
+func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, buildInfoRepo bool, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
+	tdc.initNewPhase(*newPhase, srcUpService, repoSummary, repo, buildInfoRepo)
 	skip, err := (*newPhase).shouldSkipPhase()
 	if err != nil || skip {
 		return err
@@ -372,7 +436,9 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 	}, &newPhase
 }
 
-func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary) {
+func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary, repoKey string, buildInfoRepo bool) {
+	newPhase.setContext(tdc.context)
+	newPhase.setRepoKey(repoKey)
 	newPhase.setCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
 	newPhase.setSourceDetails(tdc.sourceServerDetails)
 	newPhase.setTargetDetails(tdc.targetServerDetails)
@@ -380,6 +446,9 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setRepoSummary(repoSummary)
 	newPhase.setProgressBar(tdc.progressbar)
 	newPhase.setTimeEstMng(tdc.timeEstMng)
+	newPhase.setProxyKey(tdc.proxyKey)
+	newPhase.setStateManager(tdc.stateManager)
+	newPhase.setBuildInfo(buildInfoRepo)
 }
 
 // Get all local and build-info repositories of the input server
@@ -450,10 +519,21 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	if originalErr == nil {
 		log.Info("Files transfer is complete!")
 	}
-	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
-	if err == nil {
-		err = e
+	e := tdc.stateManager.SaveState()
+	if e != nil {
+		log.Error("Couldn't save transfer state", e)
+		if err == nil {
+			err = e
+		}
 	}
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
+	if e != nil {
+		log.Error("Couldn't create the errros CSV file", e)
+		if err == nil {
+			err = e
+		}
+	}
+
 	if csvErrorsFile != "" {
 		log.Info(fmt.Sprintf("Errors occurred during the transfer. Check the errors summary CSV file in: %s", csvErrorsFile))
 	}

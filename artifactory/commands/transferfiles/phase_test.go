@@ -1,10 +1,12 @@
 package transferfiles
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,14 +14,16 @@ const zeroUint32 uint32 = 0
 
 func TestStopGracefully(t *testing.T) {
 	phaseBase := &phaseBase{pcDetails: newProducerConsumerWrapper()}
+	chunkUploaderProducerConsumer := phaseBase.pcDetails.chunkUploaderProducerConsumer
+	chunkBuilderProducerConsumer := phaseBase.pcDetails.chunkBuilderProducerConsumer
 	go func() {
 		// Stop gracefully after half second
 		time.Sleep(time.Second / 2)
 
 		// Assert active threads before stopping the producer consumers
-		phaseBase.pcDetails.chunkUploaderProducerConsumer.IsStarted()
-		assert.Greater(t, phaseBase.pcDetails.chunkUploaderProducerConsumer.ActiveThreads(), zeroUint32)
-		assert.Greater(t, phaseBase.pcDetails.chunkBuilderProducerConsumer.ActiveThreads(), zeroUint32)
+		chunkUploaderProducerConsumer.IsStarted()
+		assert.Greater(t, chunkUploaderProducerConsumer.ActiveThreads(), zeroUint32)
+		assert.Greater(t, chunkBuilderProducerConsumer.ActiveThreads(), zeroUint32)
 
 		// Stop the running threads
 		phaseBase.StopGracefully()
@@ -28,19 +32,18 @@ func TestStopGracefully(t *testing.T) {
 	// Run 5 counter tasks in the uploader and builder producer-consumers
 	uploaderCounter, builderCounter := 0, 0
 	for i := 0; i < 5; i++ {
-		phaseBase.pcDetails.chunkUploaderProducerConsumer.AddTask(createCounterTask(&uploaderCounter))
-		phaseBase.pcDetails.chunkBuilderProducerConsumer.AddTask(createCounterTask(&builderCounter))
+		chunkUploaderProducerConsumer.AddTask(createCounterTask(&uploaderCounter))
+		chunkBuilderProducerConsumer.AddTask(createCounterTask(&builderCounter))
 	}
 	err := runProducerConsumers(phaseBase.pcDetails)
 	assert.NoError(t, err)
 
+	// Wait for no active threads
+	waitForTasksToFinish(t, chunkUploaderProducerConsumer, chunkBuilderProducerConsumer)
+
 	// Since we stopped the tasks after half second, and the tasks sleep for one second during their execution, expect the tasks to run exactly once.
 	assert.Equal(t, 1, uploaderCounter)
 	assert.Equal(t, 1, builderCounter)
-
-	// Assert no active threads
-	assert.Equal(t, zeroUint32, phaseBase.pcDetails.chunkUploaderProducerConsumer.ActiveThreads())
-	assert.Equal(t, zeroUint32, phaseBase.pcDetails.chunkBuilderProducerConsumer.ActiveThreads())
 }
 
 // Create a task that increases the counter by 1 after a second
@@ -50,4 +53,20 @@ func createCounterTask(counter *int) parallel.TaskFunc {
 		time.Sleep(time.Second)
 		return nil
 	}
+}
+
+func waitForTasksToFinish(t *testing.T, chunkUploaderProducerConsumer, chunkBuilderProducerConsumer parallel.Runner) {
+	// Wait for no active threads
+	pollingExecutor := &utils.RetryExecutor{
+		MaxRetries:               10,
+		RetriesIntervalMilliSecs: 1000,
+		ErrorMessage:             "Active producer-consumer tasks remained",
+		ExecutionHandler: func() (shouldRetry bool, err error) {
+			if chunkUploaderProducerConsumer.ActiveThreads() == 0 && chunkBuilderProducerConsumer.ActiveThreads() == 0 {
+				return false, nil
+			}
+			return true, fmt.Errorf("Active uploader threads: %d. Active builder threads: %d.", chunkUploaderProducerConsumer.ActiveThreads(), chunkBuilderProducerConsumer.ActiveThreads())
+		},
+	}
+	assert.NoError(t, pollingExecutor.Execute())
 }

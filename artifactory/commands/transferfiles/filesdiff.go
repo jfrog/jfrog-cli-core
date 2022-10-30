@@ -24,7 +24,7 @@ func (f *filesDiffPhase) initProgressBar() error {
 	if f.progressBar == nil {
 		return nil
 	}
-	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
+	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
 	}
@@ -44,13 +44,13 @@ func (f *filesDiffPhase) getPhaseName() string {
 
 func (f *filesDiffPhase) phaseStarted() error {
 	f.startTime = time.Now()
-	return addNewDiffToState(f.repoKey, f.startTime)
+	return f.stateManager.AddNewDiffToState(f.repoKey, f.startTime)
 }
 
 func (f *filesDiffPhase) phaseDone() error {
 	// If the phase stopped gracefully, don't mark the phase as completed
 	if !f.ShouldStop() {
-		if err := setFilesDiffHandlingCompleted(f.repoKey); err != nil {
+		if err := f.stateManager.SetFilesDiffHandlingCompleted(f.repoKey); err != nil {
 			return err
 		}
 	}
@@ -73,7 +73,7 @@ func (f *filesDiffPhase) run() error {
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	log.Info("Starting to handle files diffs...")
-	diffRangeStart, diffRangeEnd, err := getDiffHandlingRange(f.repoKey)
+	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,8 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = f.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := consumeDelayFilesIfNoErrors
+	err = f.transferManager.doTransferWithProducerConsumer(action, delayAction)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}
@@ -110,7 +111,6 @@ type timeFrameParams struct {
 func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
 		}

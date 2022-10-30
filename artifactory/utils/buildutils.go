@@ -29,13 +29,13 @@ const (
 )
 
 func PrepareBuildPrerequisites(buildConfiguration *BuildConfiguration) (build *build.Build, err error) {
-	log.Debug("Preparing build prerequisites...")
 	// Prepare build-info.
 	toCollect, err := buildConfiguration.IsCollectBuildInfo()
 	if err != nil {
 		return
 	}
 	if toCollect {
+		log.Debug("Preparing build prerequisites...")
 		var buildName, buildNumber string
 		buildName, err = buildConfiguration.GetBuildName()
 		if err != nil {

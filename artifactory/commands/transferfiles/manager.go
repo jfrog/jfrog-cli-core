@@ -2,11 +2,13 @@ package transferfiles
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
 )
 
 const (
@@ -29,10 +31,12 @@ type transferActionWithProducerConsumerType func(
 	delayHelper delayUploadHelper,
 	errorsChannelMng *ErrorsChannelMng) error
 
-// Transfer files using the 'producer-consumer' mechanism.
-func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType) error {
+type transferDelayAction func(phase phaseBase, addedDelayFiles []string) error
+
+// Transfer files using the 'producer-consumer' mechanism and apply a delay action.
+func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
 	ftm.pcDetails = newProducerConsumerWrapper()
-	return ftm.doTransfer(ftm.pcDetails, transferAction)
+	return ftm.doTransfer(ftm.pcDetails, transferAction, delayAction)
 }
 
 // This function handles a transfer process as part of a phase.
@@ -44,14 +48,14 @@ func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transf
 // Any deployment failures will be written to a file by the transferErrorsMng to be handled on next run.
 // The number of threads affect both the producer consumer if used, and limits the number of uploaded chunks. The number can be externally modified,
 // and will be updated on runtime by periodicallyUpdateThreads.
-func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType) error {
+func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
 	uploadChunkChan := make(chan UploadedChunkData, transfer.MaxThreadsLimit)
 	var runWaitGroup sync.WaitGroup
 	var writersWaitGroup sync.WaitGroup
 
 	// Manager for the transfer's errors statuses writing mechanism
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, convertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar)
+	transferErrorsMng, err := newTransferErrorsToFile(ftm.repoKey, ftm.phaseId, state.ConvertTimeToEpochMilliseconds(ftm.startTime), &errorsChannelMng, ftm.progressBar, ftm.stateManager)
 	if err != nil {
 		return err
 	}
@@ -63,7 +67,10 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 
 	// Manager for the transfer's delayed artifacts writing mechanism
 	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
-	delayedArtifactsMng := newTransferDelayedArtifactsToFile(&delayedArtifactsChannelMng)
+	delayedArtifactsMng, err := newTransferDelayedArtifactsManager(&delayedArtifactsChannelMng, ftm.repoKey, state.ConvertTimeToEpochMilliseconds(ftm.startTime))
+	if err != nil {
+		return err
+	}
 	if len(ftm.delayUploadComparisonFunctions) > 0 {
 		writersWaitGroup.Add(1)
 		go func() {
@@ -116,10 +123,14 @@ func (ftm *transferManager) doTransfer(pcWrapper *producerConsumerWrapper, trans
 		}
 	}
 
-	// If delayed uploads, handle them now.
-	if returnedError == nil && len(ftm.delayUploadComparisonFunctions) > 0 && len(delayedArtifactsMng.filesToConsume) > 0 {
-		// Remove the first delay comparison function to no longer delay it.
-		returnedError = handleDelayedArtifactsFiles(delayedArtifactsMng.filesToConsume, ftm.phaseBase, ftm.delayUploadComparisonFunctions[1:])
+	// If delayed action was provided, handle it now.
+	if returnedError == nil && delayAction != nil {
+		var addedDelayFiles []string
+		// If the transfer generated new delay files provide them
+		if delayedArtifactsMng.delayedWriter != nil {
+			addedDelayFiles = delayedArtifactsMng.delayedWriter.contentFiles
+		}
+		returnedError = delayAction(ftm.phaseBase, addedDelayFiles)
 	}
 	return returnedError
 }
@@ -187,49 +198,20 @@ type producerConsumerWrapper struct {
 	// This Producer-Consumer is used to execute AQLs and build chunks from the AQLs' results. The chunks data is sent to the go routines that will upload them.
 	// Initialized in newProducerConsumerWrapper; each builder thread waits to be given tasks from the queue.
 	chunkBuilderProducerConsumer parallel.Runner
-	// This channel notifies whether uploading threads in chunkUploaderProducerConsumer have finished.
-	uploaderFinishedNotifier chan bool
-	// This channel notifies whether building threads in chunkBuilderProducerConsumer have finished, when there are no tasks left in its queue.
-	builderFinishedNotifier chan bool
 	// Errors related to chunkUploaderProducerConsumer and chunkBuilderProducerConsumer are logged in this queue.
 	errorsQueue *clientUtils.ErrorsQueue
-}
-
-// Sends a signal through the uploaderFinishedNotifier channel, to notify that chunkUploaderProducerConsumer finished its work.
-// The signal is sent if one of the following condition are met:
-// 1. The 'force' argument was sent as true.
-// 2. The chunkUploaderProducerConsumer finished running all of its tasks.
-//
-// The chunkUploaderProducerConsumer is finished (condition #2 above)
-// if there are no more tasks in its queue, and chunkBuilderProducerConsumer is also finished, so no more tasks will be coming in.
-func (pcw *producerConsumerWrapper) notifyIfUploaderFinished(force bool) {
-	if force || (pcw.chunkBuilderProducerConsumer.ActiveThreads() == 0 && pcw.chunkUploaderProducerConsumer.ActiveThreads() == 1) {
-		pcw.uploaderFinishedNotifier <- true
-	}
-}
-
-// Sends a signal through the builderFinishedNotifier channel, to notify that chunkBuilderProducerConsumer finished its work.
-// The signal is sent if one of the following condition are met:
-// 1. The 'force' argument was sent as true.
-// 2. The chunkBuilderProducerConsumer finished running all of its tasks.
-func (pcw *producerConsumerWrapper) notifyIfBuilderFinished(force bool) {
-	if force || (pcw.chunkBuilderProducerConsumer.ActiveThreads() == 1 && pcw.chunkBuilderProducerConsumer.TotalTasksInQueue() == 1) {
-		pcw.builderFinishedNotifier <- true
-	}
 }
 
 func newProducerConsumerWrapper() *producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
-	uploaderFinishedNotifier := make(chan bool, 1)
-	builderFinishedNotifier := make(chan bool, 1)
+	chunkUploaderProducerConsumer.SetFinishedNotification(true)
+	chunkBuilderProducerConsumer.SetFinishedNotification(true)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
 	return &producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
-		uploaderFinishedNotifier:      uploaderFinishedNotifier,
-		builderFinishedNotifier:       builderFinishedNotifier,
 		errorsQueue:                   errorsQueue,
 	}
 }
@@ -244,7 +226,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	}()
 	go func() {
 		// Wait till notified that the builder has no additional tasks, and close the builder producer consumer.
-		<-pcWrapper.builderFinishedNotifier
+		<-pcWrapper.chunkBuilderProducerConsumer.GetFinishedNotification()
 		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
 
@@ -252,7 +234,7 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	pcWrapper.chunkBuilderProducerConsumer.Run()
 	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
 		// Wait till notified that the uploader finished its tasks, and it will not receive new tasks from the builder.
-		<-pcWrapper.uploaderFinishedNotifier
+		<-pcWrapper.chunkUploaderProducerConsumer.GetFinishedNotification()
 	}
 	// Close the tasks queue with Done().
 	pcWrapper.chunkUploaderProducerConsumer.Done()

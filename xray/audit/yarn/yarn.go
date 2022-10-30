@@ -2,11 +2,9 @@ package yarn
 
 import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -15,24 +13,14 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func AuditYarn(xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr) (results []services.ScanResponse, isMultipleRootProject bool, err error) {
-	graph, err := buildYarnDependencyTree()
-	if err != nil {
-		return
-	}
-	isMultipleRootProject = false
-	results, err = audit.Scan([]*services.GraphNode{graph}, xrayGraphScanPrams, serverDetails, progress, coreutils.Yarn)
-	return
-}
-
-func buildYarnDependencyTree() (rootNode *services.GraphNode, err error) {
+func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
 	}
 	executablePath, err := biutils.GetYarnExecutable()
-	if err != nil {
-		return nil, errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
+		return
 	}
 	defer func() {
 		if err != nil && executablePath != "" {
@@ -40,8 +28,8 @@ func buildYarnDependencyTree() (rootNode *services.GraphNode, err error) {
 		}
 	}()
 	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, nil)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
+	if errorutils.CheckError(err) != nil {
+		return
 	}
 	// Calculate Yarn dependencies
 	dependenciesMap, _, err := biutils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
@@ -49,7 +37,7 @@ func buildYarnDependencyTree() (rootNode *services.GraphNode, err error) {
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	rootNode = parseYarnDependenciesMap(dependenciesMap, packageInfo)
+	dependencyTree = []*services.GraphNode{parseYarnDependenciesMap(dependenciesMap, packageInfo)}
 	return
 }
 

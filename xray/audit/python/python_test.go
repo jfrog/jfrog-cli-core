@@ -38,13 +38,17 @@ func testBuildPipDependencyListSetuppy(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "")
-	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
-		// Test root module
-		rootNode := audit.GetAndAssertNode(t, rootNodes, "pip-example:1.2.3")
-		if rootNode != nil {
+	// Run getModulesDependencyTrees
+	rootNode, err := BuildDependencyTree(pythonutils.Pip, "")
+	assert.NoError(t, err)
+	assert.Len(t, rootNode, 1)
+	if len(rootNode) > 0 {
+		assert.NotEmpty(t, rootNode[0].Nodes)
+		if rootNode[0].Nodes != nil {
+			// Test direct dependency
+			directDepNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pip-example:1.2.3")
 			// Test child module
-			childNode := audit.GetAndAssertNode(t, rootNode.Nodes, "pexpect:4.8.0")
+			childNode := audit.GetAndAssertNode(t, directDepNode.Nodes, "pexpect:4.8.0")
 			// Test sub child module
 			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
 		}
@@ -71,13 +75,17 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
-	rootNodes, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
-	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
-		// Test root module
-		rootNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
-		if rootNode != nil {
+	// Run getModulesDependencyTrees
+	rootNode, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
+	assert.NoError(t, err)
+	assert.Len(t, rootNode, 1)
+	if len(rootNode) > 0 {
+		assert.NotEmpty(t, rootNode[0].Nodes)
+		if rootNode[0].Nodes != nil {
+			// Test root module
+			directDepNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
 			// Test child module
-			audit.GetAndAssertNode(t, rootNode.Nodes, "ptyprocess:0.7.0")
+			audit.GetAndAssertNode(t, directDepNode.Nodes, "ptyprocess:0.7.0")
 		}
 	}
 }
@@ -87,12 +95,19 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Pipenv, "")
-	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+	rootNode, err := BuildDependencyTree(pythonutils.Pipenv, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Len(t, rootNode, 1)
+	if len(rootNode) > 0 {
+		assert.NotEmpty(t, rootNode[0].Nodes)
 		// Test child module
-		childNode := audit.GetAndAssertNode(t, rootNodes, "pexpect:4.8.0")
+		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
 		// Test sub child module
-		audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+		if assert.NotNil(t, childNode) {
+			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
+		}
 	}
 }
 
@@ -101,10 +116,15 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNodes, err := BuildDependencyTree(pythonutils.Poetry, "")
-	if assert.NoError(t, err) && assert.NotEmpty(t, rootNodes) {
+	rootNode, err := BuildDependencyTree(pythonutils.Poetry, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Len(t, rootNode, 1)
+	if len(rootNode) > 0 {
+		assert.NotEmpty(t, rootNode[0].Nodes)
 		// Test child module
-		childNode := audit.GetAndAssertNode(t, rootNodes, "pytest:5.4.3")
+		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pytest:5.4.3")
 		// Test sub child module
 		if assert.NotNil(t, childNode) {
 			transitiveChildNode := audit.GetAndAssertNode(t, childNode.Nodes, "packaging:21.3")

@@ -104,12 +104,12 @@ github.com/forPelevin/gomoji v1.1.6/go.mod h1:h31zCiwG8nIto/c9RmijODA1xgN2JSvwKf
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/fsnotify/fsnotify v1.5.4 h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=
 github.com/fsnotify/fsnotify v1.5.4/go.mod h1:OVB6XrOHzAwXMpEM7uPOzcehqUV2UqJxmVXmkdnm1bU=
-github.com/gailazar300/build-info-go v0.1.1-0.20221030151010-1ae25a86cd71 h1:jQdQ/EbHqFuCfO/tXtZZKUg8KnDBfUY9qu2Mp5OG9Gw=
-github.com/gailazar300/build-info-go v0.1.1-0.20221030151010-1ae25a86cd71/go.mod h1:iSTj26qEX3eUtyAGMH0qKsW4WJT+MceYxLWP9FfiAq4=
+github.com/gailazar300/build-info-go v0.1.1-0.20221030152859-2c7264d217f7 h1:b838fcXB+v2jKVWSe20AAEAHEDgSW5W0IYTO9T8PtX0=
+github.com/gailazar300/build-info-go v0.1.1-0.20221030152859-2c7264d217f7/go.mod h1:iSTj26qEX3eUtyAGMH0qKsW4WJT+MceYxLWP9FfiAq4=
 github.com/gailazar300/gofrog v1.1.2-0.20221026134646-c581613106c2 h1:neZnMfhoEq5k5TEIDf86OYV4VlWqwocu9rG9/X6O5QU=
 github.com/gailazar300/gofrog v1.1.2-0.20221026134646-c581613106c2/go.mod h1:o00tSRff6IapTgaCMuX1Cs9MH08Y1JqnsKgRtx91Gc4=
-github.com/gailazar300/jfrog-client-go v0.18.1-0.20221030151106-c91d273f9c65 h1:4lTSsUy/wGI8H9/QMc/AYyuSpaqL5DBh1BvEuSVYqRQ=
-github.com/gailazar300/jfrog-client-go v0.18.1-0.20221030151106-c91d273f9c65/go.mod h1:ar3vk+yKLML/a+Nx5GnoB8PRCZO96rKrPXqqQrkID8k=
+github.com/gailazar300/jfrog-client-go v0.18.1-0.20221030153028-4f0aa2892dcd h1:oIU/pDfQisEDyZG3dZR7zLNs5AxGzosvxewUw5JM6BE=
+github.com/gailazar300/jfrog-client-go v0.18.1-0.20221030153028-4f0aa2892dcd/go.mod h1:E8usB4s8hFlq76TM6HuYK18AsRziMEW6WnsY4dHhP1o=
 github.com/gliderlabs/ssh v0.2.2 h1:6zsha5zo/TWhRhwqCD3+EarCAgZ2yN28ipRnGPnwkI0=
 github.com/gliderlabs/ssh v0.2.2/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=
 github.com/go-git/gcfg v1.5.0 h1:Q5ViNfGF8zFgyJWPqYwA7qGFoMTEiBmdlkcfRmpIMa4=

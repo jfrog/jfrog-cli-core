@@ -93,7 +93,8 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		}
 		return nil
 	}
-	err = f.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := consumeDelayFilesIfNoErrors
+	err = f.transferManager.doTransferWithProducerConsumer(action, delayAction)
 	if err == nil {
 		log.Info("Done handling files diffs.")
 	}
@@ -110,7 +111,6 @@ type timeFrameParams struct {
 func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 			return f.handleTimeFrameFilesDiff(pcWrapper, params, logMsgPrefix, uploadChunkChan, delayHelper, errorsChannelMng)
 		}

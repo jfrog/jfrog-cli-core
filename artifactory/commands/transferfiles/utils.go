@@ -478,10 +478,9 @@ func shouldStopPolling(doneChan chan bool) bool {
 	return false
 }
 
-func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk UploadChunk,
+func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk UploadChunk,
 	uploadTokensChan chan UploadedChunkData, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
-		defer pcWrapper.notifyIfUploaderFinished(false)
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
 		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
@@ -513,7 +512,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 		}
 		curUploadChunk.appendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -523,7 +522,7 @@ func uploadByChunks(files []FileRepresentation, uploadTokensChan chan UploadedCh
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}

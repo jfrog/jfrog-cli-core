@@ -13,26 +13,34 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/pkg/errors"
 	"net/http"
+	url "net/url"
 	"os"
+	"path"
 	"path/filepath"
 )
 
 const (
 	minArtifactoryVersion = "2.9.0" // for reload api (version api is from 2.2.2)
 	pluginReloadRestApi   = "api/plugins/reload"
-	jHomeEnvVar           = "JFROG_HOME"
+	jfrogHomeEnvVar       = "JFROG_HOME"
 	latest                = "[RELEASE]"
 )
 
 var (
-	defalutSearchPath = filepath.Join("opt", "jfrog")
+	defaultSearchPath = filepath.Join("opt", "jfrog")
 	// Plugin directory locations
-	OriginalDirPath = PluginFileItem{"artifactory", "etc", "plugins"}
-	V7DirPath       = PluginFileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
+	originalDirPath = PluginFileItem{"artifactory", "etc", "plugins"}
+	v7DirPath       = PluginFileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
 	// Error types
-	EmptyUrlErr            = errors.Errorf("Base download URL must be provided to allow file downloads.")
-	NotValidDestinationErr = errors.Errorf("Can't find plugin directory with the provided information, this command must run on the Artifactory server.")
-	minVerErr              = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
+	emptyUrlErr            = errors.Errorf("Base download URL must be provided to allow file downloads.")
+	notValidDestinationErr = func(showHint bool) error {
+		hint := ""
+		if showHint {
+			hint = ", this command must run on a machine with Artifactory server. Hint: use --home-dir option."
+		}
+		return errors.Errorf("Can't find target plugin directory, this command must run on a machine with Artifactory server. %s", hint)
+	}
+	minVerErr = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
 )
 
 type PluginFileItem []string
@@ -65,28 +73,18 @@ func (f *PluginFileItem) SplitNameAndDirs() (string, *PluginFileItem) {
 }
 
 // Convert the item to URL representation, ignore empty entries, adding prefix tokens as provided
-func (f *PluginFileItem) toURL(previousTokens ...string) string {
-	return toURL(toURL(previousTokens...), toURL(*f...))
+func (f *PluginFileItem) toURL(prefixUrl string) (string, error) {
+	myUrl, err := url.Parse(prefixUrl)
+	if err != nil {
+		return "", err
+	}
+	myUrl.Path = path.Join(myUrl.Path, path.Join(*f...))
+	return myUrl.String(), nil
 }
 
 // Convert the item to path representation, ignore empty entries, adding prefix tokens as provided
 func (f *PluginFileItem) toPath(previousTokens ...string) string {
 	return filepath.Join(filepath.Join(previousTokens...), filepath.Join(*f.Dirs()...), f.Name())
-}
-
-// Convert tokens into URL representation, ignore empty ("") entries
-func toURL(tokens ...string) string {
-	url := ""
-	for _, token := range tokens {
-		if token == "" {
-			continue
-		}
-		if url != "" {
-			url += "/"
-		}
-		url += token
-	}
-	return url
 }
 
 // Holds all the plugin files and options of destinations to transfer them into
@@ -102,8 +100,8 @@ func NewArtifactoryPluginTransferManager(bundle PluginFiles) *PluginTransferMana
 		destinations: []PluginFileItem{},
 	}
 	// Add all the optional destinations for the plugin dir
-	manager.addDestination(OriginalDirPath)
-	manager.addDestination(V7DirPath)
+	manager.addDestination(originalDirPath)
+	manager.addDestination(v7DirPath)
 	return manager
 }
 
@@ -159,32 +157,32 @@ func NewInstallPluginCommand(artifactoryServerDetails *config.ServerDetails, plu
 	}
 }
 
-func (tic *InstallPluginCommand) ServerDetails() (*config.ServerDetails, error) {
-	return tic.targetServer, nil
+func (ipc *InstallPluginCommand) ServerDetails() (*config.ServerDetails, error) {
+	return ipc.targetServer, nil
 }
 
 // Set the local directory that the plugin files will be copied from
-func (tic *InstallPluginCommand) SetLocalPluginFiles(localDir string) *InstallPluginCommand {
-	tic.localSrcDir = localDir
-	return tic
+func (ipc *InstallPluginCommand) SetLocalPluginFiles(localDir string) *InstallPluginCommand {
+	ipc.localSrcDir = localDir
+	return ipc
 }
 
 // Set the plugin version we want to download
-func (tic *InstallPluginCommand) SetInstallVersion(installVersion *version.Version) *InstallPluginCommand {
-	tic.installVersion = installVersion
-	return tic
+func (ipc *InstallPluginCommand) SetInstallVersion(installVersion *version.Version) *InstallPluginCommand {
+	ipc.installVersion = installVersion
+	return ipc
 }
 
 // Set the base URL that the plugin files avaliable
-func (tic *InstallPluginCommand) SetBaseDownloadUrl(baseUrl string) *InstallPluginCommand {
-	tic.baseDownloadUrl = baseUrl
-	return tic
+func (ipc *InstallPluginCommand) SetBaseDownloadUrl(baseUrl string) *InstallPluginCommand {
+	ipc.baseDownloadUrl = baseUrl
+	return ipc
 }
 
 // Set the Jfrog home directory path override to search in it the plugin directory as destination
-func (tic *InstallPluginCommand) SetOverrideJfrogHomePath(path string) *InstallPluginCommand {
-	tic.localJfrogHomePath = path
-	return tic
+func (ipc *InstallPluginCommand) SetJFrogHomePath(path string) *InstallPluginCommand {
+	ipc.localJfrogHomePath = path
+	return ipc
 }
 
 // Validates minimum version and fetch the current
@@ -203,31 +201,37 @@ func validateMinArtifactoryVersion(servicesManager artifactory.ArtifactoryServic
 }
 
 // Get the plugin directory destination to install the plugin in it, search is starting from jfrog home directory
-func (tic *InstallPluginCommand) getPluginDirDestination() (target PluginFileItem, err error) {
+func (ipc *InstallPluginCommand) getPluginDirDestination() (target PluginFileItem, err error) {
 	var exists bool
 	var envVal string
 
 	// Flag override
-	if tic.localJfrogHomePath != "" {
-		log.Debug(fmt.Sprintf("try searching for plugin directory with custom Jfrog home directory '%s'.", tic.localJfrogHomePath))
-		if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(tic.localJfrogHomePath); err != nil || exists {
+	if ipc.localJfrogHomePath != "" {
+		log.Debug(fmt.Sprintf("Searching for plugins directory in the JFrog home directory '%s'.", ipc.localJfrogHomePath))
+		if exists, target, err = ipc.transferManger.trySearchDestinationMatchFrom(ipc.localJfrogHomePath); err != nil || exists {
+			return
+		}
+		if !exists {
+			err = notValidDestinationErr(false)
 			return
 		}
 	}
 	// Environment variable override
-	if envVal, exists = os.LookupEnv(jHomeEnvVar); exists {
-		log.Debug(fmt.Sprintf("try searching for plugin directory with '%s=%s'.", jHomeEnvVar, envVal))
-		if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(envVal); err != nil || exists {
+	if envVal, exists = os.LookupEnv(jfrogHomeEnvVar); exists {
+		log.Debug(fmt.Sprintf("Searching for plugins directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", envVal, jfrogHomeEnvVar))
+		if exists, target, err = ipc.transferManger.trySearchDestinationMatchFrom(envVal); err != nil || exists {
 			return
 		}
 	}
 	// Default value
-	log.Debug(fmt.Sprintf("try searching for plugin directory with default path '%s'.", defalutSearchPath))
-	if exists, target, err = tic.transferManger.trySearchDestinationMatchFrom(defalutSearchPath); err != nil || exists {
-		return
+	if !coreutils.IsWindows() {
+		log.Debug(fmt.Sprintf("Searching for plugins directory in the default path '%s'.", defaultSearchPath))
+		if exists, target, err = ipc.transferManger.trySearchDestinationMatchFrom(defaultSearchPath); err != nil || exists {
+			return
+		}
 	}
 
-	err = NotValidDestinationErr
+	err = notValidDestinationErr(true)
 	return
 }
 
@@ -235,28 +239,31 @@ func (tic *InstallPluginCommand) getPluginDirDestination() (target PluginFileIte
 type TransferAction func(src string, dst string, bundle PluginFiles) error
 
 // return the src path and a transfer action
-func (tic *InstallPluginCommand) getTransferSourceAndAction() (src string, transferAction TransferAction, err error) {
+func (ipc *InstallPluginCommand) getTransferSourceAndAction() (src string, transferAction TransferAction, err error) {
 	// check if local directory was provided
-	if tic.localSrcDir != "" {
-		src = tic.localSrcDir
+	if ipc.localSrcDir != "" {
+		src = ipc.localSrcDir
 		transferAction = CopyFiles
 		log.Debug("local plugin files provided. copying from file system")
 		return
 	}
 	// make sure base url is set
-	if tic.baseDownloadUrl == "" {
-		err = EmptyUrlErr
+	if ipc.baseDownloadUrl == "" {
+		err = emptyUrlErr
+		return
+	}
+	var baseSrc *url.URL
+	if baseSrc, err = url.Parse(ipc.baseDownloadUrl); err != nil {
 		return
 	}
 	// download file from web
-	src = tic.baseDownloadUrl
-	if tic.installVersion == nil {
+	if ipc.installVersion == nil {
 		// Latest
-		src = toURL(src, latest)
+		src = path.Join(baseSrc.Path, latest)
 		log.Debug("fetching latest version to the target.")
 	} else {
-		src = toURL(src, tic.installVersion.GetVersion())
-		log.Debug(fmt.Sprintf("fetching plugin version '%s' to the target.", tic.installVersion.GetVersion()))
+		src = path.Join(baseSrc.Path, ipc.installVersion.GetVersion())
+		log.Debug(fmt.Sprintf("fetching plugin version '%s' to the target.", ipc.installVersion.GetVersion()))
 	}
 	transferAction = DownloadFiles
 
@@ -267,9 +274,16 @@ func (tic *InstallPluginCommand) getTransferSourceAndAction() (src string, trans
 func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 	for _, file := range bundle {
 		fileName, fileDirs := file.SplitNameAndDirs()
-		srcURL := file.toURL(src)
+		srcURL, e := file.toURL(src)
+		if e != nil {
+			return e
+		}
 		dstDirPath := fileDirs.toPath(pluginDir)
-		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, fileDirs.toURL(src), dstDirPath))
+		dirURL, e := fileDirs.toURL(src)
+		if e != nil {
+			return e
+		}
+		log.Debug(fmt.Sprintf("transferring '%s' from '%s' to '%s'", fileName, dirURL, dstDirPath))
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
@@ -298,7 +312,7 @@ func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 }
 
 // Send reload command to the artifactory in order to reload the plugin files
-func sendReLoadCommand(servicesManager artifactory.ArtifactoryServicesManager) error {
+func sendReloadCommand(servicesManager artifactory.ArtifactoryServicesManager) error {
 	log.Debug("reloading plugins")
 	serviceDetails := servicesManager.GetConfig().GetServiceDetails()
 	httpDetails := serviceDetails.CreateHttpClientDetails()
@@ -313,11 +327,11 @@ func sendReLoadCommand(servicesManager artifactory.ArtifactoryServicesManager) e
 	return nil
 }
 
-func (tic *InstallPluginCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", tic.pluginName))))
+func (ipc *InstallPluginCommand) Run() (err error) {
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", ipc.pluginName))))
 
 	// Initialize and validate
-	serviceManager, err := utils.CreateServiceManager(tic.targetServer, -1, 0, false)
+	serviceManager, err := utils.CreateServiceManager(ipc.targetServer, -1, 0, false)
 	if err != nil {
 		return
 	}
@@ -325,23 +339,23 @@ func (tic *InstallPluginCommand) Run() (err error) {
 		return
 	}
 	// Get source, destination and transfer action
-	dst, err := tic.getPluginDirDestination()
+	dst, err := ipc.getPluginDirDestination()
 	if err != nil {
 		return
 	}
-	src, transferAction, err := tic.getTransferSourceAndAction()
+	src, transferAction, err := ipc.getTransferSourceAndAction()
 	if err != nil {
 		return
 	}
 	// Execute transferring action
-	if err = transferAction(src, dst.toPath(), tic.transferManger.files); err != nil {
+	if err = transferAction(src, dst.toPath(), ipc.transferManger.files); err != nil {
 		return
 	}
 	// Reload plugins
-	if err = sendReLoadCommand(serviceManager); err != nil {
+	if err = sendReloadCommand(serviceManager); err != nil {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("Plugin was installed successfully!.")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Plugin %s installed successfully in the local Artifactory server.", ipc.pluginName))))
 	return nil
 }

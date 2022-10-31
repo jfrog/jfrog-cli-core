@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -21,13 +23,23 @@ import (
 )
 
 func TestPluginFileItemNameAndDirs(t *testing.T) {
-	testFileItemNameDirs(t, PluginFileItem{"dir", "dir2"}, "name.txt", PluginFileItem{"dir", "dir2", "name.txt"})
-	testFileItemNameDirs(t, PluginFileItem{}, "name.txt", PluginFileItem{"name.txt"})
-	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{})
-	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{""})
-	testFileItemNameDirs(t, PluginFileItem{}, "", PluginFileItem{"", "", ""})
-	testFileItemNameDirs(t, PluginFileItem{"dir"}, "", PluginFileItem{"", "dir", ""})
-	testFileItemNameDirs(t, PluginFileItem{"dir"}, "name", PluginFileItem{"dir", "", "name"})
+	cases := []struct {
+		expectedDirs PluginFileItem
+		expectedName string
+		file         PluginFileItem
+	}{
+		{PluginFileItem{"dir", "dir2"}, "name.txt", PluginFileItem{"dir", "dir2", "name.txt"}},
+		{PluginFileItem{}, "name.txt", PluginFileItem{"name.txt"}},
+		{PluginFileItem{}, "", PluginFileItem{}},
+		{PluginFileItem{}, "", PluginFileItem{""}},
+		{PluginFileItem{}, "", PluginFileItem{"", "", ""}},
+		{PluginFileItem{"dir"}, "", PluginFileItem{"", "dir", ""}},
+		{PluginFileItem{"dir"}, "name", PluginFileItem{"dir", "", "name"}},
+	}
+
+	for _, testCase := range cases {
+		testFileItemNameDirs(t, testCase.expectedDirs, testCase.expectedName, testCase.file)
+	}
 }
 
 func testFileItemNameDirs(t *testing.T, expectedDirs PluginFileItem, expectedName string, file PluginFileItem) {
@@ -43,28 +55,39 @@ func testFileItemNameDirs(t *testing.T, expectedDirs PluginFileItem, expectedNam
 }
 
 func TestPluginFileItemToUrlAndToPath(t *testing.T) {
-	testFileItemToUrlAndToPath(t, "dir/dir2/name.txt", filepath.Join("dir", "dir2", "name.txt"), PluginFileItem{"dir", "dir2", "name.txt"})
-	testFileItemToUrlAndToPath(t, "name.txt", filepath.Join("name.txt"), PluginFileItem{"name.txt"})
-	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{})
-	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{""})
-	testFileItemToUrlAndToPath(t, "", "", PluginFileItem{"", ""})
-	testFileItemToUrlAndToPath(t, "dir", filepath.Join("dir", ""), PluginFileItem{"", "dir", ""})
-	testFileItemToUrlAndToPath(t, "dir/name", filepath.Join("dir", "name"), PluginFileItem{"dir", "", "name"})
+	cases := []struct {
+		expectedUrl  string
+		expectedPath string
+		file         PluginFileItem
+	}{
+		{"dir/dir2/name.txt", filepath.Join("dir", "dir2", "name.txt"), PluginFileItem{"dir", "dir2", "name.txt"}},
+		{"name.txt", filepath.Join("name.txt"), PluginFileItem{"name.txt"}},
+		{"", "", PluginFileItem{}},
+		{"", "", PluginFileItem{""}},
+		{"", "", PluginFileItem{"", ""}},
+		{"dir", filepath.Join("dir", ""), PluginFileItem{"", "dir", ""}},
+		{"dir/name", filepath.Join("dir", "name"), PluginFileItem{"dir", "", "name"}},
+	}
+
+	for _, testCase := range cases {
+		testFileItemToUrlAndToPath(t, testCase.expectedUrl, testCase.expectedPath, testCase.file)
+	}
 }
 
 func testFileItemToUrlAndToPath(t *testing.T, expectedUrl string, expectedPath string, file PluginFileItem) {
-	assert.Equal(t, expectedUrl, file.toURL())
-	assert.Equal(t, expectedPath, file.toPath())
-	assert.Equal(t, expectedUrl, file.toURL(""))
+	fUrl, err := file.toURL("")
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUrl, fUrl)
 	assert.Equal(t, expectedPath, file.toPath(""))
 	prefix := "prefix"
-	prefix2 := "prefix2"
-	assert.Equal(t, filepath.Join(prefix, prefix2, expectedPath), file.toPath(prefix, "", prefix2))
-	expectedPrefixUrl := prefix + "/" + prefix2
+	assert.Equal(t, filepath.Join(prefix, expectedPath), file.toPath(prefix))
+	expectedPrefixUrl := prefix
 	if expectedUrl != "" {
 		expectedPrefixUrl += "/"
 	}
-	assert.Equal(t, expectedPrefixUrl+expectedUrl, file.toURL(prefix, "", prefix2))
+	fUrl, err = file.toURL(prefix)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedPrefixUrl+expectedUrl, fUrl)
 }
 
 func TestValidateRequirements(t *testing.T) {
@@ -101,19 +124,19 @@ func populateDirWith(rootDir string, dirs ...PluginFileItem) {
 }
 
 func setJHomeEnvVar(val string) func() {
-	oldVal, exists := os.LookupEnv(jHomeEnvVar)
+	oldVal, exists := os.LookupEnv(jfrogHomeEnvVar)
 	if exists && val == "" {
-		coreutils.ExitOnErr(os.Unsetenv(jHomeEnvVar))
+		coreutils.ExitOnErr(os.Unsetenv(jfrogHomeEnvVar))
 	} else if val != "" {
-		coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, val))
+		coreutils.ExitOnErr(os.Setenv(jfrogHomeEnvVar, val))
 	}
 
 	return func() {
 		// set env to old
 		if !exists {
-			coreutils.ExitOnErr(os.Unsetenv(jHomeEnvVar))
+			coreutils.ExitOnErr(os.Unsetenv(jfrogHomeEnvVar))
 		} else {
-			coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, oldVal))
+			coreutils.ExitOnErr(os.Setenv(jfrogHomeEnvVar, oldVal))
 		}
 	}
 }
@@ -155,33 +178,36 @@ func TestGetPluginDirDestination(t *testing.T) {
 	manager := NewArtifactoryPluginTransferManager(nil)
 	manager.addDestination(PluginFileItem{targetDir})
 	cmd := &InstallPluginCommand{transferManger: manager}
-	defaultExists, err := fileutils.IsDirExists(defalutSearchPath, false)
+	defaultExists, err := fileutils.IsDirExists(defaultSearchPath, false)
 	coreutils.ExitOnErr(err)
 
 	// make sure contains artifactory structures as destinations
-	assert.Contains(t, manager.destinations, OriginalDirPath)
-	assert.Contains(t, manager.destinations, V7DirPath)
+	assert.Contains(t, manager.destinations, originalDirPath)
+	assert.Contains(t, manager.destinations, v7DirPath)
 
 	// default
 	dst, err := cmd.getPluginDirDestination()
 	if defaultExists {
 		assert.NoError(t, err)
-		assert.True(t, dst.toPath() == OriginalDirPath.toPath(defalutSearchPath) || (dst.toPath() == V7DirPath.toPath(defalutSearchPath)))
+		assert.True(t, dst.toPath() == originalDirPath.toPath(defaultSearchPath) || (dst.toPath() == v7DirPath.toPath(defaultSearchPath)))
 	} else {
-		assert.Errorf(t, err, NotValidDestinationErr.Error())
+		assert.Errorf(t, err, notValidDestinationErr(true).Error())
 	}
 
 	// env var override
-	coreutils.ExitOnErr(os.Setenv(jHomeEnvVar, filepath.Join(testHomePath, testEnvDir)))
+	coreutils.ExitOnErr(os.Setenv(jfrogHomeEnvVar, filepath.Join(testHomePath, testEnvDir)))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
 	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, targetDir), dst.toPath())
 
 	// flag override
-	cmd.SetOverrideJfrogHomePath(filepath.Join(testHomePath, testCustomDir))
+	cmd.SetJFrogHomePath(filepath.Join(testHomePath, testCustomDir))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
 	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, targetDir), dst.toPath())
+	cmd.SetJFrogHomePath("not_existing_dir")
+	_, err = cmd.getPluginDirDestination()
+	assert.Errorf(t, err, notValidDestinationErr(false).Error())
 }
 
 func TestGetTransferSourceAndAction(t *testing.T) {
@@ -191,20 +217,24 @@ func TestGetTransferSourceAndAction(t *testing.T) {
 
 	// err - no url provided with the latest download option
 	_, _, err := cmd.getTransferSourceAndAction()
-	assert.EqualError(t, err, EmptyUrlErr.Error())
+	assert.EqualError(t, err, emptyUrlErr.Error())
 	cmd.SetBaseDownloadUrl(baseUrl)
 
 	// latest
 	src, action, err := cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
-	assert.Equal(t, toURL(baseUrl, latest), src)
+	vUrl, err := url.Parse(baseUrl)
+	assert.NoError(t, err)
+	assert.Equal(t, path.Join(vUrl.Path, latest) /*toURL(baseUrl, latest)*/, src)
 	assert.Contains(t, runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles")
 
 	// specific version
 	cmd.SetInstallVersion(version.NewVersion(v1))
 	src, action, err = cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
-	assert.Equal(t, toURL(baseUrl, v1), src)
+	vUrl, err = url.Parse(baseUrl)
+	assert.NoError(t, err)
+	assert.Equal(t, path.Join(vUrl.Path, v1) /*toURL(baseUrl, v1)*/, src)
 	assert.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles"))
 
 	// local file system
@@ -257,5 +287,5 @@ func TestReloadPlugins(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	assert.NoError(t, sendReLoadCommand(serviceManager))
+	assert.NoError(t, sendReloadCommand(serviceManager))
 }

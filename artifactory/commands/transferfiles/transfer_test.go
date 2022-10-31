@@ -4,23 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
@@ -125,7 +126,26 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	assert.ErrorContains(t, err, "Response from Artifactory: 404 Not Found.")
 }
 
+func initStateTest(t *testing.T) (stateManager *state.TransferStateManager, cleanUp func()) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	cleanUp = cleanUpJfrogHome
+
+	// Create transfer directory
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	assert.NoError(t, err)
+	err = fileutils.CreateDirIfNotExist(transferDir)
+	assert.NoError(t, err)
+
+	stateManager, err = state.NewTransferStateManager(true)
+	assert.NoError(t, err)
+	return
+}
+
 func TestUploadChunkAndPollUploads(t *testing.T) {
+	stateManager, cleanUp := initStateTest(t)
+	defer cleanUp()
+
 	totalChunkStatusVisits := 0
 	totalUploadChunkVisits := 0
 	fileSample := api.FileRepresentation{
@@ -138,8 +158,6 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 	defer testServer.Close()
 	srcPluginManager := initSrcUserPluginServiceManager(t, serverDetails)
 
-	stateManager, err := state.NewTransferStateManager(false)
-	assert.NoError(t, err)
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
 	phaseBase := &phaseBase{context: context.Background(), stateManager: stateManager, srcUpService: srcPluginManager, repoKey: repo1Key}
 	uploadChunkAndPollTwice(t, phaseBase, fileSample)

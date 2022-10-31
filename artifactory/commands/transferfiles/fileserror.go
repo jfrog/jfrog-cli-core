@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -49,7 +50,7 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	return err
 }
 
-func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
+func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []api.FileRepresentation) {
 	for _, status := range statuses {
 		files = append(files, status.FileRepresentation)
 	}

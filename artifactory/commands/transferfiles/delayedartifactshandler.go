@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -89,7 +90,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 }
 
 type DelayedArtifactsFile struct {
-	DelayedArtifacts []FileRepresentation `json:"delayed_artifacts,omitempty"`
+	DelayedArtifacts []api.FileRepresentation `json:"delayed_artifacts,omitempty"`
 }
 
 // Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
@@ -281,7 +282,7 @@ type delayUploadHelper struct {
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 // When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
-func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file FileRepresentation) (delayed, stopped bool) {
+func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file api.FileRepresentation) (delayed, stopped bool) {
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if ShouldStop(&phase, &delayHelper, nil) {
 			return delayed, true
@@ -297,11 +298,11 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, fil
 // DelayedArtifactsChannelMng is used when writing 'delayed artifacts' to a common channel.
 // If an error occurs while handling the files - this message is used to stop adding elements to the channel.
 type DelayedArtifactsChannelMng struct {
-	channel chan FileRepresentation
+	channel chan api.FileRepresentation
 	err     error
 }
 
-func (mng DelayedArtifactsChannelMng) add(element FileRepresentation) {
+func (mng DelayedArtifactsChannelMng) add(element api.FileRepresentation) {
 	mng.channel <- element
 }
 
@@ -316,7 +317,7 @@ func (mng DelayedArtifactsChannelMng) close() {
 }
 
 func createdDelayedArtifactsChannelMng() DelayedArtifactsChannelMng {
-	channel := make(chan FileRepresentation, fileWritersChannelSize)
+	channel := make(chan api.FileRepresentation, fileWritersChannelSize)
 	return DelayedArtifactsChannelMng{channel: channel}
 }
 

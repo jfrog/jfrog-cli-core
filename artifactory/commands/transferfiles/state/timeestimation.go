@@ -1,10 +1,10 @@
-package transferfiles
+package state
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -29,26 +29,20 @@ const (
 
 var numOfSpeedsToKeepPerWorkingThread = 10
 
-type timeEstimationManager struct {
+type TimeEstimationManager struct {
 	// Speeds of the last done chunks, in bytes/ms
-	lastSpeeds []float64
-	// Sum of the speeds in lastSpeeds. The speeds are in bytes/ms.
-	lastSpeedsSum float64
+	LastSpeeds []float64 `json:"last_speeds,omitempty"`
+	// Sum of the speeds in LastSpeeds. The speeds are in bytes/ms.
+	LastSpeedsSum float64 `json:"last_speeds_sum,omitempty"`
 	// The last calculated sum of speeds, in bytes/ms
-	speedsAverage float64
-	// True if remaining time estimation is unavailable
-	timeEstimationUnavailable bool
+	SpeedsAverage float64 `json:"speeds_average,omitempty"`
 	// Data estimated remaining time is saved so that it can be used when handling a build-info repository and speed cannot be calculated.
-	dataEstimatedRemainingTime int64
+	DataEstimatedRemainingTime int64 `json:"data_estimated_remaining_time,omitempty"`
 	// The state manager
-	stateManager *state.TransferStateManager
+	stateManager *TransferStateManager
 }
 
-func newTimeEstimationManager(stateManager *state.TransferStateManager) *timeEstimationManager {
-	return &timeEstimationManager{stateManager: stateManager}
-}
-
-func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, durationMillis int64) {
+func (tem *TimeEstimationManager) AddChunkStatus(chunkStatus api.ChunkStatus, durationMillis int64) {
 	// Build info repository requires no action here (transferred counter is updated in the state manager and no other calculation is needed).
 	if durationMillis == 0 || tem.stateManager.BuildInfoRepo {
 		return
@@ -57,10 +51,10 @@ func (tem *timeEstimationManager) addChunkStatus(chunkStatus ChunkStatus, durati
 	tem.addDataChunkStatus(chunkStatus, durationMillis)
 }
 
-func (tem *timeEstimationManager) addDataChunkStatus(chunkStatus ChunkStatus, durationMillis int64) {
+func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus, durationMillis int64) {
 	var chunkSizeBytes int64
 	for _, file := range chunkStatus.Files {
-		if file.Status == Success && !file.ChecksumDeployed {
+		if file.Status == api.Success && !file.ChecksumDeployed {
 			chunkSizeBytes += file.SizeBytes
 		}
 	}
@@ -76,16 +70,16 @@ func (tem *timeEstimationManager) addDataChunkStatus(chunkStatus ChunkStatus, du
 		return
 	}
 	speed := calculateChunkSpeed(workingThreads, chunkSizeBytes, durationMillis)
-	tem.lastSpeeds = append(tem.lastSpeeds, speed)
-	tem.lastSpeedsSum += speed
+	tem.LastSpeeds = append(tem.LastSpeeds, speed)
+	tem.LastSpeedsSum += speed
 	lastSpeedsSliceLen := workingThreads * numOfSpeedsToKeepPerWorkingThread
-	for len(tem.lastSpeeds) > lastSpeedsSliceLen {
+	for len(tem.LastSpeeds) > lastSpeedsSliceLen {
 		// Remove the oldest calculated speed
-		tem.lastSpeedsSum -= tem.lastSpeeds[0]
-		tem.lastSpeeds = tem.lastSpeeds[1:]
+		tem.LastSpeedsSum -= tem.LastSpeeds[0]
+		tem.LastSpeeds = tem.LastSpeeds[1:]
 	}
 	// Calculate speed in bytes/ms
-	tem.speedsAverage = tem.lastSpeedsSum / float64(len(tem.lastSpeeds))
+	tem.SpeedsAverage = tem.LastSpeedsSum / float64(len(tem.LastSpeeds))
 }
 
 func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) float64 {
@@ -93,17 +87,17 @@ func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) 
 }
 
 // getSpeed gets the transfer speed, in MB/s.
-func (tem *timeEstimationManager) getSpeed() float64 {
+func (tem *TimeEstimationManager) getSpeed() float64 {
 	// Convert from bytes/ms to MB/s
-	return tem.speedsAverage * bytesPerMilliSecToMBPerSec
+	return tem.SpeedsAverage * bytesPerMilliSecToMBPerSec
 }
 
-// getSpeed gets the transfer speed in an easy-to-read string.
-func (tem *timeEstimationManager) getSpeedString() string {
+// GetSpeedString gets the transfer speed in an easy-to-read string.
+func (tem *TimeEstimationManager) GetSpeedString() string {
 	if tem.stateManager.BuildInfoRepo {
-		return "Not available when handling a build-info repository"
+		return "Not available while transferring a build-info repository"
 	}
-	if len(tem.lastSpeeds) == 0 {
+	if len(tem.LastSpeeds) == 0 {
 		return "Not available yet"
 	}
 	return fmt.Sprintf("%.3f MB/s", tem.getSpeed())
@@ -113,20 +107,20 @@ func (tem *timeEstimationManager) getSpeedString() string {
 // The estimated remaining time is the sum of:
 // 1. Data estimated remaining time, derived by the average speed and remaining data size.
 // 2. Build info estimated remaining time, derived by a precalculated average time per build info.
-func (tem *timeEstimationManager) getEstimatedRemainingTime() (int64, error) {
+func (tem *TimeEstimationManager) getEstimatedRemainingTime() (int64, error) {
 	err := tem.calculateDataEstimatedRemainingTime()
 	if err != nil {
 		return 0, err
 	}
-	return tem.dataEstimatedRemainingTime + tem.getBuildInfoEstimatedRemainingTime(), nil
+	return tem.DataEstimatedRemainingTime + tem.getBuildInfoEstimatedRemainingTime(), nil
 }
 
 // calculateDataEstimatedRemainingTime calculates the data estimated remaining time in seconds, and sets it to the corresponding
 // variable in the estimation manager.
-func (tem *timeEstimationManager) calculateDataEstimatedRemainingTime() error {
+func (tem *TimeEstimationManager) calculateDataEstimatedRemainingTime() error {
 	// If a build info repository is currently being handled, use the data estimated time previously calculated.
 	// Else, start calculating when the speeds average is set.
-	if tem.stateManager.BuildInfoRepo || tem.speedsAverage == 0 {
+	if tem.stateManager.BuildInfoRepo || tem.SpeedsAverage == 0 {
 		return nil
 	}
 	transferredSizeBytes, err := tem.stateManager.GetTransferredSizeBytes()
@@ -135,18 +129,18 @@ func (tem *timeEstimationManager) calculateDataEstimatedRemainingTime() error {
 	}
 
 	if tem.stateManager.TotalRepositories.TotalSizeBytes <= transferredSizeBytes {
-		tem.dataEstimatedRemainingTime = 0
+		tem.DataEstimatedRemainingTime = 0
 		return nil
 	}
 
-	// We only convert to int64 at the end to avoid a scenario where the conversion of speedsAverage returns zero.
-	remainingTime := float64(tem.stateManager.TotalRepositories.TotalSizeBytes-transferredSizeBytes) / tem.speedsAverage
+	// We only convert to int64 at the end to avoid a scenario where the conversion of SpeedsAverage returns zero.
+	remainingTime := float64(tem.stateManager.TotalRepositories.TotalSizeBytes-transferredSizeBytes) / tem.SpeedsAverage
 	// Convert from milliseconds to seconds.
-	tem.dataEstimatedRemainingTime = int64(remainingTime) / milliSecsInSecond
+	tem.DataEstimatedRemainingTime = int64(remainingTime) / milliSecsInSecond
 	return nil
 }
 
-func (tem *timeEstimationManager) getBuildInfoEstimatedRemainingTime() int64 {
+func (tem *TimeEstimationManager) getBuildInfoEstimatedRemainingTime() int64 {
 	if tem.stateManager.OverallBiFiles.TotalUnits <= tem.stateManager.OverallBiFiles.TransferredUnits {
 		return 0
 	}
@@ -162,7 +156,7 @@ func (tem *timeEstimationManager) getBuildInfoEstimatedRemainingTime() int64 {
 	return int64(remainingTime)
 }
 
-func (tem *timeEstimationManager) getWorkingThreadsForBuildInfoEstimation() (int, error) {
+func (tem *TimeEstimationManager) getWorkingThreadsForBuildInfoEstimation() (int, error) {
 	workingThreads, err := tem.stateManager.GetWorkingThreads()
 	if err != nil {
 		return 0, err
@@ -178,12 +172,12 @@ func (tem *timeEstimationManager) getWorkingThreadsForBuildInfoEstimation() (int
 	return workingThreads, nil
 }
 
-// getEstimatedRemainingTimeString gets the estimated remaining time in an easy-to-read string.
-func (tem *timeEstimationManager) getEstimatedRemainingTimeString() string {
-	if tem.timeEstimationUnavailable {
+// GetEstimatedRemainingTimeString gets the estimated remaining time in an easy-to-read string.
+func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() string {
+	if !tem.isTimeEstimationAvailable() {
 		return "Not available in this phase"
 	}
-	if !tem.stateManager.BuildInfoRepo && len(tem.lastSpeeds) == 0 {
+	if !tem.stateManager.BuildInfoRepo && len(tem.LastSpeeds) == 0 {
 		return "Not available yet"
 	}
 	remainingTimeSec, err := tem.getEstimatedRemainingTime()
@@ -229,6 +223,6 @@ func getTimeSingularOrPlural(timeAmount int64, timeType timeTypeSingular) string
 	return result
 }
 
-func (tem *timeEstimationManager) setTimeEstimationUnavailable(timeEstimationUnavailable bool) {
-	tem.timeEstimationUnavailable = timeEstimationUnavailable
+func (tem *TimeEstimationManager) isTimeEstimationAvailable() bool {
+	return tem.stateManager.CurrentRepoPhase == api.FullTransferPhase || tem.stateManager.CurrentRepoPhase == api.ErrorsPhase
 }

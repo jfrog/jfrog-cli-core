@@ -161,6 +161,24 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 	assertTransferredFiles(t, stateManager, 3, repo2Key)
 }
 
+func TestReposOverallBiFiles(t *testing.T) {
+	stateManager, cleanUp := initStateTest(t)
+	defer cleanUp()
+
+	// Create repos in state.
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true, true))
+
+	// Inc repos transferred sizes and files.
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 5, 11))
+
+	// Assert the number of transferred bi files in the state.
+	assert.Equal(t, repo2Key, stateManager.CurrentRepo)
+	assert.True(t, stateManager.BuildInfoRepo)
+	assert.Equal(t, int64(6), stateManager.OverallBiFiles.TransferredUnits)
+}
+
 func assertTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
 	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)

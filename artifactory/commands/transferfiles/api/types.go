@@ -1,4 +1,4 @@
-package transferfiles
+package api
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 )
 
 type ProcessStatusType string
+type ChunkId string
 
 const (
 	Done       ProcessStatusType = "DONE"
@@ -48,8 +49,8 @@ type UploadChunkResponse struct {
 }
 
 type UploadChunksStatusBody struct {
-	AwaitingStatusChunks []chunkId `json:"awaiting_status_chunks,omitempty"`
-	ChunksToDelete       []chunkId `json:"chunks_to_delete,omitempty"`
+	AwaitingStatusChunks []ChunkId `json:"awaiting_status_chunks,omitempty"`
+	ChunksToDelete       []ChunkId `json:"chunks_to_delete,omitempty"`
 }
 
 type UploadChunksStatusResponse struct {
@@ -73,10 +74,6 @@ type FileUploadStatusResponse struct {
 	Reason           string              `json:"reason,omitempty"`
 }
 
-type FilesErrors struct {
-	Errors []ExtendedFileUploadStatusResponse `json:"errors,omitempty"`
-}
-
 type NodeIdResponse struct {
 	NodeId string `json:"node_id,omitempty"`
 }
@@ -85,32 +82,19 @@ type UuidTokenResponse struct {
 	UuidToken string `json:"uuid_token,omitempty"`
 }
 
-// Fill chunk data batch till full. Return if no new chunk data is available.
-func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunk) {
-	for chunksLifeCycleManager.totalChunks < GetThreads() {
-		select {
-		case data := <-uploadChunkChan:
-			currentNodeId := nodeId(data.NodeId)
-			currentChunkId := chunkId(data.UuidToken)
-			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
-				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = make(map[chunkId]UploadedChunkData)
-			}
-			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] = data.UploadedChunkData
-			chunksLifeCycleManager.totalChunks++
-		default:
-			// No new tokens are waiting.
-			return
-		}
-	}
-}
-
 // Append upload candidate to the list of upload candidates. Skip empty directories in build-info repositories.
 // file          - The upload candidate
 // buildInfoRepo - True if this is a build-info repository
-func (uc *UploadChunk) appendUploadCandidateIfNeeded(file FileRepresentation, buildInfoRepo bool) {
+func (uc *UploadChunk) AppendUploadCandidateIfNeeded(file FileRepresentation, buildInfoRepo bool) {
 	if buildInfoRepo && file.Name == "" {
 		log.Debug(fmt.Sprintf("Skipping unneeded empty dir '%s' in the build-info repository '%s'", file.Path, file.Repo))
 		return
 	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }
+
+const (
+	FullTransferPhase int = 0
+	FilesDiffPhase    int = 1
+	ErrorsPhase       int = 2
+)

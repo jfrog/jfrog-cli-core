@@ -15,5 +15,6 @@ func TestSaveAndLoadRunStatus(t *testing.T) {
 	assert.NoError(t, stateManager.persistTransferRunStatus())
 	actualStatus, err := loadTransferRunStatus()
 	assert.NoError(t, err)
+	actualStatus.TimeEstimationManager.stateManager = stateManager
 	assert.Equal(t, stateManager.TransferRunStatus, *actualStatus)
 }

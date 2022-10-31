@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"time"
 
 	"github.com/jfrog/gofrog/datastructures"
@@ -46,7 +47,7 @@ func NewTransferStateManager(loadRunStatus bool) (*TransferStateManager, error) 
 		}
 		stateManager.TransferRunStatus = *transferRunStatus
 	}
-
+	stateManager.TimeEstimationManager.stateManager = &stateManager
 	return &stateManager, nil
 }
 
@@ -303,4 +304,16 @@ func GetStartTimestamp() (int64, error) {
 		return 0, err
 	}
 	return lock.GetLastLockTimestamp(lockDirPath)
+}
+
+func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chunk *api.ChunkStatus) error {
+	var chunkTotalSizeInBytes int64 = 0
+	var chunkTotalFiles int64 = 0
+	for _, file := range chunk.Files {
+		if file.Status == api.Success {
+			chunkTotalSizeInBytes += file.SizeBytes
+			chunkTotalFiles++
+		}
+	}
+	return stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 }

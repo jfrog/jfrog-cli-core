@@ -47,7 +47,7 @@ type TransferFilesCommand struct {
 	excludeReposPatterns      []string
 	timeStarted               time.Time
 	ignoreState               bool
-	timeEstMng                *timeEstimationManager
+	timeEstMng                *state.TimeEstimationManager
 	proxyKey                  string
 	status                    bool
 	stateManager              *state.TransferStateManager
@@ -150,10 +150,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err = tdc.initTimeEstimationManager(); err != nil {
-		return err
-	}
-
 	if err = tdc.initStateManager(allSourceLocalRepos, sourceBuildInfoRepos); err != nil {
 		return err
 	}
@@ -251,11 +247,6 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	}
 	tdc.targetStorageInfoManager = storageInfoManager
 	return storageInfoManager.CalculateStorageInfo()
-}
-
-func (tdc *TransferFilesCommand) initTimeEstimationManager() error {
-	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager)
-	return nil
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
@@ -449,7 +440,6 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setSrcUserPluginService(srcUpService)
 	newPhase.setRepoSummary(repoSummary)
 	newPhase.setProgressBar(tdc.progressbar)
-	newPhase.setTimeEstMng(tdc.timeEstMng)
 	newPhase.setProxyKey(tdc.proxyKey)
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)

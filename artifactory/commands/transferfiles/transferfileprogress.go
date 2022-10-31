@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -52,7 +53,7 @@ type TransferProgressMng struct {
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstimationManager, ignoreOldState bool) (*TransferProgressMng, error) {
+func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *state.TimeEstimationManager, ignoreOldState bool) (*TransferProgressMng, error) {
 	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
@@ -65,10 +66,10 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstima
 
 	if timeEstMng != nil {
 		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
-			return color.Green.Render(timeEstMng.getSpeedString())
+			return color.Green.Render(timeEstMng.GetSpeedString())
 		})
 		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
+			return color.Green.Render(timeEstMng.GetEstimatedRemainingTimeString())
 		})
 	}
 
@@ -157,7 +158,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 }
 
 // IncrementPhaseBy increments completed tasks count for a specific phase by n.
-func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
+func (t *TransferProgressMng) IncrementPhaseBy(id int, n int) error {
 	if len(t.phases) == 0 {
 		// Progress bar was terminated
 		return nil

@@ -22,17 +22,18 @@ type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 // This state is used to allow showing the current run status by the 'jf rt transfer-files --status' command.
 // It is also used for the time estimation and more.
 type TransferRunStatus struct {
-	lastSaveTimestamp time.Time `json:"-"`
+	lastSaveTimestamp time.Time
 	// This variable holds the total/transferred number of repositories (not their files).
-	TotalRepositories ProgressState
-	OverallBiFiles    ProgressStateUnits `json:"-"`
+	TotalRepositories ProgressState      `json:"total_repositories,omitempty"`
+	OverallBiFiles    ProgressStateUnits `json:"overall_bi_files,omitempty"`
 	Version           int                `json:"version,omitempty"`
 	CurrentRepo       string             `json:"current_repo,omitempty"`
-	CurrentRepoPhase  int                `json:"current_repo_phase,omitempty"`
-	WorkingThreads    int                `json:"working_threads,omitempty"`
-	TransferFailures  uint               `json:"transfer_failures,omitempty"`
 	// True if currently transferring a build info repository.
-	BuildInfoRepo bool `json:"-"`
+	BuildInfoRepo         bool `json:"build_info_repo,omitempty"`
+	CurrentRepoPhase      int  `json:"current_repo_phase,omitempty"`
+	WorkingThreads        int  `json:"working_threads,omitempty"`
+	TransferFailures      uint `json:"transfer_failures,omitempty"`
+	TimeEstimationManager `json:"time_estimation,omitempty"`
 }
 
 func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {

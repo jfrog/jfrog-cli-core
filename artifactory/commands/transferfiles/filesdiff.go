@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"math"
 	"time"
 
@@ -158,9 +159,9 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 	return nil
 }
 
-func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []FileRepresentation) {
+func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []api.FileRepresentation) {
 	for _, result := range results {
-		files = append(files, FileRepresentation{
+		files = append(files, api.FileRepresentation{
 			Repo: result.Repo,
 			Path: result.Path,
 			Name: result.Name,

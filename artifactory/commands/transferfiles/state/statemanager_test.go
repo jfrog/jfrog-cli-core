@@ -4,9 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +15,7 @@ const (
 )
 
 func TestFilesDiffRange(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	repoKey := "repo"
@@ -88,24 +85,8 @@ func getRepoFromState(t *testing.T, stateManager *TransferStateManager, repoKey 
 	return repo
 }
 
-func initStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp func()) {
-	cleanUpJfrogHome, err := tests.SetJfrogHome()
-	assert.NoError(t, err)
-	cleanUp = cleanUpJfrogHome
-
-	// Create transfer directory
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	assert.NoError(t, err)
-	err = utils.CreateDirIfNotExist(transferDir)
-	assert.NoError(t, err)
-
-	stateManager, err = NewTransferStateManager(true)
-	assert.NoError(t, err)
-	return
-}
-
 func TestResetRepoState(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	// Reset a repository state on an empty state
@@ -126,7 +107,7 @@ func TestResetRepoState(t *testing.T) {
 }
 
 func TestReposTransferredSizeBytes(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	// Create repos in state.
@@ -162,7 +143,7 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 }
 
 func TestReposOverallBiFiles(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	// Create repos in state.
@@ -192,7 +173,7 @@ func assertTransferredFiles(t *testing.T, stateManager *TransferStateManager, ex
 }
 
 func TestIncRepositoriesTransferred(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.Zero(t, stateManager.TotalRepositories.TransferredUnits)
@@ -201,7 +182,7 @@ func TestIncRepositoriesTransferred(t *testing.T) {
 }
 
 func TestSetRepoPhase(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.Zero(t, stateManager.CurrentRepoPhase)
@@ -210,7 +191,7 @@ func TestSetRepoPhase(t *testing.T) {
 }
 
 func TestSetAndGetWorkingThreads(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.Zero(t, stateManager.WorkingThreads)
@@ -222,7 +203,7 @@ func TestSetAndGetWorkingThreads(t *testing.T) {
 }
 
 func TestTryLockStateManager(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.NoError(t, stateManager.tryLockStateManager())

@@ -7,7 +7,7 @@ import (
 )
 
 func TestSaveAndLoadRunStatus(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 	stateManager.CurrentRepo = repo4Key
 	stateManager.CurrentRepoPhase = 2

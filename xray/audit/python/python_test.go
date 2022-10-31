@@ -63,7 +63,7 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	rootNode, err := BuildDependencyTree(pythonutils.Pip, "")
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
-	if len(rootNode[0].Nodes) > 2 {
+	if assert.True(t, len(rootNode[0].Nodes) > 2) {
 		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
 		if childNode != nil {
 			// Test child module

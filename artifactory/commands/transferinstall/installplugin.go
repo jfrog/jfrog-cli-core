@@ -17,6 +17,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -36,11 +37,14 @@ var (
 	notValidDestinationErr = func(showHint bool) error {
 		hint := ""
 		if showHint {
-			hint = ", this command must run on a machine with Artifactory server. Hint: use --home-dir option."
+			hint = "Hint: use --home-dir option."
 		}
 		return errors.Errorf("Can't find target plugin directory, this command must run on a machine with Artifactory server. %s", hint)
 	}
-	minVerErr = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
+	minVerErr             = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
+	downloadConnectionErr = func(baseUrl string) error {
+		return errorutils.CheckErrorf("We tried to download the plugin files from '%s' but got connection issue. Hint: manual transfer the files to the machine and use --source-dir option.", baseUrl)
+	}
 )
 
 type PluginFileItem []string
@@ -259,12 +263,13 @@ func (ipc *InstallPluginCommand) getTransferSourceAndAction() (src string, trans
 	// download file from web
 	if ipc.installVersion == nil {
 		// Latest
-		src = path.Join(baseSrc.Path, latest)
+		baseSrc.Path = path.Join(baseSrc.Path, latest)
 		log.Debug("fetching latest version to the target.")
 	} else {
-		src = path.Join(baseSrc.Path, ipc.installVersion.GetVersion())
+		baseSrc.Path = path.Join(baseSrc.Path, ipc.installVersion.GetVersion())
 		log.Debug(fmt.Sprintf("fetching plugin version '%s' to the target.", ipc.installVersion.GetVersion()))
 	}
+	src = baseSrc.String()
 	transferAction = DownloadFiles
 
 	return
@@ -288,6 +293,9 @@ func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error)
 			return
 		}
 		if err = downloadutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
+			if strings.Contains(err.Error(), "TLS handshake timeout") {
+				err = downloadConnectionErr(src)
+			}
 			return
 		}
 	}

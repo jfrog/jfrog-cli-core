@@ -53,7 +53,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatibility" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
@@ -74,7 +74,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 }
 
 func TestVerifySourceTargetConnectivity(t *testing.T) {
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusOK)
 		}
@@ -88,7 +88,7 @@ func TestVerifySourceTargetConnectivity(t *testing.T) {
 }
 
 func TestVerifySourceTargetConnectivityError(t *testing.T) {
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte("No connection to target"))
@@ -110,7 +110,7 @@ func initSrcUserPluginServiceManager(t *testing.T, serverDetails *coreConfig.Ser
 }
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
 			w.WriteHeader(http.StatusNotFound)
 			_, err := w.Write([]byte("Not found"))
@@ -240,7 +240,7 @@ func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 }
 
 func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, totalUploadChunkVisits *int, file FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
-	return commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	return commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
 			*totalUploadChunkVisits++
 			getUploadChunkMockResponse(t, w, totalUploadChunkVisits)
@@ -259,7 +259,7 @@ func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, to
 
 func TestGetAllLocalRepositories(t *testing.T) {
 	// Prepare mock server
-	testServer, serverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.RequestURI {
 		case "/api/storageinfo/calculate":
 			// Reponse for CalculateStorageInfo
@@ -310,7 +310,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 func TestInitStorageInfoManagers(t *testing.T) {
 	sourceServerCalculated, targetServerCalculated := false, false
 	// Prepare source mock server
-	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
 			w.WriteHeader(http.StatusAccepted)
 			sourceServerCalculated = true
@@ -319,7 +319,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer sourceTestServer.Close()
 
 	// Prepare target mock server
-	targetTestServer, targetserverDetails, _ := commonTests.CreateRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	targetTestServer, targetserverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
 			w.WriteHeader(http.StatusAccepted)
 			targetServerCalculated = true

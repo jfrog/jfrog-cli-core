@@ -15,7 +15,9 @@ const (
 	milliSecsInSecond          = 1000
 	bytesInMB                  = 1024 * 1024
 	bytesPerMilliSecToMBPerSec = float64(milliSecsInSecond) / float64(bytesInMB)
-	// Precalculated average index time per build info, in seconds.
+	// Precalculated average index time per build info, in seconds. This constant is used to estimate the processing time of all
+	// the build info files about to be transferred. Since the build info indexing time is not related to its file size,
+	// the estimation approach we use with data is irrelevant.
 	buildInfoAverageIndexTimeSec = 1.25
 )
 
@@ -128,6 +130,7 @@ func (tem *TimeEstimationManager) calculateDataEstimatedRemainingTime() error {
 		return err
 	}
 
+	// In case we reach a situation where we transfer more data than expected, we cannot estimate how long transferring the remaining data will take.
 	if tem.stateManager.TotalRepositories.TotalSizeBytes <= transferredSizeBytes {
 		tem.DataEstimatedRemainingTime = 0
 		return nil

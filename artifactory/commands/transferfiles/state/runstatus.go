@@ -26,8 +26,9 @@ type TransferRunStatus struct {
 	// This variable holds the total/transferred number of repositories (not their files).
 	TotalRepositories ProgressState      `json:"total_repositories,omitempty"`
 	OverallBiFiles    ProgressStateUnits `json:"overall_bi_files,omitempty"`
-	Version           int                `json:"version,omitempty"`
-	CurrentRepo       string             `json:"current_repo,omitempty"`
+	// Version of the TransferRunStatus file.
+	Version     int    `json:"version,omitempty"`
+	CurrentRepo string `json:"current_repo,omitempty"`
 	// True if currently transferring a build info repository.
 	BuildInfoRepo         bool `json:"build_info_repo,omitempty"`
 	CurrentRepoPhase      int  `json:"current_repo_phase,omitempty"`

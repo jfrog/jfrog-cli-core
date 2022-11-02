@@ -17,7 +17,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 
 	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -147,183 +146,6 @@ func createTargetAuth(targetRtDetails *config.ServerDetails, proxyKey string) ap
 // Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
 var curProcessedUploadChunks = 0
 var processedUploadChunksMutex sync.Mutex
-
-// This function polls on chunks of files that were uploaded during one of the phases.
-// It does so by requesting the status of each chunk, by sending the uuid token that was returned when the chunk was uploaded.
-// Number of chunks is limited by the number of threads.
-// Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
-// and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunk, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
-	curTokensBatch := api.UploadChunksStatusBody{}
-	chunksLifeCycleManager := ChunksLifeCycleManager{
-		deletedChunksSet: datastructures.MakeSet[api.ChunkId](),
-		nodeToChunksMap:  make(map[nodeId]map[api.ChunkId]UploadedChunkData),
-	}
-	curProcessedUploadChunks = 0
-	var progressBar *TransferProgressMng
-	var timeEstMng *state.TimeEstimationManager
-	if phaseBase != nil {
-		progressBar = phaseBase.progressBar
-		timeEstMng = &phaseBase.stateManager.TimeEstimationManager
-	}
-	for {
-		if ShouldStop(phaseBase, nil, errorsChannelMng) {
-			return
-		}
-		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
-
-		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
-			log.Error("Couldn't set the current number of working threads:", err.Error())
-		}
-		if progressBar != nil {
-			progressBar.SetRunningThreads(curProcessedUploadChunks)
-		}
-
-		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
-		fillChunkDataBatch(&chunksLifeCycleManager, uploadChunkChan)
-		// When totalChunks size is zero, it means that all the tokens are uploaded,
-		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
-		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,
-		// it will be written to the error channel
-		if chunksLifeCycleManager.totalChunks == 0 {
-			if shouldStopPolling(doneChan) {
-				return
-			}
-			continue
-		}
-
-		chunksStatus, err := sendSyncChunksRequest(curTokensBatch, &chunksLifeCycleManager, srcUpService)
-		if err != nil {
-			continue
-		}
-		// Clear body for the next request
-		curTokensBatch = api.UploadChunksStatusBody{}
-		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
-		if toStop {
-			return
-		}
-	}
-}
-
-// Verify and handle in progress chunks synchronization between the CLI and the Source Artifactory instance
-func checkChunkStatusSync(chunkStatus *api.UploadChunksStatusResponse, manager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
-	// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap.
-	// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, there is missing data on the source side.
-	if len(chunkStatus.ChunksStatus) != len(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)]) {
-		// Get all the chunks uuids on the Artifactory side in a set of uuids
-		chunksUuidsSetFromResponse := datastructures.MakeSet[api.ChunkId]()
-		for _, chunk := range chunkStatus.ChunksStatus {
-			chunksUuidsSetFromResponse.Add(api.ChunkId(chunk.UuidToken))
-		}
-		// Get all the chunks uuids on the CLI side
-		chunksUuidsSliceFromMap := manager.GetInProgressTokensSliceByNodeId(nodeId(chunkStatus.NodeId))
-		failedFile := api.FileUploadStatusResponse{
-			Status:     api.Fail,
-			StatusCode: SyncErrorStatusCode,
-			Reason:     SyncErrorReason,
-		}
-		// Send all missing chunks from the source Artifactory instance to errorsChannelMng
-		// Missing chunks are those that are inside chunksUuidsSliceFromMap but not in chunksUuidsSetFromResponse
-		for _, chunkUuid := range chunksUuidsSliceFromMap {
-			if !chunksUuidsSetFromResponse.Exists(chunkUuid) {
-				for _, file := range manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)][chunkUuid].ChunkFiles {
-					failedFile.FileRepresentation = file
-					// errorsChannelMng will upload failed files again in phase 3 or in an additional transfer file run.
-					addErrorToChannel(errorsChannelMng, failedFile)
-				}
-				delete(manager.nodeToChunksMap[nodeId(chunkStatus.NodeId)], chunkUuid)
-				manager.totalChunks--
-				reduceCurProcessedChunks()
-			}
-		}
-	}
-}
-
-// Send and handle.
-func sendSyncChunksRequest(curTokensBatch api.UploadChunksStatusBody, chunksLifeCycleManager *ChunksLifeCycleManager, srcUpService *srcUserPluginService) (api.UploadChunksStatusResponse, error) {
-	curTokensBatch.AwaitingStatusChunks = chunksLifeCycleManager.GetInProgressTokensSlice()
-	curTokensBatch.ChunksToDelete = chunksLifeCycleManager.deletedChunksSet.ToSlice()
-	chunksStatus, err := srcUpService.syncChunks(curTokensBatch)
-	// Log the error only if the transfer wasn't interrupted by the user
-	if err != nil && !errors.Is(err, context.Canceled) {
-		log.Error("error returned when getting upload chunks statuses: " + err.Error())
-	}
-	return chunksStatus, err
-}
-
-func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datastructures.Set[api.ChunkId]) {
-	// deletedChunks is an array received from the source, confirming which chunks were deleted from the source side.
-	// In deletedChunksSet, we keep only chunks for which we have yet to receive confirmation
-	for _, deletedChunk := range deletedChunks {
-		err := deletedChunksSet.Remove(api.ChunkId(deletedChunk))
-		if err != nil {
-			log.Error(err.Error())
-			continue
-		}
-	}
-}
-
-// handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
-// It syncs the chunk status between the CLI and the source Artifactory instance,
-// When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
-func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse, progressbar *TransferProgressMng,
-	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *state.TimeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
-	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
-	for _, chunk := range chunksStatus.ChunksStatus {
-		if chunk.UuidToken == "" {
-			log.Error("Unexpected empty uuid token in status")
-			continue
-		}
-		switch chunk.Status {
-		case api.InProgress:
-			continue
-		case api.Done:
-			reduceCurProcessedChunks()
-			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
-
-			chunkSentTime := chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)][api.ChunkId(chunk.UuidToken)].TimeSent
-			err := updateProgress(phase, progressbar, timeEstMng, chunk, chunkSentTime)
-			if err != nil {
-				log.Error("Unexpected error in progress update: " + err.Error())
-				continue
-			}
-			delete(chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)], api.ChunkId(chunk.UuidToken))
-			chunksLifeCycleManager.totalChunks--
-			// Using the deletedChunksSet, we inform the source that the 'DONE' message has been received, and it no longer has to keep those chunks UUIDs.
-			chunksLifeCycleManager.deletedChunksSet.Add(api.ChunkId(chunk.UuidToken))
-			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
-			// In case an error occurred while writing errors status's to the errors file - stop transferring.
-			if stopped {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *state.TimeEstimationManager,
-	chunk api.ChunkStatus, chunkSentTime time.Time) error {
-	if phase == nil {
-		return nil
-	}
-	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
-		if progressbar != nil {
-			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-			if err != nil {
-				return err
-			}
-		}
-		if err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk); err != nil {
-			return err
-		}
-	}
-	if timeEstMng != nil {
-		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())
-	}
-	return nil
-}
 
 // Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
 // Returns true if the total number was indeed incremented.
@@ -466,15 +288,6 @@ func updateProducerConsumerMaxParallel(producerConsumer parallel.Runner, calcula
 	if producerConsumer != nil {
 		producerConsumer.SetMaxParallel(calculatedNumberOfThreads)
 	}
-}
-
-func shouldStopPolling(doneChan chan bool) bool {
-	select {
-	case done := <-doneChan:
-		return done
-	default:
-	}
-	return false
 }
 
 func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk api.UploadChunk,
@@ -757,23 +570,4 @@ func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService
 		stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 	}
 	return nil
-}
-
-// Fill chunk data batch till full. Return if no new chunk data is available.
-func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunk) {
-	for chunksLifeCycleManager.totalChunks < GetThreads() {
-		select {
-		case data := <-uploadChunkChan:
-			currentNodeId := nodeId(data.NodeId)
-			currentChunkId := api.ChunkId(data.UuidToken)
-			if _, exist := chunksLifeCycleManager.nodeToChunksMap[currentNodeId]; !exist {
-				chunksLifeCycleManager.nodeToChunksMap[currentNodeId] = make(map[api.ChunkId]UploadedChunkData)
-			}
-			chunksLifeCycleManager.nodeToChunksMap[currentNodeId][currentChunkId] = data.UploadedChunkData
-			chunksLifeCycleManager.totalChunks++
-		default:
-			// No new tokens are waiting.
-			return
-		}
-	}
 }

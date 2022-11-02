@@ -10,6 +10,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+// The interval in which to save the state and run transfer files to the file system.
+// Every change made will be held in memory till the saving time comes.
 const saveIntervalSecsDefault = 10
 
 var SaveIntervalSecs = saveIntervalSecsDefault

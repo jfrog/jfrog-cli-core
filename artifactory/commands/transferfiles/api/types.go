@@ -7,20 +7,21 @@ import (
 )
 
 type ProcessStatusType string
+type ChunkFileStatusType string
 type ChunkId string
 
 const (
 	Done       ProcessStatusType = "DONE"
 	InProgress ProcessStatusType = "IN_PROGRESS"
-)
 
-type ChunkFileStatusType string
-
-const (
 	Success             ChunkFileStatusType = "SUCCESS"
 	Fail                ChunkFileStatusType = "FAIL"
 	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
 	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
+
+	FullTransferPhase int = 0
+	FilesDiffPhase    int = 1
+	ErrorsPhase       int = 2
 )
 
 type TargetAuth struct {
@@ -92,9 +93,3 @@ func (uc *UploadChunk) AppendUploadCandidateIfNeeded(file FileRepresentation, bu
 	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
 }
-
-const (
-	FullTransferPhase int = 0
-	FilesDiffPhase    int = 1
-	ErrorsPhase       int = 2
-)

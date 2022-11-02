@@ -30,7 +30,7 @@ type VulnerabilityOrViolationRow struct {
 	References               []string                  `json:"references"`
 	ImpactPaths              [][]ComponentRow          `json:"impactPaths"`
 	JfrogResearchInformation *JfrogResearchInformation `json:"jfrogResearchInformation"`
-	Technology               coreutils.Technology      `json:"-"`
+	Technology               coreutils.Technology
 }
 
 type LicenseRow struct {

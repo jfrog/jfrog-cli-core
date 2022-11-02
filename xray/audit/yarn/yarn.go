@@ -22,6 +22,11 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
+	defer func() {
+		if err != nil && executablePath != "" {
+			audit.LogExecutableVersion(executablePath)
+		}
+	}()
 	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, nil)
 	if errorutils.CheckError(err) != nil {
 		return

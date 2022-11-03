@@ -79,7 +79,7 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *state.Time
 		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
 			return color.Green.Render(timeEstMng.GetSpeedString())
 		})
-		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
+		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Estimated time remaining: ", func() string {
 			return color.Green.Render(timeEstMng.GetEstimatedRemainingTimeString())
 		})
 	}

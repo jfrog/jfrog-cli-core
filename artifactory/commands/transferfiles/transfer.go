@@ -47,7 +47,6 @@ type TransferFilesCommand struct {
 	excludeReposPatterns      []string
 	timeStarted               time.Time
 	ignoreState               bool
-	timeEstMng                *state.TimeEstimationManager
 	proxyKey                  string
 	status                    bool
 	stateManager              *state.TransferStateManager
@@ -155,7 +154,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, tdc.timeEstMng, tdc.ignoreState)
+	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, &tdc.stateManager.TimeEstimationManager, tdc.ignoreState)
 	if err != nil {
 		return err
 	}

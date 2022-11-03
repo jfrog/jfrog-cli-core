@@ -170,12 +170,70 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 }
 
 func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	// Handle repository with "Docker" package type
+	if f.packageType == docker {
+		return f.getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	}
+	//Handle all others types
 	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
+func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
+	// Get all modified manifest files ("manifest.json" and list.manifest.json" files)
+	query := generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
+	if err != nil {
+		return nil, err
+	}
+	var result []servicesUtils.ResultItem
+	var manifestPaths []string
+	// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
+	for _, file := range manifestFilesResult.Results {
+		if file.Name == "manifest.json" {
+			manifestPaths = append(manifestPaths, file.Path)
+		} else {
+			result = append(result, file)
+		}
+	}
+	// Get all content of directories containing a "manifest.json" file.
+	query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+	pathsResult, err := runAql(f.context, f.srcRtDetails, query)
+	if err != nil {
+		return nil, err
+	}
+	// Merge "list.manifest.json" files with all other files.
+	result = append(result, pathsResult.Results...)
+	aqlResult = &servicesUtils.AqlSearchResult{}
+	aqlResult.Results = result
+	return
+}
+
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
+	query += `.include("repo","path","name","modified")`
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
+	return query
+}
+
+// This method generates an "AQL" that searches for all content in list of paths.
+func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
+	query := `items.find({"$or":[`
+	for i, path := range paths {
+		query += fmt.Sprintf(`{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}`, repoKey, path)
+		// Add comma for all paths except for the last one.
+		if i != len(paths)-1 {
+			query += ","
+		}
+	}
+	query += `]}).include("name","repo","path","actual_md5","actual_sha1","sha256","size","type","modified","created","property")`
+	return query
+}
+
+// This method generates an "AQL" that searches for all files named "manifest.jfrog" and "list.manifest.jfrog" in a specific repository.
+func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+	query := fmt.Sprintf(`items.find({"$or":[{"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"manifest.json"}}]},`, fromTimestamp, toTimestamp, repoKey)
+	query += fmt.Sprintf(`{"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"list.manifest.json"}}]}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query

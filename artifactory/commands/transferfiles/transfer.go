@@ -449,6 +449,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setProxyKey(tdc.proxyKey)
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
+	newPhase.setPackageType(repoSummary.PackageType)
 }
 
 // Get all local and build-info repositories of the input server

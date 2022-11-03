@@ -262,20 +262,10 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	if t.workingThreads != nil {
-		t.workingThreads.GetBar().Abort(true)
-		t.workingThreads = nil
-	}
-	if t.errorBar != nil {
-		t.errorBar.GetBar().Abort(true)
-		t.errorBar = nil
-	}
-	if t.speedBar != nil {
-		t.speedBar.GetBar().Abort(true)
-		t.speedBar = nil
-	}
-	if t.timeEstBar != nil {
-		t.timeEstBar.GetBar().Abort(true)
-		t.timeEstBar = nil
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar} {
+		if barPtr != nil {
+			barPtr.GetBar().Abort(true)
+			barPtr = nil
+		}
 	}
 }

@@ -44,7 +44,7 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TotalRepositories.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalRepositories.TotalSizeBytes)+calcPercentageInt64(stateManager.TotalRepositories.TransferredSizeBytes, stateManager.TotalRepositories.TotalSizeBytes), 2)
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 1)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 1)
-	addString(output, "🏃‍️", "Transfer speed", stateManager.GetSpeedString(), 1)
+	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 1)
 	addString(output, "⌛", "Time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {

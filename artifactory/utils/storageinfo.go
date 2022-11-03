@@ -2,17 +2,17 @@ package utils
 
 import (
 	"context"
-	"strconv"
-	"strings"
-	"time"
-
+	"errors"
 	"github.com/jfrog/gofrog/datastructures"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -85,7 +85,7 @@ func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*utils.Repository
 		},
 	}
 	_, err := pollingExecutor.Execute()
-	if retVal == nil && err == nil {
+	if retVal == nil && (err == nil || errors.As(err, &clientUtils.RetryExecutorTimeoutError{})) {
 		return nil, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary", repoKey)
 	}
 	return retVal, err
@@ -134,7 +134,7 @@ func (sim *StorageInfoManager) GetReposTotalSizeAndFiles(repoKeys ...string) (to
 		},
 	}
 	_, err = pollingExecutor.Execute()
-	if reposCounted < len(repoKeys) && err == nil {
+	if reposCounted < len(repoKeys) && (err == nil || errors.As(err, &clientUtils.RetryExecutorTimeoutError{})) {
 		return totalSize, totalFiles, errorutils.CheckErrorf(storageInfoRepoMissingError)
 	}
 	return totalSize, totalFiles, err

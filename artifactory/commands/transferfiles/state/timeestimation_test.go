@@ -163,54 +163,6 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 	assert.Equal(t, "Not available yet", timeEstMng.GetEstimatedRemainingTimeString())
 }
 
-func TestGetEstimatedRemainingTimeString(t *testing.T) {
-	getEstimatedRemainingTimeStringCases := []struct {
-		name                 string
-		expectedEstimation   string
-		timeRemainingSeconds int64
-	}{
-		{"plural days and plural hours", "About 11 days and 13 hours", getTimeInSecs(11, 13, 3, 7)},
-		{"plural days and singular hour", "About 5 days and 1 hour", getTimeInSecs(5, 1, 2, 0)},
-		{"plural days", "About 3 days", getTimeInSecs(3, 0, 4, 0)},
-		{"singular day and plural hours", "About 1 day and 2 hours", getTimeInSecs(1, 2, 6, 6)},
-		{"singular day and singular hour", "About 1 day and 1 hour", getTimeInSecs(1, 1, 6, 6)},
-		{"singular day", "About 1 day", getTimeInSecs(1, 0, 4, 0)},
-		{"plural hours and plural minutes", "About 11 hours and 13 minutes", getTimeInSecs(0, 11, 13, 0)},
-		{"plural hours and singular minute", "About 5 hours and 1 minute", getTimeInSecs(0, 5, 1, 6)},
-		{"plural hours", "About 3 hours", getTimeInSecs(0, 3, 0, 3)},
-		{"singular hours and plural minutes", "About 1 hour and 13 minutes", getTimeInSecs(0, 1, 13, 0)},
-		{"singular hours and singular minute", "About 1 hour and 1 minute", getTimeInSecs(0, 1, 1, 6)},
-		{"singular hour", "About 1 hour", getTimeInSecs(0, 1, 0, 3)},
-		{"plural minutes", "About 10 minutes", getTimeInSecs(0, 0, 10, 3)},
-		{"singular minute", "About 1 minute", getTimeInSecs(0, 0, 1, 3)},
-		{"seconds", "Less than a minute", getTimeInSecs(0, 0, 0, 3)},
-	}
-
-	for _, testCase := range getEstimatedRemainingTimeStringCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			assertGetEstimatedRemainingTimeString(t, testCase.timeRemainingSeconds, testCase.expectedEstimation)
-		})
-	}
-}
-
-func getTimeInSecs(days, hours, minutes, seconds int64) int64 {
-	return 86400*days + 3600*hours + 60*minutes + seconds
-}
-
-func assertGetEstimatedRemainingTimeString(t *testing.T, totalBytes int64, expectedEstimation string) {
-	timeEstMng, cleanUp := initTimeEstimationDataTest(t)
-	defer cleanUp()
-
-	// For tests convenience, we use 0 transferred bytes and 1/milliseconds SpeedsAverage because then the total bytes equals the remaining time.
-	timeEstMng.stateManager.TotalRepositories.TransferredSizeBytes = 0
-	timeEstMng.stateManager.TotalRepositories.TotalSizeBytes = totalBytes
-	timeEstMng.SpeedsAverage = 1.0 / milliSecsInSecond
-	// Not taken into account in calculation, just needed to mark the transfer has started and estimation should be done.
-	timeEstMng.LastSpeeds = []float64{1.1}
-
-	assert.Equal(t, expectedEstimation, timeEstMng.GetEstimatedRemainingTimeString())
-}
-
 func TestEstimationNotAvailable(t *testing.T) {
 	timeEstMng, cleanUp := initTimeEstimationDataTest(t)
 	defer cleanUp()

@@ -31,6 +31,8 @@ type TransferProgressMng struct {
 	shouldDisplay bool
 	// Task bar with the total repositories transfer progress
 	totalRepositories *progressbar.TasksWithHeadlineProg
+	// A bar showing the running time
+	runningTime *progressbar.TasksProgressBar
 	// A bar showing the number of working transfer threads
 	workingThreads *progressbar.TasksProgressBar
 	// A bar showing the speed of the data transfer
@@ -62,6 +64,15 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *state.Time
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
+
+	transfer.runningTime = transfer.barsMng.NewStringProgressBar("Running for: ", func() string {
+		runningTime, isRunning, err := state.GetRunningTime()
+		if err != nil || !isRunning {
+			runningTime = "Running time not available"
+		}
+		return color.Green.Render(runningTime)
+	})
+
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
 
 	if timeEstMng != nil {

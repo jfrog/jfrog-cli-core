@@ -300,12 +300,21 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func GetStartTimestamp() (int64, error) {
+func getStartTimestamp() (int64, error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
 		return 0, err
 	}
 	return lock.GetLastLockTimestamp(lockDirPath)
+}
+
+func GetRunningTime() (runningTime string, isRunning bool, err error) {
+	startTimestamp, err := getStartTimestamp()
+	if err != nil || startTimestamp == 0 {
+		return
+	}
+	runningSecs := int64(time.Since(time.Unix(0, startTimestamp)).Seconds())
+	return secondsToLiteralTime(runningSecs, ""), true, nil
 }
 
 func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chunk *api.ChunkStatus) error {

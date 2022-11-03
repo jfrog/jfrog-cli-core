@@ -9,9 +9,6 @@ import (
 )
 
 const (
-	secondsInMinute            = 60
-	secondsInHour              = 60 * secondsInMinute
-	secondsInDay               = 24 * secondsInHour
 	milliSecsInSecond          = 1000
 	bytesInMB                  = 1024 * 1024
 	bytesPerMilliSecToMBPerSec = float64(milliSecsInSecond) / float64(bytesInMB)
@@ -187,43 +184,8 @@ func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() string {
 	if err != nil {
 		return err.Error()
 	}
-	remainingDays := remainingTimeSec / secondsInDay
-	remainingDaysInSecs := remainingDays * secondsInDay
-	remainingHours := (remainingTimeSec - remainingDaysInSecs) / secondsInHour
-	if remainingDays >= 1 {
-		return getEstimationWithRemainder(remainingDays, remainingHours, day, hour)
-	}
 
-	remainingHoursInSecs := remainingHours * secondsInHour
-	remainingMinutes := (remainingTimeSec - remainingHoursInSecs) / secondsInMinute
-	if remainingHours >= 1 {
-		return getEstimationWithRemainder(remainingHours, remainingMinutes, hour, minute)
-	}
-
-	if remainingMinutes >= 1 {
-		return getEstimationWithRemainder(remainingMinutes, 0, minute, "")
-	}
-	return "Less than a minute"
-}
-
-// Get the time estimation as string, with the remainder added only if it is non-zero.
-// For example "About 2 hours and 1 minute"
-func getEstimationWithRemainder(mainAmount, remainderAmount int64, mainType, remainderType timeTypeSingular) string {
-	estimation := "About " + getTimeSingularOrPlural(mainAmount, mainType)
-	if remainderAmount > 0 {
-		estimation += " and " + getTimeSingularOrPlural(remainderAmount, remainderType)
-	}
-	return estimation
-}
-
-// Returns the time amount followed by its type, with 's' for plural if needed.
-// For example '1 hour' or '2 hours'.
-func getTimeSingularOrPlural(timeAmount int64, timeType timeTypeSingular) string {
-	result := fmt.Sprintf("%d %s", timeAmount, timeType)
-	if timeAmount > 1 {
-		result += "s"
-	}
-	return result
+	return secondsToLiteralTime(remainingTimeSec, "About ")
 }
 
 func (tem *TimeEstimationManager) isTimeEstimationAvailable() bool {

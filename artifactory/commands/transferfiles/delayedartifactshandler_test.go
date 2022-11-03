@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -52,7 +53,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < artifactsNumber; i++ {
-			artifactsChannelMng.channel <- FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}
+			artifactsChannelMng.channel <- api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}
 		}
 	}()
 

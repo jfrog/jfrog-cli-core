@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -185,7 +186,7 @@ func getErrorsFileName(repoKey string, phaseId int, phaseStartTime string, index
 func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
 	var err error
 	switch e.Status {
-	case SkippedLargeProps:
+	case api.SkippedLargeProps:
 		err = mng.writeSkippedErrorContent(e)
 	default:
 		err = mng.writeRetryableErrorContent(e)
@@ -371,12 +372,16 @@ type ErrorsChannelMng struct {
 	err     error
 }
 
+type FilesErrors struct {
+	Errors []ExtendedFileUploadStatusResponse `json:"errors,omitempty"`
+}
+
 type ExtendedFileUploadStatusResponse struct {
-	FileUploadStatusResponse
+	api.FileUploadStatusResponse
 	Time string `json:"time,omitempty"`
 }
 
-func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
+func (mng ErrorsChannelMng) add(element api.FileUploadStatusResponse) (stopped bool) {
 	if mng.shouldStop() {
 		return true
 	}

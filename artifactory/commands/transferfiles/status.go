@@ -2,13 +2,12 @@ package transferfiles
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
-
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strconv"
+	"strings"
 )
 
 const sizeUnits = "KMGTPE"
@@ -16,11 +15,11 @@ const sizeUnits = "KMGTPE"
 func ShowStatus() error {
 	var output strings.Builder
 
-	startTimestamp, err := state.GetStartTimestamp()
+	runningTime, isRunning, err := state.GetRunningTime()
 	if err != nil {
 		return err
 	}
-	if startTimestamp == 0 {
+	if !isRunning {
 		addString(&output, "🔴", "Status", "Not running", 0)
 		log.Output(output.String())
 		return nil
@@ -29,7 +28,7 @@ func ShowStatus() error {
 	if err != nil {
 		return err
 	}
-	addOverallStatus(stateManager, &output, startTimestamp)
+	addOverallStatus(stateManager, &output, runningTime)
 	if stateManager.CurrentRepo != "" {
 		output.WriteString("\n")
 		setRepositoryStatus(stateManager, &output)
@@ -38,22 +37,20 @@ func ShowStatus() error {
 	return nil
 }
 
-func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, startTimestamp int64) {
+func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
 	addTitle(output, "Overall Transfer Status")
 	addString(output, "🟢", "Status", "Running", 2)
-	addString(output, "⏱️ ", "Start time", time.Unix(0, startTimestamp).Format(time.Stamp), 2)
-	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalSizeBytes)+calcPercentageInt64(stateManager.TransferredSizeBytes, stateManager.TotalSizeBytes), 2)
-	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TransferredUnits, stateManager.TotalUnits)+calcPercentage(stateManager.TransferredUnits, stateManager.TotalUnits), 1)
+	addString(output, "⏱️ ", "Running for", runningTime, 1)
+	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TotalRepositories.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalRepositories.TotalSizeBytes)+calcPercentageInt64(stateManager.TotalRepositories.TransferredSizeBytes, stateManager.TotalRepositories.TotalSizeBytes), 2)
+	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 1)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 1)
+	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 1)
+	addString(output, "⌛", "Time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 1)
-}
-
-func calcPercentage(transferred, total int) string {
-	return calcPercentageInt64(int64(transferred), int64(total))
 }
 
 func calcPercentageInt64(transferred, total int64) string {
@@ -74,15 +71,15 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		}
 	}
 	switch stateManager.CurrentRepoPhase {
-	case FullTransferPhase, ErrorsPhase:
-		if stateManager.CurrentRepoPhase == FullTransferPhase {
+	case api.FullTransferPhase, api.ErrorsPhase:
+		if stateManager.CurrentRepoPhase == api.FullTransferPhase {
 			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 2)
 		} else {
 			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 2)
 		}
 		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
-		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentage(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
-	case FilesDiffPhase:
+		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentageInt64(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
+	case api.FilesDiffPhase:
 		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 2)
 	}
 }

@@ -101,8 +101,8 @@ func TestGetReposTotalSize(t *testing.T) {
 	getRepoSummaryPollingTimeout = 30 * time.Millisecond
 
 	repositoriesSummaryList := []clientUtils.RepositorySummary{
-		{RepoKey: "repo-1", UsedSpaceInBytes: "12345"},
-		{RepoKey: "repo-2", UsedSpace: "678 bytes"},
+		{RepoKey: "repo-1", UsedSpaceInBytes: "12345", FilesCount: "3"},
+		{RepoKey: "repo-2", UsedSpace: "678 bytes", FilesCount: "4"},
 	}
 	// Prepare mock server.
 	firstRequest := true
@@ -123,12 +123,13 @@ func TestGetReposTotalSize(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Get the total size of the two repos.
-	total, err := storageInfoManager.GetReposTotalSize("repo-1", "repo-2")
+	totalSize, totalFiles, err := storageInfoManager.GetReposTotalSizeAndFiles("repo-1", "repo-2")
 	assert.NoError(t, err)
-	assert.Equal(t, int64(13023), total)
+	assert.Equal(t, int64(13023), totalSize)
+	assert.Equal(t, int64(7), totalFiles)
 
 	// Assert error is returned due to the missing repository.
-	_, err = storageInfoManager.GetReposTotalSize("repo-1", "repo-2", "repo-3")
+	_, _, err = storageInfoManager.GetReposTotalSizeAndFiles("repo-1", "repo-2", "repo-3")
 	assert.EqualError(t, err, storageInfoRepoMissingError)
 }
 

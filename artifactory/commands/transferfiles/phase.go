@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -11,12 +12,6 @@ import (
 )
 
 const NumberOfPhases = 3
-
-const (
-	FullTransferPhase int = 0
-	FilesDiffPhase    int = 1
-	ErrorsPhase       int = 2
-)
 
 type transferPhase interface {
 	run() error
@@ -33,7 +28,6 @@ type transferPhase interface {
 	setRepoSummary(serviceUtils.RepositorySummary)
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
-	setTimeEstMng(timeEstMng *timeEstimationManager)
 	setStateManager(stateManager *state.TransferStateManager)
 	initProgressBar() error
 	setProxyKey(proxyKey string)
@@ -55,7 +49,6 @@ type phaseBase struct {
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
-	timeEstMng                *timeEstimationManager
 	proxyKey                  string
 	pcDetails                 *producerConsumerWrapper
 	transferManager           *transferManager
@@ -117,10 +110,6 @@ func (pb *phaseBase) setRepoSummary(repoSummary serviceUtils.RepositorySummary) 
 	pb.repoSummary = repoSummary
 }
 
-func (pb *phaseBase) setTimeEstMng(timeEstMng *timeEstimationManager) {
-	pb.timeEstMng = timeEstMng
-}
-
 func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
 	pb.progressBar = progressbar
 }
@@ -142,14 +131,14 @@ func (pb *phaseBase) setPackageType(packageType string) {
 }
 
 func createTransferPhase(i int) transferPhase {
-	phaseBase := phaseBase{phaseId: i}
+	curPhaseBase := phaseBase{phaseId: i}
 	switch i {
-	case FullTransferPhase:
-		return &fullTransferPhase{phaseBase: phaseBase}
-	case FilesDiffPhase:
-		return &filesDiffPhase{phaseBase: phaseBase}
-	case ErrorsPhase:
-		return &errorsRetryPhase{phaseBase: phaseBase}
+	case api.FullTransferPhase:
+		return &fullTransferPhase{phaseBase: curPhaseBase}
+	case api.FilesDiffPhase:
+		return &filesDiffPhase{phaseBase: curPhaseBase}
+	case api.ErrorsPhase:
+		return &errorsRetryPhase{phaseBase: curPhaseBase}
 	}
 	return nil
 }

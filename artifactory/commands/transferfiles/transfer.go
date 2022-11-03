@@ -47,7 +47,6 @@ type TransferFilesCommand struct {
 	excludeReposPatterns      []string
 	timeStarted               time.Time
 	ignoreState               bool
-	timeEstMng                *timeEstimationManager
 	proxyKey                  string
 	status                    bool
 	stateManager              *state.TransferStateManager
@@ -150,17 +149,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if isTimeEstimationEnabled() {
-		if err = tdc.initTimeEstimationManager(); err != nil {
-			return err
-		}
-	}
-	if err = tdc.initStateManager(allSourceLocalRepos); err != nil {
+	if err = tdc.initStateManager(allSourceLocalRepos, sourceBuildInfoRepos); err != nil {
 		return err
 	}
 
 	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, tdc.timeEstMng, tdc.ignoreState)
+	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, &tdc.stateManager.TimeEstimationManager, tdc.ignoreState)
 	if err != nil {
 		return err
 	}
@@ -181,15 +175,20 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	return tdc.cleanup(err, allSourceLocalRepos)
 }
 
-func (tdc *TransferFilesCommand) initStateManager(sourceLocalRepos []string) error {
-	totalSizeBytes, err := tdc.sourceStorageInfoManager.GetReposTotalSize(sourceLocalRepos...)
+func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBuildInfoRepos []string) error {
+	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
 	if err != nil {
 		return err
 	}
-	tdc.stateManager.TotalSizeBytes = totalSizeBytes
-	tdc.stateManager.TotalUnits = len(sourceLocalRepos)
+	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
+	if err != nil {
+		return err
+	}
+	tdc.stateManager.TotalRepositories.TotalSizeBytes = totalSizeBytes
+	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
+	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
 	if !tdc.ignoreState {
-		numberInitialErrors, e := getRetryErrorCount(sourceLocalRepos)
+		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {
 			return e
 		}
@@ -249,11 +248,6 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
-func (tdc *TransferFilesCommand) initTimeEstimationManager() error {
-	tdc.timeEstMng = newTimeEstimationManager(tdc.stateManager)
-	return nil
-}
-
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
 	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) error {
 	for _, repoKey := range sourceRepos {
@@ -285,7 +279,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		tdc.progressbar.NewRepository(sourceRepoKey)
 	}
 
-	if err = tdc.updateRepoState(repoSummary); err != nil {
+	if err = tdc.updateRepoState(repoSummary, buildInfoRepo); err != nil {
 		return
 	}
 
@@ -308,7 +302,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 			return
 		}
 		// Ensure the data structure which stores the upload tasks on Artifactory's side is wiped clean,
-		// in case some of the requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
+		// in case some requests to delete handles tasks sent by JFrog CLI did not reach Artifactory.
 		err = stopTransferInArtifactory(tdc.sourceServerDetails, srcUpService)
 		if err != nil {
 			log.Error(err)
@@ -324,10 +318,10 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 	return tdc.stateManager.IncRepositoriesTransferred()
 }
 
-func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.RepositorySummary) error {
-	filesCount, err := repoSummary.FilesCount.Int64()
+func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.RepositorySummary, buildInfoRepo bool) error {
+	filesCount, err := utils.GetFilesCountFromRepositorySummary(repoSummary)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
 
 	usedSpaceInBytes, err := utils.GetUsedSpaceInBytes(repoSummary)
@@ -335,7 +329,7 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 		return err
 	}
 
-	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, int(filesCount), tdc.ignoreState)
+	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState)
 }
 
 func (tdc *TransferFilesCommand) createTransferDir() error {
@@ -430,7 +424,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 		// Close the stop signal channel
 		close(stopSignal)
 		if tdc.shouldStop() {
-			// If should stop, wait for stop to happen
+			// If we should stop, wait for stop to happen
 			<-finishStop
 		}
 	}, &newPhase
@@ -445,7 +439,6 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setSrcUserPluginService(srcUpService)
 	newPhase.setRepoSummary(repoSummary)
 	newPhase.setProgressBar(tdc.progressbar)
-	newPhase.setTimeEstMng(tdc.timeEstMng)
 	newPhase.setProxyKey(tdc.proxyKey)
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
@@ -529,7 +522,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	}
 	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if e != nil {
-		log.Error("Couldn't create the errros CSV file", e)
+		log.Error("Couldn't create the errors CSV file", e)
 		if err == nil {
 			err = e
 		}
@@ -544,7 +537,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 // handleMaxUniqueSnapshots handles special cases regarding the Max Unique Snapshots/Tags setting of repositories of
 // these package types: Maven, Gradle, NuGet, Ivy, SBT and Docker.
 // TL;DR: we might have repositories in the source with more snapshots than the maximum (in Max Unique Snapshots/Tags),
-// so he turn it off at the beginning of the transfer and turn it back on at the end.
+// so we turn it off at the beginning of the transfer and turn it back on at the end.
 //
 // And in more detail:
 // The cleanup of old snapshots in Artifactory is triggered by uploading a new snapshot only, so we might have

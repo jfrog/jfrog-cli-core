@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/distribution"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -35,13 +36,25 @@ func CreateTestServerDetails() *config.ServerDetails {
 type restsTestHandler func(w http.ResponseWriter, r *http.Request)
 
 // Create mock server to test REST APIs.
-// t           - The testing object
 // testHandler - The HTTP handler of the test
-func CreateRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
-	testServer := httptest.NewServer(http.HandlerFunc(testHandler))
+func CreateRestsMockServer(testHandler restsTestHandler) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(testHandler))
+}
+
+func CreateRtRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
+	testServer := CreateRestsMockServer(testHandler)
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
 
 	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
+	assert.NoError(t, err)
+	return testServer, serverDetails, serviceManager
+}
+
+func CreateDsRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httptest.Server, *config.ServerDetails, *distribution.DistributionServicesManager) {
+	testServer := CreateRestsMockServer(testHandler)
+	serverDetails := &config.ServerDetails{DistributionUrl: testServer.URL + "/"}
+
+	serviceManager, err := utils.CreateDistributionServiceManager(serverDetails, false)
 	assert.NoError(t, err)
 	return testServer, serverDetails, serviceManager
 }

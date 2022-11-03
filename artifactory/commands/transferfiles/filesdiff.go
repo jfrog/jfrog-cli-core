@@ -179,6 +179,11 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
+// We handle docker repositories different from other repositories.
+// If a layout is already uploaded to "artifactory", and we try to upload it again to a different repository, its modification date will be the date when it was last modified by "artifactory"
+// - so we can miss this layout in "phase 2".
+// To solve this problem we will look for all "manifest.json" and "list.manifest.json" files, and for each "manifest.json", we will run a search AQL in "artifactory"
+// to get all artifacts in its path in artifactory (that includes the "manifest.json" file itself and all its layouts).
 func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	// Get all modified manifest files ("manifest.json" and list.manifest.json" files)
 	query := generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)

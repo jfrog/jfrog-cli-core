@@ -24,17 +24,7 @@ func (f *filesDiffPhase) initProgressBar() error {
 	if f.progressBar == nil {
 		return nil
 	}
-	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
-	if err != nil {
-		return err
-	}
-
-	// Init progress with the number of tasks.
-	// Task is either an errors file handling (fixing previous upload failures),
-	// or a time frame diff handling (a split of the time range on which this phase fixes files diffs).
-	totalLength := diffRangeEnd.Sub(diffRangeStart)
-	aqlNum := math.Ceil(totalLength.Minutes() / searchTimeFramesMinutes)
-	f.progressBar.AddPhase2(int64(aqlNum))
+	f.progressBar.AddPhase2()
 	return nil
 }
 
@@ -128,7 +118,6 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		if err != nil {
 			return err
 		}
-
 		if len(result.Results) == 0 {
 			if paginationI == 0 {
 				log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
@@ -137,6 +126,11 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		}
 
 		files := convertResultsToFileRepresentation(result.Results)
+		f.stateManager.TransferRunStatus.TotalDiffFiles += len(files)
+		for _, r := range files {
+			f.stateManager.TotalDiffStorage += int(r.Size)
+			f.phaseBase.progressBar.phases[f.phaseId].GetTasksProgressBar().IncGeneralProgressTotalBy(r.Size)
+		}
 		shouldStop, err := uploadByChunks(files, uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
@@ -164,6 +158,7 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 			Repo: result.Repo,
 			Path: result.Path,
 			Name: result.Name,
+			Size: result.Size,
 		})
 	}
 	return
@@ -176,7 +171,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimesta
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
-	query += `.include("repo","path","name","modified")`
+	query += `.include("repo","path","name","modified","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

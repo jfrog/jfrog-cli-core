@@ -51,13 +51,14 @@ type TransferProgressMng struct {
 	currentChunkHeadLine *mpb.Bar
 	barsMng              *progressbar.ProgressBarMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
-	stopLine    *mpb.Bar
-	filesStatus *int
+	stopLine      *mpb.Bar
+	filesStatus   *int
+	transferState *state.TransferStateManager
 }
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int, ps *state.ProgressState, ts *state.TransferRunStatus) error {
+func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int) error {
 	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
@@ -66,8 +67,9 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	//edit storage and files
+	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, ps.TotalSizeBytes, &ts.TotalFiles, &ts.TransferredFiles)
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, tdc.stateManager.TotalSizeBytes, nil, nil, &tdc.stateManager.TransferRunStatus.TotalFiles, &tdc.stateManager.TransferRunStatus.TransferredFiles)
 
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
@@ -208,8 +210,8 @@ func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
 	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, Files.String()))
 }
 
-func (t *TransferProgressMng) AddPhase2(tasksPhase2 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase2, "Phase 2: Transferring newly created and modified files", false, progressbar.GREEN, TimeSlots.String()))
+func (t *TransferProgressMng) AddPhase2() {
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 2: Transferring newly created and modified files", "Diff Storage", "Diff Files", progressbar.GREEN, 0, &t.transferState.ProgressState.TotalDiffStorage, &t.transferState.ProgressState.TotalUploadedDiffStorage, &t.transferState.ProgressState.TotalDiffFiles, &t.transferState.ProgressState.TotalUlodedDiffFiles))
 }
 
 func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {

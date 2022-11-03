@@ -69,6 +69,13 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 	}, nil
 }
 
+func (tdc *TransferFilesCommand) ResetProgressState() {
+	tdc.stateManager.ProgressState.TotalUlodedDiffFiles = 0
+	tdc.stateManager.ProgressState.TotalDiffFiles = 0
+	tdc.stateManager.ProgressState.TotalDiffStorage = 0
+	tdc.stateManager.ProgressState.TotalUploadedDiffStorage = 0
+}
+
 func (tdc *TransferFilesCommand) CommandName() string {
 	return "rt_transfer_files"
 }
@@ -160,7 +167,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	// Init the progress bar
-	err = initTransferProgressMng(allSourceLocalRepos, tdc, 0, &tdc.stateManager.ProgressState, &tdc.stateManager.TransferRunStatus)
+	err = initTransferProgressMng(allSourceLocalRepos, tdc, 0)
 	if err != nil {
 		return err
 	}

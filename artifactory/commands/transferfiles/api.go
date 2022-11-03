@@ -62,6 +62,7 @@ type FileRepresentation struct {
 	Repo string `json:"repo,omitempty"`
 	Path string `json:"path,omitempty"`
 	Name string `json:"name,omitempty"`
+	Size int64  `json:"size,omitempty"`
 }
 
 type UploadChunkResponse struct {

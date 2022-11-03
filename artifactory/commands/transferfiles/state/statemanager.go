@@ -12,10 +12,14 @@ import (
 const saveIntervalSecs = 10
 
 type ProgressState struct {
-	TotalSizeBytes       int64 `json:"total_size_bytes,omitempty"`
-	TransferredSizeBytes int64 `json:"transferred_size_bytes,omitempty"`
-	TotalUnits           int   `json:"total_units,omitempty"`
-	TransferredUnits     int   `json:"transferred_units,omitempty"`
+	TotalSizeBytes           int64 `json:"total_size_bytes,omitempty"`
+	TransferredSizeBytes     int64 `json:"transferred_size_bytes,omitempty"`
+	TotalDiffStorage         int   `json:"diff_storage,omitempty"`
+	TotalUploadedDiffStorage int   `json:"diff_uploaded_files,omitempty"`
+	TotalDiffFiles           int   `json:"diff_files,omitempty"`
+	TotalUlodedDiffFiles     int   `json:"uploaded_diff_files,omitempty"`
+	TotalUnits               int   `json:"total_units,omitempty"`
+	TransferredUnits         int   `json:"transferred_units,omitempty"`
 }
 
 type TransferStateManager struct {

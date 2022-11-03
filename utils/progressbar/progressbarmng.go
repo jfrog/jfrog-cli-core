@@ -2,6 +2,7 @@ package progressbar
 
 import (
 	"github.com/gookit/color"
+	artifactoryutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -80,6 +81,15 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	} else {
 		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color, taskType)
 	}
+	prog.emptyLine = bm.NewHeadlineBar("")
+	return &prog
+}
+
+func (bm *ProgressBarMng) NewHeadLineDoubleProgBar(headLine string, counterLine string, counterLine2 string, color Color, totalTasks1 int64, optionalTotal1 *int, optionalDone1 *int, totalTasks2 *int, DoneTasks2 *int) *TasksWithHeadlineProg {
+	bm.barsWg.Add(1)
+	prog := TasksWithHeadlineProg{}
+	prog.headlineBar = bm.NewHeadlineBar(headLine)
+	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, color, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2)
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
@@ -201,23 +211,44 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 }
 
 // A progress bar with two counters values shown on the right side of the progress bar, the first value controls what the bar shows
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, totalTasks2 *int, doneTaks2 *int) *TasksProgressBar {
+// The total tasks1 can be passes by an int or *int, if you want to use it with int send nil to the optional total and done tasks1 and the wanted totalTasks to total tasks1
+// else if you want to use
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, OptionalTotalTasks1 *int, optionalDoneTasks1 *int, totalTasks2 *int, doneTaks2 *int) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	filter := filterColor(color)
-
-	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
-		mpb.BarRemoveOnComplete(),
-		mpb.AppendDecorators(
-			decor.Name(" "+headLine1+": "),
-			decor.CountersKibiByte("%.1f/%.1f"), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
-				s1 := strconv.Itoa(*doneTaks2)
-				s2 := strconv.Itoa(*totalTasks2)
-				return s1 + "/" + s2
-			}),
-		),
-	)
-	pb.IncGeneralProgressTotalBy(totalTasks1)
+	if OptionalTotalTasks1 == nil {
+		pb.bar = bm.container.New(0,
+			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+			mpb.BarRemoveOnComplete(),
+			mpb.AppendDecorators(
+				decor.Name(" "+headLine1+": "),
+				decor.CountersKibiByte("%.1f/%.1f"), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
+					s1 := strconv.Itoa(*doneTaks2)
+					s2 := strconv.Itoa(*totalTasks2)
+					return s1 + "/" + s2
+				}),
+			),
+		)
+		pb.IncGeneralProgressTotalBy(totalTasks1)
+	}
+	if OptionalTotalTasks1 != nil {
+		pb.bar = bm.container.New(0,
+			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+			mpb.BarRemoveOnComplete(),
+			mpb.AppendDecorators(
+				decor.Name(" "+headLine1+": "),
+				decor.Any(func(statistics decor.Statistics) string {
+					s1 := artifactoryutils.ConvertIntToStorageSizeString(*optionalDoneTasks1)
+					s2 := artifactoryutils.ConvertIntToStorageSizeString(*OptionalTotalTasks1)
+					return s1 + "/" + s2
+				}), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
+					s1 := strconv.Itoa(*doneTaks2)
+					s2 := strconv.Itoa(*totalTasks2)
+					return s1 + "/" + s2
+				}),
+			),
+		)
+	}
 	return pb
 }
 

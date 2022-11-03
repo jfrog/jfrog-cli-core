@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"strconv"
 	"strings"
@@ -170,4 +171,28 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
 	return int64(sizeInBytes), nil
+}
+
+func ConvertIntToStorageSizeString(num int) string {
+	if num < 0 {
+		return "this is illegal storage size"
+	}
+	if num > bytesInTB {
+		newNum := float64(num) / bytesInTB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "TB "
+	}
+	if num > bytesInGB {
+		newNum := float64(num) / bytesInGB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "GB "
+	}
+	if num > bytesInMB {
+		newNum := float64(num) / bytesInMB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "MB "
+	}
+	newNum := float64(num) / bytesInKB
+	stringNum := fmt.Sprintf("%.1f", newNum)
+	return stringNum + "KB "
 }

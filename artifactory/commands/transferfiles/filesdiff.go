@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"math"
 	"time"
 
@@ -171,26 +172,30 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 }
 
 func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
-	// Handle repository with "Docker" package type
+	// Handle Docker repositories.
 	if f.packageType == docker {
 		return f.getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	}
-	//Handle all others types
+	// Handle all other (non docker) repository types.
+	return f.getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+}
+
+func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
 // We handle docker repositories differently from other repositories.
-// The reason is: if a layout is already uploaded to "artifactory", and we try to upload it again to a different repository,
-// its modification date will be the date when it was last modified by "artifactory" (and not the upload date) - so we could miss this layout in "phase 2".
-// To solve this problem, we will look for all "manifest.json" and "list.manifest.json" files, and for each "manifest.json", we will run a search AQL in Artifactory
+// The reason is as follows. If a docker layer already exists in Artifactory, and we try to upload it again to a different repository or a different path,
+// its creation time will be the time of the initial upload, and not the latest one. This means that the layer will not be picked up and transferred as part of Phase 2.
+// To avoid this situation, we look for all "manifest.json" and "list.manifest.json" files, and for each "manifest.json", we will run a search AQL in Artifactory
 // to get all artifacts in its path (that includes the "manifest.json" file itself and all its layouts).
 func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
-	// Get all modified manifest files ("manifest.json" and list.manifest.json" files)
+	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
 	query := generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
-		return nil, err
+		return
 	}
 	var result []servicesUtils.ResultItem
 	var manifestPaths []string
@@ -198,15 +203,18 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toT
 	for _, file := range manifestFilesResult.Results {
 		if file.Name == "manifest.json" {
 			manifestPaths = append(manifestPaths, file.Path)
-		} else {
+		} else if file.Name == "list.manifest.json" {
 			result = append(result, file)
+		} else {
+			err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
+			return
 		}
 	}
-	// Get all content of directories containing a "manifest.json" file.
+	// Get all content of Artifactory folders containing a "manifest.json" file.
 	query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
 	pathsResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
-		return nil, err
+		return
 	}
 	// Merge "list.manifest.json" files with all other files.
 	result = append(result, pathsResult.Results...)
@@ -222,7 +230,7 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, pagination
 	return query
 }
 
-// This method generates an AQL that searches for all content in list of paths.
+// This function generates an AQL that searches for all the content in the list of provided Artifactory paths.
 func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 	query := `items.find({"$or":[`
 	for i, path := range paths {
@@ -236,7 +244,7 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 	return query
 }
 
-// This method generates an AQL that searches for all files named "manifest.jfrog" and "list.manifest.jfrog" in a specific repository.
+// This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
 func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$or":[{"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"manifest.json"}}]},`, fromTimestamp, toTimestamp, repoKey)
 	query += fmt.Sprintf(`{"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"list.manifest.json"}}]}]})`, fromTimestamp, toTimestamp, repoKey)

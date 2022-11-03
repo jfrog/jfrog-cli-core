@@ -34,6 +34,8 @@ func (repoType RepoType) String() string {
 	return RepoTypes[repoType]
 }
 
+// System repositories in Artifactory to filter in filterRepositoryNames.
+// This is important especially for transfer-config, to prevent rewriting these repositories, which causes unexpected exceptions.
 var blacklistedRepositories = []string{
 	"jfrog-usage-logs", "jfrog-billing-logs", "jfrog-logs", "artifactory-pipe-info", "auto-trashcan", "jfrog-support-bundle", "_intransit", "artifactory-edge-uploads",
 }

@@ -94,6 +94,7 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil {
 		audit.LogExecutableVersion("python")
+		audit.LogExecutableVersion(string(pythonTool))
 	}
 	return
 }
@@ -170,16 +171,18 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 		return nil
 	}
 	var cmdArgs []string
+	pythonPath, windowsPyArg := pythonutils.GetPython3Executable()
+
 	execPath, _ := exec.LookPath("virtualenv")
 	if execPath == "" {
 		// If virtualenv not exists, try "python3 -m venv"
-		windowsPyArg := ""
-		execPath, windowsPyArg = pythonutils.GetPython3Executable()
 		if windowsPyArg != "" {
 			// Add '-3' arg for windows 'py -3' command
 			cmdArgs = append(cmdArgs, windowsPyArg)
 		}
 		cmdArgs = append(cmdArgs, "-m", "venv")
+	} else {
+		cmdArgs = append(cmdArgs, "-p", pythonPath)
 	}
 
 	cmdArgs = append(cmdArgs, "venvdir")

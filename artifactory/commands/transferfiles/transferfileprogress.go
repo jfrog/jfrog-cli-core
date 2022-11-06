@@ -15,7 +15,6 @@ type TransferJobType string
 const (
 	Repositories TransferJobType = "Repositories"
 	Files        TransferJobType = "Files"
-	TimeSlots    TransferJobType = "Time Slots"
 	Note         string          = "Note: "
 	contentNote  string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )
@@ -206,12 +205,12 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(tasksPhase1 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase1, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, Files.String()))
+func (t *TransferProgressMng) AddPhase1(storage int64, filesPhase1 *int) {
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 1: Transferring all files in the repository", "Storage", "Files", progressbar.GREEN, storage, nil, nil, filesPhase1, &t.transferState.ProgressState.TotalTransferredFiles))
 }
 
 func (t *TransferProgressMng) AddPhase2() {
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 2: Transferring newly created and modified files", "Diff Storage", "Diff Files", progressbar.GREEN, 0, &t.transferState.ProgressState.TotalDiffStorage, &t.transferState.ProgressState.TotalUploadedDiffStorage, &t.transferState.ProgressState.TotalDiffFiles, &t.transferState.ProgressState.TotalUlodedDiffFiles))
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 2: Transferring newly created and modified files", "Diff Storage", "Diff Files", progressbar.GREEN, 0, &t.transferState.ProgressState.TotalDiffStorage, &t.transferState.ProgressState.TotalUploadedDiffStorage, &t.transferState.ProgressState.TotalDiffFiles, &t.transferState.ProgressState.TotalUploadedDiffFiles))
 }
 
 func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {

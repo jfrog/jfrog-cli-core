@@ -329,6 +329,7 @@ func updateChunkInState(stateManager *state.TransferStateManager, repoKey string
 		if file.Status == Success {
 			totalSizeInBytes += file.SizeBytes
 			stateManager.TransferredFiles++
+			stateManager.ProgressState.TotalTransferredFiles++
 			totalFiles++
 		}
 	}

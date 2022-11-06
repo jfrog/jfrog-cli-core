@@ -70,10 +70,11 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 }
 
 func (tdc *TransferFilesCommand) ResetProgressState() {
-	tdc.stateManager.ProgressState.TotalUlodedDiffFiles = 0
+	tdc.stateManager.ProgressState.TotalUploadedDiffFiles = 0
 	tdc.stateManager.ProgressState.TotalDiffFiles = 0
 	tdc.stateManager.ProgressState.TotalDiffStorage = 0
 	tdc.stateManager.ProgressState.TotalUploadedDiffStorage = 0
+	tdc.stateManager.ProgressState.TotalDiffFiles = 0
 }
 
 func (tdc *TransferFilesCommand) CommandName() string {
@@ -271,6 +272,7 @@ func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos
 
 func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, targetRepos []string,
 	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) (err error) {
+	tdc.ResetProgressState()
 	if !slices.Contains(targetRepos, sourceRepoKey) {
 		log.Error("repository '" + sourceRepoKey + "' does not exist in target. Skipping...")
 		return

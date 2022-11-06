@@ -198,26 +198,31 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toT
 		return
 	}
 	var result []servicesUtils.ResultItem
-	var manifestPaths []string
-	// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
-	for _, file := range manifestFilesResult.Results {
-		if file.Name == "manifest.json" {
-			manifestPaths = append(manifestPaths, file.Path)
-		} else if file.Name == "list.manifest.json" {
-			result = append(result, file)
-		} else {
-			err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
-			return
+	if len(manifestFilesResult.Results) > 0 {
+		var manifestPaths []string
+		// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
+		for _, file := range manifestFilesResult.Results {
+			if file.Name == "manifest.json" {
+				manifestPaths = append(manifestPaths, file.Path)
+			} else if file.Name == "list.manifest.json" {
+				result = append(result, file)
+			} else {
+				err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
+				return
+			}
+		}
+		if manifestPaths != nil {
+			// Get all content of Artifactory folders containing a "manifest.json" file.
+			query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+			var pathsResult *servicesUtils.AqlSearchResult
+			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
+			if err != nil {
+				return
+			}
+			// Merge "list.manifest.json" files with all other files.
+			result = append(result, pathsResult.Results...)
 		}
 	}
-	// Get all content of Artifactory folders containing a "manifest.json" file.
-	query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
-	pathsResult, err := runAql(f.context, f.srcRtDetails, query)
-	if err != nil {
-		return
-	}
-	// Merge "list.manifest.json" files with all other files.
-	result = append(result, pathsResult.Results...)
 	aqlResult = &servicesUtils.AqlSearchResult{}
 	aqlResult.Results = result
 	return

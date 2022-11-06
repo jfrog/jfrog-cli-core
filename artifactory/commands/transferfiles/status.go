@@ -39,18 +39,18 @@ func ShowStatus() error {
 
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
 	addTitle(output, "Overall Transfer Status")
-	addString(output, "🟢", "Status", "Running", 2)
-	addString(output, "⏱️ ", "Running for", runningTime, 1)
-	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TotalRepositories.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalRepositories.TotalSizeBytes)+calcPercentageInt64(stateManager.TotalRepositories.TransferredSizeBytes, stateManager.TotalRepositories.TotalSizeBytes), 2)
-	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 1)
-	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 1)
-	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 1)
+	addString(output, "🟢", "Status", "Running", 3)
+	addString(output, "⏱️ ", "Running for", runningTime, 2)
+	addString(output, "🗄 ", "Storage", sizeToString(stateManager.TotalRepositories.TransferredSizeBytes)+" / "+sizeToString(stateManager.TotalRepositories.TotalSizeBytes)+calcPercentageInt64(stateManager.TotalRepositories.TransferredSizeBytes, stateManager.TotalRepositories.TotalSizeBytes), 3)
+	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 2)
+	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
+	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + RetryFailureContentNote + ")"
 	}
-	addString(output, "❌", "Transfer failures", failureTxt, 1)
+	addString(output, "❌", "Transfer failures", failureTxt, 2)
 }
 
 func calcPercentageInt64(transferred, total int64) string {

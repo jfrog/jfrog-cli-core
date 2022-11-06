@@ -32,6 +32,7 @@ type transferPhase interface {
 	initProgressBar() error
 	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
+	setPackageType(packageType string)
 	StopGracefully()
 }
 
@@ -39,6 +40,7 @@ type phaseBase struct {
 	context                   context.Context
 	repoKey                   string
 	buildInfoRepo             bool
+	packageType               string
 	phaseId                   int
 	checkExistenceInFilestore bool
 	startTime                 time.Time
@@ -122,6 +124,10 @@ func (pb *phaseBase) setStateManager(stateManager *state.TransferStateManager) {
 
 func (pb *phaseBase) setBuildInfo(buildInfoRepo bool) {
 	pb.buildInfoRepo = buildInfoRepo
+}
+
+func (pb *phaseBase) setPackageType(packageType string) {
+	pb.packageType = packageType
 }
 
 func createTransferPhase(i int) transferPhase {

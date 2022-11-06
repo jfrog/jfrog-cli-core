@@ -178,7 +178,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 		cmdArgs = append(cmdArgs, "-p", pythonPath)
 	} else {
 		// If virtualenv not exists, try "python3 -m venv"
-		cmdArgs = append(cmdArgs, pythonPath)
+		execPath = pythonPath
 		if windowsPyArg != "" {
 			// Add '-3' arg for windows 'py -3' command
 			cmdArgs = append(cmdArgs, windowsPyArg)

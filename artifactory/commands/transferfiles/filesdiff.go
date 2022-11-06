@@ -211,15 +211,17 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toT
 				return
 			}
 		}
-		// Get all content of Artifactory folders containing a "manifest.json" file.
-		query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
-		var pathsResult *servicesUtils.AqlSearchResult
-		pathsResult, err = runAql(f.context, f.srcRtDetails, query)
-		if err != nil {
-			return
+		if manifestPaths != nil {
+			// Get all content of Artifactory folders containing a "manifest.json" file.
+			query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+			var pathsResult *servicesUtils.AqlSearchResult
+			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
+			if err != nil {
+				return
+			}
+			// Merge "list.manifest.json" files with all other files.
+			result = append(result, pathsResult.Results...)
 		}
-		// Merge "list.manifest.json" files with all other files.
-		result = append(result, pathsResult.Results...)
 	}
 	aqlResult = &servicesUtils.AqlSearchResult{}
 	aqlResult.Results = result

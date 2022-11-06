@@ -61,14 +61,14 @@ func TestShowStatus(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status:		Running")
+	assert.Contains(t, results, "Status:			Running")
 	assert.Contains(t, results, "Running for:		")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
-	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
-	assert.Contains(t, results, "Working threads:	16")
-	assert.Contains(t, results, "Transfer speed:\t0.011 MB/s")
-	assert.Contains(t, results, "Time remaining:\tLess than a minute")
-	assert.Contains(t, results, "Transfer failures:	223")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -91,14 +91,14 @@ func TestShowStatusDiffPhase(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status:		Running")
+	assert.Contains(t, results, "Status:			Running")
 	assert.Contains(t, results, "Running for:		")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
-	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
-	assert.Contains(t, results, "Working threads:	16")
-	assert.Contains(t, results, "Transfer speed:\t0.011 MB/s")
-	assert.Contains(t, results, "Time remaining:\tNot available in this phase")
-	assert.Contains(t, results, "Transfer failures:	223")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
+	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -121,14 +121,14 @@ func TestShowBuildInfoRepo(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status:		Running")
+	assert.Contains(t, results, "Status:			Running")
 	assert.Contains(t, results, "Running for:		")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
-	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
-	assert.Contains(t, results, "Working threads:	16")
-	assert.Contains(t, results, "Transfer speed:\tNot available while transferring a build-info repository")
-	assert.Contains(t, results, "Time remaining:\tLess than a minute")
-	assert.Contains(t, results, "Transfer failures:	223")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
+	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")

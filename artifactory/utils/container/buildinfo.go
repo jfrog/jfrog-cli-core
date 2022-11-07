@@ -411,7 +411,7 @@ func verifyManifestByDigest(manifestSearchResult utils.ResultItem, builder *buil
 func GetImageTagWithDigest(filePath string) (tag string, sha256 string, err error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
+		log.Debug("os.ReadFile failed with '%s'\n", err)
 		err = errorutils.CheckError(err)
 		return
 	}

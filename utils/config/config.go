@@ -17,7 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -172,7 +171,7 @@ func saveConfig(config *Config) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(path, content, 0600)
+	err = os.WriteFile(path, content, 0600)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -276,7 +275,7 @@ func convertCertsDir() error {
 	}
 
 	// Move certs to the new location.
-	files, err := ioutil.ReadDir(securityDir)
+	files, err := os.ReadDir(securityDir)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -165,5 +165,5 @@ func TestGetErrorsFiles(t *testing.T) {
 
 func writeEmptyErrorsFile(t *testing.T, path, repoKey string, phase, counter int) {
 	fileName := getErrorsFileName(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now()), counter)
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(path, fileName), nil, 0644))
+	assert.NoError(t, os.WriteFile(filepath.Join(path, fileName), nil, 0644))
 }

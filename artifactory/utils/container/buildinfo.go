@@ -2,7 +2,7 @@ package container
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -146,9 +146,9 @@ func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinf
 // Read the file which contains the following format: 'IMAGE-TAG-IN-ARTIFACTORY'@sha256'SHA256-OF-THE-IMAGE-MANIFEST'.
 func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	var buildxMetaData buildxMetaData
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if errorutils.CheckError(err) != nil {
-		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
+		log.Debug("os.ReadFile failed with '%s'\n", err)
 		return nil, "", err
 	}
 	err = json.Unmarshal(data, &buildxMetaData)

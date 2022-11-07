@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -100,7 +99,7 @@ func SaveTransferSettings(settings *TransferSettings) (err error) {
 		return
 	}
 
-	err = errorutils.CheckError(ioutil.WriteFile(filePath, bytesContent, 0600))
+	err = errorutils.CheckError(os.WriteFile(filePath, bytesContent, 0600))
 	return
 }
 

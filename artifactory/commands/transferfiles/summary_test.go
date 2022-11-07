@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"github.com/gocarina/gocsv"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -28,7 +29,7 @@ func TestCreateErrorsSummaryFile(t *testing.T) {
 	defer func() {
 		assert.NoError(t, createdFile.Close())
 	}()
-	actualFileErrors := new([]FileUploadStatusResponse)
+	actualFileErrors := new([]api.FileUploadStatusResponse)
 	assert.NoError(t, gocsv.UnmarshalFile(createdFile, actualFileErrors))
 
 	// Create expected csv file
@@ -37,7 +38,7 @@ func TestCreateErrorsSummaryFile(t *testing.T) {
 	defer func() {
 		assert.NoError(t, expectedFile.Close())
 	}()
-	expectedFileErrors := new([]FileUploadStatusResponse)
+	expectedFileErrors := new([]api.FileUploadStatusResponse)
 	assert.NoError(t, gocsv.UnmarshalFile(expectedFile, expectedFileErrors))
 
 	if !reflect.DeepEqual(expectedFileErrors, actualFileErrors) {

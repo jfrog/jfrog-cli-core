@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -36,7 +37,7 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	}
 	log.Info("Starting to handle previous upload failures...")
 	e.transferManager = newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
 		return err
@@ -49,14 +50,14 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	return err
 }
 
-func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
+func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []api.FileRepresentation) {
 	for _, status := range statuses {
 		files = append(files, status.FileRepresentation)
 	}
 	return
 }
 
-func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
 		return nil
 	}
@@ -94,7 +95,7 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	return nil
 }
 
-func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
+func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
 	return func() parallel.TaskFunc {
 		return func(threadId int) error {
 			var errList []string

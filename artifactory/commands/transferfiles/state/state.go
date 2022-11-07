@@ -20,7 +20,7 @@ type ActionOnStateFunc func(state *TransferState) error
 // The transfer-files command uses this state to determine which phases need to be executed for each a repository,
 // as well as other decisions related to the process execution.
 type TransferState struct {
-	lastSaveTimestamp time.Time    `json:"-"`
+	lastSaveTimestamp time.Time
 	Repositories      []Repository `json:"repositories,omitempty"`
 }
 
@@ -73,7 +73,7 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < saveIntervalSecs {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(SaveIntervalSecs) {
 		return nil
 	}
 

@@ -3,8 +3,8 @@ package container
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 
@@ -409,9 +409,9 @@ func verifyManifestByDigest(manifestSearchResult utils.ResultItem, builder *buil
 
 // Read the file which contains the following format: 'IMAGE-TAG-IN-ARTIFACTORY'@sha256'SHA256-OF-THE-IMAGE-MANIFEST'.
 func GetImageTagWithDigest(filePath string) (tag string, sha256 string, err error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Debug("ioutil.ReadFile failed with '%s'\n", err)
+		log.Debug("os.ReadFile failed with '%s'\n", err)
 		err = errorutils.CheckError(err)
 		return
 	}

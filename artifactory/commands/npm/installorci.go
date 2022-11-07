@@ -6,7 +6,6 @@ import (
 	"fmt"
 	commandUtils "github.com/jfrog/jfrog-cli-core/artifactory/commands/utils"
 	npmutils "github.com/jfrog/jfrog-cli-core/utils/npm"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -237,7 +236,7 @@ func (nca *NpmCommandArgs) createTempNpmrc() error {
 		return err
 	}
 
-	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(nca.workingDirectory, npmrcFileName), configData, 0600))
+	return errorutils.CheckError(os.WriteFile(filepath.Join(nca.workingDirectory, npmrcFileName), configData, 0600))
 }
 
 func (nca *NpmCommandArgs) runInstallOrCi() error {

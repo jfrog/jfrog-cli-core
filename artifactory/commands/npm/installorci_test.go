@@ -1,7 +1,6 @@
 package npm
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,7 +82,7 @@ func TestPrepareConfigDataTypeRestriction(t *testing.T) {
 }
 
 func TestParseDependencies(t *testing.T) {
-	dependenciesJsonList, err := ioutil.ReadFile("../testdata/dependenciesList.json")
+	dependenciesJsonList, err := os.ReadFile("../testdata/dependenciesList.json")
 	if err != nil {
 		t.Error(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
@@ -492,7 +492,7 @@ func (rtc *RepoTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(rtc.path, resBytes, 0644); err != nil {
+	if err = os.WriteFile(rtc.path, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Repository configuration template successfully created at %s.", rtc.path))

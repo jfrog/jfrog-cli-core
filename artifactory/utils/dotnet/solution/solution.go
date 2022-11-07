@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -226,7 +225,7 @@ func parseSlnFile(slnFile string) ([]string, error) {
 		}
 	}
 
-	content, err := ioutil.ReadFile(slnFile)
+	content, err := os.ReadFile(slnFile)
 	if err != nil {
 		return nil, err
 	}

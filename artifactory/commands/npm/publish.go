@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/version"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -353,7 +352,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() error {
 			return errorutils.CheckError(err)
 		}
 		if hdr.Name == "package/package.json" {
-			packageJson, err := ioutil.ReadAll(tarReader)
+			packageJson, err := io.ReadAll(tarReader)
 			if err != nil {
 				return errorutils.CheckError(err)
 			}

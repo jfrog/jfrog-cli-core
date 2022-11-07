@@ -6,7 +6,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/version"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -19,7 +19,7 @@ type PackageInfo struct {
 
 func ReadPackageInfoFromPackageJson(packageJsonDirectory string, npmVersion *version.Version) (*PackageInfo, error) {
 	log.Debug("Reading info from package.json file:", filepath.Join(packageJsonDirectory, "package.json"))
-	packageJson, err := ioutil.ReadFile(filepath.Join(packageJsonDirectory, "package.json"))
+	packageJson, err := os.ReadFile(filepath.Join(packageJsonDirectory, "package.json"))
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

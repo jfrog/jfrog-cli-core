@@ -3,14 +3,14 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/jfrog/jfrog-client-go/utils/io"
+	ioutils "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/utils/config"
 	"github.com/jfrog/jfrog-cli-core/utils/coreutils"
@@ -115,7 +115,7 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 	return artifactory.New(serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries int, dryRun bool, progressBar ioutils.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -245,7 +245,7 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 			err = localErr
 		}
 	}()
-	content, err := ioutil.ReadAll(ioReaderCloser)
+	content, err := io.ReadAll(ioReaderCloser)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

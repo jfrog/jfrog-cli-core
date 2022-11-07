@@ -3,7 +3,7 @@ package permissiontarget
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sort"
 	"strings"
 
@@ -80,7 +80,7 @@ func (pttc *PermissionTargetTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(pttc.path, resBytes, 0644); err != nil {
+	if err = os.WriteFile(pttc.path, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Permission target configuration template successfully created at %s.", pttc.path))

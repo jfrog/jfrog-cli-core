@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -30,6 +31,8 @@ type TransferProgressMng struct {
 	shouldDisplay bool
 	// Task bar with the total repositories transfer progress
 	totalRepositories *progressbar.TasksWithHeadlineProg
+	// A bar showing the running time
+	runningTime *progressbar.TasksProgressBar
 	// A bar showing the number of working transfer threads
 	workingThreads *progressbar.TasksProgressBar
 	// A bar showing the speed of the data transfer
@@ -52,7 +55,7 @@ type TransferProgressMng struct {
 
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
-func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstimationManager, ignoreOldState bool) (*TransferProgressMng, error) {
+func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *state.TimeEstimationManager, ignoreOldState bool) (*TransferProgressMng, error) {
 	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
 	if !shouldDisplay || err != nil {
@@ -61,14 +64,23 @@ func NewTransferProgressMng(allSourceLocalRepos []string, timeEstMng *timeEstima
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	// Init the total repositories transfer progress bar
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
+
+	transfer.runningTime = transfer.barsMng.NewStringProgressBar("Running for: ", func() string {
+		runningTime, isRunning, err := state.GetRunningTime()
+		if err != nil || !isRunning {
+			runningTime = "Running time not available"
+		}
+		return color.Green.Render(runningTime)
+	})
+
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
 
 	if timeEstMng != nil {
 		transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
-			return color.Green.Render(timeEstMng.getSpeedString())
+			return color.Green.Render(timeEstMng.GetSpeedString())
 		})
-		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Time remaining: ", func() string {
-			return color.Green.Render(timeEstMng.getEstimatedRemainingTimeString())
+		transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Estimated time remaining: ", func() string {
+			return color.Green.Render(timeEstMng.GetEstimatedRemainingTimeString())
 		})
 	}
 
@@ -157,7 +169,7 @@ func (t *TransferProgressMng) IncrementPhase(id int) error {
 }
 
 // IncrementPhaseBy increments completed tasks count for a specific phase by n.
-func (t *TransferProgressMng) IncrementPhaseBy(id, n int) error {
+func (t *TransferProgressMng) IncrementPhaseBy(id int, n int) error {
 	if len(t.phases) == 0 {
 		// Progress bar was terminated
 		return nil
@@ -250,20 +262,10 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	if t.workingThreads != nil {
-		t.workingThreads.GetBar().Abort(true)
-		t.workingThreads = nil
-	}
-	if t.errorBar != nil {
-		t.errorBar.GetBar().Abort(true)
-		t.errorBar = nil
-	}
-	if t.speedBar != nil {
-		t.speedBar.GetBar().Abort(true)
-		t.speedBar = nil
-	}
-	if t.timeEstBar != nil {
-		t.timeEstBar.GetBar().Abort(true)
-		t.timeEstBar = nil
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar} {
+		if barPtr != nil {
+			barPtr.GetBar().Abort(true)
+			barPtr = nil
+		}
 	}
 }

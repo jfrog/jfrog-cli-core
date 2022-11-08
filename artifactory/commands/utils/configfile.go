@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -132,7 +131,7 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(configFilePath, resBytes, 0644); err != nil {
+	if err = os.WriteFile(configFilePath, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(confType.String() + " build config successfully created.")

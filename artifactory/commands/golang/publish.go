@@ -8,7 +8,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -160,7 +160,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 			err = errorutils.CheckError(e)
 		}
 	}()
-	content, err := ioutil.ReadAll(modFile)
+	content, err := io.ReadAll(modFile)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
@@ -184,7 +184,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 // Returns the path of the temp archived project file.
 func archive(moduleName, version, projectPath, tempDir string) (name string, zipArtifact *buildinfo.Artifact, err error) {
 	openedFile := false
-	tempFile, err := ioutil.TempFile(tempDir, "project.zip")
+	tempFile, err := os.CreateTemp(tempDir, "project.zip")
 	if err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}

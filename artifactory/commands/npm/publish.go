@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -420,7 +419,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 			return errorutils.CheckError(err)
 		}
 		if hdr.Name == "package/package.json" {
-			packageJson, err := ioutil.ReadAll(tarReader)
+			packageJson, err := io.ReadAll(tarReader)
 			if err != nil {
 				return errorutils.CheckError(err)
 			}

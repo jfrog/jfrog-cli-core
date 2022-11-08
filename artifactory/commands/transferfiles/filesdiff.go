@@ -2,6 +2,8 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"math"
 	"time"
 
@@ -79,7 +81,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	}
 
 	f.transferManager = newTransferManager(f.phaseBase, getDelayUploadComparisonFunctions(f.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		// Create tasks to handle files diffs in time frames of searchTimeFramesMinutes.
 		// In case an error occurred while handling errors/delayed artifacts files - stop transferring.
 		curDiffTimeFrame := diffRangeStart
@@ -108,7 +110,7 @@ type timeFrameParams struct {
 	fromTime time.Time
 }
 
-func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
+func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) diffTimeFrameHandlerFunc {
 	return func(params timeFrameParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
@@ -117,7 +119,7 @@ func (f *filesDiffPhase) createDiffTimeFrameHandlerFunc(pcWrapper *producerConsu
 	}
 }
 
-func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWrapper, params timeFrameParams, logMsgPrefix string, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWrapper, params timeFrameParams, logMsgPrefix string, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	fromTimestamp := params.fromTime.Format(time.RFC3339)
 	toTimestamp := params.fromTime.Add(searchTimeFramesMinutes * time.Minute).Format(time.RFC3339)
 	log.Debug(logMsgPrefix + "Searching time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
@@ -158,9 +160,9 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 	return nil
 }
 
-func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []FileRepresentation) {
+func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []api.FileRepresentation) {
 	for _, result := range results {
-		files = append(files, FileRepresentation{
+		files = append(files, api.FileRepresentation{
 			Repo: result.Repo,
 			Path: result.Path,
 			Name: result.Name,
@@ -170,13 +172,88 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 }
 
 func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+	// Handle Docker repositories.
+	if f.packageType == docker {
+		return f.getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	}
+	// Handle all other (non docker) repository types.
+	return f.getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+}
+
+func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.context, f.srcRtDetails, query)
+}
+
+// We handle docker repositories differently from other repositories.
+// The reason is as follows. If a docker layer already exists in Artifactory, and we try to upload it again to a different repository or a different path,
+// its creation time will be the time of the initial upload, and not the latest one. This means that the layer will not be picked up and transferred as part of Phase 2.
+// To avoid this situation, we look for all "manifest.json" and "list.manifest.json" files, and for each "manifest.json", we will run a search AQL in Artifactory
+// to get all artifacts in its path (that includes the "manifest.json" file itself and all its layouts).
+func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
+	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
+	query := generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
+	if err != nil {
+		return
+	}
+	var result []servicesUtils.ResultItem
+	if len(manifestFilesResult.Results) > 0 {
+		var manifestPaths []string
+		// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
+		for _, file := range manifestFilesResult.Results {
+			if file.Name == "manifest.json" {
+				manifestPaths = append(manifestPaths, file.Path)
+			} else if file.Name == "list.manifest.json" {
+				result = append(result, file)
+			} else {
+				err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
+				return
+			}
+		}
+		if manifestPaths != nil {
+			// Get all content of Artifactory folders containing a "manifest.json" file.
+			query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+			var pathsResult *servicesUtils.AqlSearchResult
+			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
+			if err != nil {
+				return
+			}
+			// Merge "list.manifest.json" files with all other files.
+			result = append(result, pathsResult.Results...)
+		}
+	}
+	aqlResult = &servicesUtils.AqlSearchResult{}
+	aqlResult.Results = result
+	return
 }
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified")`
+	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
+	return query
+}
+
+// This function generates an AQL that searches for all the content in the list of provided Artifactory paths.
+func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
+	query := `items.find({"$or":[`
+	for i, path := range paths {
+		query += fmt.Sprintf(`{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}`, repoKey, path)
+		// Add comma for all paths except for the last one.
+		if i != len(paths)-1 {
+			query += ","
+		}
+	}
+	query += `]}).include("name","repo","path","actual_md5","actual_sha1","sha256","size","type","modified","created","property")`
+	return query
+}
+
+// This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
+func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+	query := `items.find({"$and":`
+	query += fmt.Sprintf(`[{"$and":[{"repo":"%s"}]},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":{"$match":"manifest.json"}},{"name":{"$match":"list.manifest.json"}}]}`, repoKey, fromTimestamp, toTimestamp)
+	query += `]}).include("repo","path","name","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

@@ -132,7 +132,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			totalSize += int(r.Size)
 			f.phaseBase.progressBar.phases[f.phaseId].GetTasksProgressBar().IncGeneralProgressTotalBy(r.Size)
 		}
-		f.transferManager.stateManager.IncTransferredTotalSizeAndFilesDiff(params.repoKey, int64(len(files)), int64(totalSize))
+		f.transferManager.stateManager.IncTotalSizeAndFilesDiff(params.repoKey, int64(len(files)), int64(totalSize))
 		shouldStop, err := uploadByChunks(files, uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err

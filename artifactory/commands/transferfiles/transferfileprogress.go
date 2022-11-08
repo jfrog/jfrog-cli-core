@@ -212,15 +212,15 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(storage int64, filesPhase1 *int64) {
-	transferredFiles, err := t.transferState.GetTransferredTotalSizeAndFilesDiff(t.transferState.CurrentRepo)
+func (t *TransferProgressMng) AddPhase1(storage int64) {
+	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers(t.transferState.CurrentRepo)
 	if err == nil {
-		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 1: Transferring all files in the repository", "Storage", "Files", progressbar.GREEN, storage, nil, nil, filesPhase1, transferredFiles))
+		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 1: Transferring all files in the repository", "Storage", "Files", progressbar.GREEN, storage, nil, nil, totalFiles, transferredFiles))
 	}
 }
 
 func (t *TransferProgressMng) AddPhase2() {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetTransferredTotalAndTransferredValuesDiff(t.transferState.CurrentRepo)
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff(t.transferState.CurrentRepo)
 	if err == nil {
 		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleProgBar("Phase 2: Transferring newly created and modified files", "Diff Storage", "Diff Files", progressbar.GREEN, 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles))
 	}

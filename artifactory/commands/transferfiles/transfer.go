@@ -176,15 +176,16 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 }
 
 func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBuildInfoRepos []string) error {
-	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
-	if err != nil {
-		return err
-	}
 	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
 	if err != nil {
 		return err
 	}
+	totalSizeBytes, totalFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
+	if err != nil {
+		return err
+	}
 	tdc.stateManager.TransferOverall.TotalSizeBytes = totalSizeBytes
+	tdc.stateManager.TransferOverall.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
 	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
 	if !tdc.ignoreState {

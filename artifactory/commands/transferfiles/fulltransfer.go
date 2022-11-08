@@ -25,12 +25,11 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	tasks, err := m.repoSummary.FilesCount.Int64()
 	storage, err := m.repoSummary.UsedSpaceInBytes.Int64()
 	if err != nil {
 		return err
 	}
-	m.progressBar.AddPhase1(storage, &tasks)
+	m.progressBar.AddPhase1(storage)
 	return nil
 }
 
@@ -71,7 +70,7 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 func (m *fullTransferPhase) skipPhase() {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		m.progressBar.AddPhase1(0, nil)
+		m.progressBar.AddPhase1(0)
 	}
 }
 

@@ -331,7 +331,6 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 			// Empty the uploaded chunk.
 			curUploadChunk.UploadCandidates = []api.FileRepresentation{}
 		}
-		base.progressBar.phases[base.phaseId].GetTasksProgressBar().GetBar().IncrBy(int(item.Size))
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {

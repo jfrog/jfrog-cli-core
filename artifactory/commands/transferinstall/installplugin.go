@@ -21,136 +21,42 @@ import (
 )
 
 const (
-	minArtifactoryVersion = "2.9.0" // for reload api (version api is from 2.2.2)
-	pluginReloadRestApi   = "api/plugins/reload"
-	jfrogHomeEnvVar       = "JFROG_HOME"
-	latest                = "[RELEASE]"
+	pluginReloadRestApi = "api/plugins/reload"
+	jfrogHomeEnvVar     = "JFROG_HOME"
+	latest              = "[RELEASE]"
 )
 
 var (
 	defaultSearchPath = filepath.Join("opt", "jfrog")
 	// Plugin directory locations
-	originalDirPath = PluginFileItem{"artifactory", "etc", "plugins"}
-	v7DirPath       = PluginFileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
+	originalDirPath = FileItem{"artifactory", "etc", "plugins"}
+	v7DirPath       = FileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
 	// Error types
 	emptyUrlErr            = errors.Errorf("Base download URL must be provided to allow file downloads.")
-	notValidDestinationErr = func(showHint bool) error {
-		hint := ""
-		if showHint {
-			hint = "Hint: use --home-dir option."
-		}
-		return errors.Errorf("Can't find target plugin directory, this command must run on a machine with Artifactory server. %s", hint)
-	}
-	minVerErr             = errorutils.CheckErrorf("This operation requires Artifactory version %s or higher", minArtifactoryVersion)
-	downloadConnectionErr = func(baseUrl string) error {
+	notValidDestinationErr = errorutils.CheckErrorf("Can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
+	downloadConnectionErr  = func(baseUrl string) error {
 		return errorutils.CheckErrorf("We tried to download the plugin files from '%s' but got connection issue. Hint: manual transfer the files to the machine and use --source-dir option.", baseUrl)
 	}
 )
 
-type PluginFileItem []string
-type PluginFiles []PluginFileItem
-
-// Get the name componenet of the item
-func (f *PluginFileItem) Name() string {
-	size := len(*f)
-	if size == 0 {
-		return ""
-	}
-	return (*f)[size-1]
-}
-
-// Get the directory list of the item, ignore empty entries
-func (f *PluginFileItem) Dirs() *PluginFileItem {
-	dirs := PluginFileItem{}
-	for i := 0; i < len(*f)-1; i++ {
-		dir := (*f)[i]
-		if dir != "" {
-			dirs = append(dirs, dir)
-		}
-	}
-	return &dirs
-}
-
-// Split and get the componenets of the item
-func (f *PluginFileItem) SplitNameAndDirs() (string, *PluginFileItem) {
-	return f.Name(), f.Dirs()
-}
-
-// Convert the item to URL representation, ignore empty entries, adding prefix tokens as provided
-func (f *PluginFileItem) toURL(prefixUrl string) (string, error) {
-	myUrl, err := url.Parse(prefixUrl)
-	if err != nil {
-		return "", err
-	}
-	myUrl.Path = path.Join(myUrl.Path, path.Join(*f...))
-	return myUrl.String(), nil
-}
-
-// Convert the item to path representation, ignore empty entries, adding prefix tokens as provided
-func (f *PluginFileItem) toPath(previousTokens ...string) string {
-	return filepath.Join(filepath.Join(previousTokens...), filepath.Join(*f.Dirs()...), f.Name())
-}
-
-// Holds all the plugin files and options of destinations to transfer them into
-type PluginTransferManager struct {
-	files        PluginFiles
-	destinations []PluginFileItem
-}
-
-// Create new file transfer manager for artifactory plugins
-func NewArtifactoryPluginTransferManager(bundle PluginFiles) *PluginTransferManager {
-	manager := &PluginTransferManager{
-		files:        bundle,
-		destinations: []PluginFileItem{},
-	}
-	// Add all the optional destinations for the plugin dir
-	manager.addDestination(originalDirPath)
-	manager.addDestination(v7DirPath)
-	return manager
-}
-
-// Add optional plugin directory location as destination
-func (ftm *PluginTransferManager) addDestination(directory PluginFileItem) {
-	ftm.destinations = append(ftm.destinations, directory)
-}
-
-// Search all the local target directories that the plugin directory can exist in base on a given root JFrog artifactory home directory
-// the first option that matched and the directory exists is returned as target
-func (ftm *PluginTransferManager) trySearchDestinationMatchFrom(rootDir string) (exists bool, target PluginFileItem, err error) {
-	if exists, err = fileutils.IsDirExists(rootDir, false); err != nil || !exists {
-		return
-	}
-	exists = false
-	for _, optionalPluginDirDst := range ftm.destinations {
-		if exists, err = fileutils.IsDirExists(optionalPluginDirDst.toPath(rootDir), false); err != nil {
-			return
-		}
-		if exists {
-			target = append([]string{rootDir}, optionalPluginDirDst...)
-			return
-		}
-	}
-	return
-}
-
 type InstallPluginCommand struct {
-	// The name of the plugin the command transfer
+	// The name of the plugin the command will install
 	pluginName string
 	// The server that the plugin will be installed on
 	targetServer *config.ServerDetails
-	// Transfer manager to manage files and destinations
-	transferManger *PluginTransferManager
-	// Source download plugin files information
+	// install manager manage the list of all the plugin files and the optional target destinations for plugin directory
+	transferManger *PluginInstallManager
+	// Information for downloading plugin files
 	installVersion  *version.Version
 	baseDownloadUrl string
-	// Source local directory to copy from
+	// The local directory the plugin files will be copied from
 	localSrcDir string
-	// The Jfrog home directory path override as destination
+	// The Jfrog home directory path override as root directory destination from cliutils.InstallPluginHomeDir flag
 	localJfrogHomePath string
 }
 
 // Creeate an InstallPluginCommand
-func NewInstallPluginCommand(artifactoryServerDetails *config.ServerDetails, pluginName string, fileTransferManger *PluginTransferManager) *InstallPluginCommand {
+func NewInstallPluginCommand(artifactoryServerDetails *config.ServerDetails, pluginName string, fileTransferManger *PluginInstallManager) *InstallPluginCommand {
 	return &InstallPluginCommand{
 		targetServer:       artifactoryServerDetails,
 		transferManger:     fileTransferManger,
@@ -165,7 +71,7 @@ func (ipc *InstallPluginCommand) ServerDetails() (*config.ServerDetails, error) 
 	return ipc.targetServer, nil
 }
 
-// Set the local directory that the plugin files will be copied from
+// Set the local file system directory path that the plugin files will be copied from
 func (ipc *InstallPluginCommand) SetLocalPluginFiles(localDir string) *InstallPluginCommand {
 	ipc.localSrcDir = localDir
 	return ipc
@@ -189,23 +95,107 @@ func (ipc *InstallPluginCommand) SetJFrogHomePath(path string) *InstallPluginCom
 	return ipc
 }
 
-// Validates minimum version and fetch the current
-func validateMinArtifactoryVersion(servicesManager artifactory.ArtifactoryServicesManager) (artifactoryVersion *version.Version, err error) {
-	log.Debug("verifying install requirements...")
-	rawVersion, err := servicesManager.GetVersion()
-	if err != nil {
+// PluginInstallManager holds all the plugin files and optional plugin directory destinations.
+// we construct the destination path by searching for the existing plugin directory destination from the options
+// and joining the local path of the plugin file with the plugin directory
+type PluginInstallManager struct {
+	// All the plugin files, represented as FileItem with path starting from inside the plugin directory
+	// i.e. for file plugins/lib/file we represent them as FileItem{"lib","file"}
+	files PluginFiles
+	// All the optional destinations of the plugin directory starting from the JFrog home directory represented as FileItem
+	destinations []FileItem
+}
+
+// Create new file transfer manager for artifactory plugins
+func NewArtifactoryPluginInstallManager(bundle PluginFiles) *PluginInstallManager {
+	manager := &PluginInstallManager{
+		files:        bundle,
+		destinations: []FileItem{},
+	}
+	// Add all the optional destinations for the plugin dir
+	manager.addDestination(originalDirPath)
+	manager.addDestination(v7DirPath)
+	return manager
+}
+
+// Add optional plugin directory location as destination
+func (ftm *PluginInstallManager) addDestination(directory FileItem) {
+	ftm.destinations = append(ftm.destinations, directory)
+}
+
+// Search all the local target directories that the plugin directory can exist in base on a given root JFrog artifactory home directory
+// we are searching by Joining rootDir/optionalDestination to find the right structure of the JFrog home directory
+// the first option that matched and the directory exists is returned as target
+func (ftm *PluginInstallManager) trySearchDestinationMatchFrom(rootDir string) (exists bool, target FileItem, err error) {
+	if exists, err = fileutils.IsDirExists(rootDir, false); err != nil || !exists {
 		return
 	}
-	artifactoryVersion = version.NewVersion(rawVersion)
-	if !artifactoryVersion.AtLeast(minArtifactoryVersion) {
-		err = minVerErr
-		return
+	exists = false
+	for _, optionalPluginDirDst := range ftm.destinations {
+		if exists, err = fileutils.IsDirExists(optionalPluginDirDst.toPath(rootDir), false); err != nil {
+			return
+		}
+		if exists {
+			target = append([]string{rootDir}, optionalPluginDirDst...)
+			return
+		}
 	}
 	return
 }
 
+// Represents a path to file/directory
+// i.e. for file dir/dir2/file we represent them as FileItem{"dir","dir2","file"}
+// for directory dir/dir2/ we represent them as FileItem{"dir","dir2"}
+type FileItem []string
+
+// List of files represented as FileItem
+type PluginFiles []FileItem
+
+// Get the name (last) componenet of the item
+// i.e. for FileItem{"root","","dir","file.ext"} -> "file.ext"
+func (f *FileItem) Name() string {
+	size := len(*f)
+	if size == 0 {
+		return ""
+	}
+	return (*f)[size-1]
+}
+
+// Get the directory FileItem representation of the item, removing the last componenet and ignoring empty entries.
+// i.e. for FileItem{"root","","dir","file.ext"} -> FileItem{"root","dir"}
+func (f *FileItem) Directories() *FileItem {
+	dirs := FileItem{}
+	for i := 0; i < len(*f)-1; i++ {
+		dir := (*f)[i]
+		if dir != "" {
+			dirs = append(dirs, dir)
+		}
+	}
+	return &dirs
+}
+
+// Split and get the name and directory componenets of the item
+func (f *FileItem) SplitNameAndDirs() (string, *FileItem) {
+	return f.Name(), f.Directories()
+}
+
+// Convert the item to URL representation, adding prefix tokens as provided
+func (f *FileItem) toURL(prefixUrl string) (string, error) {
+	myUrl, err := url.Parse(prefixUrl)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	myUrl.Path = path.Join(myUrl.Path, path.Join(*f...))
+	return myUrl.String(), nil
+}
+
+// Convert the item to file path representation, ignoring empty entries, adding prefix tokens as provided
+func (f *FileItem) toPath(previousTokens ...string) string {
+	return filepath.Join(filepath.Join(previousTokens...), filepath.Join(*f.Directories()...), f.Name())
+}
+
 // Get the plugin directory destination to install the plugin in it, search is starting from jfrog home directory
-func (ipc *InstallPluginCommand) getPluginDirDestination() (target PluginFileItem, err error) {
+func (ipc *InstallPluginCommand) getPluginDirDestination() (target FileItem, err error) {
 	var exists bool
 	var envVal string
 
@@ -216,7 +206,7 @@ func (ipc *InstallPluginCommand) getPluginDirDestination() (target PluginFileIte
 			return
 		}
 		if !exists {
-			err = notValidDestinationErr(false)
+			err = notValidDestinationErr
 			return
 		}
 	}
@@ -235,11 +225,11 @@ func (ipc *InstallPluginCommand) getPluginDirDestination() (target PluginFileIte
 		}
 	}
 
-	err = notValidDestinationErr(true)
+	err = notValidDestinationErr
 	return
 }
 
-// transfer the bundle from src to dst
+// transfer the file bundle from src to dst
 type TransferAction func(src string, dst string, bundle PluginFiles) error
 
 // return the src path and a transfer action
@@ -338,12 +328,9 @@ func sendReloadCommand(servicesManager artifactory.ArtifactoryServicesManager) e
 func (ipc *InstallPluginCommand) Run() (err error) {
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", ipc.pluginName))))
 
-	// Initialize and validate
+	// Initialize
 	serviceManager, err := utils.CreateServiceManager(ipc.targetServer, -1, 0, false)
 	if err != nil {
-		return
-	}
-	if _, err = validateMinArtifactoryVersion(serviceManager); err != nil {
 		return
 	}
 	// Get source, destination and transfer action

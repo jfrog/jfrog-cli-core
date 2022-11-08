@@ -245,14 +245,14 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 			query += ","
 		}
 	}
-	query += `]}).include("name","repo","path","actual_md5","actual_sha1","sha256","size","type","modified","created","property")`
+	query += `]}).include("name","repo","path","sha256","size","type","modified","created")`
 	return query
 }
 
 // This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
 func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := `items.find({"$and":`
-	query += fmt.Sprintf(`[{"$and":[{"repo":"%s"}]},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":{"$match":"manifest.json"}},{"name":{"$match":"list.manifest.json"}}]}`, repoKey, fromTimestamp, toTimestamp)
+	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}`, repoKey, fromTimestamp, toTimestamp)
 	query += `]}).include("repo","path","name","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query

@@ -375,6 +375,14 @@ func GetJfrogTransferStateFilePath() (string, error) {
 	return filepath.Join(transferDir, JfrogTransferStateFileName), nil
 }
 
+func GetJfrogTransferDelaysDir() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferDelaysDirName), nil
+}
+
 func GetJfrogTransferRunStatusFilePath() (string, error) {
 	transferDir, err := GetJfrogTransferDir()
 	if err != nil {

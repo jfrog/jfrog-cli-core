@@ -1,8 +1,10 @@
 package audit
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -79,13 +81,11 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 		}
 		for i := range scanResults.Vulnerabilities {
 			scanResults.Vulnerabilities[i].Technology = technology.ToString()
-			results.Vulnerabilities = append(results.Vulnerabilities, scanResults.Vulnerabilities[i])
 		}
 		for i := range scanResults.Violations {
 			scanResults.Violations[i].Technology = technology.ToString()
-			results.Violations = append(results.Violations, scanResults.Violations[i])
 		}
-		results.Licenses = append(results.Licenses, scanResults.Licenses...)
+		results = append(results, *scanResults)
 	}
 	return
 }
@@ -121,4 +121,12 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 		}
 	}
 	return nil
+}
+
+func LogExecutableVersion(executable string) {
+	// Get executable version and print to log if possible
+	verString, _ := exec.Command(executable, "--version").CombinedOutput()
+	if len(verString) > 0 {
+		log.Debug(fmt.Sprintf("Used %q version: %s", executable, strings.TrimSpace(string(verString))))
+	}
 }

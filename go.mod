@@ -10,9 +10,9 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.3.7
-	github.com/jfrog/build-info-go v1.7.0
-	github.com/jfrog/gofrog v1.2.2
-	github.com/jfrog/jfrog-client-go v1.23.4
+	github.com/jfrog/build-info-go v1.8.1
+	github.com/jfrog/gofrog v1.2.4
+	github.com/jfrog/jfrog-client-go v1.24.2
 	github.com/magiconair/properties v1.8.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -25,7 +25,7 @@ require (
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -33,7 +33,7 @@ require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
-	github.com/CycloneDX/cyclonedx-go v0.6.0 // indirect
+	github.com/CycloneDX/cyclonedx-go v0.7.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -84,15 +84,15 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.23.3-0.20220918124032-958dbe265f2c
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.24.2-0.20221102161532-14cd5ae8d44b
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.6.1-0.20220928081908-ab4690a33f68
+// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.1-0.20221031115821-41443331f630
 
-//replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.2
+//replace github.com/jfrog/gofrog => github.com/jfrog/gofrog dev

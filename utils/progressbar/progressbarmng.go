@@ -85,7 +85,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	return &prog
 }
 
-func (bm *ProgressBarMng) NewHeadLineDoubleProgBar(headLine string, counterLine string, counterLine2 string, color Color, totalTasks1 int64, optionalTotal1 *int, optionalDone1 *int, totalTasks2 *int, DoneTasks2 *int) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewHeadLineDoubleProgBar(headLine string, counterLine string, counterLine2 string, color Color, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2 *int64) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
@@ -213,7 +213,7 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 // A progress bar with two counters values shown on the right side of the progress bar, the first value controls what the bar shows
 // The total tasks1 can be passes by an int or *int, if you want to use it with int send nil to the optional total and done tasks1 and the wanted totalTasks to total tasks1
 // else if you want to use
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, OptionalTotalTasks1 *int, optionalDoneTasks1 *int, totalTasks2 *int, doneTaks2 *int) *TasksProgressBar {
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 string, color Color, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTaks2 *int64) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	filter := filterColor(color)
 	if OptionalTotalTasks1 == nil {
@@ -223,8 +223,8 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 
 			mpb.AppendDecorators(
 				decor.Name(" "+headLine1+": "),
 				decor.CountersKibiByte("%.1f/%.1f"), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(*doneTaks2)
-					s2 := strconv.Itoa(*totalTasks2)
+					s1 := strconv.Itoa(int(*doneTaks2))
+					s2 := strconv.Itoa(int(*totalTasks2))
 					return s1 + "/" + s2
 				}),
 			),
@@ -238,12 +238,12 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(headLine1 string, headLine2 
 			mpb.AppendDecorators(
 				decor.Name(" "+headLine1+": "),
 				decor.Any(func(statistics decor.Statistics) string {
-					s1 := artifactoryutils.ConvertIntToStorageSizeString(*optionalDoneTasks1)
-					s2 := artifactoryutils.ConvertIntToStorageSizeString(*OptionalTotalTasks1)
+					s1 := artifactoryutils.ConvertIntToStorageSizeString(int(*optionalDoneTasks1))
+					s2 := artifactoryutils.ConvertIntToStorageSizeString(int(*OptionalTotalTasks1))
 					return s1 + "/" + s2
 				}), decor.Name(" "+headLine2+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(*doneTaks2)
-					s2 := strconv.Itoa(*totalTasks2)
+					s1 := strconv.Itoa(int(*doneTaks2))
+					s2 := strconv.Itoa(int(*totalTasks2))
 					return s1 + "/" + s2
 				}),
 			),

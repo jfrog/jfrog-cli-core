@@ -48,6 +48,7 @@ type ScanCommand struct {
 	includeLicenses        bool
 	fail                   bool
 	printExtendedTable     bool
+	bypassArchiveLimits    bool
 	progress               ioUtils.ProgressMgr
 }
 
@@ -109,9 +110,17 @@ func (scanCmd *ScanCommand) SetPrintExtendedTable(printExtendedTable bool) *Scan
 	return scanCmd
 }
 
+func (scanCmd *ScanCommand) SetBypassArchiveLimits(bypassArchiveLimits bool) *ScanCommand {
+	scanCmd.bypassArchiveLimits = bypassArchiveLimits
+	return scanCmd
+}
+
 func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
 	var indexerResults services.GraphNode
 	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
+	if scanCmd.bypassArchiveLimits {
+		indexerCmd.Args = append(indexerCmd.Args, "--bypass-archive-limits")
+	}
 	var stderr bytes.Buffer
 	var stdout bytes.Buffer
 	indexerCmd.Stdout = &stdout
@@ -143,14 +152,23 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			}
 		}
 	}()
-	// Validate Xray minimum version
 	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
+
+	// Validate Xray minimum version for graph scan command
 	err = commands.ValidateXrayMinimumVersion(xrayVersion, commands.GraphScanMinXrayVersion)
 	if err != nil {
 		return err
+	}
+
+	if scanCmd.bypassArchiveLimits {
+		// Validate Xray minimum version for BypassArchiveLimits flag for indexer
+		err = commands.ValidateXrayMinimumVersion(xrayVersion, commands.BypassArchiveLimitsMinXrayVersion)
+		if err != nil {
+			return err
+		}
 	}
 	log.Info("JFrog Xray version is:", xrayVersion)
 	// First download Xray Indexer if needed
@@ -207,7 +225,14 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	err = xrutils.PrintScanResults(flatResults, scanErrors, scanCmd.outputFormat, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, true, scanCmd.printExtendedTable)
+	err = xrutils.PrintScanResults(flatResults,
+		scanErrors,
+		scanCmd.outputFormat,
+		scanCmd.includeVulnerabilities,
+		scanCmd.includeLicenses,
+		true,
+		scanCmd.printExtendedTable,
+	)
 	if err != nil {
 		return err
 	}

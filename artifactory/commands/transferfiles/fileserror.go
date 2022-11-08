@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -36,26 +37,27 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	}
 	log.Info("Starting to handle previous upload failures...")
 	e.transferManager = newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	err := e.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := consumeAllDelayFiles
+	err := e.transferManager.doTransferWithProducerConsumer(action, delayAction)
 	if err == nil {
 		log.Info("Done handling previous upload failures.")
 	}
 	return err
 }
 
-func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []FileRepresentation) {
+func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []api.FileRepresentation) {
 	for _, status := range statuses {
 		files = append(files, status.FileRepresentation)
 	}
 	return
 }
 
-func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
 		return nil
 	}
@@ -71,6 +73,10 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 		// Since we're about to handle the transfer retry of the failed files,
 		// we should now decrement the failures counter view.
 		e.progressBar.changeNumberOfFailuresBy(-1 * len(failedFiles.Errors))
+		err = e.stateManager.ChangeTransferFailureCountBy(uint(len(failedFiles.Errors)), false)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Upload
@@ -89,12 +95,11 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	return nil
 }
 
-func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
+func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
 	return func() parallel.TaskFunc {
 		return func(threadId int) error {
 			var errList []string
 			var err error
-			defer pcWrapper.notifyIfBuilderFinished(false)
 			for _, errFile := range e.errorsFilesToHandle {
 				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 				if err != nil {
@@ -140,7 +145,17 @@ func (e *errorsRetryPhase) initProgressBar() error {
 		filesCount += len(failedFiles.Errors)
 	}
 
-	e.progressBar.AddPhase3(int64(filesCount))
+	// The progress bar will also be responsible to display the number of delayed items for this repository.
+	// Those delayed artifacts will be handled at the end of this phase in case they exist.
+	delayFiles, err := getDelayFiles([]string{e.repoKey})
+	if err != nil {
+		return err
+	}
+	delayCount, err := countDelayFilesContent(delayFiles)
+	if err != nil {
+		return err
+	}
+	e.progressBar.AddPhase3(int64(filesCount) + int64(delayCount))
 
 	return nil
 }

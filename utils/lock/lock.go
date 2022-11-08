@@ -240,7 +240,7 @@ func GetLastLockTimestamp(lockDirPath string) (int64, error) {
 
 	lastLock := locks[len(locks)-1]
 
-	// If the lock isn't aquired by a running process, an unexpected error was occured.
+	// If the lock isn't acquired by a running process, an unexpected error was occurred.
 	running, err := isProcessRunning(lastLock.pid)
 	if err != nil {
 		return 0, err

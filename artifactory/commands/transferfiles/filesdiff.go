@@ -245,7 +245,7 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 			query += ","
 		}
 	}
-	query += `]}).include("name","repo","path","actual_md5","actual_sha1","sha256","size","type","modified","created","property")`
+	query += `]}).include("name","repo","path","sha256","size","type","modified","created")`
 	return query
 }
 

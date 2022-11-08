@@ -385,7 +385,7 @@ func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chun
 	if stateManager.CurrentRepoPhase == api.FilesDiffPhase {
 		err := stateManager.IncTransferredSizeAndFilesDiff(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 	return chunkTotalSizeInBytes, stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)

@@ -184,6 +184,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 	if err != nil {
 		return err
 	}
+	//Init State Manager's fields values
 	tdc.stateManager.TransferOverall.TotalSizeBytes = totalSizeBytes
 	tdc.stateManager.TransferOverall.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))

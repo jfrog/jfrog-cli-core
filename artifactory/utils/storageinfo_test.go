@@ -174,7 +174,6 @@ func TestSplitComponentId(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		//actualCompName, actualCompVersion, actualCompType := splitComponentId(test.componentId)
 		assert.Equal(t, test.output, ConvertIntToStorageSizeString(test.num))
 	}
 }

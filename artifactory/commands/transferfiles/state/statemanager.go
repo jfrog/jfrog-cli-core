@@ -162,7 +162,7 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesDiff(repoKey string, filesNu
 	})
 }
 
-//Returns pointers to totalStorage, totalFiles, transferredFiles and transferredStorage from progressState of a specific Repository.
+// Returns pointers to totalStorage, totalFiles, transferredFiles and transferredStorage from progressState of a specific Repository.
 func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (totalStorage, transferredStorage, totalFiles, transferredFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
@@ -179,7 +179,7 @@ func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (tota
 	return
 }
 
-//Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
+// Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
 func (ts *TransferStateManager) GetStorageAndFilesPointersForDiff(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)

@@ -121,9 +121,7 @@ func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunk
 			return err
 		}
 		repo.TransferredSizeBytes += chunkTotalSizeInBytes
-		ts.TransferOverall.TransferredSizeBytes += chunkTotalSizeInBytes
 		repo.TransferredUnits += chunkTotalFiles
-		ts.TransferOverall.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 	if err != nil {
@@ -131,6 +129,7 @@ func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunk
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.TransferOverall.TransferredSizeBytes += chunkTotalSizeInBytes
+		transferRunStatus.TransferOverall.TransferredUnits += chunkTotalFiles
 		if transferRunStatus.BuildInfoRepo {
 			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
 		}

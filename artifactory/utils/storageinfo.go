@@ -185,9 +185,6 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 }
 
 func ConvertIntToStorageSizeString(num int) string {
-	if num < 0 {
-		return "this is illegal storage size"
-	}
 	if num > bytesInTB {
 		newNum := float64(num) / bytesInTB
 		stringNum := fmt.Sprintf("%.1f", newNum)

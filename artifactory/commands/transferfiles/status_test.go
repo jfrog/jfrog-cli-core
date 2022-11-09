@@ -149,7 +149,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 
 	stateManager.CurrentRepo = repo1Key
 	stateManager.CurrentRepoPhase = phase
-	stateManager.TransferOverall.TotalSizeBytes = 11111
+	stateManager.OverallTransfer.TotalSizeBytes = 11111
 	stateManager.TotalRepositories.TotalUnits = 1111
 	stateManager.TotalRepositories.TransferredUnits = 15
 	stateManager.WorkingThreads = 16

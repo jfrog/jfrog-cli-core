@@ -128,13 +128,13 @@ func (tem *TimeEstimationManager) calculateDataEstimatedRemainingTime() error {
 	}
 
 	// In case we reach a situation where we transfer more data than expected, we cannot estimate how long transferring the remaining data will take.
-	if tem.stateManager.TransferOverall.TotalSizeBytes <= transferredSizeBytes {
+	if tem.stateManager.OverallTransfer.TotalSizeBytes <= transferredSizeBytes {
 		tem.DataEstimatedRemainingTime = 0
 		return nil
 	}
 
 	// We only convert to int64 at the end to avoid a scenario where the conversion of SpeedsAverage returns zero.
-	remainingTime := float64(tem.stateManager.TransferOverall.TotalSizeBytes-transferredSizeBytes) / tem.SpeedsAverage
+	remainingTime := float64(tem.stateManager.OverallTransfer.TotalSizeBytes-transferredSizeBytes) / tem.SpeedsAverage
 	// Convert from milliseconds to seconds.
 	tem.DataEstimatedRemainingTime = int64(remainingTime) / milliSecsInSecond
 	return nil

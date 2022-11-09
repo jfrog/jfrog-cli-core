@@ -24,7 +24,7 @@ type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 type TransferRunStatus struct {
 	lastSaveTimestamp time.Time
 	// This variable holds the total/transferred number of repositories (not their files).
-	TransferOverall   ProgressState      `json:"transfer_overall,omitempty"`
+	OverallTransfer   ProgressState      `json:"overall_transfer,omitempty"`
 	TotalRepositories ProgressStateUnits `json:"total_repositories,omitempty"`
 	OverallBiFiles    ProgressStateUnits `json:"overall_bi_files,omitempty"`
 	// Version of the TransferRunStatus file.

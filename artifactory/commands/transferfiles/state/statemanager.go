@@ -114,6 +114,7 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted(repoKey string) err
 	})
 }
 
+// Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
 func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
@@ -128,8 +129,8 @@ func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunk
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.TransferOverall.TransferredSizeBytes += chunkTotalSizeInBytes
-		transferRunStatus.TransferOverall.TransferredUnits += chunkTotalFiles
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += chunkTotalSizeInBytes
+		transferRunStatus.OverallTransfer.TransferredUnits += chunkTotalFiles
 		if transferRunStatus.BuildInfoRepo {
 			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
 		}
@@ -161,7 +162,8 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesDiff(repoKey string, filesNu
 	})
 }
 
-func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (totalStorage, totalUploadedStorage, totalFiles, totalUploadedFiles *int64, err error) {
+//Returns pointers to totalStorage, totalFiles, transferredFiles and transferredStorage from progressState of a specific Repository.
+func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (totalStorage, transferredStorage, totalFiles, transferredFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
@@ -169,13 +171,15 @@ func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (tota
 			return err
 		}
 		totalStorage = &repo.TotalSizeBytes
-		totalUploadedStorage = &repo.TransferredSizeBytes
+		transferredStorage = &repo.TransferredSizeBytes
 		totalFiles = &repo.TotalUnits
-		totalUploadedFiles = &repo.TransferredUnits
+		transferredFiles = &repo.TransferredUnits
 		return nil
 	})
 	return
 }
+
+//Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
 func (ts *TransferStateManager) GetStorageAndFilesPointersForDiff(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
@@ -251,7 +255,7 @@ func (ts *TransferStateManager) GetReposTransferredSizeBytes(repoKeys ...string)
 
 func (ts *TransferStateManager) GetTransferredSizeBytes() (transferredSizeBytes int64, err error) {
 	return transferredSizeBytes, ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferredSizeBytes = transferRunStatus.TransferOverall.TransferredSizeBytes
+		transferredSizeBytes = transferRunStatus.OverallTransfer.TransferredSizeBytes
 		return nil
 	})
 }

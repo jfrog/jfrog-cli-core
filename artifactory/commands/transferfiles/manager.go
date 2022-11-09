@@ -408,7 +408,7 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		if err != nil {
 			return err
 		}
-		progressbar.IncreaseTotalSize(int(chunnkSizeInBytes))
+		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
 		phase.progressBar.phases[phase.phaseId].GetTasksProgressBar().GetBar().IncrBy(int(chunnkSizeInBytes))
 	}
 	if timeEstMng != nil {

@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"path"
 	"time"
 
@@ -29,8 +30,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	m.progressBar.AddPhase1(storage)
-	return nil
+	return m.progressBar.AddPhase1(storage)
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -62,16 +62,17 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 		return false, err
 	}
 	if repoTransferred {
-		m.skipPhase()
+		return repoTransferred, m.skipPhase()
 	}
 	return repoTransferred, nil
 }
 
-func (m *fullTransferPhase) skipPhase() {
+func (m *fullTransferPhase) skipPhase() error {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		m.progressBar.AddPhase1(0)
+		return m.progressBar.AddPhase1(0)
 	}
+	return errorutils.CheckErrorf("Empty Progress Bar")
 }
 
 func (m *fullTransferPhase) run() error {

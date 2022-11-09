@@ -65,13 +65,11 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 		return err
 	}
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
-	// Init the total repositories transfer progress bar
-	//edit storage and files
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.GREEN, tdc.stateManager.TransferOverall.TotalSizeBytes, nil, nil, &tdc.stateManager.TransferOverall.TotalUnits, &tdc.stateManager.TransferOverall.TransferredUnits)
-
+	//Init Progress Bars
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", progressbar.WHITE, tdc.stateManager.TransferOverall.TotalSizeBytes, nil, nil, &tdc.stateManager.TransferOverall.TotalUnits, &tdc.stateManager.TransferOverall.TransferredUnits)
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
 
 	transfer.runningTime = transfer.barsMng.NewStringProgressBar("Running for: ", func() string {

@@ -404,9 +404,12 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 				return err
 			}
 		}
-		if err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk); err != nil {
+		chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
+		if err != nil {
 			return err
 		}
+		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
+		phase.progressBar.phases[phase.phaseId].GetTasksProgressBar().GetBar().IncrBy(int(chunnkSizeInBytes))
 	}
 	if timeEstMng != nil {
 		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())

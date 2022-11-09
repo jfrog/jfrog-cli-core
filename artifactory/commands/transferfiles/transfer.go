@@ -153,8 +153,8 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	// Set progress bar with the length of the source local and build info repositories
-	tdc.progressbar, err = NewTransferProgressMng(allSourceLocalRepos, &tdc.stateManager.TimeEstimationManager, tdc.ignoreState)
+	// Init and Set progress bar with the length of the source local and build info repositories
+	err = initTransferProgressMng(allSourceLocalRepos, tdc, 0)
 	if err != nil {
 		return err
 	}
@@ -176,15 +176,17 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 }
 
 func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBuildInfoRepos []string) error {
-	totalSizeBytes, _, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
-	if err != nil {
-		return err
-	}
 	_, totalBiFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(sourceBuildInfoRepos...)
 	if err != nil {
 		return err
 	}
-	tdc.stateManager.TotalRepositories.TotalSizeBytes = totalSizeBytes
+	totalSizeBytes, totalFiles, err := tdc.sourceStorageInfoManager.GetReposTotalSizeAndFiles(allSourceLocalRepos...)
+	if err != nil {
+		return err
+	}
+	//Init State Manager's fields values
+	tdc.stateManager.OverallTransfer.TotalSizeBytes = totalSizeBytes
+	tdc.stateManager.OverallTransfer.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
 	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
 	if !tdc.ignoreState {

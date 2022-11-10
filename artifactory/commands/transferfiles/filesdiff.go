@@ -195,26 +195,31 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toT
 		return
 	}
 	var result []servicesUtils.ResultItem
-	var manifestPaths []string
-	// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
-	for _, file := range manifestFilesResult.Results {
-		if file.Name == "manifest.json" {
-			manifestPaths = append(manifestPaths, file.Path)
-		} else if file.Name == "list.manifest.json" {
-			result = append(result, file)
-		} else {
-			err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
-			return
+	if len(manifestFilesResult.Results) > 0 {
+		var manifestPaths []string
+		// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
+		for _, file := range manifestFilesResult.Results {
+			if file.Name == "manifest.json" {
+				manifestPaths = append(manifestPaths, file.Path)
+			} else if file.Name == "list.manifest.json" {
+				result = append(result, file)
+			} else {
+				err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
+				return
+			}
+		}
+		if manifestPaths != nil {
+			// Get all content of Artifactory folders containing a "manifest.json" file.
+			query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+			var pathsResult *servicesUtils.AqlSearchResult
+			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
+			if err != nil {
+				return
+			}
+			// Merge "list.manifest.json" files with all other files.
+			result = append(result, pathsResult.Results...)
 		}
 	}
-	// Get all content of Artifactory folders containing a "manifest.json" file.
-	query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
-	pathsResult, err := runAql(f.context, f.srcRtDetails, query)
-	if err != nil {
-		return
-	}
-	// Merge "list.manifest.json" files with all other files.
-	result = append(result, pathsResult.Results...)
 	aqlResult = &servicesUtils.AqlSearchResult{}
 	aqlResult.Results = result
 	return
@@ -237,14 +242,14 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 			query += ","
 		}
 	}
-	query += `]}).include("name","repo","path","actual_md5","actual_sha1","sha256","size","type","modified","created","property")`
+	query += `]}).include("name","repo","path","sha256","size","type","modified","created")`
 	return query
 }
 
 // This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
 func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := `items.find({"$and":`
-	query += fmt.Sprintf(`[{"$and":[{"repo":"%s"}]},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":{"$match":"manifest.json"}},{"name":{"$match":"list.manifest.json"}}]}`, repoKey, fromTimestamp, toTimestamp)
+	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}`, repoKey, fromTimestamp, toTimestamp)
 	query += `]}).include("repo","path","name","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query

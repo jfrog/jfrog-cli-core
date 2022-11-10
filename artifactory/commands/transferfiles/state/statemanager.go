@@ -79,6 +79,8 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 		}
 		repo.TotalSizeBytes = totalSizeBytes
 		repo.TotalUnits = totalFiles
+		repo.TransferredSizeBytes = 0
+		repo.TransferredUnits = 0
 		return nil
 	})
 	if err != nil {

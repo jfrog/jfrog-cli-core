@@ -2,7 +2,7 @@ package offlineupdate
 
 import (
 	"github.com/magiconair/properties/assert"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -101,7 +101,7 @@ func TestDBSyncV3createV3MetadataFile(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		fileContent, err := ioutil.ReadFile(filepath.Join(dir, test.expectedFilename))
+		fileContent, err := os.ReadFile(filepath.Join(dir, test.expectedFilename))
 		if err != nil {
 			t.Error(err)
 		}

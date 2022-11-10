@@ -3,7 +3,7 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
@@ -102,7 +102,7 @@ func getDependencyChecksumFromArtifactory(servicesManager artifactory.Artifactor
 			err = e
 		}
 	}()
-	result, err := ioutil.ReadAll(stream)
+	result, err := io.ReadAll(stream)
 	if err != nil {
 		return
 	}

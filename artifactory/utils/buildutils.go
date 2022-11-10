@@ -14,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -107,7 +106,7 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 		return err
 	}
 	log.Debug("Creating temp build file at:", dirPath)
-	tempFile, err := ioutil.TempFile(dirPath, "temp")
+	tempFile, err := os.CreateTemp(dirPath, "temp")
 	if err != nil {
 		return err
 	}
@@ -136,7 +135,7 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildIn
 		return err
 	}
 	log.Debug("Creating temp build file at: " + dirPath)
-	tempFile, err := ioutil.TempFile(dirPath, "temp")
+	tempFile, err := os.CreateTemp(dirPath, "temp")
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
@@ -177,7 +176,7 @@ func SaveBuildGeneralDetails(buildName, buildNumber, projectKey string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(detailsFilePath, content.Bytes(), 0600)
+	err = os.WriteFile(detailsFilePath, content.Bytes(), 0600)
 	return errorutils.CheckError(err)
 }
 

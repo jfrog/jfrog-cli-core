@@ -2,7 +2,7 @@ package nuget
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/jfrog/build-info-go/entities"
@@ -17,7 +17,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "nuget")
 	defer cleanUp()
-	dependenciesJson, err := ioutil.ReadFile("dependencies.json")
+	dependenciesJson, err := os.ReadFile("dependencies.json")
 	assert.NoError(t, err)
 
 	var dependencies *entities.BuildInfo
@@ -25,7 +25,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	assert.NoError(t, err)
 	xrayDependenciesTree := parseNugetDependencyTree(dependencies)
 
-	expectedTreeJson, err := ioutil.ReadFile("expectedTree.json")
+	expectedTreeJson, err := os.ReadFile("expectedTree.json")
 	assert.NoError(t, err)
 
 	var expectedTrees *[]services.GraphNode

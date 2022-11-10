@@ -222,16 +222,13 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 	// Get credentials from access-token if exists.
 	if details.GetAccessToken() != "" {
 		log.Debug("Using proxy with access-token.")
-		username, err = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
-		if err != nil {
-			return "", err
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
 		}
 		password = details.GetAccessToken()
 	}
 
-	if username != "" && password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
+	rtUrl.User = url.UserPassword(username, password)
 	rtUrl.Path += "api/go/" + repoName
 	return rtUrl.String(), nil
 }

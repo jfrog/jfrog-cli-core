@@ -159,18 +159,15 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
 
 	// Get credentials from access-token if exists.
 	if pc.serverDetails.GetAccessToken() != "" {
-		username, err = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		if err != nil {
-			return err
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
 		}
 		password = pc.serverDetails.GetAccessToken()
 	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
-	if username != "" && password != "" {
-		err = pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
-		if err != nil {
-			return err
-		}
+	err = pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
+	if err != nil {
+		return err
 	}
 	return nil
 }

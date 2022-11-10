@@ -41,7 +41,7 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 }
 
 func ScanPasswordFromConsole(message string) (string, error) {
-	fmt.Print(coreutils.PrintLink(message))
+	fmt.Print(message)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -52,11 +52,11 @@ func ScanPasswordFromConsole(message string) (string, error) {
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
-	caption = coreutils.PrintLink(caption)
 	if defaultValue != "" {
-		caption = caption + " [" + defaultValue + "]"
+		fmt.Print(caption + " [" + defaultValue + "]: ")
+	} else {
+		fmt.Print(caption + ": ")
 	}
-	fmt.Print(caption + ": ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	*scanInto = scanner.Text()

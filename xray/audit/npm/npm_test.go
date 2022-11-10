@@ -2,7 +2,7 @@ package npm
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	biutils "github.com/jfrog/build-info-go/build/utils"
@@ -18,7 +18,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "npm")
 	defer cleanUp()
-	dependenciesJson, err := ioutil.ReadFile("dependencies.json")
+	dependenciesJson, err := os.ReadFile("dependencies.json")
 	assert.NoError(t, err)
 
 	var dependencies []buildinfo.Dependency

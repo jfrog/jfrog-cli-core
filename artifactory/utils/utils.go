@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,7 +15,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
-	"github.com/jfrog/jfrog-client-go/utils/io"
+	clientio "github.com/jfrog/jfrog-client-go/utils/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -124,7 +124,7 @@ func CreateServiceManagerWithContext(context context.Context, serverDetails *con
 	return artifactory.New(serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool, progressBar io.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool, progressBar clientio.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 			err = localErr
 		}
 	}()
-	content, err := ioutil.ReadAll(ioReaderCloser)
+	content, err := io.ReadAll(ioReaderCloser)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

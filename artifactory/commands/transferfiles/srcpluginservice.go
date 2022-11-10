@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"net/http"
 
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -43,60 +44,60 @@ func (sup *srcUserPluginService) IsDryRun() bool {
 	return false
 }
 
-func (sup *srcUserPluginService) syncChunks(ucStatus UploadChunksStatusBody) (UploadChunksStatusResponse, error) {
+func (sup *srcUserPluginService) syncChunks(ucStatus api.UploadChunksStatusBody) (api.UploadChunksStatusResponse, error) {
 	content, err := json.Marshal(ucStatus)
 	if err != nil {
-		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
+		return api.UploadChunksStatusResponse{}, errorutils.CheckError(err)
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
-		return UploadChunksStatusResponse{}, err
+		return api.UploadChunksStatusResponse{}, err
 	}
 
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
-		return UploadChunksStatusResponse{}, err
+		return api.UploadChunksStatusResponse{}, err
 	}
 
-	var statusResponse UploadChunksStatusResponse
+	var statusResponse api.UploadChunksStatusResponse
 	err = json.Unmarshal(body, &statusResponse)
 	if err != nil {
-		return UploadChunksStatusResponse{}, errorutils.CheckError(err)
+		return api.UploadChunksStatusResponse{}, errorutils.CheckError(err)
 	}
 	return statusResponse, nil
 }
 
 // Uploads a chunk of files.
 // If no error occurred, returns an uuid token to get chunk status with.
-func (sup *srcUserPluginService) uploadChunk(chunk UploadChunk) (uploadChunkResponse UploadChunkResponse, err error) {
+func (sup *srcUserPluginService) uploadChunk(chunk api.UploadChunk) (uploadChunkResponse api.UploadChunkResponse, err error) {
 	content, err := json.Marshal(chunk)
 	if err != nil {
-		return UploadChunkResponse{}, errorutils.CheckError(err)
+		return api.UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+uploadChunk, content, &httpDetails)
 	if err != nil {
-		return UploadChunkResponse{}, err
+		return api.UploadChunkResponse{}, err
 	}
 
 	if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusAccepted); err != nil {
-		return UploadChunkResponse{}, err
+		return api.UploadChunkResponse{}, err
 	}
 
-	var uploadResponse UploadChunkResponse
+	var uploadResponse api.UploadChunkResponse
 	err = json.Unmarshal(body, &uploadResponse)
 	if err != nil {
-		return UploadChunkResponse{}, errorutils.CheckError(err)
+		return api.UploadChunkResponse{}, errorutils.CheckError(err)
 	}
 	if uploadResponse.UuidToken == "" {
-		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
+		return api.UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty token returned for chunk upload")
 	}
 	if uploadResponse.NodeId == "" {
-		return UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty node id returned for chunk upload")
+		return api.UploadChunkResponse{}, errorutils.CheckErrorf("unexpected empty node id returned for chunk upload")
 	}
 	return uploadResponse, nil
 }
@@ -129,7 +130,7 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 	return &result, nil
 }
 
-func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth TargetAuth) error {
+func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth api.TargetAuth) error {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 	content, err := json.Marshal(targetAuth)
@@ -155,7 +156,7 @@ func (sup *srcUserPluginService) stop() (nodeId string, err error) {
 		return "", err
 	}
 
-	var result NodeIdResponse
+	var result api.NodeIdResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return "", errorutils.CheckError(err)

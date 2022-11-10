@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -98,7 +97,7 @@ func setupPluginsTestingEnv(t *testing.T, pluginsDirName string) string {
 
 // Set JFROG_CLI_HOME_DIR environment variable to be a new temp directory
 func createTempEnvForPluginsTests(t *testing.T) (cleanUp func()) {
-	tmpDir, err := ioutil.TempDir("", "plugins_test")
+	tmpDir, err := os.MkdirTemp("", "plugins_test")
 	assert.NoError(t, err)
 	oldHome := os.Getenv(coreutils.HomeDir)
 	testsutils.SetEnvAndAssert(t, coreutils.HomeDir, tmpDir)

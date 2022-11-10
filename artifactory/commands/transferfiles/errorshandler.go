@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
@@ -36,7 +38,10 @@ type TransferErrorsMng struct {
 	phaseId        int
 	phaseStartTime string
 	errorWriterMng errorWriterMng
-	progressBar    *TransferProgressMng
+	// Update state when changes occur
+	stateManager *state.TransferStateManager
+	// Update progressBar when changes occur
+	progressBar *TransferProgressMng
 }
 
 type errorWriter struct {
@@ -57,12 +62,12 @@ type errorWriterMng struct {
 // repoKey - the repo that is being transferred
 // phase - the phase number
 // errorsChannelMng - all go routines will write to the same channel
-func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng, progressBar *TransferProgressMng) (*TransferErrorsMng, error) {
+func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng, progressBar *TransferProgressMng, stateManager *state.TransferStateManager) (*TransferErrorsMng, error) {
 	err := initTransferErrorsDir()
 	if err != nil {
 		return nil, err
 	}
-	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime, progressBar: progressBar}
+	mng := TransferErrorsMng{errorsChannelMng: errorsChannelMng, repoKey: repoKey, phaseId: phaseId, phaseStartTime: phaseStartTime, progressBar: progressBar, stateManager: stateManager}
 	return &mng, nil
 }
 
@@ -181,7 +186,7 @@ func getErrorsFileName(repoKey string, phaseId int, phaseStartTime string, index
 func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
 	var err error
 	switch e.Status {
-	case SkippedLargeProps:
+	case api.SkippedLargeProps:
 		err = mng.writeSkippedErrorContent(e)
 	default:
 		err = mng.writeRetryableErrorContent(e)
@@ -189,6 +194,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusRespon
 			// Increment the failures counter view by 1, following the addition
 			// of the file to errors file.
 			mng.progressBar.changeNumberOfFailuresBy(1)
+			err = mng.stateManager.ChangeTransferFailureCountBy(1, true)
 		}
 	}
 	return err
@@ -366,12 +372,16 @@ type ErrorsChannelMng struct {
 	err     error
 }
 
+type FilesErrors struct {
+	Errors []ExtendedFileUploadStatusResponse `json:"errors,omitempty"`
+}
+
 type ExtendedFileUploadStatusResponse struct {
-	FileUploadStatusResponse
+	api.FileUploadStatusResponse
 	Time string `json:"time,omitempty"`
 }
 
-func (mng ErrorsChannelMng) add(element FileUploadStatusResponse) (stopped bool) {
+func (mng ErrorsChannelMng) add(element api.FileUploadStatusResponse) (stopped bool) {
 	if mng.shouldStop() {
 		return true
 	}

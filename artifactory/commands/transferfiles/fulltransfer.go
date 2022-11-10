@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"path"
 	"time"
 
@@ -24,12 +25,11 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	tasks, err := m.repoSummary.FilesCount.Int64()
+	storage, err := m.repoSummary.UsedSpaceInBytes.Int64()
 	if err != nil {
 		return err
 	}
-	m.progressBar.AddPhase1(tasks)
-	return nil
+	return m.progressBar.AddPhase1(storage)
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -61,21 +61,22 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 		return false, err
 	}
 	if repoTransferred {
-		m.skipPhase()
+		return repoTransferred, m.skipPhase()
 	}
 	return repoTransferred, nil
 }
 
-func (m *fullTransferPhase) skipPhase() {
+func (m *fullTransferPhase) skipPhase() error {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		m.progressBar.AddPhase1(0)
+		return m.progressBar.AddPhase1(0)
 	}
+	return nil
 }
 
 func (m *fullTransferPhase) run() error {
 	m.transferManager = newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
 		}
@@ -83,7 +84,8 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{repoKey: m.repoKey, relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	return m.transferManager.doTransferWithProducerConsumer(action)
+	delayAction := consumeDelayFilesIfNoErrors
+	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -93,7 +95,7 @@ type folderParams struct {
 	relativePath string
 }
 
-func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper producerConsumerWrapper, uploadChunkChan chan UploadedChunkData,
+func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper producerConsumerWrapper, uploadChunkChan chan UploadedChunk,
 	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
@@ -104,10 +106,10 @@ func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper produc
 }
 
 func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
-	uploadChunkChan chan UploadedChunkData, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
+	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Visited folder:", path.Join(params.repoKey, params.relativePath))
 
-	curUploadChunk := UploadChunk{
+	curUploadChunk := api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 	}
@@ -125,7 +127,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 		// Empty folder. Add it as candidate.
 		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.appendUploadCandidateIfNeeded(FileRepresentation{Repo: params.repoKey, Path: params.relativePath}, m.buildInfoRepo)
+			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: params.repoKey, Path: params.relativePath}, m.buildInfoRepo)
 			break
 		}
 
@@ -148,7 +150,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 					return err
 				}
 			case "file":
-				file := FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 				if stopped {
 					return
@@ -156,14 +158,14 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 				if delayed {
 					continue
 				}
-				curUploadChunk.appendUploadCandidateIfNeeded(file, m.buildInfoRepo)
+				curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
 				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
 					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 					if err != nil {
 						return
 					}
 					// Empty the uploaded chunk.
-					curUploadChunk.UploadCandidates = []FileRepresentation{}
+					curUploadChunk.UploadCandidates = []api.FileRepresentation{}
 				}
 			}
 		}

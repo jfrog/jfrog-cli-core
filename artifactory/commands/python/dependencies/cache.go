@@ -5,7 +5,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -37,7 +37,7 @@ func GetProjectDependenciesCache(cacheDir string) (cache *DependenciesCache, err
 			err = e
 		}
 	}()
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}

@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -138,7 +138,7 @@ func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientuti
 		return nil, errorutils.CheckError(err)
 	}
 	// Read and convert json file to a modules map
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

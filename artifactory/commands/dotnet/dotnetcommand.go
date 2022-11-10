@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -245,7 +244,7 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 // The fact that we here, means that neither of the flags were provided, and we need to init our own config.
 func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
-	configFile, err = ioutil.TempFile(configDirPath, configFilePattern)
+	configFile, err = os.CreateTemp(configDirPath, configFilePattern)
 	if errorutils.CheckError(err) != nil {
 		return
 	}

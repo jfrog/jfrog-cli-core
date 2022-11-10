@@ -3,7 +3,7 @@ package permissiontarget
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sort"
 	"strings"
 
@@ -80,7 +80,7 @@ func (pttc *PermissionTargetTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(pttc.path, resBytes, 0644); err != nil {
+	if err = os.WriteFile(pttc.path, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Permission target configuration template successfully created at %s.", pttc.path))
@@ -100,9 +100,9 @@ var optionalSuggestsMap = []prompt.Suggest{
 }
 
 // Each permission target section (repo/build/releaseBundle) can have the following keys:
-//	* repos - Mandatory for repo and releaseBundle. Has a const default value for build.
-//	* include/exclude-patterns - Optional, has a default value.
-//	* actions - Optional,includes two maps (users and groups): user/group name -> permissions array.
+//   - repos - Mandatory for repo and releaseBundle. Has a const default value for build.
+//   - include/exclude-patterns - Optional, has a default value.
+//   - actions - Optional,includes two maps (users and groups): user/group name -> permissions array.
 func permissionSectionCallBack(iq *utils.InteractiveQuestionnaire, section string) (value string, err error) {
 	if section == utils.SaveAndExit {
 		return

@@ -3,8 +3,9 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"math"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -18,8 +19,8 @@ import (
 )
 
 var (
-	testRetryableStatus = Fail
-	testSkippedStatus   = SkippedLargeProps
+	testRetryableStatus = api.Fail
+	testSkippedStatus   = api.SkippedLargeProps
 	testRepoKey         = "repo"
 )
 
@@ -34,7 +35,7 @@ func TestTransferErrorsMng(t *testing.T) {
 	maxErrorsInFile = 20
 	defer func() { maxErrorsInFile = originalMaxErrorsInFile }()
 	errorsChannelMng := createErrorsChannelMng()
-	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil)
+	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil, nil)
 	assert.NoError(t, err)
 
 	var writeWaitGroup sync.WaitGroup
@@ -51,10 +52,10 @@ func TestTransferErrorsMng(t *testing.T) {
 
 	// Add 'retryable errors' to the common errors channel.
 	// These errors will be written into files located in the "retryable" directory under the Jfrog CLI home directory.
-	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, Fail)
+	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, api.Fail)
 	// Add 'skipped errors' to the common errors channel.
 	// These errors will be written into files located in the "skipped" directory under the Jfrog CLI home directory.
-	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, SkippedLargeProps)
+	addErrorsToChannel(&writeWaitGroup, errorsNumber, errorsChannelMng, api.SkippedLargeProps)
 
 	writeWaitGroup.Wait()
 	errorsChannelMng.close()
@@ -69,12 +70,12 @@ func TestTransferErrorsMng(t *testing.T) {
 	assert.Equal(t, errorsNumber, retryEntityCount)
 }
 
-func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status ChunkFileStatusType) {
+func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status api.ChunkFileStatusType) {
 	writeWaitGroup.Add(1)
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < errorsNumber; i++ {
-			errorsChannelMng.add(FileUploadStatusResponse{FileRepresentation: FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: status, StatusCode: 404, Reason: "reason"})
+			errorsChannelMng.add(api.FileUploadStatusResponse{FileRepresentation: api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}, Status: status, StatusCode: 404, Reason: "reason"})
 		}
 	}()
 }
@@ -92,7 +93,7 @@ func validateErrorsFiles(t *testing.T, filesNum, errorsNum int, isRetryable bool
 	assert.Equal(t, errorsNum, entitiesNum)
 }
 
-func getStatusType(isRetryable bool) ChunkFileStatusType {
+func getStatusType(isRetryable bool) api.ChunkFileStatusType {
 	if isRetryable {
 		return testRetryableStatus
 	}
@@ -100,7 +101,7 @@ func getStatusType(isRetryable bool) ChunkFileStatusType {
 }
 
 // Check the number of errors, their status and their uniqueness by reading the file's content.
-func validateErrorsFileContent(t *testing.T, path string, status ChunkFileStatusType) (entitiesNum int) {
+func validateErrorsFileContent(t *testing.T, path string, status api.ChunkFileStatusType) (entitiesNum int) {
 	exists, err := fileutils.IsFileExists(path, false)
 	assert.NoError(t, err)
 	assert.True(t, exists, fmt.Sprintf("file: %s does not exist", path))
@@ -164,5 +165,5 @@ func TestGetErrorsFiles(t *testing.T) {
 
 func writeEmptyErrorsFile(t *testing.T, path, repoKey string, phase, counter int) {
 	fileName := getErrorsFileName(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now()), counter)
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(path, fileName), nil, 0644))
+	assert.NoError(t, os.WriteFile(filepath.Join(path, fileName), nil, 0644))
 }

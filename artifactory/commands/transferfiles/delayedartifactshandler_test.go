@@ -1,15 +1,22 @@
 package transferfiles
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"math"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
+
+var delayTestRepoKey = "delay-local-repo"
 
 func TestDelayedArtifactsMng(t *testing.T) {
 	// Set testing environment
@@ -17,14 +24,18 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
+	delaysDirPath, err := coreutils.GetJfrogTransferDelaysDir()
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(delaysDirPath))
+
 	artifactsNumber := 50
 	// We reduce the maximum number of entities per file to test the creation of multiple delayed artifacts files.
 	originalMaxArtifactsInFile := maxDelayedArtifactsInFile
 	maxDelayedArtifactsInFile = 20
 	defer func() { maxDelayedArtifactsInFile = originalMaxArtifactsInFile }()
 	artifactsChannelMng := createdDelayedArtifactsChannelMng()
-	transferDelayedArtifactsToFile := newTransferDelayedArtifactsToFile(&artifactsChannelMng)
-
+	transferDelayedArtifactsToFile, err := newTransferDelayedArtifactsManager(&artifactsChannelMng, testRepoKey, state.ConvertTimeToEpochMilliseconds(time.Now()))
+	assert.NoError(t, err)
 	var writeWaitGroup sync.WaitGroup
 	var readWaitGroup sync.WaitGroup
 
@@ -42,7 +53,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < artifactsNumber; i++ {
-			artifactsChannelMng.channel <- FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}
+			artifactsChannelMng.channel <- api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}
 		}
 	}()
 
@@ -50,8 +61,35 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	artifactsChannelMng.close()
 	readWaitGroup.Wait()
 	assert.NoError(t, delayedArtifactsErr)
+
+	// add not relevant files to confuse
+	writeEmptyConfuseFiles(t, delaysDirPath)
+
+	delayFiles, err := getDelayFiles([]string{testRepoKey})
+	assert.NoError(t, err)
+
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
-	validateDelayedArtifactsFiles(t, transferDelayedArtifactsToFile.filesToConsume, expectedNumberOfFiles, artifactsNumber)
+	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
+
+	delayCount, err := countDelayFilesContent(delayFiles)
+	assert.NoError(t, err)
+	assert.Equal(t, delayCount, artifactsNumber)
+}
+
+func writeEmptyConfuseFiles(t *testing.T, delaysDirPath string) {
+	for i := 0; i < 4; i++ {
+		writeEmptyFile(t, delaysDirPath, delayTestRepoKey, i)
+	}
+	writeEmptyFile(t, delaysDirPath, "wrong-"+testRepoKey, 1)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-wrong", 1)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-0-0", 0)
+	writeEmptyFile(t, delaysDirPath, testRepoKey+"-1", 22)
+	writeEmptyFile(t, delaysDirPath, "wrong-"+testRepoKey+"-wrong", 0)
+}
+
+func writeEmptyFile(t *testing.T, delaysDirPath string, repoName string, index int) {
+	fullName := fmt.Sprintf("%s-%d.json", getDelaysFilePrefix(repoName, state.ConvertTimeToEpochMilliseconds(time.Now())), index)
+	assert.NoError(t, os.WriteFile(filepath.Join(delaysDirPath, fullName), nil, 0644))
 }
 
 // Ensure that all 'delayed artifacts files' have been created and that they contain the expected content
@@ -70,12 +108,8 @@ func validateDelayedArtifactsFilesContent(t *testing.T, path string) (entitiesNu
 	assert.NoError(t, err)
 	assert.True(t, exists, fmt.Sprintf("file: %s does not exist", path))
 
-	var content []byte
-	content, err = fileutils.ReadFile(path)
+	delayedArtifacts, err := readDelayFile(path)
 	assert.NoError(t, err)
-
-	delayedArtifacts := new(DelayedArtifactsFile)
-	assert.NoError(t, json.Unmarshal(content, &delayedArtifacts))
 
 	// Verify all artifacts were written with their unique name
 	artifactsNamesMap := make(map[string]bool)

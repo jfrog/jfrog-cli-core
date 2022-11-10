@@ -15,7 +15,6 @@ type TransferJobType string
 const (
 	Repositories            TransferJobType = "Repositories"
 	Files                   TransferJobType = "Files"
-	TimeSlots               TransferJobType = "Time Slots"
 	Note                    string          = "Note: "
 	RetryFailureContentNote string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )

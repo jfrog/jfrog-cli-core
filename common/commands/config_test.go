@@ -49,7 +49,14 @@ func TestArtifactorySshKey(t *testing.T) {
 
 func TestAccessToken(t *testing.T) {
 	inputDetails := tests.CreateTestServerDetails()
-	inputDetails.AccessToken = "accessToken"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
+}
+
+func TestAccessTokenWithUsername(t *testing.T) {
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "ADMIN"
 
 	configAndTest(t, inputDetails, false)
 	configAndTest(t, inputDetails, true)

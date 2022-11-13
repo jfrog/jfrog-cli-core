@@ -165,9 +165,8 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
 		password = pc.serverDetails.GetAccessToken()
 	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
-	err = pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
-	if err != nil {
-		return err
+	if password != "" {
+		return pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
 	}
 	return nil
 }

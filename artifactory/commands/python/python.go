@@ -118,7 +118,9 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 		}
 		password = pc.serverDetails.GetAccessToken()
 	}
-	rtUrl.User = url.UserPassword(username, password)
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
 
 	if pc.pythonTool == pythonutils.Pip {

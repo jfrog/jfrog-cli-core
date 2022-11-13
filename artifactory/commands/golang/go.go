@@ -227,8 +227,9 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 		}
 		password = details.GetAccessToken()
 	}
-
-	rtUrl.User = url.UserPassword(username, password)
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
 	rtUrl.Path += "api/go/" + repoName
 	return rtUrl.String(), nil
 }
@@ -321,9 +322,9 @@ type PackageVersionResponseContent struct {
 // In some cases when the path isn't represented by the package name, instead the name represents a specific project's directory's path.
 // In this case we will scan the path until we find the package directory.
 // Example : When running 'go get github.com/golang/mock/mockgen@v1.4.1'
-//			* "mockgen" is a directory inside "mock" package ("mockgen" doesn't contain "go.mod").
-//			* go download and save the whole "mock" package in local cache under 'github.com/golang/mock@v1.4.1' -- >
-//			  "go get" downloads and saves the whole "mock" package in the local cache under 'github.com/golang/mock@v1.4.1'
+//   - "mockgen" is a directory inside "mock" package ("mockgen" doesn't contain "go.mod").
+//   - go download and save the whole "mock" package in local cache under 'github.com/golang/mock@v1.4.1' -- >
+//     "go get" downloads and saves the whole "mock" package in the local cache under 'github.com/golang/mock@v1.4.1'
 func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
 	separator := string(filepath.Separator)
 	// For Windows OS

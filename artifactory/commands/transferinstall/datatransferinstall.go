@@ -11,7 +11,7 @@ const (
 	libDir          = "lib"
 )
 
-type InstallTransferCommand struct {
+type InstallDataTransferPluginCommand struct {
 	InstallPluginCommand
 }
 
@@ -25,12 +25,12 @@ func NewDataTransferInstallFileManager() *PluginInstallManager {
 	return manager
 }
 
-func (tic *InstallTransferCommand) CommandName() string {
+func (tic *InstallDataTransferPluginCommand) CommandName() string {
 	return "rt_transfer_install"
 }
 
-func NewInstallTransferCommand(server *config.ServerDetails) *InstallTransferCommand {
-	cmd := &InstallTransferCommand{*NewInstallPluginCommand(server, "Data-Transfer", NewDataTransferInstallFileManager())}
+func NewInstallDataTransferCommand(server *config.ServerDetails) *InstallDataTransferPluginCommand {
+	cmd := &InstallDataTransferPluginCommand{*NewInstallPluginCommand(server, "data-transfer", NewDataTransferInstallFileManager())}
 	cmd.SetBaseDownloadUrl(dataTransferUrl)
 	return cmd
 }

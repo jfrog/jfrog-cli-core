@@ -171,7 +171,7 @@ func (cc *ConfigCommand) config() error {
 			}
 		}
 
-		// Some build tools support basic authentication only.
+		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
 			// Try extracting username from Access Token (non-possible on reference token)
@@ -340,6 +340,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 
 			case MTLS:
 				checkCertificateForMTLS(cc)
+				log.Warn("Please notice that authentication using client certificates (mTLS) is not supported by commands which integrate with package managers.")
 			}
 		}
 

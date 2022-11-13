@@ -155,7 +155,7 @@ func (cc *ConfigCommand) config() error {
 			return err
 		}
 	} else {
-		// non-interactive config
+		// Non-interactive config
 
 		if cc.details.Url != "" {
 			if fileutils.IsSshUrl(cc.details.Url) {
@@ -171,9 +171,8 @@ func (cc *ConfigCommand) config() error {
 			}
 		}
 
-		// Some build tools support basic authentication only,
-		// to support them we try to extract the username from the access token,
-		// or request the username interactively
+		// Some build tools support basic authentication only.
+		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)

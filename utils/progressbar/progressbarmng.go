@@ -204,7 +204,9 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
-			decor.Name(headline),
+			decor.Name(headline), decor.Any(func(statistics decor.Statistics) string {
+				return updateFn()
+			}),
 		),
 	)
 	return pb

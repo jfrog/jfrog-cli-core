@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -279,7 +279,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 	disallowUsingSavedPassword := false
 
 	if cc.details.Url == "" {
-		ioutils.ScanFromConsole("JFrog platform URL", &cc.details.Url, cc.defaultDetails.Url)
+		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
 	if fileutils.IsSshUrl(cc.details.Url) {
@@ -416,7 +416,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 
 	messageSuffix := ": "
 	if exists {
-		sshKeyBytes, err := ioutil.ReadFile(details.SshKeyPath)
+		sshKeyBytes, err := os.ReadFile(details.SshKeyPath)
 		if err != nil {
 			return nil
 		}
@@ -510,7 +510,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 	for _, details := range configuration {
 		isDefault := details.IsDefault
 		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false, isDefault)
-		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.Url, "JFrog Platform URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false, isDefault)

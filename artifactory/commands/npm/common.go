@@ -2,7 +2,6 @@ package npm
 
 import (
 	"bufio"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -114,7 +113,7 @@ func (com *CommonArgs) createTempNpmrc() error {
 		return err
 	}
 
-	return errorutils.CheckError(ioutil.WriteFile(filepath.Join(com.workingDirectory, npmrcFileName), configData, 0600))
+	return errorutils.CheckError(os.WriteFile(filepath.Join(com.workingDirectory, npmrcFileName), configData, 0600))
 }
 
 // This func transforms "npm config list" result to key=val list of values that can be set to .npmrc file.

@@ -290,7 +290,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	disallowUsingSavedPassword := false
 
 	if cc.details.Url == "" {
-		ioutils.ScanFromConsole("JFrog platform URL", &cc.details.Url, cc.defaultDetails.Url)
+		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
 	if fileutils.IsSshUrl(cc.details.Url) {
@@ -529,7 +529,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 	for _, details := range configuration {
 		isDefault := details.IsDefault
 		logIfNotEmpty(details.ServerId, "Server ID:\t\t\t", false, isDefault)
-		logIfNotEmpty(details.Url, "JFrog platform URL:\t\t", false, isDefault)
+		logIfNotEmpty(details.Url, "JFrog Platform URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.ArtifactoryUrl, "Artifactory URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.DistributionUrl, "Distribution URL:\t\t", false, isDefault)
 		logIfNotEmpty(details.XrayUrl, "Xray URL:\t\t\t", false, isDefault)

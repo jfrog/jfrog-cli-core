@@ -55,6 +55,15 @@ func TestAccessToken(t *testing.T) {
 	configAndTest(t, inputDetails, true)
 }
 
+func TestAccessTokenWithUsername(t *testing.T) {
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.AccessToken = "accessToken"
+	inputDetails.User = "ADMIN"
+
+	configAndTest(t, inputDetails, false)
+	configAndTest(t, inputDetails, true)
+}
+
 func TestMTLS(t *testing.T) {
 	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.ClientCertPath = "test/cert/path"

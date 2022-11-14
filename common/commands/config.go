@@ -35,9 +35,9 @@ const (
 type AuthenticationMethod string
 
 const (
-	AccessToken     AuthenticationMethod = "Access Token"
-	UsernameAndPass AuthenticationMethod = "Username and Password / API Key"
-	MTLS            AuthenticationMethod = "Mutual TLS"
+	AccessToken AuthenticationMethod = "Access Token"
+	BasicAuth   AuthenticationMethod = "Username and Password / API Key"
+	MTLS        AuthenticationMethod = "Mutual TLS"
 )
 
 // Internal golang locking for the same process.
@@ -154,17 +154,28 @@ func (cc *ConfigCommand) config() error {
 		if err != nil {
 			return err
 		}
-	} else if cc.details.Url != "" {
-		if fileutils.IsSshUrl(cc.details.Url) {
-			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
-		} else {
-			cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-			// Derive JFrog services URLs from platform URL
-			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
-			coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
-			coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
-			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+	} else {
+		// Non-interactive config
+
+		if cc.details.Url != "" {
+			if fileutils.IsSshUrl(cc.details.Url) {
+				coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+			} else {
+				cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
+				// Derive JFrog services URLs from platform URL
+				coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
+				coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
+				coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
+				coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
+				coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+			}
+		}
+
+		// Some package managers support basic authentication only.
+		// To support them we try to extract the username from the access token
+		if cc.details.AccessToken != "" && cc.details.User == "" {
+			// Try extracting username from Access Token (non-possible on reference token)
+			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -275,7 +286,7 @@ func (cc *ConfigCommand) resolveServerId() string {
 	return config.DefaultServerId
 }
 
-func (cc *ConfigCommand) getConfigurationFromUser() error {
+func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	disallowUsingSavedPassword := false
 
 	if cc.details.Url == "" {
@@ -294,40 +305,49 @@ func (cc *ConfigCommand) getConfigurationFromUser() error {
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
-		if err := getSshKeyPath(cc.details); err != nil {
-			return err
+		if err = getSshKeyPath(cc.details); err != nil {
+			return
 		}
 	} else if !cc.disablePrompts {
-		if err := cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-			return err
+		if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+			return
 		}
 		// Password/Access-Token/MTLS Certificate
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
 			var authMethod AuthenticationMethod
-			var err error
-			if !cc.disablePrompts {
-				authMethod, err = promptAuthMethods()
-				if err != nil {
-					return err
-				}
+			authMethod, err = promptAuthMethods()
+			if err != nil {
+				return
 			}
 			switch authMethod {
-			case UsernameAndPass:
+			case BasicAuth:
 				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+				if err != nil {
+					return
+				}
 			case AccessToken:
 				err = readAccessTokenFromConsole(cc.details)
+				if err != nil {
+					return
+				}
+				if cc.details.User == "" {
+					// Try extracting username from Access Token (non-possible on reference token)
+					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
+					if cc.details.User == "" {
+						ioutils.ScanFromConsole("JFrog username (optional)", &cc.details.User, "")
+					}
+				}
+
 			case MTLS:
 				checkCertificateForMTLS(cc)
-			}
-			if err != nil {
-				return err
+				log.Warn("Please notice that authentication using client certificates (mTLS) is not supported by commands which integrate with package managers.")
 			}
 		}
 
 		checkClientCertForReverseProxy(cc)
 	}
 
-	return nil
+	return
 }
 
 func checkCertificateForMTLS(cc *ConfigCommand) {
@@ -340,7 +360,7 @@ func checkCertificateForMTLS(cc *ConfigCommand) {
 func promptAuthMethods() (method AuthenticationMethod, err error) {
 	var selected string
 	authMethod := []AuthenticationMethod{
-		UsernameAndPass,
+		BasicAuth,
 		AccessToken,
 		MTLS,
 	}

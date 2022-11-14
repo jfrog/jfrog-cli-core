@@ -43,14 +43,12 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 			log.Debug("Using resolver config from", configFilePath)
 		}
 	}
-	// check if gradle wrapper exist
+	// Check whether gradle wrapper exists
 	if useWrapper {
-		var wrapperExist bool
-		wrapperExist, err = isGradleWrapperExist()
+		useWrapper, err = isGradleWrapperExist()
 		if err != nil {
 			return
 		}
-		useWrapper = wrapperExist
 	}
 	// Read config
 	vConfig, err := utils.ReadGradleConfig(configFilePath, useWrapper)
@@ -61,7 +59,7 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.
-// Adapting this function is needed if the audit command supports Gradle's --project-dir option.
+// The --project-dir option of Gradle won't work in this case.
 func isGradleWrapperExist() (bool, error) {
 	wrapperName := gradlew
 	if coreutils.IsWindows() {

@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/prechecks"
 	"os"
 	"os/signal"
 	"strings"
@@ -50,6 +51,7 @@ type TransferFilesCommand struct {
 	proxyKey                  string
 	status                    bool
 	stateManager              *state.TransferStateManager
+	preChecks                 bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -96,9 +98,16 @@ func (tdc *TransferFilesCommand) SetStatus(status bool) {
 	tdc.status = status
 }
 
+func (tdc *TransferFilesCommand) SetPreChecks(check bool) {
+	tdc.preChecks = check
+}
+
 func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()
+	}
+	if tdc.preChecks {
+		return prechecks.NewTransferDataPreChecksRunner().Run(tdc.context, tdc.sourceServerDetails, tdc.includeReposPatterns, tdc.excludeReposPatterns)
 	}
 	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err

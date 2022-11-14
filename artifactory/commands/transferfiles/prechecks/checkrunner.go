@@ -207,12 +207,12 @@ func (pcr *PreCheckRunner) cleanup(runError error) (err error) {
 	}
 	// Notify on final status of the run
 	if pcr.status.failures == 0 && len(pcr.checks) == int(pcr.status.successes+pcr.status.failures) && err == nil {
-		log.Info(coreutils.PrintTitle(fmt.Sprintf("All the checks passed 🐸 (elapsed time %s).", time.Now().Sub(pcr.status.startTime))))
+		log.Info(coreutils.PrintTitle(fmt.Sprintf("All the checks passed 🐸 (elapsed time %s).", time.Since(pcr.status.startTime))))
 	} else {
 		log.Error(coreutils.PrintTitle(fmt.Sprintf("%d/%d checks passed (elapsed time %s), check the log for more information.",
 			pcr.status.successes,
 			pcr.status.successes+pcr.status.failures,
-			time.Now().Sub(pcr.status.startTime),
+			time.Since(pcr.status.startTime),
 		)))
 	}
 

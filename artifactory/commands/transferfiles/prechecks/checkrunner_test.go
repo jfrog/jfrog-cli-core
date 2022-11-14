@@ -1,6 +1,7 @@
 package prechecks
 
 import (
+	"context"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -51,7 +52,7 @@ func TestRunChecks(t *testing.T) {
 }
 
 func runAndAssert(t *testing.T, expectedSuccess, expectedFail uint, shouldHaveErr error, runner *PreCheckRunner) {
-	err := runner.Run(nil, nil, []string{}, []string{})
+	err := runner.Run(context.TODO(), nil, []string{}, []string{})
 	if shouldHaveErr != nil {
 		assert.Errorf(t, err, shouldHaveErr.Error())
 	} else {

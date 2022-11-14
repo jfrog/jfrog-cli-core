@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
-	"github.com/vbauerster/mpb/v7"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -57,7 +56,7 @@ type PreCheckRunner struct {
 // Manage all the displayed progress of the run
 type RunnerProgressBar struct {
 	manager        *progressbar.ProgressBarMng
-	currentDisplay *mpb.Bar
+	currentDisplay *progressbar.TasksProgressBar
 }
 
 // RunStatus - The status of the preformed checks in a run
@@ -108,8 +107,8 @@ func (pcr *PreCheckRunner) initProgressBar(status *RunStatus) (runnerProgress *R
 	}
 	runnerProgress = &RunnerProgressBar{manager: mng}
 	// The current check that is running
-	runnerProgress.currentDisplay = mng.NewUpdatableHeadlineBarWithSpinner(func() string {
-		return "Running check: " + color.Green.Render(status.currentCheck)
+	runnerProgress.currentDisplay = mng.NewStringProgressBar("Running check: ", func() string {
+		return color.Green.Render(status.currentCheck)
 	})
 	return
 }
@@ -191,7 +190,7 @@ func (pcr *PreCheckRunner) cleanup(runError error) (err error) {
 	// Quit progress bar
 	if pcr.displayBar != nil {
 		// Quit text - current check
-		pcr.displayBar.currentDisplay.Abort(true)
+		pcr.displayBar.currentDisplay.GetBar().Abort(true)
 		pcr.displayBar.currentDisplay = nil
 		// Wait a refresh rate to make sure all aborts have finished
 		time.Sleep(progressbar.ProgressRefreshRate)

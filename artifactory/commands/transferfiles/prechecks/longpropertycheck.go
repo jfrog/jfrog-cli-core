@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gocarina/gocsv"
-	"github.com/gookit/color"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -54,7 +53,11 @@ type FileWithLongProperty struct {
 	Property
 }
 
-type LongPropertyCheck struct{}
+type LongPropertyCheck struct {
+	producerConsumer parallel.Runner
+	filesChan        chan FileWithLongProperty
+	errorsQueue      *clientutils.ErrorsQueue
+}
 
 func NewLongPropertyCheck() *LongPropertyCheck {
 	return &LongPropertyCheck{}
@@ -64,60 +67,83 @@ func (lpc *LongPropertyCheck) Name() string {
 }
 
 func (lpc *LongPropertyCheck) executeCheck(args RunArguments) (passed bool, err error) {
-	var longProperties []Property
+	// Init producer consumer
+	lpc.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
+	lpc.filesChan = make(chan FileWithLongProperty, threadCount)
+	lpc.errorsQueue = clientutils.NewErrorsQueue(1)
+	var waitCollection sync.WaitGroup
 	var filesWithLongProperty []FileWithLongProperty
-	// Get all the long property in the server
-	if longProperties, err = lpc.getLongProperties(args); err != nil {
+	// Handle progress display
+	var progress *progressbar.TasksProgressBar
+	if args.progressMng != nil {
+		progress = args.progressMng.NewTasksProgressBar(0, progressbar.GREEN, "long property")
+		defer progress.GetBar().Abort(true)
+	}
+	// Create consumer routine to collect the files from the search tasks
+	waitCollection.Add(1)
+	go func() {
+		for current := range lpc.filesChan {
+			filesWithLongProperty = append(filesWithLongProperty, current)
+		}
+		waitCollection.Done()
+	}()
+	// Create producer routine to create search tasks for long properties in the server
+	go func() {
+		defer lpc.producerConsumer.Done()
+		lpc.longPropertiesTaskProducer(progress, args)
+	}()
+	// Run
+	lpc.producerConsumer.Run()
+	close(lpc.filesChan)
+	waitCollection.Wait()
+	if err = lpc.errorsQueue.GetError(); err != nil {
 		return
 	}
-	log.Debug(fmt.Sprintf("Found %d properties with long value.", len(longProperties)))
-	if len(longProperties) > 0 {
-		// Search for files that contains them
-		if filesWithLongProperty, err = searchPropertiesInFiles(longProperties, args); err != nil {
-			return
-		}
-		if len(filesWithLongProperty) > 0 {
-			err = handleFailureRun(filesWithLongProperty)
-			return
-		}
+	// Result
+	if len(filesWithLongProperty) != 0 {
+		err = handleFailureRun(filesWithLongProperty)
+	} else {
+		passed = true
 	}
-	passed = true
 	return
 }
 
-// Fetch all the properties from the server (with pagination) and keep only the properties with long values
-func (lpc *LongPropertyCheck) getLongProperties(args RunArguments) (longProperties []Property, err error) {
+// Search for long properties in the server and create a search task to find the files that contains them
+// Returns the number of long properties found
+func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args RunArguments) int {
+	// Init
 	serviceManager, err := utils.CreateServiceManagerWithContext(args.context, args.serverDetails, false, 0, retries, retriesWaitMilliSecs)
 	if err != nil {
-		return
+		return 0
 	}
-	var query *AqlPropertySearchResult
-	// Create progress display
-	if args.progressMng != nil {
-		propertyCount := args.progressMng.NewUpdatableHeadlineBarWithSpinner(func() string {
-			return "Searching for long properties: " + color.Green.Render(len(longProperties))
-		})
-		defer propertyCount.Abort(true)
-	}
-	// Search
+	var propertyQuery *AqlPropertySearchResult
+	longPropertiesCount := 0
 	pageCounter := 0
+	// Search
 	for {
-		if query, err = runSearchPropertyAql(serviceManager, pageCounter); err != nil {
-			return
+		if propertyQuery, err = runSearchPropertyAql(serviceManager, pageCounter); err != nil {
+			return 0
 		}
-		log.Debug(fmt.Sprintf("Found %d properties in the batch (isLastBatch=%t)", len(query.Results), len(query.Results) < propertyAqlPaginationLimit))
-		for _, property := range query.Results {
+		log.Debug(fmt.Sprintf("Found %d properties in the batch (isLastBatch=%t)", len(propertyQuery.Results), len(propertyQuery.Results) < propertyAqlPaginationLimit))
+		for _, property := range propertyQuery.Results {
 			if long := isLongProperty(property); long {
-				longProperties = append(longProperties, property)
 				log.Debug(fmt.Sprintf(`Found long property '@%s':'%s')`, property.Key, property.Value))
+				if lpc.producerConsumer != nil {
+					_, _ = lpc.producerConsumer.AddTaskWithError(createSearchPropertyTask(property, args, lpc.filesChan, progress), lpc.errorsQueue.AddError)
+				}
+				if progress != nil {
+					progress.IncGeneralProgressTotalBy(1)
+				}
+				longPropertiesCount++
 			}
 		}
-		if len(query.Results) < propertyAqlPaginationLimit {
+		if len(propertyQuery.Results) < propertyAqlPaginationLimit {
 			break
 		}
 		pageCounter++
 	}
-	return
+
+	return longPropertiesCount
 }
 
 // Checks if the value of a property is not bigger than maxAllowedValLength
@@ -144,46 +170,9 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 	return query
 }
 
-// SearchPropertiesInFiles Gets all the files that contains the given properties and are in the requested args.repos.
-// Searching in multi threads one request for each property.
-func searchPropertiesInFiles(properties []Property, args RunArguments) (files []FileWithLongProperty, err error) {
-	// Initialize
-	producerConsumer := parallel.NewRunner(threadCount, maxThreadCapacity, false)
-	filesChan := make(chan FileWithLongProperty, threadCount)
-	errorsQueue := clientutils.NewErrorsQueue(1)
-	var progress *progressbar.TasksWithHeadlineProg
-	if args.progressMng != nil {
-		progress = args.progressMng.NewTasksWithHeadlineProg(int64(len(properties)), "Searching for files with the long property", false, progressbar.GREEN, "long property")
-		defer args.progressMng.QuitTasksWithHeadlineProg(progress)
-	}
-
-	// Create routine to collect the files from the search tasks
-	var waitCollection sync.WaitGroup
-	waitCollection.Add(1)
-	go func() {
-		for current := range filesChan {
-			files = append(files, current)
-		}
-		waitCollection.Done()
-	}()
-	// Create routines to search the property in the server
-	go func() {
-		defer producerConsumer.Done()
-		for _, property := range properties {
-			_, _ = producerConsumer.AddTaskWithError(createSearchPropertyTask(property, args, filesChan, progress), errorsQueue.AddError)
-		}
-	}()
-	// Run
-	producerConsumer.Run()
-	close(filesChan)
-	waitCollection.Wait()
-	err = errorsQueue.GetError()
-	return
-}
-
 // Create a task that fetch from the server the files with the given property.
 // We keep only the files that are at the requested repos and pass them at the files channel
-func createSearchPropertyTask(property Property, args RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksWithHeadlineProg) parallel.TaskFunc {
+func createSearchPropertyTask(property Property, args RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
 		serviceManager, err := utils.CreateServiceManagerWithContext(args.context, args.serverDetails, false, 0, retries, retriesWaitMilliSecs)
 		if err != nil {
@@ -206,7 +195,7 @@ func createSearchPropertyTask(property Property, args RunArguments, filesChan ch
 		}
 		// Notify end of search for the current property
 		if args.progressMng != nil && progress != nil {
-			args.progressMng.Increment(progress)
+			progress.GetBar().Increment()
 		}
 		return
 	}

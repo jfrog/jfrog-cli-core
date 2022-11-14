@@ -2,11 +2,13 @@ package prechecks
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -78,9 +80,10 @@ func testGetLongProperties(t *testing.T, serverProperties, expectedLongPropertie
 	defer testServer.Close()
 
 	longPropertyCheck := NewLongPropertyCheck()
-	longProperties, err := longPropertyCheck.getLongProperties(RunArguments{context: nil, serverDetails: serverDetails})
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, longProperties, expectedLongProperties)
+	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
+
+	count := longPropertyCheck.longPropertiesTaskProducer(nil, RunArguments{context: nil, serverDetails: serverDetails})
+	assert.Len(t, expectedLongProperties, count)
 }
 
 func TestSearchPropertyInFilesTask(t *testing.T) {
@@ -123,23 +126,20 @@ func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []
 	assert.ElementsMatch(t, expected, result)
 }
 
-func TestSearchPropertiesInFiles(t *testing.T) {
+func TestSearchLongPropertiesInFiles(t *testing.T) {
 	cases := []struct {
 		properties    []Property
 		specificRepos []string
 		expected      []FileWithLongProperty
 	}{
 		{[]Property{}, []string{"Repo", "OtherRepo"}, []FileWithLongProperty{}},
-		{[]Property{property, borderProperty}, []string{"Repo", "OtherRepo"}, []FileWithLongProperty{{file2, borderProperty.valueLength(), borderProperty}}},
+		{[]Property{property, borderProperty}, []string{"Repo", "OtherRepo"}, []FileWithLongProperty{}},
 		{[]Property{property, shorterProperty, borderProperty, longProperty, longProperty2}, []string{"Repo", "OtherRepo"}, []FileWithLongProperty{
-			{file1, shorterProperty.valueLength(), shorterProperty},
-			{file2, borderProperty.valueLength(), borderProperty},
 			{file1, longProperty.valueLength(), longProperty},
 			{file2, longProperty.valueLength(), longProperty},
 			{file1, longProperty2.valueLength(), longProperty2},
 		}},
 		{[]Property{property, shorterProperty, borderProperty, longProperty, longProperty2}, []string{"Repo"}, []FileWithLongProperty{
-			{file1, shorterProperty.valueLength(), shorterProperty},
 			{file1, longProperty.valueLength(), longProperty},
 			{file1, longProperty2.valueLength(), longProperty2},
 		}},
@@ -151,12 +151,31 @@ func TestSearchPropertiesInFiles(t *testing.T) {
 }
 
 func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRepos []string, propertiesFiles map[Property][]api.FileRepresentation, expected []FileWithLongProperty) {
-	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, nil, propertiesFiles)
+	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, properties, propertiesFiles)
 	defer testServer.Close()
 
-	files, err := searchPropertiesInFiles(properties, RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos}) //SearchPropertiesInFiles(properties, RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos})
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, expected, files)
+	longPropertyCheck := NewLongPropertyCheck()
+	longPropertyCheck.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
+	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
+	longPropertyCheck.errorsQueue = clientutils.NewErrorsQueue(1)
+
+	var files []FileWithLongProperty
+	var waitCollection sync.WaitGroup
+
+	waitCollection.Add(1)
+	go func() {
+		for current := range longPropertyCheck.filesChan {
+			files = append(files, current)
+		}
+		waitCollection.Done()
+	}()
+
+	longPropertyCheck.longPropertiesTaskProducer(nil, RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos})
+	longPropertyCheck.producerConsumer.Done()
+	longPropertyCheck.producerConsumer.Run()
+	close(longPropertyCheck.filesChan)
+	waitCollection.Wait()
+	defer assert.ElementsMatch(t, expected, files)
 }
 
 func TestLongPropertyExecuteCheck(t *testing.T) {

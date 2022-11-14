@@ -34,6 +34,12 @@ func (repoType RepoType) String() string {
 	return RepoTypes[repoType]
 }
 
+// System repositories in Artifactory to filter in filterRepositoryNames.
+// This is important especially for transfer-config, to prevent rewriting these repositories, which causes unexpected exceptions.
+var blacklistedRepositories = []string{
+	"jfrog-usage-logs", "jfrog-billing-logs", "jfrog-logs", "artifactory-pipe-info", "auto-trashcan", "jfrog-support-bundle", "_intransit", "artifactory-edge-uploads",
+}
+
 // GetRepositories returns the names of local, remote, virtual or federated repositories filtered by their type.
 // artDetails - Artifactory server details
 // repoTypes - Repository types to filter. If empty - return all repository types.
@@ -184,7 +190,7 @@ func (rf *RepositoryFilter) ShouldIncludeRepository(repoKey string) (bool, error
 	}
 
 	// Check if this repository name matches any exclude pattern.
-	for _, excludePattern := range rf.ExcludePatterns {
+	for _, excludePattern := range append(rf.ExcludePatterns, blacklistedRepositories...) {
 		matched, err := path.Match(excludePattern, repoKey)
 		if err != nil {
 			return false, err

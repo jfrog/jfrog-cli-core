@@ -1,8 +1,6 @@
 package python
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +10,7 @@ import (
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
@@ -23,7 +22,7 @@ const (
 )
 
 func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile string) (dependencyTree []*services.GraphNode, err error) {
-	dependenciesGraph, rootNode, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
+	dependenciesGraph, directDependenciesList, err := getDependencies(pythonTool, requirementsFile)
 	if err != nil {
 		return
 	}
@@ -37,13 +36,13 @@ func BuildDependencyTree(pythonTool pythonutils.PythonTool, requirementsFile str
 		directDependencies = append(directDependencies, directDependency)
 	}
 	root := &services.GraphNode{
-		Id:    pythonPackageTypeIdentifier + rootNode,
+		Id:    pythonPackageTypeIdentifier,
 		Nodes: directDependencies,
 	}
 	return []*services.GraphNode{root}, nil
 }
 
-func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, rootNodeName string, directDependencies []string, err error) {
+func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string) (dependenciesGraph map[string][]string, directDependencies []string, err error) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -78,15 +77,15 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	}
 
 	restoreEnv, err := runPythonInstall(pythonTool, requirementsFile)
-	if err != nil {
-		return
-	}
 	defer func() {
 		e := restoreEnv()
 		if err == nil {
 			err = e
 		}
 	}()
+	if err != nil {
+		return
+	}
 
 	localDependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
@@ -94,44 +93,33 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	}
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil {
-		return
-	}
-	rootNodeName, pkgNameErr := pythonutils.GetPackageName(pythonTool, tempDirPath)
-	if pkgNameErr != nil {
-		clientLog.Debug("Couldn't retrieve Python package name. Reason:", pkgNameErr.Error())
-		// If package name couldn't be determined by the Python utils, use the project dir name.
-		rootNodeName = filepath.Base(filepath.Dir(wd))
+		audit.LogExecutableVersion("python")
+		audit.LogExecutableVersion(string(pythonTool))
 	}
 	return
 }
 
 func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string) (restoreEnv func() error, err error) {
-	var output []byte
+	restoreEnv = func() error {
+		return nil
+	}
 	switch pythonTool {
 	case pythonutils.Pip:
 		restoreEnv, err = SetPipVirtualEnvPath()
 		if err != nil {
 			return
 		}
-		// Run pip install
-		pipExec, _ := exec.LookPath("pip3")
-		if pipExec == "" {
-			pipExec = "pip"
-		}
-		if requirementsFile != "" {
-			clientLog.Debug("Running pip install -r", requirementsFile)
-			output, err = exec.Command(pipExec, "install", "-r", requirementsFile).CombinedOutput()
-		} else {
-			clientLog.Debug("Running 'pip install .'")
-			output, err = exec.Command(pipExec, "install", ".").CombinedOutput()
-			if err != nil {
-				err = errorutils.CheckErrorf("pip install command failed: %s - %s", err.Error(), output)
-				clientLog.Debug(fmt.Sprintf("Failed running 'pip install .' : \n%s\n trying 'pip install -r requirements.txt' ", err.Error()))
-				// Run pip install -r requirements
-				output, err = exec.Command(pipExec, "install", "-r", "requirements.txt").CombinedOutput()
+		err = runPipInstall(requirementsFile)
+		if err != nil && requirementsFile == "" {
+			clientLog.Debug(err.Error() + "\ntrying to install using a requirements file.")
+			reqErr := runPipInstall("requirements.txt")
+			if reqErr != nil {
+				// Return Pip install error and log the requirements fallback error.
+				clientLog.Debug(reqErr.Error())
+			} else {
+				err = nil
 			}
 		}
-
 	case pythonutils.Pipenv:
 		// Set virtualenv path to venv dir
 		err = os.Setenv("WORKON_HOME", ".jfrog")
@@ -141,81 +129,89 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		restoreEnv = func() error {
 			return os.Unsetenv("WORKON_HOME")
 		}
-		// Run pipenv install
-		output, err = exec.Command("pipenv", "install", "-d").CombinedOutput()
-		if err != nil {
-			err = errorutils.CheckErrorf("pipenv install command failed: %s - %s", err.Error(), output)
-		}
-	case pythonutils.Poetry:
-		// No changes to env here.
-		restoreEnv = func() error {
-			return nil
-		}
-		// Run poetry install
-		output, err = exec.Command("poetry", "install").CombinedOutput()
-	}
+		// Run 'pipenv install -d'
+		err = executeCommand("pipenv", "install", "-d")
 
-	if err != nil {
-		err = errorutils.CheckErrorf("%s install command failed: %s - %s", string(pythonTool), err.Error(), output)
+	case pythonutils.Poetry:
+		// Run 'poetry install'
+		err = executeCommand("poetry", "install")
 	}
 	return
 }
 
-// Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
-func SetPipVirtualEnvPath() (func() error, error) {
-	var cmdArgs []string
-	execPath, err := exec.LookPath("virtualenv")
-	if err != nil || execPath == "" {
-		// If virtualenv not installed try "venv"
-		if runtime.GOOS == "windows" {
-			// If the OS is Windows try using Py Launcher: "py -3 -m venv"
-			execPath, err = exec.LookPath("py")
-			cmdArgs = append(cmdArgs, "-3", "-m", "venv")
-		} else {
-			// If the OS is Linux try using python3 executable: "python3 -m venv"
-			execPath, err = exec.LookPath("python3")
-			cmdArgs = append(cmdArgs, "-m", "venv")
-		}
-		if err != nil {
-			return nil, err
-		}
-		if execPath == "" {
-			return nil, errors.New("could not find python3 or virtualenv executable in PATH")
-		}
-	}
-	cmdArgs = append(cmdArgs, "venvdir")
-	var stderr bytes.Buffer
-	pipVenv := exec.Command(execPath, cmdArgs...)
-	pipVenv.Stderr = &stderr
-	err = pipVenv.Run()
+func executeCommand(executable string, args ...string) error {
+	installCmd := exec.Command(executable, args...)
+	clientLog.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
+	output, err := installCmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("pipenv install command failed: %s - %s", err.Error(), stderr.String())
+		audit.LogExecutableVersion(executable)
+		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
+	}
+	return nil
+}
+
+func runPipInstall(requirementsFile string) error {
+	// Try getting 'pip3' executable, if not found use 'pip'
+	pipExec, _ := exec.LookPath("pip3")
+	if pipExec == "" {
+		pipExec = "pip"
+	}
+	if requirementsFile == "" {
+		// Run 'pip install .'
+		return executeCommand(pipExec, "install", ".")
+	} else {
+		// Run pip 'install -r requirements <requirementsFile>'
+		return executeCommand(pipExec, "install", "-r", requirementsFile)
+	}
+}
+
+// Execute virtualenv command: "virtualenv venvdir" / "python3 -m venv venvdir" and set path
+func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
+	restoreEnv = func() error {
+		return nil
+	}
+	var cmdArgs []string
+	pythonPath, windowsPyArg := pythonutils.GetPython3Executable()
+
+	execPath, _ := exec.LookPath("virtualenv")
+	if execPath != "" {
+		cmdArgs = append(cmdArgs, "-p", pythonPath)
+	} else {
+		// If virtualenv not exists, try "python3 -m venv"
+		execPath = pythonPath
+		if windowsPyArg != "" {
+			// Add '-3' arg for windows 'py -3' command
+			cmdArgs = append(cmdArgs, windowsPyArg)
+		}
+		cmdArgs = append(cmdArgs, "-m", "venv")
+	}
+
+	cmdArgs = append(cmdArgs, "venvdir")
+	err = executeCommand(execPath, cmdArgs...)
+	if err != nil {
+		return
 	}
 
 	// Keep original value of 'PATH'.
-	pathValue, exists := os.LookupEnv("PATH")
-	if !exists {
-		return nil, errors.New("couldn't find PATH variable")
+	origPathValue := os.Getenv("PATH")
+	venvPath, err := filepath.Abs("venvdir")
+	if err != nil {
+		return
 	}
-	var newPathValue string
-	var virtualEnvPath string
+	venvBinPath := ""
 	if runtime.GOOS == "windows" {
-		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "Scripts"))
-		newPathValue = fmt.Sprintf("%s;", virtualEnvPath)
+		venvBinPath = filepath.Join(venvPath, "Scripts")
 	} else {
-		virtualEnvPath, err = filepath.Abs(filepath.Join("venvdir", "bin"))
-		newPathValue = fmt.Sprintf("%s:", virtualEnvPath)
+		venvBinPath = filepath.Join(venvPath, "bin")
 	}
+	err = os.Setenv("PATH", fmt.Sprintf("%s%c%s", venvBinPath, os.PathListSeparator, origPathValue))
 	if err != nil {
-		return nil, err
+		return
 	}
-	err = os.Setenv("PATH", newPathValue)
-	if err != nil {
-		return nil, err
+	restoreEnv = func() error {
+		return os.Setenv("PATH", origPathValue)
 	}
-	return func() error {
-		return os.Setenv("PATH", pathValue)
-	}, nil
+	return
 }
 
 func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {

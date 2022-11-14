@@ -2,14 +2,18 @@ package transferfiles
 
 import (
 	"bytes"
-	"testing"
-
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+const (
+	repo1Key = "repo1"
 )
 
 func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
@@ -24,7 +28,12 @@ func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
 
 	// Redirect log to buffer
 	buffer, _, previousLog := tests.RedirectLogOutputToBuffer()
+
+	// Set save interval to 0 so every action will be persisted and data can be asserted.
+	previousSaveInterval := state.SaveIntervalSecs
+	state.SaveIntervalSecs = 0
 	return buffer, func() {
+		state.SaveIntervalSecs = previousSaveInterval
 		log.SetLogger(previousLog)
 		cleanUpJfrogHome()
 	}
@@ -44,7 +53,7 @@ func TestShowStatus(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, FullTransferPhase)
+	createStateManager(t, api.FullTransferPhase, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -52,12 +61,14 @@ func TestShowStatus(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status:		Running")
-	assert.Contains(t, results, "Start time:		")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
-	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
-	assert.Contains(t, results, "Working threads:	16")
-	assert.Contains(t, results, "Transfer failures:	223")
+	assert.Contains(t, results, "Status:			Running")
+	assert.Contains(t, results, "Running for:		")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -72,7 +83,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, FilesDiffPhase)
+	createStateManager(t, api.FilesDiffPhase, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -80,12 +91,14 @@ func TestShowStatusDiffPhase(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status:		Running")
-	assert.Contains(t, results, "Start time:		")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 10.9 KiB (45.0%)")
-	assert.Contains(t, results, "Repositories:	15 / 1111 (1.4%)")
-	assert.Contains(t, results, "Working threads:	16")
-	assert.Contains(t, results, "Transfer failures:	223")
+	assert.Contains(t, results, "Status:			Running")
+	assert.Contains(t, results, "Running for:		")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
+	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -95,24 +108,58 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.NotContains(t, results, "Files:		500 / 10000 (5.0%)")
 }
 
+func TestShowBuildInfoRepo(t *testing.T) {
+	buffer, cleanUp := initStatusTest(t)
+	defer cleanUp()
+
+	// Create state manager and persist to file system
+	createStateManager(t, api.ErrorsPhase, true)
+
+	// Run show status and check output
+	assert.NoError(t, ShowStatus())
+	results := buffer.String()
+
+	// Check overall status
+	assert.Contains(t, results, "Overall Transfer Status")
+	assert.Contains(t, results, "Status:			Running")
+	assert.Contains(t, results, "Running for:		")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
+	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
+	assert.Contains(t, results, "Working threads:		16")
+	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
+	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer failures:		223")
+
+	// Check repository status
+	assert.Contains(t, results, "Current Repository Status")
+	assert.Contains(t, results, "Name:		repo1")
+	assert.Contains(t, results, "Phase:		Retrying transfer failures (3/3)")
+	assert.Contains(t, results, "Storage:		4.9 KiB / 9.8 KiB (50.0%)")
+	assert.Contains(t, results, "Files:		500 / 10000 (5.0%)")
+}
+
 // Create state manager and persist in the file system.
 // t     - The testing object
 // phase - Phase ID
-func createStateManager(t *testing.T, phase int) {
+func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	stateManager, err := state.NewTransferStateManager(false)
 	assert.NoError(t, err)
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, false))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, buildInfoRepo, false))
 
 	stateManager.CurrentRepo = repo1Key
 	stateManager.CurrentRepoPhase = phase
-	stateManager.TotalSizeBytes = 11111
-	stateManager.TotalUnits = 1111
-	stateManager.TransferredUnits = 15
+	stateManager.OverallTransfer.TotalSizeBytes = 11111
+	stateManager.TotalRepositories.TotalUnits = 1111
+	stateManager.TotalRepositories.TransferredUnits = 15
 	stateManager.WorkingThreads = 16
 	stateManager.TransferFailures = 223
 
-	// Increment transferred suze and files. This action also persists the run status.
+	stateManager.TimeEstimationManager.LastSpeeds = []float64{12}
+	stateManager.TimeEstimationManager.LastSpeedsSum = 12
+	stateManager.TimeEstimationManager.SpeedsAverage = 12
+
+	// Increment transferred size and files. This action also persists the run status.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 500, 5000))
 
 	// Save transfer state.

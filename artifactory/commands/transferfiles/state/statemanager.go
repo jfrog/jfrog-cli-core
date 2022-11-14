@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"time"
 
 	"github.com/jfrog/gofrog/datastructures"
@@ -9,13 +10,21 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const saveIntervalSecs = 10
+// The interval in which to save the state and run transfer files to the file system.
+// Every change made will be held in memory till the saving time comes.
+const saveIntervalSecsDefault = 10
+
+var SaveIntervalSecs = saveIntervalSecsDefault
 
 type ProgressState struct {
 	TotalSizeBytes       int64 `json:"total_size_bytes,omitempty"`
 	TransferredSizeBytes int64 `json:"transferred_size_bytes,omitempty"`
-	TotalUnits           int   `json:"total_units,omitempty"`
-	TransferredUnits     int   `json:"transferred_units,omitempty"`
+	ProgressStateUnits
+}
+
+type ProgressStateUnits struct {
+	TotalUnits       int64 `json:"total_units,omitempty"`
+	TransferredUnits int64 `json:"transferred_units,omitempty"`
 }
 
 type TransferStateManager struct {
@@ -40,11 +49,11 @@ func NewTransferStateManager(loadRunStatus bool) (*TransferStateManager, error) 
 		}
 		stateManager.TransferRunStatus = *transferRunStatus
 	}
-
+	stateManager.TimeEstimationManager.stateManager = &stateManager
 	return &stateManager, nil
 }
 
-// Try to lock the tranfer state manager.
+// Try to lock the transfer state manager.
 // If file-transfer is already running, return "Already locked" error.
 func (ts *TransferStateManager) TryLockTransferStateManager() error {
 	return ts.tryLockStateManager()
@@ -59,8 +68,8 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // totalSizeBytes - Repository size in bytes
 // totalFiles     - Total files in the repository
 // reset          - Delete the transferred info
-func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes int64, totalFiles int, reset bool) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
+	err := ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, true)
 		if err != nil || repo == nil {
 			return err
@@ -70,26 +79,28 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes int6
 		}
 		repo.TotalSizeBytes = totalSizeBytes
 		repo.TotalUnits = totalFiles
+		repo.TransferredSizeBytes = 0
+		repo.TransferredUnits = 0
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.CurrentRepo = repoKey
+		transferRunStatus.BuildInfoRepo = buildInfoRepo
 		return nil
 	})
 }
 
 func (ts *TransferStateManager) SetRepoFullTransferStarted(repoKey string, startTime time.Time) error {
 	// Set the start time in the Transfer State
-	err := ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
 		repo.FullTransfer.Started = ConvertTimeToRFC3339(startTime)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	// Set the current repository key in the Run Status
-	return ts.TransferRunStatus.action(func(state *TransferRunStatus) error {
-		state.CurrentRepo = repoKey
 		return nil
 	})
 }
@@ -105,23 +116,85 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted(repoKey string) err
 	})
 }
 
-func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, totalFiles int, totalSizeInBytes int64) error {
+// Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
+func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.TransferredSizeBytes += totalSizeInBytes
-		repo.TransferredUnits += totalFiles
+		repo.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.TransferredSizeBytes += totalSizeInBytes
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += chunkTotalSizeInBytes
+		transferRunStatus.OverallTransfer.TransferredUnits += chunkTotalFiles
+		if transferRunStatus.BuildInfoRepo {
+			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
+		}
 		return nil
 	})
+}
+
+func (ts *TransferStateManager) IncTransferredSizeAndFilesDiff(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
+	return ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.DiffInfo.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.DiffInfo.TransferredUnits += chunkTotalFiles
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) IncTotalSizeAndFilesDiff(repoKey string, filesNumber, totalSize int64) error {
+	return ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.DiffInfo.TotalSizeBytes += totalSize
+		repo.DiffInfo.TotalUnits += filesNumber
+		return nil
+	})
+}
+
+// Returns pointers to totalStorage, totalFiles, transferredFiles and transferredStorage from progressState of a specific Repository.
+func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (totalStorage, transferredStorage, totalFiles, transferredFiles *int64, err error) {
+	err = ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+
+			return err
+		}
+		totalStorage = &repo.TotalSizeBytes
+		transferredStorage = &repo.TransferredSizeBytes
+		totalFiles = &repo.TotalUnits
+		transferredFiles = &repo.TransferredUnits
+		return nil
+	})
+	return
+}
+
+// Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
+func (ts *TransferStateManager) GetStorageAndFilesPointersForDiff(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
+	err = ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		totalDiffStorage = &repo.DiffInfo.TotalSizeBytes
+		totalUploadedDiffStorage = &repo.DiffInfo.TransferredSizeBytes
+		totalDiffFiles = &repo.DiffInfo.TotalUnits
+		totalUploadedDiffFiles = &repo.DiffInfo.TransferredUnits
+		return nil
+	})
+	return
 }
 
 // Adds new diff details to the repo's diff array in state.
@@ -184,7 +257,7 @@ func (ts *TransferStateManager) GetReposTransferredSizeBytes(repoKeys ...string)
 
 func (ts *TransferStateManager) GetTransferredSizeBytes() (transferredSizeBytes int64, err error) {
 	return transferredSizeBytes, ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferredSizeBytes = transferRunStatus.TransferredSizeBytes
+		transferredSizeBytes = transferRunStatus.OverallTransfer.TransferredSizeBytes
 		return nil
 	})
 }
@@ -228,7 +301,7 @@ func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increas
 
 func (ts *TransferStateManager) IncRepositoriesTransferred() error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.TransferredUnits++
+		transferRunStatus.TotalRepositories.TransferredUnits++
 		return nil
 	})
 }
@@ -288,10 +361,37 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func GetStartTimestamp() (int64, error) {
+func getStartTimestamp() (int64, error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
 		return 0, err
 	}
 	return lock.GetLastLockTimestamp(lockDirPath)
+}
+
+func GetRunningTime() (runningTime string, isRunning bool, err error) {
+	startTimestamp, err := getStartTimestamp()
+	if err != nil || startTimestamp == 0 {
+		return
+	}
+	runningSecs := int64(time.Since(time.Unix(0, startTimestamp)).Seconds())
+	return secondsToLiteralTime(runningSecs, ""), true, nil
+}
+
+func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chunk *api.ChunkStatus) (chunkTotalSizeInBytes int64, err error) {
+	chunkTotalSizeInBytes = 0
+	var chunkTotalFiles int64 = 0
+	for _, file := range chunk.Files {
+		if file.Status == api.Success {
+			chunkTotalSizeInBytes += file.SizeBytes
+			chunkTotalFiles++
+		}
+	}
+	if stateManager.CurrentRepoPhase == api.FilesDiffPhase {
+		err := stateManager.IncTransferredSizeAndFilesDiff(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return chunkTotalSizeInBytes, stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 }

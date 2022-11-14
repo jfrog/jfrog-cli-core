@@ -47,6 +47,7 @@ var shouldIncludeRepositoryTestCases = []struct {
 	{name: "Exact exclude", repoKey: "generic-local", includePatterns: []string{}, excludePatterns: []string{"generic-local"}, shouldInclude: false},
 	{name: "All exclude", repoKey: "generic-local", includePatterns: []string{}, excludePatterns: []string{"*"}, shouldInclude: false},
 	{name: "All include and exclude", repoKey: "generic-local", includePatterns: []string{"*"}, excludePatterns: []string{"*"}, shouldInclude: false},
+	{name: "Blacklisted", repoKey: "jfrog-logs", includePatterns: []string{}, excludePatterns: []string{}, shouldInclude: false},
 }
 
 func TestShouldIncludeRepository(t *testing.T) {

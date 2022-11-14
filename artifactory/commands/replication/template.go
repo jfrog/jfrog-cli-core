@@ -3,7 +3,7 @@ package replication
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/c-bata/go-prompt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -84,7 +84,7 @@ func (rtc *ReplicationTemplateCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = ioutil.WriteFile(rtc.path, resBytes, 0644); err != nil {
+	if err = os.WriteFile(rtc.path, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info(fmt.Sprintf("Replication creation config template successfully created at %s.", rtc.path))

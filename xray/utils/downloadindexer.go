@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/version"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jfrog/gofrog/io"
+	gofrogio "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 
@@ -97,7 +97,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())
 		}
@@ -141,7 +141,7 @@ func getIndexerVersion(indexerPath string) (string, error) {
 		ExecPath: indexerPath,
 		Command:  []string{"version"},
 	}
-	output, err := io.RunCmdOutput(indexCmd)
+	output, err := gofrogio.RunCmdOutput(indexCmd)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -157,7 +157,7 @@ func deleteOldIndexers(indexerDirPath string) error {
 		return err
 	}
 
-	filesList, err := ioutil.ReadDir(indexerDirPath)
+	filesList, err := os.ReadDir(indexerDirPath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

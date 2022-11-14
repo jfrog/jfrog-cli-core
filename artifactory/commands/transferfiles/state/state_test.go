@@ -47,7 +47,7 @@ func getAndAssertNonExistingRepo(t *testing.T, state *TransferState, repoKey str
 }
 
 func TestSaveAndLoadState(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 	stateManager.Repositories = []Repository{{Name: repo4Key}}
 

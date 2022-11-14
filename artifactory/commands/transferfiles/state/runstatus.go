@@ -19,16 +19,23 @@ type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 
 // This struct holds the run status of the current transfer.
 // It is saved to a file in JFrog CLI's home, but gets reset every time the transfer begins.
-// This state is used to allow showing the current run status by the 'jf rt tranfer-files --status' command.
+// This state is used to allow showing the current run status by the 'jf rt transfer-files --status' command.
 // It is also used for the time estimation and more.
 type TransferRunStatus struct {
-	lastSaveTimestamp time.Time `json:"-"`
-	ProgressState
-	Version          int    `json:"version,omitempty"`
-	CurrentRepo      string `json:"current_repo,omitempty"`
-	CurrentRepoPhase int    `json:"current_repo_phase,omitempty"`
-	WorkingThreads   int    `json:"working_threads,omitempty"`
-	TransferFailures uint   `json:"transfer_failures,omitempty"`
+	lastSaveTimestamp time.Time
+	// This variable holds the total/transferred number of repositories (not their files).
+	OverallTransfer   ProgressState      `json:"overall_transfer,omitempty"`
+	TotalRepositories ProgressStateUnits `json:"total_repositories,omitempty"`
+	OverallBiFiles    ProgressStateUnits `json:"overall_bi_files,omitempty"`
+	// Version of the TransferRunStatus file.
+	Version     int    `json:"version,omitempty"`
+	CurrentRepo string `json:"current_repo,omitempty"`
+	// True if currently transferring a build info repository.
+	BuildInfoRepo         bool `json:"build_info_repo,omitempty"`
+	CurrentRepoPhase      int  `json:"current_repo_phase,omitempty"`
+	WorkingThreads        int  `json:"working_threads,omitempty"`
+	TransferFailures      uint `json:"transfer_failures,omitempty"`
+	TimeEstimationManager `json:"time_estimation,omitempty"`
 }
 
 func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {
@@ -37,7 +44,7 @@ func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < saveIntervalSecs {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(SaveIntervalSecs) {
 		return nil
 	}
 

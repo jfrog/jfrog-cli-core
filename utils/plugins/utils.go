@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,6 +109,7 @@ func convertPluginsV0ToV1() (*PluginsV1, error) {
 }
 
 // Change the file's hierarchy inside 'plugins' directory to:
+//
 //	plugins (dir)
 //		plugin-name (dir)
 //			bin (dir)
@@ -182,7 +182,7 @@ func CreatePluginsConfigFile() (*PluginsV1, error) {
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-	err = ioutil.WriteFile(pluginsFilePath, content, 0600)
+	err = os.WriteFile(pluginsFilePath, content, 0600)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

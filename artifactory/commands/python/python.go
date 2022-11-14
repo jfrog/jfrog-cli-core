@@ -113,14 +113,12 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 
 	// Get credentials from access-token if exists.
 	if pc.serverDetails.GetAccessToken() != "" {
-		username, err = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		if err != nil {
-			return err
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
 		}
 		password = pc.serverDetails.GetAccessToken()
 	}
-
-	if username != "" && password != "" {
+	if password != "" {
 		rtUrl.User = url.UserPassword(username, password)
 	}
 	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"

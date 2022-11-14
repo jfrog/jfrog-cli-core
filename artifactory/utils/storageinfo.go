@@ -2,17 +2,18 @@ package utils
 
 import (
 	"context"
-	"strconv"
-	"strings"
-	"time"
-
+	"errors"
+	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -85,17 +86,16 @@ func (sim *StorageInfoManager) GetRepoSummary(repoKey string) (*utils.Repository
 		},
 	}
 	_, err := pollingExecutor.Execute()
-	if retVal == nil && err == nil {
+	if retVal == nil && (err == nil || errors.As(err, &clientUtils.RetryExecutorTimeoutError{})) {
 		return nil, errorutils.CheckErrorf("could not find repository '%s' in the repositories summary", repoKey)
 	}
 	return retVal, err
 }
 
-// GetReposTotalSize gets the total size of all passed repositories, in bytes.
+// GetReposTotalSizeAndFiles gets the total size (bytes) and files of all passed repositories.
 // This method must be called after CalculateStorageInfo.
 // The result of this function might not be accurate!
-func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, error) {
-	var totalSize int64
+func (sim *StorageInfoManager) GetReposTotalSizeAndFiles(repoKeys ...string) (totalSize, totalFiles int64, err error) {
 	reposCounted := 0
 	reposSet := datastructures.MakeSet[string]()
 	for _, repoKey := range repoKeys {
@@ -109,6 +109,7 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 			// Reset counters between polling attempts.
 			totalSize = 0
 			reposCounted = 0
+			totalFiles = 0
 
 			storageInfo, err := sim.GetStorageInfo()
 			if err != nil {
@@ -122,21 +123,33 @@ func (sim *StorageInfoManager) GetReposTotalSize(repoKeys ...string) (int64, err
 						return true, nil, err
 					}
 					totalSize += sizeToAdd
+
+					filesToAdd, err := GetFilesCountFromRepositorySummary(&storageInfo.RepositoriesSummaryList[i])
+					if err != nil {
+						return true, nil, err
+					}
+					totalFiles += filesToAdd
 				}
 			}
 			return reposCounted == len(repoKeys), nil, nil
 		},
 	}
-	_, err := pollingExecutor.Execute()
-	if reposCounted < len(repoKeys) && err == nil {
-		return totalSize, errorutils.CheckErrorf(storageInfoRepoMissingError)
+	_, err = pollingExecutor.Execute()
+	if reposCounted < len(repoKeys) && (err == nil || errors.As(err, &clientUtils.RetryExecutorTimeoutError{})) {
+		return totalSize, totalFiles, errorutils.CheckErrorf(storageInfoRepoMissingError)
 	}
-	return totalSize, err
+	return totalSize, totalFiles, err
+}
+
+func GetFilesCountFromRepositorySummary(repoSummary *utils.RepositorySummary) (int64, error) {
+	files, err := repoSummary.FilesCount.Int64()
+	return files, errorutils.CheckError(err)
 }
 
 func GetUsedSpaceInBytes(repoSummary *utils.RepositorySummary) (int64, error) {
 	if repoSummary.UsedSpaceInBytes.String() != "" {
-		return repoSummary.UsedSpaceInBytes.Int64()
+		size, err := repoSummary.UsedSpaceInBytes.Int64()
+		return size, errorutils.CheckError(err)
 	}
 
 	return convertStorageSizeStringToBytes(repoSummary.UsedSpace)
@@ -169,4 +182,25 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
 	return int64(sizeInBytes), nil
+}
+
+func ConvertIntToStorageSizeString(num int) string {
+	if num > bytesInTB {
+		newNum := float64(num) / bytesInTB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "TB "
+	}
+	if num > bytesInGB {
+		newNum := float64(num) / bytesInGB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "GB "
+	}
+	if num > bytesInMB {
+		newNum := float64(num) / bytesInMB
+		stringNum := fmt.Sprintf("%.1f", newNum)
+		return stringNum + "MB "
+	}
+	newNum := float64(num) / bytesInKB
+	stringNum := fmt.Sprintf("%.1f", newNum)
+	return stringNum + "KB "
 }

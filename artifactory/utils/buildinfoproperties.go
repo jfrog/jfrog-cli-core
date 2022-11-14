@@ -282,19 +282,15 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 	}
 	vConfig.Set(contextPrefix+Url, artDetails.GetArtifactoryUrl())
 
+	username := artDetails.GetUser()
+	password := artDetails.GetPassword()
 	if artDetails.GetAccessToken() != "" {
-		username, err := auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
-		if err != nil {
-			return err
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
 		}
-		vConfig.Set(contextPrefix+Username, username)
-		vConfig.Set(contextPrefix+Password, artDetails.GetAccessToken())
-		return nil
+		password = artDetails.GetAccessToken()
 	}
-
-	if artDetails.GetUser() != "" && artDetails.GetPassword() != "" {
-		vConfig.Set(contextPrefix+Username, artDetails.GetUser())
-		vConfig.Set(contextPrefix+Password, artDetails.GetPassword())
-	}
+	vConfig.Set(contextPrefix+Username, username)
+	vConfig.Set(contextPrefix+Password, password)
 	return nil
 }

@@ -4,9 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +15,7 @@ const (
 )
 
 func TestFilesDiffRange(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	repoKey := "repo"
@@ -88,50 +85,34 @@ func getRepoFromState(t *testing.T, stateManager *TransferStateManager, repoKey 
 	return repo
 }
 
-func initStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp func()) {
-	cleanUpJfrogHome, err := tests.SetJfrogHome()
-	assert.NoError(t, err)
-	cleanUp = cleanUpJfrogHome
-
-	// Create transfer directory
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	assert.NoError(t, err)
-	err = utils.CreateDirIfNotExist(transferDir)
-	assert.NoError(t, err)
-
-	stateManager, err = NewTransferStateManager(true)
-	assert.NoError(t, err)
-	return
-}
-
 func TestResetRepoState(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	// Reset a repository state on an empty state
-	err := stateManager.SetRepoState(repo1Key, 0, 0, true)
+	err := stateManager.SetRepoState(repo1Key, 0, 0, false, true)
 	assert.NoError(t, err)
 	// Set repository fully transferred. It will fail the test if the repository is not in the state.
 	setAndAssertRepoFullyTransfer(t, stateManager, repo1Key, time.Now())
 
 	// Create another repository state
-	err = stateManager.SetRepoState(repo2Key, 0, 0, true)
+	err = stateManager.SetRepoState(repo2Key, 0, 0, false, true)
 	assert.NoError(t, err)
 	setAndAssertRepoFullyTransfer(t, stateManager, repo2Key, time.Now())
 
 	// Reset repo1 only
-	err = stateManager.SetRepoState(repo1Key, 0, 0, true)
+	err = stateManager.SetRepoState(repo1Key, 0, 0, false, true)
 	assert.NoError(t, err)
 	assertRepoTransferred(t, stateManager, repo1Key, false)
 }
 
 func TestReposTransferredSizeBytes(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	// Create repos in state.
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true))
-	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, false, true))
 
 	// Inc repos transferred sizes.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 1, 10))
@@ -161,29 +142,47 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 	assertTransferredFiles(t, stateManager, 3, repo2Key)
 }
 
+func TestReposOverallBiFiles(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Create repos in state.
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true, true))
+
+	// Inc repos transferred sizes and files.
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 5, 11))
+
+	// Assert the number of transferred bi files in the state.
+	assert.Equal(t, repo2Key, stateManager.CurrentRepo)
+	assert.True(t, stateManager.BuildInfoRepo)
+	assert.Equal(t, int64(6), stateManager.OverallBiFiles.TransferredUnits)
+}
+
 func assertTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
 	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
 }
 
-func assertTransferredFiles(t *testing.T, stateManager *TransferStateManager, expectedFiles int, repoKey string) {
+func assertTransferredFiles(t *testing.T, stateManager *TransferStateManager, expectedFiles int64, repoKey string) {
 	repo, err := stateManager.getRepository(repoKey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFiles, repo.TransferredUnits)
 }
 
 func TestIncRepositoriesTransferred(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
-	assert.Zero(t, stateManager.TransferredUnits)
+	assert.Zero(t, stateManager.TotalRepositories.TransferredUnits)
 	assert.NoError(t, stateManager.IncRepositoriesTransferred())
-	assert.Equal(t, 1, stateManager.TransferredUnits)
+	assert.Equal(t, int64(1), stateManager.TotalRepositories.TransferredUnits)
 }
 
 func TestSetRepoPhase(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.Zero(t, stateManager.CurrentRepoPhase)
@@ -192,7 +191,7 @@ func TestSetRepoPhase(t *testing.T) {
 }
 
 func TestSetAndGetWorkingThreads(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.Zero(t, stateManager.WorkingThreads)
@@ -204,7 +203,7 @@ func TestSetAndGetWorkingThreads(t *testing.T) {
 }
 
 func TestTryLockStateManager(t *testing.T) {
-	stateManager, cleanUp := initStateTest(t)
+	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
 	assert.NoError(t, stateManager.tryLockStateManager())

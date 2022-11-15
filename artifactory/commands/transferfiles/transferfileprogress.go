@@ -230,7 +230,7 @@ func (t *TransferProgressMng) AddPhase2() error {
 	if err != nil {
 		return err
 	}
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", "🗄 Diff Storage", "📄 Diff Files", 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, progressbar.GREEN))
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", "🗄  Diff Storage", "📄 Diff Files", 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, progressbar.GREEN))
 	return nil
 }
 

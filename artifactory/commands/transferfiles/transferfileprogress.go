@@ -70,25 +70,25 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.filesStatus = &fileStatus
 	// Init Progress Bars
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, "📦 "+Repositories.String())
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal("🗄  Storage"), coreutils.RemoveEmojisIfNonSupportedTerminal("📄 Files"), tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
-	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal(" 🧵 Working threads: "), 0, color.Green)
-	transfer.runningTime = transfer.barsMng.NewStringProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal(" 🏃🏼 Running for: "), func() string {
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("🗄  Storage", "📄 Files", tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
+	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(" 🧵 Working threads: ", 0, color.Green)
+	transfer.runningTime = transfer.barsMng.NewStringProgressBar(" 🏃🏼 Running for: ", func() string {
 		runningTime, isRunning, err := state.GetRunningTime()
 		if err != nil || !isRunning {
 			runningTime = "Running time not available"
 		}
-		return color.Green.Render(runningTime)
+		return color.Green.Render(" " + runningTime)
 	})
 
-	transfer.speedBar = transfer.barsMng.NewStringProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal(" ⚡ Transfer speed: "), func() string {
-		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetSpeedString())
+	transfer.speedBar = transfer.barsMng.NewStringProgressBar(" ⚡ Transfer speed: ", func() string {
+		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetSpeedString())
 	})
-	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal(" ⌛ Estimated time remaining: "), func() string {
-		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
+	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar(" ⌛ Estimated time remaining: ", func() string {
+		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
 	})
 
 	// Init global error count for the process
-	transfer.errorBar = transfer.barsMng.NewCounterProgressBar(coreutils.RemoveEmojisIfNonSupportedTerminal(" ❌ Transfer failures: "), 0, color.Green)
+	transfer.errorBar = transfer.barsMng.NewCounterProgressBar(" ❌ Transfer failures: ", 0, color.Green)
 	if !tdc.ignoreState {
 		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {

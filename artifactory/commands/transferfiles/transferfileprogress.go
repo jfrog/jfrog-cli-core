@@ -69,7 +69,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
 	// Init Progress Bars
-	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, "📦 "+Repositories.String())
+	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, coreutils.RemoveEmojisIfNonSupportedTerminal("📦 "+Repositories.String()))
 	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("🗄  Storage", "📄 Files", tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(" 🧵 Working threads: ", 0, color.Green)
 	transfer.runningTime = transfer.barsMng.NewStringProgressBar(" 🏃🏼 Running for: ", func() string {
@@ -220,7 +220,7 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 	}
 
 	if !skip {
-		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", coreutils.RemoveEmojisIfNonSupportedTerminal("🗄  Storage"), coreutils.RemoveEmojisIfNonSupportedTerminal("📄 Files"), storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
+		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", "🗄  Storage", "📄 Files", storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
 	}
 	return nil
 }
@@ -230,7 +230,7 @@ func (t *TransferProgressMng) AddPhase2() error {
 	if err != nil {
 		return err
 	}
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", coreutils.RemoveEmojisIfNonSupportedTerminal("🗄  Diff Storage"), coreutils.RemoveEmojisIfNonSupportedTerminal("📄 Diff Files"), 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, progressbar.GREEN))
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", "🗄  Diff Storage", "📄 Diff Files", 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, progressbar.GREEN))
 	return nil
 }
 

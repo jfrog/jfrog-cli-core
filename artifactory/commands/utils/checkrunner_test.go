@@ -1,4 +1,4 @@
-package prechecks
+package utils
 
 import (
 	"context"
@@ -14,9 +14,6 @@ func TestChecks(t *testing.T) {
 	assert.Len(t, runner.checks, 0)
 	runner.AddCheck(NewCheck("check", nil))
 	assert.Len(t, runner.checks, 1)
-	// Data transfer runner
-	dataTransferRunner := NewTransferDataPreChecksRunner()
-	assert.Len(t, dataTransferRunner.checks, 1)
 }
 
 func TestRunChecks(t *testing.T) {

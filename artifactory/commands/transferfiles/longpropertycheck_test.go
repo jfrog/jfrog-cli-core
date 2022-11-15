@@ -1,9 +1,10 @@
-package prechecks
+package transferfiles
 
 import (
 	"encoding/json"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -82,7 +83,7 @@ func testGetLongProperties(t *testing.T, serverProperties, expectedLongPropertie
 	longPropertyCheck := NewLongPropertyCheck()
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 
-	count := longPropertyCheck.longPropertiesTaskProducer(nil, RunArguments{context: nil, serverDetails: serverDetails})
+	count := longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails})
 	assert.Len(t, expectedLongProperties, count)
 }
 
@@ -119,7 +120,7 @@ func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []
 		wait.Done()
 	}()
 
-	task := createSearchPropertyTask(prop, RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos}, filesChan, nil)
+	task := createSearchPropertyTask(prop, utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos}, filesChan, nil)
 	assert.NoError(t, task(0))
 	close(filesChan)
 	wait.Wait()
@@ -170,7 +171,7 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 		waitCollection.Done()
 	}()
 
-	longPropertyCheck.longPropertiesTaskProducer(nil, RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos})
+	longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos})
 	longPropertyCheck.producerConsumer.Done()
 	longPropertyCheck.producerConsumer.Run()
 	close(longPropertyCheck.filesChan)
@@ -201,7 +202,7 @@ func testLongPropertyCheckWithStubServer(t *testing.T, serverProperties []Proper
 	defer testServer.Close()
 
 	longPropertyCheck := NewLongPropertyCheck()
-	passed, err := longPropertyCheck.executeCheck(RunArguments{context: nil, serverDetails: serverDetails, repos: specificRepos})
+	passed, err := longPropertyCheck.ExecuteCheck(utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos})
 	assert.NoError(t, err)
 	assert.Equal(t, shouldPass, passed)
 }

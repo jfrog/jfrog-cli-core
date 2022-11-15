@@ -1,4 +1,4 @@
-package prechecks
+package transferfiles
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"github.com/gocarina/gocsv"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -27,8 +28,6 @@ const (
 	maxThreadCapacity          = 5000000
 	threadCount                = 10
 	maxAllowedValLength        = 2400
-	retries                    = 10
-	retriesWaitMilliSecs       = 1000
 	longPropertyCheckName      = "Properties with value longer than 2.4K characters"
 )
 
@@ -66,7 +65,7 @@ func (lpc *LongPropertyCheck) Name() string {
 	return longPropertyCheckName
 }
 
-func (lpc *LongPropertyCheck) executeCheck(args RunArguments) (passed bool, err error) {
+func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed bool, err error) {
 	// Init producer consumer
 	lpc.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	lpc.filesChan = make(chan FileWithLongProperty, threadCount)
@@ -75,8 +74,8 @@ func (lpc *LongPropertyCheck) executeCheck(args RunArguments) (passed bool, err 
 	var filesWithLongProperty []FileWithLongProperty
 	// Handle progress display
 	var progress *progressbar.TasksProgressBar
-	if args.progressMng != nil {
-		progress = args.progressMng.NewTasksProgressBar(0, progressbar.GREEN, "long property")
+	if args.ProgressMng != nil {
+		progress = args.ProgressMng.NewTasksProgressBar(0, progressbar.GREEN, "long property")
 		defer progress.GetBar().Abort(true)
 	}
 	// Create consumer routine to collect the files from the search tasks
@@ -110,9 +109,9 @@ func (lpc *LongPropertyCheck) executeCheck(args RunArguments) (passed bool, err 
 
 // Search for long properties in the server and create a search task to find the files that contains them
 // Returns the number of long properties found
-func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args RunArguments) int {
+func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args cmdutils.RunArguments) int {
 	// Init
-	serviceManager, err := utils.CreateServiceManagerWithContext(args.context, args.serverDetails, false, 0, retries, retriesWaitMilliSecs)
+	serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
 	if err != nil {
 		return 0
 	}
@@ -172,9 +171,9 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 
 // Create a task that fetch from the server the files with the given property.
 // We keep only the files that are at the requested repos and pass them at the files channel
-func createSearchPropertyTask(property Property, args RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
+func createSearchPropertyTask(property Property, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
-		serviceManager, err := utils.CreateServiceManagerWithContext(args.context, args.serverDetails, false, 0, retries, retriesWaitMilliSecs)
+		serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
 		if err != nil {
 			return
 		}
@@ -187,14 +186,14 @@ func createSearchPropertyTask(property Property, args RunArguments, filesChan ch
 		for _, item := range query.Results {
 			file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 			// Keep only if in the requested repos
-			if slices.Contains(args.repos, file.Repo) {
+			if slices.Contains(args.Repos, file.Repo) {
 				fileWithLongProperty := FileWithLongProperty{file, property.valueLength(), property}
 				log.Debug(fmt.Sprintf("[Thread=%d] Found File{Repo=%s, Path=%s, Name=%s} with matching entry of long property.", threadId, file.Repo, file.Path, file.Name))
 				filesChan <- fileWithLongProperty
 			}
 		}
 		// Notify end of search for the current property
-		if args.progressMng != nil && progress != nil {
+		if args.ProgressMng != nil && progress != nil {
 			progress.GetBar().Increment()
 		}
 		return

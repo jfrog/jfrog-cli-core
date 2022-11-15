@@ -1,4 +1,4 @@
-package prechecks
+package utils
 
 import (
 	"context"
@@ -14,12 +14,17 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+const (
+	retries              = 10
+	retriesWaitMilliSecs = 1000
+)
+
 // PreCheck Is interface for a check on an Artifactory server
 type PreCheck interface {
 	// Name - Describes the check
 	Name() string
 	// Execute the check, return true if passed
-	executeCheck(args RunArguments) (bool, error)
+	ExecuteCheck(args RunArguments) (bool, error)
 }
 
 // Default struct for small checks
@@ -31,7 +36,7 @@ type functionPreCheck struct {
 func (a functionPreCheck) Name() string {
 	return a.name
 }
-func (a functionPreCheck) executeCheck(args RunArguments) (bool, error) {
+func (a functionPreCheck) ExecuteCheck(args RunArguments) (bool, error) {
 	return a.check(args)
 }
 
@@ -69,25 +74,15 @@ type RunStatus struct {
 
 // RunArguments - The arguments of the run that is passed to the checks
 type RunArguments struct {
-	context       context.Context
-	serverDetails *config.ServerDetails
-	repos         []string
-	progressMng   *progressbar.ProgressBarMng
+	Context       context.Context
+	ServerDetails *config.ServerDetails
+	Repos         []string
+	ProgressMng   *progressbar.ProgressBarMng
 }
 
 // Creates a new empty runner
 func NewPreChecksRunner() *PreCheckRunner {
 	runner := &PreCheckRunner{}
-	return runner
-}
-
-// Creates the Pre-checks runner for the data transfer command
-func NewTransferDataPreChecksRunner() *PreCheckRunner {
-	runner := NewPreChecksRunner()
-
-	// Add pre checks here
-	runner.AddCheck(NewLongPropertyCheck())
-
 	return runner
 }
 
@@ -142,21 +137,21 @@ func (pcr *PreCheckRunner) Run(context context.Context, serverDetails *config.Se
 	if err != nil {
 		return
 	}
-	args := RunArguments{context: context, serverDetails: serverDetails, repos: repos}
+	args := RunArguments{Context: context, ServerDetails: serverDetails, Repos: repos}
 	pcr.status = &RunStatus{startTime: time.Now()}
 	// Progress display
 	if pcr.displayBar, err = pcr.initProgressBar(pcr.status); err != nil {
 		return
 	}
 	if pcr.displayBar != nil {
-		args.progressMng = pcr.displayBar.manager
+		args.ProgressMng = pcr.displayBar.manager
 	}
 	// Execute checks
 	defer func() { err = pcr.cleanup(err) }()
 	var checkPassed bool
 	for i, check := range pcr.checks {
 		pcr.prepare(i, check)
-		if checkPassed, err = check.executeCheck(args); err != nil {
+		if checkPassed, err = check.ExecuteCheck(args); err != nil {
 			pcr.finish(check.Name(), false)
 			return
 		}

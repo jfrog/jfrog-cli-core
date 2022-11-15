@@ -3,7 +3,7 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/prechecks"
+	utils2 "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"os"
 	"os/signal"
 	"strings"
@@ -107,7 +107,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return ShowStatus()
 	}
 	if tdc.preChecks {
-		return prechecks.NewTransferDataPreChecksRunner().Run(tdc.context, tdc.sourceServerDetails, tdc.includeReposPatterns, tdc.excludeReposPatterns)
+		return NewTransferDataPreChecksRunner().Run(tdc.context, tdc.sourceServerDetails, tdc.includeReposPatterns, tdc.excludeReposPatterns)
 	}
 	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
@@ -255,6 +255,16 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	}
 	tdc.targetStorageInfoManager = storageInfoManager
 	return storageInfoManager.CalculateStorageInfo()
+}
+
+// Creates the Pre-checks runner for the data transfer command
+func NewTransferDataPreChecksRunner() *utils2.PreCheckRunner {
+	runner := utils2.NewPreChecksRunner()
+
+	// Add pre checks here
+	runner.AddCheck(NewLongPropertyCheck())
+
+	return runner
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,

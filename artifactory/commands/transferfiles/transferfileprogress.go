@@ -210,12 +210,18 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(storage int64) error {
+func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers(t.transferState.CurrentRepo)
 	if err != nil {
 		return err
 	}
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", coreutils.RemoveEmojisIfNonSupportedTerminal("🗄  Storage"), coreutils.RemoveEmojisIfNonSupportedTerminal("📄 Files"), storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
+	if skip {
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, ""))
+	}
+
+	if !skip {
+		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", coreutils.RemoveEmojisIfNonSupportedTerminal("🗄  Storage"), coreutils.RemoveEmojisIfNonSupportedTerminal("📄 Files"), storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
+	}
 	return nil
 }
 

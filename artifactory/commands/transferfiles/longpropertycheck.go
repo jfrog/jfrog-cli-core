@@ -56,11 +56,13 @@ type LongPropertyCheck struct {
 	producerConsumer parallel.Runner
 	filesChan        chan FileWithLongProperty
 	errorsQueue      *clientutils.ErrorsQueue
+	repos            []string
 }
 
-func NewLongPropertyCheck() *LongPropertyCheck {
-	return &LongPropertyCheck{}
+func NewLongPropertyCheck(repos []string) *LongPropertyCheck {
+	return &LongPropertyCheck{repos: repos}
 }
+
 func (lpc *LongPropertyCheck) Name() string {
 	return longPropertyCheckName
 }
@@ -126,9 +128,9 @@ func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.T
 		log.Debug(fmt.Sprintf("Found %d properties in the batch (isLastBatch=%t)", len(propertyQuery.Results), len(propertyQuery.Results) < propertyAqlPaginationLimit))
 		for _, property := range propertyQuery.Results {
 			if long := isLongProperty(property); long {
-				log.Debug(fmt.Sprintf(`Found long property '@%s':'%s')`, property.Key, property.Value))
+				log.Debug(fmt.Sprintf(`Found long property ('@%s':'%s')`, property.Key, property.Value))
 				if lpc.producerConsumer != nil {
-					_, _ = lpc.producerConsumer.AddTaskWithError(createSearchPropertyTask(property, args, lpc.filesChan, progress), lpc.errorsQueue.AddError)
+					_, _ = lpc.producerConsumer.AddTaskWithError(createSearchPropertyTask(property, lpc.repos, args, lpc.filesChan, progress), lpc.errorsQueue.AddError)
 				}
 				if progress != nil {
 					progress.IncGeneralProgressTotalBy(1)
@@ -171,7 +173,7 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 
 // Create a task that fetch from the server the files with the given property.
 // We keep only the files that are at the requested repos and pass them at the files channel
-func createSearchPropertyTask(property Property, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
+func createSearchPropertyTask(property Property, repos []string, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
 		serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
 		if err != nil {
@@ -186,7 +188,7 @@ func createSearchPropertyTask(property Property, args cmdutils.RunArguments, fil
 		for _, item := range query.Results {
 			file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 			// Keep only if in the requested repos
-			if slices.Contains(args.Repos, file.Repo) {
+			if slices.Contains(repos, file.Repo) {
 				fileWithLongProperty := FileWithLongProperty{file, property.valueLength(), property}
 				log.Debug(fmt.Sprintf("[Thread=%d] Found File{Repo=%s, Path=%s, Name=%s} with matching entry of long property.", threadId, file.Repo, file.Path, file.Name))
 				filesChan <- fileWithLongProperty
@@ -209,7 +211,7 @@ func runSearchPropertyInFilesAql(serviceManager artifactory.ArtifactoryServicesM
 
 // Get the query that search files with specific property
 func getSearchPropertyInFilesQuery(property Property) string {
-	return fmt.Sprintf(`items.find({"type": {"$eq":"file"},"@%s":{"$eq":"%s"}}).include("repo","path","name")`, property.Key, property.Value)
+	return fmt.Sprintf(`items.find({"type": {"$eq":"any"},"@%s":"%s"}).include("repo","path","name")`, property.Key, property.Value)
 }
 
 // Run AQL service that return a result in the given format structure 'v'
@@ -246,7 +248,7 @@ func handleFailureRun(filesWithLongProperty []FileWithLongProperty) (err error) 
 	nFails := len(filesWithLongProperty)
 	propertyTxt := "entries"
 	if nFails == 1 {
-		propertyTxt = " entry"
+		propertyTxt = "entry"
 	}
 	log.Info(fmt.Sprintf("Found %d property %s with value longer than 2.4k characters. Check the summary CSV file in: %s", nFails, propertyTxt, csvPath))
 	return
@@ -256,7 +258,7 @@ func handleFailureRun(filesWithLongProperty []FileWithLongProperty) (err error) 
 func createFailedCheckSummaryCsvFile(failures []FileWithLongProperty, timeStarted time.Time) (csvPath string, err error) {
 	// Create CSV file
 	summaryCsv, err := loguitils.CreateCustomLogFile(fmt.Sprintf("long-properties-%s.csv", timeStarted.Format(loguitils.DefaultLogTimeLayout)))
-	if errorutils.CheckError(err) != nil {
+	if err != nil {
 		return
 	}
 	csvPath = summaryCsv.Name()

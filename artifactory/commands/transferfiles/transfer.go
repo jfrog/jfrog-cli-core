@@ -3,7 +3,7 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	utils2 "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"os"
 	"os/signal"
 	"strings"
@@ -106,9 +106,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()
 	}
-	if tdc.preChecks {
-		return NewTransferDataPreChecksRunner().Run(tdc.context, tdc.sourceServerDetails, tdc.includeReposPatterns, tdc.excludeReposPatterns)
-	}
 	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
 	}
@@ -130,6 +127,14 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 
 	if err = tdc.verifySourceTargetConnectivity(srcUpService); err != nil {
 		return err
+	}
+
+	if tdc.preChecks {
+		if runner, err := tdc.NewTransferDataPreChecksRunner(); err != nil {
+			return err
+		} else {
+			return runner.Run(tdc.context, tdc.sourceServerDetails)
+		}
 	}
 
 	if err := tdc.createTransferDir(); err != nil {
@@ -258,13 +263,27 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 }
 
 // Creates the Pre-checks runner for the data transfer command
-func NewTransferDataPreChecksRunner() *utils2.PreCheckRunner {
-	runner := utils2.NewPreChecksRunner()
+func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *commandsUtils.PreCheckRunner, err error) {
+	// Get relevant repos
+	serviceManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
+	if err != nil {
+		return
+	}
+	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	if err != nil {
+		return
+	}
+	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	if err != nil {
+		return
+	}
+
+	runner = commandsUtils.NewPreChecksRunner()
 
 	// Add pre checks here
-	runner.AddCheck(NewLongPropertyCheck())
+	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...)))
 
-	return runner
+	return
 }
 
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,

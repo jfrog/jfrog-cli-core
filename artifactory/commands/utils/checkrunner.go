@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/gookit/color"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -12,11 +11,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-)
-
-const (
-	retries              = 10
-	retriesWaitMilliSecs = 1000
 )
 
 // PreCheck Is interface for a check on an Artifactory server
@@ -36,6 +30,7 @@ type functionPreCheck struct {
 func (a functionPreCheck) Name() string {
 	return a.name
 }
+
 func (a functionPreCheck) ExecuteCheck(args RunArguments) (bool, error) {
 	return a.check(args)
 }
@@ -76,7 +71,6 @@ type RunStatus struct {
 type RunArguments struct {
 	Context       context.Context
 	ServerDetails *config.ServerDetails
-	Repos         []string
 	ProgressMng   *progressbar.ProgressBarMng
 }
 
@@ -108,36 +102,10 @@ func (pcr *PreCheckRunner) initProgressBar(status *RunStatus) (runnerProgress *R
 	return
 }
 
-// Get all the server repositories base on include/exclude patterns
-func getAllRepos(context context.Context, serverDetails *config.ServerDetails, includeReposPatterns []string, excludeReposPatterns []string) ([]string, error) {
-	if serverDetails == nil {
-		return []string{}, nil
-	}
-	// Init source storage info manager
-	serviceManager, err := utils.CreateServiceManagerWithContext(context, serverDetails, false, 0, retries, retriesWaitMilliSecs)
-	if err != nil {
-		return []string{}, err
-	}
-	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, includeReposPatterns, excludeReposPatterns, utils.Local)
-	if err != nil {
-		return []string{}, err
-	}
-	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, includeReposPatterns, excludeReposPatterns, utils.Federated)
-	if err != nil {
-		return []string{}, err
-	}
-	return append(localRepos, federatedRepos...), nil
-}
-
 // Run all the checks and display the process
-func (pcr *PreCheckRunner) Run(context context.Context, serverDetails *config.ServerDetails, includeReposPatterns []string, excludeReposPatterns []string) (err error) {
+func (pcr *PreCheckRunner) Run(context context.Context, serverDetails *config.ServerDetails) (err error) {
 	log.Info(coreutils.PrintTitle(fmt.Sprintf("Running %d checks.", len(pcr.checks))))
-	// Init Run
-	repos, err := getAllRepos(context, serverDetails, includeReposPatterns, excludeReposPatterns)
-	if err != nil {
-		return
-	}
-	args := RunArguments{Context: context, ServerDetails: serverDetails, Repos: repos}
+	args := RunArguments{Context: context, ServerDetails: serverDetails}
 	pcr.status = &RunStatus{startTime: time.Now()}
 	// Progress display
 	if pcr.displayBar, err = pcr.initProgressBar(pcr.status); err != nil {
@@ -147,7 +115,11 @@ func (pcr *PreCheckRunner) Run(context context.Context, serverDetails *config.Se
 		args.ProgressMng = pcr.displayBar.manager
 	}
 	// Execute checks
-	defer func() { err = pcr.cleanup(err) }()
+	defer func() {
+		if e := pcr.cleanup(); e != nil && err == nil {
+			err = e
+		}
+	}()
 	var checkPassed bool
 	for i, check := range pcr.checks {
 		pcr.prepare(i, check)
@@ -181,7 +153,7 @@ func (pcr *PreCheckRunner) finish(checkName string, passed bool) {
 }
 
 // Clean up when the run ends
-func (pcr *PreCheckRunner) cleanup(runError error) (err error) {
+func (pcr *PreCheckRunner) cleanup() (err error) {
 	// Quit progress bar
 	if pcr.displayBar != nil {
 		// Quit text - current check
@@ -193,11 +165,9 @@ func (pcr *PreCheckRunner) cleanup(runError error) (err error) {
 		pcr.displayBar.manager.GetBarsWg().Wait()
 		// Close log file
 		if pcr.displayBar.manager.GetLogFile() != nil {
-			if err = corelog.CloseLogFile(pcr.displayBar.manager.GetLogFile()); err != nil && runError == nil {
+			if err = corelog.CloseLogFile(pcr.displayBar.manager.GetLogFile()); err != nil {
 				return
 			}
-			// Set back the default logger
-			corelog.SetDefaultLogger()
 		}
 	}
 	// Notify on final status of the run
@@ -211,5 +181,5 @@ func (pcr *PreCheckRunner) cleanup(runError error) (err error) {
 		)))
 	}
 
-	return runError
+	return
 }

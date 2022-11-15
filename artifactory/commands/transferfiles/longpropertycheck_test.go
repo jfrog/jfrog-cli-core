@@ -61,7 +61,6 @@ func testProperty(t *testing.T, property Property, isLong bool) {
 }
 
 func TestGetLongProperties(t *testing.T) {
-
 	cases := []struct {
 		serverProperties []Property
 		longProperties   []Property
@@ -80,7 +79,7 @@ func testGetLongProperties(t *testing.T, serverProperties, expectedLongPropertie
 	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertyToFiles)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck()
+	longPropertyCheck := NewLongPropertyCheck([]string{})
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 
 	count := longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails})
@@ -120,7 +119,7 @@ func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []
 		wait.Done()
 	}()
 
-	task := createSearchPropertyTask(prop, utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos}, filesChan, nil)
+	task := createSearchPropertyTask(prop, specificRepos, utils.RunArguments{Context: nil, ServerDetails: serverDetails}, filesChan, nil)
 	assert.NoError(t, task(0))
 	close(filesChan)
 	wait.Wait()
@@ -155,7 +154,7 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, properties, propertiesFiles)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck()
+	longPropertyCheck := NewLongPropertyCheck(specificRepos)
 	longPropertyCheck.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 	longPropertyCheck.errorsQueue = clientutils.NewErrorsQueue(1)
@@ -171,12 +170,12 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 		waitCollection.Done()
 	}()
 
-	longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos})
+	longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails})
 	longPropertyCheck.producerConsumer.Done()
 	longPropertyCheck.producerConsumer.Run()
 	close(longPropertyCheck.filesChan)
 	waitCollection.Wait()
-	defer assert.ElementsMatch(t, expected, files)
+	assert.ElementsMatch(t, expected, files)
 }
 
 func TestLongPropertyExecuteCheck(t *testing.T) {
@@ -201,8 +200,8 @@ func testLongPropertyCheckWithStubServer(t *testing.T, serverProperties []Proper
 	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertiesFiles)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck()
-	passed, err := longPropertyCheck.ExecuteCheck(utils.RunArguments{Context: nil, ServerDetails: serverDetails, Repos: specificRepos})
+	longPropertyCheck := NewLongPropertyCheck(specificRepos)
+	passed, err := longPropertyCheck.ExecuteCheck(utils.RunArguments{Context: nil, ServerDetails: serverDetails})
 	assert.NoError(t, err)
 	assert.Equal(t, shouldPass, passed)
 }

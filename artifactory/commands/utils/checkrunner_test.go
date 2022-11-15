@@ -49,7 +49,7 @@ func TestRunChecks(t *testing.T) {
 }
 
 func runAndAssert(t *testing.T, expectedSuccess, expectedFail uint, shouldHaveErr error, runner *PreCheckRunner) {
-	err := runner.Run(context.TODO(), nil, []string{}, []string{})
+	err := runner.Run(context.TODO(), nil)
 	if shouldHaveErr != nil {
 		assert.Errorf(t, err, shouldHaveErr.Error())
 	} else {

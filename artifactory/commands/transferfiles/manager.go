@@ -398,18 +398,17 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		return nil
 	}
 	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
-		if progressbar != nil {
-			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-			if err != nil {
-				return err
-			}
-		}
 		chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
 		if err != nil {
 			return err
 		}
 		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
-		phase.progressBar.phases[phase.phaseId].GetTasksProgressBar().GetBar().IncrBy(int(chunnkSizeInBytes))
+		if progressbar != nil {
+			err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes))
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if timeEstMng != nil {
 		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())

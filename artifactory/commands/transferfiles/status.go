@@ -40,7 +40,7 @@ func ShowStatus() error {
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
 	addTitle(output, "Overall Transfer Status")
 	addString(output, "🟢", "Status", "Running", 3)
-	addString(output, "⏱️ ", "Running for", runningTime, 2)
+	addString(output, "🏃🏼", "Running for", " "+runningTime, 2)
 	addString(output, "🗄 ", "Storage", sizeToString(stateManager.OverallTransfer.TransferredSizeBytes)+" / "+sizeToString(stateManager.OverallTransfer.TotalSizeBytes)+calcPercentageInt64(stateManager.OverallTransfer.TransferredSizeBytes, stateManager.OverallTransfer.TotalSizeBytes), 3)
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 2)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)

@@ -115,6 +115,18 @@ func (bm *ProgressBarMng) NewHeadlineBarWithSpinner(msg string) *mpb.Bar {
 	)
 }
 
+func (bm *ProgressBarMng) NewUpdatableHeadlineBarWithSpinner(updateFn func() string) *mpb.Bar {
+	return bm.container.New(1,
+		mpb.SpinnerStyle("∙∙∙∙∙∙", "●∙∙∙∙∙", "∙●∙∙∙∙", "∙∙●∙∙∙", "∙∙∙●∙∙", "∙∙∙∙●∙", "∙∙∙∙∙●", "∙∙∙∙∙∙").PositionLeft(),
+		mpb.BarRemoveOnComplete(),
+		mpb.PrependDecorators(
+			decor.Any(func(statistics decor.Statistics) string {
+				return updateFn()
+			}),
+		),
+	)
+}
+
 func (bm *ProgressBarMng) NewHeadlineBar(msg string) *mpb.Bar {
 	return bm.container.Add(1,
 		nil,

@@ -273,7 +273,9 @@ func (t *TransferProgressMng) SetRunningThreads(n int) {
 }
 
 func (t *TransferProgressMng) increaseTotalSize(n int) {
-	t.totalSize.GetBar().IncrBy(n)
+	if t.ShouldDisplay() {
+		t.totalSize.GetBar().IncrBy(n)
+	}
 }
 
 func (t *TransferProgressMng) StopGracefully() {

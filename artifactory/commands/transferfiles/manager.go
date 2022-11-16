@@ -402,10 +402,9 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		if err != nil {
 			return err
 		}
-		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
 		if progressbar != nil {
-			err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes))
-			if err != nil {
+			progressbar.increaseTotalSize(int(chunnkSizeInBytes))
+			if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes)); err != nil {
 				return err
 			}
 		}

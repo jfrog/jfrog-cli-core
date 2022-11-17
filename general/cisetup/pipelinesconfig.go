@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/auth"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/pipelines"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
@@ -138,12 +137,6 @@ func (pc *JFrogPipelinesConfigurator) createArtifactoryIntegration(psm *pipeline
 		return "", err
 	}
 	user := details.User
-	if user == "" {
-		user, err = auth.ExtractUsernameFromAccessToken(details.AccessToken)
-		if err != nil {
-			return "", err
-		}
-	}
 	_, err = psm.CreateArtifactoryIntegration(integrationName, details.ArtifactoryUrl, user, apiKey)
 	// If integration already exists, ignore error.
 	if _, ok := err.(*services.IntegrationAlreadyExistsError); ok {

@@ -79,3 +79,17 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 		audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 	}
 }
+
+func TestIsGradleWrapperExist(t *testing.T) {
+	// Check Gradle wrapper doesn't exist
+	isWrapperExist, err := isGradleWrapperExist()
+	assert.False(t, isWrapperExist)
+	assert.NoError(t, err)
+
+	// Check Gradle wrapper exist
+	_, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
+	defer cleanUp()
+	isWrapperExist, err = isGradleWrapperExist()
+	assert.NoError(t, err)
+	assert.True(t, isWrapperExist)
+}

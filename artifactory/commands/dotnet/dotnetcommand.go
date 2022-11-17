@@ -297,17 +297,12 @@ func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, e
 	user = dc.serverDetails.User
 	password = dc.serverDetails.Password
 	// If access-token is defined, extract user from it.
-	serverDetails, err := dc.ServerDetails()
-	if errorutils.CheckError(err) != nil {
-		return
-	}
-	if serverDetails.AccessToken != "" {
+	if dc.serverDetails.AccessToken != "" {
 		log.Debug("Using access-token details for nuget authentication.")
-		user, err = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
-		if err != nil {
-			return
+		if user == "" {
+			user = auth.ExtractUsernameFromAccessToken(dc.serverDetails.AccessToken)
 		}
-		password = serverDetails.AccessToken
+		password = dc.serverDetails.AccessToken
 	}
 	return
 }

@@ -3,7 +3,6 @@ package transferconfig
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -279,7 +278,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 	log.Info("config-import plugin version: " + configImportPluginVersion)
 
 	// Execute 'GET /api/plugins/execute/checkPermissions'
-	resp, _, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
+	resp, body, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
 	if err != nil {
 		return err
 	}
@@ -288,8 +287,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 	}
 
 	// Unexpected status received: 403 if the user is not admin, 500+ if there is a server error
-	errorBody, _ := io.ReadAll(resp.Body)
-	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, errorBody)
+	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, body)
 	return errorutils.CheckErrorf(messageFormat)
 }
 

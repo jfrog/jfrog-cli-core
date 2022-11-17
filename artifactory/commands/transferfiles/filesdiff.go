@@ -2,9 +2,10 @@ package transferfiles
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"time"
 
 	"github.com/jfrog/gofrog/parallel"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -129,7 +130,9 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)
-			f.phaseBase.progressBar.phases[f.phaseId].GetTasksProgressBar().IncGeneralProgressTotalBy(r.Size)
+			if f.progressBar != nil {
+				f.progressBar.phases[f.phaseId].GetTasksProgressBar().IncGeneralProgressTotalBy(r.Size)
+			}
 		}
 		err = f.transferManager.stateManager.IncTotalSizeAndFilesDiff(params.repoKey, int64(len(files)), int64(totalSize))
 		if err != nil {

@@ -2,12 +2,15 @@ package java
 
 import (
 	"fmt"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
+
+const gradlew = "gradlew"
 
 func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool) (dependencyTree []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
@@ -40,10 +43,27 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 			log.Debug("Using resolver config from", configFilePath)
 		}
 	}
+	// Check whether gradle wrapper exists
+	if useWrapper {
+		useWrapper, err = isGradleWrapperExist()
+		if err != nil {
+			return
+		}
+	}
 	// Read config
 	vConfig, err := utils.ReadGradleConfig(configFilePath, useWrapper)
 	if err != nil {
 		return err
 	}
 	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
+}
+
+// This function assumes that the Gradle wrapper is in the root directory.
+// The --project-dir option of Gradle won't work in this case.
+func isGradleWrapperExist() (bool, error) {
+	wrapperName := gradlew
+	if coreutils.IsWindows() {
+		wrapperName += ".bat"
+	}
+	return fileutils.IsFileExists(wrapperName, false)
 }

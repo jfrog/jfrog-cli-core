@@ -293,7 +293,7 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 			barPtr = nil

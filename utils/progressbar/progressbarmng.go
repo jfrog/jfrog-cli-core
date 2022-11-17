@@ -14,6 +14,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -176,7 +177,7 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, colour Color, ta
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+taskType+": "),
-			decor.CountersNoUnit(color.Green.Render("%d/%d")),
+			decor.CountersNoUnit(getRenderedFormattedCounters("%d")),
 		),
 	)
 	pb.IncGeneralProgressTotalBy(totalTasks)
@@ -235,7 +236,7 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 			mpb.BarRemoveOnComplete(),
 			mpb.AppendDecorators(
 				decor.Name(" "+firstValueHeadLine+": "),
-				decor.CountersKibiByte(color.Green.Render("%.1f/%.1f")),
+				decor.CountersKibiByte(getRenderedFormattedCounters("%.1f")),
 				decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
 					s1 := strconv.Itoa(int(*doneTaks2))
 					s2 := strconv.Itoa(int(*totalTasks2))
@@ -264,6 +265,10 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 		)
 	}
 	return pb
+}
+
+func getRenderedFormattedCounters(formatDirective string) string {
+	return color.Green.Render(strings.Join([]string{formatDirective, formatDirective}, "/"))
 }
 
 func (bm *ProgressBarMng) GetBarsWg() *sync.WaitGroup {

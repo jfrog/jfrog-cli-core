@@ -24,6 +24,8 @@ const (
 	JfrogPluginsFileName                = "plugins.yml"
 	JfrogTransferDirName                = "transfer"
 	JfrogTransferStateFileName          = "state.json"
+	JfrogTransferRepositoriesDirName    = "repositories"
+	JfrogTransferRepoStateFileName      = "repo-state.json"
 	JfrogTransferRunStatusFileName      = "run-status.json"
 	JfrogTransferErrorsDirName          = "errors"
 	JfrogTransferDelaysDirName          = "delays"

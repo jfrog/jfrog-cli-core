@@ -3,25 +3,19 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 )
 
 // Max errors that will be written in a file
 var maxErrorsInFile = 50000
-
-// Expected error file format: <repoKey>-<phaseId>-<phaseStartTime in epoch millisecond>-<fileIndex>.json
-var errorsFilesRegexp = regexp.MustCompile(`^(.+)-([0-9])-([0-9]{13})-([0-9]+)\.json$`)
 
 // TransferErrorsMng manages multi threads writing errors.
 // We want to create a file which contains all upload error statuses for each repository and phase.
@@ -63,7 +57,7 @@ type errorWriterMng struct {
 // phase - the phase number
 // errorsChannelMng - all go routines will write to the same channel
 func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string, errorsChannelMng *ErrorsChannelMng, progressBar *TransferProgressMng, stateManager *state.TransferStateManager) (*TransferErrorsMng, error) {
-	err := initTransferErrorsDir()
+	err := initTransferErrorsDir(repoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -74,18 +68,9 @@ func newTransferErrorsToFile(repoKey string, phaseId int, phaseStartTime string,
 // Create transfer errors directory inside the JFrog CLI home directory.
 // Inside the errors' directory creates directory for retryable errors and skipped errors.
 // Return the root errors' directory path.
-func initTransferErrorsDir() error {
-	// Create transfer directory (if it doesn't exist)
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	if err != nil {
-		return err
-	}
-	err = makeDirIfDoesNotExists(transferDir)
-	if err != nil {
-		return err
-	}
+func initTransferErrorsDir(repoKey string) error {
 	// Create errors directory
-	errorsDirPath, err := coreutils.GetJfrogTransferErrorsDir()
+	errorsDirPath, err := getJfrogTransferRepoErrorsDir(repoKey)
 	if err != nil {
 		return err
 	}
@@ -94,7 +79,7 @@ func initTransferErrorsDir() error {
 		return err
 	}
 	// Create retryable directory inside errors directory
-	retryable, err := coreutils.GetJfrogTransferRetryableDir()
+	retryable, err := getJfrogTransferRepoRetryableDir(repoKey)
 	if err != nil {
 		return err
 	}
@@ -103,7 +88,7 @@ func initTransferErrorsDir() error {
 		return err
 	}
 	// Create skipped directory inside errors directory
-	skipped, err := coreutils.GetJfrogTransferSkippedDir()
+	skipped, err := getJfrogTransferRepoSkippedDir(repoKey)
 	if err != nil {
 		return err
 	}
@@ -126,7 +111,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 	writerMng := errorWriterMng{}
 	// Init the content writer which is responsible for writing 'retryable errors' into files.
 	// In the next run we would like to retry and upload those files again.
-	retryablePath, err := coreutils.GetJfrogTransferRetryableDir()
+	retryablePath, err := getJfrogTransferRepoRetryableDir(mng.repoKey)
 	if err != nil {
 		return err
 	}
@@ -143,7 +128,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 	writerMng.retryable = errorWriter{writer: writerRetry, fileIndex: 0, filePath: retryFilePath}
 	// Init the content writer which is responsible for writing 'skipped errors' into files.
 	// In the next run we won't retry and upload those files.
-	skippedPath, err := coreutils.GetJfrogTransferSkippedDir()
+	skippedPath, err := getJfrogTransferRepoSkippedDir(mng.repoKey)
 	if err != nil {
 		return err
 	}
@@ -212,7 +197,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatu
 		}
 		// Initialize variables for new errors file
 		mng.errorWriterMng.skipped.fileIndex++
-		dirPath, err := coreutils.GetJfrogTransferSkippedDir()
+		dirPath, err := getJfrogTransferRepoSkippedDir(mng.repoKey)
 		if err != nil {
 			return err
 		}
@@ -237,7 +222,7 @@ func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadSta
 		}
 		// Initialize variables for new errors file
 		mng.errorWriterMng.retryable.fileIndex++
-		dirPath, err := coreutils.GetJfrogTransferRetryableDir()
+		dirPath, err := getJfrogTransferRepoRetryableDir(mng.repoKey)
 		if err != nil {
 			return err
 		}
@@ -293,41 +278,10 @@ func createErrorsCsvSummary(sourceRepos []string, timeStarted time.Time) (string
 // Gets a list of all errors files from the CLI's cache.
 // Errors-files contain files that were failed to upload or actions that were skipped because of known limitations.
 func getErrorsFiles(repoKeys []string, isRetry bool) (filesPaths []string, err error) {
-	var dirPath string
 	if isRetry {
-		dirPath, err = coreutils.GetJfrogTransferRetryableDir()
-	} else {
-		dirPath, err = coreutils.GetJfrogTransferSkippedDir()
+		return getErrorOrDelayFiles(repoKeys, getJfrogTransferRepoRetryableDir)
 	}
-	if err != nil {
-		return []string{}, err
-	}
-	exist, err := utils.IsDirExists(dirPath, false)
-	if !exist || err != nil {
-		return []string{}, err
-	}
-
-	files, err := utils.ListFiles(dirPath, false)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range files {
-		matchAndGroups := errorsFilesRegexp.FindStringSubmatch(filepath.Base(file))
-		// Expecting a match and 4 groups. A total of 5 results.
-		if len(matchAndGroups) != 5 {
-			log.Error("unexpected errors file file-name:", file)
-			continue
-		}
-		// Append the errors file if the first group matches any of the requested repo keys.
-		for _, repoKey := range repoKeys {
-			if matchAndGroups[1] == repoKey {
-				filesPaths = append(filesPaths, file)
-				break
-			}
-		}
-	}
-	return
+	return getErrorOrDelayFiles(repoKeys, getJfrogTransferRepoSkippedDir)
 }
 
 // Count the number of transfer failures of a given subset of repositories

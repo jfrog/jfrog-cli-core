@@ -4,7 +4,7 @@ import (
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	coreLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
@@ -141,12 +141,12 @@ func (t *TransferProgressMng) Quit() error {
 
 	// Close log file
 	if t.barsMng.GetLogFile() != nil {
-		err := corelog.CloseLogFile(t.barsMng.GetLogFile())
+		err := coreLog.CloseLogFile(t.barsMng.GetLogFile())
 		if err != nil {
 			return err
 		}
 		// Set back the default logger
-		corelog.SetDefaultLogger()
+		coreLog.SetDefaultLogger()
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 }
 
 func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
-	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers(t.transferState.CurrentRepo)
+	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers()
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 }
 
 func (t *TransferProgressMng) AddPhase2() error {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff(t.transferState.CurrentRepo)
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff()
 	if err != nil {
 		return err
 	}

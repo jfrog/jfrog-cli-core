@@ -3,27 +3,25 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
-
-	"github.com/jfrog/jfrog-client-go/artifactory/usage"
-
 	"github.com/jfrog/gofrog/version"
-	"golang.org/x/exp/slices"
-
-	"strconv"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/slices"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
 )
 
 const (
@@ -137,7 +135,11 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 	}
 
-	if err := tdc.createTransferDir(); err != nil {
+	if err = tdc.createTransferDir(); err != nil {
+		return err
+	}
+
+	if err = tdc.assertRepositorySpecificStructure(); err != nil {
 		return err
 	}
 
@@ -380,6 +382,24 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
+// Assert the transfer dir is not in the old structure with a united state.json for all repository.
+// There is no means of conversion to the new structure, where every the state is repository specific and separated.
+// Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
+func (tdc *TransferFilesCommand) assertRepositorySpecificStructure() error {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	exists, err := fileutils.IsFileExists(filepath.Join(transferDir, coreutils.JfrogTransferStateFileName), false)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
+}
+
 func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
 	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
 	if tdc.ignoreState {
@@ -553,13 +573,16 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	if originalErr == nil {
 		log.Info("Files transfer is complete!")
 	}
-	e := tdc.stateManager.SaveState()
-	if e != nil {
-		log.Error("Couldn't save transfer state", e)
-		if err == nil {
-			err = e
+	if tdc.stateManager.CurrentRepo.Name != "" {
+		e := tdc.stateManager.SaveState()
+		if e != nil {
+			log.Error("Couldn't save transfer state", e)
+			if err == nil {
+				err = e
+			}
 		}
 	}
+
 	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if e != nil {
 		log.Error("Couldn't create the errors CSV file", e)

@@ -1,58 +1,64 @@
 package state
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestGetRepositoryState(t *testing.T) {
-	state := &TransferState{}
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
 
-	// Get repo on empty state, without creating if missing.
-	getAndAssertNonExistingRepo(t, state, repo1Key)
+	// Assert repo does not exist before it was created.
+	loadAndAssertRepo(t, repo1Key, false)
 
-	// Create new repo.
-	_ = createAndAssertRepo(t, state, repo1Key)
-	_ = createAndAssertRepo(t, state, repo2Key)
-	_ = createAndAssertRepo(t, state, repo3Key)
+	// Create new repos.
+	createAndAssertRepo(t, stateManager, repo1Key)
+	createAndAssertRepo(t, stateManager, repo2Key)
 
-	// Get a non-existing repo from a non-empty state, without creating if missing.
-	getAndAssertNonExistingRepo(t, state, repo4Key)
+	// Add data to current repo.
+	stateManager.CurrentRepo.FullTransfer.Started = "start"
+	stateManager.CurrentRepo.FullTransfer.Ended = "end"
+	assert.NoError(t, stateManager.persistTransferState())
 
-	// Add data to existing repo, get and assert.
-	repo2 := createAndAssertRepo(t, state, repo2Key)
-	repo2.FullTransfer.Started = "start"
-	repo2.FullTransfer.Ended = "end"
-	repo2, err := state.getRepository(repo2Key, false)
-	assert.NoError(t, err)
-	assert.Equal(t, repo2Key, repo2.Name)
-	assert.Equal(t, "start", repo2.FullTransfer.Started)
-	assert.Equal(t, "end", repo2.FullTransfer.Ended)
+	// Create new repo, and assert data on previous repo is loaded correctly.
+	createAndAssertRepo(t, stateManager, repo3Key)
+	transferState := loadAndAssertRepo(t, repo2Key, true)
+	assert.Equal(t, "start", transferState.CurrentRepo.FullTransfer.Started)
+	assert.Equal(t, "end", transferState.CurrentRepo.FullTransfer.Ended)
 }
 
-func createAndAssertRepo(t *testing.T, state *TransferState, repoKey string) *Repository {
-	repo, err := state.getRepository(repoKey, true)
+func loadAndAssertRepo(t *testing.T, repoKey string, expectedToExist bool) *TransferState {
+	transferState, exists, err := LoadTransferState(repoKey)
 	assert.NoError(t, err)
-	assert.Equal(t, repoKey, repo.Name)
-	assert.Empty(t, repo.FullTransfer)
-	assert.Empty(t, repo.Diffs)
-	return repo
+	assert.Equal(t, expectedToExist, exists)
+	if expectedToExist {
+		assert.Equal(t, repoKey, transferState.CurrentRepo.Name)
+	}
+	return &transferState
 }
 
-func getAndAssertNonExistingRepo(t *testing.T, state *TransferState, repoKey string) {
-	repo, err := state.getRepository(repoKey, false)
-	assert.EqualError(t, err, getRepoMissingErrorMsg(repoKey))
-	assert.Nil(t, repo)
+func createAndAssertRepo(t *testing.T, stateManager *TransferStateManager, repoKey string) {
+	assert.NoError(t, stateManager.SetRepoState(repoKey, 0, 0, false, false))
+	transferState := loadAndAssertRepo(t, repoKey, true)
+	assert.Empty(t, transferState.CurrentRepo.FullTransfer)
+	assert.Empty(t, transferState.CurrentRepo.Diffs)
 }
 
 func TestSaveAndLoadState(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
-	stateManager.Repositories = []Repository{{Name: repo4Key}}
+	stateManager.CurrentRepo = newRepositoryTransferState(repo4Key).CurrentRepo
 
 	assert.NoError(t, stateManager.persistTransferState())
-	actualState, err := loadTransferState()
+	actualState, exists, err := LoadTransferState(repo4Key)
 	assert.NoError(t, err)
-	assert.Equal(t, stateManager.TransferState, *actualState)
+	assert.True(t, exists)
+	assert.Equal(t, stateManager.TransferState, actualState)
+
+	// Persist the transfer state with a high version and assert loading yields an error.
+	stateManager.TransferState.Version = 1000
+	assert.NoError(t, stateManager.persistTransferState())
+	_, _, err = LoadTransferState(repo4Key)
+	assert.ErrorContains(t, err, transferStateFileInvalidVersionErrorMsg)
 }

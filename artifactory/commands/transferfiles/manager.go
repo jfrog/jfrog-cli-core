@@ -5,15 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"sync"
-	"time"
-
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"sync"
+	"time"
 )
 
 const (
@@ -398,13 +397,13 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 		return nil
 	}
 	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
-		chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
+		chunkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, &chunk)
 		if err != nil {
 			return err
 		}
 		if progressbar != nil {
-			progressbar.increaseTotalSize(int(chunnkSizeInBytes))
-			if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes)); err != nil {
+			progressbar.increaseTotalSize(int(chunkSizeInBytes))
+			if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunkSizeInBytes)); err != nil {
 				return err
 			}
 		}

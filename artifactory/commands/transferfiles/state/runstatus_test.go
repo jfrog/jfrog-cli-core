@@ -9,7 +9,7 @@ import (
 func TestSaveAndLoadRunStatus(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
-	stateManager.CurrentRepo = repo4Key
+	stateManager.CurrentRepo = newRepositoryTransferState(repo4Key).CurrentRepo
 	stateManager.CurrentRepoPhase = 2
 
 	assert.NoError(t, stateManager.persistTransferRunStatus())

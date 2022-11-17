@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strconv"
 	"strings"
@@ -29,7 +30,15 @@ func ShowStatus() error {
 		return err
 	}
 	addOverallStatus(stateManager, &output, runningTime)
-	if stateManager.CurrentRepo != "" {
+	if stateManager.CurrentRepoKey != "" {
+		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return errorutils.CheckErrorf(getRepoStateMissingErrorMsg(stateManager.CurrentRepoKey))
+		}
+		stateManager.TransferState = transferState
 		output.WriteString("\n")
 		setRepositoryStatus(stateManager, &output)
 	}
@@ -62,14 +71,8 @@ func calcPercentageInt64(transferred, total int64) string {
 
 func setRepositoryStatus(stateManager *state.TransferStateManager, output *strings.Builder) {
 	addTitle(output, "Current Repository Status")
-	addString(output, "🏷 ", "Name", stateManager.CurrentRepo, 2)
-	var currentRepo state.Repository
-	for _, repo := range stateManager.Repositories {
-		if repo.Name == stateManager.CurrentRepo {
-			currentRepo = repo
-			break
-		}
-	}
+	addString(output, "🏷 ", "Name", stateManager.CurrentRepoKey, 2)
+	currentRepo := stateManager.CurrentRepo
 	switch stateManager.CurrentRepoPhase {
 	case api.FullTransferPhase, api.ErrorsPhase:
 		if stateManager.CurrentRepoPhase == api.FullTransferPhase {
@@ -105,4 +108,8 @@ func sizeToString(sizeInBytes int64) string {
 		divider <<= 10
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(sizeInBytes)/float64(divider), sizeUnits[sizeUnitIndex])
+}
+
+func getRepoStateMissingErrorMsg(repoKey string) string {
+	return "Could not find the state file of repository '" + repoKey + "'. Aborting."
 }

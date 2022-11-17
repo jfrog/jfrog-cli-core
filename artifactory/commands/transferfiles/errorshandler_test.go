@@ -4,18 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -132,38 +130,40 @@ func TestGetErrorsFiles(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
-	retryableErrorsDirPath, err := coreutils.GetJfrogTransferRetryableDir()
-	assert.NoError(t, err)
-	assert.NoError(t, fileutils.CreateDirIfNotExist(retryableErrorsDirPath))
+	// Create 3 retryable and 1 skipped errors files that belong to repo1.
+	writeEmptyErrorsFile(t, repo1Key, true, 0, 0)
+	writeEmptyErrorsFile(t, repo1Key, true, 0, 1)
+	writeEmptyErrorsFile(t, repo1Key, true, 1, 123)
+	writeEmptyErrorsFile(t, repo1Key, false, 0, 1)
 
-	skippedErrorsDirPath, err := coreutils.GetJfrogTransferSkippedDir()
-	assert.NoError(t, err)
-	assert.NoError(t, fileutils.CreateDirIfNotExist(skippedErrorsDirPath))
+	// Create 2 retryable and 2 skipped errors files that belong to repo2.
+	writeEmptyErrorsFile(t, repo2Key, true, 0, 0)
+	writeEmptyErrorsFile(t, repo2Key, true, 2, 1)
+	writeEmptyErrorsFile(t, repo2Key, false, 1, 0)
+	writeEmptyErrorsFile(t, repo2Key, false, 0, 1)
 
-	repoKey := "my-repo-local"
-	// Create 3 retryable errors files that belong to the repo.
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 0, 0)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 0, 1)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey, 1, 123)
-	// Create a few retryable errors files that are distractions.
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, "wrong"+repoKey, 0, 0)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"wrong", 0, 1)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, "wrong-"+repoKey+"-wrong", 1, 0)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"-0", 1, 0)
-	writeEmptyErrorsFile(t, retryableErrorsDirPath, repoKey+"-0-1", 1, 0)
-
-	// Create 1 skipped errors file that belongs to the repo.
-	writeEmptyErrorsFile(t, skippedErrorsDirPath, repoKey, 0, 1)
-
-	paths, err := getErrorsFiles([]string{repoKey}, true)
+	paths, err := getErrorsFiles([]string{repo1Key}, true)
 	assert.NoError(t, err)
 	assert.Len(t, paths, 3)
-	paths, err = getErrorsFiles([]string{repoKey}, false)
+	paths, err = getErrorsFiles([]string{repo1Key}, false)
 	assert.NoError(t, err)
 	assert.Len(t, paths, 1)
+	paths, err = getErrorsFiles([]string{repo1Key, repo2Key}, true)
+	assert.NoError(t, err)
+	assert.Len(t, paths, 5)
 }
 
-func writeEmptyErrorsFile(t *testing.T, path, repoKey string, phase, counter int) {
+func writeEmptyErrorsFile(t *testing.T, repoKey string, retryable bool, phase, counter int) {
+	var errorsDirPath string
+	var err error
+	if retryable {
+		errorsDirPath, err = getJfrogTransferRepoRetryableDir(repoKey)
+	} else {
+		errorsDirPath, err = getJfrogTransferRepoSkippedDir(repoKey)
+	}
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(errorsDirPath))
+
 	fileName := getErrorsFileName(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now()), counter)
-	assert.NoError(t, os.WriteFile(filepath.Join(path, fileName), nil, 0644))
+	assert.NoError(t, os.WriteFile(filepath.Join(errorsDirPath, fileName), nil, 0644))
 }

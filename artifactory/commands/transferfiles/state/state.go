@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,13 +16,20 @@ var saveStateMutex sync.Mutex
 
 type ActionOnStateFunc func(state *TransferState) error
 
-// This struct holds the current state of the whole transfer of the source Artifactory instance.
-// It is saved to a file in JFrog CLI's home.
-// The transfer-files command uses this state to determine which phases need to be executed for each a repository,
+const (
+	transferStateFileVersion                = 0
+	transferStateFileInvalidVersionErrorMsg = "unexpected repository state file found"
+)
+
+// This struct holds the state of the current repository being transferred from the source Artifactory instance.
+// It is saved to a file located in a directory named with the sha of the repository, under the transfer directory.
+// The transfer-files command uses this state to determine which phases should be executed for the repository,
 // as well as other decisions related to the process execution.
 type TransferState struct {
 	lastSaveTimestamp time.Time
-	Repositories      []Repository `json:"repositories,omitempty"`
+	// The Version of the state.json file of a repository.
+	Version     int        `json:"state_version,omitempty"`
+	CurrentRepo Repository `json:"repository,omitempty"`
 }
 
 type Repository struct {
@@ -46,26 +54,11 @@ type DiffDetails struct {
 	Completed bool `json:"completed,omitempty"`
 }
 
-func NewTransferState() *TransferState {
-	return &TransferState{}
-}
-
-func (ts *TransferState) getRepository(repoKey string, createIfMissing bool) (*Repository, error) {
-	for i := range ts.Repositories {
-		if ts.Repositories[i].Name == repoKey {
-			return &ts.Repositories[i], nil
-		}
+func newRepositoryTransferState(repoKey string) TransferState {
+	return TransferState{
+		Version:     transferStateFileVersion,
+		CurrentRepo: Repository{Name: repoKey},
 	}
-	if !createIfMissing {
-		return nil, errorutils.CheckErrorf(getRepoMissingErrorMsg(repoKey))
-	}
-	repo := newRepositoryState(repoKey)
-	ts.Repositories = append(ts.Repositories, repo)
-	return &ts.Repositories[len(ts.Repositories)-1], nil
-}
-
-func newRepositoryState(repoKey string) Repository {
-	return Repository{Name: repoKey}
 }
 
 func (ts *TransferState) action(action ActionOnStateFunc) error {
@@ -88,44 +81,53 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 }
 
 func (ts *TransferState) persistTransferState() (err error) {
-	stateFilePath, err := coreutils.GetJfrogTransferStateFilePath()
+	repoDir, err := GetRepositoryTransferDir(ts.CurrentRepo.Name)
 	if err != nil {
 		return err
 	}
+
+	repoStateFilePath := filepath.Join(repoDir, coreutils.JfrogTransferRepoStateFileName)
 
 	content, err := json.Marshal(ts)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 
-	err = os.WriteFile(stateFilePath, content, 0600)
+	err = os.WriteFile(repoStateFilePath, content, 0600)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	return nil
 }
 
-func loadTransferState() (*TransferState, error) {
-	stateFilePath, err := coreutils.GetJfrogTransferStateFilePath()
+func LoadTransferState(repoKey string) (transferState TransferState, exists bool, err error) {
+	stateFilePath, err := getRepoStateFilepath(repoKey)
 	if err != nil {
-		return nil, err
+		return
 	}
-	exists, err := fileutils.IsFileExists(stateFilePath, false)
-	if err != nil {
-		return nil, err
-	}
-	transferState := &TransferState{}
-	if !exists {
-		return transferState, nil
+	exists, err = fileutils.IsFileExists(stateFilePath, false)
+	if err != nil || !exists {
+		return
 	}
 
 	content, err := fileutils.ReadFile(stateFilePath)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if err = json.Unmarshal(content, &transferState); err != nil {
-		return nil, errorutils.CheckError(err)
+	if err = json.Unmarshal(content, &transferState); errorutils.CheckError(err) != nil {
+		return
 	}
-	return transferState, nil
+	if transferState.Version > transferStateFileVersion {
+		return TransferState{}, false, errorutils.CheckErrorf(transferStateFileInvalidVersionErrorMsg)
+	}
+	return
+}
+
+func getRepoStateFilepath(repoKey string) (string, error) {
+	repoDir, err := GetRepositoryTransferDir(repoKey)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(repoDir, coreutils.JfrogTransferRepoStateFileName), nil
 }

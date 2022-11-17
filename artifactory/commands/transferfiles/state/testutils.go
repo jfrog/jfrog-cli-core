@@ -11,7 +11,6 @@ import (
 func InitStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp func()) {
 	cleanUpJfrogHome, err := tests.SetJfrogHome()
 	assert.NoError(t, err)
-	cleanUp = cleanUpJfrogHome
 
 	// Create transfer directory
 	transferDir, err := coreutils.GetJfrogTransferDir()
@@ -21,5 +20,12 @@ func InitStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp fu
 
 	stateManager, err = NewTransferStateManager(true)
 	assert.NoError(t, err)
-	return
+
+	// Set save interval to 0 so every action will be persisted and data can be asserted.
+	previousSaveInterval := SaveIntervalSecs
+	SaveIntervalSecs = 0
+	return stateManager, func() {
+		SaveIntervalSecs = previousSaveInterval
+		cleanUpJfrogHome()
+	}
 }

@@ -5,16 +5,13 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"golang.org/x/exp/slices"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
-
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 var maxDelayedArtifactsInFile = 50000
@@ -32,7 +29,7 @@ type TransferDelayedArtifactsMng struct {
 }
 
 // Create transfer delays directory inside the JFrog CLI home directory.
-func initTransferDelaysDir() error {
+func initTransferDelaysDir(repoKey string) error {
 	// Create transfer directory (if it doesn't exist)
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
@@ -42,7 +39,7 @@ func initTransferDelaysDir() error {
 		return err
 	}
 	// Create delays directory
-	delaysDirPath, err := coreutils.GetJfrogTransferDelaysDir()
+	delaysDirPath, err := getJfrogTransferRepoDelaysDir(repoKey)
 	if err != nil {
 		return err
 	}
@@ -51,14 +48,11 @@ func initTransferDelaysDir() error {
 
 // Creates a manager for the process of transferring delayed files. Delayed files are files that should be transferred at the very end of the transfer process, such as pom.xml and manifest.json files.
 func newTransferDelayedArtifactsManager(delayedArtifactsChannelMng *DelayedArtifactsChannelMng, repoKey string, phaseStartTime string) (*TransferDelayedArtifactsMng, error) {
-	if err := initTransferDelaysDir(); err != nil {
+	if err := initTransferDelaysDir(repoKey); err != nil {
 		return nil, err
 	}
 	return &TransferDelayedArtifactsMng{delayedArtifactsChannelMng: delayedArtifactsChannelMng, repoKey: repoKey, phaseStartTime: phaseStartTime}, nil
 }
-
-// Expected error file format: <repoKey>-<phaseStartTime in epoch millisecond>-<fileIndex>.json
-var delaysFilesRegexp = regexp.MustCompile(`^(.+)-([0-9]{13})-([0-9]+)\.json$`)
 
 func getDelaysFilePrefix(repoKey string, phaseStartTime string) string {
 	return fmt.Sprintf("%s-%s", repoKey, phaseStartTime)
@@ -73,7 +67,7 @@ func (mng *TransferDelayedArtifactsMng) start() (err error) {
 		}
 	}()
 
-	delaysDirPath, err := coreutils.GetJfrogTransferDelaysDir()
+	delaysDirPath, err := getJfrogTransferRepoDelaysDir(mng.repoKey)
 	if err != nil {
 		return err
 	}
@@ -94,7 +88,7 @@ type DelayedArtifactsFile struct {
 }
 
 // Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
-func consumeAllDelayFiles(base phaseBase, addedDelayFiles []string) error {
+func consumeAllDelayFiles(base phaseBase) error {
 	filesToConsume, err := getDelayFiles([]string{base.repoKey})
 	if err != nil {
 		return err
@@ -118,7 +112,7 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	}
 	// No errors - we can handle all the delayed files created up to this point.
 	if errCount == 0 {
-		return consumeAllDelayFiles(phase, addedDelayFiles)
+		return consumeAllDelayFiles(phase)
 	}
 	// There were files which we failed to transferred, and therefore we had error files.
 	// Therefore, the delayed files should be handled later, as part of Phase 3. We also reduce the count of files of this phase by the amount of files which were delayed.
@@ -204,33 +198,7 @@ func readDelayFile(path string) (DelayedArtifactsFile, error) {
 
 // Gets a list of all delay files from the CLI's cache for a specific repo
 func getDelayFiles(repoKeys []string) (filesPaths []string, err error) {
-	dirPath, err := coreutils.GetJfrogTransferDelaysDir()
-	if err != nil {
-		return
-	}
-	exist, err := fileutils.IsDirExists(dirPath, false)
-	if !exist || err != nil {
-		return
-	}
-
-	files, err := fileutils.ListFiles(dirPath, false)
-	if err != nil {
-		return
-	}
-
-	for _, file := range files {
-		matchAndGroups := delaysFilesRegexp.FindStringSubmatch(filepath.Base(file))
-		// Expecting a match and 3 groups. A total of 4 results.
-		if len(matchAndGroups) != 4 {
-			log.Error("unexpected delay file file-name:", file)
-			continue
-		}
-		// Append the errors file if the first group matches any of the requested repo keys.
-		if slices.Contains(repoKeys, matchAndGroups[1]) {
-			filesPaths = append(filesPaths, file)
-		}
-	}
-	return
+	return getErrorOrDelayFiles(repoKeys, getJfrogTransferRepoDelaysDir)
 }
 
 const (

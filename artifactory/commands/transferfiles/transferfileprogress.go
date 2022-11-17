@@ -128,8 +128,8 @@ func (t *TransferProgressMng) Quit() error {
 		if t.totalRepositories != nil {
 			t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
 		}
-		// Wait a refresh rate to make sure all aborts have finished
-		time.Sleep(progressbar.ProgressRefreshRate)
+		// Wait a few refresh rates to make sure all aborts have finished.
+		time.Sleep(progressbar.ProgressRefreshRate * 3)
 		// Wait for all go routines to finish before quiting
 		t.barsMng.GetBarsWg().Wait()
 	} else {
@@ -289,7 +289,7 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.errorNote, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 			barPtr = nil

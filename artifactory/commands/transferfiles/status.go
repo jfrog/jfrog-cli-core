@@ -36,7 +36,7 @@ func ShowStatus() error {
 			return err
 		}
 		if !exists {
-			return errorutils.CheckErrorf(getRepoStateMissingErrorMsg(stateManager.CurrentRepoKey))
+			return errorutils.CheckErrorf("could not find the state file of repository '%s'. Aborting", stateManager.CurrentRepoKey)
 		}
 		stateManager.TransferState = transferState
 		output.WriteString("\n")
@@ -108,8 +108,4 @@ func sizeToString(sizeInBytes int64) string {
 		divider <<= 10
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(sizeInBytes)/float64(divider), sizeUnits[sizeUnitIndex])
-}
-
-func getRepoStateMissingErrorMsg(repoKey string) string {
-	return "Could not find the state file of repository '" + repoKey + "'. Aborting."
 }

@@ -383,7 +383,7 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 }
 
 // Assert the transfer dir is not in the old structure with a united state.json for all repository.
-// There is no means of conversion to the new structure, where every the state is repository specific and separated.
+// There are no means of conversion to the new structure, where repository has its own separated state file.
 // Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
 func (tdc *TransferFilesCommand) assertRepositorySpecificStructure() error {
 	transferDir, err := coreutils.GetJfrogTransferDir()

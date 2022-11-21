@@ -21,10 +21,10 @@ const (
 	serviceManagerRetriesWaitPerRequestMilliSecs int = 1000
 	storageInfoRepoMissingError                      = "one or more of the requested repositories were not found"
 
-	bytesInKB = 1024
-	bytesInMB = 1024 * bytesInKB
-	bytesInGB = 1024 * bytesInMB
-	bytesInTB = 1024 * bytesInGB
+	bytesInKB int64 = 1024
+	bytesInMB       = 1024 * bytesInKB
+	bytesInGB       = 1024 * bytesInMB
+	bytesInTB       = 1024 * bytesInGB
 )
 
 var getRepoSummaryPollingTimeout = 10 * time.Minute
@@ -171,36 +171,36 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 	case "bytes":
 		sizeInBytes = sizeInUnit
 	case "KB":
-		sizeInBytes = sizeInUnit * bytesInKB
+		sizeInBytes = sizeInUnit * float64(bytesInKB)
 	case "MB":
-		sizeInBytes = sizeInUnit * bytesInMB
+		sizeInBytes = sizeInUnit * float64(bytesInMB)
 	case "GB":
-		sizeInBytes = sizeInUnit * bytesInGB
+		sizeInBytes = sizeInUnit * float64(bytesInGB)
 	case "TB":
-		sizeInBytes = sizeInUnit * bytesInTB
+		sizeInBytes = sizeInUnit * float64(bytesInTB)
 	default:
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
 	return int64(sizeInBytes), nil
 }
 
-func ConvertIntToStorageSizeString(num int) string {
+func ConvertIntToStorageSizeString(num int64) string {
 	if num > bytesInTB {
-		newNum := float64(num) / bytesInTB
+		newNum := float64(num) / float64(bytesInTB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "TB "
 	}
 	if num > bytesInGB {
-		newNum := float64(num) / bytesInGB
+		newNum := float64(num) / float64(bytesInGB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "GB "
 	}
 	if num > bytesInMB {
-		newNum := float64(num) / bytesInMB
+		newNum := float64(num) / float64(bytesInMB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "MB "
 	}
-	newNum := float64(num) / bytesInKB
+	newNum := float64(num) / float64(bytesInKB)
 	stringNum := fmt.Sprintf("%.1f", newNum)
 	return stringNum + "KB "
 }

@@ -253,8 +253,8 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 			mpb.AppendDecorators(
 				decor.Name(" "+firstValueHeadLine+": "),
 				decor.Any(func(statistics decor.Statistics) string {
-					s1 := artifactoryutils.ConvertIntToStorageSizeString(int(*optionalDoneTasks1))
-					s2 := artifactoryutils.ConvertIntToStorageSizeString(int(*OptionalTotalTasks1))
+					s1 := artifactoryutils.ConvertIntToStorageSizeString(*optionalDoneTasks1)
+					s2 := artifactoryutils.ConvertIntToStorageSizeString(*OptionalTotalTasks1)
 					return color.Green.Render(s1 + "/" + s2)
 				}), decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
 					s1 := strconv.Itoa(int(*doneTaks2))

@@ -140,26 +140,52 @@ func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunk
 	})
 }
 
-func (ts *TransferStateManager) IncTransferredSizeAndFilesDiff(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
+func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.DiffInfo.TransferredSizeBytes += chunkTotalSizeInBytes
-		repo.DiffInfo.TransferredUnits += chunkTotalFiles
+		repo.Phase2Info.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.Phase2Info.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 }
 
-func (ts *TransferStateManager) IncTotalSizeAndFilesDiff(repoKey string, filesNumber, totalSize int64) error {
+func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(repoKey string, filesNumber, totalSize int64) error {
 	return ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		repo.DiffInfo.TotalSizeBytes += totalSize
-		repo.DiffInfo.TotalUnits += filesNumber
+		repo.Phase2Info.TotalSizeBytes += totalSize
+		repo.Phase2Info.TotalUnits += filesNumber
+		return nil
+	})
+}
+
+// Set relevant information of files and storage we need to transfer in phase3
+func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(repoKey string, filesNumber, totalSize int64) error {
+	return ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.Phase3Info.TotalSizeBytes = totalSize
+		repo.Phase3Info.TotalUnits = filesNumber
+		return nil
+	})
+}
+
+// Increase transferred storage and files in phase 3
+func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(repoKey string, chunkTotalFiles, chunkTotalSizeInBytes int64) error {
+	return ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		repo.Phase3Info.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.Phase3Info.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 }
@@ -182,16 +208,32 @@ func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (tota
 }
 
 // Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
-func (ts *TransferStateManager) GetStorageAndFilesPointersForDiff(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
+func (ts *TransferStateManager) GetStorageAndFilesPointersForPhase2(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		totalDiffStorage = &repo.DiffInfo.TotalSizeBytes
-		totalUploadedDiffStorage = &repo.DiffInfo.TransferredSizeBytes
-		totalDiffFiles = &repo.DiffInfo.TotalUnits
-		totalUploadedDiffFiles = &repo.DiffInfo.TransferredUnits
+		totalDiffStorage = &repo.Phase2Info.TotalSizeBytes
+		totalUploadedDiffStorage = &repo.Phase2Info.TransferredSizeBytes
+		totalDiffFiles = &repo.Phase2Info.TotalUnits
+		totalUploadedDiffFiles = &repo.Phase2Info.TransferredUnits
+		return nil
+	})
+	return
+}
+
+// Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
+func (ts *TransferStateManager) GetStorageAndFilesPointersForPhase3(repoKey string) (totalFailedStorage, totalUploadedFailedStorage, totalFailedFiles, totalUploadedFailedFiles *int64, err error) {
+	err = ts.TransferState.action(func(state *TransferState) error {
+		repo, err := state.getRepository(repoKey, false)
+		if err != nil {
+			return err
+		}
+		totalFailedStorage = &repo.Phase3Info.TotalSizeBytes
+		totalUploadedFailedStorage = &repo.Phase3Info.TransferredSizeBytes
+		totalFailedFiles = &repo.Phase3Info.TotalUnits
+		totalUploadedFailedFiles = &repo.Phase3Info.TransferredUnits
 		return nil
 	})
 	return
@@ -387,11 +429,14 @@ func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chun
 			chunkTotalFiles++
 		}
 	}
-	if stateManager.CurrentRepoPhase == api.FilesDiffPhase {
-		err := stateManager.IncTransferredSizeAndFilesDiff(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
-		if err != nil {
-			return 0, err
-		}
+	err = nil
+	switch stateManager.CurrentRepoPhase {
+	case api.FullTransferPhase:
+		err = stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
+	case api.FilesDiffPhase:
+		err = stateManager.IncTransferredSizeAndFilesPhase2(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
+	case api.ErrorsPhase:
+		err = stateManager.IncTransferredSizeAndFilesPhase3(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 	}
-	return chunkTotalSizeInBytes, stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
+	return chunkTotalSizeInBytes, err
 }

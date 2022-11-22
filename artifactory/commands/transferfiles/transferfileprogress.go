@@ -186,6 +186,7 @@ func (t *TransferProgressMng) IncrementPhaseBy(id int, n int) error {
 		return nil
 	}
 	if t.phases[id].GetTasksProgressBar().GetTotal() < t.phases[id].GetTasksProgressBar().GetTasksCount()+int64(n) {
+		t.barsMng.IncBy(n, t.phases[id])
 		return t.DonePhase(id)
 	}
 	if t.ShouldDisplay() {
@@ -222,7 +223,7 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 }
 
 func (t *TransferProgressMng) AddPhase2() error {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff(t.transferState.CurrentRepo)
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForPhase2(t.transferState.CurrentRepo)
 	if err != nil {
 		return err
 	}
@@ -230,8 +231,13 @@ func (t *TransferProgressMng) AddPhase2() error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retrying transfer failures", false, progressbar.GREEN, Files.String()))
+func (t *TransferProgressMng) AddPhase3(totalStorage int64) error {
+	_, _, totalFailedFiles, totalUploadedFailedFiles, err := t.transferState.GetStorageAndFilesPointersForPhase3(t.transferState.CurrentRepo)
+	if err != nil {
+		return err
+	}
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 3: Retrying transfer failures", "🗄  Failed Storage", "📄 Failed Files", totalStorage, nil, nil, totalFailedFiles, totalUploadedFailedFiles, progressbar.GREEN))
+	return nil
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

@@ -26,7 +26,8 @@ type TransferState struct {
 
 type Repository struct {
 	ProgressState
-	DiffInfo     ProgressState `json:"diff_info,omitempty"`
+	Phase2Info   ProgressState `json:"diff_info,omitempty"`
+	Phase3Info   ProgressState `json:"failures_info,omitempty"`
 	Name         string        `json:"name,omitempty"`
 	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
 	Diffs        []DiffDetails `json:"diffs,omitempty"`

@@ -397,16 +397,14 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 	if phase == nil {
 		return nil
 	}
-	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
-		chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
-		if err != nil {
+	chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
+	if err != nil {
+		return err
+	}
+	if progressbar != nil {
+		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
+		if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes)); err != nil {
 			return err
-		}
-		if progressbar != nil {
-			progressbar.increaseTotalSize(int(chunnkSizeInBytes))
-			if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunnkSizeInBytes)); err != nil {
-				return err
-			}
 		}
 	}
 	if timeEstMng != nil {

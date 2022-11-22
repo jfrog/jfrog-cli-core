@@ -136,6 +136,9 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			return err
 		}
 		stor, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesPointersForPhase2(params.repoKey)
+		if err != nil {
+			return err
+		}
 		if f.progressBar != nil {
 			f.progressBar.phases[f.phaseId].GetTasksProgressBar().SetGeneralProgressTotal(*stor)
 		}

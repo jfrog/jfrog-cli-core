@@ -263,6 +263,7 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 				}),
 			),
 		)
+		pb.SetGeneralProgressTotal(*OptionalTotalTasks1)
 	}
 	return pb
 }

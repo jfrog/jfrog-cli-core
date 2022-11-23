@@ -19,9 +19,9 @@ const (
 	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
 	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
 
-	FullTransferPhase int = 0
-	FilesDiffPhase    int = 1
-	ErrorsPhase       int = 2
+	Phase1 int = 0
+	Phase2 int = 1
+	Phase3 int = 2
 )
 
 type TargetAuth struct {

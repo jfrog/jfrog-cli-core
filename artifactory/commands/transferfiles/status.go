@@ -71,15 +71,15 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		}
 	}
 	switch stateManager.CurrentRepoPhase {
-	case api.FullTransferPhase, api.ErrorsPhase:
-		if stateManager.CurrentRepoPhase == api.FullTransferPhase {
+	case api.Phase1, api.Phase3:
+		if stateManager.CurrentRepoPhase == api.Phase1 {
 			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 2)
 		} else {
 			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 2)
 		}
-		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.TransferredSizeBytes)+" / "+sizeToString(currentRepo.TotalSizeBytes)+calcPercentageInt64(currentRepo.TransferredSizeBytes, currentRepo.TotalSizeBytes), 2)
-		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.TransferredUnits, currentRepo.TotalUnits)+calcPercentageInt64(currentRepo.TransferredUnits, currentRepo.TotalUnits), 2)
-	case api.FilesDiffPhase:
+		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.Phase1Info.TransferredSizeBytes)+" / "+sizeToString(currentRepo.Phase1Info.TotalSizeBytes)+calcPercentageInt64(currentRepo.Phase1Info.TransferredSizeBytes, currentRepo.Phase1Info.TotalSizeBytes), 2)
+		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits)+calcPercentageInt64(currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits), 2)
+	case api.Phase2:
 		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 2)
 	}
 }

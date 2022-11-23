@@ -135,12 +135,12 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		if err != nil {
 			return err
 		}
-		stor, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesPointersForPhase2(params.repoKey)
+		storage, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesPointersForPhase2(params.repoKey)
 		if err != nil {
 			return err
 		}
 		if f.progressBar != nil {
-			f.progressBar.phases[f.phaseId].GetTasksProgressBar().SetGeneralProgressTotal(*stor)
+			f.progressBar.phases[f.phaseId].GetTasksProgressBar().SetGeneralProgressTotal(*storage)
 		}
 		shouldStop, err := uploadByChunks(files, uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {

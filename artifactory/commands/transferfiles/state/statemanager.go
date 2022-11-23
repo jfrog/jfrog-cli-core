@@ -77,10 +77,10 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 		if reset {
 			*repo = newRepositoryState(repoKey)
 		}
-		repo.TotalSizeBytes = totalSizeBytes
-		repo.TotalUnits = totalFiles
-		repo.TransferredSizeBytes = 0
-		repo.TransferredUnits = 0
+		repo.Phase1Info.TotalSizeBytes = totalSizeBytes
+		repo.Phase1Info.TotalUnits = totalFiles
+		repo.Phase1Info.TransferredSizeBytes = 0
+		repo.Phase1Info.TransferredUnits = 0
 		return nil
 	})
 	if err != nil {
@@ -123,8 +123,8 @@ func (ts *TransferStateManager) IncTransferredSizeAndFiles(repoKey string, chunk
 		if err != nil {
 			return err
 		}
-		repo.TransferredSizeBytes += chunkTotalSizeInBytes
-		repo.TransferredUnits += chunkTotalFiles
+		repo.Phase1Info.TransferredSizeBytes += chunkTotalSizeInBytes
+		repo.Phase1Info.TransferredUnits += chunkTotalFiles
 		return nil
 	})
 	if err != nil {
@@ -198,10 +198,10 @@ func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (tota
 
 			return err
 		}
-		totalStorage = &repo.TotalSizeBytes
-		transferredStorage = &repo.TransferredSizeBytes
-		totalFiles = &repo.TotalUnits
-		transferredFiles = &repo.TransferredUnits
+		totalStorage = &repo.Phase1Info.TotalSizeBytes
+		transferredStorage = &repo.Phase1Info.TransferredSizeBytes
+		totalFiles = &repo.Phase1Info.TotalUnits
+		transferredFiles = &repo.Phase1Info.TransferredUnits
 		return nil
 	})
 	return
@@ -290,7 +290,7 @@ func (ts *TransferStateManager) GetReposTransferredSizeBytes(repoKeys ...string)
 		}
 		for i := range state.Repositories {
 			if reposSet.Exists(state.Repositories[i].Name) {
-				transferredSizeBytes += state.Repositories[i].TransferredSizeBytes
+				transferredSizeBytes += state.Repositories[i].Phase1Info.TransferredSizeBytes
 			}
 		}
 		return nil
@@ -431,11 +431,11 @@ func UpdateChunkInState(stateManager *TransferStateManager, repoKey string, chun
 	}
 	err = nil
 	switch stateManager.CurrentRepoPhase {
-	case api.FullTransferPhase:
+	case api.Phase1:
 		err = stateManager.IncTransferredSizeAndFiles(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
-	case api.FilesDiffPhase:
+	case api.Phase2:
 		err = stateManager.IncTransferredSizeAndFilesPhase2(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
-	case api.ErrorsPhase:
+	case api.Phase3:
 		err = stateManager.IncTransferredSizeAndFilesPhase3(repoKey, chunkTotalFiles, chunkTotalSizeInBytes)
 	}
 	return chunkTotalSizeInBytes, err

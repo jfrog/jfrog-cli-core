@@ -189,5 +189,5 @@ func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() string {
 }
 
 func (tem *TimeEstimationManager) isTimeEstimationAvailable() bool {
-	return tem.stateManager.CurrentRepoPhase == api.FullTransferPhase || tem.stateManager.CurrentRepoPhase == api.ErrorsPhase
+	return tem.stateManager.CurrentRepoPhase == api.Phase1 || tem.stateManager.CurrentRepoPhase == api.Phase3
 }

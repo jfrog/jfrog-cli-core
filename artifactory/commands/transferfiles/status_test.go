@@ -53,7 +53,7 @@ func TestShowStatus(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.FullTransferPhase, false)
+	createStateManager(t, api.Phase1, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -83,7 +83,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.FilesDiffPhase, false)
+	createStateManager(t, api.Phase2, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -113,7 +113,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.ErrorsPhase, true)
+	createStateManager(t, api.Phase3, true)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())

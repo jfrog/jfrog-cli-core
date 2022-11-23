@@ -133,11 +133,11 @@ func (pb *phaseBase) setPackageType(packageType string) {
 func createTransferPhase(i int) transferPhase {
 	curPhaseBase := phaseBase{phaseId: i}
 	switch i {
-	case api.FullTransferPhase:
+	case api.Phase1:
 		return &fullTransferPhase{phaseBase: curPhaseBase}
-	case api.FilesDiffPhase:
+	case api.Phase2:
 		return &filesDiffPhase{phaseBase: curPhaseBase}
-	case api.ErrorsPhase:
+	case api.Phase3:
 		return &errorsRetryPhase{phaseBase: curPhaseBase}
 	}
 	return nil

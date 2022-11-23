@@ -396,7 +396,7 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 	if phase == nil {
 		return nil
 	}
-	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
+	if phase.phaseId == api.Phase1 || phase.phaseId == api.Phase3 {
 		chunkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, &chunk)
 		if err != nil {
 			return err

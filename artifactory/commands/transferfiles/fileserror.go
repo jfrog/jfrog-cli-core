@@ -138,11 +138,14 @@ func (e *errorsRetryPhase) initProgressBar() error {
 
 	// Init progress with the number of tasks of errors file handling (fixing previous upload failures)
 	filesCount := 0
+	var storage int64 = 0
 	for _, path := range e.errorsFilesToHandle {
-
 		failedFiles, err := readErrorFile(path)
 		if err != nil {
 			return err
+		}
+		for _, singleFailedFile := range failedFiles.Errors {
+			storage += singleFailedFile.SizeBytes
 		}
 		filesCount += len(failedFiles.Errors)
 	}
@@ -153,11 +156,18 @@ func (e *errorsRetryPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	delayCount, err := countDelayFilesContent(delayFiles)
+	delayCount, delayStorage, err := countDelayFilesContent(delayFiles)
 	if err != nil {
 		return err
 	}
-	e.progressBar.AddPhase3(int64(filesCount) + int64(delayCount))
+	err = e.stateManager.SetTotalSizeAndFilesPhase3(int64(filesCount)+int64(delayCount), storage+delayStorage)
+	if err != nil {
+		return err
+	}
+	err = e.progressBar.AddPhase3(storage + delayStorage)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -173,11 +173,11 @@ func TestEstimationNotAvailable(t *testing.T) {
 	defer cleanUp()
 
 	// Assert unavailable if on unsupported phase.
-	timeEstMng.stateManager.CurrentRepoPhase = api.FilesDiffPhase
+	timeEstMng.stateManager.CurrentRepoPhase = api.Phase2
 	assert.Equal(t, "Not available in this phase", timeEstMng.GetEstimatedRemainingTimeString())
 
 	// After made available, assert not available until LastSpeeds are set.
-	timeEstMng.stateManager.CurrentRepoPhase = api.ErrorsPhase
+	timeEstMng.stateManager.CurrentRepoPhase = api.Phase3
 	assert.Equal(t, "Not available yet", timeEstMng.GetEstimatedRemainingTimeString())
 
 	timeEstMng.LastSpeeds = []float64{1.23}

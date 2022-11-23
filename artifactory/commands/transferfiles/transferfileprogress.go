@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	coreLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -207,7 +208,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 }
 
 func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
-	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers()
+	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase1)
 	if err != nil {
 		return err
 	}
@@ -222,7 +223,7 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 }
 
 func (t *TransferProgressMng) AddPhase2() error {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff()
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase2)
 	if err != nil {
 		return err
 	}
@@ -230,8 +231,13 @@ func (t *TransferProgressMng) AddPhase2() error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retrying transfer failures", false, progressbar.GREEN, Files.String()))
+func (t *TransferProgressMng) AddPhase3(totalStorage int64) error {
+	_, _, totalFailedFiles, totalUploadedFailedFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase3)
+	if err != nil {
+		return err
+	}
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 3: Retrying transfer failures", "🗄  Failed Storage", "📄 Failed Files", totalStorage, nil, nil, totalFailedFiles, totalUploadedFailedFiles, progressbar.GREEN))
+	return nil
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

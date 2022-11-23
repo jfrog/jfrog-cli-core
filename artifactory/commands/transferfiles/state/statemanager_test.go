@@ -153,7 +153,7 @@ func assertReposTransferredSize(t *testing.T, stateManager *TransferStateManager
 }
 
 func assertCurrentRepoTransferredFiles(t *testing.T, stateManager *TransferStateManager, expectedFiles int64) {
-	assert.Equal(t, expectedFiles, stateManager.CurrentRepo.TransferredUnits)
+	assert.Equal(t, expectedFiles, stateManager.CurrentRepo.Phase1Info.TransferredUnits)
 }
 
 func TestIncRepositoriesTransferred(t *testing.T) {

@@ -172,11 +172,6 @@ func TestGetTransferSourceAndAction(t *testing.T) {
 	v1 := "1.0.0"
 	cmd := &InstallDataTransferPluginCommand{}
 
-	//// Err - no url provided with the latest download option
-	//_, _, err := cmd.getTransferSourceAndAction()
-	//assert.EqualError(t, err, emptyUrlErr.Error())
-	//cmd.SetBaseDownloadUrl(baseUrl)
-
 	// Latest
 	src, action, err := cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)

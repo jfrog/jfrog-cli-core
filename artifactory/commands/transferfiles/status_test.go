@@ -14,6 +14,7 @@ import (
 
 const (
 	repo1Key = "repo1"
+	repo2Key = "repo2"
 )
 
 func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
@@ -147,7 +148,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, buildInfoRepo, false))
 
-	stateManager.CurrentRepo = repo1Key
+	stateManager.CurrentRepoKey = repo1Key
 	stateManager.CurrentRepoPhase = phase
 	stateManager.OverallTransfer.TotalSizeBytes = 11111
 	stateManager.TotalRepositories.TotalUnits = 1111
@@ -160,7 +161,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	stateManager.TimeEstimationManager.SpeedsAverage = 12
 
 	// Increment transferred size and files. This action also persists the run status.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 500, 5000))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(500, 5000))
 
 	// Save transfer state.
 	assert.NoError(t, stateManager.SaveState())

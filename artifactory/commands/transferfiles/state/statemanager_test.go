@@ -18,53 +18,52 @@ func TestFilesDiffRange(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
-	repoKey := "repo"
 	transferStartTime := time.Now()
 	// Repo should be marked as not transferred. This also adds repo to state.
-	assertRepoTransferred(t, stateManager, repoKey, false)
-	setAndAssertRepoFullyTransfer(t, stateManager, repoKey, transferStartTime)
+	assertRepoTransferred(t, stateManager, false)
+	setAndAssertRepoFullyTransfer(t, stateManager, transferStartTime)
 
 	// Set diff start and assert handling range begins in transfer start time and ends in new diff start time.
-	_ = addAndAssertNewDiffPhase(t, stateManager, repoKey, 1, transferStartTime)
+	_ = addAndAssertNewDiffPhase(t, stateManager, 1, transferStartTime)
 	// Set diff start again, as if previous was interrupted. Handling range start should be the same. Handling range end should be new diff start time.
-	diffStart := addAndAssertNewDiffPhase(t, stateManager, repoKey, 2, transferStartTime)
+	diffStart := addAndAssertNewDiffPhase(t, stateManager, 2, transferStartTime)
 	// Set diff completed.
-	setAndAssertFilesDiffCompleted(t, stateManager, repoKey, 2)
+	setAndAssertFilesDiffCompleted(t, stateManager, 2)
 	// Next diff handling range should begin on last completed diff start time.
-	_ = addAndAssertNewDiffPhase(t, stateManager, repoKey, 3, diffStart)
+	_ = addAndAssertNewDiffPhase(t, stateManager, 3, diffStart)
 }
 
-func assertRepoTransferred(t *testing.T, stateManager *TransferStateManager, repoKey string, expected bool) {
-	transferred, err := stateManager.IsRepoTransferred(repoKey)
+func assertRepoTransferred(t *testing.T, stateManager *TransferStateManager, expected bool) {
+	transferred, err := stateManager.IsRepoTransferred()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, transferred)
 }
 
-func setAndAssertRepoFullyTransfer(t *testing.T, stateManager *TransferStateManager, repoKey string, startTime time.Time) {
-	err := stateManager.SetRepoFullTransferStarted(repoKey, startTime)
+func setAndAssertRepoFullyTransfer(t *testing.T, stateManager *TransferStateManager, startTime time.Time) {
+	err := stateManager.SetRepoFullTransferStarted(startTime)
 	assert.NoError(t, err)
-	assertRepoTransferred(t, stateManager, repoKey, false)
+	assertRepoTransferred(t, stateManager, false)
 
 	time.Sleep(time.Second)
-	err = stateManager.SetRepoFullTransferCompleted(repoKey)
+	err = stateManager.SetRepoFullTransferCompleted()
 	assert.NoError(t, err)
-	assertRepoTransferred(t, stateManager, repoKey, true)
+	assertRepoTransferred(t, stateManager, true)
 
-	repo := getRepoFromState(t, stateManager, repoKey)
+	repo := stateManager.CurrentRepo
 	assert.Equal(t, ConvertTimeToRFC3339(startTime), repo.FullTransfer.Started)
 	assert.NotEmpty(t, repo.FullTransfer.Ended)
 	assert.NotEqual(t, repo.FullTransfer.Ended, repo.FullTransfer.Started)
 }
 
-func addAndAssertNewDiffPhase(t *testing.T, stateManager *TransferStateManager, repoKey string, expectedDiffs int, handlingExpectedTime time.Time) (diffStart time.Time) {
+func addAndAssertNewDiffPhase(t *testing.T, stateManager *TransferStateManager, expectedDiffs int, handlingExpectedTime time.Time) (diffStart time.Time) {
 	diffStart = time.Now()
-	err := stateManager.AddNewDiffToState(repoKey, diffStart)
+	err := stateManager.AddNewDiffToState(diffStart)
 	assert.NoError(t, err)
-	repo := getRepoFromState(t, stateManager, repoKey)
+	repo := stateManager.CurrentRepo
 	assert.Equal(t, expectedDiffs, len(repo.Diffs))
 	assert.Equal(t, ConvertTimeToRFC3339(diffStart), repo.Diffs[expectedDiffs-1].FilesDiffRunTime.Started)
 
-	handlingStart, handlingEnd, err := stateManager.GetDiffHandlingRange(repoKey)
+	handlingStart, handlingEnd, err := stateManager.GetDiffHandlingRange()
 	assert.NoError(t, err)
 	// Truncating the expected time because milliseconds are lost in conversions.
 	assert.True(t, handlingExpectedTime.Truncate(time.Second).Equal(handlingStart))
@@ -72,17 +71,10 @@ func addAndAssertNewDiffPhase(t *testing.T, stateManager *TransferStateManager, 
 	return
 }
 
-func setAndAssertFilesDiffCompleted(t *testing.T, stateManager *TransferStateManager, repoKey string, diffNum int) {
-	err := stateManager.SetFilesDiffHandlingCompleted(repoKey)
+func setAndAssertFilesDiffCompleted(t *testing.T, stateManager *TransferStateManager, diffNum int) {
+	err := stateManager.SetFilesDiffHandlingCompleted()
 	assert.NoError(t, err)
-	repo := getRepoFromState(t, stateManager, repoKey)
-	assert.True(t, repo.Diffs[diffNum-1].Completed)
-}
-
-func getRepoFromState(t *testing.T, stateManager *TransferStateManager, repoKey string) *Repository {
-	repo, err := stateManager.getRepository(repoKey, false)
-	assert.NoError(t, err)
-	return repo
+	assert.True(t, stateManager.CurrentRepo.Diffs[diffNum-1].Completed)
 }
 
 func TestResetRepoState(t *testing.T) {
@@ -93,83 +85,75 @@ func TestResetRepoState(t *testing.T) {
 	err := stateManager.SetRepoState(repo1Key, 0, 0, false, true)
 	assert.NoError(t, err)
 	// Set repository fully transferred. It will fail the test if the repository is not in the state.
-	setAndAssertRepoFullyTransfer(t, stateManager, repo1Key, time.Now())
+	setAndAssertRepoFullyTransfer(t, stateManager, time.Now())
 
 	// Create another repository state
 	err = stateManager.SetRepoState(repo2Key, 0, 0, false, true)
 	assert.NoError(t, err)
-	setAndAssertRepoFullyTransfer(t, stateManager, repo2Key, time.Now())
+	setAndAssertRepoFullyTransfer(t, stateManager, time.Now())
 
 	// Reset repo1 only
 	err = stateManager.SetRepoState(repo1Key, 0, 0, false, true)
 	assert.NoError(t, err)
-	assertRepoTransferred(t, stateManager, repo1Key, false)
+	assertRepoTransferred(t, stateManager, false)
 }
 
 func TestReposTransferredSizeBytes(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
-	// Create repos in state.
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
-	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, false, true))
-
 	// Inc repos transferred sizes.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 1, 10))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 5, 11))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 3, 200))
-	err := stateManager.IncTransferredSizeAndFiles(repo3Key, 4, 3000)
-	assert.EqualError(t, err, getRepoMissingErrorMsg(repo3Key))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(5, 11))
+	assertCurrentRepoTransferredFiles(t, stateManager, 6)
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, false, true))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(3, 200))
+	assertCurrentRepoTransferredFiles(t, stateManager, 3)
 
 	// Get repos transferred sizes, one at a time.
-	assertTransferredSize(t, stateManager, 21, repo1Key)
-	assertTransferredSize(t, stateManager, 200, repo2Key)
-	assertTransferredSize(t, stateManager, 0, repo3Key)
+	assertReposTransferredSize(t, stateManager, 21, repo1Key)
+	assertReposTransferredSize(t, stateManager, 200, repo2Key)
+	assertReposTransferredSize(t, stateManager, 0, repo3Key)
 
 	// Get a combination of all repos. Pass repo2 twice to verify its size is not duplicated.
-	assertTransferredSize(t, stateManager, 221, repo1Key, repo2Key, repo2Key, repo3Key)
+	assertReposTransferredSize(t, stateManager, 221, repo1Key, repo2Key, repo2Key, repo3Key)
 
 	// No repos.
-	assertTransferredSize(t, stateManager, 0)
+	assertReposTransferredSize(t, stateManager, 0)
 
 	// Assert the sum bytes of repo1 + repo2 in the run-status.
 	transferredSizeBytes, err := stateManager.GetTransferredSizeBytes()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(221), transferredSizeBytes)
-
-	// Assert the number of transferred files in the state.
-	assertTransferredFiles(t, stateManager, 6, repo1Key)
-	assertTransferredFiles(t, stateManager, 3, repo2Key)
 }
 
 func TestReposOverallBiFiles(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
-	// Create repos in state.
-	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
-	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true, true))
-
 	// Inc repos transferred sizes and files.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 1, 10))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo2Key, 5, 11))
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(2, 9))
+	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true, true))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(5, 11))
 
 	// Assert the number of transferred bi files in the state.
-	assert.Equal(t, repo2Key, stateManager.CurrentRepo)
+	assert.Equal(t, repo2Key, stateManager.CurrentRepo.Name)
+	assert.Equal(t, repo2Key, stateManager.CurrentRepoKey)
 	assert.True(t, stateManager.BuildInfoRepo)
-	assert.Equal(t, int64(6), stateManager.OverallBiFiles.TransferredUnits)
+	assert.Equal(t, int64(8), stateManager.OverallBiFiles.TransferredUnits)
 }
 
-func assertTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
+func assertReposTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
 	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSize, totalTransferredSize)
 }
 
-func assertTransferredFiles(t *testing.T, stateManager *TransferStateManager, expectedFiles int64, repoKey string) {
-	repo, err := stateManager.getRepository(repoKey, false)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedFiles, repo.Phase1Info.TransferredUnits)
+func assertCurrentRepoTransferredFiles(t *testing.T, stateManager *TransferStateManager, expectedFiles int64) {
+	assert.Equal(t, expectedFiles, stateManager.CurrentRepo.Phase1Info.TransferredUnits)
 }
 
 func TestIncRepositoriesTransferred(t *testing.T) {

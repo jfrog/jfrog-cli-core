@@ -367,22 +367,6 @@ func GetJfrogTransferLockDir() (string, error) {
 	return filepath.Join(locksDirPath, transferLockDirName), nil
 }
 
-func GetJfrogTransferStateFilePath() (string, error) {
-	transferDir, err := GetJfrogTransferDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(transferDir, JfrogTransferStateFileName), nil
-}
-
-func GetJfrogTransferDelaysDir() (string, error) {
-	transferDir, err := GetJfrogTransferDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(transferDir, JfrogTransferDelaysDirName), nil
-}
-
 func GetJfrogTransferRunStatusFilePath() (string, error) {
 	transferDir, err := GetJfrogTransferDir()
 	if err != nil {
@@ -391,28 +375,12 @@ func GetJfrogTransferRunStatusFilePath() (string, error) {
 	return filepath.Join(transferDir, JfrogTransferRunStatusFileName), nil
 }
 
-func GetJfrogTransferErrorsDir() (string, error) {
+func GetJfrogTransferRepositoriesDir() (string, error) {
 	transferDir, err := GetJfrogTransferDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(transferDir, JfrogTransferErrorsDirName), nil
-}
-
-func GetJfrogTransferRetryableDir() (string, error) {
-	errorsDir, err := GetJfrogTransferErrorsDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(errorsDir, JfrogTransferRetryableErrorsDirName), nil
-}
-
-func GetJfrogTransferSkippedDir() (string, error) {
-	errorsDir, err := GetJfrogTransferErrorsDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(errorsDir, JfrogTransferSkippedErrorsDirName), nil
+	return filepath.Join(transferDir, JfrogTransferRepositoriesDirName), nil
 }
 
 // Ask a yes or no question, with a default answer.

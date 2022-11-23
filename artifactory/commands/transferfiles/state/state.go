@@ -33,9 +33,9 @@ type TransferState struct {
 }
 
 type Repository struct {
-	Phase1Info   ProgressState `json:"Phase1_info,omitempty"`
-	Phase2Info   ProgressState `json:"Phase2_info,omitempty"`
-	Phase3Info   ProgressState `json:"Phase3_info,omitempty"`
+	Phase1Info   ProgressState `json:"phase1_info,omitempty"`
+	Phase2Info   ProgressState `json:"phase2_info,omitempty"`
+	Phase3Info   ProgressState `json:"phase3_info,omitempty"`
 	Name         string        `json:"name,omitempty"`
 	FullTransfer PhaseDetails  `json:"full_transfer,omitempty"`
 	Diffs        []DiffDetails `json:"diffs,omitempty"`

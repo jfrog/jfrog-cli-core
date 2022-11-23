@@ -135,7 +135,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		if err != nil {
 			return err
 		}
-		storage, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesPointersForPhase2(params.repoKey)
+		storage, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesRepoPointers(params.repoKey, f.phaseId)
 		if err != nil {
 			return err
 		}

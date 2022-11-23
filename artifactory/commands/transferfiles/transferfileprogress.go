@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -16,6 +17,7 @@ type TransferJobType string
 const (
 	Repositories            TransferJobType = "Repositories"
 	Files                   TransferJobType = "Files"
+	Storage                 TransferJobType = "Storage"
 	Note                    string          = "Note: "
 	RetryFailureContentNote string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 )
@@ -70,7 +72,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.filesStatus = &fileStatus
 	// Init Progress Bars
 	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, coreutils.RemoveEmojisIfNonSupportedTerminal("📦 "+Repositories.String()))
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("🗄  Storage", "📄 Files", tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("🗄  "+Storage.String(), "📄 "+Files.String(), tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(" 🧵 Working threads: ", 0, color.Green)
 	transfer.runningTime = transfer.barsMng.NewStringProgressBar(" 🏃🏼 Running for: ", func() string {
 		runningTime, isRunning, err := state.GetRunningTime()
@@ -208,7 +210,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 }
 
 func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
-	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers(t.transferState.CurrentRepo)
+	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesRepoPointers(t.transferState.CurrentRepo, api.Phase1)
 	if err != nil {
 		return err
 	}
@@ -217,13 +219,13 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 	}
 
 	if !skip {
-		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", "🗄  Storage", "📄 Files", storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
+		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", "🗄  "+Storage.String(), "📄 "+Files.String(), storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
 	}
 	return nil
 }
 
 func (t *TransferProgressMng) AddPhase2() error {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForPhase2(t.transferState.CurrentRepo)
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesRepoPointers(t.transferState.CurrentRepo, api.Phase2)
 	if err != nil {
 		return err
 	}
@@ -232,7 +234,7 @@ func (t *TransferProgressMng) AddPhase2() error {
 }
 
 func (t *TransferProgressMng) AddPhase3(totalStorage int64) error {
-	_, _, totalFailedFiles, totalUploadedFailedFiles, err := t.transferState.GetStorageAndFilesPointersForPhase3(t.transferState.CurrentRepo)
+	_, _, totalFailedFiles, totalUploadedFailedFiles, err := t.transferState.GetStorageAndFilesRepoPointers(t.transferState.CurrentRepo, api.Phase3)
 	if err != nil {
 		return err
 	}

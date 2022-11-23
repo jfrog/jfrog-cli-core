@@ -190,50 +190,33 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(repoKey string,
 	})
 }
 
-// Returns pointers to totalStorage, totalFiles, transferredFiles and transferredStorage from progressState of a specific Repository.
-func (ts *TransferStateManager) GetStorageAndFilesPointers(repoKey string) (totalStorage, transferredStorage, totalFiles, transferredFiles *int64, err error) {
-	err = ts.TransferState.action(func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-
-			return err
-		}
-		totalStorage = &repo.Phase1Info.TotalSizeBytes
-		transferredStorage = &repo.Phase1Info.TransferredSizeBytes
-		totalFiles = &repo.Phase1Info.TotalUnits
-		transferredFiles = &repo.Phase1Info.TransferredUnits
-		return nil
-	})
-	return
-}
-
-// Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
-func (ts *TransferStateManager) GetStorageAndFilesPointersForPhase2(repoKey string) (totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles *int64, err error) {
+// Returns pointers to TotalStorage, TotalFiles, TransferredFiles and TransferredStorage from progressState of a specific Repository.
+func (ts *TransferStateManager) GetStorageAndFilesRepoPointers(repoKey string, phase int) (totalFailedStorage, totalUploadedFailedStorage, totalFailedFiles, totalUploadedFailedFiles *int64, err error) {
 	err = ts.TransferState.action(func(state *TransferState) error {
 		repo, err := state.getRepository(repoKey, false)
 		if err != nil {
 			return err
 		}
-		totalDiffStorage = &repo.Phase2Info.TotalSizeBytes
-		totalUploadedDiffStorage = &repo.Phase2Info.TransferredSizeBytes
-		totalDiffFiles = &repo.Phase2Info.TotalUnits
-		totalUploadedDiffFiles = &repo.Phase2Info.TransferredUnits
-		return nil
-	})
-	return
-}
-
-// Returns pointers to DiffTotalStorage, DiffTotalFiles, DiffTransferredFiles and DiffTransferredStorage from progressState of a specific Repository.
-func (ts *TransferStateManager) GetStorageAndFilesPointersForPhase3(repoKey string) (totalFailedStorage, totalUploadedFailedStorage, totalFailedFiles, totalUploadedFailedFiles *int64, err error) {
-	err = ts.TransferState.action(func(state *TransferState) error {
-		repo, err := state.getRepository(repoKey, false)
-		if err != nil {
-			return err
+		switch phase {
+		case api.Phase1:
+			totalFailedStorage = &repo.Phase1Info.TotalSizeBytes
+			totalUploadedFailedStorage = &repo.Phase1Info.TransferredSizeBytes
+			totalFailedFiles = &repo.Phase1Info.TotalUnits
+			totalUploadedFailedFiles = &repo.Phase1Info.TransferredUnits
+			return nil
+		case api.Phase2:
+			totalFailedStorage = &repo.Phase2Info.TotalSizeBytes
+			totalUploadedFailedStorage = &repo.Phase2Info.TransferredSizeBytes
+			totalFailedFiles = &repo.Phase2Info.TotalUnits
+			totalUploadedFailedFiles = &repo.Phase2Info.TransferredUnits
+			return nil
+		case api.Phase3:
+			totalFailedStorage = &repo.Phase3Info.TotalSizeBytes
+			totalUploadedFailedStorage = &repo.Phase3Info.TransferredSizeBytes
+			totalFailedFiles = &repo.Phase3Info.TotalUnits
+			totalUploadedFailedFiles = &repo.Phase3Info.TransferredUnits
+			return nil
 		}
-		totalFailedStorage = &repo.Phase3Info.TotalSizeBytes
-		totalUploadedFailedStorage = &repo.Phase3Info.TransferredSizeBytes
-		totalFailedFiles = &repo.Phase3Info.TotalUnits
-		totalUploadedFailedFiles = &repo.Phase3Info.TransferredUnits
 		return nil
 	})
 	return

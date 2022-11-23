@@ -41,6 +41,7 @@ type TransferConfigCommand struct {
 	verbose              bool
 	includeReposPatterns []string
 	excludeReposPatterns []string
+	workingDir           string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -73,6 +74,11 @@ func (tcc *TransferConfigCommand) SetIncludeReposPatterns(includeReposPatterns [
 
 func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigCommand {
 	tcc.excludeReposPatterns = excludeReposPatterns
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConfigCommand {
+	tcc.workingDir = workingDir
 	return tcc
 }
 
@@ -278,7 +284,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 	log.Info("config-import plugin version: " + configImportPluginVersion)
 
 	// Execute 'GET /api/plugins/execute/checkPermissions'
-	resp, body, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions", false, rtDetails)
+	resp, body, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+"api/plugins/execute/checkPermissions"+tcc.getWorkingDirParam(), false, rtDetails)
 	if err != nil {
 		return err
 	}
@@ -385,7 +391,7 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the config import async process
-			resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+"api/plugins/execute/configImport", buffer.Bytes(), rtDetails)
+			resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+"api/plugins/execute/configImport"+tcc.getWorkingDirParam(), buffer.Bytes(), rtDetails)
 			if err != nil {
 				return false, err
 			}
@@ -432,7 +438,7 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManager artifactory.ArtifactoryServicesManager, rtDetails *httputils.HttpClientDetails, artifactoryUrl string, importTimestamp []byte) httputils.PollingAction {
 	return func() (shouldStop bool, responseBody []byte, err error) {
 		// Get config import status
-		resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+"api/plugins/execute/configImportStatus", importTimestamp, rtDetails)
+		resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+"api/plugins/execute/configImportStatus"+tcc.getWorkingDirParam(), importTimestamp, rtDetails)
 		if err != nil {
 			return true, nil, err
 		}
@@ -505,4 +511,11 @@ func (tcc *TransferConfigCommand) updateServerDetails() error {
 	}
 	tcc.targetServerDetails = newTargetServerDetails
 	return nil
+}
+
+func (tcc *TransferConfigCommand) getWorkingDirParam() string {
+	if tcc.workingDir != "" {
+		return "?params=workingDir=" + tcc.workingDir
+	}
+	return ""
 }

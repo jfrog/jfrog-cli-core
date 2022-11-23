@@ -152,7 +152,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 					return err
 				}
 			case "file":
-				file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+				file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 				if stopped {
 					return
@@ -196,7 +196,7 @@ func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginat
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
-	query += `.include("repo","path","name","type")`
+	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

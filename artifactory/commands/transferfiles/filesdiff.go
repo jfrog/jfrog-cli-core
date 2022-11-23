@@ -122,7 +122,6 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			}
 			break
 		}
-
 		files := convertResultsToFileRepresentation(result.Results)
 		totalSize := 0
 		for _, r := range files {

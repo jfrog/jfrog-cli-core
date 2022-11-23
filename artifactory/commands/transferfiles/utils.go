@@ -320,7 +320,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	}
 
 	for _, item := range files {
-		file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+		file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 		var delayed bool
 		delayed, shouldStop = delayHelper.delayUploadIfNecessary(base, file)
 		if shouldStop {

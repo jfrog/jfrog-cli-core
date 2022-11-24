@@ -79,14 +79,14 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 		if err != nil || !isRunning {
 			runningTime = "Running time not available"
 		}
-		return color.Green.Render(" " + runningTime)
+		return color.Green.Render(runningTime)
 	})
 
 	transfer.speedBar = transfer.barsMng.NewStringProgressBar(" ⚡ Transfer speed: ", func() string {
-		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetSpeedString())
+		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetSpeedString())
 	})
 	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar(" ⌛ Estimated time remaining: ", func() string {
-		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
+		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
 	})
 
 	// Init global error count for the process

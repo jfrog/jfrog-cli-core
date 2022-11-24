@@ -300,7 +300,7 @@ func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, e
 	if dc.serverDetails.AccessToken != "" {
 		log.Debug("Using access-token details for nuget authentication.")
 		if user == "" {
-			user = auth.ExtractUsernameFromAccessToken(dc.serverDetails.AccessToken)
+			user, _ = auth.ExtractUsernameFromAccessToken(dc.serverDetails.AccessToken)
 		}
 		password = dc.serverDetails.AccessToken
 	}

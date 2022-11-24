@@ -25,6 +25,16 @@ func (tc *TriggerCommand) SetServerDetails(serverDetails *config.ServerDetails) 
 	return tc
 }
 
+func (tc *TriggerCommand) SetBranch(br string) *TriggerCommand {
+	tc.branch = br
+	return tc
+}
+
+func (tc *TriggerCommand) SetPipeline(pl string) *TriggerCommand {
+	tc.pipelineName = pl
+	return tc
+}
+
 func (tc *TriggerCommand) CommandName() string {
 	return "trigger"
 }

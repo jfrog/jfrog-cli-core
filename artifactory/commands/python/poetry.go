@@ -160,7 +160,7 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
 	// Get credentials from access-token if exists.
 	if pc.serverDetails.GetAccessToken() != "" {
 		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
+			username, _ = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
 		}
 		password = pc.serverDetails.GetAccessToken()
 	}

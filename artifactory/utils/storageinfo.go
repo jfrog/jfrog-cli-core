@@ -188,19 +188,19 @@ func ConvertIntToStorageSizeString(num int64) string {
 	if num > bytesInTB {
 		newNum := float64(num) / float64(bytesInTB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "TB "
+		return stringNum + "TB"
 	}
 	if num > bytesInGB {
 		newNum := float64(num) / float64(bytesInGB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "GB "
+		return stringNum + "GB"
 	}
 	if num > bytesInMB {
 		newNum := float64(num) / float64(bytesInMB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "MB "
+		return stringNum + "MB"
 	}
 	newNum := float64(num) / float64(bytesInKB)
 	stringNum := fmt.Sprintf("%.1f", newNum)
-	return stringNum + "KB "
+	return stringNum + "KB"
 }

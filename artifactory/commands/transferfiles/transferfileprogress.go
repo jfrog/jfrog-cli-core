@@ -71,7 +71,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
 	// Init Progress Bars
-	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, coreutils.RemoveEmojisIfNonSupportedTerminal("📦 "+Repositories.String()))
+	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, "📦 "+Repositories.String())
 	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("🗄  "+Storage.String(), "📄 "+Files.String(), tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
 	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(" 🧵 Working threads: ", 0, color.Green)
 	transfer.runningTime = transfer.barsMng.NewStringProgressBar(" 🏃🏼 Running for: ", func() string {
@@ -79,14 +79,14 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 		if err != nil || !isRunning {
 			runningTime = "Running time not available"
 		}
-		return color.Green.Render(" " + runningTime)
+		return color.Green.Render(runningTime)
 	})
 
 	transfer.speedBar = transfer.barsMng.NewStringProgressBar(" ⚡ Transfer speed: ", func() string {
-		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetSpeedString())
+		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetSpeedString())
 	})
 	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar(" ⌛ Estimated time remaining: ", func() string {
-		return color.Green.Render(" " + tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
+		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
 	})
 
 	// Init global error count for the process
@@ -100,7 +100,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	}
 	transfer.errorNote = transfer.barsMng.NewStringProgressBar("", func() string {
 		if transfer.errorBar.GetTotal() > 0 {
-			return Note + color.Yellow.Render(RetryFailureContentNote)
+			return " 🟠 " + Note + color.Yellow.Render(RetryFailureContentNote)
 		} else {
 			return ""
 		}

@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"github.com/forPelevin/gomoji"
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -8,6 +9,7 @@ import (
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/vbauerster/mpb/v7"
 	"time"
 )

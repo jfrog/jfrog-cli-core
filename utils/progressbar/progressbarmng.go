@@ -67,7 +67,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
-func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, taskType string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, terminal bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	if spinner {
@@ -80,17 +80,17 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	if totalTasks == 0 {
 		prog.tasksProgressBar = bm.NewDoneTasksProgressBar()
 	} else {
-		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color, taskType)
+		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, color, terminal, taskType)
 	}
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
 
-func (bm *ProgressBarMng) NewHeadLineDoubleValProgBar(headLine string, counterLine string, counterLine2 string, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2 *int64, color Color) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewHeadLineDoubleValProgBar(headLine string, counterLine string, counterLine2 string, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2 *int64, terminal bool, color Color) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
-	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2, color)
+	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2, terminal, color)
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
@@ -166,14 +166,20 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
-func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, colour Color, taskType string) *TasksProgressBar {
+func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, colour Color, terminal bool, taskType string) *TasksProgressBar {
+	padding := ".."
+	filler := "●"
+	if terminal {
+		padding = "⬛"
+		filler = "🟩"
+	}
 	pb := &TasksProgressBar{}
-	filter := filterColor(colour)
+	filter := filterColor(colour, terminal)
 	if taskType == "" {
 		taskType = "Tasks"
 	}
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+taskType+": "),
@@ -227,12 +233,18 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 
 // A progress bar with two counters values shown on the right side of the progress bar; The first value controls what the bar shows.
 // The total tasks1 can be passes as an int or *int, if you want to use it with int send nil to the optional total and done tasks1 and the wanted totalTasks to total tasks1.
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, secondValueHeadLine string, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTaks2 *int64, colour Color) *TasksProgressBar {
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, secondValueHeadLine string, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTaks2 *int64, terminal bool, colour Color) *TasksProgressBar {
+	padding := ".."
+	filler := "●"
+	if terminal {
+		padding = "⬛"
+		filler = "🟩"
+	}
 	pb := &TasksProgressBar{}
-	filter := filterColor(colour)
+	filter := filterColor(colour, terminal)
 	if OptionalTotalTasks1 == nil {
 		pb.bar = bm.container.New(0,
-			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 			mpb.BarRemoveOnComplete(),
 			mpb.AppendDecorators(
 				decor.Name(" "+firstValueHeadLine+": "),
@@ -248,7 +260,7 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 	}
 	if OptionalTotalTasks1 != nil {
 		pb.bar = bm.container.New(0,
-			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding("⬛").Refiller("").Rbound("|"),
+			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 			mpb.BarRemoveOnComplete(),
 			mpb.AppendDecorators(
 				decor.Name(" "+firstValueHeadLine+": "),
@@ -280,7 +292,7 @@ func (bm *ProgressBarMng) GetLogFile() *os.File {
 	return bm.logFile
 }
 
-func filterColor(color Color) (filter string) {
+func filterColor(color Color, terminal bool) (filter string) {
 	switch color {
 	case GREEN:
 		filter = "🟩"
@@ -288,6 +300,9 @@ func filterColor(color Color) (filter string) {
 		filter = "⬜"
 	default:
 		filter = "⬜"
+	}
+	if !terminal {
+		filter = "●"
 	}
 	return
 }

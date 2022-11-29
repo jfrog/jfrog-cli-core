@@ -77,7 +77,7 @@ func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed b
 	// Handle progress display
 	var progress *progressbar.TasksProgressBar
 	if args.ProgressMng != nil {
-		progress = args.ProgressMng.NewTasksProgressBar(0, progressbar.GREEN, "long property")
+		progress = args.ProgressMng.NewTasksProgressBar(0, progressbar.GREEN, true, "long property")
 		defer progress.GetBar().Abort(true)
 	}
 	// Create consumer routine to collect the files from the search tasks

@@ -40,6 +40,7 @@ func formatString(emoji, key string, windows bool) string {
 }
 func initStatusStrings(windows bool) ProgressBarStrings {
 	pbs := ProgressBarStrings{}
+	pbs.RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 	pbs.Repositories = formatString("📦", " Repositories", windows)
 	pbs.Files = formatString("📄", " Files", windows)
 	pbs.Storage = formatString("🗄 ", " Storage", windows)

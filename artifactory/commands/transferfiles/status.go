@@ -64,8 +64,7 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1, windows)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
-		//todo fix this
-		failureTxt += " (" + "RetryFailureContentNote" + ")"
+		failureTxt += " (" + "In Phase 3 and in subsequent executions, we'll retry transferring the failed files." + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2, windows)
 }

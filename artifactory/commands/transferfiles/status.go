@@ -52,7 +52,6 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	if windows {
 		runningForTabs = 3
 		runningTimeString = runningTime
-
 	}
 	addTitle(output, "Overall Transfer Status")
 	addString(output, coreutils.RemoveEmojisIfNonSupportedTerminal("🟢"), "Status", "Running", 3, windows)

@@ -167,12 +167,7 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 }
 
 func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, taskType string) *TasksProgressBar {
-	padding := ".."
-	filler := "●"
-	if !windows {
-		padding = "⬛"
-		filler = "🟩"
-	}
+	padding, filler := paddingAndFiller(windows)
 	pb := &TasksProgressBar{}
 	filter := filterColor(GREEN, windows)
 	if taskType == "" {

@@ -6,6 +6,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.6
+	github.com/gen2brain/beeep v0.0.0-20220909211152-5a9ec94374f6
 	github.com/gocarina/gocsv v0.0.0-20220823132111-71f3a5cb2654
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
@@ -45,7 +46,6 @@ require (
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
-	github.com/gen2brain/beeep v0.0.0-20220909211152-5a9ec94374f6 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect

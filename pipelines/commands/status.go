@@ -21,8 +21,6 @@ type StatusCommand struct {
 	notify        bool
 }
 
-var reStatus string
-
 func NewStatusCommand() *StatusCommand {
 	return &StatusCommand{}
 }
@@ -56,18 +54,17 @@ func (sc *StatusCommand) SetNotify(nf bool) *StatusCommand {
 }
 
 func (sc *StatusCommand) Run() (string, error) {
-	var err error
-	serviceManager, err := manager.CreateServiceManager(sc.serverDetails)
-	if err != nil {
-		return "", err
+	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
+	if svcMgrErr != nil {
+		return "", svcMgrErr
 	}
-	pipelines, err := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName)
-	if err != nil {
-		return "", err
+	matchingPipes, pipStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName)
+	if pipStatusErr != nil {
+		return "", pipStatusErr
 	}
 	var res string
-	for i := range pipelines.Pipelines {
-		p := pipelines.Pipelines[i]
+	for i := range matchingPipes.Pipelines {
+		p := matchingPipes.Pipelines[i]
 		if p.LatestRunID != 0 {
 			if sc.pipelineName != "" && sc.notify {
 				err2 := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName)
@@ -129,6 +126,7 @@ func convertSecToDay(sec int) string {
 func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.PipelinesServicesManager, branch string, pipName string) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
+	var reStatus string
 	for {
 		select {
 		case <-ctx.Done():
@@ -140,7 +138,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 			}
 			pipeline := p.Pipelines[0]
 			s, colorCode, d := getPipelineStatusAndColorCode(&pipeline)
-			if monitorStatusChange(s) {
+			if monitorStatusChange(s, reStatus) {
 				res := colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", "PipelineName :", pipeline.Name, "Branch :", pipeline.PipelineSourceBranch, "Run :", pipeline.Run.RunNumber, "Duration :", d, "Status :", reStatus)
 				log.Info(res)
 				sendNotification(s, pipeline.Name)
@@ -157,7 +155,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 /*
  * check for change in status with the latest status
  */
-func monitorStatusChange(pipStatus string) bool {
+func monitorStatusChange(pipStatus, reStatus string) bool {
 	if reStatus == pipStatus {
 		return false
 	}

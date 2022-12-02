@@ -61,13 +61,13 @@ func (sc *StatusCommand) Run() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pipelines, err := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName)
+	pipes, err := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName)
 	if err != nil {
 		return "", err
 	}
 	var res string
-	for i := range pipelines.Pipelines {
-		p := pipelines.Pipelines[i]
+	for i := range pipes.Pipelines {
+		p := pipes.Pipelines[i]
 		if p.LatestRunID != 0 {
 			if sc.pipelineName != "" && sc.notify {
 				err2 := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName)

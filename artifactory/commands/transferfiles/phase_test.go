@@ -51,6 +51,7 @@ func createCounterTask(counter *int) parallel.TaskFunc {
 	return func(int) error {
 		(*counter)++
 		time.Sleep(time.Second)
+
 		return nil
 	}
 }

@@ -46,7 +46,8 @@ func TestShowStatusNotRunning(t *testing.T) {
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
-	assert.Contains(t, buffer.String(), "Status:Not running")
+	assert.Contains(t, buffer.String(), "Status:")
+	assert.Contains(t, buffer.String(), "Not running")
 }
 
 func TestShowStatus(t *testing.T) {

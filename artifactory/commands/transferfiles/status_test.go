@@ -162,7 +162,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(500, 5000))
 
 	// Save transfer state.
-	assert.NoError(t, stateManager.SaveState())
+	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 }
 
 func TestSizeToString(t *testing.T) {

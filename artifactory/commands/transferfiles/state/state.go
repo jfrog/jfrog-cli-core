@@ -55,7 +55,7 @@ type DiffDetails struct {
 	Completed bool `json:"completed,omitempty"`
 }
 
-func NewRepositoryTransferState(repoKey string) TransferState {
+func newRepositoryTransferState(repoKey string) TransferState {
 	return TransferState{
 		Version:     transferStateFileVersion,
 		CurrentRepo: Repository{Name: repoKey},
@@ -68,7 +68,7 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(StateSaveIntervalSecs) {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(stateAndStatusSaveIntervalSecs) {
 		return nil
 	}
 
@@ -81,6 +81,7 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	return ts.persistTransferState(false)
 }
 
+// Persist TransferState to file, at the repository dir. If snapshot requested, persist it to the repository's snapshot dir.
 func (ts *TransferState) persistTransferState(snapshot bool) (err error) {
 	repoStateFilePath, err := GetRepoStateFilepath(ts.CurrentRepo.Name, snapshot)
 	if err != nil {
@@ -146,9 +147,10 @@ func GetRepoStateFilepath(repoKey string, snapshot bool) (string, error) {
 
 // Returns a transfer state and repo transfer snapshot according to the state of the repository as found in the repository transfer directory.
 // A repo transfer snapshot is only returned if running phase 1 is required.
+// The state and snapshot will be loaded from snapshot dir if a previous run of phase 1 was interrupted, and reset was not required.
 func getTransferStateAndSnapshot(repoKey string, reset bool) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
 	if reset {
-		return getCleanState(repoKey)
+		return getCleanStateAndSnapshot(repoKey)
 	}
 
 	// Check if repo state exists. If not, start clean.
@@ -157,7 +159,7 @@ func getTransferStateAndSnapshot(repoKey string, reset bool) (transferState Tran
 		return
 	}
 	if !exists {
-		return getCleanState(repoKey)
+		return getCleanStateAndSnapshot(repoKey)
 	}
 
 	// If it exists and repo already fully completed phase 1, load current state.
@@ -170,7 +172,7 @@ func getTransferStateAndSnapshot(repoKey string, reset bool) (transferState Tran
 	return loadRepoSnapshots(repoKey)
 }
 
-// Loads the state and repo snapshots from the transfer snapshot directory.
+// Loads the state and repo snapshots from the repository's snapshot directory.
 func loadRepoSnapshots(repoKey string) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
 	transferState, stateExists, err := LoadTransferState(repoKey, true)
 	if err != nil {
@@ -180,19 +182,19 @@ func loadRepoSnapshots(repoKey string) (transferState TransferState, repoTransfe
 	if err != nil {
 		return
 	}
-	repoTransferSnapshot, snapshotExists, err := LoadRepoTransferSnapshot(repoKey, snapshotPath)
+	repoTransferSnapshot, snapshotExists, err := loadRepoTransferSnapshot(repoKey, snapshotPath)
 	if !stateExists || !snapshotExists {
 		log.Info("attempt to transfer repository '" + repoKey + "' was previously stopped but no snapshot was found to continue from. " +
 			"Starting to transfer from scratch...")
-		return getCleanState(repoKey)
+		return getCleanStateAndSnapshot(repoKey)
 	}
 	return
 }
 
-func getCleanState(repoKey string) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
+func getCleanStateAndSnapshot(repoKey string) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
 	snapshotFilePath, err := GetRepoSnapshotFilePath(repoKey)
 	if err != nil {
 		return
 	}
-	return NewRepositoryTransferState(repoKey), CreateRepoTransferSnapshot(repoKey, snapshotFilePath), nil
+	return newRepositoryTransferState(repoKey), createRepoTransferSnapshot(repoKey, snapshotFilePath), nil
 }

@@ -51,6 +51,7 @@ func (node *Node) readAction(action ActionOnNodeFunc) error {
 	return action(node)
 }
 
+// Convert node to wrapper in order to save it to file.
 func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 	err = node.readAction(func(node *Node) error {
 		wrapper = &NodeExportWrapper{
@@ -74,6 +75,7 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 	return
 }
 
+// Convert the loaded node export wrapper to node.
 func (wrapper *NodeExportWrapper) convertToNode() *Node {
 	node := &Node{
 		name:               wrapper.Name,
@@ -112,7 +114,7 @@ func (node *Node) getActualPath() (actualPath string, err error) {
 	return
 }
 
-// Sets node as completed, empties its contents, notifies parent to check completion.
+// Sets node as completed, clear its contents, notifies parent to check completion.
 func (node *Node) setCompleted() error {
 	return node.writeAction(func(node *Node) error {
 		node.completed = true
@@ -198,18 +200,12 @@ func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 	return errorutils.CheckError(os.WriteFile(stateFilePath, content, 0644))
 }
 
-func (node *Node) MarkDoneExploring(checkCompletion bool) error {
-	err := node.writeAction(func(node *Node) error {
+// Marks that all contents of the node have been found and added.
+func (node *Node) MarkDoneExploring() error {
+	return node.writeAction(func(node *Node) error {
 		node.doneExploring = true
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if checkCompletion {
-		return node.CheckCompleted()
-	}
-	return nil
 }
 
 func (node *Node) GetFiles() (filesMap map[string]int64, err error) {

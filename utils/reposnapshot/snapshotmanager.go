@@ -8,11 +8,12 @@ import (
 	"strings"
 )
 
-// Represents a snapshot of a repository being traversed to do a certain writeAction.
+// Represents a snapshot of a repository being traversed to do a certain action.
+// Each directory in the repository is represented by a node.
 // The snapshot is constructed as a linked prefix tree, where every node has pointers to its children and parent.
-// While traversing over the repository, contents found are added to their respecting node. Later on, files handled are removed.
+// While traversing over the repository, contents found are added to their respecting node. Later on, files handled are removed from their node.
 // Each node has one of three states:
-//  1. Unexplored / Partially explored - NOT all contents of the directory were found and added to its struct (Marked by !DoneExploring).
+//  1. Unexplored / Partially explored - NOT all contents of the directory were found and added to its node (Marked by !DoneExploring).
 //  2. Fully explored - All contents of the directory were found, but NOT all of them handled (Marked by DoneExploring && !Completed).
 //  3. Completed - All contents found and handled (Marked by Completed).
 //

@@ -16,8 +16,8 @@ func TestGetRepositoryState(t *testing.T) {
 	loadAndAssertRepo(t, repo1Key, false)
 
 	// Create new repos.
-	createAndAssertStateRepo(t, stateManager, repo1Key)
-	createAndAssertStateRepo(t, stateManager, repo2Key)
+	createAndAssertRepoState(t, stateManager, repo1Key)
+	createAndAssertRepoState(t, stateManager, repo2Key)
 
 	// Add data to current repo.
 	stateManager.CurrentRepo.FullTransfer.Started = "start"
@@ -25,7 +25,7 @@ func TestGetRepositoryState(t *testing.T) {
 	assert.NoError(t, stateManager.persistTransferState(false))
 
 	// Create new repo, and assert data on previous repo is loaded correctly.
-	createAndAssertStateRepo(t, stateManager, repo3Key)
+	createAndAssertRepoState(t, stateManager, repo3Key)
 	transferState := loadAndAssertRepo(t, repo2Key, true)
 	assert.Equal(t, "start", transferState.CurrentRepo.FullTransfer.Started)
 	assert.Equal(t, "end", transferState.CurrentRepo.FullTransfer.Ended)
@@ -41,7 +41,7 @@ func loadAndAssertRepo(t *testing.T, repoKey string, expectedToExist bool) *Tran
 	return &transferState
 }
 
-func createAndAssertStateRepo(t *testing.T, stateManager *TransferStateManager, repoKey string) {
+func createAndAssertRepoState(t *testing.T, stateManager *TransferStateManager, repoKey string) {
 	assert.NoError(t, stateManager.SetRepoState(repoKey, 0, 0, false, false))
 	transferState := loadAndAssertRepo(t, repoKey, true)
 	assert.Empty(t, transferState.CurrentRepo.FullTransfer)
@@ -51,7 +51,7 @@ func createAndAssertStateRepo(t *testing.T, stateManager *TransferStateManager, 
 func TestSaveAndLoadState(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
-	stateManager.CurrentRepo = NewRepositoryTransferState(repo4Key).CurrentRepo
+	stateManager.CurrentRepo = newRepositoryTransferState(repo4Key).CurrentRepo
 
 	assert.NoError(t, stateManager.persistTransferState(false))
 	actualState, exists, err := LoadTransferState(repo4Key, false)
@@ -75,12 +75,12 @@ func TestGetTransferStateAndSnapshotClean(t *testing.T) {
 	defer snapshotCleanUp()
 
 	// Assert getting state before it was created returns clean state.
-	cleanTransferState, cleanRepoTransferSnapshot, err := getCleanState(repo1Key)
+	cleanTransferState, cleanRepoTransferSnapshot, err := getCleanStateAndSnapshot(repo1Key)
 	assert.NoError(t, err)
 	assertGetTransferStateAndSnapshot(t, false, cleanTransferState, cleanRepoTransferSnapshot, false)
 
 	// Create repo-state.
-	createAndAssertStateRepo(t, stateManager, repo1Key)
+	createAndAssertRepoState(t, stateManager, repo1Key)
 	// Assert getting clean state on reset.
 	assertGetTransferStateAndSnapshot(t, true, cleanTransferState, cleanRepoTransferSnapshot, false)
 
@@ -99,10 +99,10 @@ func TestGetTransferStateAndSnapshotClean(t *testing.T) {
 
 // Set the snapshot's save-interval and return a cleanup function.
 func SetAutoSaveSnapshot(interval int) (cleanUp func()) {
-	previousSaveInterval := SaveSnapshotIntervalMin
-	SaveSnapshotIntervalMin = interval
+	previousSaveInterval := snapshotSaveIntervalMin
+	snapshotSaveIntervalMin = interval
 	return func() {
-		SaveSnapshotIntervalMin = previousSaveInterval
+		snapshotSaveIntervalMin = previousSaveInterval
 	}
 }
 
@@ -114,7 +114,7 @@ func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 	defer cleanUp()
 
 	// Create repo-state.
-	createAndAssertStateRepo(t, stateManager, repo1Key)
+	createAndAssertRepoState(t, stateManager, repo1Key)
 
 	// Add content to state and snapshot.
 	assert.NoError(t, stateManager.SetRepoFullTransferStarted(time.Now()))
@@ -122,7 +122,7 @@ func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 	_ = getRootAndAddSnapshotData(t, stateManager)
 	// Get state before saving.
 	currentState := stateManager.TransferState
-	assert.NoError(t, stateManager.SaveState())
+	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 	// Modify state again, and assert that the loaded state from snapshot was not modified and remained as saved.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(2, 3))
 	assert.NotEqual(t, stateManager.TransferState.CurrentRepo, currentState.CurrentRepo)

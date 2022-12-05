@@ -61,6 +61,8 @@ func (m *fullTransferPhase) phaseDone() error {
 	return nil
 }
 
+// Marks the phase as completed and deletes snapshots.
+// Should ONLY be called if phase ended SUCCESSFULLY (not interrupted / stopped).
 func (m *fullTransferPhase) handleSuccessfulTransfer() error {
 	if err := m.stateManager.SetRepoFullTransferCompleted(); err != nil {
 		return err
@@ -204,8 +206,8 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		paginationI++
 	}
 
-	// Mark that no more results are expected for the current folder. Check completion in case the directory is empty.
-	err = node.MarkDoneExploring(true)
+	// Mark that no more results are expected for the current folder.
+	err = node.MarkDoneExploring()
 	if err != nil {
 		return err
 	}
@@ -259,7 +261,7 @@ func convertRepoSnapshotToFileRepresentation(repoKey, relativePath string, snaps
 // Decide how to continue handling the directory by the node's state in the repository snapshot (completed / done exploring / requires exploring)
 // Outputs:
 // node - A node in the repository snapshot tree, which represents the current directory.
-// done - Whether the node directory should be explored or not. Exploring means searching for the directory contents. If all contents were previously found, there's no need to search again.
+// done - Whether the node directory should be explored or not. Exploring means searching for the directory contents. If all contents were previously found, there's no need to search again, just upload the known results.
 // previousChildrenMap - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
 func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (node *reposnapshot.Node, done bool, previousChildrenMap map[string]*reposnapshot.Node, err error) {

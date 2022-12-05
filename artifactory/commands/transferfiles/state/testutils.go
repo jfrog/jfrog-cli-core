@@ -30,9 +30,9 @@ func InitStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp fu
 
 // Set the state's save-interval to 0 so every action will be persisted and data can be asserted.
 func SetAutoSaveState() (cleanUp func()) {
-	previousSaveInterval := StateSaveIntervalSecs
-	StateSaveIntervalSecs = 0
+	previousSaveInterval := stateAndStatusSaveIntervalSecs
+	stateAndStatusSaveIntervalSecs = 0
 	return func() {
-		StateSaveIntervalSecs = previousSaveInterval
+		stateAndStatusSaveIntervalSecs = previousSaveInterval
 	}
 }

@@ -244,11 +244,15 @@ func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, c
 			return
 		}
 
-		err = dirNode.FileCompleted(file.Name)
-		if err != nil {
-			log.Error(err)
-			return
+		// If empty dir, skip to checking completion.
+		if file.Name != "" {
+			err = dirNode.FileCompleted(file.Name)
+			if err != nil {
+				log.Error(err)
+				return
+			}
 		}
+
 		err = dirNode.CheckCompleted()
 		if err != nil {
 			log.Error(err)

@@ -13,9 +13,9 @@ import (
 
 // The interval in which to save the state and run transfer files to the file system.
 // Every change made will be held in memory till the saving time comes.
-const stateSaveIntervalSecsDefault = 10
+const stateAndStatusSaveIntervalSecsDefault = 10
 
-var StateSaveIntervalSecs = stateSaveIntervalSecsDefault
+var stateAndStatusSaveIntervalSecs = stateAndStatusSaveIntervalSecsDefault
 
 type ProgressState struct {
 	TotalSizeBytes       int64 `json:"total_size_bytes,omitempty"`
@@ -63,7 +63,8 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // repoKey        - Repository key
 // totalSizeBytes - Repository size in bytes
 // totalFiles     - Total files in the repository
-// reset          - Delete the transferred info
+// buildInfoRepo  - True if build info repository
+// reset          - Delete the repository's previous transfer info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
 		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
@@ -300,7 +301,7 @@ func (ts *TransferStateManager) GetWorkingThreads() (workingThreads int, err err
 	})
 }
 
-func (ts *TransferStateManager) SaveState() error {
+func (ts *TransferStateManager) SaveStateAndSnapshots() error {
 	ts.TransferState.lastSaveTimestamp = time.Now()
 	if err := ts.persistTransferState(false); err != nil {
 		return err

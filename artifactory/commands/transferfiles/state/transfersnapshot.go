@@ -11,7 +11,7 @@ var saveRepoSnapshotMutex sync.Mutex
 
 type SnapshotActionFunc func(rts *RepoTransferSnapshot) error
 
-var SaveSnapshotIntervalMin = snapshotSaveIntervalMinDefault
+var snapshotSaveIntervalMin = snapshotSaveIntervalMinDefault
 
 const snapshotSaveIntervalMinDefault = 10
 
@@ -23,7 +23,7 @@ type RepoTransferSnapshot struct {
 	loadedFromSnapshot bool
 }
 
-// Runs the provided action on the snapshot manager, and periodically saves the rep state and snapshot to the snapshot dir.
+// Runs the provided action on the snapshot manager, and periodically saves the repo state and snapshot to the snapshot dir.
 func (ts *TransferStateManager) snapshotAction(action SnapshotActionFunc) error {
 	if ts.repoTransferSnapshot == nil {
 		return errorutils.CheckErrorf("invalid call to snapshot manager before it was initialized")
@@ -33,7 +33,7 @@ func (ts *TransferStateManager) snapshotAction(action SnapshotActionFunc) error 
 	}
 
 	now := time.Now()
-	if now.Sub(ts.repoTransferSnapshot.lastSaveTimestamp).Minutes() < float64(SaveSnapshotIntervalMin) {
+	if now.Sub(ts.repoTransferSnapshot.lastSaveTimestamp).Minutes() < float64(snapshotSaveIntervalMin) {
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func (ts *TransferStateManager) IsRepoTransferSnapshotEnabled() bool {
 	return ts.repoTransferSnapshot != nil
 }
 
-func LoadRepoTransferSnapshot(repoKey, snapshotFilePath string) (*RepoTransferSnapshot, bool, error) {
+func loadRepoTransferSnapshot(repoKey, snapshotFilePath string) (*RepoTransferSnapshot, bool, error) {
 	snapshotManager, exists, err := reposnapshot.LoadRepoSnapshotManager(repoKey, snapshotFilePath)
 	if err != nil || !exists {
 		return nil, exists, err
@@ -96,6 +96,6 @@ func LoadRepoTransferSnapshot(repoKey, snapshotFilePath string) (*RepoTransferSn
 	return &RepoTransferSnapshot{snapshotManager: snapshotManager, lastSaveTimestamp: time.Now(), loadedFromSnapshot: true}, true, nil
 }
 
-func CreateRepoTransferSnapshot(repoKey, snapshotFilePath string) *RepoTransferSnapshot {
+func createRepoTransferSnapshot(repoKey, snapshotFilePath string) *RepoTransferSnapshot {
 	return &RepoTransferSnapshot{snapshotManager: reposnapshot.CreateRepoSnapshotManager(repoKey, snapshotFilePath), lastSaveTimestamp: time.Now()}
 }

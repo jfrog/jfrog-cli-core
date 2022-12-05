@@ -30,11 +30,9 @@ func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
 	// Redirect log to buffer
 	buffer, _, previousLog := tests.RedirectLogOutputToBuffer()
 
-	// Set save interval to 0 so every action will be persisted and data can be asserted.
-	previousSaveInterval := state.SaveIntervalSecs
-	state.SaveIntervalSecs = 0
+	undoSaveInterval := state.SetAutoSaveState()
 	return buffer, func() {
-		state.SaveIntervalSecs = previousSaveInterval
+		undoSaveInterval()
 		log.SetLogger(previousLog)
 		cleanUpJfrogHome()
 	}

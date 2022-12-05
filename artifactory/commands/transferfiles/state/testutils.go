@@ -21,11 +21,18 @@ func InitStateTest(t *testing.T) (stateManager *TransferStateManager, cleanUp fu
 	stateManager, err = NewTransferStateManager(true)
 	assert.NoError(t, err)
 
-	// Set save interval to 0 so every action will be persisted and data can be asserted.
-	previousSaveInterval := SaveIntervalSecs
-	SaveIntervalSecs = 0
+	undoSaveInterval := SetAutoSaveState()
 	return stateManager, func() {
-		SaveIntervalSecs = previousSaveInterval
+		undoSaveInterval()
 		cleanUpJfrogHome()
+	}
+}
+
+// Set the state's save-interval to 0 so every action will be persisted and data can be asserted.
+func SetAutoSaveState() (cleanUp func()) {
+	previousSaveInterval := StateSaveIntervalSecs
+	StateSaveIntervalSecs = 0
+	return func() {
+		StateSaveIntervalSecs = previousSaveInterval
 	}
 }

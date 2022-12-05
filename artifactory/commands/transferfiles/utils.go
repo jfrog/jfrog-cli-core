@@ -207,25 +207,53 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, upload
 			if errors.Is(err, context.Canceled) {
 				return true
 			}
-			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err, phaseBase.stateManager)
 		}
 		return ShouldStop(phaseBase, nil, errorsChannelMng)
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error) (stopped bool) {
+func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error, stateManager *state.TransferStateManager) (stopped bool) {
+	var failures []api.FileUploadStatusResponse
 	for _, file := range chunk.UploadCandidates {
-		err := api.FileUploadStatusResponse{
+		fileFailureResponse := api.FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             errReason.Error(),
 		}
 		// In case an error occurred while handling errors files - stop transferring.
-		stopped = addErrorToChannel(errorsChannelMng, err)
+		stopped = addErrorToChannel(errorsChannelMng, fileFailureResponse)
 		if stopped {
 			return
 		}
+		failures = append(failures, fileFailureResponse)
 	}
+	setChunkCompletedInRepoSnapshot(stateManager, failures)
 	return
+}
+
+// If repo snapshot is tracked, mark all files of a chunk as completed in their directory's node and check if node completed (done handling the directory and child directories).
+func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, chunkFiles []api.FileUploadStatusResponse) {
+	if !stateManager.IsRepoTransferSnapshotEnabled() {
+		return
+	}
+
+	for _, file := range chunkFiles {
+		dirNode, err := stateManager.GetDirectorySnapshotNodeWithLru(file.Path)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		err = dirNode.FileCompleted(file.Name)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		err = dirNode.CheckCompleted()
+		if err != nil {
+			log.Error(err)
+		}
+	}
 }
 
 // Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.
@@ -580,19 +608,11 @@ func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService
 }
 
 func getJfrogTransferRepoDelaysDir(repoKey string) (string, error) {
-	return getJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferDelaysDirName)
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferDelaysDirName)
 }
 
 func getJfrogTransferRepoErrorsDir(repoKey string) (string, error) {
-	return getJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferErrorsDirName)
-}
-
-func getJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
-	transferDir, err := state.GetRepositoryTransferDir(repoKey)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(transferDir, subDirName), nil
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferErrorsDirName)
 }
 
 func getJfrogTransferRepoErrorsSubDir(repoKey, subDirName string) (string, error) {

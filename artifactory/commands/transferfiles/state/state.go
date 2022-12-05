@@ -2,14 +2,14 @@ package state
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 var saveStateMutex sync.Mutex
@@ -55,7 +55,7 @@ type DiffDetails struct {
 	Completed bool `json:"completed,omitempty"`
 }
 
-func newRepositoryTransferState(repoKey string) TransferState {
+func NewRepositoryTransferState(repoKey string) TransferState {
 	return TransferState{
 		Version:     transferStateFileVersion,
 		CurrentRepo: Repository{Name: repoKey},
@@ -68,7 +68,7 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(SaveIntervalSecs) {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(StateSaveIntervalSecs) {
 		return nil
 	}
 
@@ -78,16 +78,14 @@ func (ts *TransferState) action(action ActionOnStateFunc) error {
 	defer saveStateMutex.Unlock()
 
 	ts.lastSaveTimestamp = now
-	return ts.persistTransferState()
+	return ts.persistTransferState(false)
 }
 
-func (ts *TransferState) persistTransferState() (err error) {
-	repoDir, err := GetRepositoryTransferDir(ts.CurrentRepo.Name)
+func (ts *TransferState) persistTransferState(snapshot bool) (err error) {
+	repoStateFilePath, err := GetRepoStateFilepath(ts.CurrentRepo.Name, snapshot)
 	if err != nil {
 		return err
 	}
-
-	repoStateFilePath := filepath.Join(repoDir, coreutils.JfrogTransferRepoStateFileName)
 
 	content, err := json.Marshal(ts)
 	if err != nil {
@@ -101,8 +99,15 @@ func (ts *TransferState) persistTransferState() (err error) {
 	return nil
 }
 
-func LoadTransferState(repoKey string) (transferState TransferState, exists bool, err error) {
-	stateFilePath, err := getRepoStateFilepath(repoKey)
+func (ts *TransferState) IsRepoTransferred() (isTransferred bool, err error) {
+	return isTransferred, ts.action(func(state *TransferState) error {
+		isTransferred = state.CurrentRepo.FullTransfer.Ended != ""
+		return nil
+	})
+}
+
+func LoadTransferState(repoKey string, snapshot bool) (transferState TransferState, exists bool, err error) {
+	stateFilePath, err := GetRepoStateFilepath(repoKey, snapshot)
 	if err != nil {
 		return
 	}
@@ -125,10 +130,69 @@ func LoadTransferState(repoKey string) (transferState TransferState, exists bool
 	return
 }
 
-func getRepoStateFilepath(repoKey string) (string, error) {
-	repoDir, err := GetRepositoryTransferDir(repoKey)
+func GetRepoStateFilepath(repoKey string, snapshot bool) (string, error) {
+	var dirPath string
+	var err error
+	if snapshot {
+		dirPath, err = GetJfrogTransferRepoSnapshotDir(repoKey)
+	} else {
+		dirPath, err = GetRepositoryTransferDir(repoKey)
+	}
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(repoDir, coreutils.JfrogTransferRepoStateFileName), nil
+	return filepath.Join(dirPath, coreutils.JfrogTransferRepoStateFileName), nil
+}
+
+// Returns a transfer state and repo transfer snapshot according to the state of the repository as found in the repository transfer directory.
+// A repo transfer snapshot is only returned if running phase 1 is required.
+func getTransferStateAndSnapshot(repoKey string, reset bool) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
+	if reset {
+		return getCleanState(repoKey)
+	}
+
+	// Check if repo state exists. If not, start clean.
+	transferState, exists, err := LoadTransferState(repoKey, false)
+	if err != nil {
+		return
+	}
+	if !exists {
+		return getCleanState(repoKey)
+	}
+
+	// If it exists and repo already fully completed phase 1, load current state.
+	transferred, err := transferState.IsRepoTransferred()
+	if err != nil || transferred {
+		return transferState, nil, err
+	}
+
+	// Phase 1 was started and not completed. Try loading snapshots to continue from the same point.
+	return loadRepoSnapshots(repoKey)
+}
+
+// Loads the state and repo snapshots from the transfer snapshot directory.
+func loadRepoSnapshots(repoKey string) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
+	transferState, stateExists, err := LoadTransferState(repoKey, true)
+	if err != nil {
+		return
+	}
+	snapshotPath, err := GetRepoSnapshotFilePath(repoKey)
+	if err != nil {
+		return
+	}
+	repoTransferSnapshot, snapshotExists, err := LoadRepoTransferSnapshot(repoKey, snapshotPath)
+	if !stateExists || !snapshotExists {
+		log.Info("attempt to transfer repository '" + repoKey + "' was previously stopped but no snapshot was found to continue from. " +
+			"Starting to transfer from scratch...")
+		return getCleanState(repoKey)
+	}
+	return
+}
+
+func getCleanState(repoKey string) (transferState TransferState, repoTransferSnapshot *RepoTransferSnapshot, err error) {
+	snapshotFilePath, err := GetRepoSnapshotFilePath(repoKey)
+	if err != nil {
+		return
+	}
+	return NewRepositoryTransferState(repoKey), CreateRepoTransferSnapshot(repoKey, snapshotFilePath), nil
 }

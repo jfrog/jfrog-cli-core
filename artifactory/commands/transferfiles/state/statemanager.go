@@ -6,14 +6,16 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"path/filepath"
 	"time"
 )
 
 // The interval in which to save the state and run transfer files to the file system.
 // Every change made will be held in memory till the saving time comes.
-const saveIntervalSecsDefault = 10
+const stateSaveIntervalSecsDefault = 10
 
-var SaveIntervalSecs = saveIntervalSecsDefault
+var StateSaveIntervalSecs = stateSaveIntervalSecsDefault
 
 type ProgressState struct {
 	TotalSizeBytes       int64 `json:"total_size_bytes,omitempty"`
@@ -29,6 +31,7 @@ type ProgressStateUnits struct {
 type TransferStateManager struct {
 	TransferState
 	TransferRunStatus
+	repoTransferSnapshot *RepoTransferSnapshot
 	// This function unlocks the state manager after the transfer-files command is finished
 	unlockStateManager func() error
 }
@@ -63,22 +66,15 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // reset          - Delete the transferred info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
-		transferState := newRepositoryTransferState(repoKey)
-		if !reset {
-			loadedTransferState, exists, err := LoadTransferState(repoKey)
-			if err != nil {
-				return err
-			}
-			if exists {
-				transferState = loadedTransferState
-			}
+		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
+		if err != nil {
+			return err
 		}
 		transferState.CurrentRepo.Phase1Info.TotalSizeBytes = totalSizeBytes
 		transferState.CurrentRepo.Phase1Info.TotalUnits = totalFiles
-		transferState.CurrentRepo.Phase1Info.TransferredSizeBytes = 0
-		transferState.CurrentRepo.Phase1Info.TransferredUnits = 0
 
 		ts.TransferState = transferState
+		ts.repoTransferSnapshot = repoTransferSnapshot
 		return nil
 	})
 	if err != nil {
@@ -92,9 +88,12 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 }
 
 func (ts *TransferStateManager) SetRepoFullTransferStarted(startTime time.Time) error {
-	// Set the start time in the Transfer State
+	// We do not want to change the start time if it already exists, because it means we continue transferring from a snapshot.
+	// Some dirs may not be searched again (if done exploring or completed), so handling their diffs from the original time is required.
 	return ts.TransferState.action(func(state *TransferState) error {
-		state.CurrentRepo.FullTransfer.Started = ConvertTimeToRFC3339(startTime)
+		if state.CurrentRepo.FullTransfer.Started == "" {
+			state.CurrentRepo.FullTransfer.Started = ConvertTimeToRFC3339(startTime)
+		}
 		return nil
 	})
 }
@@ -231,7 +230,7 @@ func (ts *TransferStateManager) GetReposTransferredSizeBytes(repoKeys ...string)
 			continue
 		}
 		reposSet.Add(repoKey)
-		transferState, exists, err := LoadTransferState(repoKey)
+		transferState, exists, err := LoadTransferState(repoKey, false)
 		if err != nil {
 			return transferredSizeBytes, err
 		}
@@ -259,13 +258,6 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 		}
 		end, inErr = ConvertRFC3339ToTime(state.CurrentRepo.Diffs[len(state.CurrentRepo.Diffs)-1].HandledRange.Ended)
 		return inErr
-	})
-}
-
-func (ts *TransferStateManager) IsRepoTransferred() (isTransferred bool, err error) {
-	return isTransferred, ts.TransferState.action(func(state *TransferState) error {
-		isTransferred = state.CurrentRepo.FullTransfer.Ended != ""
-		return nil
 	})
 }
 
@@ -309,8 +301,19 @@ func (ts *TransferStateManager) GetWorkingThreads() (workingThreads int, err err
 }
 
 func (ts *TransferStateManager) SaveState() error {
-	ts.TransferRunStatus.lastSaveTimestamp = time.Now()
-	return ts.persistTransferState()
+	ts.TransferState.lastSaveTimestamp = time.Now()
+	if err := ts.persistTransferState(false); err != nil {
+		return err
+	}
+	// Save snapshots if needed.
+	if ts.repoTransferSnapshot == nil {
+		return nil
+	}
+	ts.repoTransferSnapshot.lastSaveTimestamp = time.Now()
+	if err := ts.repoTransferSnapshot.snapshotManager.PersistRepoSnapshot(); err != nil {
+		return err
+	}
+	return ts.persistTransferState(true)
 }
 
 type AlreadyLockedError struct{}
@@ -377,4 +380,20 @@ func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStat
 		err = stateManager.IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes)
 	}
 	return chunkTotalSizeInBytes, err
+}
+
+func GetJfrogTransferRepoSnapshotDir(repoKey string) (string, error) {
+	return GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferSnapshotDirName)
+}
+
+func GetRepoSnapshotFilePath(repoKey string) (string, error) {
+	snapshotDir, err := GetJfrogTransferRepoSnapshotDir(repoKey)
+	if err != nil {
+		return "", err
+	}
+	err = fileutils.CreateDirIfNotExist(snapshotDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(snapshotDir, coreutils.JfrogTransferRepoSnapshotFileName), nil
 }

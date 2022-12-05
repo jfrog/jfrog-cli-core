@@ -19,11 +19,9 @@ func initTimeEstimationTestSuite(t *testing.T) func() {
 	err = utils.CreateDirIfNotExist(transferDir)
 	assert.NoError(t, err)
 
-	// Set save interval to 0 so every action will be persisted and data can be asserted.
-	previousSaveInterval := SaveIntervalSecs
-	SaveIntervalSecs = 0
+	undoSaveInterval := SetAutoSaveState()
 	return func() {
-		SaveIntervalSecs = previousSaveInterval
+		undoSaveInterval()
 		cleanUpJfrogHome()
 	}
 }

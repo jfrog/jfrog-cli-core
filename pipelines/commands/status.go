@@ -90,9 +90,9 @@ func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (string, color.
 	colorCode := status.GetStatusColorCode(s)
 	d := pipeline.Run.DurationSeconds
 	if d == 0 {
-		t1 := pipeline.Run.StartedAt
+		t1 := pipeline.Run.CreatedAt
 		t2 := time.Now()
-		d = int(t2.Sub(t1))
+		d = int(t2.Unix() - t1.Unix())
 	}
 
 	t := convertSecToDay(d)
@@ -104,6 +104,7 @@ ConvertSecToDay converts seconds passed as integer to
 - D H M S format
 */
 func convertSecToDay(sec int) string {
+	log.Debug("received duration is: ", sec)
 	day := sec / (24 * 3600)
 
 	sec = sec % (24 * 3600)

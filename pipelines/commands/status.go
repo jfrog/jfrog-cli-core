@@ -161,6 +161,7 @@ func monitorStatusChange(pipStatus, reStatus string) bool {
 		return false
 	}
 	reStatus = pipStatus
+	log.Debug("previous status : %s current status: %s", reStatus, pipStatus)
 	return true
 }
 
@@ -182,8 +183,7 @@ func sendNotification(pipStatus string, pipName string) {
 	if err != nil {
 		panic(err)
 	}
-	yes := hasPipelineRunEnded(pipStatus)
-	if yes {
+	if hasPipelineRunEnded(pipStatus) {
 		return
 	}
 }

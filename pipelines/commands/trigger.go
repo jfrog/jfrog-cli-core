@@ -9,7 +9,6 @@ type TriggerCommand struct {
 	serverDetails *config.ServerDetails
 	branch        string
 	pipelineName  string
-	output        string
 }
 
 func NewTriggerCommand() *TriggerCommand {

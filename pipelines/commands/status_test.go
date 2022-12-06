@@ -2,8 +2,6 @@ package commands
 
 import (
 	"github.com/gookit/color"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/pipelines"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
 	"testing"
 	"time"
@@ -149,20 +147,4 @@ func Test_getPipelineStatusAndColorCode(t *testing.T) {
 			}
 		})
 	}
-}
-
-type PipelinesMgrMock struct {
-	config config.Config
-	pipelines.PipelinesServicesManager
-}
-
-func (pr *PipelinesMgrMock) GetPipelineRunStatusByBranch(branch, pipName string) (*services.PipResponse, error) {
-	p := services.Pipelines{ID: 1, Name: "test_build"}
-	ps := []services.Pipelines{}
-	ps = append(ps, p)
-	s := &services.PipResponse{
-		TotalCount: 1,
-		Pipelines:  ps,
-	}
-	return s, nil
 }

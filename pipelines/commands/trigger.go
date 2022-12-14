@@ -3,12 +3,14 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 type TriggerCommand struct {
 	serverDetails *config.ServerDetails
 	branch        string
 	pipelineName  string
+	isMultiBranch bool
 }
 
 func NewTriggerCommand() *TriggerCommand {
@@ -34,15 +36,19 @@ func (tc *TriggerCommand) SetPipeline(pl string) *TriggerCommand {
 	return tc
 }
 
+func (tc *TriggerCommand) SetMultiBranch(multiBranch bool) *TriggerCommand {
+	tc.isMultiBranch = multiBranch
+	return tc
+}
+
 func (tc *TriggerCommand) CommandName() string {
 	return "trigger"
 }
 
 func (tc *TriggerCommand) Run() (string, error) {
-	var err error
 	serviceManager, err := manager.CreateServiceManager(tc.serverDetails)
 	if err != nil {
-		return "", err
+		return "", errorutils.CheckError(err)
 	}
-	return serviceManager.TriggerPipelineRun(tc.branch, tc.pipelineName)
+	return serviceManager.TriggerPipelineRun(tc.branch, tc.pipelineName, tc.isMultiBranch)
 }

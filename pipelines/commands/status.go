@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/pipelines"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"time"
 )
@@ -19,6 +20,7 @@ type StatusCommand struct {
 	branch        string
 	pipelineName  string
 	notify        bool
+	isMultiBranch bool
 }
 
 func NewStatusCommand() *StatusCommand {
@@ -53,23 +55,30 @@ func (sc *StatusCommand) SetNotify(nf bool) *StatusCommand {
 	return sc
 }
 
+func (sc *StatusCommand) SetMultiBranch(multiBranch bool) *StatusCommand {
+	sc.isMultiBranch = multiBranch
+	return sc
+}
+
 func (sc *StatusCommand) Run() (string, error) {
+	// create service manager to fetch run status
 	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
 	if svcMgrErr != nil {
-		return "", svcMgrErr
+		return "", errorutils.CheckError(svcMgrErr)
 	}
-	matchingPipes, pipStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName)
+	// get pipeline status using branch name, pipelines name and whether it is multi branch
+	matchingPipes, pipStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
 	if pipStatusErr != nil {
-		return "", pipStatusErr
+		return "", errorutils.CheckError(pipStatusErr)
 	}
 	var res string
 	for i := range matchingPipes.Pipelines {
 		p := matchingPipes.Pipelines[i]
-		if p.LatestRunID != 0 {
-			if sc.pipelineName != "" && sc.notify {
-				err2 := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName)
-				if err2 != nil {
-					return "", err2
+		if p.LatestRunID != 0 { // filter out pipelines which are not run at all
+			if sc.pipelineName != "" && sc.notify { // when notification option is selected use this flow to notify
+				monErr := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
+				if monErr != nil {
+					return "", errorutils.CheckError(monErr)
 				}
 			} else {
 				reStatus, colorCode, d := getPipelineStatusAndColorCode(&p)
@@ -81,28 +90,26 @@ func (sc *StatusCommand) Run() (string, error) {
 	return res, nil
 }
 
-/*
- * getPipelineStatusAndColorCode based on pipeline status code
- * return color to be used for pretty printing
- */
+// getPipelineStatusAndColorCode based on pipeline status code
+// return color to be used for pretty printing
 func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (string, color.Color, string) {
 	s := status.GetPipelineStatus(pipeline.Run.StatusCode)
 	colorCode := status.GetStatusColorCode(s)
 	d := pipeline.Run.DurationSeconds
 	if d == 0 {
+		// calculate duration it took till now by differentiating created time with current time
 		t1 := pipeline.Run.CreatedAt
 		t2 := time.Now()
 		d = int(t2.Unix() - t1.Unix())
 	}
 
+	// convert duration to human-readable format
 	t := convertSecToDay(d)
 	return s, colorCode, t
 }
 
-/*
-ConvertSecToDay converts seconds passed as integer to
-- D H M S format
-*/
+// ConvertSecToDay converts seconds passed as integer to
+// - D H M S format
 func convertSecToDay(sec int) string {
 	log.Debug("received duration is: ", sec)
 	day := sec / (24 * 3600)
@@ -120,11 +127,9 @@ func convertSecToDay(sec int) string {
 	return v
 }
 
-/*
- * monitorStatusAndNotify monitor for status change and
- * send notification if there is a change identified
- */
-func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.PipelinesServicesManager, branch string, pipName string) error {
+// monitorStatusAndNotify monitor for status change and
+// send notification if there is a change identified
+func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.PipelinesServicesManager, branch string, pipName string, isMultiBranch bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
 	var reStatus string
@@ -133,9 +138,9 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			p, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName)
+			p, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName, isMultiBranch)
 			if err != nil {
-				return err
+				return errorutils.CheckError(err)
 			}
 			pipeline := p.Pipelines[0]
 			s, colorCode, d := getPipelineStatusAndColorCode(&pipeline)
@@ -153,9 +158,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 	}
 }
 
-/*
- * check for change in status with the latest status
- */
+// check for change in status with the latest status
 func monitorStatusChange(pipStatus, reStatus string) bool {
 	if reStatus == pipStatus {
 		return false
@@ -165,32 +168,26 @@ func monitorStatusChange(pipStatus, reStatus string) bool {
 	return true
 }
 
-/*
- * hasPipelineRunEnded if pipeline status is one of
- * CANCELLED, FAILED, SUCCESS, ERROR, TIMEOUT pipeline run
- * life is considered to be done.
- */
+// hasPipelineRunEnded if pipeline status is one of
+// CANCELLED, FAILED, SUCCESS, ERROR, TIMEOUT pipeline run
+// life is considered to be done.
 func hasPipelineRunEnded(pipStatus string) bool {
 	pipRunEndLife := []string{status.SUCCESS, status.FAILURE, status.ERROR, status.CANCELLED, status.TIMEOUT}
 	return contains(pipRunEndLife, pipStatus)
 }
 
-/*
-sendNotification sends notification
-*/
+// sendNotification sends notification
 func sendNotification(pipStatus string, pipName string) {
 	err := beeep.Alert("Pipelines CLI", pipName+" - "+pipStatus, "")
 	if err != nil {
-		panic(err)
+		log.Warn("failed to send notification")
 	}
 	if hasPipelineRunEnded(pipStatus) {
 		return
 	}
 }
 
-/*
-contains returns whether a string is available in slice
-*/
+// contains returns whether a string is available in slice
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {

@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.3.7
-	github.com/jfrog/build-info-go v1.8.3
+	github.com/jfrog/build-info-go v1.8.4
 	github.com/jfrog/gofrog v1.2.5
 	github.com/jfrog/jfrog-client-go v1.24.4
 	github.com/magiconair/properties v1.8.6

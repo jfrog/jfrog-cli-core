@@ -2,13 +2,15 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -24,7 +26,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	storage, err := m.repoSummary.UsedSpaceInBytes.Int64()
+	storage, err := utils.GetUsedSpaceInBytes(&m.repoSummary)
 	if err != nil {
 		return err
 	}

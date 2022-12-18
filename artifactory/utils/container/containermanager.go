@@ -105,6 +105,9 @@ func (nc *nativeCmd) RunCmd() error {
 	command := nc.GetCmd()
 	command.Stderr = os.Stderr
 	command.Stdout = os.Stderr
+	if nc.containerManager == DockerClient {
+		command.Env = append(os.Environ(), "DOCKER_SCAN_SUGGEST=false")
+	}
 	return command.Run()
 }
 

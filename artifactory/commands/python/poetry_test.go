@@ -1,6 +1,7 @@
 package python
 
 import (
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -28,6 +29,11 @@ func TestPoetryCommandCleanup(t *testing.T) {
 	poetryProjectPath, cleanUp := initPoetryTest(t)
 	defer cleanUp()
 
+	assert.NoError(t, exec.Command("python", "-m", "pip", "uninstall", "virtualenv", "-y").Run())
+	defer func() {
+		assert.NoError(t, exec.Command("python", "-m", "pip", "install", "virtualenv").Run())
+	}()
+
 	pc := NewPoetryCommand()
 	dummyRepoURL := "https://ecosysjfrog.jfrog.io/"
 	err := pc.configPoetryRepo(dummyRepoURL, "", "")
@@ -38,7 +44,7 @@ func TestPoetryCommandCleanup(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, string(content), dummyRepoURL)
 
-	pc.cleanup()
+	assert.NoError(t, pc.cleanup())
 
 	content, err = fileutils.ReadFile(pyProjectPath)
 	assert.NoError(t, err)

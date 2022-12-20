@@ -51,4 +51,4 @@ jobs:
         run: go vet ./...
 
       - name: Tests
-        run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race
+        run: go test -p 1 -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race

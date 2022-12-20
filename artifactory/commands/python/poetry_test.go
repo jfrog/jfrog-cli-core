@@ -1,7 +1,6 @@
 package python
 
 import (
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -28,9 +27,6 @@ func TestAddRepoToPyprojectFile(t *testing.T) {
 func TestPoetryCommandCleanup(t *testing.T) {
 	poetryProjectPath, cleanUp := initPoetryTest(t)
 	defer cleanUp()
-
-	assert.NoError(t, exec.Command("python", "-m", "pip", "uninstall", "virtualenv", "-y").Run())
-	assert.NoError(t, exec.Command("python", "-m", "pip", "install", "virtualenv").Run())
 
 	pc := NewPoetryCommand()
 	dummyRepoURL := "https://ecosysjfrog.jfrog.io/"

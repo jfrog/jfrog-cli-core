@@ -1,7 +1,6 @@
 package python
 
 import (
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -12,25 +11,25 @@ import (
 
 func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
 	// Install virtualenv if missing
-	path, _ := exec.LookPath("virtualenv")
-	if path == "" {
-		assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
-		defer func() {
-			assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
-		}()
-	}
+	//path, _ := exec.LookPath("virtualenv")
+	//if path == "" {
+	//	assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
+	//	defer func() {
+	//		assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
+	//	}()
+	//}
 	testBuildPipDependencyListSetuppy(t)
 }
 
 func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
-	// Remove virtualenv if exists
-	path, _ := exec.LookPath("virtualenv")
-	if path != "" {
-		assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
-		defer func() {
-			assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
-		}()
-	}
+	//// Remove virtualenv if exists
+	//path, _ := exec.LookPath("virtualenv")
+	//if path != "" {
+	//	assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
+	//	defer func() {
+	//		assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
+	//	}()
+	//}
 	testBuildPipDependencyListSetuppy(t)
 }
 

@@ -24,6 +24,9 @@ jobs:
       - name: Install python components
         run: python3 -m pip install pipenv poetry
 
+      - name: Uninstall python virtualenv
+        run: python3 -m pip uninstall virtualenv -y
+
       - name: Install python virtualenv
         run: python3 -m pip install virtualenv
 

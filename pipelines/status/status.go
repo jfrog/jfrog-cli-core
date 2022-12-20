@@ -14,10 +14,8 @@ const (
 	SKIPPED    = "skipped"
 )
 
-/*
-GetStatusColorCode returns gokit/color.Color
-based on status input parameter
-*/
+// GetStatusColorCode returns gokit/color.Color
+// based on status input parameter
 func GetStatusColorCode(status string) color.Color {
 	colorCode := color.Blue
 	if status == SUCCESS {
@@ -28,11 +26,9 @@ func GetStatusColorCode(status string) color.Color {
 	return colorCode
 }
 
-/*
-GetPipelineStatus based on pipelines reStatus code
-returns respective reStatus in string format
-for eq:- 4002 return success
-*/
+// GetPipelineStatus based on pipelines reStatus code
+// returns respective reStatus in string format
+// for eq:- 4002 return success
 func GetPipelineStatus(statusCode int) string {
 	status := "NOT DEFINED"
 	switch statusCode {

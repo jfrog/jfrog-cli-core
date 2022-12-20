@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	yamlconv "github.com/ghodss/yaml"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -73,8 +74,9 @@ func (vc *ValidateCommand) runValidation(resMap map[string]string) ([]byte, erro
 	} else {
 		buf = payload
 	}
-
-	return buf.Bytes(), nil
+	b := buf.Bytes()
+	//fmt.Printf("awesome data : %+v \n", string(b))
+	return b, nil
 }
 
 func (vc *ValidateCommand) ValidateResources() ([]byte, error) {
@@ -157,8 +159,10 @@ func splitDataToPipelinesAndResourcesMap(vsc map[string][]interface{}, marErr er
 			return nil, err, true
 		}
 		ymlType = "pipelines"
+		fmt.Println(string(data))
 		resMap[ymlType] = string(data)
 	}
+	//fmt.Printf("%+v \n", resMap)
 	return resMap, nil, false
 }
 
@@ -179,6 +183,7 @@ func getPayloadBasedOnYmlType(m map[string]string) *strings.Reader {
 		if ymlType == "resources" {
 			resReader = strings.NewReader(`{"fileName":"` + ymlType + `.yml","content":` + m[ymlType] + `,"ymlType":"` + ymlType + `"}`)
 		} else if ymlType == "pipelines" {
+			//fmt.Printf("data : %+v \n", m[ymlType])
 			pipReader = strings.NewReader(`{"fileName":"` + ymlType + `.yml","content":` + m[ymlType] + `,"ymlType":"` + ymlType + `"}`)
 		}
 	}
@@ -197,13 +202,14 @@ func getPayloadBasedOnYmlType(m map[string]string) *strings.Reader {
 		if err != nil {
 			return nil
 		}
-		valReader = strings.NewReader(`{"files":[` + string(all) + ` ]}`)
+		valReader = strings.NewReader(`{"files":[` + string(all) + `]}`)
 	} else if pipReader != nil {
 		all, err := io.ReadAll(pipReader)
 		if err != nil {
 			return nil
 		}
-		valReader = strings.NewReader(`{"files":[` + string(all) + ` ]}`)
+		valReader = strings.NewReader(`{"files":[` + string(all) + `]}`)
 	}
+	//fmt.Printf("exact data : %+v \n", valReader)
 	return valReader
 }

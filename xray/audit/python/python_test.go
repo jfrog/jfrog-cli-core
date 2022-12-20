@@ -24,14 +24,9 @@ func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
 
 func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
 	// Remove virtualenv if exists
-	path, _ := exec.LookPath("virtualenv")
-	if path != "" {
-		//	assert.NoError(t, executeCommand("python3", "-m", "pip", "uninstall", "virtualenv", "-y"))
-		//	defer func() {
-		//		assert.NoError(t, executeCommand("python3", "-m", "pip", "install", "virtualenv"))
-		//	}()
-	}
+	assert.NoError(t, executeCommand("python3", "-m", "pip", "uninstall", "virtualenv", "-y"))
 	testBuildPipDependencyListSetuppy(t)
+	assert.NoError(t, executeCommand("python3", "-m", "pip", "install", "virtualenv"))
 }
 
 func testBuildPipDependencyListSetuppy(t *testing.T) {

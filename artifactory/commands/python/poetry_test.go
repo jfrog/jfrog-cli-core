@@ -30,9 +30,7 @@ func TestPoetryCommandCleanup(t *testing.T) {
 	defer cleanUp()
 
 	assert.NoError(t, exec.Command("python", "-m", "pip", "uninstall", "virtualenv", "-y").Run())
-	defer func() {
-		assert.NoError(t, exec.Command("python", "-m", "pip", "install", "virtualenv").Run())
-	}()
+	assert.NoError(t, exec.Command("python", "-m", "pip", "install", "virtualenv").Run())
 
 	pc := NewPoetryCommand()
 	dummyRepoURL := "https://ecosysjfrog.jfrog.io/"

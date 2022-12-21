@@ -381,12 +381,12 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		return err
 	}
 
-	paths, err := fspatterns.GetPaths(rootPath, recursive, false, false)
+	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, excludePathPattern)
 	if err != nil {
 		return err
 	}
 	for _, path := range paths {
-		matches, isDir, _, err := fspatterns.PrepareAndFilterPaths(path, excludePathPattern, false, false, patternRegex)
+		matches, isDir, err := fspatterns.SearchPatterns(path, false, false, patternRegex)
 		if err != nil {
 			return err
 		}

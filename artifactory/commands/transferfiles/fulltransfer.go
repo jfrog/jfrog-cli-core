@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -27,7 +28,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	storage, err := m.repoSummary.UsedSpaceInBytes.Int64()
+	storage, err := utils.GetUsedSpaceInBytes(&m.repoSummary)
 	if err != nil {
 		return err
 	}

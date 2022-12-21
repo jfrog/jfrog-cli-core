@@ -2,7 +2,9 @@ package reposnapshot
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/lru"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"strings"
@@ -23,10 +25,12 @@ type RepoSnapshotManager struct {
 	repoKey string
 	// Pointer to the root node of the repository tree.
 	root     *Node
-	lruCache RepoSnapshotLruCache
+	lruCache *lru.Cache
 	// File path for saving the snapshot to and reading the snapshot from.
 	snapshotFilePath string
 }
+
+var cacheSize = 3000
 
 // Loads a repo snapshot from the provided snapshotFilePath if such file exists.
 // If successful, returns the snapshot and exists=true.
@@ -52,7 +56,7 @@ func newRepoSnapshotManager(root *Node, repoKey, snapshotFilePath string) RepoSn
 		root:             root,
 		repoKey:          repoKey,
 		snapshotFilePath: snapshotFilePath,
-		lruCache:         newRepoSnapshotLruCache(),
+		lruCache:         lru.New(cacheSize, lru.WithoutSync()),
 	}
 }
 
@@ -98,10 +102,12 @@ func (sm *RepoSnapshotManager) LookUpNode(relativePath string) (requestedNode *N
 // Returns the node that represents the directory from the repo state. Updates the lru cache.
 // relativePath - relative path of the directory.
 func (sm *RepoSnapshotManager) GetDirectorySnapshotNodeWithLru(relativePath string) (node *Node, err error) {
-	node, err = sm.lruCache.get(relativePath)
-	// If node already exists in cache, return it.
-	if err != nil || node != nil {
-		return node, err
+	val, ok := sm.lruCache.Get(relativePath)
+	if ok {
+		if node, ok = val.(*Node); !ok {
+			return nil, errors.New("unexpected value in node lru cache")
+		}
+		return node, nil
 	}
 
 	// Otherwise, manually search for the node.
@@ -111,7 +117,8 @@ func (sm *RepoSnapshotManager) GetDirectorySnapshotNodeWithLru(relativePath stri
 	}
 
 	// Add it to cache.
-	return node, sm.lruCache.add(relativePath, node)
+	sm.lruCache.Add(relativePath, node)
+	return node, nil
 }
 
 // Recursively find the node matching the path represented by the dirs array.

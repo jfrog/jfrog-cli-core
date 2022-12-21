@@ -386,7 +386,11 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			if stopped {
 				return true
 			}
-			setChunkCompletedInRepoSnapshot(phase.stateManager, chunk.Files)
+			err = setChunkCompletedInRepoSnapshot(phase.stateManager, chunk.Files)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
 	}
 	return false

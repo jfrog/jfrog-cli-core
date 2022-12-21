@@ -71,7 +71,7 @@ func TestGetTransferStateAndSnapshotClean(t *testing.T) {
 	defer cleanUp()
 
 	// Make the snapshot not auto save.
-	snapshotCleanUp := SetAutoSaveSnapshot(1000)
+	snapshotCleanUp := setAutoSaveSnapshot(1000)
 	defer snapshotCleanUp()
 
 	// Assert getting state before it was created returns clean state.
@@ -98,7 +98,7 @@ func TestGetTransferStateAndSnapshotClean(t *testing.T) {
 }
 
 // Set the snapshot's save-interval and return a cleanup function.
-func SetAutoSaveSnapshot(interval int) (cleanUp func()) {
+func setAutoSaveSnapshot(interval int) (cleanUp func()) {
 	previousSaveInterval := snapshotSaveIntervalMin
 	snapshotSaveIntervalMin = interval
 	return func() {

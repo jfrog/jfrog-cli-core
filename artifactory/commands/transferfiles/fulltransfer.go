@@ -67,7 +67,7 @@ func (m *fullTransferPhase) handleSuccessfulTransfer() error {
 	if err := m.stateManager.SetRepoFullTransferCompleted(); err != nil {
 		return err
 	}
-	// Snapshot manager is not used by other phases.
+	// Disable repo transfer snapshot since it is not tracked by the following phases we are not handling a full transfer.
 	m.stateManager.DisableRepoTransferSnapshot()
 	snapshotDir, err := state.GetJfrogTransferRepoSnapshotDir(m.repoKey)
 	if err != nil {
@@ -132,78 +132,11 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		return err
 	}
 
-	curUploadChunk := api.UploadChunk{
-		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
-		CheckExistenceInFilestore: m.checkExistenceInFilestore,
-	}
-
-	var result *servicesUtils.AqlSearchResult
-	paginationI := 0
-	for {
-		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-			return
-		}
-		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
-		if err != nil {
-			return err
-		}
-
-		// Empty folder. Add it as candidate.
-		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
-			break
-		}
-
-		for _, item := range result.Results {
-			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-				return
-			}
-			if item.Name == "." {
-				continue
-			}
-			switch item.Type {
-			case "folder":
-				newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
-				// Add a node for the found folder, as a child for the current folder in the snapshot manager.
-				err = node.AddChildNode(item.Name, previousChildrenMap)
-				if err != nil {
-					return err
-				}
-				folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-				_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
-				if err != nil {
-					return err
-				}
-			case "file":
-				file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
-				delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
-				if stopped {
-					return
-				}
-				// Add the file name to the directory's node in the snapshot manager, to track its progress.
-				err = node.AddFile(item.Name, item.Size)
-				if err != nil {
-					return err
-				}
-				if delayed {
-					continue
-				}
-				curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
-				if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-					_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
-					if err != nil {
-						return
-					}
-					// Empty the uploaded chunk.
-					curUploadChunk.UploadCandidates = []api.FileRepresentation{}
-				}
-			}
-		}
-
-		if len(result.Results) < AqlPaginationLimit {
-			break
-		}
-		paginationI++
+	curUploadChunk, err := m.searchAndHandleFolderContents(params, pcWrapper,
+		uploadChunkChan, delayHelper, errorsChannelMng,
+		node, previousChildrenMap)
+	if err != nil {
+		return
 	}
 
 	// Mark that no more results are expected for the current folder.
@@ -220,6 +153,103 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 		}
 	}
 	log.Debug(logMsgPrefix+"Done transferring folder:", path.Join(m.repoKey, params.relativePath))
+	return
+}
+
+func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, pcWrapper producerConsumerWrapper,
+	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
+	node *reposnapshot.Node, previousChildrenMap map[string]*reposnapshot.Node) (curUploadChunk api.UploadChunk, err error) {
+	curUploadChunk = api.UploadChunk{
+		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
+		CheckExistenceInFilestore: m.checkExistenceInFilestore,
+	}
+
+	var result *servicesUtils.AqlSearchResult
+	paginationI := 0
+	for {
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+			return
+		}
+		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+		if err != nil {
+			return
+		}
+
+		// Empty folder. Add it as candidate.
+		if paginationI == 0 && len(result.Results) == 0 {
+			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
+			return
+		}
+
+		for _, item := range result.Results {
+			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+				return
+			}
+			if item.Name == "." {
+				continue
+			}
+			switch item.Type {
+			case "folder":
+				err = m.handleFoundChildFolder(params, pcWrapper,
+					uploadChunkChan, delayHelper, errorsChannelMng,
+					node, previousChildrenMap, item)
+			case "file":
+				err = m.handleFoundFile(pcWrapper,
+					uploadChunkChan, delayHelper, errorsChannelMng,
+					node, item, &curUploadChunk)
+			}
+			if err != nil {
+				return
+			}
+		}
+
+		if len(result.Results) < AqlPaginationLimit {
+			break
+		}
+		paginationI++
+	}
+	return
+}
+
+func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrapper producerConsumerWrapper,
+	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
+	node *reposnapshot.Node, previousChildrenMap map[string]*reposnapshot.Node, item servicesUtils.ResultItem) (err error) {
+	newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
+	// Add a node for the found folder, as a child for the current folder in the snapshot manager.
+	err = node.AddChildNode(item.Name, previousChildrenMap)
+	if err != nil {
+		return
+	}
+	folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+	_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
+	return
+}
+
+func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
+	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
+	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
+	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
+	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
+	if stopped {
+		return
+	}
+	// Add the file name to the directory's node in the snapshot manager, to track its progress.
+	err = node.AddFile(item.Name, item.Size)
+	if err != nil {
+		return
+	}
+	if delayed {
+		return
+	}
+	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
+	if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, *curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		if err != nil {
+			return
+		}
+		// Empty the uploaded chunk.
+		curUploadChunk.UploadCandidates = []api.FileRepresentation{}
+	}
 	return
 }
 
@@ -255,9 +285,6 @@ func convertRepoSnapshotToFileRepresentation(repoKey, relativePath string, snaps
 	return
 }
 
-// A repository snapshot stores the progress of transferring a repository, as explained in RepoSnapshotManager.
-// In case a transfer is interrupted, the transfer can continue from it's saved snapshot instead of starting from scratch.
-// If such previous repo snapshot does exist, use the known info to handle the current directory.
 // Decide how to continue handling the directory by the node's state in the repository snapshot (completed / done exploring / requires exploring)
 // Outputs:
 // node - A node in the repository snapshot tree, which represents the current directory.

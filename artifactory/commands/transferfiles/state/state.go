@@ -184,7 +184,7 @@ func loadRepoSnapshots(repoKey string) (transferState TransferState, repoTransfe
 	}
 	repoTransferSnapshot, snapshotExists, err := loadRepoTransferSnapshot(repoKey, snapshotPath)
 	if !stateExists || !snapshotExists {
-		log.Info("attempt to transfer repository '" + repoKey + "' was previously stopped but no snapshot was found to continue from. " +
+		log.Info("An attempt to transfer repository '" + repoKey + "' was previously stopped but no snapshot was found to continue from. " +
 			"Starting to transfer from scratch...")
 		return getCleanStateAndSnapshot(repoKey)
 	}

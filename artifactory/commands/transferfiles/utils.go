@@ -12,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -227,37 +228,39 @@ func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsC
 		}
 		failures = append(failures, fileFailureResponse)
 	}
-	setChunkCompletedInRepoSnapshot(stateManager, failures)
+	err := setChunkCompletedInRepoSnapshot(stateManager, failures)
+	if err != nil {
+		// We are logging the error instead of returning it since the original error is already handled.
+		log.Error(err)
+	}
 	return
 }
 
 // If repo snapshot is tracked, mark all files of a chunk as completed in their directory's node and check if node completed (done handling the directory and child directories).
-func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, chunkFiles []api.FileUploadStatusResponse) {
+func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, chunkFiles []api.FileUploadStatusResponse) (err error) {
 	if !stateManager.IsRepoTransferSnapshotEnabled() {
 		return
 	}
 
+	var dirNode *reposnapshot.Node
 	for _, file := range chunkFiles {
-		dirNode, err := stateManager.GetDirectorySnapshotNodeWithLru(file.Path)
+		dirNode, err = stateManager.GetDirectorySnapshotNodeWithLru(file.Path)
 		if err != nil {
-			log.Error(err)
 			return
 		}
 
 		// If empty dir, skip to checking completion.
 		if file.Name != "" {
-			err = dirNode.FileCompleted(file.Name)
-			if err != nil {
-				log.Error(err)
+			if err = dirNode.FileCompleted(file.Name); err != nil {
 				return
 			}
 		}
 
-		err = dirNode.CheckCompleted()
-		if err != nil {
-			log.Error(err)
+		if err = dirNode.CheckCompleted(); err != nil {
+			return
 		}
 	}
+	return
 }
 
 // Sends an upload chunk to the source Artifactory instance, to be handled asynchronously by the data-transfer plugin.

@@ -149,12 +149,12 @@ func setAllNodeFilesCompleted(t *testing.T, node *Node) {
 }
 
 // Tree dirs representation:
-// root - 0 - a + 3 files
-//   - 1 - a + 1 file
-//   - b + 2 files
-//   - 1 file
-//   - 2
-//   - 1 file
+// root -> 0 -> a + 3 files
+// ------> 1 -> a + 1 file
+// -----------> b + 2 files
+// ---------- + 1 file
+// ------> 2
+// ----- + 1 file
 func createTestSnapshotTree(t *testing.T) *Node {
 	root := createNodeBase(t, ".", []string{"file-on-root"}, nil)
 	dir0 := createNodeBase(t, "0", []string{}, root)
@@ -208,9 +208,44 @@ func addAndAssertChild(t *testing.T, childrenMapPool map[string]*Node, root, exp
 func initSnapshotManagerTest(t *testing.T) RepoSnapshotManager {
 	file, err := fileutils.CreateTempFile()
 	assert.NoError(t, err)
-	return RepoSnapshotManager{
-		root:             createTestSnapshotTree(t),
-		repoKey:          dummyRepoKey,
-		snapshotFilePath: file.Name(),
+	return newRepoSnapshotManager(createTestSnapshotTree(t), dummyRepoKey, file.Name())
+}
+
+func TestGetDirectorySnapshotNodeWithLruLRU(t *testing.T) {
+	originalCacheSize := cacheSize
+	cacheSize = 3
+	defer func() {
+		cacheSize = originalCacheSize
+	}()
+	manager := initSnapshotManagerTest(t)
+
+	// Assert lru cache is empty before getting nodes.
+	assert.Zero(t, manager.lruCache.Len())
+
+	// Get 3 nodes which will cause the cache to reach its cache size.
+	_ = getNodeAndAssert(t, manager, "1/b/", 1)
+	_ = getNodeAndAssert(t, manager, "./", 2)
+	_ = getNodeAndAssert(t, manager, "2/", 3)
+
+	// Get another node that exceeds the cache size and assert the LRU node was removed.
+	_ = getNodeAndAssert(t, manager, "0/a/", 3)
+	_, exists := manager.lruCache.Get("1/b/")
+	assert.False(t, exists)
+}
+
+func assertReturnedNode(t *testing.T, manager RepoSnapshotManager, node *Node, relativePath string, expectedLen int) {
+	if !assert.NotNil(t, node) {
+		return
 	}
+	actualPath, err := node.getActualPath()
+	assert.NoError(t, err)
+	assert.Equal(t, relativePath, actualPath)
+	assert.Equal(t, expectedLen, manager.lruCache.Len())
+}
+
+func getNodeAndAssert(t *testing.T, manager RepoSnapshotManager, relativePath string, expectedLen int) *Node {
+	node, err := manager.GetDirectorySnapshotNodeWithLru(relativePath)
+	assert.NoError(t, err)
+	assertReturnedNode(t, manager, node, filepath.Dir(relativePath), expectedLen)
+	return node
 }

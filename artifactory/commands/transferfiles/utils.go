@@ -12,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -207,21 +208,55 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, upload
 			if errors.Is(err, context.Canceled) {
 				return true
 			}
-			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err, phaseBase.stateManager)
 		}
 		return ShouldStop(phaseBase, nil, errorsChannelMng)
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error) (stopped bool) {
+func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error, stateManager *state.TransferStateManager) (stopped bool) {
+	var failures []api.FileUploadStatusResponse
 	for _, file := range chunk.UploadCandidates {
-		err := api.FileUploadStatusResponse{
+		fileFailureResponse := api.FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             errReason.Error(),
 		}
 		// In case an error occurred while handling errors files - stop transferring.
-		stopped = addErrorToChannel(errorsChannelMng, err)
+		stopped = addErrorToChannel(errorsChannelMng, fileFailureResponse)
 		if stopped {
+			return
+		}
+		failures = append(failures, fileFailureResponse)
+	}
+	err := setChunkCompletedInRepoSnapshot(stateManager, failures)
+	if err != nil {
+		// We are logging the error instead of returning it since the original error is already handled.
+		log.Error(err)
+	}
+	return
+}
+
+// If repo snapshot is tracked, mark all files of a chunk as completed in their directory's node and check if node completed (done handling the directory and child directories).
+func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, chunkFiles []api.FileUploadStatusResponse) (err error) {
+	if !stateManager.IsRepoTransferSnapshotEnabled() {
+		return
+	}
+
+	var dirNode *reposnapshot.Node
+	for _, file := range chunkFiles {
+		dirNode, err = stateManager.GetDirectorySnapshotNodeWithLru(file.Path)
+		if err != nil {
+			return
+		}
+
+		// If empty dir, skip to checking completion.
+		if file.Name != "" {
+			if err = dirNode.FileCompleted(file.Name); err != nil {
+				return
+			}
+		}
+
+		if err = dirNode.CheckCompleted(); err != nil {
 			return
 		}
 	}
@@ -580,19 +615,11 @@ func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService
 }
 
 func getJfrogTransferRepoDelaysDir(repoKey string) (string, error) {
-	return getJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferDelaysDirName)
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferDelaysDirName)
 }
 
 func getJfrogTransferRepoErrorsDir(repoKey string) (string, error) {
-	return getJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferErrorsDirName)
-}
-
-func getJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
-	transferDir, err := state.GetRepositoryTransferDir(repoKey)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(transferDir, subDirName), nil
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferErrorsDirName)
 }
 
 func getJfrogTransferRepoErrorsSubDir(repoKey, subDirName string) (string, error) {

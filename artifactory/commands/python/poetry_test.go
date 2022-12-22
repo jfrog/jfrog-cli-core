@@ -24,27 +24,6 @@ func TestAddRepoToPyprojectFile(t *testing.T) {
 	assert.Contains(t, string(content), dummyRepoURL)
 }
 
-func TestPoetryCommandCleanup(t *testing.T) {
-	poetryProjectPath, cleanUp := initPoetryTest(t)
-	defer cleanUp()
-
-	pc := NewPoetryCommand()
-	dummyRepoURL := "https://ecosysjfrog.jfrog.io/"
-	err := pc.configPoetryRepo(dummyRepoURL, "", "")
-	assert.NoError(t, err)
-
-	pyProjectPath := filepath.Join(poetryProjectPath, "pyproject.toml")
-	content, err := fileutils.ReadFile(pyProjectPath)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), dummyRepoURL)
-
-	pc.cleanup()
-
-	content, err = fileutils.ReadFile(pyProjectPath)
-	assert.NoError(t, err)
-	assert.NotContains(t, string(content), dummyRepoURL)
-}
-
 func initPoetryTest(t *testing.T) (string, func()) {
 	// Create and change directory to test workspace
 	testAbs, err := filepath.Abs(filepath.Join("..", "..", "..", "xray", "commands", "testdata", "poetry-project"))

@@ -261,14 +261,14 @@ func collectPatternMatchingFiles(addDepsParams *specutils.CommonParams, rootPath
 		return nil, err
 	}
 
-	paths, err := fspatterns.GetPaths(rootPath, addDepsParams.IsRecursive(), addDepsParams.IsIncludeDirs(), true)
+	paths, err := fspatterns.ListFiles(rootPath, addDepsParams.IsRecursive(), addDepsParams.IsIncludeDirs(), true, excludePathPattern)
 	if err != nil {
 		return nil, err
 	}
 	result := []string{}
 
 	for _, path := range paths {
-		matches, _, _, err := fspatterns.PrepareAndFilterPaths(path, excludePathPattern, true, false, patternRegex)
+		matches, _, err := fspatterns.SearchPatterns(path, true, false, patternRegex)
 		if err != nil {
 			log.Error(err)
 			continue

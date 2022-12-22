@@ -3,15 +3,6 @@ package python
 import (
 	"errors"
 	"fmt"
-	"io"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
 	buildinfoutils "github.com/jfrog/build-info-go/utils"
@@ -22,9 +13,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
+	"io"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type PoetryCommand struct {
@@ -38,13 +34,12 @@ const (
 	poetryConfigAuthPrefix = "http-basic."
 	poetryConfigRepoPrefix = "repositories."
 	pyproject              = "pyproject.toml"
-	pyprojectBackup        = "pyproject.toml.backup"
 )
 
 func NewPoetryCommand() *PoetryCommand {
 	return &PoetryCommand{
 		PythonCommand:        PythonCommand{pythonTool: pythonutils.Poetry},
-		poetryConfigRepoName: fmt.Sprintf("%s-%s", baseConfigRepoName, strconv.FormatInt(time.Now().UnixMilli(), 10)),
+		poetryConfigRepoName: baseConfigRepoName,
 	}
 }
 
@@ -71,12 +66,6 @@ func (pc *PoetryCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := pc.cleanup()
-		if err == nil {
-			err = e
-		}
-	}()
 	if pythonBuildInfo != nil {
 		switch pc.commandName {
 		case "install":
@@ -189,10 +178,6 @@ func (pc *PoetryCommand) configPoetryRepo(url, username, password string) error 
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	err = fileutils.CopyFile(filepath.Join(currentDir, pyprojectBackup), filepath.Join(currentDir, pyproject))
-	if err != nil {
-		return err
-	}
 	return addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), pc.poetryConfigRepoName, url)
 }
 
@@ -216,30 +201,6 @@ func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
 		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
 	}
 	return err
-}
-
-func (pc *PoetryCommand) cleanup() error {
-	// Unset the poetry repository config
-	err := runPoetryConfigCommand([]string{poetryConfigRepoPrefix + pc.poetryConfigRepoName, "--unset"}, false)
-	if err != nil {
-		return err
-	}
-	// Unset the poetry repository credentials
-	err = runPoetryConfigCommand([]string{poetryConfigAuthPrefix + pc.poetryConfigRepoName, "--unset"}, false)
-	if err != nil {
-		return err
-	}
-
-	// Restore original pyproject.toml
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	err = os.Remove(filepath.Join(currentDir, pyproject))
-	if err != nil {
-		return errorutils.CheckErrorf("Cleanup modified pyproject.toml failed with: %s", err.Error())
-	}
-	return fileutils.MoveFile(filepath.Join(currentDir, pyprojectBackup, pyproject), filepath.Join(currentDir, pyproject))
 }
 
 func (pc *PoetryCommand) CommandName() string {

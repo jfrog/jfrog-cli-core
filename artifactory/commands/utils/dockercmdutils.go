@@ -33,36 +33,3 @@ func ExtractDockerOptionsFromArgs(args []string) (threads int, serverDetails *co
 	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }
-
-func ExtractDockerScanOptionsFromArgs(args []string) (fail, licenses bool, format, project, watches string, serverDetails *config.ServerDetails, err error) {
-	cleanArgs := append([]string(nil), args...)
-	var serverId string
-	cleanArgs, serverId, err = coreutils.ExtractServerIdFromCommand(cleanArgs)
-	if err != nil {
-		return
-	}
-	serverDetails, err = config.GetSpecificConfig(serverId, true, true)
-	if err != nil {
-		return
-	}
-	cleanArgs, fail, err = coreutils.ExtractFailFromArgs(cleanArgs)
-	if err != nil {
-		return
-	}
-	cleanArgs, format, err = coreutils.ExtractXrayOutputFormatFromArgs(cleanArgs)
-	if err != nil {
-		return
-	}
-	cleanArgs, licenses, err = coreutils.ExtractLicensesFromArgs(cleanArgs)
-	if err != nil {
-		return
-	}
-	cleanArgs, watches, err = coreutils.ExtractWatchesFromArgs(cleanArgs)
-	if err != nil {
-		return
-	}
-	var buildConfig *utils.BuildConfiguration
-	_, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
-	project = buildConfig.GetProject()
-	return
-}

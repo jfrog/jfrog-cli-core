@@ -45,7 +45,7 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 
 // Yarn audit is only supported from yarn v2.
 func logAndValidateYarnVersion(executablePath string) error {
-	versionStr, err := audit.GetAndLogExecutableVersion(executablePath)
+	versionStr, err := audit.GetExecutableVersion(executablePath)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}

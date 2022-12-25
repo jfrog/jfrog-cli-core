@@ -123,8 +123,9 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 	return nil
 }
 
-// Get executable version and print to log if possible.
-func GetAndLogExecutableVersion(executable string) (version string, err error) {
+// Gets executable version and prints to the debug log if possible.
+// Only supported for package managers that use "--version".
+func GetExecutableVersion(executable string) (version string, err error) {
 	verBytes, err := exec.Command(executable, "--version").CombinedOutput()
 	if err != nil || len(verBytes) == 0 {
 		return "", err

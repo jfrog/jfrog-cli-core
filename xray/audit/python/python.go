@@ -92,10 +92,10 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	}
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil {
-		if _, innerErr := audit.GetAndLogExecutableVersion("python"); innerErr != nil {
+		if _, innerErr := audit.GetExecutableVersion("python"); innerErr != nil {
 			log.Error(innerErr)
 		}
-		if _, innerErr := audit.GetAndLogExecutableVersion(string(pythonTool)); innerErr != nil {
+		if _, innerErr := audit.GetExecutableVersion(string(pythonTool)); innerErr != nil {
 			log.Error(innerErr)
 		}
 	}
@@ -147,7 +147,7 @@ func executeCommand(executable string, args ...string) error {
 	log.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
 	output, err := installCmd.CombinedOutput()
 	if err != nil {
-		if _, innerErr := audit.GetAndLogExecutableVersion(executable); innerErr != nil {
+		if _, innerErr := audit.GetExecutableVersion(executable); innerErr != nil {
 			log.Error(innerErr)
 		}
 		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)

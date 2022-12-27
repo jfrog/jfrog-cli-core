@@ -39,6 +39,7 @@ type TransferConfigCommand struct {
 	dryRun               bool
 	force                bool
 	verbose              bool
+	merge                bool
 	includeReposPatterns []string
 	excludeReposPatterns []string
 	workingDir           string
@@ -82,18 +83,16 @@ func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConf
 	return tcc
 }
 
+func (tcc *TransferConfigCommand) SetMerge(merge bool) *TransferConfigCommand {
+	tcc.merge = merge
+	return tcc
+}
+
 func (tcc *TransferConfigCommand) Run() (err error) {
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
 		return err
 	}
-
-	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
-	if err != nil || !continueTransfer {
-		return err
-	}
-
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
 	if err != nil {
 		return
@@ -104,11 +103,21 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion); err != nil {
-		return
+	if tcc.merge {
+		err := tcc.RunMergeCommand(sourceServicesManager, targetServiceManager, sourceArtifactoryVersion)
+		return err
+	}
+	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
+	if err != nil || !continueTransfer {
+		return err
 	}
 
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
+
+	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
+	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion, minArtifactoryVersion); err != nil {
+		return
+	}
 	// Run export on the source Artifactory
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - Export configuration from the source Artifactory ==========")))
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServicesManager)
@@ -234,9 +243,9 @@ func (tcc *TransferConfigCommand) isDefaultCredentials(manager artifactory.Artif
 // Make sure source and target Artifactory URLs are different.
 // Make sure the target Artifactory is empty, by counting the number of the repositories. If it is bigger than 1, return an error.
 // Also make sure that the source Artifactory version is sufficient.
-func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) error {
-	if !version.NewVersion(sourceArtifactoryVersion).AtLeast(minArtifactoryVersion) {
-		return errorutils.CheckErrorf("This operation requires source Artifactory version %s or higher", minArtifactoryVersion)
+func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion, minRequiredVersion string) error {
+	if !version.NewVersion(sourceArtifactoryVersion).AtLeast(minRequiredVersion) {
+		return errorutils.CheckErrorf("This operation requires source Artifactory version %s or higher", minRequiredVersion)
 	}
 
 	// Avoid exporting and importing to the same server

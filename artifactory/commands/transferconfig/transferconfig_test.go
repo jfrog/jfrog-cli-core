@@ -112,33 +112,33 @@ func TestSanityVerifications(t *testing.T) {
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 
 	// Test low artifactory version
-	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
+	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0", minArtifactoryVersion)
 	assert.ErrorContains(t, err, "This operation requires source Artifactory version 6.23.21 or higher")
 
 	// Test no users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test 1 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test 2 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test 3 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users.")
 
 	// Assert force = true
 	transferConfigCmd.force = true
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.NoError(t, err)
 
 	// Test same source and target Artifactory servers
 	transferConfigCmd = NewTransferConfigCommand(serverDetails, serverDetails)
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion, minArtifactoryVersion)
 	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 
 }

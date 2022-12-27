@@ -98,3 +98,11 @@ func getRepositoryHash(repoKey string) (string, error) {
 	}
 	return checksumInfo[utils.SHA1], nil
 }
+
+func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
+	transferDir, err := GetRepositoryTransferDir(repoKey)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, subDirName), nil
+}

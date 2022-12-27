@@ -30,7 +30,7 @@ func ShowStatus() error {
 	}
 	addOverallStatus(stateManager, &output, runningTime)
 	if stateManager.CurrentRepoKey != "" {
-		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey)
+		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey, false)
 		if err != nil {
 			return err
 		}

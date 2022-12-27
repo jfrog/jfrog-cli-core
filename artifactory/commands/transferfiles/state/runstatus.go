@@ -44,7 +44,7 @@ func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {
 	}
 
 	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(SaveIntervalSecs) {
+	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(stateAndStatusSaveIntervalSecs) {
 		return nil
 	}
 

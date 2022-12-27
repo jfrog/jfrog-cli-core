@@ -574,7 +574,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 		log.Info("Files transfer is complete!")
 	}
 	if tdc.stateManager.CurrentRepo.Name != "" {
-		e := tdc.stateManager.SaveState()
+		e := tdc.stateManager.SaveStateAndSnapshots()
 		if e != nil {
 			log.Error("Couldn't save transfer state", e)
 			if err == nil {

@@ -1,4 +1,4 @@
-package transferconfig
+package utils
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gocarina/gocsv"
-	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -24,8 +24,10 @@ const (
 	success               RemoteUrlCheckStatus = "SUCCESS"
 	inProgress            RemoteUrlCheckStatus = "IN_PROGRESS"
 
-	remoteUrlCheckPollingTimeout  = 30 * time.Minute
-	remoteUrlCheckPollingInterval = 5 * time.Second
+	remoteUrlCheckPollingTimeout    = 30 * time.Minute
+	remoteUrlCheckPollingInterval   = 5 * time.Second
+	remoteUrlCheckRetries           = 3
+	remoteUrlCheckIntervalMilliSecs = 10000
 )
 
 type remoteUrlResponse struct {
@@ -42,6 +44,7 @@ type inaccessibleRepository struct {
 	Url        string `json:"url,omitempty"`
 }
 
+// Run remote repository URLs accessibility test before transferring configuration from one Artifactory to another
 type RemoteRepositoryCheck struct {
 	targetServicesManager *artifactory.ArtifactoryServicesManager
 	configXml             string
@@ -55,7 +58,7 @@ func (rrc *RemoteRepositoryCheck) Name() string {
 	return longPropertyCheckName
 }
 
-func (rrc *RemoteRepositoryCheck) ExecuteCheck(args cmdutils.RunArguments) (passed bool, err error) {
+func (rrc *RemoteRepositoryCheck) ExecuteCheck(args RunArguments) (passed bool, err error) {
 	inaccessibleRepositories, err := rrc.doCheckRemoteRepositories(args)
 	if err != nil {
 		return false, err
@@ -63,11 +66,11 @@ func (rrc *RemoteRepositoryCheck) ExecuteCheck(args cmdutils.RunArguments) (pass
 	return len(*inaccessibleRepositories) == 0, handleFailureRun(*inaccessibleRepositories)
 }
 
-func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args cmdutils.RunArguments) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
+func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
 	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(args.ServerDetails.ArtifactoryUrl)
 
 	// Create rtDetails
-	rtDetails, err := createArtifactoryClientDetails(*rrc.targetServicesManager)
+	rtDetails, err := CreateArtifactoryClientDetails(*rrc.targetServicesManager)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +89,13 @@ func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args cmdutils.RunArg
 	return rrc.waitForCheckRemoteRepositoriesCompletion(rtDetails, artifactoryUrl, progressBar)
 }
 
-func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, args cmdutils.RunArguments) (*progressbar.TasksProgressBar, error) {
+func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, args RunArguments) (*progressbar.TasksProgressBar, error) {
 	var response *remoteUrlResponse
 	// Sometimes, POST api/plugins/execute/remoteRepositoriesCheck returns unexpectedly 404 errors, although the config-import plugin is installed.
 	// To overcome this issue, we use a custom retryExecutor and not the default retry executor that retries only on HTTP errors >= 500.
 	retryExecutor := clientutils.RetryExecutor{
-		MaxRetries:               importStartRetries,
-		RetriesIntervalMilliSecs: importStartRetriesIntervalMilliSecs,
+		MaxRetries:               remoteUrlCheckRetries,
+		RetriesIntervalMilliSecs: remoteUrlCheckIntervalMilliSecs,
 		ErrorMessage:             fmt.Sprintf("Failed to start the remote repositories check in %s", artifactoryUrl),
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
@@ -117,7 +120,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 	if args.ProgressMng == nil {
 		return nil, nil
 	}
-	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), progressbar.GREEN, "Remote repositories"), nil
+	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), coreutils.IsWindows(), "Remote repositories"), nil
 }
 
 func (rrc *RemoteRepositoryCheck) waitForCheckRemoteRepositoriesCompletion(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) (*[]inaccessibleRepository, error) {

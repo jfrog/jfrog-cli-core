@@ -45,10 +45,10 @@ func (tc *TriggerCommand) CommandName() string {
 	return "trigger"
 }
 
-func (tc *TriggerCommand) Run() (string, error) {
+func (tc *TriggerCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(tc.serverDetails)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return errorutils.CheckError(err)
 	}
 	return serviceManager.TriggerPipelineRun(tc.branch, tc.pipelineName, tc.isMultiBranch)
 }

@@ -54,9 +54,9 @@ func (sc *SyncStatusCommand) Run() (string, error) {
 	pipSyncStatus := status.GetPipelineStatus(pipelineSyncStatuses[0].LastSyncStatusCode)
 	if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
 		colorCode := status.GetStatusColorCode(pipSyncStatus)
-		s := colorCode.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\nCommitSHA: %s\nCommitter: %s\nCommitMessage: %s\nSyncSummary: %s\n", pipSyncStatus, pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs)
+		s := colorCode.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\nCommitSHA: %s\nCommitter: %s\nCommitMessage: %s\nSyncSummary: %s\n", pipSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs)
 		return s, nil
 	}
-	s := fmt.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\nCommitSHA: %s\nCommitter: %s\nCommitMessage: %s\n", pipSyncStatus, pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg)
+	s := fmt.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\nCommitSHA: %s\nCommitter: %s\nCommitMessage: %s\n", pipSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg)
 	return s, nil
 }

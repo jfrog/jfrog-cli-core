@@ -75,7 +75,6 @@ func (vc *ValidateCommand) runValidation(resMap map[string]string) ([]byte, erro
 		buf = payload
 	}
 	b := buf.Bytes()
-	//fmt.Printf("awesome data : %+v \n", string(b))
 	return b, nil
 }
 

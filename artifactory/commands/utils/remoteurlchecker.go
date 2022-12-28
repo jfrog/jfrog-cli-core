@@ -63,7 +63,10 @@ func (rrc *RemoteRepositoryCheck) ExecuteCheck(args RunArguments) (passed bool, 
 	if err != nil {
 		return false, err
 	}
-	return len(*inaccessibleRepositories) == 0, handleFailureRun(*inaccessibleRepositories)
+	if len(*inaccessibleRepositories) == 0 {
+		return true, nil
+	}
+	return false, handleFailureRun(*inaccessibleRepositories)
 }
 
 func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
@@ -86,7 +89,7 @@ func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (
 	}()
 
 	// Wait for remote repositories check completion
-	return rrc.waitForCheckRemoteRepositoriesCompletion(rtDetails, artifactoryUrl, progressBar)
+	return rrc.waitForRemoteReposCheckCompletion(rtDetails, artifactoryUrl, progressBar)
 }
 
 func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, args RunArguments) (*progressbar.TasksProgressBar, error) {
@@ -123,7 +126,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), coreutils.IsWindows(), "Remote repositories"), nil
 }
 
-func (rrc *RemoteRepositoryCheck) waitForCheckRemoteRepositoriesCompletion(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) (*[]inaccessibleRepository, error) {
+func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) (*[]inaccessibleRepository, error) {
 	pollingExecutor := &httputils.PollingExecutor{
 		Timeout:         remoteUrlCheckPollingTimeout,
 		PollingInterval: remoteUrlCheckPollingInterval,

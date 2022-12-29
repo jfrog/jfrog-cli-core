@@ -111,7 +111,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
+	targetServiceManager, err = utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
 	if err != nil {
 		return
 	}
@@ -136,7 +136,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		err := tcc.RunMergeCommand(sourceServicesManager, targetServiceManager, sourceArtifactoryVersion)
 		return err
 	}
-	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
+	continueTransfer, err = tcc.printWarnings(sourceServicesManager)
 	if err != nil || !continueTransfer {
 		return err
 	}
@@ -215,7 +215,7 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 	if err != nil {
 		return err
 	}
-	if err = tcc.validateArtifactoryServers(targetServicesManager, sourceArtifactoryVersion); err != nil {
+	if err = tcc.validateArtifactoryServers(targetServicesManager, sourceArtifactoryVersion, minArtifactoryVersion); err != nil {
 		return err
 	}
 

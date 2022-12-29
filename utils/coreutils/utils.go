@@ -2,6 +2,7 @@ package coreutils
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -494,6 +495,19 @@ func GetJfrogTransferDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
+}
+
+func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
+	b, err := json.Marshal(interfaceObj)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	var f interface{}
+	err = json.Unmarshal(b, &f)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	return f.(map[string]interface{}), nil
 }
 
 func Contains(arr []string, str string) bool {

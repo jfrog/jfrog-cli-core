@@ -4,11 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
@@ -24,6 +19,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 )
 
 const (
@@ -141,14 +140,8 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Create the repository filter
-	repoFilter := &utils.RepositoryFilter{
-		IncludePatterns: tcc.includeReposPatterns,
-		ExcludePatterns: tcc.excludeReposPatterns,
-	}
-
 	// Prepare the config XML to be imported to SaaS
-	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml, tcc.targetServerDetails.ArtifactoryUrl, repoFilter)
+	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml)
 	if err != nil {
 		return
 	}
@@ -380,9 +373,9 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Remove federated members of federated repositories
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, bool, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml string) (string, bool, error) {
 	var err error
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
 	if err != nil {
 		return "", false, err
 	}
@@ -536,4 +529,12 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 		return "?params=workingDir=" + tcc.workingDir
 	}
 	return ""
+}
+
+func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
+	// Create the repository filter
+	return &utils.RepositoryFilter{
+		IncludePatterns: tcc.includeReposPatterns,
+		ExcludePatterns: tcc.excludeReposPatterns,
+	}
 }

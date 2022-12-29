@@ -89,6 +89,13 @@ func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConf
 	return tcc
 }
 
+func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
+	return &utils.RepositoryFilter{
+		IncludePatterns: tcc.includeReposPatterns,
+		ExcludePatterns: tcc.excludeReposPatterns,
+	}
+}
+
 func (tcc *TransferConfigCommand) Run() (err error) {
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
@@ -141,14 +148,8 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// Create the repository filter
-	repoFilter := &utils.RepositoryFilter{
-		IncludePatterns: tcc.includeReposPatterns,
-		ExcludePatterns: tcc.excludeReposPatterns,
-	}
-
 	// Prepare the config XML to be imported to SaaS
-	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml, tcc.targetServerDetails.ArtifactoryUrl, repoFilter)
+	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml)
 	if err != nil {
 		return
 	}
@@ -205,8 +206,7 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 	}
 
 	// Remove filtered repositories
-	repoFilter := &utils.RepositoryFilter{IncludePatterns: tcc.includeReposPatterns, ExcludePatterns: tcc.excludeReposPatterns}
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
 	if err != nil {
 		return err
 	}
@@ -380,9 +380,9 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 // Modify artifactory.config.xml:
 // 1. Remove non-included repositories, if provided
 // 2. Remove federated members of federated repositories
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml, targetBaseUrl string, repoFilter *utils.RepositoryFilter) (string, bool, error) {
+func (tcc *TransferConfigCommand) modifyConfigXml(configXml string) (string, bool, error) {
 	var err error
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
 	if err != nil {
 		return "", false, err
 	}

@@ -25,7 +25,8 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 
 	for _, sourceRepo := range *sourceRepos {
 		// Check if repository is filtered
-		shouldIncludeRepo, err := tcc.getRepoFilter().ShouldIncludeRepository(sourceRepo.Key)
+		var shouldIncludeRepo bool
+		shouldIncludeRepo, err = tcc.getRepoFilter().ShouldIncludeRepository(sourceRepo.Key)
 		if err != nil {
 			return
 		}
@@ -35,7 +36,8 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 
 		if targetRepo, exists := targetReposMap[sourceRepo.Key]; exists {
 			// Repository exists on target, need to compare
-			reposDiff, err := compareRepositories(sourceRepo, targetRepo, sourceServiceManager, targetServiceManager)
+			var reposDiff []string
+			reposDiff, err = compareRepositories(sourceRepo, targetRepo, sourceServiceManager, targetServiceManager)
 			if err != nil {
 				return
 			}

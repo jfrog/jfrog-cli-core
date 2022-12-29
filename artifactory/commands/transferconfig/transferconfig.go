@@ -536,11 +536,3 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 	}
 	return ""
 }
-
-func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
-	// Create the repository filter
-	return &utils.RepositoryFilter{
-		IncludePatterns: tcc.includeReposPatterns,
-		ExcludePatterns: tcc.excludeReposPatterns,
-	}
-}

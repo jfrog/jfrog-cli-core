@@ -3,7 +3,6 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	yamlconv "github.com/ghodss/yaml"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -158,7 +157,7 @@ func splitDataToPipelinesAndResourcesMap(vsc map[string][]interface{}, marErr er
 			return nil, err, true
 		}
 		ymlType = "pipelines"
-		fmt.Println(string(data))
+		//fmt.Println(string(data))
 		resMap[ymlType] = string(data)
 	}
 	//fmt.Printf("%+v \n", resMap)

@@ -168,4 +168,3 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
 }
-

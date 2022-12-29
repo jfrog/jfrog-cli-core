@@ -509,12 +509,3 @@ func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
 	}
 	return f.(map[string]interface{}), nil
 }
-
-func Contains(arr []string, str string) bool {
-	for _, element := range arr {
-		if element == str {
-			return true
-		}
-	}
-	return false
-}

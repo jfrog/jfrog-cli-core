@@ -88,6 +88,13 @@ func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConf
 	return tcc
 }
 
+func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
+	return &utils.RepositoryFilter{
+		IncludePatterns: tcc.includeReposPatterns,
+		ExcludePatterns: tcc.excludeReposPatterns,
+	}
+}
+
 func (tcc *TransferConfigCommand) Run() (err error) {
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
@@ -198,8 +205,7 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 	}
 
 	// Remove filtered repositories
-	repoFilter := &utils.RepositoryFilter{IncludePatterns: tcc.includeReposPatterns, ExcludePatterns: tcc.excludeReposPatterns}
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
 	if err != nil {
 		return err
 	}

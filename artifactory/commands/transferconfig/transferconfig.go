@@ -207,8 +207,7 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 	}
 
 	// Remove filtered repositories
-	repoFilter := &utils.RepositoryFilter{IncludePatterns: tcc.includeReposPatterns, ExcludePatterns: tcc.excludeReposPatterns}
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, repoFilter)
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
 	if err != nil {
 		return err
 	}

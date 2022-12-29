@@ -4,15 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -88,17 +87,4 @@ func handleTypoInAccessBootstrap(exportPath string) error {
 		}
 	}
 	return nil
-}
-
-func createArtifactoryClientDetails(serviceManager artifactory.ArtifactoryServicesManager) (*httputils.HttpClientDetails, error) {
-	config := serviceManager.GetConfig()
-	if config == nil {
-		return nil, errorutils.CheckErrorf("expected full config, but no configuration exists")
-	}
-	rtDetails := config.GetServiceDetails()
-	if rtDetails == nil {
-		return nil, errorutils.CheckErrorf("artifactory details not configured")
-	}
-	clientDetails := rtDetails.CreateHttpClientDetails()
-	return &clientDetails, nil
 }

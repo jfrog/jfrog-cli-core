@@ -17,7 +17,7 @@ import (
 	"io"
 	"sync"
 
-	loguitils "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	clientLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -258,7 +258,7 @@ func handleFailureRun(filesWithLongProperty []FileWithLongProperty) (err error) 
 // Create a csv summary of all the files with long properties
 func createFailedCheckSummaryCsvFile(failures []FileWithLongProperty, timeStarted time.Time) (csvPath string, err error) {
 	// Create CSV file
-	summaryCsv, err := loguitils.CreateCustomLogFile(fmt.Sprintf("long-properties-%s.csv", timeStarted.Format(loguitils.DefaultLogTimeLayout)))
+	summaryCsv, err := clientLog.CreateCustomLogFile(fmt.Sprintf("long-properties-%s.csv", timeStarted.Format(clientLog.DefaultLogTimeLayout)))
 	if err != nil {
 		return
 	}
@@ -266,7 +266,7 @@ func createFailedCheckSummaryCsvFile(failures []FileWithLongProperty, timeStarte
 	defer func() {
 		e := summaryCsv.Close()
 		if err == nil {
-			err = e
+			err = errorutils.CheckError(e)
 		}
 	}()
 	// Marshal JSON typed FileWithLongProperty array to CSV file

@@ -124,7 +124,7 @@ func transferRepositoriesToTarget(reposToTransfer []string, sourceServiceManager
 		if err != nil {
 			return
 		}
-		err = targetServiceManager.CreateRepositoryWithJsonParams(params, repoKey)
+		err = targetServiceManager.CreateRepositoryWithParams(params, repoKey)
 		if err != nil {
 			return
 		}

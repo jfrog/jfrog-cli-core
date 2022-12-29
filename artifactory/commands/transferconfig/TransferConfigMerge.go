@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"github.com/gocarina/gocsv"
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	loguitils "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"time"
+)
+
+const (
+	minArtifactoryMergeVersion = "7.0.0"
 )
 
 type ProjectConflict struct {
@@ -30,50 +34,55 @@ func (tcc *TransferConfigCommand) newConflict(sourceProjectName, targetProjectNa
 func (tcc *TransferConfigCommand) RunMergeCommand(sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) (err error) {
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/3 - Preparations ==========")))
 
-	// todo check access token and admin token if 401
-	// todo add the ping to client in merge validation function
 	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion, minArtifactoryMergeVersion); err != nil {
+	tranferProjects, err := tcc.validateMergeArtifactoryServers(targetServiceManager, sourceArtifactoryVersion, minArtifactoryMergeVersion)
+	if err != nil {
+		return err
+	}
+	if err != nil {
 		return
 	}
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Getting Projects and Repositories from Source ==========")))
-	sourceServiceAccessManager, err := access.New(sourceServiceManager.GetConfig())
-	sourceprojects, err := sourceServiceAccessManager.GetAllProjects()
-	if err != nil {
-		return err
-	}
+	if tranferProjects {
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Putting Projects and Repositories to Target ==========")))
-	targetServiceAccessManager, err := access.New(targetServiceManager.GetConfig())
-	targerprojects, err := targetServiceAccessManager.GetAllProjects()
-	if err != nil {
-		return err
-	}
-
-	var projectConflicts []ProjectConflict
-
-	var isConflict bool
-	for _, sourceProject := range sourceprojects {
-		for _, targetProject := range targerprojects {
-
-			projectConflicts, isConflict = tcc.validateProjectConflict(sourceProject, targetProject, projectConflicts)
-
+		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Getting Projects and Repositories from Source ==========")))
+		sourceServiceAccessManager, err := utils.CreateAccessServiceManager(tcc.sourceServerDetails, sourceServiceManager.GetConfig().IsDryRun())
+		sourceprojects, err := sourceServiceAccessManager.GetAllProjects()
+		if err != nil {
+			return err
 		}
-		if !isConflict {
-			err := targetServiceAccessManager.CreateProject(services.ProjectParams{ProjectDetails: sourceProject})
-			if err != nil {
-				return err
+
+		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Putting Projects and Repositories to Target ==========")))
+		targetServiceAccessManager, err := utils.CreateAccessServiceManager(tcc.targetServerDetails, targetServiceManager.GetConfig().IsDryRun())
+		targerprojects, err := targetServiceAccessManager.GetAllProjects()
+		if err != nil {
+			return err
+		}
+
+		var projectConflicts []ProjectConflict
+
+		var tempConflict bool
+		isConflict := false
+		for _, sourceProject := range sourceprojects {
+			for _, targetProject := range targerprojects {
+
+				projectConflicts, tempConflict = tcc.validateProjectConflict(sourceProject, targetProject, projectConflicts)
+				isConflict = isConflict || tempConflict
+			}
+			if !isConflict {
+				err := targetServiceAccessManager.CreateProject(services.ProjectParams{ProjectDetails: sourceProject})
+				if err != nil {
+					return err
+				}
 			}
 		}
-	}
-	csvPath, err := tcc.createConflictsCSVSummary(projectConflicts, time.Now())
-	if err != nil {
-		log.Error("Couldn't create the long properties CSV file", err)
-		return err
-	}
+		csvPath, err := tcc.createConflictsCSVSummary(projectConflicts, time.Now())
+		if err != nil {
+			log.Error("Couldn't create the long properties CSV file", err)
+			return err
+		}
 
-	log.Info(fmt.Sprintf("Founded %d projectConflicts projects between the source service and the target, check in csv file we created for you in %s", len(projectConflicts), csvPath))
-
+		log.Info(fmt.Sprintf("Founded %d projectConflicts projects between the source service and the target, check in csv file we created for you in %s", len(projectConflicts), csvPath))
+	}
 	return nil
 }
 
@@ -156,9 +165,9 @@ func (tcc *TransferConfigCommand) addToDifferentProperty(s, property string) str
 	return s
 }
 
-func (tcc *TransferConfigCommand) tryPing(targetServicesManager artifactory.ArtifactoryServicesManager) bool {
-
-	return true
+func (tcc *TransferConfigCommand) tryPing(targetServicesManager artifactory.ArtifactoryServicesManager) error {
+	_, err := targetServicesManager.Ping()
+	return err
 }
 
 func (tcc *TransferConfigCommand) validateMergeArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string, minRequiredVersion string) (bool, error) {
@@ -175,7 +184,8 @@ func (tcc *TransferConfigCommand) validateMergeArtifactoryServers(targetServices
 	}
 
 	// check correctness of Authorization
-	if !(tcc.tryPing(targetServicesManager)) {
+	log.Info("Verifying Access Token...")
+	if tcc.tryPing(targetServicesManager) != nil {
 		return false, errorutils.CheckErrorf("The target's access token is not correct, please provide an availble access token.")
 	}
 	return transferProjects, nil

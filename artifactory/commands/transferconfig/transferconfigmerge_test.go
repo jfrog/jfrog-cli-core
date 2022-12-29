@@ -108,5 +108,4 @@ func TestCreateConflictCSV(t *testing.T) {
 	conflicts := CreateAndVlidateConflicts(t)
 	_, err := tcc.createConflictsCSVSummary(conflicts, time.Now())
 	assert.NoError(t, err)
-
 }

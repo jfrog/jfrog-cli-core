@@ -21,7 +21,8 @@ const (
 
 type DockerScanCommand struct {
 	ScanCommand
-	imageTag string
+	imageTag       string
+	targetRepoPath string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -30,6 +31,11 @@ func NewDockerScanCommand() *DockerScanCommand {
 
 func (dsc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
 	dsc.imageTag = imageTag
+	return dsc
+}
+
+func (dsc *DockerScanCommand) SetTargetRepoPath(repoPath string) *DockerScanCommand {
+	dsc.targetRepoPath = repoPath
 	return dsc
 }
 
@@ -70,7 +76,10 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}
 
 	// Perform scan on image.tar
-	dsc.SetSpec(spec.NewBuilder().Pattern(imageTarPath).BuildSpec()).SetThreads(1)
+	dsc.SetSpec(spec.NewBuilder().
+		Pattern(imageTarPath).
+		Target(dsc.targetRepoPath).
+		BuildSpec()).SetThreads(1)
 	err = dsc.setCredentialEnvsForIndexerApp()
 	if err != nil {
 		return errorutils.CheckError(err)

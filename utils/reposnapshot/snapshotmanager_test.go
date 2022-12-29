@@ -126,7 +126,7 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 		t.Run(test.testName, func(t *testing.T) {
 			node, err := manager.LookUpNode(test.path)
 			if test.errorExpected {
-				assert.ErrorContains(t, err, getLookUpErrorPrefix(test.path))
+				assert.ErrorContains(t, err, getLookUpNodeError(test.path))
 				return
 			} else {
 				assert.NoError(t, err)

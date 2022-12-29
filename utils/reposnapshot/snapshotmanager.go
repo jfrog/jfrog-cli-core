@@ -82,7 +82,7 @@ func (sm *RepoSnapshotManager) PersistRepoSnapshot() error {
 // Returns the node corresponding to the directory in the provided relative path. Path should be provided without the repository name.
 func (sm *RepoSnapshotManager) LookUpNode(relativePath string) (requestedNode *Node, err error) {
 	if relativePath == "" {
-		return nil, errorutils.CheckErrorf(getLookUpErrorPrefix(relativePath) + "- unexpected empty path provided to look up")
+		return nil, errorutils.CheckErrorf(getLookUpNodeError(relativePath) + "- unexpected empty path provided to look up")
 	}
 	relativePath = strings.TrimSuffix(relativePath, "/")
 	if relativePath == "." {
@@ -92,9 +92,12 @@ func (sm *RepoSnapshotManager) LookUpNode(relativePath string) (requestedNode *N
 
 	// Progress through the children maps till reaching the node that represents the requested path.
 	dirs := strings.Split(relativePath, "/")
-	requestedNode = findMatchingNode(dirs, sm.root)
+	requestedNode, err = sm.root.findMatchingNode(dirs)
+	if err != nil {
+		return nil, err
+	}
 	if requestedNode == nil {
-		return nil, errorutils.CheckErrorf("Repo snapshot manager - %s", getLookUpErrorPrefix(relativePath))
+		return nil, errorutils.CheckErrorf(getLookUpNodeError(relativePath))
 	}
 	return
 }
@@ -121,24 +124,6 @@ func (sm *RepoSnapshotManager) GetDirectorySnapshotNodeWithLru(relativePath stri
 	return node, nil
 }
 
-// Recursively find the node matching the path represented by the dirs array.
-// The search is done by comparing the children of each node path, till reaching the final node in the array.
-// If the node is not found, nil is returned.
-// For example:
-// For a structure such as repo->dir1->dir2->dir3
-// The initial input will be ({"dir1","dir2","dir3"},<pointer to root>), and the final output will be a pointer to dir3.
-func findMatchingNode(childrenDirs []string, curNode *Node) (matchingNode *Node) {
-	if len(childrenDirs) == 0 {
-		return curNode
-	}
-	for childName, child := range curNode.children {
-		if childName == childrenDirs[0] {
-			return findMatchingNode(childrenDirs[1:], child)
-		}
-	}
-	return nil
-}
-
-func getLookUpErrorPrefix(relativePath string) string {
-	return fmt.Sprintf("could not reach the representing node for path '%s'", relativePath)
+func getLookUpNodeError(relativePath string) string {
+	return fmt.Sprintf("repo snapshot manager - could not reach the representing node for path '%s'", relativePath)
 }

@@ -14,6 +14,7 @@ import (
 
 const (
 	repo1Key = "repo1"
+	repo2Key = "repo2"
 )
 
 func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
@@ -29,11 +30,9 @@ func initStatusTest(t *testing.T) (*bytes.Buffer, func()) {
 	// Redirect log to buffer
 	buffer, _, previousLog := tests.RedirectLogOutputToBuffer()
 
-	// Set save interval to 0 so every action will be persisted and data can be asserted.
-	previousSaveInterval := state.SaveIntervalSecs
-	state.SaveIntervalSecs = 0
+	undoSaveInterval := state.SetAutoSaveState()
 	return buffer, func() {
-		state.SaveIntervalSecs = previousSaveInterval
+		undoSaveInterval()
 		log.SetLogger(previousLog)
 		cleanUpJfrogHome()
 	}
@@ -53,7 +52,7 @@ func TestShowStatus(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.FullTransferPhase, false)
+	createStateManager(t, api.Phase1, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -83,7 +82,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.FilesDiffPhase, false)
+	createStateManager(t, api.Phase2, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -113,7 +112,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.ErrorsPhase, true)
+	createStateManager(t, api.Phase3, true)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -147,7 +146,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 10000, 10000, buildInfoRepo, false))
 
-	stateManager.CurrentRepo = repo1Key
+	stateManager.CurrentRepoKey = repo1Key
 	stateManager.CurrentRepoPhase = phase
 	stateManager.OverallTransfer.TotalSizeBytes = 11111
 	stateManager.TotalRepositories.TotalUnits = 1111
@@ -160,10 +159,10 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	stateManager.TimeEstimationManager.SpeedsAverage = 12
 
 	// Increment transferred size and files. This action also persists the run status.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(repo1Key, 500, 5000))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(500, 5000))
 
 	// Save transfer state.
-	assert.NoError(t, stateManager.SaveState())
+	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 }
 
 func TestSizeToString(t *testing.T) {

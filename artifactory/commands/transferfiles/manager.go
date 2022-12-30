@@ -5,15 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"sync"
-	"time"
-
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"sync"
+	"time"
 )
 
 const (
@@ -387,6 +386,11 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			if stopped {
 				return true
 			}
+			err = setChunkCompletedInRepoSnapshot(phase.stateManager, chunk.Files)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
 	}
 	return false
@@ -397,19 +401,15 @@ func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstM
 	if phase == nil {
 		return nil
 	}
-	if phase.phaseId == api.FullTransferPhase || phase.phaseId == api.ErrorsPhase {
-		if progressbar != nil {
-			err := progressbar.IncrementPhaseBy(phase.phaseId, len(chunk.Files))
-			if err != nil {
-				return err
-			}
-		}
-		chunnkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, phase.repoKey, &chunk)
-		if err != nil {
+	chunkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, &chunk)
+	if err != nil {
+		return err
+	}
+	if progressbar != nil {
+		progressbar.increaseTotalSize(int(chunkSizeInBytes))
+		if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunkSizeInBytes)); err != nil {
 			return err
 		}
-		progressbar.increaseTotalSize(int(chunnkSizeInBytes))
-		phase.progressBar.phases[phase.phaseId].GetTasksProgressBar().GetBar().IncrBy(int(chunnkSizeInBytes))
 	}
 	if timeEstMng != nil {
 		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())

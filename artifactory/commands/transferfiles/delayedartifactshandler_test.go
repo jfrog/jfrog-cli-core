@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanUpJfrogHome()
 
-	delaysDirPath, err := coreutils.GetJfrogTransferDelaysDir()
+	delaysDirPath, err := getJfrogTransferRepoDelaysDir(testRepoKey)
 	assert.NoError(t, err)
 	assert.NoError(t, fileutils.CreateDirIfNotExist(delaysDirPath))
 
@@ -63,7 +62,8 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	assert.NoError(t, delayedArtifactsErr)
 
 	// add not relevant files to confuse
-	writeEmptyConfuseFiles(t, delaysDirPath)
+	writeEmptyConfuseFiles(t, repo1Key)
+	writeEmptyConfuseFiles(t, delayTestRepoKey+"-0")
 
 	delayFiles, err := getDelayFiles([]string{testRepoKey})
 	assert.NoError(t, err)
@@ -71,12 +71,15 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
 	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
 
-	delayCount, err := countDelayFilesContent(delayFiles)
+	delayCount, _, err := countDelayFilesContent(delayFiles)
 	assert.NoError(t, err)
 	assert.Equal(t, delayCount, artifactsNumber)
 }
 
-func writeEmptyConfuseFiles(t *testing.T, delaysDirPath string) {
+func writeEmptyConfuseFiles(t *testing.T, repoKey string) {
+	delaysDirPath, err := getJfrogTransferRepoDelaysDir(repoKey)
+	assert.NoError(t, err)
+	assert.NoError(t, fileutils.CreateDirIfNotExist(delaysDirPath))
 	for i := 0; i < 4; i++ {
 		writeEmptyFile(t, delaysDirPath, delayTestRepoKey, i)
 	}
@@ -85,6 +88,10 @@ func writeEmptyConfuseFiles(t *testing.T, delaysDirPath string) {
 	writeEmptyFile(t, delaysDirPath, testRepoKey+"-0-0", 0)
 	writeEmptyFile(t, delaysDirPath, testRepoKey+"-1", 22)
 	writeEmptyFile(t, delaysDirPath, "wrong-"+testRepoKey+"-wrong", 0)
+
+	delayFiles, err := getDelayFiles([]string{repoKey})
+	assert.NoError(t, err)
+	assert.Len(t, delayFiles, 9)
 }
 
 func writeEmptyFile(t *testing.T, delaysDirPath string, repoName string, index int) {

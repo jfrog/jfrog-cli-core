@@ -3,26 +3,25 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
-
-	"github.com/jfrog/jfrog-client-go/artifactory/usage"
-
 	"github.com/jfrog/gofrog/version"
-	"golang.org/x/exp/slices"
-
-	"strconv"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/slices"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
 )
 
 const (
@@ -50,6 +49,7 @@ type TransferFilesCommand struct {
 	proxyKey                  string
 	status                    bool
 	stateManager              *state.TransferStateManager
+	preChecks                 bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -96,6 +96,10 @@ func (tdc *TransferFilesCommand) SetStatus(status bool) {
 	tdc.status = status
 }
 
+func (tdc *TransferFilesCommand) SetPreChecks(check bool) {
+	tdc.preChecks = check
+}
+
 func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()
@@ -123,7 +127,19 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err := tdc.createTransferDir(); err != nil {
+	if tdc.preChecks {
+		if runner, err := tdc.NewTransferDataPreChecksRunner(); err != nil {
+			return err
+		} else {
+			return runner.Run(tdc.context, tdc.sourceServerDetails)
+		}
+	}
+
+	if err = tdc.createTransferDir(); err != nil {
+		return err
+	}
+
+	if err = tdc.assertRepositorySpecificStructure(); err != nil {
 		return err
 	}
 
@@ -250,6 +266,30 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
+// Creates the Pre-checks runner for the data transfer command
+func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *commandsUtils.PreCheckRunner, err error) {
+	// Get relevant repos
+	serviceManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
+	if err != nil {
+		return
+	}
+	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	if err != nil {
+		return
+	}
+	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	if err != nil {
+		return
+	}
+
+	runner = commandsUtils.NewPreChecksRunner()
+
+	// Add pre checks here
+	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...)))
+
+	return
+}
+
 func (tdc *TransferFilesCommand) transferRepos(sourceRepos []string, targetRepos []string,
 	buildInfoRepo bool, newPhase *transferPhase, srcUpService *srcUserPluginService) error {
 	for _, repoKey := range sourceRepos {
@@ -340,6 +380,24 @@ func (tdc *TransferFilesCommand) createTransferDir() error {
 		return err
 	}
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
+}
+
+// Assert the transfer dir is not in the old structure with a united state.json for all repository.
+// There are no means of conversion to the new structure, where repository has its own separated state file.
+// Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
+func (tdc *TransferFilesCommand) assertRepositorySpecificStructure() error {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	exists, err := fileutils.IsFileExists(filepath.Join(transferDir, coreutils.JfrogTransferStateFileName), false)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
 }
 
 func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
@@ -515,13 +573,16 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	if originalErr == nil {
 		log.Info("Files transfer is complete!")
 	}
-	e := tdc.stateManager.SaveState()
-	if e != nil {
-		log.Error("Couldn't save transfer state", e)
-		if err == nil {
-			err = e
+	if tdc.stateManager.CurrentRepo.Name != "" {
+		e := tdc.stateManager.SaveStateAndSnapshots()
+		if e != nil {
+			log.Error("Couldn't save transfer state", e)
+			if err == nil {
+				err = e
+			}
 		}
 	}
+
 	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
 	if e != nil {
 		log.Error("Couldn't create the errors CSV file", e)

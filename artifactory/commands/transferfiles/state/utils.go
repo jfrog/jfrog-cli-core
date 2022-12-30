@@ -2,7 +2,13 @@ package state
 
 import (
 	"fmt"
+	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,10 +28,6 @@ func ConvertRFC3339ToTime(timeToConvert string) (time.Time, error) {
 
 func ConvertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
-}
-
-func getRepoMissingErrorMsg(repoKey string) string {
-	return "Could not find repository '" + repoKey + "' in state file. Aborting."
 }
 
 // secondsToLiteralTime converts a number of seconds to an easy-to-read string.
@@ -68,4 +70,39 @@ func getTimeSingularOrPlural(timeAmount int64, timeType timeTypeSingular) string
 		result += "s"
 	}
 	return result
+}
+
+func GetRepositoryTransferDir(repoKey string) (string, error) {
+	reposDir, err := coreutils.GetJfrogTransferRepositoriesDir()
+	if err != nil {
+		return "", err
+	}
+	repoHash, err := getRepositoryHash(repoKey)
+	if err != nil {
+		return "", err
+	}
+
+	repoDir := filepath.Join(reposDir, repoHash)
+	err = fileutils.CreateDirIfNotExist(repoDir)
+	if err != nil {
+		return "", err
+	}
+
+	return repoDir, nil
+}
+
+func getRepositoryHash(repoKey string) (string, error) {
+	checksumInfo, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
+	if err = errorutils.CheckError(err); err != nil {
+		return "", err
+	}
+	return checksumInfo[utils.SHA1], nil
+}
+
+func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
+	transferDir, err := GetRepositoryTransferDir(repoKey)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, subDirName), nil
 }

@@ -172,7 +172,7 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		repoDetails := &services.RepositoryDetails{}
-		json.Unmarshal(body, repoDetails)
+		assert.NoError(t, json.Unmarshal(body, repoDetails))
 		packageType := repoDetails.PackageType
 
 		expectedPackageType := strings.TrimPrefix(r.RequestURI, "/api/repositories/")

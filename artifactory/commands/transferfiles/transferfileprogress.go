@@ -2,25 +2,60 @@ package transferfiles
 
 import (
 	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	coreLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
 	"time"
 )
 
-type TransferJobType string
+type ProgressBarLabels struct {
+	Repositories            string
+	Files                   string
+	Storage                 string
+	Note                    string
+	RetryFailureContentNote string
+	TransferSpeed           string
+	EstimatedTime           string
+	TransferFailures        string
+	WorkingThreads          string
+	RunningFor              string
+	DiffStorage             string
+	DiffFiles               string
+	FailedStorage           string
+	FailedFiles             string
+}
 
-const (
-	Repositories            TransferJobType = "Repositories"
-	Files                   TransferJobType = "Files"
-	Note                    string          = "Note: "
-	RetryFailureContentNote string          = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
-)
+func formatString(emoji, key string, windows bool) string {
+	if len(emoji) > 0 {
+		if windows {
+			emoji = "●"
+		}
+		key = emoji + " " + key
+	}
+	return (key)
+}
 
-func (tt TransferJobType) String() string {
-	return string(tt)
+func initSProgressBarLabels(windows bool) ProgressBarLabels {
+	pbs := ProgressBarLabels{}
+	pbs.RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
+	pbs.Repositories = formatString("📦", " Repositories", windows)
+	pbs.Files = formatString("📄", " Files", windows)
+	pbs.Storage = formatString("🗄 ", " Storage", windows)
+	pbs.Note = formatString(" 🟠", " Note: ", windows)
+	pbs.TransferSpeed = formatString(" ⚡", " Transfer speed: ", windows)
+	pbs.EstimatedTime = formatString(" ⌛", " Estimated time remaining: ", windows)
+	pbs.TransferFailures = formatString(" ❌", " Transfer failures: ", windows)
+	pbs.WorkingThreads = formatString(" 🧵", " Working threads: ", windows)
+	pbs.RunningFor = formatString(" 🏃🏼", " Running for: ", windows)
+	pbs.DiffStorage = formatString("🗄 ", " Diff Storage", windows)
+	pbs.DiffFiles = formatString("📄", " Diff Files", windows)
+	pbs.FailedFiles = formatString("📄", " Failed Files", windows)
+	pbs.FailedStorage = formatString("🗄 ", " Failed Storage", windows)
+	return pbs
 }
 
 // TransferProgressMng provides progress indication for the jf rt transfer-files command.
@@ -51,9 +86,12 @@ type TransferProgressMng struct {
 	// Progress bar manager
 	barsMng *progressbar.ProgressBarMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
-	stopLine      *mpb.Bar
-	filesStatus   *int
-	transferState *state.TransferStateManager
+	stopLine *mpb.Bar
+	// Progress bar labels
+	progressBarLabels ProgressBarLabels
+	filesStatus       *int
+	transferState     *state.TransferStateManager
+	windows           bool
 }
 
 // NewTransferProgressMng creates TransferProgressMng object.
@@ -61,17 +99,20 @@ type TransferProgressMng struct {
 func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int) error {
 	totalRepositories := int64(len(allSourceLocalRepos))
 	mng, shouldDisplay, err := progressbar.NewBarsMng()
+	windows := coreutils.IsWindows()
 	if !shouldDisplay || err != nil {
 		return err
 	}
 	transfer := TransferProgressMng{barsMng: mng, shouldDisplay: true}
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
-	//Init Progress Bars
-	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, Repositories.String())
-	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar("Storage", "Files", tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, progressbar.WHITE)
-	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar("Working threads: ", 0, color.Green)
-	transfer.runningTime = transfer.barsMng.NewStringProgressBar("Running for: ", func() string {
+	transfer.windows = windows
+	transfer.progressBarLabels = initSProgressBarLabels(windows)
+	// Init Progress Bars
+	transfer.totalRepositories = transfer.barsMng.NewTasksWithHeadlineProg(totalRepositories, color.Green.Render("Transferring your repositories"), false, progressbar.WHITE, transfer.windows, transfer.progressBarLabels.Repositories)
+	transfer.totalSize = transfer.barsMng.NewDoubleValueProgressBar(transfer.progressBarLabels.Storage, transfer.progressBarLabels.Files, tdc.stateManager.OverallTransfer.TotalSizeBytes, nil, nil, &tdc.stateManager.OverallTransfer.TotalUnits, &tdc.stateManager.OverallTransfer.TransferredUnits, transfer.windows, progressbar.WHITE)
+	transfer.workingThreads = transfer.barsMng.NewCounterProgressBar(transfer.progressBarLabels.WorkingThreads, 0, color.Green)
+	transfer.runningTime = transfer.barsMng.NewStringProgressBar(transfer.progressBarLabels.RunningFor, func() string {
 		runningTime, isRunning, err := state.GetRunningTime()
 		if err != nil || !isRunning {
 			runningTime = "Running time not available"
@@ -79,15 +120,15 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 		return color.Green.Render(runningTime)
 	})
 
-	transfer.speedBar = transfer.barsMng.NewStringProgressBar("Transfer speed: ", func() string {
+	transfer.speedBar = transfer.barsMng.NewStringProgressBar(transfer.progressBarLabels.TransferSpeed, func() string {
 		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetSpeedString())
 	})
-	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar("Estimated time remaining: ", func() string {
+	transfer.timeEstBar = transfer.barsMng.NewStringProgressBar(transfer.progressBarLabels.EstimatedTime, func() string {
 		return color.Green.Render(tdc.stateManager.TimeEstimationManager.GetEstimatedRemainingTimeString())
 	})
 
 	// Init global error count for the process
-	transfer.errorBar = transfer.barsMng.NewCounterProgressBar("Transfer failures: ", 0, color.Green)
+	transfer.errorBar = transfer.barsMng.NewCounterProgressBar(transfer.progressBarLabels.TransferFailures, 0, color.Green)
 	if !tdc.ignoreState {
 		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {
@@ -97,7 +138,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	}
 	transfer.errorNote = transfer.barsMng.NewStringProgressBar("", func() string {
 		if transfer.errorBar.GetTotal() > 0 {
-			return Note + color.Yellow.Render(RetryFailureContentNote)
+			return transfer.progressBarLabels.Note + color.Yellow.Render(transfer.progressBarLabels.RetryFailureContentNote)
 		} else {
 			return ""
 		}
@@ -127,12 +168,8 @@ func (t *TransferProgressMng) Quit() error {
 		if t.totalRepositories != nil {
 			t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
 		}
-		if t.totalSize != nil {
-			t.totalSize.GetBar().Abort(true)
-			t.totalSize.GetBar().Wait()
-		}
-		// Wait a refresh rate to make sure all aborts have finished
-		time.Sleep(progressbar.ProgressRefreshRate)
+		// Wait a few refresh rates to make sure all aborts have finished.
+		time.Sleep(progressbar.ProgressRefreshRate * 3)
 		// Wait for all go routines to finish before quiting
 		t.barsMng.GetBarsWg().Wait()
 	} else {
@@ -144,12 +181,12 @@ func (t *TransferProgressMng) Quit() error {
 
 	// Close log file
 	if t.barsMng.GetLogFile() != nil {
-		err := corelog.CloseLogFile(t.barsMng.GetLogFile())
+		err := coreLog.CloseLogFile(t.barsMng.GetLogFile())
 		if err != nil {
 			return err
 		}
 		// Set back the default logger
-		corelog.SetDefaultLogger()
+		coreLog.SetDefaultLogger()
 	}
 	return nil
 }
@@ -189,6 +226,7 @@ func (t *TransferProgressMng) IncrementPhaseBy(id int, n int) error {
 		return nil
 	}
 	if t.phases[id].GetTasksProgressBar().GetTotal() < t.phases[id].GetTasksProgressBar().GetTasksCount()+int64(n) {
+		t.barsMng.IncBy(n, t.phases[id])
 		return t.DonePhase(id)
 	}
 	if t.ShouldDisplay() {
@@ -209,26 +247,37 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(storage int64) error {
-	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesPointers(t.transferState.CurrentRepo)
+func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
+	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase1)
 	if err != nil {
 		return err
 	}
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", "Storage", "Files", storage, nil, nil, totalFiles, transferredFiles, progressbar.GREEN))
+	if skip {
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, t.windows, ""))
+	}
+
+	if !skip {
+		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", t.progressBarLabels.Storage, t.progressBarLabels.Files, storage, nil, nil, totalFiles, transferredFiles, t.windows, progressbar.GREEN))
+	}
 	return nil
 }
 
 func (t *TransferProgressMng) AddPhase2() error {
-	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesPointersForDiff(t.transferState.CurrentRepo)
+	totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase2)
 	if err != nil {
 		return err
 	}
-	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", "Diff Storage", "Diff Files", 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, progressbar.GREEN))
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 2: Transferring newly created and modified files", t.progressBarLabels.DiffStorage, t.progressBarLabels.DiffFiles, 0, totalDiffStorage, totalUploadedDiffStorage, totalDiffFiles, totalUploadedDiffFiles, t.windows, progressbar.GREEN))
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase3(tasksPhase3 int64) {
-	t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(tasksPhase3, "Phase 3: Retrying transfer failures", false, progressbar.GREEN, Files.String()))
+func (t *TransferProgressMng) AddPhase3(totalStorage int64) error {
+	_, _, totalFailedFiles, totalUploadedFailedFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase3)
+	if err != nil {
+		return err
+	}
+	t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 3: Retrying transfer failures", t.progressBarLabels.FailedStorage, t.progressBarLabels.FailedFiles, totalStorage, nil, nil, totalFailedFiles, totalUploadedFailedFiles, t.windows, progressbar.GREEN))
+	return nil
 }
 
 func (t *TransferProgressMng) RemoveRepository() {
@@ -266,7 +315,9 @@ func (t *TransferProgressMng) SetRunningThreads(n int) {
 }
 
 func (t *TransferProgressMng) increaseTotalSize(n int) {
-	t.totalSize.GetBar().IncrBy(n)
+	if t.ShouldDisplay() {
+		t.totalSize.GetBar().IncrBy(n)
+	}
 }
 
 func (t *TransferProgressMng) StopGracefully() {
@@ -280,11 +331,11 @@ func (t *TransferProgressMng) StopGracefully() {
 	t.RemoveRepository()
 	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
 	t.totalRepositories = nil
-	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner("🛑 Gracefully stopping files transfer")
+	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner(coreutils.RemoveEmojisIfNonSupportedTerminal("🛑 Gracefully stopping files transfer"))
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.speedBar, t.timeEstBar} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.errorNote, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 			barPtr = nil

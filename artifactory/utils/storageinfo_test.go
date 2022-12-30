@@ -69,12 +69,12 @@ func TestConvertStorageSizeStringToBytes(t *testing.T) {
 		expectedSizeBeforeConversion float64
 	}{
 		{"bytes", "2.22 bytes", false, 2.22},
-		{"KB", "3.333 KB", false, 3.333 * bytesInKB},
-		{"KB with comma", "1,004.64 KB", false, 1004.64 * bytesInKB},
-		{"MB", "4.4444 MB", false, 4.4444 * bytesInMB},
-		{"GB", "5.55555 GB", false, 5.55555 * bytesInGB},
-		{"TB", "6.666666 TB", false, 6.666666 * bytesInTB},
-		{"int", "7 KB", false, 7 * bytesInKB},
+		{"KB", "3.333 KB", false, 3.333 * float64(bytesInKB)},
+		{"KB with comma", "1,004.64 KB", false, 1004.64 * float64(bytesInKB)},
+		{"MB", "4.4444 MB", false, 4.4444 * float64(bytesInMB)},
+		{"GB", "5.55555 GB", false, 5.55555 * float64(bytesInGB)},
+		{"TB", "6.666666 TB", false, 6.666666 * float64(bytesInTB)},
+		{"int", "7 KB", false, 7 * float64(bytesInKB)},
 		{"size missing", "8", true, -1},
 		{"unexpected size", "8 kb", true, -1},
 		{"too many separators", "8 K B", true, -1},
@@ -165,15 +165,15 @@ func TestSplitComponentId(t *testing.T) {
 		num    int
 		output string
 	}{
-		{12546, "12.3KB "},
-		{148576, "145.1KB "},
-		{2587985, "2.5MB "},
-		{12896547, "12.3MB "},
-		{12896547785, "12.0GB "},
-		{5248965785422365, "4773.9TB "},
+		{12546, "12.3KB"},
+		{148576, "145.1KB"},
+		{2587985, "2.5MB"},
+		{12896547, "12.3MB"},
+		{12896547785, "12.0GB"},
+		{5248965785422365, "4773.9TB"},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.output, ConvertIntToStorageSizeString(test.num))
+		assert.Equal(t, test.output, ConvertIntToStorageSizeString(int64(test.num)))
 	}
 }

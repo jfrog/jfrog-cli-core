@@ -2,14 +2,13 @@ package transferfiles
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"time"
-
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -34,13 +33,13 @@ func (f *filesDiffPhase) getPhaseName() string {
 
 func (f *filesDiffPhase) phaseStarted() error {
 	f.startTime = time.Now()
-	return f.stateManager.AddNewDiffToState(f.repoKey, f.startTime)
+	return f.stateManager.AddNewDiffToState(f.startTime)
 }
 
 func (f *filesDiffPhase) phaseDone() error {
 	// If the phase stopped gracefully, don't mark the phase as completed
 	if !f.ShouldStop() {
-		if err := f.stateManager.SetFilesDiffHandlingCompleted(f.repoKey); err != nil {
+		if err := f.stateManager.SetFilesDiffHandlingCompleted(); err != nil {
 			return err
 		}
 	}
@@ -63,7 +62,7 @@ func (f *filesDiffPhase) run() error {
 // Diffs found (files created/modifies) are uploaded in chunks, then polled on for status.
 func (f *filesDiffPhase) handleDiffTimeFrames() error {
 	log.Info("Starting to handle files diffs...")
-	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange(f.repoKey)
+	diffRangeStart, diffRangeEnd, err := f.stateManager.GetDiffHandlingRange()
 	if err != nil {
 		return err
 	}
@@ -75,7 +74,7 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 		curDiffTimeFrame := diffRangeStart
 		for diffRangeEnd.Sub(curDiffTimeFrame) > 0 && !ShouldStop(&f.phaseBase, &delayHelper, errorsChannelMng) {
 			diffTimeFrameHandler := f.createDiffTimeFrameHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-			_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{repoKey: f.repoKey, fromTime: curDiffTimeFrame}), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(diffTimeFrameHandler(timeFrameParams{fromTime: curDiffTimeFrame}), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return err
 			}
@@ -94,7 +93,6 @@ func (f *filesDiffPhase) handleDiffTimeFrames() error {
 type diffTimeFrameHandlerFunc func(params timeFrameParams) parallel.TaskFunc
 
 type timeFrameParams struct {
-	repoKey  string
 	fromTime time.Time
 }
 
@@ -114,7 +112,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 
 	paginationI := 0
 	for {
-		result, err := f.getTimeFrameFilesDiff(params.repoKey, fromTimestamp, toTimestamp, paginationI)
+		result, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
 		if err != nil {
 			return err
 		}
@@ -124,16 +122,22 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			}
 			break
 		}
-
 		files := convertResultsToFileRepresentation(result.Results)
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)
-			f.phaseBase.progressBar.phases[f.phaseId].GetTasksProgressBar().IncGeneralProgressTotalBy(r.Size)
 		}
-		err = f.transferManager.stateManager.IncTotalSizeAndFilesDiff(params.repoKey, int64(len(files)), int64(totalSize))
+
+		err = f.transferManager.stateManager.IncTotalSizeAndFilesPhase2(int64(len(files)), int64(totalSize))
 		if err != nil {
 			return err
+		}
+		storage, _, _, _, err := f.transferManager.stateManager.GetStorageAndFilesRepoPointers(f.phaseId)
+		if err != nil {
+			return err
+		}
+		if f.progressBar != nil {
+			f.progressBar.phases[f.phaseId].GetTasksProgressBar().SetGeneralProgressTotal(*storage)
 		}
 		shouldStop, err := uploadByChunks(files, uploadChunkChan, f.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
@@ -168,17 +172,17 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
-func (f *filesDiffPhase) getTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
 	// Handle Docker repositories.
 	if f.packageType == docker {
-		return f.getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+		return f.getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 	}
 	// Handle all other (non docker) repository types.
-	return f.getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	return f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 }
 
-func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
-	query := generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
+	query := generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
@@ -187,9 +191,9 @@ func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(repoKey, fromTimestamp, 
 // its creation time will be the time of the initial upload, and not the latest one. This means that the layer will not be picked up and transferred as part of Phase 2.
 // To avoid this situation, we look for all "manifest.json" and "list.manifest.json" files, and for each "manifest.json", we will run a search AQL in Artifactory
 // to get all artifacts in its path (that includes the "manifest.json" file itself and all its layouts).
-func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
+func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
-	query := generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	query := generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset)
 	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
 		return
@@ -210,7 +214,7 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(repoKey, fromTimestamp, toT
 		}
 		if manifestPaths != nil {
 			// Get all content of Artifactory folders containing a "manifest.json" file.
-			query = generateGetDirContentAqlQuery(repoKey, manifestPaths)
+			query = generateGetDirContentAqlQuery(f.repoKey, manifestPaths)
 			var pathsResult *servicesUtils.AqlSearchResult
 			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
 			if err != nil {

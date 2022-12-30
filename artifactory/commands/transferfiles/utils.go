@@ -4,38 +4,46 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	buildInfoUtils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-
-	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
 	waitTimeBetweenChunkStatusSeconds   = 3
 	waitTimeBetweenThreadsUpdateSeconds = 20
 	DefaultAqlPaginationLimit           = 10000
+
+	SyncErrorReason     = "un-synchronized chunk status due to network issue"
+	SyncErrorStatusCode = 404
+
+	OldTransferDirectoryStructureErrorMsg = "unsupported transfer directory structure found.\n" +
+		"This structure was created on previous runs of a transfer command, but is no longer supported by this JFrog CLI version.\n" +
+		"You may either downgrade JFrog CLI to a supported version, or remove the transfer directory which is located under your JFROG_HOME directory\n" +
+		"(Note - this will remove all your transfer history, which means the transfer will start from scratch)"
 )
 
 type (
 	nodeId string
 )
-
-const SyncErrorReason = "un-synchronized chunk status due to network issue"
-const SyncErrorStatusCode = 404
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
 var curThreads int
@@ -200,21 +208,55 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, upload
 			if errors.Is(err, context.Canceled) {
 				return true
 			}
-			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err)
+			return sendAllChunkToErrorChannel(chunk, errorsChannelMng, err, phaseBase.stateManager)
 		}
 		return ShouldStop(phaseBase, nil, errorsChannelMng)
 	}
 }
 
-func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error) (stopped bool) {
+func sendAllChunkToErrorChannel(chunk api.UploadChunk, errorsChannelMng *ErrorsChannelMng, errReason error, stateManager *state.TransferStateManager) (stopped bool) {
+	var failures []api.FileUploadStatusResponse
 	for _, file := range chunk.UploadCandidates {
-		err := api.FileUploadStatusResponse{
+		fileFailureResponse := api.FileUploadStatusResponse{
 			FileRepresentation: file,
 			Reason:             errReason.Error(),
 		}
 		// In case an error occurred while handling errors files - stop transferring.
-		stopped = addErrorToChannel(errorsChannelMng, err)
+		stopped = addErrorToChannel(errorsChannelMng, fileFailureResponse)
 		if stopped {
+			return
+		}
+		failures = append(failures, fileFailureResponse)
+	}
+	err := setChunkCompletedInRepoSnapshot(stateManager, failures)
+	if err != nil {
+		// We are logging the error instead of returning it since the original error is already handled.
+		log.Error(err)
+	}
+	return
+}
+
+// If repo snapshot is tracked, mark all files of a chunk as completed in their directory's node and check if node completed (done handling the directory and child directories).
+func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, chunkFiles []api.FileUploadStatusResponse) (err error) {
+	if !stateManager.IsRepoTransferSnapshotEnabled() {
+		return
+	}
+
+	var dirNode *reposnapshot.Node
+	for _, file := range chunkFiles {
+		dirNode, err = stateManager.GetDirectorySnapshotNodeWithLru(file.Path)
+		if err != nil {
+			return
+		}
+
+		// If empty dir, skip to checking completion.
+		if file.Name != "" {
+			if err = dirNode.FileCompleted(file.Name); err != nil {
+				return
+			}
+		}
+
+		if err = dirNode.CheckCompleted(); err != nil {
 			return
 		}
 	}
@@ -313,7 +355,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	}
 
 	for _, item := range files {
-		file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
+		file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 		var delayed bool
 		delayed, shouldStop = delayHelper.delayUploadIfNecessary(base, file)
 		if shouldStop {
@@ -570,4 +612,51 @@ func stopTransferInArtifactory(serverDetails *config.ServerDetails, srcUpService
 		stopTransferInArtifactoryNodes(srcUpService, runningNodes)
 	}
 	return nil
+}
+
+func getJfrogTransferRepoDelaysDir(repoKey string) (string, error) {
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferDelaysDirName)
+}
+
+func getJfrogTransferRepoErrorsDir(repoKey string) (string, error) {
+	return state.GetJfrogTransferRepoSubDir(repoKey, coreutils.JfrogTransferErrorsDirName)
+}
+
+func getJfrogTransferRepoErrorsSubDir(repoKey, subDirName string) (string, error) {
+	errorsDir, err := getJfrogTransferRepoErrorsDir(repoKey)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(errorsDir, subDirName), nil
+}
+
+func getJfrogTransferRepoRetryableDir(repoKey string) (string, error) {
+	return getJfrogTransferRepoErrorsSubDir(repoKey, coreutils.JfrogTransferRetryableErrorsDirName)
+}
+
+func getJfrogTransferRepoSkippedDir(repoKey string) (string, error) {
+	return getJfrogTransferRepoErrorsSubDir(repoKey, coreutils.JfrogTransferSkippedErrorsDirName)
+}
+
+func getErrorOrDelayFiles(repoKeys []string, getDirPathFunc func(string) (string, error)) (filesPaths []string, err error) {
+	var dirPath string
+	for _, repoKey := range repoKeys {
+		dirPath, err = getDirPathFunc(repoKey)
+		if err != nil {
+			return []string{}, err
+		}
+		exist, err := buildInfoUtils.IsDirExists(dirPath, false)
+		if err != nil {
+			return []string{}, err
+		}
+		if !exist {
+			continue
+		}
+		files, err := buildInfoUtils.ListFiles(dirPath, false)
+		if err != nil {
+			return nil, err
+		}
+		filesPaths = append(filesPaths, files...)
+	}
+	return
 }

@@ -104,9 +104,7 @@ func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (string, color.
 		d = int(t2.Unix() - t1.Unix())
 	}
 
-	// convert duration to human-readable format
-	t := convertSecToDay(d)
-	return s, colorCode, t
+	return s, colorCode, convertSecToDay(d)
 }
 
 // ConvertSecToDay converts seconds passed as integer to
@@ -124,8 +122,7 @@ func convertSecToDay(sec int) string {
 	sec %= 60
 	seconds := sec
 
-	v := fmt.Sprintf("%dD %dH %dM %dS", day, hour, minutes, seconds)
-	return v
+	return fmt.Sprintf("%dD %dH %dM %dS", day, hour, minutes, seconds)
 }
 
 // monitorStatusAndNotify monitor for status change and
@@ -182,9 +179,6 @@ func sendNotification(pipStatus string, pipName string) {
 	err := beeep.Alert("Pipelines CLI", pipName+" - "+pipStatus, "")
 	if err != nil {
 		log.Warn("failed to send notification")
-	}
-	if hasPipelineRunEnded(pipStatus) {
-		return
 	}
 }
 

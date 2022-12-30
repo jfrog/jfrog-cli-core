@@ -64,8 +64,9 @@ func (sc *StatusCommand) Run() (string, error) {
 	// create service manager to fetch run status
 	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
 	if svcMgrErr != nil {
-		return "", errorutils.CheckError(svcMgrErr)
+		return "", svcMgrErr
 	}
+
 	// get pipeline status using branch name, pipelines name and whether it is multi branch
 	matchingPipes, pipStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
 	if pipStatusErr != nil {

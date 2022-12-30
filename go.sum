@@ -61,8 +61,8 @@ github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYU
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
-github.com/bhanurp/jfrog-client-go v0.0.0-20221220121059-f83656b23f40 h1:jUCLyZ+hBcwZCjpKM/45zb99hdESpN8Ts85V0/KWCyQ=
-github.com/bhanurp/jfrog-client-go v0.0.0-20221220121059-f83656b23f40/go.mod h1:sthdGUxwuD9LZROqycovtYvgONBkuv074MmRN1ye/CM=
+github.com/bhanurp/jfrog-client-go v0.0.0-20221226073749-0d34844f9162 h1:EkaGfB4cR+UZGQX+Bb2RP5l0jC9QE41W5ZXXLs2T/W8=
+github.com/bhanurp/jfrog-client-go v0.0.0-20221226073749-0d34844f9162/go.mod h1:sthdGUxwuD9LZROqycovtYvgONBkuv074MmRN1ye/CM=
 github.com/bradleyjkemp/cupaloy/v2 v2.8.0 h1:any4BmKE+jGIaMpnU8YgH/I2LPiLBufr6oMMlVBbn9M=
 github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMUs=
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=

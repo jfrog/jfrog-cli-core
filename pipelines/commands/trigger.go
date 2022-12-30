@@ -3,7 +3,6 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 type TriggerCommand struct {
@@ -45,10 +44,10 @@ func (tc *TriggerCommand) CommandName() string {
 	return "trigger"
 }
 
-func (tc *TriggerCommand) Run() (string, error) {
+func (tc *TriggerCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(tc.serverDetails)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return err
 	}
 	return serviceManager.TriggerPipelineRun(tc.branch, tc.pipelineName, tc.isMultiBranch)
 }

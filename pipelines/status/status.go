@@ -3,15 +3,29 @@ package status
 import "github.com/gookit/color"
 
 const (
-	QUEUED     = "queued"
-	PROCESSING = "processing"
-	SUCCESS    = "success"
-	FAILURE    = "failure"
-	ERROR      = "error"
-	CANCELLED  = "cancelled"
-	TIMEOUT    = "timeout"
-	WAITING    = "waiting"
-	SKIPPED    = "skipped"
+	QUEUED           = "queued"
+	PROCESSING       = "processing"
+	SUCCESS          = "success"
+	FAILURE          = "failure"
+	ERROR            = "error"
+	CANCELLED        = "cancelled"
+	TIMEOUT          = "timeout"
+	WAITING          = "waiting"
+	SKIPPED          = "skipped"
+	UNSTABLE         = "unstable"
+	STOPPED          = "stopped"
+	DELETED          = "deleted"
+	CACHED           = "cached"
+	CANCELLING       = "cancelling"
+	TIMINGOUT        = "timingOut"
+	CREATING         = "creating"
+	READY            = "ready"
+	ONLINE           = "online"
+	OFFLINE          = "offline"
+	UNHEALTHY        = "unhealthy"
+	ONLINEREQUESTED  = "onlineRequested"
+	OFFLINEREQUESTED = "offlineRequested"
+	PENDINGAPPROVAL  = "pendingApproval"
 )
 
 // GetStatusColorCode returns gokit/color.Color
@@ -47,37 +61,37 @@ func GetPipelineStatus(statusCode int) string {
 	case 4006:
 		return CANCELLED
 	case 4007:
-		return "unstable"
+		return UNSTABLE
 	case 4008:
 		return SKIPPED
 	case 4009:
 		return TIMEOUT
 	case 4010:
-		return "stopped"
+		return STOPPED
 	case 4011:
-		return "deleted"
+		return DELETED
 	case 4012:
-		return "cached"
+		return CACHED
 	case 4013:
-		return "cancelling"
+		return CANCELLING
 	case 4014:
-		return "timingOut"
+		return TIMINGOUT
 	case 4015:
-		return "creating"
+		return CREATING
 	case 4016:
-		return "ready"
+		return READY
 	case 4017:
-		return "online"
+		return ONLINE
 	case 4018:
-		return "offline"
+		return OFFLINE
 	case 4019:
-		return "unhealthy"
+		return UNHEALTHY
 	case 4020:
-		return "onlineRequested"
+		return ONLINEREQUESTED
 	case 4021:
-		return "offlineRequested"
+		return OFFLINEREQUESTED
 	case 4022:
-		return "pendingApproval"
+		return PENDINGAPPROVAL
 
 	}
 	return status

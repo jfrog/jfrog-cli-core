@@ -23,10 +23,10 @@ func CreateServiceManager(serviceDetails *utilsconfig.ServerDetails) (*pipelines
 		clientlog.Error(err)
 		return nil, errorutils.CheckError(err)
 	}
-	pipelinesMgr, err := pipelines.New(serviceConfig)
-	if err != nil {
-		clientlog.Error(err)
-		return nil, errorutils.CheckError(err)
+	pipelinesMgr, pipErr := pipelines.New(serviceConfig)
+	if pipErr != nil {
+		clientlog.Error(pipErr)
+		return nil, errorutils.CheckError(pipErr)
 	}
 	return pipelinesMgr, nil
 }

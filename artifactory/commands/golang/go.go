@@ -223,7 +223,7 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 	if details.GetAccessToken() != "" {
 		log.Debug("Using proxy with access-token.")
 		if username == "" {
-			username, _ = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
+			username = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
 		}
 		password = details.GetAccessToken()
 	}

@@ -295,7 +295,7 @@ func compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.R
 	if err != nil {
 		return
 	}
-	diff, err = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, "password")
+	diff, err = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, "password", "suppressPomConsistencyChecks")
 	return
 }
 

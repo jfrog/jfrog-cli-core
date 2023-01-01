@@ -47,15 +47,9 @@ func ShowStatus() error {
 
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
 	windows := coreutils.IsWindows()
-	runningForTabs := 2
-	runningTimeString := "  " + runningTime
-	if windows {
-		runningForTabs = 3
-		runningTimeString = runningTime
-	}
 	addTitle(output, "Overall Transfer Status")
 	addString(output, coreutils.RemoveEmojisIfNonSupportedTerminal("🟢"), "Status", "Running", 3, windows)
-	addString(output, "🏃🏼", "Running for", runningTimeString, runningForTabs, windows)
+	addString(output, "🏃", "Running for", runningTime, 3, windows)
 	addString(output, "🗄 ", "Storage", sizeToString(stateManager.OverallTransfer.TransferredSizeBytes)+" / "+sizeToString(stateManager.OverallTransfer.TotalSizeBytes)+calcPercentageInt64(stateManager.OverallTransfer.TransferredSizeBytes, stateManager.OverallTransfer.TotalSizeBytes), 3, windows)
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 2, windows)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2, windows)
@@ -100,17 +94,17 @@ func addTitle(output *strings.Builder, title string) {
 
 func addString(output *strings.Builder, emoji, key, value string, tabsCount int, windows bool) {
 	indentation := strings.Repeat("\t", tabsCount)
-	key += ": "
-	if windows {
-		emoji = "●"
-		key = emoji + " " + key
-		output.WriteString(coreutils.PrintBold(key))
-		output.WriteString(indentation + value + "\n")
-		return
+	if indentation == "" {
+		indentation = " "
 	}
 	if len(emoji) > 0 {
-		key = emoji + " " + key
+		if windows {
+			emoji = "●"
+		}
+		emoji += " "
 	}
+	key = emoji + key + ":"
+	// PrintBold removes emojis if they are unsupported. After they are removed, the string is also trimmed, so we should avoid adding trailing spaces to the key.
 	output.WriteString(coreutils.PrintBold(key))
 	output.WriteString(indentation + value + "\n")
 }

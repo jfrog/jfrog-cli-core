@@ -246,6 +246,6 @@ func assertReturnedNode(t *testing.T, manager RepoSnapshotManager, node *Node, r
 func getNodeAndAssert(t *testing.T, manager RepoSnapshotManager, relativePath string, expectedLen int) *Node {
 	node, err := manager.GetDirectorySnapshotNodeWithLru(relativePath)
 	assert.NoError(t, err)
-	assertReturnedNode(t, manager, node, filepath.Dir(relativePath), expectedLen)
+	assertReturnedNode(t, manager, node, path.Dir(relativePath), expectedLen)
 	return node
 }

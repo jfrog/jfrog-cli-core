@@ -44,7 +44,7 @@ func TestShowStatusNotRunning(t *testing.T) {
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
-	assert.Contains(t, buffer.String(), "Status:Not running")
+	assert.Contains(t, buffer.String(), "Status: Not running")
 }
 
 func TestShowStatus(t *testing.T) {
@@ -60,8 +60,8 @@ func TestShowStatus(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status: \t\t\tRunning")
-	assert.Contains(t, results, "Running for:		")
+	assert.Contains(t, results, "Status:\t\t\tRunning")
+	assert.Contains(t, results, "Running for:\t\t\tLess than a minute")
 	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
@@ -90,7 +90,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status: \t\t\tRunning")
+	assert.Contains(t, results, "Status:\t\t\tRunning")
 	assert.Contains(t, results, "Running for:		")
 	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
@@ -120,7 +120,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 
 	// Check overall status
 	assert.Contains(t, results, "Overall Transfer Status")
-	assert.Contains(t, results, "Status: \t\t\tRunning")
+	assert.Contains(t, results, "Status:\t\t\tRunning")
 	assert.Contains(t, results, "Running for:		")
 	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")

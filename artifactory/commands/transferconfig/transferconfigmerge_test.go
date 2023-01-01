@@ -68,27 +68,27 @@ func getTwoProject(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes
 	return
 }
 
-func CreateAndVlidateConflicts(t *testing.T) []ProjectConflict {
+func createAndVlidateConflicts(t *testing.T) []ProjectConflict {
 	var conflicts []ProjectConflict
 	source, target := getTwoProject(true, false, true, true, true, true)
 
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 1, len(conflicts))
-	//check if validate skip on identical projects
+	//Checking if we skip transferring project
 	source, target = getTwoProject(true, true, true, true, true, true)
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 1, len(conflicts))
 	source, target = getTwoProject(true, true, false, true, true, true)
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 2, len(conflicts))
 	source, target = getTwoProject(true, true, true, true, false, true)
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 3, len(conflicts))
 	source, target = getTwoProject(true, true, true, true, true, false)
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 4, len(conflicts))
 	source, target = getTwoProject(true, true, true, false, false, false)
-	conflicts, _ = tcc.validateProjectConflict(source, target, conflicts)
+	conflicts, _ = tcc.findConflict(source, target, conflicts)
 	assert.Equal(t, 5, len(conflicts))
 	return conflicts
 }
@@ -97,15 +97,15 @@ func TestCheckIfSameBoolPointer(t *testing.T) {
 	tr := true
 	f := false
 	f2 := false
-	assert.Equal(t, false, tcc.checkIfsameBoolPointer(nil, &f))
-	assert.Equal(t, false, tcc.checkIfsameBoolPointer(&tr, nil))
-	assert.Equal(t, false, tcc.checkIfsameBoolPointer(&tr, nil))
-	assert.Equal(t, false, tcc.checkIfsameBoolPointer(&tr, &f))
-	assert.Equal(t, true, tcc.checkIfsameBoolPointer(&f2, &f))
+	assert.Equal(t, false, tcc.checkIfSameBoolPointer(nil, &f))
+	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, nil))
+	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, nil))
+	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, &f))
+	assert.Equal(t, true, tcc.checkIfSameBoolPointer(&f2, &f))
 }
 
 func TestCreateConflictCSV(t *testing.T) {
-	conflicts := CreateAndVlidateConflicts(t)
+	conflicts := createAndVlidateConflicts(t)
 	_, err := tcc.createConflictsCSVSummary(conflicts, time.Now())
 	assert.NoError(t, err)
 }

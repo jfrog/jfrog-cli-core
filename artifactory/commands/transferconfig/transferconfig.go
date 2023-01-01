@@ -110,17 +110,12 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	targetServiceManager, err = utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
-	if err != nil {
-		return
-	}
-
 	if tcc.preChecks {
 		return tcc.runPreChecks(sourceServicesManager, targetServiceManager)
 	}
 
 	if tcc.merge {
-		err = tcc.RunMergeCommand(sourceServicesManager, targetServiceManager)
+		err = tcc.doMergeCommand(sourceServicesManager, targetServiceManager)
 		return
 	}
 

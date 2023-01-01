@@ -104,7 +104,7 @@ func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
 func (tcc *TransferConfigCommand) Run() (err error) {
 	sourceServicesManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
 	if err != nil {
-		return err
+		return
 	}
 	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
 	if err != nil {
@@ -119,6 +119,11 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return tcc.runPreChecks(sourceServicesManager, targetServiceManager)
 	}
 
+	if tcc.merge {
+		err = tcc.RunMergeCommand(sourceServicesManager, targetServiceManager)
+		return
+	}
+
 	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
 	if err != nil || !continueTransfer {
 		return err
@@ -131,10 +136,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	if tcc.merge {
-		err := tcc.RunMergeCommand(sourceServicesManager, targetServiceManager, sourceArtifactoryVersion)
-		return err
-	}
 	continueTransfer, err = tcc.printWarnings(sourceServicesManager)
 	if err != nil || !continueTransfer {
 		return err

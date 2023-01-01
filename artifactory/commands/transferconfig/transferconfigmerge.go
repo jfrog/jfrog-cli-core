@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/gocarina/gocsv"
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	loguitils "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"github.com/jfrog/jfrog-client-go/access"
 	accessServices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -29,90 +30,104 @@ type ProjectConflict struct {
 	DifferentProperty string `json:"different_property,omitempty"`
 }
 
+type RepositoryConflict struct {
+	RepositoryName    string `json:"repository_name,omitempty"`
+	DifferentProperty string `json:"different_property,omitempty"`
+}
+
 func (tcc *TransferConfigCommand) newConflict(sourceProjectName, targetProjectName, sourceProjectKey, targetProjectKey, differentProperty string) ProjectConflict {
 	conflict := ProjectConflict{SourceProjectName: sourceProjectName, TargetProjectName: targetProjectName, SourceProjectKey: sourceProjectKey, TargetProjectKey: targetProjectKey, DifferentProperty: differentProperty}
 	return conflict
 }
 
-func (tcc *TransferConfigCommand) RunMergeCommand(sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) (err error) {
+func (tcc *TransferConfigCommand) RunMergeCommand(sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager) (err error) {
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/3 - Preparations ==========")))
-
-	// todo check access token and admin token if 401
-	// todo add the ping to client in merge validation function
+	sourceArtifactoryVersion, err := sourceServiceManager.GetVersion()
+	if err != nil {
+		return err
+	}
 	// Make sure that the source and target Artifactory servers are different and that the target Artifactory is empty
-	if err = tcc.validateArtifactoryServers(targetServiceManager, sourceArtifactoryVersion, minArtifactoryMergeVersion); err != nil {
+	transferProjects, err := tcc.validateMergeArtifactoryServers(targetServiceManager, sourceArtifactoryVersion, minArtifactoryMergeVersion)
+	if err != nil {
 		return
 	}
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Getting Projects and Repositories from Source ==========")))
-	sourceServiceAccessManager, err := access.New(sourceServiceManager.GetConfig())
-	sourceprojects, err := sourceServiceAccessManager.GetAllProjects()
-	if err != nil {
-		return err
-	}
-
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Putting Projects and Repositories to Target ==========")))
-	targetServiceAccessManager, err := access.New(targetServiceManager.GetConfig())
-	targerprojects, err := targetServiceAccessManager.GetAllProjects()
-	if err != nil {
-		return err
-	}
-
-	var projectConflicts []ProjectConflict
-
-	var isConflict bool
-	for _, sourceProject := range sourceprojects {
-		for _, targetProject := range targerprojects {
-
-			projectConflicts, isConflict = tcc.validateProjectConflict(sourceProject, targetProject, projectConflicts)
-
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Transferring Projects ==========")))
+	if !transferProjects {
+		log.Info(fmt.Sprintf("Your source version is %s, there is no Projects in this version we will transfer your repositories", sourceArtifactoryVersion))
+	} else {
+		sourceServiceAccessManager, err := utils.CreateAccessServiceManager(tcc.sourceServerDetails, tcc.dryRun)
+		sourceProjects, err := sourceServiceAccessManager.GetAllProjects()
+		if err != nil {
+			return err
 		}
-		if !isConflict {
-			err := targetServiceAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject})
-			if err != nil {
-				return err
+		targetServiceAccessManager, err := utils.CreateAccessServiceManager(tcc.targetServerDetails, tcc.dryRun)
+		targerprojects, err := targetServiceAccessManager.GetAllProjects()
+		if err != nil {
+			return err
+		}
+
+		var projectConflicts []ProjectConflict
+		conflict := false
+		var isConflict bool
+		for _, sourceProject := range sourceProjects {
+			for _, targetProject := range targerprojects {
+
+				projectConflicts, isConflict = tcc.validateProjectConflict(sourceProject, targetProject, projectConflicts)
+				conflict = conflict || isConflict
+			}
+			if !conflict {
+				err := targetServiceAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject})
+				if err != nil {
+					return err
+				}
 			}
 		}
-	}
-	csvPath, err := tcc.createConflictsCSVSummary(projectConflicts, time.Now())
-	if err != nil {
-		log.Error("Couldn't create the long properties CSV file", err)
-		return err
-	}
+		csvPath, err := tcc.createConflictsCSVSummary(projectConflicts, time.Now())
+		if err != nil {
+			log.Error("Couldn't create the long properties CSV file", err)
+			return err
+		}
 
-	log.Info(fmt.Sprintf("Founded %d projectConflicts projects between the source service and the target, check in csv file we created for you in %s", len(projectConflicts), csvPath))
+		log.Info(fmt.Sprintf("Founded %d projectConflicts projects between the source service and the target, check in csv file we created for you in %s", len(projectConflicts), csvPath))
+	}
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Transferring Repositories ==========")))
+	err = tcc.mergeRepositories(sourceServiceManager, targetServiceManager)
 
-	return nil
+	return err
 }
 
 func (tcc *TransferConfigCommand) validateProjectConflict(sourceProject, targetProject accessServices.Project, conflicts []ProjectConflict) ([]ProjectConflict, bool) {
+	result := false
 	if sourceProject.ProjectKey == targetProject.ProjectKey || sourceProject.DisplayName == targetProject.DisplayName {
 		s := ""
+		result = true
 		if sourceProject.DisplayName != targetProject.DisplayName {
 			s = tcc.addToDifferentProperty(s, "Display Name")
 		}
 		if sourceProject.ProjectKey != targetProject.ProjectKey {
 			s = tcc.addToDifferentProperty(s, "Project Key")
 		}
-		if sourceProject.Description != targetProject.Description {
-			s = tcc.addToDifferentProperty(s, "Description")
-		}
-		if sourceProject.StorageQuotaBytes != targetProject.StorageQuotaBytes {
-			s = tcc.addToDifferentProperty(s, "Storage Quota Bytes")
-		}
-		if sourceProject.SoftLimit != nil && targetProject.SoftLimit != nil {
-			if *sourceProject.SoftLimit != *targetProject.SoftLimit {
-				s = tcc.addToDifferentProperty(s, "Soft Limit")
+		if result {
+			if sourceProject.Description != targetProject.Description {
+				s = tcc.addToDifferentProperty(s, "Description")
+			}
+			if sourceProject.StorageQuotaBytes != targetProject.StorageQuotaBytes {
+				s = tcc.addToDifferentProperty(s, "Storage Quota Bytes")
+			}
+			if sourceProject.SoftLimit != nil && targetProject.SoftLimit != nil {
+				if *sourceProject.SoftLimit != *targetProject.SoftLimit {
+					s = tcc.addToDifferentProperty(s, "Soft Limit")
+				}
+			}
+			if sourceProject.SoftLimit == nil || targetProject.SoftLimit == nil {
+				if sourceProject.SoftLimit != nil || targetProject.SoftLimit != nil {
+					s = tcc.addToDifferentProperty(s, "Soft Limit")
+				}
+			}
+			if !tcc.checkIfSameAdminPrivilige(sourceProject.AdminPrivileges, targetProject.AdminPrivileges) {
+				s = tcc.addToDifferentProperty(s, "Admin Privileges")
 			}
 		}
-		if sourceProject.SoftLimit == nil || targetProject.SoftLimit == nil {
-			if sourceProject.SoftLimit != nil || targetProject.SoftLimit != nil {
-				s = tcc.addToDifferentProperty(s, "Soft Limit")
-			}
-		}
-		if !tcc.checkIfSameAdminPrivilige(sourceProject.AdminPrivileges, targetProject.AdminPrivileges) {
-			s = tcc.addToDifferentProperty(s, "Admin Privileges")
-		}
-
 		if s != "" {
 			conflict := tcc.newConflict(sourceProject.DisplayName, targetProject.DisplayName, sourceProject.ProjectKey, targetProject.ProjectKey, s)
 			conflicts = append(conflicts, conflict)
@@ -120,7 +135,7 @@ func (tcc *TransferConfigCommand) validateProjectConflict(sourceProject, targetP
 		}
 
 	}
-	return conflicts, false
+	return conflicts, result
 }
 
 func (tcc *TransferConfigCommand) checkIfSameAdminPrivilige(source, target *accessServices.AdminPrivileges) bool {
@@ -182,6 +197,7 @@ func (tcc *TransferConfigCommand) validateMergeArtifactoryServers(targetServices
 	}
 
 	// check correctness of Authorization
+	log.Info("Checking validation of your authorization methods..")
 	if tcc.tryPing(targetServicesManager) != nil {
 		return false, errorutils.CheckErrorf("The target's access token is not correct, please provide an availble access token.")
 	}
@@ -221,7 +237,7 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 		targetReposMap[repo.Key] = repo
 	}
 	reposToTransfer := []string{}
-
+	var repoConflicts []RepositoryConflict
 	for _, sourceRepo := range *sourceRepos {
 		// Check if repository is filtered
 		var shouldIncludeRepo bool
@@ -235,6 +251,7 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 
 		if targetRepo, exists := targetReposMap[sourceRepo.Key]; exists {
 			// Repository exists on target, need to compare
+
 			var reposDiff []string
 			reposDiff, err = compareRepositories(sourceRepo, targetRepo, sourceServiceManager, targetServiceManager)
 			if err != nil {
@@ -242,7 +259,9 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 			}
 			if len(reposDiff) != 0 {
 				// Conflicts found, adding to conflicts CSV
-				// Todo: Add to conflicts CSV
+				diffProperty := strings.Join(reposDiff, ",")
+				conflict := RepositoryConflict{sourceRepo.Key, diffProperty}
+				repoConflicts = append(repoConflicts, conflict)
 			}
 		} else {
 			reposToTransfer = append(reposToTransfer, sourceRepo.Key)
@@ -251,6 +270,9 @@ func (tcc *TransferConfigCommand) mergeRepositories(sourceServiceManager, target
 	if len(reposToTransfer) > 0 {
 		err = transferRepositoriesToTarget(reposToTransfer, sourceServiceManager, targetServiceManager)
 	}
+	path, err := tcc.createRepositoryConflictsCSVSummary(repoConflicts, time.Now())
+	log.Info(fmt.Sprintf("Founded %d Repository Conflicts projects between the source service and the target, check in csv file we created for you in %s", len(repoConflicts), path))
+
 	return
 }
 
@@ -329,4 +351,23 @@ func transferRepositoriesToTarget(reposToTransfer []string, sourceServiceManager
 		}
 	}
 	return nil
+}
+
+// Create a csv summary of all conflicts
+func (tcc *TransferConfigCommand) createRepositoryConflictsCSVSummary(conflicts []RepositoryConflict, timeStarted time.Time) (csvPath string, err error) {
+	// Create CSV file
+	summaryCsv, err := loguitils.CreateCustomLogFile(fmt.Sprintf("transfer-config-repository-conflicts-%s.csv", timeStarted.Format(loguitils.DefaultLogTimeLayout)))
+	if err != nil {
+		return
+	}
+	csvPath = summaryCsv.Name()
+	defer func() {
+		e := summaryCsv.Close()
+		if err == nil {
+			err = e
+		}
+	}()
+	// Marshal JSON typed FileWithLongProperty array to CSV file
+	err = errorutils.CheckError(gocsv.MarshalFile(conflicts, summaryCsv))
+	return
 }

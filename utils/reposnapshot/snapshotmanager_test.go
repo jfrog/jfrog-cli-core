@@ -126,7 +126,7 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 		t.Run(test.testName, func(t *testing.T) {
 			node, err := manager.LookUpNode(test.path)
 			if test.errorExpected {
-				assert.ErrorContains(t, err, getLookUpErrorPrefix(test.path))
+				assert.ErrorContains(t, err, getLookUpNodeError(test.path))
 				return
 			} else {
 				assert.NoError(t, err)
@@ -246,6 +246,6 @@ func assertReturnedNode(t *testing.T, manager RepoSnapshotManager, node *Node, r
 func getNodeAndAssert(t *testing.T, manager RepoSnapshotManager, relativePath string, expectedLen int) *Node {
 	node, err := manager.GetDirectorySnapshotNodeWithLru(relativePath)
 	assert.NoError(t, err)
-	assertReturnedNode(t, manager, node, filepath.Dir(relativePath), expectedLen)
+	assertReturnedNode(t, manager, node, path.Dir(relativePath), expectedLen)
 	return node
 }

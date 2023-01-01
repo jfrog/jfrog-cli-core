@@ -11,6 +11,7 @@ import (
 
 const (
 	goPackageTypeIdentifier = "go://"
+	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
 func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
@@ -76,8 +77,10 @@ func addGoVersionAsDependency(rootNode *services.GraphNode) error {
 	if err != nil {
 		return err
 	}
+	// Convert "go1.17.3" to "github.com/golang/go:v1.17.3"
+	goVersionID := strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1)
 	rootNode.Nodes = append(rootNode.Nodes, &services.GraphNode{
-		Id:    goPackageTypeIdentifier + strings.Replace(goVersion.GetVersion(), "go", "github.com/golang/go:v", -1),
+		Id:    goPackageTypeIdentifier + goVersionID,
 		Nodes: []*services.GraphNode{},
 	})
 	return nil

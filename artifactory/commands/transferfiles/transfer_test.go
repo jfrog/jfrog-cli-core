@@ -9,6 +9,7 @@ import (
 	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -66,7 +67,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	pluginVersion = curVersion
 	err := getAndValidateDataTransferPlugin(srcPluginManager)
 	if errorExpected {
-		assert.EqualError(t, err, getMinimalVersionErrorMsg(curVersion))
+		assert.EqualError(t, err, coreutils.ValidateMinimumVersion("data-transfer", curVersion, dataTransferPluginMinVersion).Error())
 		return
 	}
 	assert.NoError(t, err)

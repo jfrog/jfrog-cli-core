@@ -3,6 +3,7 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -494,4 +495,13 @@ func GetJfrogTransferDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
+}
+
+func ValidateMinimumVersion(endPoint, currentVersion, minimumVersion string) error {
+	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
+		return errorutils.CheckErrorf(fmt.Sprintf("You are using %s version %s,"+
+			" while this operation requires version %s or higher.",
+			endPoint, currentVersion, minimumVersion))
+	}
+	return nil
 }

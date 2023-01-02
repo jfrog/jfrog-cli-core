@@ -3,7 +3,6 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -654,11 +653,7 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
-	curVer := version.NewVersion(currentVersion)
-	if !curVer.AtLeast(dataTransferPluginMinVersion) {
-		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
-	}
-	return nil
+	return coreutils.ValidateMinimumVersion("data-transfer", currentVersion, dataTransferPluginMinVersion)
 }
 
 func getMinimalVersionErrorMsg(currentVersion string) string {

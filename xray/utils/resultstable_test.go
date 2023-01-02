@@ -53,7 +53,7 @@ func TestSplitComponentId(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actualCompName, actualCompVersion, actualCompType := splitComponentId(test.componentId)
+		actualCompName, actualCompVersion, actualCompType := SplitComponentId(test.componentId)
 		assert.Equal(t, test.expectedCompName, actualCompName)
 		assert.Equal(t, test.expectedCompVersion, actualCompVersion)
 		assert.Equal(t, test.expectedCompType, actualCompType)

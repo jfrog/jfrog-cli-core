@@ -34,7 +34,7 @@ func RunScanGraphAndGetResults(serverDetails *config.ServerDetails, params servi
 		return nil, err
 	}
 
-	err = coreutils.ValidateMinimumVersion("Xray", xrayVersion, ScanTypeMinXrayVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, ScanTypeMinXrayVersion)
 	if err != nil {
 		// Remove scan type param if Xray version is under minimum supported version
 		params.ScanType = ""

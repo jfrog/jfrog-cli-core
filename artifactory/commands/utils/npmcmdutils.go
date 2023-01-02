@@ -54,7 +54,7 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	}
 
 	// Validate version.
-	return coreutils.ValidateMinimumVersion("Artifactory", versionStr, minSupportedArtifactoryVersionForNpmCmds)
+	return coreutils.ValidateMinimumVersion(coreutils.Artifactory, versionStr, minSupportedArtifactoryVersionForNpmCmds)
 }
 
 func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string, err error) {

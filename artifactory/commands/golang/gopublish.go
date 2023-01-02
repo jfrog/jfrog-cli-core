@@ -72,7 +72,7 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion("Artifactory", artifactoryVersion, minSupportedArtifactoryVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
 	if err != nil {
 		return err
 	}

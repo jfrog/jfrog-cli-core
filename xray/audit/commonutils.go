@@ -63,7 +63,7 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 	if err != nil {
 		return
 	}
-	err = coreutils.ValidateMinimumVersion("Xray", xrayVersion, xraycommands.GraphScanMinXrayVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion)
 	if err != nil {
 		return
 	}

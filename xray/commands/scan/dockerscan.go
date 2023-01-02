@@ -46,7 +46,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion("Xray", xrayVersion, DockerScanMinXrayVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, DockerScanMinXrayVersion)
 	if err != nil {
 		return err
 	}

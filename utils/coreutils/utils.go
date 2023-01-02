@@ -20,6 +20,8 @@ import (
 
 const (
 	GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"
+	Artifactory            = "Artifactory"
+	Xray                   = "Xray"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):

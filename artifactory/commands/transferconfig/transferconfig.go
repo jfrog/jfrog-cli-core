@@ -242,7 +242,7 @@ func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactor
 // Make sure the target Artifactory is empty, by counting the number of the repositories. If it is bigger than 1, return an error.
 // Also make sure that the source Artifactory version is sufficient.
 func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) error {
-	err := coreutils.ValidateMinimumVersion("Artifactory", sourceArtifactoryVersion, minArtifactoryVersion)
+	err := coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minArtifactoryVersion)
 	if err != nil {
 		return err
 	}

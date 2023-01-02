@@ -76,12 +76,12 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion("Xray", xrayVersion, BuildScanMinVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, BuildScanMinVersion)
 	if err != nil {
 		return err
 	}
 	if bsc.includeVulnerabilities {
-		err = coreutils.ValidateMinimumVersion("Xray", xrayVersion, BuildScanIncludeVulnerabilitiesMinVersion)
+		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, BuildScanIncludeVulnerabilitiesMinVersion)
 		if err != nil {
 			return errors.New("build-scan command with '--vuln' flag is not supported on your current Xray version. " + err.Error())
 		}

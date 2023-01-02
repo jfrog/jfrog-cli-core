@@ -59,7 +59,7 @@ func (ccb *ContainerCommandBase) IsGetRepoSupported() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = coreutils.ValidateMinimumVersion("Artifactory", currentVersion, MinRtVersionForRepoFetching)
+	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, currentVersion, MinRtVersionForRepoFetching)
 	return err == nil, nil
 }
 

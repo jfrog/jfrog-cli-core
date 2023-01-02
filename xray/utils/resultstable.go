@@ -277,7 +277,7 @@ func splitComponents(impactedPackages map[string]services.Component, multipleRoo
 		return
 	}
 	for currCompId, currComp := range impactedPackages {
-		currCompName, currCompVersion, currCompType := splitComponentId(currCompId)
+		currCompName, currCompVersion, currCompType := SplitComponentId(currCompId)
 		impactedPackagesNames = append(impactedPackagesNames, currCompName)
 		impactedPackagesVersions = append(impactedPackagesVersions, currCompVersion)
 		impactedPackagesTypes = append(impactedPackagesTypes, currCompType)
@@ -304,27 +304,27 @@ var packageTypes = map[string]string{
 	"alpine":   "Alpine",
 }
 
-// splitComponentId splits a Xray component ID to the component name, version and package type.
+// SplitComponentId splits a Xray component ID to the component name, version and package type.
 // In case componentId doesn't contain a version, the returned version will be an empty string.
 // In case componentId's format is invalid, it will be returned as the component name
 // and empty strings will be returned instead of the version and the package type.
 // Examples:
-// 1. componentId: "gav://antparent:ant:1.6.5"
-//    Returned values:
-//      Component name: "antparent:ant"
-//      Component version: "1.6.5"
-//      Package type: "Maven"
-// 2. componentId: "generic://sha256:244fd47e07d1004f0aed9c156aa09083c82bf8944eceb67c946ff7430510a77b/foo.jar"
-//    Returned values:
-//      Component name: "foo.jar"
-//      Component version: ""
-//      Package type: "Generic"
-// 3. componentId: "invalid-comp-id"
-//    Returned values:
-//      Component name: "invalid-comp-id"
-//      Component version: ""
-//      Package type: ""
-func splitComponentId(componentId string) (string, string, string) {
+//  1. componentId: "gav://antparent:ant:1.6.5"
+//     Returned values:
+//     Component name: "antparent:ant"
+//     Component version: "1.6.5"
+//     Package type: "Maven"
+//  2. componentId: "generic://sha256:244fd47e07d1004f0aed9c156aa09083c82bf8944eceb67c946ff7430510a77b/foo.jar"
+//     Returned values:
+//     Component name: "foo.jar"
+//     Component version: ""
+//     Package type: "Generic"
+//  3. componentId: "invalid-comp-id"
+//     Returned values:
+//     Component name: "invalid-comp-id"
+//     Component version: ""
+//     Package type: ""
+func SplitComponentId(componentId string) (string, string, string) {
 	compIdParts := strings.Split(componentId, "://")
 	// Invalid component ID
 	if len(compIdParts) != 2 {
@@ -386,14 +386,14 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode, 
 		}
 		componentId := impactPath[impactPathIndex].ComponentId
 		if _, exist := componentsMap[componentId]; !exist {
-			compName, compVersion, _ := splitComponentId(componentId)
+			compName, compVersion, _ := SplitComponentId(componentId)
 			componentsMap[componentId] = formats.ComponentRow{Name: compName, Version: compVersion}
 		}
 
 		// Convert the impact path
 		var compImpactPathRows []formats.ComponentRow
 		for _, pathNode := range impactPath {
-			nodeCompName, nodeCompVersion, _ := splitComponentId(pathNode.ComponentId)
+			nodeCompName, nodeCompVersion, _ := SplitComponentId(pathNode.ComponentId)
 			compImpactPathRows = append(compImpactPathRows, formats.ComponentRow{
 				Name:    nodeCompName,
 				Version: nodeCompVersion,

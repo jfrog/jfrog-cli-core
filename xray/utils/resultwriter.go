@@ -139,7 +139,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 		for i := 0; i < len(jsonTable.SecurityViolations); i++ {
 			impactedPackageFull := violations[i].ImpactedPackageName + ":" + violations[i].ImpactedPackageVersion
 			if violations[i].FixedVersions != nil {
-				violations[i].Summary += "\n . Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
+				violations[i].Summary += ".\n Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
 			}
 			severity, err := findMaxCVEScore(violations[i].Cves)
 			if err != nil {
@@ -168,7 +168,7 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 		for i := 0; i < len(vulnerabilities); i++ {
 			impactedPackageFull := vulnerabilities[i].ImpactedPackageName + ":" + vulnerabilities[i].ImpactedPackageVersion
 			if vulnerabilities[i].FixedVersions != nil {
-				vulnerabilities[i].Summary += ". Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
+				vulnerabilities[i].Summary += ".\n Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
 			}
 			severity, err := findMaxCVEScore(vulnerabilities[i].Cves)
 			if err != nil {

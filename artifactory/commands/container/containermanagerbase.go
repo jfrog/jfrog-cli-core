@@ -1,10 +1,10 @@
 package container
 
 import (
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -59,10 +59,8 @@ func (ccb *ContainerCommandBase) IsGetRepoSupported() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if !version.NewVersion(currentVersion).AtLeast(MinRtVersionForRepoFetching) {
-		return false, nil
-	}
-	return true, nil
+	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, currentVersion, MinRtVersionForRepoFetching)
+	return err == nil, nil
 }
 
 func (ccb *ContainerCommandBase) BuildConfiguration() *utils.BuildConfiguration {

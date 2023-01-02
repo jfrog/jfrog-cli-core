@@ -262,6 +262,12 @@ func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManag
 		return errorutils.CheckErrorf("This operation requires source Artifactory version %s or higher", minRequiredVersion)
 	}
 
+	err := coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minArtifactoryVersion)
+	if err != nil {
+		return err
+	}
+
+
 	// Avoid exporting and importing to the same server
 	log.Info("Verifying source and target servers are different...")
 	if tcc.sourceServerDetails.GetArtifactoryUrl() == tcc.targetServerDetails.GetArtifactoryUrl() {

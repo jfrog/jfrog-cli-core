@@ -103,7 +103,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the remote repositories check process
-			resp, body, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+"api/plugins/execute/remoteRepositoriesCheck", []byte(rrc.configXml), rtDetails)
+			resp, body, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheck", []byte(rrc.configXml), rtDetails)
 			if err != nil {
 				return false, err
 			}
@@ -148,7 +148,7 @@ func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *h
 func (rrc *RemoteRepositoryCheck) createImportPollingAction(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) httputils.PollingAction {
 	return func() (shouldStop bool, responseBody []byte, err error) {
 		// Get config import status
-		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+"api/plugins/execute/remoteRepositoriesCheckStatus", true, rtDetails)
+		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheckStatus", true, rtDetails)
 		if err != nil {
 			return true, nil, err
 		}

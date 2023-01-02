@@ -12,8 +12,9 @@ import (
 type ServerType string
 
 const (
-	Source ServerType = "source"
-	Target ServerType = "target"
+	Source                ServerType = "source"
+	Target                ServerType = "target"
+	PluginsExecuteRestApi            = "api/plugins/execute/"
 )
 
 func GetTransferPluginVersion(client *jfroghttpclient.JfrogHttpClient, url, pluginName string, serverType ServerType, rtDetails *httputils.HttpClientDetails) (string, error) {

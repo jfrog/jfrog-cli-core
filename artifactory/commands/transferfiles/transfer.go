@@ -653,7 +653,7 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
-	return coreutils.ValidateMinimumVersion("data-transfer", currentVersion, dataTransferPluginMinVersion)
+	return coreutils.ValidateMinimumVersion(coreutils.DataTransfer, currentVersion, dataTransferPluginMinVersion)
 }
 
 // Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.

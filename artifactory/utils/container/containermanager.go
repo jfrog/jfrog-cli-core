@@ -254,5 +254,5 @@ func ValidateClientApiVersion() error {
 		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:", content)
 		return errorutils.CheckError(err)
 	}
-	return coreutils.ValidateMinimumVersion("Docker API", content, MinSupportedApiVersion)
+	return coreutils.ValidateMinimumVersion(coreutils.DockerApi, content, MinSupportedApiVersion)
 }

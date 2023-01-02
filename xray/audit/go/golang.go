@@ -1,6 +1,7 @@
 package _go
 
 import (
+	"github.com/jfrog/build-info-go/utils"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -10,6 +11,7 @@ import (
 
 const (
 	goPackageTypeIdentifier = "go://"
+	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
 func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
@@ -39,6 +41,12 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 	}
 	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
 
+	// Add go version as child node to dependencies tree
+	err = addGoVersionAsDependency(rootNode)
+	if err != nil {
+		return
+	}
+
 	dependencyTree = []*services.GraphNode{rootNode}
 	return
 }
@@ -62,4 +70,18 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 		currNode.Nodes = append(currNode.Nodes, childNode)
 		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
 	}
+}
+
+func addGoVersionAsDependency(rootNode *services.GraphNode) error {
+	goVersion, err := utils.GetParsedGoVersion()
+	if err != nil {
+		return err
+	}
+	// Convert "go1.17.3" to "github.com/golang/go:v1.17.3"
+	goVersionID := strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1)
+	rootNode.Nodes = append(rootNode.Nodes, &services.GraphNode{
+		Id:    goPackageTypeIdentifier + goVersionID,
+		Nodes: []*services.GraphNode{},
+	})
+	return nil
 }

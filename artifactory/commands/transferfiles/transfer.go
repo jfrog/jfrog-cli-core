@@ -656,11 +656,6 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	return coreutils.ValidateMinimumVersion("data-transfer", currentVersion, dataTransferPluginMinVersion)
 }
 
-func getMinimalVersionErrorMsg(currentVersion string) string {
-	return "You are currently using data-transfer plugin version '" +
-		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
-}
-
 // Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
 	verifyResponse, err := srcUpService.verifyCompatibilityRequest()

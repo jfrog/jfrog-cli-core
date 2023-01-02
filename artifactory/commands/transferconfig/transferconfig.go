@@ -227,7 +227,7 @@ func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactor
 	return true, nil
 }
 
-// Make sure the target Artifactory is empty, by counting the number of the repositories. If it is bigger than 1, return an error.
+// Make sure the target Artifactory is empty, by counting the number of the users. If it is bigger than 1, return an error.
 // Also, make sure that the config-import plugin is installed
 func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager artifactory.ArtifactoryServicesManager) error {
 	// Verify installation of the config-import plugin in the target server and make sure that the user is admin

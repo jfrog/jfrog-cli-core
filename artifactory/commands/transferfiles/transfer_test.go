@@ -67,7 +67,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	pluginVersion = curVersion
 	err := getAndValidateDataTransferPlugin(srcPluginManager)
 	if errorExpected {
-		assert.EqualError(t, err, coreutils.ValidateMinimumVersion("data-transfer", curVersion, dataTransferPluginMinVersion).Error())
+		assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
 		return
 	}
 	assert.NoError(t, err)

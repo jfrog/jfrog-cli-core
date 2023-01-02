@@ -6,6 +6,7 @@ import (
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -113,7 +114,7 @@ func TestSanityVerifications(t *testing.T) {
 
 	// Test low artifactory version
 	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
-	assert.ErrorContains(t, err, "This operation requires source Artifactory version 6.23.21 or higher")
+	assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.Artifactory, "6.0.0", minArtifactoryVersion).Error())
 
 	// Test no users
 	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
@@ -168,4 +169,3 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
 }
-

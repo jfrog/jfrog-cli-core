@@ -4,6 +4,7 @@ import (
 	"errors"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -75,12 +76,12 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = commands.ValidateXrayMinimumVersion(xrayVersion, BuildScanMinVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, BuildScanMinVersion)
 	if err != nil {
 		return err
 	}
 	if bsc.includeVulnerabilities {
-		err = commands.ValidateXrayMinimumVersion(xrayVersion, BuildScanIncludeVulnerabilitiesMinVersion)
+		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, BuildScanIncludeVulnerabilitiesMinVersion)
 		if err != nil {
 			return errors.New("build-scan command with '--vuln' flag is not supported on your current Xray version. " + err.Error())
 		}

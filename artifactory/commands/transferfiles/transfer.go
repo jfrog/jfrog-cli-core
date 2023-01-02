@@ -3,7 +3,6 @@ package transferfiles
 import (
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -654,16 +653,7 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
-	curVer := version.NewVersion(currentVersion)
-	if !curVer.AtLeast(dataTransferPluginMinVersion) {
-		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
-	}
-	return nil
-}
-
-func getMinimalVersionErrorMsg(currentVersion string) string {
-	return "You are currently using data-transfer plugin version '" +
-		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
+	return coreutils.ValidateMinimumVersion("data-transfer", currentVersion, dataTransferPluginMinVersion)
 }
 
 // Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.

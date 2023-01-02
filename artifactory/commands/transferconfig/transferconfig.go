@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -243,8 +242,9 @@ func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactor
 // Make sure the target Artifactory is empty, by counting the number of the repositories. If it is bigger than 1, return an error.
 // Also make sure that the source Artifactory version is sufficient.
 func (tcc *TransferConfigCommand) validateArtifactoryServers(targetServicesManager artifactory.ArtifactoryServicesManager, sourceArtifactoryVersion string) error {
-	if !version.NewVersion(sourceArtifactoryVersion).AtLeast(minArtifactoryVersion) {
-		return errorutils.CheckErrorf("This operation requires source Artifactory version %s or higher", minArtifactoryVersion)
+	err := coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minArtifactoryVersion)
+	if err != nil {
+		return err
 	}
 
 	// Avoid exporting and importing to the same server

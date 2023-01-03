@@ -106,8 +106,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if tcc.preChecks {
 		return tcc.runPreChecks(sourceServiceManager, targetServiceManager)
 	}
-	var continueTransfer bool
-	continueTransfer, err = tcc.printWarnings(sourceServiceManager)
+	continueTransfer, err := tcc.printWarnings(sourceServiceManager)
 	if err != nil || !continueTransfer {
 		return
 	}

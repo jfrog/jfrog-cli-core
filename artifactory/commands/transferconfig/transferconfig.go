@@ -103,14 +103,16 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	if !tcc.preChecks {
-		var continueTransfer bool
-		continueTransfer, err = tcc.printWarnings(sourceServiceManager)
-		if err != nil || !continueTransfer {
-			return
-		}
-		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
+	if tcc.preChecks {
+		return tcc.runPreChecks(sourceServiceManager, targetServiceManager)
 	}
+	var continueTransfer bool
+	continueTransfer, err = tcc.printWarnings(sourceServiceManager)
+	if err != nil || !continueTransfer {
+		return
+	}
+
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
 	if err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return
@@ -118,10 +120,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	if err = tcc.validateTargetServer(targetServiceManager); err != nil {
 		return
-	}
-
-	if tcc.preChecks {
-		return tcc.runPreChecks(sourceServiceManager, targetServiceManager)
 	}
 
 	// Run export on the source Artifactory
@@ -181,8 +179,17 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 }
 
 func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServicesManager artifactory.ArtifactoryServicesManager) error {
+	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
+	if err := validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
+		return err
+	}
+	// Make sure that the target Artifactory is empty and the config-import plugin is installed
+	if err := tcc.validateTargetServer(targetServicesManager); err != nil {
+		return err
+	}
+
 	// Warn if default admin:password credentials are exist in the source server
-	_, err := commandsUtils.IsDefaultCredentials(sourceServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
+	_, err := commandsUtils.IsDefaultCredentials(targetServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
 	if err != nil {
 		return err
 	}

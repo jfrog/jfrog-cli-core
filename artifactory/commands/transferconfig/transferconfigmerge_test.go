@@ -93,17 +93,6 @@ func createAndVlidateConflicts(t *testing.T) []ProjectConflict {
 	return conflicts
 }
 
-func TestCheckIfSameBoolPointer(t *testing.T) {
-	tr := true
-	f := false
-	f2 := false
-	assert.Equal(t, false, tcc.checkIfSameBoolPointer(nil, &f))
-	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, nil))
-	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, nil))
-	assert.Equal(t, false, tcc.checkIfSameBoolPointer(&tr, &f))
-	assert.Equal(t, true, tcc.checkIfSameBoolPointer(&f2, &f))
-}
-
 func TestCreateConflictCSV(t *testing.T) {
 	conflicts := createAndVlidateConflicts(t)
 	_, err := tcc.createConflictsCSVSummary(conflicts, time.Now())

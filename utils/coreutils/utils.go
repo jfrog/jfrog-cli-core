@@ -30,6 +30,7 @@ const (
 	Xray         MinVersionProduct = "JFrog Xray"
 	DataTransfer MinVersionProduct = "Data Transfer"
 	DockerApi    MinVersionProduct = "Docker API"
+	Projects     MinVersionProduct = "JFrog Projects"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):

@@ -178,18 +178,17 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 }
 
 func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServicesManager artifactory.ArtifactoryServicesManager) error {
+	// Warn if default admin:password credentials are exist in the source server
+	_, err := commandsUtils.IsDefaultCredentials(targetServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
+	if err != nil {
+		return err
+	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
 	if err := validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return err
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	if err := tcc.validateTargetServer(targetServicesManager); err != nil {
-		return err
-	}
-
-	// Warn if default admin:password credentials are exist in the source server
-	_, err := commandsUtils.IsDefaultCredentials(targetServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
-	if err != nil {
 		return err
 	}
 

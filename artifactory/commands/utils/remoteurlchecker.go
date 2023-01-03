@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gocarina/gocsv"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -192,24 +190,5 @@ func handleFailureRun(inaccessibleRepositories []inaccessibleRepository) (err er
 	}
 	// Log result
 	log.Info(fmt.Sprintf("Found %d inaccessible remote repository URLs. Check the summary CSV file in: %s", len(inaccessibleRepositories), csvPath))
-	return
-}
-
-// Create a csv summary of all the files with long properties
-func createFailedCheckSummaryCsvFile(inaccessibleRepositories []inaccessibleRepository, timeStarted time.Time) (csvPath string, err error) {
-	// Create CSV file
-	summaryCsv, err := clientLog.CreateCustomLogFile(fmt.Sprintf("inaccessible-repositories-%s.csv", timeStarted.Format(clientLog.DefaultLogTimeLayout)))
-	if err != nil {
-		return
-	}
-	csvPath = summaryCsv.Name()
-	defer func() {
-		e := summaryCsv.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
-	}()
-	// Marshal JSON typed FileWithLongProperty array to CSV file
-	err = errorutils.CheckError(gocsv.MarshalFile(inaccessibleRepositories, summaryCsv))
 	return
 }

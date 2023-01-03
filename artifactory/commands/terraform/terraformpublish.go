@@ -327,7 +327,7 @@ func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) string {
 	return path.Join(tpc.repo, tpc.namespace, moduleName, tpc.provider, tpc.tag+".zip")
 }
 
-// We identify a Terraform module by the existence of at least one file with a ".tf" extension inside the module directory.
+// We identify a Terraform module by having at least one file with a ".tf" extension inside the module directory.
 func checkIfTerraformModule(path string) (isModule bool, err error) {
 	dirname := path + string(filepath.Separator)
 	d, err := os.Open(dirname)

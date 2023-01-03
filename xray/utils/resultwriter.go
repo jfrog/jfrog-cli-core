@@ -134,50 +134,84 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 		return err
 	}
 	if len(jsonTable.SecurityViolations) > 0 {
-		violations := jsonTable.SecurityViolations
-		licenses := jsonTable.LicensesViolations
-		for i := 0; i < len(jsonTable.SecurityViolations); i++ {
-			impactedPackageFull := violations[i].ImpactedPackageName + ":" + violations[i].ImpactedPackageVersion
-			if violations[i].FixedVersions != nil {
-				violations[i].Summary += ".\n Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
-			}
-			severity, err := findMaxCVEScore(violations[i].Cves)
-			if err != nil {
-				return err
-			}
-			err = addScanResultsToSarifRun(run, severity, violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].Technology)
-			if err != nil {
-				return err
-			}
-		}
-		for i := 0; i < len(licenses); i++ {
-			impactedPackageFull := licenses[i].ImpactedPackageName + ":" + licenses[i].ImpactedPackageVersion
-			if err != nil {
-				return err
-			}
-			err = addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, coreutils.Technology(strings.ToLower(licenses[i].ImpactedPackageType)))
-			if err != nil {
-				return err
-			}
-		}
-	} else if len(jsonTable.Vulnerabilities) > 0 {
-		vulnerabilities := jsonTable.Vulnerabilities
+		err := convertViolations(jsonTable, run)
 		if err != nil {
 			return err
 		}
-		for i := 0; i < len(vulnerabilities); i++ {
-			impactedPackageFull := vulnerabilities[i].ImpactedPackageName + ":" + vulnerabilities[i].ImpactedPackageVersion
-			if vulnerabilities[i].FixedVersions != nil {
-				vulnerabilities[i].Summary += ".\n Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
-			}
-			severity, err := findMaxCVEScore(vulnerabilities[i].Cves)
-			if err != nil {
-				return err
-			}
-			err = addScanResultsToSarifRun(run, severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
-			if err != nil {
-				return err
-			}
+	} else if len(jsonTable.Vulnerabilities) > 0 {
+		err := convertVulnerabilities(jsonTable, run)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getCves(cvesRow []formats.CveRow, issueId string) string {
+	var cvesStr string
+	if len(cvesRow) != 0 {
+		var cvesBuilder strings.Builder
+		for _, cve := range cvesRow {
+			cvesBuilder.WriteString(cve.Id + ", ")
+		}
+		cvesStr = strings.TrimSuffix(cvesBuilder.String(), ", ")
+	}
+	if cvesStr == "" {
+		cvesStr = issueId
+	}
+
+	return cvesStr
+}
+
+func getHeadline(impactedPackage, version, cves string) string {
+	return "[" + cves + "] " + impactedPackage + ":" + version
+}
+
+func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run) error {
+	violations := jsonTable.SecurityViolations
+	licenses := jsonTable.LicensesViolations
+	for i := 0; i < len(jsonTable.SecurityViolations); i++ {
+		cves := getCves(violations[i].Cves, violations[i].IssueId)
+		impactedPackageFull := getHeadline(violations[i].ImpactedPackageName, violations[i].ImpactedPackageVersion, cves)
+		if violations[i].FixedVersions != nil {
+			violations[i].Summary += ".\n Fixed in Versions: " + strings.Join(violations[i].FixedVersions, ",")
+		}
+		severity, err := findMaxCVEScore(violations[i].Cves)
+		if err != nil {
+			return err
+		}
+		err = addScanResultsToSarifRun(run, severity, violations[i].IssueId, impactedPackageFull, violations[i].Summary, violations[i].Technology)
+		if err != nil {
+			return err
+		}
+	}
+	for i := 0; i < len(licenses); i++ {
+		impactedPackageFull := licenses[i].ImpactedPackageName + ":" + licenses[i].ImpactedPackageVersion
+		err := addScanResultsToSarifRun(run, "", licenses[i].ImpactedPackageVersion, impactedPackageFull, licenses[i].LicenseKey, coreutils.Technology(strings.ToLower(licenses[i].ImpactedPackageType)))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func convertVulnerabilities(jsonTable formats.SimpleJsonResults, run *sarif.Run) error {
+	vulnerabilities := jsonTable.Vulnerabilities
+	for i := 0; i < len(vulnerabilities); i++ {
+		cves := getCves(vulnerabilities[i].Cves, vulnerabilities[i].IssueId)
+		impactedPackageFull := getHeadline(vulnerabilities[i].ImpactedPackageName, vulnerabilities[i].ImpactedPackageVersion, cves)
+		if vulnerabilities[i].FixedVersions != nil {
+			vulnerabilities[i].Summary += ".\n Fixed in Versions: " + strings.Join(vulnerabilities[i].FixedVersions, ",")
+		}
+		severity, err := findMaxCVEScore(vulnerabilities[i].Cves)
+		if err != nil {
+			return err
+		}
+		err = addScanResultsToSarifRun(run, severity, vulnerabilities[i].IssueId, impactedPackageFull, vulnerabilities[i].Summary, vulnerabilities[i].Technology)
+		if err != nil {
+			return err
 		}
 	}
 

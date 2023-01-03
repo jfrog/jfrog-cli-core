@@ -264,7 +264,6 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner) {
 	// Blocking until consuming is finished.
 	consumer.Run()
-	return
 }
 
 // Aggregate the operation summaries from all threads, to get the number of successful and failed uploads.

@@ -54,7 +54,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatibility" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifyCompatibility" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
@@ -75,7 +75,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 
 func TestVerifySourceTargetConnectivity(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusOK)
 		}
 	})
@@ -89,7 +89,7 @@ func TestVerifySourceTargetConnectivity(t *testing.T) {
 
 func TestVerifySourceTargetConnectivityError(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte("No connection to target"))
 			assert.NoError(t, err)
@@ -111,7 +111,7 @@ func initSrcUserPluginServiceManager(t *testing.T, serverDetails *coreConfig.Ser
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"dataTransferVersion" {
 			w.WriteHeader(http.StatusNotFound)
 			_, err := w.Write([]byte("Not found"))
 			assert.NoError(t, err)
@@ -243,10 +243,10 @@ func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 
 func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, totalUploadChunkVisits *int, file api.FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	return commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"uploadChunk" {
 			*totalUploadChunkVisits++
 			getUploadChunkMockResponse(t, w, totalUploadChunkVisits)
-		} else if r.RequestURI == "/"+pluginsExecuteRestApi+syncChunks {
+		} else if r.RequestURI == "/"+utils.PluginsExecuteRestApi+syncChunks {
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
 			// If already visited chunk status, return status done this time.

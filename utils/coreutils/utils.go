@@ -26,8 +26,8 @@ const (
 type MinVersionProduct string
 
 const (
-	Artifactory  MinVersionProduct = "Artifactory"
-	Xray         MinVersionProduct = "Xray"
+	Artifactory  MinVersionProduct = "JFrog Artifactory"
+	Xray         MinVersionProduct = "JFrog Xray"
 	DataTransfer MinVersionProduct = "Data Transfer"
 	DockerApi    MinVersionProduct = "Docker API"
 )

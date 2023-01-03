@@ -54,7 +54,7 @@ func TestImportToTargetArtifactory(t *testing.T) {
 
 		content, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
-		if r.RequestURI == commandUtils.PluginsExecuteRestApi+"configImport" {
+		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImport" {
 			// Read body
 			assert.Equal(t, []byte("zip-content"), content)
 			_, err = w.Write([]byte("123456"))
@@ -94,9 +94,9 @@ func TestSanityVerifications(t *testing.T) {
 	var rtVersion string
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == commandUtils.PluginsExecuteRestApi+"checkPermissions" {
+		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"checkPermissions" {
 			w.WriteHeader(http.StatusOK)
-		} else if r.RequestURI == commandUtils.PluginsExecuteRestApi+"configImportVersion" {
+		} else if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImportVersion" {
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)

@@ -102,19 +102,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
-		buildName, err := uc.buildConfiguration.GetBuildName()
-		if err != nil {
-			return err
-		}
-		buildNumber, err := uc.buildConfiguration.GetBuildNumber()
-		if err != nil {
-			return err
-		}
-		err = utils.SaveBuildGeneralDetails(buildName, buildNumber, uc.buildConfiguration.GetProject())
-		if err != nil {
-			return err
-		}
-		buildProps, err = utils.CreateBuildProperties(buildName, buildNumber, uc.buildConfiguration.GetProject())
+		buildProps, err = utils.CreateBuildPropsFromConfiguration(uc.buildConfiguration)
 		if err != nil {
 			return err
 		}
@@ -203,20 +191,7 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return
 		}
-		populateFunc := func(partial *buildInfo.Partial) {
-			partial.Artifacts = buildArtifacts
-			partial.ModuleId = uc.buildConfiguration.GetModule()
-			partial.ModuleType = buildInfo.Generic
-		}
-		buildName, err := uc.buildConfiguration.GetBuildName()
-		if err != nil {
-			return err
-		}
-		buildNumber, err := uc.buildConfiguration.GetBuildNumber()
-		if err != nil {
-			return err
-		}
-		return utils.SavePartialBuildInfo(buildName, buildNumber, uc.buildConfiguration.GetProject(), populateFunc)
+		return utils.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 	return
 }

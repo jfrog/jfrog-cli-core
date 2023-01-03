@@ -450,3 +450,36 @@ func (bc *BuildConfiguration) IsCollectBuildInfo() (bool, error) {
 func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {
 	return bc.loadedFromConfigFile
 }
+
+func PopulateBuildArtifactsAsPartials(buildArtifacts []buildInfo.Artifact, buildConfiguration *BuildConfiguration, moduleType buildInfo.ModuleType) error {
+	populateFunc := func(partial *buildInfo.Partial) {
+		partial.Artifacts = buildArtifacts
+		partial.ModuleId = buildConfiguration.GetModule()
+		partial.ModuleType = moduleType
+	}
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return err
+	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return err
+	}
+	return SavePartialBuildInfo(buildName, buildNumber, buildConfiguration.GetProject(), populateFunc)
+}
+
+func CreateBuildPropsFromConfiguration(buildConfiguration *BuildConfiguration) (string, error) {
+	buildName, err := buildConfiguration.GetBuildName()
+	if err != nil {
+		return "", err
+	}
+	buildNumber, err := buildConfiguration.GetBuildNumber()
+	if err != nil {
+		return "", err
+	}
+	err = SaveBuildGeneralDetails(buildName, buildNumber, buildConfiguration.GetProject())
+	if err != nil {
+		return "", err
+	}
+	return CreateBuildProperties(buildName, buildNumber, buildConfiguration.GetProject())
+}

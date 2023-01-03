@@ -185,7 +185,7 @@ func unmarshalRemoteUrlResponse(body []byte) (*remoteUrlResponse, error) {
 // Create csv summary of all the files with inaccessible remote repositories and log the result
 func handleFailureRun(inaccessibleRepositories []inaccessibleRepository) (err error) {
 	// Create summary
-	csvPath, err := createFailedCheckSummaryCsvFile(inaccessibleRepositories, time.Now())
+	csvPath, err := CreateCSVFile("inaccessible-repositories", inaccessibleRepositories, time.Now())
 	if err != nil {
 		log.Error("Couldn't create the inaccessible remote repository URLs CSV file", err)
 		return

@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"github.com/gocarina/gocsv"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -10,6 +11,7 @@ import (
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -17,6 +19,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -390,4 +395,39 @@ func TestCheckChunkStatusSync(t *testing.T) {
 	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
 	checkChunkStatusSync(&chunkStatus, &manager, &errChanMng)
 	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 0)
+}
+
+func TestCreateErrorsSummaryFile(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	testDataDir := filepath.Join("..", "testdata", "transfer_summary")
+	logFiles := []string{filepath.Join(testDataDir, "logs1.json"), filepath.Join(testDataDir, "logs2.json")}
+	allErrors, err := parseErrorsFromLogFiles(logFiles)
+	assert.NoError(t, err)
+	// Create Errors Summary Csv File from given JSON log files
+	createdCsvPath, err := utils.CreateCSVFile("transfer-files-logs", allErrors.Errors, time.Now())
+	assert.NoError(t, err)
+	assert.NotEmpty(t, createdCsvPath)
+	createdFile, err := os.Open(createdCsvPath)
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, createdFile.Close())
+	}()
+	actualFileErrors := new([]api.FileUploadStatusResponse)
+	assert.NoError(t, gocsv.UnmarshalFile(createdFile, actualFileErrors))
+
+	// Create expected csv file
+	expectedFile, err := os.Open(filepath.Join(testDataDir, "logs.csv"))
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, expectedFile.Close())
+	}()
+	expectedFileErrors := new([]api.FileUploadStatusResponse)
+	assert.NoError(t, gocsv.UnmarshalFile(expectedFile, expectedFileErrors))
+
+	if !reflect.DeepEqual(expectedFileErrors, actualFileErrors) {
+		t.Errorf("Expected value: %v, got: %v.", expectedFileErrors, actualFileErrors)
+	}
 }

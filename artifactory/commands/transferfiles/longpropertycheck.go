@@ -3,7 +3,6 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gocarina/gocsv"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -17,7 +16,6 @@ import (
 	"io"
 	"sync"
 
-	clientLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -240,7 +238,7 @@ func runAqlService(serviceManager artifactory.ArtifactoryServicesManager, query 
 // Create csv summary of all the files with long properties and log the result
 func handleFailureRun(filesWithLongProperty []FileWithLongProperty) (err error) {
 	// Create summary
-	csvPath, err := createFailedCheckSummaryCsvFile(filesWithLongProperty, time.Now())
+	csvPath, err := cmdutils.CreateCSVFile("long-properties", filesWithLongProperty, time.Now())
 	if err != nil {
 		log.Error("Couldn't create the long properties CSV file", err)
 		return
@@ -252,24 +250,5 @@ func handleFailureRun(filesWithLongProperty []FileWithLongProperty) (err error) 
 		propertyTxt = "entry"
 	}
 	log.Info(fmt.Sprintf("Found %d property %s with value longer than 2.4k characters. Check the summary CSV file in: %s", nFails, propertyTxt, csvPath))
-	return
-}
-
-// Create a csv summary of all the files with long properties
-func createFailedCheckSummaryCsvFile(failures []FileWithLongProperty, timeStarted time.Time) (csvPath string, err error) {
-	// Create CSV file
-	summaryCsv, err := clientLog.CreateCustomLogFile(fmt.Sprintf("long-properties-%s.csv", timeStarted.Format(clientLog.DefaultLogTimeLayout)))
-	if err != nil {
-		return
-	}
-	csvPath = summaryCsv.Name()
-	defer func() {
-		e := summaryCsv.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
-	}()
-	// Marshal JSON typed FileWithLongProperty array to CSV file
-	err = errorutils.CheckError(gocsv.MarshalFile(failures, summaryCsv))
 	return
 }

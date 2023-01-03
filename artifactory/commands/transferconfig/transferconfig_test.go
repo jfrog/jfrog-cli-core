@@ -6,7 +6,6 @@ import (
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -55,7 +54,7 @@ func TestImportToTargetArtifactory(t *testing.T) {
 
 		content, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
-		if r.RequestURI == "/api/plugins/execute/configImport" {
+		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImport" {
 			// Read body
 			assert.Equal(t, []byte("zip-content"), content)
 			_, err = w.Write([]byte("123456"))
@@ -92,12 +91,18 @@ func TestGetConfigXml(t *testing.T) {
 
 func TestSanityVerifications(t *testing.T) {
 	users := []services.User{}
+	var rtVersion string
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/plugins/execute/checkPermissions" {
+		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"checkPermissions" {
 			w.WriteHeader(http.StatusOK)
-		} else if r.RequestURI == "/api/plugins/execute/configImportVersion" {
+		} else if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImportVersion" {
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
+			assert.NoError(t, err)
+			_, err = w.Write(content)
+			assert.NoError(t, err)
+		} else if r.RequestURI == "/api/system/version" {
+			content, err := json.Marshal(commandUtils.VersionResponse{Version: rtVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
@@ -110,38 +115,38 @@ func TestSanityVerifications(t *testing.T) {
 		}
 	})
 	defer testServer.Close()
-	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 
 	// Test low artifactory version
-	err := transferConfigCmd.validateArtifactoryServers(serviceManager, "6.0.0")
-	assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.Artifactory, "6.0.0", minArtifactoryVersion).Error())
+	rtVersion = "6.0.0"
+	err := validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
+	assert.ErrorContains(t, err, "while this operation requires version")
 
+	// Test same source and target Artifactory servers
+	rtVersion = minArtifactoryVersion
+	err = validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
+	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
+
+	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	// Test no users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateTargetServer(serviceManager)
 	assert.NoError(t, err)
 
 	// Test 1 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateTargetServer(serviceManager)
 	assert.NoError(t, err)
 
 	// Test 2 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateTargetServer(serviceManager)
 	assert.NoError(t, err)
 
 	// Test 3 users
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateTargetServer(serviceManager)
 	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users.")
 
 	// Assert force = true
 	transferConfigCmd.force = true
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
+	err = transferConfigCmd.validateTargetServer(serviceManager)
 	assert.NoError(t, err)
-
-	// Test same source and target Artifactory servers
-	transferConfigCmd = NewTransferConfigCommand(serverDetails, serverDetails)
-	err = transferConfigCmd.validateArtifactoryServers(serviceManager, minArtifactoryVersion)
-	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
-
 }
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {

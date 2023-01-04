@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/access"
 	accessServices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -26,10 +27,15 @@ const (
 )
 
 type TransferConfigMergeCommand struct {
-	sourceServerDetails  *config.ServerDetails
-	targetServerDetails  *config.ServerDetails
-	includeReposPatterns []string
-	excludeReposPatterns []string
+	sourceServerDetails      *config.ServerDetails
+	targetServerDetails      *config.ServerDetails
+	includeReposPatterns     []string
+	excludeReposPatterns     []string
+	projectsSupported        bool
+	sourceArtifactoryManager artifactory.ArtifactoryServicesManager
+	targetArtifactoryManager artifactory.ArtifactoryServicesManager
+	sourceAccessManager      access.AccessServicesManager
+	targetAccessManager      access.AccessServicesManager
 }
 
 func NewTransferConfigMergeCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigMergeCommand {
@@ -49,45 +55,22 @@ type Conflict struct {
 
 func (tcmc *TransferConfigMergeCommand) Run() (err error) {
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/3 - Preparations ==========")))
-	sourceServiceManager, err := utils.CreateServiceManager(tcmc.sourceServerDetails, -1, 0, false)
+	err = tcmc.initServiceManagersAndValidateServers()
 	if err != nil {
-		return
-	}
-	targetServiceManager, err := utils.CreateServiceManager(tcmc.targetServerDetails, -1, 0, false)
-	if err != nil {
-		return
-	}
-	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if err = validateMinVersionAndDifferentServers(sourceServiceManager, tcmc.sourceServerDetails, tcmc.targetServerDetails); err != nil {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Merging Repositories ==========")))
 	conflicts := []Conflict{}
-	err = tcmc.mergeRepositories(sourceServiceManager, targetServiceManager, &conflicts)
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Merging Repositories ==========")))
+	err = tcmc.mergeRepositories(&conflicts)
 	if err != nil {
 		return
 	}
 
-	sourceArtifactoryVersion, err := sourceServiceManager.GetVersion()
-	if err != nil {
-		return
-	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
-	if err == nil {
+	if tcmc.projectsSupported {
 		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Merging Projects ==========")))
 		// check correctness of Authorization
-		log.Info("Checking validation of your authorization methods..")
-		if _, err = sourceServiceManager.Ping(); err != nil {
-			err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token.")
-			return
-		}
-		if _, err = targetServiceManager.Ping(); err != nil {
-			err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token.")
-			return
-		}
-		err = tcmc.mergeProjects(&conflicts)
-		if err != nil {
+		if err = tcmc.mergeProjects(&conflicts); err != nil {
 			return
 		}
 	}
@@ -105,15 +88,58 @@ func (tcmc *TransferConfigMergeCommand) Run() (err error) {
 	return
 }
 
+func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() error {
+	var err error
+	tcmc.sourceArtifactoryManager, err = utils.CreateServiceManager(tcmc.sourceServerDetails, -1, 0, false)
+	if err != nil {
+		return err
+	}
+	tcmc.sourceArtifactoryManager, err = utils.CreateServiceManager(tcmc.targetServerDetails, -1, 0, false)
+	if err != nil {
+		return err
+	}
+	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
+	sourceArtifactoryVersion, err := validateMinVersionAndDifferentServers(tcmc.sourceArtifactoryManager, tcmc.sourceServerDetails, tcmc.targetServerDetails)
+	if err != nil {
+		return err
+	}
+
+	// Check if JFrog Projects supported by Source Artifactory version
+	err = coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
+	if err == nil {
+		tcmc.projectsSupported = true
+		sourceAccessManager, err := utils.CreateAccessServiceManager(tcmc.sourceServerDetails, false)
+		if err != nil {
+			return err
+		}
+		targetAccessManager, err := utils.CreateAccessServiceManager(tcmc.targetServerDetails, false)
+		if err != nil {
+			return err
+		}
+
+		log.Info("Checking validation of your authorization methods..")
+		if _, err = sourceAccessManager.Ping(); err != nil {
+			err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token.")
+			return err
+		}
+		if _, err = targetAccessManager.Ping(); err != nil {
+			err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token.")
+			return err
+		}
+		tcmc.sourceAccessManager = *sourceAccessManager
+		tcmc.targetAccessManager = *targetAccessManager
+	}
+	return nil
+}
 func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (err error) {
 	log.Info("Getting all Projects ...")
-	sourceServiceAccessManager, err := utils.CreateAccessServiceManager(tcmc.sourceServerDetails, false)
-	sourceProjects, err := sourceServiceAccessManager.GetAllProjects()
+
+	sourceProjects, err := tcmc.sourceAccessManager.GetAllProjects()
 	if err != nil {
 		return
 	}
-	targetServiceAccessManager, err := utils.CreateAccessServiceManager(tcmc.targetServerDetails, false)
-	targetProjects, err := targetServiceAccessManager.GetAllProjects()
+
+	targetProjects, err := tcmc.targetAccessManager.GetAllProjects()
 	if err != nil {
 		return
 	}
@@ -124,7 +150,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 
 		if targetProjectWithSameKey == nil && targetProjectWithSameName == nil {
 			// Project exists on source only, can be created on target
-			if err = targetServiceAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject}); err != nil {
+			if err = tcmc.targetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject}); err != nil {
 				return
 			}
 			continue
@@ -168,13 +194,13 @@ func compareProjects(sourceProject, targetProject accessServices.Project) (*Conf
 	}, nil
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeRepositories(sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager, conflicts *[]Conflict) (err error) {
+func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (err error) {
 	log.Info("Getting all repositories ...")
-	sourceRepos, err := sourceServiceManager.GetAllRepositories()
+	sourceRepos, err := tcmc.sourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
 	}
-	targetRepos, err := targetServiceManager.GetAllRepositories()
+	targetRepos, err := tcmc.targetArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
 	}
@@ -200,7 +226,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(sourceServiceManager, 
 		if targetRepo, exists := targetReposMap[sourceRepo.Key]; exists {
 			// The repository exists on target. We need to compare the repositories.
 			var reposDiff []string
-			reposDiff, err = compareRepositories(sourceRepo, targetRepo, sourceServiceManager, targetServiceManager)
+			reposDiff, err = tcmc.compareRepositories(sourceRepo, targetRepo)
 			if err != nil {
 				return
 			}
@@ -218,12 +244,12 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(sourceServiceManager, 
 		}
 	}
 	if len(reposToTransfer) > 0 {
-		err = transferRepositoriesToTarget(reposToTransfer, sourceServiceManager, targetServiceManager)
+		err = tcmc.transferRepositoriesToTarget(reposToTransfer)
 	}
 	return
 }
 
-func compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails, sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager) (diff []string, err error) {
+func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails) (diff []string, err error) {
 	// Compare basic repository details
 	diff, err = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, "Url")
 	if err != nil && len(diff) != 0 {
@@ -233,12 +259,12 @@ func compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.R
 	// The basic details are equal. Continuing to compare the full repository details.
 	// Get full repo info from source and target
 	var sourceRepoFullDetails interface{}
-	err = sourceServiceManager.GetRepository(sourceRepoBaseDetails.Key, &sourceRepoFullDetails)
+	err = tcmc.sourceArtifactoryManager.GetRepository(sourceRepoBaseDetails.Key, &sourceRepoFullDetails)
 	if err != nil {
 		return
 	}
 	var targetRepoFullDetails interface{}
-	err = targetServiceManager.GetRepository(targetRepoBaseDetails.Key, &targetRepoFullDetails)
+	err = tcmc.targetArtifactoryManager.GetRepository(targetRepoBaseDetails.Key, &targetRepoFullDetails)
 	if err != nil {
 		return
 	}
@@ -270,28 +296,28 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 	return
 }
 
-func transferRepositoriesToTarget(reposToTransfer []string, sourceServiceManager, targetServiceManager artifactory.ArtifactoryServicesManager) (err error) {
+func (tcmc *TransferConfigMergeCommand) transferRepositoriesToTarget(reposToTransfer []string) (err error) {
 	// Decrypt source artifactory to get encrypted parameters
 	var wasEncrypted bool
-	if wasEncrypted, err = sourceServiceManager.DeactivateKeyEncryption(); err != nil {
+	if wasEncrypted, err = tcmc.sourceArtifactoryManager.DeactivateKeyEncryption(); err != nil {
 		return
 	}
 	defer func() {
 		if !wasEncrypted {
 			return
 		}
-		activationErr := sourceServiceManager.ActivateKeyEncryption()
+		activationErr := tcmc.sourceArtifactoryManager.ActivateKeyEncryption()
 		if err == nil {
 			err = activationErr
 		}
 	}()
 	for _, repoKey := range reposToTransfer {
 		var params interface{}
-		err = sourceServiceManager.GetRepository(repoKey, &params)
+		err = tcmc.sourceArtifactoryManager.GetRepository(repoKey, &params)
 		if err != nil {
 			return
 		}
-		err = targetServiceManager.CreateRepositoryWithParams(params, repoKey)
+		err = tcmc.targetArtifactoryManager.CreateRepositoryWithParams(params, repoKey)
 		if err != nil {
 			return
 		}

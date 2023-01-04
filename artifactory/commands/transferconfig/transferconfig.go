@@ -113,7 +113,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
+	if _, err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
@@ -184,7 +184,7 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 		return err
 	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if err := validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
+	if _, err = validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return err
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
@@ -258,23 +258,23 @@ func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager art
 
 // Make sure source and target Artifactory URLs are different.
 // Also make sure that the source Artifactory version is sufficient.
-func validateMinVersionAndDifferentServers(sourceServicesManager artifactory.ArtifactoryServicesManager, sourceServerDetails, targetServerDetails *config.ServerDetails) error {
+func validateMinVersionAndDifferentServers(sourceServicesManager artifactory.ArtifactoryServicesManager, sourceServerDetails, targetServerDetails *config.ServerDetails) (string, error) {
 	log.Info("Verifying minimum version of the source server...")
 	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minArtifactoryVersion)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// Avoid exporting and importing to the same server
 	log.Info("Verifying source and target servers are different...")
 	if sourceServerDetails.GetArtifactoryUrl() == targetServerDetails.GetArtifactoryUrl() {
-		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
+		return "", errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
 
-	return nil
+	return sourceArtifactoryVersion, nil
 }
 
 func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager artifactory.ArtifactoryServicesManager) error {

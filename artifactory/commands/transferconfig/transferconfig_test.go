@@ -118,12 +118,12 @@ func TestSanityVerifications(t *testing.T) {
 
 	// Test low artifactory version
 	rtVersion = "6.0.0"
-	err := validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
+	_, err := validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
 	assert.ErrorContains(t, err, "while this operation requires version")
 
 	// Test same source and target Artifactory servers
 	rtVersion = minArtifactoryVersion
-	err = validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
+	_, err = validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
 	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 
 	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)

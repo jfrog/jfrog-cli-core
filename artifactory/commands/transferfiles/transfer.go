@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -669,4 +670,31 @@ func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error 
 	}
 	log.Info("data-transfer plugin version: " + verifyResponse.Version)
 	return nil
+}
+
+// Loop on json files containing FilesErrors and collect them to one FilesErrors object.
+func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
+	for _, logPath := range logPaths {
+		var exists bool
+		exists, err = fileutils.IsFileExists(logPath, false)
+		if err != nil {
+			return
+		}
+		if !exists {
+			err = fmt.Errorf("log file: %s does not exist", logPath)
+			return
+		}
+		var content []byte
+		content, err = fileutils.ReadFile(logPath)
+		if err != nil {
+			return
+		}
+		fileErrors := new(FilesErrors)
+		err = errorutils.CheckError(json.Unmarshal(content, &fileErrors))
+		if err != nil {
+			return
+		}
+		allErrors.Errors = append(allErrors.Errors, fileErrors.Errors...)
+	}
+	return
 }

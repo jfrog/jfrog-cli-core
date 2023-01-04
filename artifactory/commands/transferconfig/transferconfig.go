@@ -420,7 +420,7 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 				return true, err
 			}
 
-			log.Debug("Artifactory response: ", resp.Status)
+			log.Debug("Artifactory response:", resp.Status)
 			timestamp = body
 			log.Info("Config import timestamp: " + string(timestamp))
 			return false, nil

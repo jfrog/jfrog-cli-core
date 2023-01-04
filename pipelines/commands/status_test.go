@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-func Test_monitorStatusChange(t *testing.T) {
+func TestMonitorStatusChange(t *testing.T) {
 	type args struct {
-		pipStatus string
-		reStatus  string
+		pipeStatus string
+		reStatus   string
 	}
 	a1 := args{"waiting", "processing"}
 	a2 := args{"processing", "processing"}
@@ -24,16 +24,16 @@ func Test_monitorStatusChange(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := monitorStatusChange(tt.args.pipStatus, tt.args.reStatus); got != tt.want {
+			if got := monitorStatusChange(tt.args.pipeStatus, tt.args.reStatus); got != tt.want {
 				t.Errorf("monitorStatusChange() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_hasPipelineRunEnded(t *testing.T) {
+func TestHasPipelineRunEnded(t *testing.T) {
 	type args struct {
-		pipStatus string
+		pipeStatus string
 	}
 	a1 := args{"processing"}
 	a2 := args{"cancelled"}
@@ -53,45 +53,14 @@ func Test_hasPipelineRunEnded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hasPipelineRunEnded(tt.args.pipStatus); got != tt.want {
+			if got := hasPipelineRunEnded(tt.args.pipeStatus); got != tt.want {
 				t.Errorf("hasPipelineRunEnded() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_contains(t *testing.T) {
-	type args struct {
-		s []string
-		e string
-	}
-	s1 := []string{"pip", "status", "trigger", "version"}
-	s2 := []string{"pip", "sync", "trigger", "version"}
-	s3 := []string{}
-	e3 := "sync"
-	e1 := "sync"
-	a1 := args{s1, e1}
-	a2 := args{s2, e1}
-	a3 := args{s3, e3}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"should return false when s doesnt contain e ", a1, false},
-		{"should return true when s contain e value", a2, true},
-		{"should return false when s is empty", a3, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := contains(tt.args.s, tt.args.e); got != tt.want {
-				t.Errorf("contains() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_getPipelineStatusAndColorCode(t *testing.T) {
+func TestGetPipelineStatusAndColorCode(t *testing.T) {
 	type args struct {
 		pipeline *services.Pipelines
 	}
@@ -144,6 +113,50 @@ func Test_getPipelineStatusAndColorCode(t *testing.T) {
 			}
 			if got2 != tt.want2 {
 				t.Errorf("getPipelineStatusAndColorCode() got2 = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}
+
+func TestConvertSecToDay(t *testing.T) {
+	type args struct {
+		sec int
+	}
+	a1 := args{60}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"Test when given seconds", a1, "0D 0H 1M 0S"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertSecToDay(tt.args.sec); got != tt.want {
+				t.Errorf("convertSecToDay() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHasPipelineRunEnded(t *testing.T) {
+	type args struct {
+		pipStatus string
+	}
+	a1 := args{pipStatus: "success"}
+	a2 := args{pipStatus: "processing"}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"Should return true status is present in list of statuses", a1, true},
+		{"Should return false status is present in list of statuses", a2, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasPipelineRunEnded(tt.args.pipStatus); got != tt.want {
+				t.Errorf("hasPipelineRunEnded() = %v, want %v", got, tt.want)
 			}
 		})
 	}

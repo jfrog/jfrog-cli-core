@@ -4,7 +4,6 @@ import (
 	utilsconfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/pipelines"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -13,7 +12,7 @@ func CreateServiceManager(serviceDetails *utilsconfig.ServerDetails) (*pipelines
 	pipelinesDetails := *serviceDetails
 	pAuth, authErr := pipelinesDetails.CreatePipelinesAuthConfig() // create pipelines authentication config
 	if authErr != nil {
-		return nil, errorutils.CheckError(authErr)
+		return nil, authErr
 	}
 	serviceConfig, err := clientConfig.NewConfigBuilder().
 		SetServiceDetails(pAuth).
@@ -21,12 +20,12 @@ func CreateServiceManager(serviceDetails *utilsconfig.ServerDetails) (*pipelines
 		Build()
 	if err != nil {
 		clientlog.Error(err)
-		return nil, errorutils.CheckError(err)
+		return nil, err
 	}
-	pipelinesMgr, pipErr := pipelines.New(serviceConfig)
-	if pipErr != nil {
-		clientlog.Error(pipErr)
-		return nil, errorutils.CheckError(pipErr)
+	pipelinesMgr, pipeErr := pipelines.New(serviceConfig)
+	if pipeErr != nil {
+		clientlog.Error(pipeErr)
+		return nil, pipeErr
 	}
 	return pipelinesMgr, nil
 }

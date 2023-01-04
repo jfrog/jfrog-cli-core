@@ -14,6 +14,11 @@ type SyncStatusCommand struct {
 	repoPath      string
 }
 
+const (
+	PipeStatusFormat = "Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\n" +
+		"CommitSHA: %s\nCommitter: %s\nCommitMessage: %s\nSyncSummary: %s\n"
+)
+
 func NewSyncStatusCommand() *SyncStatusCommand {
 	return &SyncStatusCommand{}
 }
@@ -51,16 +56,14 @@ func (sc *SyncStatusCommand) Run() (string, error) {
 	if err != nil {
 		return "", syncServErr
 	}
-	pipSyncStatus := status.GetPipelineStatus(pipelineSyncStatuses[0].LastSyncStatusCode)
+	pipeSyncStatus := status.GetPipelineStatus(pipelineSyncStatuses[0].LastSyncStatusCode)
 	if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
-		colorCode := status.GetStatusColorCode(pipSyncStatus)
-		return colorCode.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\n"+
-			"CommitSHA: %s\nCommitter: %s\nCommitMessage: %s\nSyncSummary: %s\n", pipSyncStatus, *pipelineSyncStatuses[0].IsSyncing,
+		colorCode := status.GetStatusColorCode(pipeSyncStatus)
+		return colorCode.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing,
 			pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha,
 			pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs), nil
 	}
-	return fmt.Sprintf("Status: %s\nIsSyncing: %t\nLastSyncStartedAt: %s\nLastSyncEndedAt: %s\nCommitSHA: %s\n"+
-		"Committer: %s\nCommitMessage: %s\n", pipSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
+	return fmt.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
 		pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer,
-		pipelineSyncStatuses[0].CommitData.CommitMsg), nil
+		pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs), nil
 }

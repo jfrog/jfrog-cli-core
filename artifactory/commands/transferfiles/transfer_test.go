@@ -21,7 +21,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -426,8 +425,5 @@ func TestCreateErrorsSummaryFile(t *testing.T) {
 	}()
 	expectedFileErrors := new([]api.FileUploadStatusResponse)
 	assert.NoError(t, gocsv.UnmarshalFile(expectedFile, expectedFileErrors))
-
-	if !reflect.DeepEqual(expectedFileErrors, actualFileErrors) {
-		t.Errorf("Expected value: %v, got: %v.", expectedFileErrors, actualFileErrors)
-	}
+	assert.ElementsMatch(t, *expectedFileErrors, *actualFileErrors)
 }

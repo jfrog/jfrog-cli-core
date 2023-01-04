@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
+	"github.com/jfrog/jfrog-cli-core/v2/pipelines/status"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -17,9 +18,10 @@ type WorkspaceCommand struct {
 
 type StepStatus struct {
 	Name             string `col-name:"Name"`
-	StatusCode       int    `col-name:"Status Code"`
+	StatusCode       int
 	TriggeredAt      string `col-name:"Triggered At"`
 	ExternalBuildUrl string `col-name:"Build URL"`
+	StatusString     string `col-name:"Status Code"`
 }
 
 // create Github integration
@@ -105,15 +107,19 @@ func (ws *WorkspaceCommand) Run() (string, error) {
 		if stepErr != nil {
 			return "", stepErr
 		}
-		//log.Output(PrettyString(string(stepstat)))
+		log.Output(PrettyString(string(stepstat)))
 		stepTable := make([]StepStatus, 0)
 		err := json.Unmarshal(stepstat, &stepTable)
 		if err != nil {
 			return "", err
 		}
+		for i, step := range stepTable {
+			stepTable[i].StatusString = status.GetPipelineStatus(step.StatusCode)
+		}
 		log.Output()
 		log.Output()
 		log.Output(coreutils.PrintBold(coreutils.PrintTitle(runId.Name + " Step Status")))
+		log.Output(stepTable)
 		err = coreutils.PrintTable(stepTable, "", "No pipelines found", true)
 		if err != nil {
 			return "", err

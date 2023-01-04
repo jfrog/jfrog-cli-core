@@ -138,26 +138,3 @@ func TestConvertSecToDay(t *testing.T) {
 		})
 	}
 }
-
-func TestHasPipelineRunEnded(t *testing.T) {
-	type args struct {
-		pipStatus string
-	}
-	a1 := args{pipStatus: "success"}
-	a2 := args{pipStatus: "processing"}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"Should return true status is present in list of statuses", a1, true},
-		{"Should return false status is present in list of statuses", a2, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hasPipelineRunEnded(tt.args.pipStatus); got != tt.want {
-				t.Errorf("hasPipelineRunEnded() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}

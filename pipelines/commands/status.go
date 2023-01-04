@@ -69,13 +69,13 @@ func (sc *StatusCommand) SetMultiBranch(multiBranch bool) *StatusCommand {
 }
 
 func (sc *StatusCommand) Run() (string, error) {
-	// create service manager to fetch run status
+	// Create service manager to fetch run status
 	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
 	if svcMgrErr != nil {
 		return "", svcMgrErr
 	}
 
-	// get pipeline status using branch name, pipelines name and whether it is multi branch
+	// Get pipeline status using branch name, pipelines name and whether it is multi branch
 	matchingPipes, pipeStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
 	if pipeStatusErr != nil {
 		return "", pipeStatusErr
@@ -83,8 +83,8 @@ func (sc *StatusCommand) Run() (string, error) {
 	var res string
 	for i := range matchingPipes.Pipelines {
 		pipe := matchingPipes.Pipelines[i]
-		if pipe.LatestRunID != 0 { // filter out pipelines which are not run at all
-			if sc.pipelineName != "" && sc.notify { // when notification option is selected use this flow to notify
+		if pipe.LatestRunID != 0 { // Filter out pipelines which are not run at all
+			if sc.pipelineName != "" && sc.notify { // When notification option is selected use this flow to notify
 				monErr := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
 				if monErr != nil {
 					return "", monErr
@@ -115,7 +115,7 @@ func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (string, color.
 // ConvertSecToDay converts seconds passed as integer to
 // - D H M S format
 func convertSecToDay(sec int) string {
-	log.Debug("received duration is: ", sec)
+	log.Debug("Duration time in seconds: ", sec)
 	day := sec / (24 * 3600)
 
 	sec = sec % (24 * 3600)
@@ -131,7 +131,7 @@ func convertSecToDay(sec int) string {
 }
 
 // monitorStatusAndNotify monitor for status change and
-// send notification if there is a change identified
+// Send notification if there is a change identified
 func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.PipelinesServicesManager, branch string, pipName string, isMultiBranch bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
@@ -163,17 +163,17 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 	}
 }
 
-// check for change in status with the latest status
+// Check for change in status with the latest status
 func monitorStatusChange(pipStatus, reStatus string) bool {
 	if reStatus == pipStatus {
 		return false
 	}
 	reStatus = pipStatus
-	log.Debug("previous status : %s current status: %s", reStatus, pipStatus)
+	log.Debug("Previous status : %s current status: %s", reStatus, pipStatus)
 	return true
 }
 
-// hasPipelineRunEnded if pipeline status is one of
+// HasPipelineRunEnded if pipeline status is one of
 // CANCELLED, FAILED, SUCCESS, ERROR, TIMEOUT pipeline run
 // life is considered to be done.
 func hasPipelineRunEnded(pipStatus string) bool {
@@ -185,6 +185,6 @@ func hasPipelineRunEnded(pipStatus string) bool {
 func sendNotification(pipStatus string, pipName string) {
 	err := beeep.Alert("Pipelines CLI", pipName+" - "+pipStatus, "")
 	if err != nil {
-		log.Warn("failed to send notification")
+		log.Warn("Failed to send notification")
 	}
 }

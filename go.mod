@@ -7,6 +7,7 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
 	github.com/gocarina/gocsv v0.0.0-20221216233619-1fea7ae8d380
+	github.com/goldeneggg/structil v0.9.1
 	github.com/google/uuid v1.1.2
 	github.com/gookit/color v1.5.2
 	github.com/jedib0t/go-pretty/v6 v6.4.3

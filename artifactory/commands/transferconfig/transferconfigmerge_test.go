@@ -4,32 +4,39 @@ import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 const (
 	QuotaNumber = 1073741825
 )
 
-var (
-	tcc TransferConfigCommand
-)
-
-func init() {
-	tcc = TransferConfigCommand{
-		sourceServerDetails:  nil,
-		targetServerDetails:  nil,
-		dryRun:               false,
-		force:                false,
-		verbose:              false,
-		merge:                false,
-		includeReposPatterns: nil,
-		excludeReposPatterns: nil,
-		workingDir:           "",
+func TestCreateAndValidateConflicts(t *testing.T) {
+	tests := []struct {
+		sameKey                bool
+		sameName               bool
+		sameDescription        bool
+		sameAdmin              bool
+		sameQuotaBytes         bool
+		sameSoftLimit          bool
+		expectedConflictsCount int
+	}{
+		{true, true, true, true, true, true, 0},
+		{true, true, true, true, true, false, 1},
+		{true, true, true, true, false, false, 2},
+		{true, true, true, false, false, false, 3},
+		{true, true, false, false, false, false, 4},
+		{true, false, false, false, false, false, 5},
+		{false, false, false, false, false, false, 6},
+	}
+	for _, test := range tests {
+		source, target := createProjects(test.sameKey, test.sameName, test.sameDescription, test.sameAdmin, test.sameQuotaBytes, test.sameSoftLimit)
+		conflicts, err := compareInterfaces(source, target)
+		assert.NoError(t, err)
+		assert.Equal(t, test.expectedConflictsCount, len(conflicts))
 	}
 }
 
-func getTwoProject(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes, sameSoftLimit bool) (source, target services.Project) {
+func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes, sameSoftLimit bool) (source, target services.Project) {
 	sourceKey := "ProjectKey"
 	targetKey := sourceKey
 	sourceName := "ProjectName"
@@ -40,7 +47,6 @@ func getTwoProject(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes
 	targetAdmin := &services.AdminPrivileges{nil, nil, nil}
 	sourceQuotaBytes := float64(QuotaNumber)
 	targetQuotaBytes := float64(QuotaNumber)
-	b := true
 	if !sameKey {
 		targetKey = sourceKey + "Target"
 	}
@@ -50,15 +56,16 @@ func getTwoProject(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes
 	if !sameDescription {
 		targetDescription = sourceDescription + "Target"
 	}
+	trueValue := true
 	if !sameAdmin {
-		targetAdmin.ManageMembers = &b
+		targetAdmin.ManageMembers = &trueValue
 
 	}
 	var sourceSoftLimit *bool = nil
 	var targetSoftLimit *bool = nil
 
 	if !sameSoftLimit {
-		targetSoftLimit = &b
+		targetSoftLimit = &trueValue
 	}
 	if !sameQuotaBytes {
 		targetQuotaBytes = targetQuotaBytes + 125
@@ -66,35 +73,4 @@ func getTwoProject(sameKey, sameName, sameDescription, sameAdmin, sameQuotaBytes
 	source = services.Project{sourceName, sourceDescription, sourceAdmin, sourceSoftLimit, sourceQuotaBytes, sourceKey}
 	target = services.Project{targetName, targetDescription, targetAdmin, targetSoftLimit, targetQuotaBytes, targetKey}
 	return
-}
-
-func createAndVlidateConflicts(t *testing.T) []ProjectConflict {
-	var conflicts []ProjectConflict
-	source, target := getTwoProject(true, false, true, true, true, true)
-
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 1, len(conflicts))
-	//Checking if we skip transferring project
-	source, target = getTwoProject(true, true, true, true, true, true)
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 1, len(conflicts))
-	source, target = getTwoProject(true, true, false, true, true, true)
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 2, len(conflicts))
-	source, target = getTwoProject(true, true, true, true, false, true)
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 3, len(conflicts))
-	source, target = getTwoProject(true, true, true, true, true, false)
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 4, len(conflicts))
-	source, target = getTwoProject(true, true, true, false, false, false)
-	conflicts, _ = tcc.findConflict(source, target, conflicts)
-	assert.Equal(t, 5, len(conflicts))
-	return conflicts
-}
-
-func TestCreateConflictCSV(t *testing.T) {
-	conflicts := createAndVlidateConflicts(t)
-	_, err := tcc.createConflictsCSVSummary(conflicts, time.Now())
-	assert.NoError(t, err)
 }

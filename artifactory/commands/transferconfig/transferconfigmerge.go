@@ -46,6 +46,16 @@ func (tcmc *TransferConfigMergeCommand) CommandName() string {
 	return "rt_transfer_config_merge"
 }
 
+func (tcmc *TransferConfigMergeCommand) SetIncludeReposPatterns(includeReposPatterns []string) *TransferConfigMergeCommand {
+	tcmc.includeReposPatterns = includeReposPatterns
+	return tcmc
+}
+
+func (tcmc *TransferConfigMergeCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigMergeCommand {
+	tcmc.excludeReposPatterns = excludeReposPatterns
+	return tcmc
+}
+
 type Conflict struct {
 	Type                ConflictType `json:"type,omitempty"`
 	SourceName          string       `json:"source_name,omitempty"`
@@ -83,7 +93,7 @@ func (tcmc *TransferConfigMergeCommand) Run() (err error) {
 		}
 		log.Info(fmt.Sprintf("We found %d conflicts when comparing the source and target instances. Please review the following report available at %s", len(conflicts), path))
 	} else {
-		log.Info("No conflicts were found when comparing the source and target instances.")
+		log.Info("No Merge conflicts were found while comparing the source and target instances.")
 	}
 	return
 }
@@ -133,7 +143,6 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 }
 func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (err error) {
 	log.Info("Getting all Projects ...")
-
 	sourceProjects, err := tcmc.sourceAccessManager.GetAllProjects()
 	if err != nil {
 		return
@@ -244,6 +253,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 		}
 	}
 	if len(reposToTransfer) > 0 {
+		log.Info(fmt.Sprintf("Transferring %d repositories ...", len(reposToTransfer)))
 		err = tcmc.transferRepositoriesToTarget(reposToTransfer)
 	}
 	return

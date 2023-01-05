@@ -2,8 +2,8 @@ package coreutils
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+	"github.com/goldeneggg/structil"
 	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
@@ -509,16 +509,11 @@ func GetJfrogTransferDir() (string, error) {
 }
 
 func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
-	b, err := json.Marshal(interfaceObj)
+	getter, err := structil.NewGetter(interfaceObj)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	var f interface{}
-	err = json.Unmarshal(b, &f)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-	return f.(map[string]interface{}), nil
+	return getter.ToMap(), nil
 }
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {

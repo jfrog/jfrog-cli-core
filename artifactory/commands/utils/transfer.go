@@ -60,7 +60,7 @@ func CreateCSVFile(filePrefix string, items interface{}, timeStarted time.Time) 
 			err = e
 		}
 	}()
-	// Marshal JSON typed FileWithLongProperty array to CSV file
+	// Marshal JSON typed items array to CSV file
 	err = errorutils.CheckError(gocsv.MarshalFile(items, summaryCsv))
 	return
 }

@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/gen2brain/beeep"
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/status"
@@ -152,7 +151,6 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 					pipeline.Name, Branch, pipeline.PipelineSourceBranch, Run, pipeline.Run.RunNumber, Duration,
 					duration, StatusLabel, reStatus)
 				log.Info(res)
-				sendNotification(statusValue, pipeline.Name)
 				if hasPipelineRunEnded(statusValue) {
 					return nil
 				}
@@ -179,12 +177,4 @@ func monitorStatusChange(pipStatus, reStatus string) bool {
 func hasPipelineRunEnded(pipStatus string) bool {
 	pipRunEndLife := []string{status.SUCCESS, status.FAILURE, status.ERROR, status.CANCELLED, status.TIMEOUT}
 	return slices.Contains(pipRunEndLife, pipStatus)
-}
-
-// sendNotification sends notification
-func sendNotification(pipStatus string, pipName string) {
-	err := beeep.Alert("Pipelines CLI", pipName+" - "+pipStatus, "")
-	if err != nil {
-		log.Warn("Failed to send notification")
-	}
 }

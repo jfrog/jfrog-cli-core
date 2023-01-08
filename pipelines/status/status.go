@@ -2,49 +2,51 @@ package status
 
 import "github.com/gookit/color"
 
+type PipelineStatus string
+
 const (
-	QUEUED           = "queued"
-	PROCESSING       = "processing"
-	SUCCESS          = "success"
-	FAILURE          = "failure"
-	ERROR            = "error"
-	CANCELLED        = "cancelled"
-	TIMEOUT          = "timeout"
-	WAITING          = "waiting"
-	SKIPPED          = "skipped"
-	UNSTABLE         = "unstable"
-	STOPPED          = "stopped"
-	DELETED          = "deleted"
-	CACHED           = "cached"
-	CANCELLING       = "cancelling"
-	TIMINGOUT        = "timingOut"
-	CREATING         = "creating"
-	READY            = "ready"
-	ONLINE           = "online"
-	OFFLINE          = "offline"
-	UNHEALTHY        = "unhealthy"
-	ONLINEREQUESTED  = "onlineRequested"
-	OFFLINEREQUESTED = "offlineRequested"
-	PENDINGAPPROVAL  = "pendingApproval"
+	QUEUED           PipelineStatus = "queued"
+	PROCESSING       PipelineStatus = "processing"
+	SUCCESS          PipelineStatus = "success"
+	FAILURE          PipelineStatus = "failure"
+	ERROR            PipelineStatus = "error"
+	CANCELLED        PipelineStatus = "cancelled"
+	TIMEOUT          PipelineStatus = "timeout"
+	WAITING          PipelineStatus = "waiting"
+	SKIPPED          PipelineStatus = "skipped"
+	UNSTABLE         PipelineStatus = "unstable"
+	STOPPED          PipelineStatus = "stopped"
+	DELETED          PipelineStatus = "deleted"
+	CACHED           PipelineStatus = "cached"
+	CANCELLING       PipelineStatus = "cancelling"
+	TIMINGOUT        PipelineStatus = "timingOut"
+	CREATING         PipelineStatus = "creating"
+	READY            PipelineStatus = "ready"
+	ONLINE           PipelineStatus = "online"
+	OFFLINE          PipelineStatus = "offline"
+	UNHEALTHY        PipelineStatus = "unhealthy"
+	ONLINEREQUESTED  PipelineStatus = "onlineRequested"
+	OFFLINEREQUESTED PipelineStatus = "offlineRequested"
+	PENDINGAPPROVAL  PipelineStatus = "pendingApproval"
+	NOTDEFINED       PipelineStatus = "notDefined"
 )
 
 // GetStatusColorCode returns gokit/color.Color
 // based on status input parameter
-func GetStatusColorCode(status string) color.Color {
-	colorCode := color.Blue
-	if status == SUCCESS {
+func GetStatusColorCode(status PipelineStatus) color.Color {
+	switch status {
+	case SUCCESS:
 		return color.Green
-	} else if status == FAILURE || status == ERROR || status == CANCELLED || status == TIMEOUT {
+	case FAILURE, ERROR, CANCELLED, TIMEOUT:
 		return color.Red
 	}
-	return colorCode
+	return color.Blue
 }
 
 // GetPipelineStatus based on pipelines reStatus code
 // returns respective reStatus in string format
 // for eq:- 4002 return success
-func GetPipelineStatus(statusCode int) string {
-	status := "NOT DEFINED"
+func GetPipelineStatus(statusCode int) PipelineStatus {
 	switch statusCode {
 	case 4000:
 		return QUEUED
@@ -92,7 +94,6 @@ func GetPipelineStatus(statusCode int) string {
 		return OFFLINEREQUESTED
 	case 4022:
 		return PENDINGAPPROVAL
-
 	}
-	return status
+	return NOTDEFINED
 }

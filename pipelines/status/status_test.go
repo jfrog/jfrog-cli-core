@@ -86,11 +86,11 @@ func TestGetPipelineStatus(t *testing.T) {
 		{"should return onlineRequested for status code 4020", a21, "onlineRequested"},
 		{"should return offlineRequested for status code 4021", a22, "offlineRequested"},
 		{"should return pendingApproval for status code 4022", a23, "pendingApproval"},
-		{"should return un defined for status code other than in range [4000 - 4022]", a24, "NOT DEFINED"},
+		{"should return un defined for status code other than in range [4000 - 4022]", a24, "notDefined"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPipelineStatus(tt.args.statusCode); got != tt.want {
+			if got := GetPipelineStatus(tt.args.statusCode); string(got) != tt.want {
 				t.Errorf("GetPipelineStatus() = %v, want %v", got, tt.want)
 			}
 		})

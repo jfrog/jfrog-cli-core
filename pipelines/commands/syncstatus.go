@@ -46,24 +46,26 @@ func (sc *SyncStatusCommand) SetRepoPath(repo string) *SyncStatusCommand {
 	return sc
 }
 
-func (sc *SyncStatusCommand) Run() (string, error) {
+func (sc *SyncStatusCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(sc.serverDetails)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	pipelineSyncStatuses, syncServErr := serviceManager.GetSyncStatusForPipelineResource(sc.repoPath, sc.branch)
 	if err != nil {
-		return "", syncServErr
+		return syncServErr
 	}
 	pipeSyncStatus := status.GetPipelineStatus(pipelineSyncStatuses[0].LastSyncStatusCode)
 	if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
 		colorCode := status.GetStatusColorCode(pipeSyncStatus)
-		return colorCode.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing,
+		clientlog.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing,
 			pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha,
-			pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs), nil
+			pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
+		return nil
 	}
-	return fmt.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
+	clientlog.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
 		pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer,
-		pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs), nil
+		pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
+	return nil
 }

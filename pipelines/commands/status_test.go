@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -12,21 +13,17 @@ func TestMonitorStatusChange(t *testing.T) {
 		pipeStatus string
 		reStatus   string
 	}
-	a1 := args{"waiting", "processing"}
-	a2 := args{"processing", "processing"}
-	tests := []struct {
+	testCases := []struct {
 		name string
 		args args
 		want bool
 	}{
-		{"test when result status is different from previous state", a1, true},
-		{"test when result status is same as previous", a2, false},
+		{"test when result status is different from previous state", args{"waiting", "processing"}, true},
+		{"test when result status is same as previous", args{"processing", "processing"}, false},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := monitorStatusChange(tt.args.pipeStatus, tt.args.reStatus); got != tt.want {
-				t.Errorf("monitorStatusChange() = %v, want %v", got, tt.want)
-			}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assert.Equal(t, monitorStatusChange(testCase.args.pipeStatus, testCase.args.reStatus), testCase.want)
 		})
 	}
 }
@@ -105,7 +102,7 @@ func TestGetPipelineStatusAndColorCode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1, got2 := getPipelineStatusAndColorCode(tt.args.pipeline)
-			if got != tt.want {
+			if string(got) != tt.want {
 				t.Errorf("getPipelineStatusAndColorCode() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {

@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/pipelines"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
 	"time"
@@ -82,15 +83,17 @@ func (sc *StatusCommand) Run() (string, error) {
 	var res string
 	for i := range matchingPipes.Pipelines {
 		pipe := matchingPipes.Pipelines[i]
-		if pipe.LatestRunID != 0 { // Filter out pipelines which are not run at all
-			if sc.pipelineName != "" && sc.notify { // When notification option is selected use this flow to notify
+		// Filter out pipelines which are not run at all
+		if pipe.LatestRunID != 0 {
+			// When notification option is selected use this flow to notify
+			if sc.pipelineName != "" && sc.notify {
 				monErr := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
 				if monErr != nil {
 					return "", monErr
 				}
 			} else {
 				respStatus, colorCode, duration := getPipelineStatusAndColorCode(&pipe)
-				return colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", "PipelineName :", pipe.Name, "Branch :", pipe.PipelineSourceBranch, "Run :", pipe.Run.RunNumber, "Duration :", duration, "Status :", respStatus), nil
+				return colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", "PipelineName:", pipe.Name, "Branch:", pipe.PipelineSourceBranch, "Run:", pipe.Run.RunNumber, "Duration:", duration, "Status:", respStatus), nil
 			}
 		}
 	}
@@ -99,16 +102,16 @@ func (sc *StatusCommand) Run() (string, error) {
 
 // getPipelineStatusAndColorCode based on pipeline status code
 // return color to be used for pretty printing
-func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (string, color.Color, string) {
-	s := status.GetPipelineStatus(pipeline.Run.StatusCode)
-	colorCode := status.GetStatusColorCode(s)
+func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (status.PipelineStatus, color.Color, string) {
+	pipelineStatus := status.GetPipelineStatus(pipeline.Run.StatusCode)
+	colorCode := status.GetStatusColorCode(pipelineStatus)
 	durationSeconds := pipeline.Run.DurationSeconds
 	if durationSeconds == 0 {
 		// Calculate the duration time by differentiating created time from the current time
 		durationSeconds = int(time.Now().Unix() - pipeline.Run.CreatedAt.Unix())
 	}
 
-	return s, colorCode, convertSecToDay(durationSeconds)
+	return pipelineStatus, colorCode, convertSecToDay(durationSeconds)
 }
 
 // ConvertSecToDay converts seconds passed as integer to
@@ -138,24 +141,24 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return errorutils.CheckError(ctx.Err())
 		default:
-			p, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName, isMultiBranch)
+			pipelineStatus, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName, isMultiBranch)
 			if err != nil {
 				return err
 			}
-			pipeline := p.Pipelines[0]
+			pipeline := pipelineStatus.Pipelines[0]
 			statusValue, colorCode, duration := getPipelineStatusAndColorCode(&pipeline)
-			if monitorStatusChange(statusValue, reStatus) {
+			if monitorStatusChange(string(statusValue), reStatus) {
 				res := colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", PipelineName,
 					pipeline.Name, Branch, pipeline.PipelineSourceBranch, Run, pipeline.Run.RunNumber, Duration,
 					duration, StatusLabel, reStatus)
 				log.Info(res)
-				if hasPipelineRunEnded(statusValue) {
+				if hasPipelineRunEnded(string(statusValue)) {
 					return nil
 				}
 			}
-			reStatus = statusValue
+			reStatus = string(statusValue)
 			time.Sleep(5 * time.Second)
 		}
 	}
@@ -167,7 +170,7 @@ func monitorStatusChange(pipStatus, reStatus string) bool {
 		return false
 	}
 	reStatus = pipStatus
-	log.Debug("Previous status : %s current status: %s", reStatus, pipStatus)
+	log.Debug("Previous status: %s current status: %s", reStatus, pipStatus)
 	return true
 }
 
@@ -175,6 +178,6 @@ func monitorStatusChange(pipStatus, reStatus string) bool {
 // CANCELLED, FAILED, SUCCESS, ERROR, TIMEOUT pipeline run
 // life is considered to be done.
 func hasPipelineRunEnded(pipStatus string) bool {
-	pipRunEndLife := []string{status.SUCCESS, status.FAILURE, status.ERROR, status.CANCELLED, status.TIMEOUT}
+	pipRunEndLife := []string{string(status.SUCCESS), string(status.FAILURE), string(status.ERROR), string(status.CANCELLED), string(status.TIMEOUT)}
 	return slices.Contains(pipRunEndLife, pipStatus)
 }

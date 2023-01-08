@@ -9,22 +9,19 @@ func TestGetStatusColorCode(t *testing.T) {
 	type args struct {
 		status PipelineStatus
 	}
-	a1 := args{SUCCESS}
-	a2 := args{FAILURE}
-	a3 := args{PROCESSING}
-	tests := []struct {
+	testCases := []struct {
 		name string
 		args args
 		want color.Color
 	}{
-		{"get color code when status is success", a1, color.Green},
-		{"get color code when status is failure", a2, color.Red},
-		{"get color code when status is processing", a3, color.Blue},
+		{"get color code when status is success", args{SUCCESS}, color.Green},
+		{"get color code when status is failure", args{FAILURE}, color.Red},
+		{"get color code when status is processing", args{PROCESSING}, color.Blue},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := GetStatusColorCode(test.args.status); got != test.want {
-				t.Errorf("GetStatusColorCode() = %v, want %v", got, test.want)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := GetStatusColorCode(testCase.args.status); got != testCase.want {
+				t.Errorf("GetStatusColorCode() = %v, want %v", got, testCase.want)
 			}
 		})
 	}
@@ -34,64 +31,40 @@ func TestGetPipelineStatus(t *testing.T) {
 	type args struct {
 		statusCode int
 	}
-	a1 := args{4000}
-	a2 := args{4001}
-	a3 := args{4002}
-	a4 := args{4003}
-	a5 := args{4004}
-	a6 := args{4005}
-	a7 := args{4006}
-	a8 := args{4007}
-	a9 := args{4008}
-	a10 := args{4009}
-	a11 := args{4010}
-	a12 := args{4011}
-	a13 := args{4012}
-	a14 := args{4013}
-	a15 := args{4014}
-	a16 := args{4015}
-	a17 := args{4016}
-	a18 := args{4017}
-	a19 := args{4018}
-	a20 := args{4019}
-	a21 := args{4020}
-	a22 := args{4021}
-	a23 := args{4022}
-	a24 := args{9999}
-	tests := []struct {
+	testCases := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"should return queued for status code 4000", a1, "queued"},
-		{"should return processing for status code 4001", a2, "processing"},
-		{"should return success for status code 4002", a3, "success"},
-		{"should return failure for status code 4003", a4, "failure"},
-		{"should return error for status code 4004", a5, "error"},
-		{"should return waiting for status code 4005", a6, "waiting"},
-		{"should return cancelled for status code 4006", a7, "cancelled"},
-		{"should return unstable for status code 4007", a8, "unstable"},
-		{"should return skipped for status code 4008", a9, "skipped"},
-		{"should return timeout for status code 4009", a10, "timeout"},
-		{"should return stopped for status code 4010", a11, "stopped"},
-		{"should return deleted for status code 4011", a12, "deleted"},
-		{"should return cached for status code 4012", a13, "cached"},
-		{"should return cancelling for status code 4013", a14, "cancelling"},
-		{"should return timingOut for status code 4014", a15, "timingOut"},
-		{"should return creating for status code 4015", a16, "creating"},
-		{"should return ready for status code 4016", a17, "ready"},
-		{"should return online for status code 4017", a18, "online"},
-		{"should return offline for status code 4018", a19, "offline"},
-		{"should return unhealthy for status code 4019", a20, "unhealthy"},
-		{"should return onlineRequested for status code 4020", a21, "onlineRequested"},
-		{"should return offlineRequested for status code 4021", a22, "offlineRequested"},
-		{"should return pendingApproval for status code 4022", a23, "pendingApproval"},
-		{"should return un defined for status code other than in range [4000 - 4022]", a24, "notDefined"},
+		{"should return queued for status code 4000", args{4000}, "queued"},
+		{"should return processing for status code 4001", args{4001}, "processing"},
+		{"should return success for status code 4002", args{4002}, "success"},
+		{"should return failure for status code 4003", args{4003}, "failure"},
+		{"should return error for status code 4004", args{4004}, "error"},
+		{"should return waiting for status code 4005", args{4005}, "waiting"},
+		{"should return cancelled for status code 4006", args{4006}, "cancelled"},
+		{"should return unstable for status code 4007", args{4007}, "unstable"},
+		{"should return skipped for status code 4008", args{4008}, "skipped"},
+		{"should return timeout for status code 4009", args{4009}, "timeout"},
+		{"should return stopped for status code 4010", args{4010}, "stopped"},
+		{"should return deleted for status code 4011", args{4011}, "deleted"},
+		{"should return cached for status code 4012", args{4012}, "cached"},
+		{"should return cancelling for status code 4013", args{4013}, "cancelling"},
+		{"should return timingOut for status code 4014", args{4014}, "timingOut"},
+		{"should return creating for status code 4015", args{4015}, "creating"},
+		{"should return ready for status code 4016", args{4016}, "ready"},
+		{"should return online for status code 4017", args{4017}, "online"},
+		{"should return offline for status code 4018", args{4018}, "offline"},
+		{"should return unhealthy for status code 4019", args{4019}, "unhealthy"},
+		{"should return onlineRequested for status code 4020", args{4020}, "onlineRequested"},
+		{"should return offlineRequested for status code 4021", args{4021}, "offlineRequested"},
+		{"should return pendingApproval for status code 4022", args{4022}, "pendingApproval"},
+		{"should return un defined for status code other than in range [4000 - 4022]", args{9999}, "notDefined"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPipelineStatus(tt.args.statusCode); string(got) != tt.want {
-				t.Errorf("GetPipelineStatus() = %v, want %v", got, tt.want)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := GetPipelineStatus(testCase.args.statusCode); string(got) != testCase.want {
+				t.Errorf("GetPipelineStatus() = %v, want %v", got, testCase.want)
 			}
 		})
 	}

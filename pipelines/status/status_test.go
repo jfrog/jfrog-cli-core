@@ -7,11 +7,11 @@ import (
 
 func TestGetStatusColorCode(t *testing.T) {
 	type args struct {
-		status string
+		status PipelineStatus
 	}
-	a1 := args{"success"}
-	a2 := args{"failure"}
-	a3 := args{"processing"}
+	a1 := args{SUCCESS}
+	a2 := args{FAILURE}
+	a3 := args{PROCESSING}
 	tests := []struct {
 		name string
 		args args
@@ -21,10 +21,10 @@ func TestGetStatusColorCode(t *testing.T) {
 		{"get color code when status is failure", a2, color.Red},
 		{"get color code when status is processing", a3, color.Blue},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetStatusColorCode(tt.args.status); got != tt.want {
-				t.Errorf("GetStatusColorCode() = %v, want %v", got, tt.want)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := GetStatusColorCode(test.args.status); got != test.want {
+				t.Errorf("GetStatusColorCode() = %v, want %v", got, test.want)
 			}
 		})
 	}

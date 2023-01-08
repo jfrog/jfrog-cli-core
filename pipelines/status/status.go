@@ -82,3 +82,16 @@ func GetPipelineStatus(statusCode int) string {
 	}
 	return status
 }
+
+// GetRunCompletedStatusList returns a string slice with status values
+// which can be considered as run of the step/pipeline is completed
+// and there is nothing left to continue on the step/pipelines
+func GetRunCompletedStatusList() []string {
+	return []string{SUCCESS, FAILURE, ERROR, CANCELLED, SKIPPED}
+}
+
+// GetWaitingForRunAndRunningSteps returns a string slice with staus values
+// which define a step/pipeline that work is yet to be completed
+func GetWaitingForRunAndRunningSteps() []string {
+	return []string{PROCESSING, WAITING, "creating", "ready", QUEUED}
+}

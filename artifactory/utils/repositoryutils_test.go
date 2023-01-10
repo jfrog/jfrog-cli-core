@@ -53,8 +53,8 @@ var shouldIncludeRepositoryTestCases = []struct {
 func TestShouldIncludeRepository(t *testing.T) {
 	for _, testCase := range shouldIncludeRepositoryTestCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			repositoryFilter := &RepositoryFilter{IncludePatterns: testCase.includePatterns, ExcludePatterns: testCase.excludePatterns}
-			actual, err := repositoryFilter.ShouldIncludeRepository(testCase.repoKey)
+			includeExcludeFilter := &IncludeExcludeFilter{IncludePatterns: testCase.includePatterns, ExcludePatterns: testCase.excludePatterns, IsRepository: true}
+			actual, err := includeExcludeFilter.ShouldIncludeItem(testCase.repoKey)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.shouldInclude, actual)
 		})

@@ -25,9 +25,10 @@ var testCases = []struct {
 
 func TestRemoveNonIncludedRepositories(t *testing.T) {
 	for _, testCase := range testCases {
-		repoFilter := &utils.RepositoryFilter{
+		includeExcludeFilter := &utils.IncludeExcludeFilter{
 			IncludePatterns: testCase.includedRepositories,
 			ExcludePatterns: testCase.excludedRepositories,
+			IsRepository:    true,
 		}
 		t.Run(testCase.expectedXml, func(t *testing.T) {
 			testCasesDir := filepath.Join("..", "..", "testdata", "config_xmls_exclude_repos")
@@ -43,7 +44,7 @@ func TestRemoveNonIncludedRepositories(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Run RemoveNonIncludedRepositories and compare
-			result, err := RemoveNonIncludedRepositories(string(inputConfigXml), repoFilter)
+			result, err := RemoveNonIncludedRepositories(string(inputConfigXml), includeExcludeFilter)
 			assert.NoError(t, err)
 			assert.Equal(t, string(expectedConfigXml), result)
 		})

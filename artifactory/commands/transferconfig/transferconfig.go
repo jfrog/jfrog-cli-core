@@ -87,10 +87,11 @@ func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConf
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
-	return &utils.RepositoryFilter{
+func (tcc *TransferConfigCommand) getRepoFilter() *utils.IncludeExcludeFilter {
+	return &utils.IncludeExcludeFilter{
 		IncludePatterns: tcc.includeReposPatterns,
 		ExcludePatterns: tcc.excludeReposPatterns,
+		IsRepository:    true,
 	}
 }
 

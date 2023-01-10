@@ -202,3 +202,46 @@ func (rf *RepositoryFilter) ShouldIncludeRepository(repoKey string) (bool, error
 
 	return true, nil
 }
+
+type IncludeExcludeFilter struct {
+	IncludePatterns []string
+	ExcludePatterns []string
+	IsRepository    bool
+}
+
+func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
+	// If includePattens is empty, include all.
+	repoIncluded := len(rf.IncludePatterns) == 0
+
+	// Check if this item name matches any include pattern.
+	for _, includePattern := range rf.IncludePatterns {
+		matched, err := path.Match(includePattern, item)
+		if err != nil {
+			return false, err
+		}
+		if matched {
+			repoIncluded = true
+			break
+		}
+	}
+
+	if !repoIncluded {
+		return false, nil
+	}
+
+	if rf.IsRepository {
+		rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
+	}
+	// Check if this item name matches any exclude pattern.
+	for _, excludePattern := range rf.ExcludePatterns {
+		matched, err := path.Match(excludePattern, item)
+		if err != nil {
+			return false, err
+		}
+		if matched {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}

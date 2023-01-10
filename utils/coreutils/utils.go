@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -509,11 +510,14 @@ func GetJfrogTransferDir() (string, error) {
 }
 
 func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
-	getter, err := structil.NewGetter(interfaceObj)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
+	if reflect.TypeOf(interfaceObj).Kind().String() != "map" {
+		getter, err := structil.NewGetter(interfaceObj)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
+		interfaceObj = getter.ToMap()
 	}
-	return getter.ToMap(), nil
+	return interfaceObj.(map[string]interface{}), nil
 }
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {

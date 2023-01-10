@@ -3,6 +3,7 @@ package transferconfig
 import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 )
 
@@ -12,13 +13,13 @@ const (
 
 func TestCreateAndValidateConflicts(t *testing.T) {
 	tests := []struct {
-		sameKey                bool
-		sameName               bool
-		sameDescription        bool
-		sameAdmin              bool
-		sameQuotaBytes         bool
-		sameSoftLimit          bool
-		expectedConflictsCount int
+		sameKey           bool
+		sameName          bool
+		sameDescription   bool
+		sameAdmin         bool
+		sameQuotaBytes    bool
+		sameSoftLimit     bool
+		expectedDiffCount int
 	}{
 		{true, true, true, true, true, true, 0},
 		{true, true, true, true, true, false, 1},
@@ -30,9 +31,13 @@ func TestCreateAndValidateConflicts(t *testing.T) {
 	}
 	for _, test := range tests {
 		source, target := createProjects(test.sameKey, test.sameName, test.sameDescription, test.sameAdmin, test.sameQuotaBytes, test.sameSoftLimit)
-		conflicts, err := compareInterfaces(source, target)
+		conflicts, err := compareProjects(source, target)
 		assert.NoError(t, err)
-		assert.Equal(t, test.expectedConflictsCount, len(conflicts))
+		diffCount := 0
+		if conflicts != nil {
+			diffCount = len(strings.Split(conflicts.DifferentProperties, ";"))
+		}
+		assert.Equal(t, diffCount, test.expectedDiffCount)
 	}
 }
 

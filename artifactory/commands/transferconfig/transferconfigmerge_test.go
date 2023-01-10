@@ -48,8 +48,8 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 	targetName := sourceName
 	sourceDescription := "ProjectDescription"
 	targetDescription := sourceDescription
-	sourceAdmin := &services.AdminPrivileges{nil, nil, nil}
-	targetAdmin := &services.AdminPrivileges{nil, nil, nil}
+	sourceAdmin := &services.AdminPrivileges{}
+	targetAdmin := &services.AdminPrivileges{}
 	sourceQuotaBytes := float64(QuotaNumber)
 	targetQuotaBytes := float64(QuotaNumber)
 	if !sameKey {

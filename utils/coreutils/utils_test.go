@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -161,4 +161,20 @@ func TestListToText(t *testing.T) {
 	assert.Equal(t, ListToText([]string{"one"}), "one")
 	assert.Equal(t, ListToText([]string{"one", "two"}), "one and two")
 	assert.Equal(t, ListToText([]string{"one", "two", "three"}), "one, two and three")
+}
+
+func TestInterfaceToMap(t *testing.T) {
+	type MyStruct struct {
+		one int
+		two string
+	}
+	myStruct := MyStruct{one: 1, two: "2"}
+	_, err := InterfaceToMap(myStruct)
+	assert.NoError(t, err)
+
+	_, err = InterfaceToMap(map[string]interface{}{"one": 1, "two": "two", "three": []string{"three"}, "four": myStruct})
+	assert.NoError(t, err)
+
+	_, err = InterfaceToMap(t)
+	assert.NoError(t, err)
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -111,7 +110,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 	if tcc.preChecks {
-		return tcc.runPreChecks(sourceServiceManager, targetServiceManager)
+		return tcc.runPreChecks(sourceServicesManager, targetServiceManager)
 	}
 
 	if tcc.merge {
@@ -120,14 +119,13 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	continueTransfer, err := tcc.printWarnings(sourceServicesManager)
-	continueTransfer, err := tcc.printWarnings(sourceServiceManager)
 	if err != nil || !continueTransfer {
 		return
 	}
 
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
+	if err = validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
@@ -136,7 +134,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 	// Run export on the source Artifactory
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - Export configuration from the source Artifactory ==========")))
-	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServiceManager)
+	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServicesManager)
 	defer func() {
 		cleanUpErr := cleanUp()
 		if err == nil {
@@ -150,7 +148,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/4 - Download and modify configuration ==========")))
 
 	// Download and decrypt the config XML from the source Artifactory
-	configXml, err := tcc.getConfigXml(sourceServiceManager)
+	configXml, err := tcc.getConfigXml(sourceServicesManager)
 	if err != nil {
 		return
 	}
@@ -202,7 +200,6 @@ func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServ
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	if err := tcc.validateTargetServer(targetServicesManager); err != nil {
-	if err = tcc.validateArtifactoryServers(targetServicesManager, sourceArtifactoryVersion, minArtifactoryVersion); err != nil {
 		return err
 	}
 

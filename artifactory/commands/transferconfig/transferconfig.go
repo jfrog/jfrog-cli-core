@@ -87,8 +87,8 @@ func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConf
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) getRepoFilter() *utils.RepositoryFilter {
-	return &utils.RepositoryFilter{
+func (tcc *TransferConfigCommand) getRepoFilter() *utils.IncludeExcludeFilter {
+	return &utils.IncludeExcludeFilter{
 		IncludePatterns: tcc.includeReposPatterns,
 		ExcludePatterns: tcc.excludeReposPatterns,
 	}
@@ -420,7 +420,7 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 				return true, err
 			}
 
-			log.Debug("Artifactory response: ", resp.Status)
+			log.Debug("Artifactory response:", resp.Status)
 			timestamp = body
 			log.Info("Config import timestamp: " + string(timestamp))
 			return false, nil

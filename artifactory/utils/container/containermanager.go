@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jfrog/gofrog/version"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -256,13 +254,5 @@ func ValidateClientApiVersion() error {
 		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:", content)
 		return errorutils.CheckError(err)
 	}
-	if !IsCompatibleApiVersion(content) {
-		return errorutils.CheckErrorf("This operation requires Docker API version " + MinSupportedApiVersion + " or higher.")
-	}
-	return nil
-}
-
-func IsCompatibleApiVersion(dockerOutput string) bool {
-	currentVersion := version.NewVersion(dockerOutput)
-	return currentVersion.AtLeast(MinSupportedApiVersion)
+	return coreutils.ValidateMinimumVersion(coreutils.DockerApi, content, MinSupportedApiVersion)
 }

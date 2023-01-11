@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +21,15 @@ import (
 
 const (
 	GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"
+)
+
+type MinVersionProduct string
+
+const (
+	Artifactory  MinVersionProduct = "JFrog Artifactory"
+	Xray         MinVersionProduct = "JFrog Xray"
+	DataTransfer MinVersionProduct = "Data Transfer"
+	DockerApi    MinVersionProduct = "Docker API"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -508,4 +518,12 @@ func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return f.(map[string]interface{}), nil
+}
+func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {
+	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
+		return errorutils.CheckErrorf(fmt.Sprintf("You are using %s version %s,"+
+			" while this operation requires version %s or higher.",
+			product, currentVersion, minimumVersion))
+	}
+	return nil
 }

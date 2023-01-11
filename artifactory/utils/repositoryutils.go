@@ -151,10 +151,9 @@ func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns 
 	includeExcludeFilter := &IncludeExcludeFilter{
 		IncludePatterns: includePatterns,
 		ExcludePatterns: excludePatterns,
-		IsRepository:    true,
 	}
 	for _, repoKey := range *repoKeys {
-		repoIncluded, err := includeExcludeFilter.ShouldIncludeItem(repoKey)
+		repoIncluded, err := includeExcludeFilter.ShouldIncludeRepository(repoKey)
 		if err != nil {
 			return included, err
 		}
@@ -168,7 +167,11 @@ func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns 
 type IncludeExcludeFilter struct {
 	IncludePatterns []string
 	ExcludePatterns []string
-	IsRepository    bool
+}
+
+func (rf *IncludeExcludeFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
+	rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
+	return rf.ShouldIncludeItem(repoKey)
 }
 
 func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
@@ -191,9 +194,6 @@ func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
 		return false, nil
 	}
 
-	if rf.IsRepository {
-		rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
-	}
 	// Check if this item name matches any exclude pattern.
 	for _, excludePattern := range rf.ExcludePatterns {
 		matched, err := path.Match(excludePattern, item)

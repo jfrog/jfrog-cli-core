@@ -60,7 +60,7 @@ func shouldRemoveRepository(content string, includeExcludeFilter *utils.IncludeE
 		return false, err
 	}
 
-	includeRepo, err := includeExcludeFilter.ShouldIncludeItem(rtRepo.Key)
+	includeRepo, err := includeExcludeFilter.ShouldIncludeRepository(rtRepo.Key)
 	if err != nil {
 		return false, err
 	}

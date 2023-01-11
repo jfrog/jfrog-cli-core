@@ -28,7 +28,6 @@ func TestRemoveNonIncludedRepositories(t *testing.T) {
 		includeExcludeFilter := &utils.IncludeExcludeFilter{
 			IncludePatterns: testCase.includedRepositories,
 			ExcludePatterns: testCase.excludedRepositories,
-			IsRepository:    true,
 		}
 		t.Run(testCase.expectedXml, func(t *testing.T) {
 			testCasesDir := filepath.Join("..", "..", "testdata", "config_xmls_exclude_repos")

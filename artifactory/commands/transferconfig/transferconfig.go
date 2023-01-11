@@ -91,7 +91,6 @@ func (tcc *TransferConfigCommand) getRepoFilter() *utils.IncludeExcludeFilter {
 	return &utils.IncludeExcludeFilter{
 		IncludePatterns: tcc.includeReposPatterns,
 		ExcludePatterns: tcc.excludeReposPatterns,
-		IsRepository:    true,
 	}
 }
 

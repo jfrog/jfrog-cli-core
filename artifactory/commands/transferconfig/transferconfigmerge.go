@@ -246,7 +246,6 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 	includeExcludeFilter := &utils.IncludeExcludeFilter{
 		IncludePatterns: tcmc.includeReposPatterns,
 		ExcludePatterns: tcmc.excludeReposPatterns,
-		IsRepository:    true,
 	}
 	reposToTransfer := []string{}
 	for _, sourceRepo := range *sourceRepos {

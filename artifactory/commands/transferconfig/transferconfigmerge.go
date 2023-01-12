@@ -85,14 +85,14 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 	}
 
 	conflicts := []Conflict{}
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Merging Repositories Config ==========")))
+	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Merging repositories config ==========")))
 	err = tcmc.mergeRepositories(&conflicts)
 	if err != nil {
 		return
 	}
 
 	if projectsSupported {
-		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Merging Projects ==========")))
+		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Merging projects ==========")))
 		if err = tcmc.mergeProjects(&conflicts); err != nil {
 			return
 		}
@@ -102,8 +102,11 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 		if err != nil {
 			return
 		}
-		log.Info(fmt.Sprintf("We found %d conflicts when comparing the source and target instances.\n"+
+		log.Info(fmt.Sprintf("We found %d conflicts when comparing the projects and repositories configuration between the source and target instances.\n"+
 			"Please review the following report available at %s", len(conflicts), csvPath))
+		log.Info("You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
+			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
+			"Run 'jf rt transfer-config-merge -h' for more information.")
 	} else {
 		log.Info("No Merge conflicts were found while comparing the source and target instances.")
 	}
@@ -146,22 +149,23 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 
 	log.Info("Checking validation of your authorization methods..")
 	if _, err = sourceAccessManager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token.")
+		err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
 		return
 	}
 	if _, err = targetAccessManager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token.")
+		err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
 		return
 	}
 	return
 }
+
 func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (err error) {
-	log.Info("Getting all Projects ...")
+	log.Info("Getting all Projects from the source ...")
 	sourceProjects, err := tcmc.sourceAccessManager.GetAllProjects()
 	if err != nil {
 		return
 	}
-
+	log.Info("Getting all Projects from the target ...")
 	targetProjects, err := tcmc.targetAccessManager.GetAllProjects()
 	if err != nil {
 		return
@@ -172,7 +176,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 		ExcludePatterns: tcmc.excludeProjectsPatterns,
 	}
 	for _, sourceProject := range sourceProjects {
-		// Check if repository is filtered
+		// Check if repository is filtered out.
 		var shouldIncludeProject bool
 		shouldIncludeProject, err = includeExcludeFilter.ShouldIncludeItem(sourceProject.ProjectKey)
 		if err != nil {
@@ -186,7 +190,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 
 		if targetProjectWithSameKey == nil && targetProjectWithSameName == nil {
 			// Project exists on source only, can be created on target
-			log.Info(fmt.Sprintf("Transferring '%s' ...", sourceProject.DisplayName))
+			log.Info(fmt.Sprintf("Transferring project '%s' ...", sourceProject.DisplayName))
 			if err = tcmc.targetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject}); err != nil {
 				return
 			}
@@ -204,7 +208,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 			}
 		}
 		if targetProjectWithSameName != nil && targetProjectWithSameName != targetProjectWithSameKey {
-			//  Project with the same Display name but different projectKey exists on target
+			// Project with the same Display name but different projectKey exists on target
 			conflict, err = compareProjects(sourceProject, *targetProjectWithSameName)
 			if err != nil {
 				return
@@ -249,7 +253,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 	}
 	reposToTransfer := []string{}
 	for _, sourceRepo := range *sourceRepos {
-		// Check if repository is filtered
+		// Check if repository is filtered out.
 		var shouldIncludeRepo bool
 		shouldIncludeRepo, err = includeExcludeFilter.ShouldIncludeItem(sourceRepo.Key)
 		if err != nil {
@@ -324,7 +328,7 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 			continue
 		}
 		if secondValue, ok := secondMap[key]; ok {
-			// Keys only compared when exists on both interfaces
+			// Keys are only compared when exiting on both interfaces.
 			if !reflect.DeepEqual(firstValue, secondValue) {
 				diffList = append(diffList, key)
 			}

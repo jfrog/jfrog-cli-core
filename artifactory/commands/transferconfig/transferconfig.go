@@ -111,7 +111,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/4 - Preparations ==========")))
+	log.Info(coreutils.PrintBoldTitle("========== Phase 1/4 - Preparations =========="))
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
 	if _, err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
 		return
@@ -122,7 +122,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Run export on the source Artifactory
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/4 - Export configuration from the source Artifactory ==========")))
+	log.Info(coreutils.PrintBoldTitle("========== Phase 2/4 - Export configuration from the source Artifactory =========="))
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServiceManager)
 	defer func() {
 		cleanUpErr := cleanUp()
@@ -134,7 +134,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/4 - Download and modify configuration ==========")))
+	log.Info(coreutils.PrintBoldTitle("========== Phase 3/4 - Download and modify configuration =========="))
 
 	// Download and decrypt the config XML from the source Artifactory
 	configXml, err := tcc.getConfigXml(sourceServiceManager)
@@ -155,7 +155,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Import the archive to the target Artifactory
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 4/4 - Import configuration to the target Artifactory ==========")))
+	log.Info(coreutils.PrintBoldTitle("========== Phase 4/4 - Import configuration to the target Artifactory =========="))
 	err = tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
 	if err != nil {
 		return

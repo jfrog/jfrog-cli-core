@@ -78,25 +78,28 @@ type Conflict struct {
 }
 
 func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 1/3 - Preparations ==========")))
+	log.Info(coreutils.PrintBoldTitle("========== Preparations =========="))
 	projectsSupported, err := tcmc.initServiceManagersAndValidateServers()
 	if err != nil {
 		return
 	}
 
 	conflicts := []Conflict{}
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 2/3 - Merging repositories config ==========")))
+	if projectsSupported {
+		log.Info(coreutils.PrintBoldTitle("========== Merging projects =========="))
+		if err = tcmc.mergeProjects(&conflicts); err != nil {
+			return
+		}
+	}
+
+	log.Info(coreutils.PrintBoldTitle("========== Merging repositories config =========="))
 	err = tcmc.mergeRepositories(&conflicts)
 	if err != nil {
 		return
 	}
 
-	if projectsSupported {
-		log.Info(coreutils.PrintTitle(coreutils.PrintBold("========== Phase 3/3 - Merging projects ==========")))
-		if err = tcmc.mergeProjects(&conflicts); err != nil {
-			return
-		}
-	}
+	// If config transfer merge passed successfully, add conclusion message
+	log.Info("Config transfer merge completed successfully!")
 	if len(conflicts) != 0 {
 		csvPath, err = commandUtils.CreateCSVFile(LogFilePrefix, conflicts, time.Now())
 		if err != nil {

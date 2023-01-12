@@ -89,7 +89,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 }
 
 func addTitle(output *strings.Builder, title string) {
-	output.WriteString(coreutils.PrintTitle(coreutils.PrintBold(title + "\n")))
+	output.WriteString(coreutils.PrintBoldTitle(title + "\n"))
 }
 
 func addString(output *strings.Builder, emoji, key, value string, tabsCount int, windows bool) {

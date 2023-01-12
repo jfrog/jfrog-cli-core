@@ -326,7 +326,7 @@ func (idtp *InstallDataTransferPluginCommand) sendReloadRequest() error {
 }
 
 func (idtp *InstallDataTransferPluginCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", pluginName))))
+	log.Info(coreutils.PrintBoldTitle(fmt.Sprintf("Installing '%s' plugin...", pluginName)))
 
 	// Get source, destination and transfer action
 	dst, err := idtp.getPluginDirDestination()
@@ -346,6 +346,6 @@ func (idtp *InstallDataTransferPluginCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("The %s plugin installed successfully.", pluginName))))
+	log.Info(coreutils.PrintBoldTitle(fmt.Sprintf("The %s plugin installed successfully.", pluginName)))
 	return
 }

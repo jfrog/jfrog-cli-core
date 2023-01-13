@@ -31,5 +31,8 @@ func (vc *VersionCommand) Run() (string, error) {
 	if err != nil {
 		return "", sysInfoErr
 	}
+	if info == nil {
+		return "", nil
+	}
 	return info.Version, nil
 }

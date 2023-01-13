@@ -93,7 +93,7 @@ func (sc *StatusCommand) Run() (string, error) {
 				}
 			} else {
 				respStatus, colorCode, duration := getPipelineStatusAndColorCode(&pipe)
-				return colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", "PipelineName:", pipe.Name, "Branch:", pipe.PipelineSourceBranch, "Run:", pipe.Run.RunNumber, "Duration:", duration, "Status:", respStatus), nil
+				res = res + colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", "PipelineName:", pipe.Name, "Branch:", pipe.PipelineSourceBranch, "Run:", pipe.Run.RunNumber, "Duration:", duration, "Status:", respStatus)
 			}
 		}
 	}

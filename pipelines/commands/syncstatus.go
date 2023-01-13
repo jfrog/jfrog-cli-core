@@ -56,16 +56,18 @@ func (sc *SyncStatusCommand) Run() error {
 	if err != nil {
 		return syncServErr
 	}
-	pipeSyncStatus := status.GetPipelineStatus(pipelineSyncStatuses[0].LastSyncStatusCode)
-	if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
-		colorCode := status.GetStatusColorCode(pipeSyncStatus)
-		clientlog.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing,
-			pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha,
-			pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
-		return nil
+	for _, pipeSyncStatus := range pipelineSyncStatuses {
+		pipeSyncStatusCode := status.GetPipelineStatus(pipeSyncStatus.LastSyncStatusCode)
+		if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
+			colorCode := status.GetStatusColorCode(pipeSyncStatusCode)
+			clientlog.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[0].IsSyncing,
+				pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha,
+				pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
+			return nil
+		}
+		clientlog.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
+			pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer,
+			pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
 	}
-	clientlog.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatus, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
-		pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer,
-		pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
 	return nil
 }

@@ -153,7 +153,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 			if monitorStatusChange(string(statusValue), reStatus) {
 				res := colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", PipelineName,
 					pipeline.Name, Branch, pipeline.PipelineSourceBranch, Run, pipeline.Run.RunNumber, Duration,
-					duration, StatusLabel, reStatus)
+					duration, StatusLabel, string(statusValue))
 				log.Info(res)
 				if hasPipelineRunEnded(string(statusValue)) {
 					return nil

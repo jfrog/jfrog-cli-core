@@ -14,6 +14,10 @@ func NewVersionCommand() *VersionCommand {
 	return &VersionCommand{}
 }
 
+func (vc *VersionCommand) CommandName() string {
+	return "version"
+}
+
 func (vc *VersionCommand) ServerDetails() (*config.ServerDetails, error) {
 	return vc.serverDetails, nil
 }

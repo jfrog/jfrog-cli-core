@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type VersionCommand struct {
@@ -22,17 +23,19 @@ func (vc *VersionCommand) SetServerDetails(serverDetails *config.ServerDetails) 
 	return vc
 }
 
-func (vc *VersionCommand) Run() (string, error) {
+func (vc *VersionCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(vc.serverDetails)
 	if err != nil {
-		return "", err
+		return err
 	}
 	info, sysInfoErr := serviceManager.GetSystemInfo()
 	if err != nil {
-		return "", sysInfoErr
+		return sysInfoErr
 	}
 	if info == nil {
-		return "", nil
+		log.Output("Unable to fetch pipelines version")
+		return nil
 	}
-	return info.Version, nil
+	log.Output("Pipelines Server Version: ", info.Version)
+	return nil
 }

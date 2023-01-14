@@ -68,17 +68,17 @@ func (sc *StatusCommand) SetMultiBranch(multiBranch bool) *StatusCommand {
 	return sc
 }
 
-func (sc *StatusCommand) Run() (string, error) {
+func (sc *StatusCommand) Run() error {
 	// Create service manager to fetch run status
 	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
 	if svcMgrErr != nil {
-		return "", svcMgrErr
+		return svcMgrErr
 	}
 
 	// Get pipeline status using branch name, pipelines name and whether it is multi branch
 	matchingPipes, pipeStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
 	if pipeStatusErr != nil {
-		return "", pipeStatusErr
+		return pipeStatusErr
 	}
 	var res string
 	for i := range matchingPipes.Pipelines {
@@ -89,7 +89,7 @@ func (sc *StatusCommand) Run() (string, error) {
 			if sc.pipelineName != "" && sc.notify {
 				monErr := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
 				if monErr != nil {
-					return "", monErr
+					return monErr
 				}
 			} else {
 				respStatus, colorCode, duration := getPipelineStatusAndColorCode(&pipe)
@@ -97,7 +97,8 @@ func (sc *StatusCommand) Run() (string, error) {
 			}
 		}
 	}
-	return res, nil
+	log.Output(res)
+	return nil
 }
 
 // getPipelineStatusAndColorCode based on pipeline status code

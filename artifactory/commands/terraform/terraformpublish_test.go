@@ -67,7 +67,7 @@ func runTerraformTest(t *testing.T, subDir string, testFunc ProduceTaskFunc) {
 
 func runTerraformTestWithExclusions(t *testing.T, subDir string, testFunc ProduceTaskFunc, exclusions []string) {
 	terraformPublish := NewTerraformPublishCommand()
-	terraformPublish.SetServerDetails(&config.ServerDetails{})
+	terraformPublish.setServerDetails(&config.ServerDetails{})
 	terraformPublish.exclusions = exclusions
 	uploadSummary := getNewUploadSummaryMultiArray()
 	producerConsumer := parallel.NewRunner(threads, 20000, false)

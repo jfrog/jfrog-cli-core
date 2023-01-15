@@ -23,131 +23,189 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-// GenericAudit audits all the projects found in the given workingDirs
-func GenericAudit(
-	xrayGraphScanParams services.XrayGraphScanParams,
-	serverDetails *config.ServerDetails,
-	excludeTestDeps,
-	useWrapper,
-	insecureTls bool,
-	args []string,
-	progress ioUtils.ProgressMgr,
-	requirementsFile string,
-	ignoreConfigFile bool,
-	workingDirs []string,
-	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+type Params struct {
+	xrayGraphScanParams services.XrayGraphScanParams
+	serverDetails       *config.ServerDetails
+	progress            ioUtils.ProgressMgr
+	ignoreConfigFile    bool
+	excludeTestDeps     bool
+	insecureTls         bool
+	useWrapper          bool
+	requirementsFile    string
+	technologies        []string
+	workingDirs         []string
+	args                []string
+}
 
-	if len(workingDirs) == 0 {
+func NewAuditParams() *Params {
+	return &Params{}
+}
+
+func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
+	params.xrayGraphScanParams = xrayGraphScanParams
+	return params
+}
+
+func (params *Params) SetServerDetails(serverDetails *config.ServerDetails) *Params {
+	params.serverDetails = serverDetails
+	return params
+}
+
+func (params *Params) SetExcludeTestDeps(excludeTestDeps bool) *Params {
+	params.excludeTestDeps = excludeTestDeps
+	return params
+}
+
+func (params *Params) SetUseWrapper(useWrapper bool) *Params {
+	params.useWrapper = useWrapper
+	return params
+}
+
+func (params *Params) SetInsecureTLS(insecureTls bool) *Params {
+	params.insecureTls = insecureTls
+	return params
+}
+
+func (params *Params) SetArgs(args []string) *Params {
+	params.args = args
+	return params
+}
+
+func (params *Params) SetProgressBar(progress ioUtils.ProgressMgr) *Params {
+	params.progress = progress
+	return params
+}
+
+func (params *Params) SetRequirementsFile(requirementsFile string) *Params {
+	params.requirementsFile = requirementsFile
+	return params
+}
+
+func (params *Params) SetIgnoreConfigFile(ignoreConfigFile bool) *Params {
+	params.ignoreConfigFile = ignoreConfigFile
+	return params
+}
+
+func (params *Params) SetWorkingDirs(workingDirs []string) *Params {
+	params.workingDirs = workingDirs
+	return params
+}
+
+func (params *Params) SetTechnologies(technologies ...string) *Params {
+	params.technologies = append(params.technologies, technologies...)
+	return params
+}
+
+// GenericAudit audits all the projects found in the given workingDirs
+func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+	if len(params.workingDirs) == 0 {
 		log.Info("Auditing project: ")
-		return doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+		return doAudit(params)
 	}
+
+	return auditMultipleWorkingDirs(params)
+}
+
+func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	projectDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	var errorList []string
 	defer func() {
 		e := os.Chdir(projectDir)
 		if err == nil {
 			err = e
 		}
 	}()
-	for _, wd := range workingDirs {
+	var errorList strings.Builder
+	for _, wd := range params.workingDirs {
 		absWd, e := filepath.Abs(wd)
 		if e != nil {
-			// Save the error but continue to the other paths
-			errorList = append(errorList, fmt.Sprintf("the audit command couldn't find the following path: %s\n%s", wd, e.Error()))
+			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project: " + absWd)
+		log.Info("Auditing project:", absWd)
 		e = os.Chdir(absWd)
 		if e != nil {
-			// Save the error but continue to the other paths
-			errorList = append(errorList, fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s", absWd, e.Error()))
+			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
 			continue
 		}
-		techResults, isMultipleRootProject, e := doAudit(xrayGraphScanParams, serverDetails, excludeTestDeps, useWrapper, insecureTls, args, progress, requirementsFile, ignoreConfigFile, technologies...)
+
+		techResults, isMultipleRootProject, e := doAudit(params)
 		if e != nil {
-			// Save the error but continue to the other paths
-			errorList = append(errorList, fmt.Sprintf("audit command in %s failed:\n%s", absWd, e.Error()))
-		} else {
-			results = append(results, techResults...)
-			isMultipleRoot = isMultipleRootProject
+			errorList.WriteString(fmt.Sprintf("audit command in %s failed:\n%s\n", absWd, e.Error()))
+			continue
 		}
+
+		results = append(results, techResults...)
+		isMultipleRoot = isMultipleRootProject
 	}
-	if len(errorList) > 0 {
-		err = errors.New(strings.Join(errorList, "\n"))
+
+	if errorList.Len() > 0 {
+		err = errors.New(errorList.String())
 	}
+
 	return
 }
 
-//  Audits the project found in the current directory using Xray.
-func doAudit(
-	xrayGraphScanParams services.XrayGraphScanParams,
-	serverDetails *config.ServerDetails,
-	excludeTestDeps,
-	useWrapper,
-	insecureTls bool,
-	args []string,
-	progress ioUtils.ProgressMgr,
-	requirementsFile string,
-	ignoreConfigFile bool,
-	technologies ...string) (results []services.ScanResponse, isMultipleRoot bool, err error) {
-
+// Audits the project found in the current directory using Xray.
+func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	if len(technologies) == 0 {
-		technologies, err = detectedTechnologies()
+	if len(params.technologies) == 0 {
+		params.technologies, err = detectedTechnologies()
 		if err != nil {
 			return
 		}
 	}
-	var errorList []string
-	for _, tech := range coreutils.ToTechnologies(technologies) {
-		var dependencyTrees []*services.GraphNode
-		var e error
-		if progress != nil {
-			progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
-		}
-		switch tech {
-		case coreutils.Maven:
-			dependencyTrees, e = java.BuildMvnDependencyTree(insecureTls, ignoreConfigFile)
-		case coreutils.Gradle:
-			dependencyTrees, e = java.BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile)
-		case coreutils.Npm:
-			dependencyTrees, e = npm.BuildDependencyTree(args)
-		case coreutils.Yarn:
-			dependencyTrees, e = yarn.BuildDependencyTree()
-		case coreutils.Go:
-			dependencyTrees, e = _go.BuildDependencyTree()
-		case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-			dependencyTrees, e = python.BuildDependencyTree(pythonutils.PythonTool(tech), requirementsFile)
-		case coreutils.Dotnet:
+	var errorList strings.Builder
+	for _, tech := range coreutils.ToTechnologies(params.technologies) {
+		if tech == coreutils.Dotnet {
 			continue
-		case coreutils.Nuget:
-			dependencyTrees, e = nuget.BuildDependencyTree()
-		default:
-			e = errors.New(string(tech) + " is currently not supported")
 		}
-
-		var techResults []services.ScanResponse
-		if e == nil {
-			// If building the dependency tree was successful, run Xray scan.
-			techResults, e = audit.Audit(dependencyTrees, xrayGraphScanParams, serverDetails, progress, tech)
-		}
-
+		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
-			// Save the error but continue to audit the next tech
-			errorList = append(errorList, fmt.Sprintf("'%s' audit command failed:\n%s", tech, e.Error()))
-		} else {
-			results = append(results, techResults...)
-			isMultipleRoot = len(dependencyTrees) > 1
+			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			continue
 		}
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		if e != nil {
+			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			continue
+		}
+		results = append(results, techResults...)
+		isMultipleRoot = len(dependencyTrees) > 1
 	}
-	if len(errorList) > 0 {
-		err = errors.New(strings.Join(errorList, "\n"))
+	if errorList.Len() > 0 {
+		err = errors.New(errorList.String())
 	}
 	return
+}
+
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
+	if params.progress != nil {
+		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+	}
+	switch tech {
+	case coreutils.Maven:
+		dependencyTrees, e = java.BuildMvnDependencyTree(params.insecureTls, params.ignoreConfigFile)
+	case coreutils.Gradle:
+		dependencyTrees, e = java.BuildGradleDependencyTree(params.excludeTestDeps, params.useWrapper, params.ignoreConfigFile)
+	case coreutils.Npm:
+		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+	case coreutils.Yarn:
+		dependencyTrees, e = yarn.BuildDependencyTree()
+	case coreutils.Go:
+		dependencyTrees, e = _go.BuildDependencyTree()
+	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
+		dependencyTrees, e = python.BuildDependencyTree(pythonutils.PythonTool(tech), params.requirementsFile)
+	case coreutils.Nuget:
+		dependencyTrees, e = nuget.BuildDependencyTree()
+	default:
+		e = errors.New(string(tech) + " is currently not supported")
+	}
+
+	return dependencyTrees, e
 }
 
 func detectedTechnologies() (technologies []string, err error) {

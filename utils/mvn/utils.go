@@ -32,10 +32,6 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	dependenciesPath, err := config.GetJfrogDependenciesPath()
-	if err != nil {
-		return err
-	}
 	props, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, buildConf, goals, threads, insecureTls, disableDeploy)
 	if err != nil {
 		return err
@@ -47,9 +43,20 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}
-	dependencyLocalPath := filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion)
+	dependencyLocalPath, err := GetMavenDependencyLocalPath()
+	if err != nil {
+		return err
+	}
 	mavenModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), goals, utils.DownloadExtractorIfNeeded, props).SetMavenOpts(mvnOpts...)
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
+}
+
+func GetMavenDependencyLocalPath() (string, error) {
+	dependenciesPath, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion), nil
 }
 
 func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (map[string]string, error) {

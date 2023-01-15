@@ -55,7 +55,7 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 	if err != nil {
 		return err
 	}
-	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
+	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, true)
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.

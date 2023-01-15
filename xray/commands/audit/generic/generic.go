@@ -110,19 +110,18 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	results, isMultipleRootProject, auditErr := GenericAudit(
-		auditCmd.CreateXrayGraphScanParams(),
-		server,
-		auditCmd.excludeTestDependencies,
-		auditCmd.useWrapper,
-		auditCmd.insecureTls,
-		auditCmd.args,
-		auditCmd.progress,
-		auditCmd.requirementsFile,
-		false,
-		auditCmd.workingDirs,
-		auditCmd.technologies...,
-	)
+	auditParams := NewAuditParams().
+		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
+		SetServerDetails(server).
+		SetExcludeTestDeps(auditCmd.excludeTestDependencies).
+		SetUseWrapper(auditCmd.useWrapper).
+		SetInsecureTLS(auditCmd.insecureTls).
+		SetArgs(auditCmd.args).
+		SetProgressBar(auditCmd.progress).
+		SetRequirementsFile(auditCmd.requirementsFile).
+		SetWorkingDirs(auditCmd.workingDirs).
+		SetTechnologies(auditCmd.technologies...)
+	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	if auditCmd.progress != nil {
 		err = auditCmd.progress.Quit()
@@ -172,9 +171,7 @@ func (auditCmd *GenericAuditCommand) SetNpmScope(depType string) *GenericAuditCo
 }
 
 func (auditCmd *GenericAuditCommand) SetPipRequirementsFile(requirementsFile string) *GenericAuditCommand {
-	if requirementsFile != "" {
-		auditCmd.requirementsFile = requirementsFile
-	}
+	auditCmd.requirementsFile = requirementsFile
 	return auditCmd
 }
 

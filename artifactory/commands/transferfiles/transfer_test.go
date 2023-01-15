@@ -3,6 +3,15 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/gocarina/gocsv"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -16,14 +25,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
@@ -40,6 +41,48 @@ func TestCancelFunc(t *testing.T) {
 
 	transferFilesCommand.cancelFunc()
 	assert.True(t, transferFilesCommand.shouldStop())
+}
+
+func TestSignalStop(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Create transfer files command and mark the transfer as started
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+	assert.NoError(t, transferFilesCommand.initTransferDir())
+	assert.NoError(t, transferFilesCommand.stateManager.TryLockTransferStateManager())
+
+	// Make sure that the '.jfrog/transfer/stop' doesn't exist
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	assert.NoError(t, err)
+	assert.NoFileExists(t, filepath.Join(transferDir, StopFileName))
+
+	// Run signalStop and make sure that the '.jfrog/transfer/stop' exists
+	assert.NoError(t, transferFilesCommand.signalStop())
+	assert.FileExists(t, filepath.Join(transferDir, StopFileName))
+}
+
+func TestSignalStopError(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Create transfer files command and mark the transfer as started
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+
+	// Check "not active file transfer" error
+	assert.EqualError(t, transferFilesCommand.signalStop(), "There is no active file transfer process.")
+
+	// Mock start transfer
+	assert.NoError(t, transferFilesCommand.initTransferDir())
+	assert.NoError(t, transferFilesCommand.stateManager.TryLockTransferStateManager())
+
+	// Check "already in progress" error
+	assert.NoError(t, transferFilesCommand.signalStop())
+	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stopping is already in progress. Please wait...")
 }
 
 const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"

@@ -3,8 +3,10 @@ package transferfiles
 import (
 	"context"
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"os"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -33,6 +35,7 @@ type transferPhase interface {
 	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
 	setPackageType(packageType string)
+	setStopSignal(stopSignal chan os.Signal)
 	StopGracefully()
 }
 
@@ -53,6 +56,7 @@ type phaseBase struct {
 	pcDetails                 *producerConsumerWrapper
 	transferManager           *transferManager
 	stateManager              *state.TransferStateManager
+	stopSignal                chan os.Signal
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -128,6 +132,10 @@ func (pb *phaseBase) setBuildInfo(buildInfoRepo bool) {
 
 func (pb *phaseBase) setPackageType(packageType string) {
 	pb.packageType = packageType
+}
+
+func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {
+	pb.stopSignal = stopSignal
 }
 
 func createTransferPhase(i int) transferPhase {

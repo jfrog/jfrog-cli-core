@@ -3,30 +3,15 @@ package transferconfig
 import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/stretchr/testify/assert"
-	"os"
 	"strings"
 	"testing"
 )
 
 const (
-	QuotaNumber = 1073741825
+	quotaNumber = 1073741825
 )
 
 func TestCreateAndValidateConflicts(t *testing.T) {
-	// todo: remove!
-	gitenv := os.Getenv("GITHUB_ENV")
-	assert.NotEmpty(t, gitenv)
-	f, err := os.OpenFile(gitenv, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		assert.NoError(t, err)
-	}
-
-	defer f.Close()
-
-	if _, err = f.WriteString("jfrog_home_test=/mic/dev/home"); err != nil {
-		assert.NoError(t, err)
-	}
-
 	tests := []struct {
 		sameKey           bool
 		sameName          bool
@@ -65,8 +50,8 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 	targetDescription := sourceDescription
 	sourceAdmin := &services.AdminPrivileges{}
 	targetAdmin := &services.AdminPrivileges{}
-	sourceQuotaBytes := float64(QuotaNumber)
-	targetQuotaBytes := float64(QuotaNumber)
+	sourceQuotaBytes := float64(quotaNumber)
+	targetQuotaBytes := float64(quotaNumber)
 	if !sameKey {
 		targetKey = sourceKey + "Target"
 	}

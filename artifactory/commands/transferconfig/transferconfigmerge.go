@@ -24,7 +24,7 @@ const (
 	minJFrogProjectsArtifactoryVersion              = "7.0.0"
 	Repository                         ConflictType = "Repository"
 	Project                            ConflictType = "Project"
-	LogFilePrefix                                   = "transfer-config-conflicts"
+	logFilePrefix                                   = "transfer-config-conflicts"
 )
 
 var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks"}
@@ -101,13 +101,13 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 	// If config transfer merge passed successfully, add conclusion message
 	log.Info("Config transfer merge completed successfully!")
 	if len(conflicts) != 0 {
-		csvPath, err = commandUtils.CreateCSVFile(LogFilePrefix, conflicts, time.Now())
+		csvPath, err = commandUtils.CreateCSVFile(logFilePrefix, conflicts, time.Now())
 		if err != nil {
 			return
 		}
 		log.Info(fmt.Sprintf("We found %d conflicts when comparing the projects and repositories configuration between the source and target instances.\n"+
-			"Please review the following report available at %s", len(conflicts), csvPath))
-		log.Info("You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
+			"Please review the report available at %s", len(conflicts), csvPath) + "\n" +
+			"You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
 			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
 			"Run 'jf rt transfer-config-merge -h' for more information.")
 	} else {
@@ -150,14 +150,12 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 	}
 	tcmc.targetAccessManager = *targetAccessManager
 
-	log.Info("Checking validation of your authorization methods..")
 	if _, err = sourceAccessManager.Ping(); err != nil {
 		err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
 		return
 	}
 	if _, err = targetAccessManager.Ping(); err != nil {
 		err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
-		return
 	}
 	return
 }
@@ -173,7 +171,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 	if err != nil {
 		return
 	}
-	targetProjectsMapper := NewProjectsMapper(targetProjects)
+	targetProjectsMapper := newProjectsMapper(targetProjects)
 	includeExcludeFilter := &utils.IncludeExcludeFilter{
 		IncludePatterns: tcmc.includeProjectsPatterns,
 		ExcludePatterns: tcmc.excludeProjectsPatterns,
@@ -188,8 +186,8 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 		if !shouldIncludeProject {
 			continue
 		}
-		targetProjectWithSameKey := targetProjectsMapper.GetProjectByKey(sourceProject.ProjectKey)
-		targetProjectWithSameName := targetProjectsMapper.GetProjectByName(sourceProject.DisplayName)
+		targetProjectWithSameKey := targetProjectsMapper.getProjectByKey(sourceProject.ProjectKey)
+		targetProjectWithSameName := targetProjectsMapper.getProjectByName(sourceProject.DisplayName)
 
 		if targetProjectWithSameKey == nil && targetProjectWithSameName == nil {
 			// Project exists on source only, can be created on target
@@ -211,7 +209,7 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 			}
 		}
 		if targetProjectWithSameName != nil && targetProjectWithSameName != targetProjectWithSameKey {
-			// Project with the same Display name but different projectKey exists on target
+			// Project with the same display name but different projectKey exists on target
 			conflict, err = compareProjects(sourceProject, *targetProjectWithSameName)
 			if err != nil {
 				return
@@ -295,7 +293,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails) (diff string, err error) {
 	// Compare basic repository details
 	diff, err = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
-	if err != nil && len(diff) != 0 {
+	if err != nil || len(diff) != 0 {
 		return
 	}
 
@@ -342,7 +340,7 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 }
 
 func (tcmc *TransferConfigMergeCommand) transferRepositoriesToTarget(reposToTransfer []string) (err error) {
-	// Decrypt source artifactory to get encrypted parameters
+	// Decrypt source Artifactory to get encrypted parameters
 	var wasEncrypted bool
 	if wasEncrypted, err = tcmc.sourceArtifactoryManager.DeactivateKeyEncryption(); err != nil {
 		return
@@ -362,7 +360,7 @@ func (tcmc *TransferConfigMergeCommand) transferRepositoriesToTarget(reposToTran
 		if err != nil {
 			return
 		}
-		log.Info(fmt.Sprintf("Transferring '%s' configuration ...", repoKey))
+		log.Info(fmt.Sprintf("Transferring the configuration of repository '%s' ...", repoKey))
 		err = tcmc.targetArtifactoryManager.CreateRepositoryWithParams(params, repoKey)
 		if err != nil {
 			return
@@ -372,25 +370,25 @@ func (tcmc *TransferConfigMergeCommand) transferRepositoriesToTarget(reposToTran
 	return nil
 }
 
-type ProjectsMapper struct {
+type projectsMapper struct {
 	byDisplayName map[string]*accessServices.Project
 	byProjectKey  map[string]*accessServices.Project
 }
 
-func NewProjectsMapper(targetProjects []accessServices.Project) *ProjectsMapper {
+func newProjectsMapper(targetProjects []accessServices.Project) *projectsMapper {
 	byDisplayName := make(map[string]*accessServices.Project)
 	byProjectKey := make(map[string]*accessServices.Project)
 	for i, project := range targetProjects {
 		byDisplayName[project.DisplayName] = &targetProjects[i]
 		byProjectKey[project.ProjectKey] = &targetProjects[i]
 	}
-	return &ProjectsMapper{byDisplayName: byDisplayName, byProjectKey: byProjectKey}
+	return &projectsMapper{byDisplayName: byDisplayName, byProjectKey: byProjectKey}
 }
 
-func (p *ProjectsMapper) GetProjectByName(displayName string) *accessServices.Project {
+func (p *projectsMapper) getProjectByName(displayName string) *accessServices.Project {
 	return p.byDisplayName[displayName]
 }
 
-func (p *ProjectsMapper) GetProjectByKey(projectKey string) *accessServices.Project {
+func (p *projectsMapper) getProjectByKey(projectKey string) *accessServices.Project {
 	return p.byProjectKey[projectKey]
 }

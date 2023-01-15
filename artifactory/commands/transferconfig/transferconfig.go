@@ -258,7 +258,7 @@ func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager art
 
 // Make sure source and target Artifactory URLs are different.
 // Also make sure that the source Artifactory version is sufficient.
-// Returns the source artifactory version
+// Returns the source Artifactory version.
 func validateMinVersionAndDifferentServers(sourceServicesManager artifactory.ArtifactoryServicesManager, sourceServerDetails, targetServerDetails *config.ServerDetails) (string, error) {
 	log.Info("Verifying minimum version of the source server...")
 	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()

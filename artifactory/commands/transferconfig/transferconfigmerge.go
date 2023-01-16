@@ -108,6 +108,7 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 			"You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
 			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
 			"Run 'jf rt transfer-config-merge -h' for more information.")
+		return
 	}
 
 	log.Info("No Merge conflicts were found while comparing the source and target instances.")

@@ -2,6 +2,7 @@ package transferconfig
 
 import (
 	"fmt"
+	"github.com/go-test/deep"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -13,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -83,23 +83,21 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 	if err != nil {
 		return
 	}
-
+	projectsToTransfer := []accessServices.Project{}
 	conflicts := []Conflict{}
 	if projectsSupported {
-		log.Info(coreutils.PrintBoldTitle("========== Merging projects =========="))
-		if err = tcmc.mergeProjects(&conflicts); err != nil {
+		log.Info(coreutils.PrintBoldTitle("========== Merging projects config =========="))
+		projectsToTransfer, err = tcmc.mergeProjects(&conflicts)
+		if err != nil {
 			return
 		}
 	}
 
 	log.Info(coreutils.PrintBoldTitle("========== Merging repositories config =========="))
-	err = tcmc.mergeRepositories(&conflicts)
+	reposToTransfer, err := tcmc.mergeRepositories(&conflicts)
 	if err != nil {
 		return
 	}
-
-	// If config transfer merge passed successfully, add conclusion message
-	log.Info("Config transfer merge completed successfully!")
 	if len(conflicts) != 0 {
 		csvPath, err = commandUtils.CreateCSVFile(logFilePrefix, conflicts, time.Now())
 		if err != nil {
@@ -110,9 +108,24 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 			"You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
 			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
 			"Run 'jf rt transfer-config-merge -h' for more information.")
-	} else {
-		log.Info("No Merge conflicts were found while comparing the source and target instances.")
 	}
+
+	log.Info("No Merge conflicts were found while comparing the source and target instances.")
+
+	if len(projectsToTransfer) > 0 {
+		log.Info(fmt.Sprintf("Transferring %d projects ...", len(projectsToTransfer)))
+		err = tcmc.transferProjectsToTarget(projectsToTransfer)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(reposToTransfer) > 0 {
+		log.Info(fmt.Sprintf("Transferring %d repositories ...", len(reposToTransfer)))
+		err = tcmc.transferRepositoriesToTarget(reposToTransfer)
+	}
+
+	log.Info("Config transfer merge completed successfully!")
 	return
 }
 
@@ -160,7 +173,7 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 	return
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (err error) {
+func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (projectsToTransfer []accessServices.Project, err error) {
 	log.Info("Getting all Projects from the source ...")
 	sourceProjects, err := tcmc.sourceAccessManager.GetAllProjects()
 	if err != nil {
@@ -191,29 +204,20 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 
 		if targetProjectWithSameKey == nil && targetProjectWithSameName == nil {
 			// Project exists on source only, can be created on target
-			log.Info(fmt.Sprintf("Transferring project '%s' ...", sourceProject.DisplayName))
-			if err = tcmc.targetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: sourceProject}); err != nil {
-				return
-			}
+			projectsToTransfer = append(projectsToTransfer, sourceProject)
 			continue
 		}
 		var conflict *Conflict
 		if targetProjectWithSameKey != nil {
 			// Project with the same projectKey exists on target
-			conflict, err = compareProjects(sourceProject, *targetProjectWithSameKey)
-			if err != nil {
-				return
-			}
+			conflict = compareProjects(sourceProject, *targetProjectWithSameKey)
 			if conflict != nil {
 				*conflicts = append(*conflicts, *conflict)
 			}
 		}
 		if targetProjectWithSameName != nil && targetProjectWithSameName != targetProjectWithSameKey {
 			// Project with the same display name but different projectKey exists on target
-			conflict, err = compareProjects(sourceProject, *targetProjectWithSameName)
-			if err != nil {
-				return
-			}
+			conflict = compareProjects(sourceProject, *targetProjectWithSameName)
 			if conflict != nil {
 				*conflicts = append(*conflicts, *conflict)
 			}
@@ -222,20 +226,20 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (er
 	return
 }
 
-func compareProjects(sourceProject, targetProject accessServices.Project) (*Conflict, error) {
-	diff, err := compareInterfaces(sourceProject, targetProject)
-	if err != nil || len(diff) == 0 {
-		return nil, err
+func compareProjects(sourceProject, targetProject accessServices.Project) *Conflict {
+	diff := compareInterfaces(sourceProject, targetProject)
+	if diff == "" {
+		return nil
 	}
 	return &Conflict{
 		Type:                Project,
 		SourceName:          fmt.Sprintf("%s(%s)", sourceProject.DisplayName, sourceProject.ProjectKey),
 		TargetName:          fmt.Sprintf("%s(%s)", targetProject.DisplayName, targetProject.ProjectKey),
 		DifferentProperties: diff,
-	}, nil
+	}
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (err error) {
+func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer []string, err error) {
 	sourceRepos, err := tcmc.sourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
@@ -252,7 +256,6 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 		IncludePatterns: tcmc.includeReposPatterns,
 		ExcludePatterns: tcmc.excludeReposPatterns,
 	}
-	reposToTransfer := []string{}
 	for _, sourceRepo := range *sourceRepos {
 		// Check if repository is filtered out.
 		var shouldIncludeRepo bool
@@ -283,17 +286,13 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 			reposToTransfer = append(reposToTransfer, sourceRepo.Key)
 		}
 	}
-	if len(reposToTransfer) > 0 {
-		log.Info(fmt.Sprintf("Transferring %d repositories ...", len(reposToTransfer)))
-		err = tcmc.transferRepositoriesToTarget(reposToTransfer)
-	}
 	return
 }
 
 func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails) (diff string, err error) {
 	// Compare basic repository details
-	diff, err = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
-	if err != nil || len(diff) != 0 {
+	diff = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
+	if diff == "" {
 		return
 	}
 
@@ -309,33 +308,30 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 	if err != nil {
 		return
 	}
-	diff, err = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, filteredRepoKeys...)
+	diff = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, filteredRepoKeys...)
 	return
 }
 
-func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff string, err error) {
+func compareInterfaces(first, second interface{}, filteredKeys ...string) string {
+	diffs := deep.Equal(first, second)
 	diffList := []string{}
-	firstMap, err := coreutils.InterfaceToMap(first)
-	if err != nil {
-		return
-	}
-	secondMap, err := coreutils.InterfaceToMap(second)
-	if err != nil {
-		return
-	}
-	for key, firstValue := range firstMap {
-		if slices.Contains(filteredKeys, key) {
-			// Key should be filtered out
+	for _, diff := range diffs {
+		key := strings.Split(diff, ":")[0]
+		if slices.Contains(filteredKeys, strings.Split(key, ".")[0]) {
 			continue
 		}
-		if secondValue, ok := secondMap[key]; ok {
-			// Keys are only compared when exiting on both interfaces.
-			if !reflect.DeepEqual(firstValue, secondValue) {
-				diffList = append(diffList, key)
-			}
+		diffList = append(diffList, key)
+	}
+	return strings.Join(diffList, " ; ")
+}
+
+func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer []accessServices.Project) (err error) {
+	for _, project := range reposToTransfer {
+		log.Info(fmt.Sprintf("Transferring project '%s' ...", project.DisplayName))
+		if err = tcmc.targetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: project}); err != nil {
+			return
 		}
 	}
-	diff = strings.Join(diffList, "; ")
 	return
 }
 

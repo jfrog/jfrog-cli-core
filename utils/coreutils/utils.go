@@ -3,12 +3,10 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"github.com/goldeneggg/structil"
 	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -507,17 +505,6 @@ func GetJfrogTransferDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
-}
-
-func InterfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
-	if reflect.TypeOf(interfaceObj).Kind().String() != "map" {
-		getter, err := structil.NewGetter(interfaceObj)
-		if errorutils.CheckError(err) != nil {
-			return nil, err
-		}
-		interfaceObj = getter.ToMap()
-	}
-	return interfaceObj.(map[string]interface{}), nil
 }
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {

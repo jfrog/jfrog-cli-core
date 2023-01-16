@@ -24,20 +24,19 @@ func TestCreateAndValidateConflicts(t *testing.T) {
 		{true, true, true, true, true, true, 0},
 		{true, true, true, true, true, false, 1},
 		{true, true, true, true, false, false, 2},
-		{true, true, true, false, false, false, 3},
-		{true, true, false, false, false, false, 4},
-		{true, false, false, false, false, false, 5},
-		{false, false, false, false, false, false, 6},
+		{true, true, true, false, false, false, 4},
+		{true, true, false, false, false, false, 5},
+		{true, false, false, false, false, false, 6},
+		{false, false, false, false, false, false, 7},
 	}
 	for _, test := range tests {
 		source, target := createProjects(test.sameKey, test.sameName, test.sameDescription, test.sameAdmin, test.sameQuotaBytes, test.sameSoftLimit)
-		conflicts, err := compareProjects(source, target)
-		assert.NoError(t, err)
+		conflicts := compareProjects(source, target)
 		diffCount := 0
 		if conflicts != nil {
 			diffCount = len(strings.Split(conflicts.DifferentProperties, ";"))
 		}
-		assert.Equal(t, diffCount, test.expectedDiffCount)
+		assert.Equal(t, test.expectedDiffCount, diffCount)
 	}
 }
 
@@ -64,7 +63,7 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 	trueValue := true
 	if !sameAdmin {
 		targetAdmin.ManageMembers = &trueValue
-
+		targetAdmin.IndexResources = &trueValue
 	}
 	var sourceSoftLimit *bool = nil
 	var targetSoftLimit *bool = nil

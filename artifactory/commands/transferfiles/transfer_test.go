@@ -82,7 +82,7 @@ func TestSignalStopError(t *testing.T) {
 
 	// Check "already in progress" error
 	assert.NoError(t, transferFilesCommand.signalStop())
-	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stopping is already in progress. Please wait...")
+	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stop is already in progress. Please wait...")
 }
 
 const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"

@@ -150,9 +150,9 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 	return PollingTasksManager{doneChannel: make(chan bool, totalGoRoutines), totalGoRoutines: totalGoRoutines}
 }
 
-// Runs 2 go routines :
-// 1. Check number of threads
-// 2. Poll uploaded chunks
+// Runs 2 go routines:
+// 1. Periodically update the worker threads count & check whether the process should be stopped.
+// 2. Poll for uploaded chunks.
 func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)

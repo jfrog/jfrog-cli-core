@@ -676,7 +676,7 @@ func (tdc *TransferFilesCommand) signalStop() error {
 		return err
 	}
 	if exist {
-		return errorutils.CheckErrorf("Graceful stopping is already in progress. Please wait...")
+		return errorutils.CheckErrorf("Graceful stop is already in progress. Please wait...")
 	}
 
 	if _, err = os.Create(filepath.Join(transferDir, StopFileName)); err != nil {

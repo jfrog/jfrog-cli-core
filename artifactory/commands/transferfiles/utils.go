@@ -300,7 +300,7 @@ func GetThreads() int {
 // Number of threads in the settings files is expected to change by running a separate command.
 // The new number of threads should be almost immediately (checked every waitTimeBetweenThreadsUpdateSeconds) reflected on
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
-// This method also read '~/.jfrog/transfer/stop' file and interrupt the transfer if exist.
+// This method also looks for '~/.jfrog/transfer/stop' file and interrupts the transfer if exists.
 func periodicallyUpdateThreadsAndStopStatus(pcWrapper *producerConsumerWrapper, doneChan chan bool, buildInfoRepo bool, stopSignal chan os.Signal) {
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
@@ -333,7 +333,7 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 	return nil
 }
 
-// Interrupt the transfer by populating the stopSignal channel with the Interrupt signal if '~/.jfrog/transfer/stop' file exist.
+// Interrupt the transfer by populating the stopSignal channel with the Interrupt signal if the '~/.jfrog/transfer/stop' file exists.
 func interruptIfRequested(stopSignal chan os.Signal) error {
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {

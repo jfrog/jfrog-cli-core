@@ -54,8 +54,14 @@ func (tpc *TerraformPublishCommand) SetArgs(terraformArg []string) *TerraformPub
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) SetServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
+func (tpc *TerraformPublishCommand) setServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
 	tpc.serverDetails = serverDetails
+	return tpc
+}
+
+func (tpc *TerraformPublishCommand) setRepoConfig(conf *utils.RepositoryConfig) *TerraformPublishCommand {
+	serverDetails, _ := conf.ServerDetails()
+	tpc.setRepo(conf.TargetRepo()).setServerDetails(serverDetails)
 	return tpc
 }
 
@@ -83,11 +89,7 @@ func (tpc *TerraformPublishCommand) Result() *commandsUtils.Result {
 
 func (tpc *TerraformPublishCommand) Run() error {
 	log.Info("Running Terraform publish")
-	err := tpc.preparePrerequisites()
-	if err != nil {
-		return err
-	}
-	err = tpc.publish()
+	err := tpc.publish()
 	if err != nil {
 		return err
 	}
@@ -95,22 +97,22 @@ func (tpc *TerraformPublishCommand) Run() error {
 	return nil
 }
 
-func (tpc *TerraformPublishCommand) preparePrerequisites() error {
+func (tpc *TerraformPublishCommand) Init() error {
 	err := tpc.extractTerraformPublishOptionsFromArgs(tpc.args)
 	if err != nil {
 		return err
 	}
 	if tpc.namespace == "" || tpc.provider == "" || tpc.tag == "" {
-		return errorutils.CheckErrorf("The --namespace, --provider and --tag options are mandatory.")
+		return errorutils.CheckErrorf("the --namespace, --provider and --tag options are mandatory")
 	}
-	if err := tpc.setRepoFromConfiguration(); err != nil {
+	if err = tpc.setRepoFromConfiguration(); err != nil {
 		return err
 	}
 	artDetails, err := tpc.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
-	if err := utils.ValidateRepoExists(tpc.repo, artDetails); err != nil {
+	if err = utils.ValidateRepoExists(tpc.repo, artDetails); err != nil {
 		return err
 	}
 	tpc.collectBuildInfo, err = tpc.buildConfiguration.IsCollectBuildInfo()
@@ -366,7 +368,7 @@ func (tpc *TerraformPublishCommand) setRepoFromConfiguration() error {
 	if err != nil {
 		return err
 	}
-	tpc.setRepo(deployerParams.TargetRepo())
+	tpc.setRepoConfig(deployerParams)
 	return nil
 }
 

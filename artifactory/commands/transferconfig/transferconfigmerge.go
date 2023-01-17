@@ -98,6 +98,7 @@ func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
 	if err != nil {
 		return
 	}
+
 	if len(conflicts) != 0 {
 		csvPath, err = commandUtils.CreateCSVFile(logFilePrefix, conflicts, time.Now())
 		if err != nil {
@@ -293,7 +294,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails) (diff string, err error) {
 	// Compare basic repository details
 	diff = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
-	if diff == "" {
+	if diff != "" {
 		return
 	}
 

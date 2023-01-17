@@ -316,6 +316,9 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 
 func compareInterfaces(first, second interface{}, filteredKeys ...string) string {
 	diffs := deep.Equal(first, second)
+	if len(diffs) == 0 {
+		return ""
+	}
 	diffList := []string{}
 	for _, diff := range diffs {
 		key := strings.Split(diff, ":")[0]

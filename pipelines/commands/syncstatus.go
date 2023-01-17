@@ -51,7 +51,7 @@ func (sc *SyncStatusCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
+	// Filter pipeline resources sync status with repository name and branch name
 	pipelineSyncStatuses, syncServErr := serviceManager.GetSyncStatusForPipelineResource(sc.repoPath, sc.branch)
 	if err != nil {
 		return syncServErr

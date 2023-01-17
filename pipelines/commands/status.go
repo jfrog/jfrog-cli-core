@@ -101,11 +101,13 @@ func (sc *StatusCommand) Run() error {
 	return nil
 }
 
-// getPipelineStatusAndColorCode based on pipeline status code
-// return color to be used for pretty printing
-func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (status.PipelineStatus, color.Color, string) {
-	pipelineStatus := status.GetPipelineStatus(pipeline.Run.StatusCode)
-	colorCode := status.GetStatusColorCode(pipelineStatus)
+// getPipelineStatusAndColorCode from received pipeline statusCode
+// return PipelineStatus - pipeline status string conversion from statusCode
+// colorCode - color to be used for text formatting
+// duration - duration for the pipeline in seconds
+func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (pipelineStatus status.PipelineStatus, colorCode color.Color, duration string) {
+	pipelineStatus = status.GetPipelineStatus(pipeline.Run.StatusCode)
+	colorCode = status.GetStatusColorCode(pipelineStatus)
 	durationSeconds := pipeline.Run.DurationSeconds
 	if durationSeconds == 0 {
 		// Calculate the duration time by differentiating created time from the current time
@@ -115,8 +117,8 @@ func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (status.Pipelin
 	return pipelineStatus, colorCode, convertSecToDay(durationSeconds)
 }
 
-// ConvertSecToDay converts seconds passed as integer to
-// - D H M S format
+// ConvertSecToDay converts seconds passed as integer to Days, Hours, Minutes, Seconds
+// Duration in D H M S format for example 124 seconds to "0D 0H 2M 4S"
 func convertSecToDay(sec int) string {
 	log.Debug("Duration time in seconds: ", sec)
 	day := sec / (24 * 3600)
@@ -134,7 +136,7 @@ func convertSecToDay(sec int) string {
 }
 
 // monitorStatusAndNotify monitor for status change and
-// Send notification if there is a change identified
+// Send notification if there is a change identified in the pipeline run status
 func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.PipelinesServicesManager, branch string, pipName string, isMultiBranch bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
@@ -165,7 +167,9 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 	}
 }
 
-// Check for change in status with the latest status
+// Check for change in status with the previous status
+// Return true if there is a change in status with previous status
+// Return false if current and previous status is same
 func monitorStatusChange(pipStatus, reStatus string) bool {
 	if reStatus == pipStatus {
 		return false

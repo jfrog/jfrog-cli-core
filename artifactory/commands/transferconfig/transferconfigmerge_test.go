@@ -24,10 +24,10 @@ func TestCreateAndValidateConflicts(t *testing.T) {
 		{true, true, true, true, true, true, 0},
 		{true, true, true, true, true, false, 1},
 		{true, true, true, true, false, false, 2},
-		{true, true, true, false, false, false, 4},
-		{true, true, false, false, false, false, 5},
-		{true, false, false, false, false, false, 6},
-		{false, false, false, false, false, false, 7},
+		{true, true, true, false, false, false, 3},
+		{true, true, false, false, false, false, 4},
+		{true, false, false, false, false, false, 5},
+		{false, false, false, false, false, false, 6},
 	}
 	for _, test := range tests {
 		source, target := createProjects(test.sameKey, test.sameName, test.sameDescription, test.sameAdmin, test.sameQuotaBytes, test.sameSoftLimit)
@@ -62,12 +62,13 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 		targetDescription = sourceDescription + "Target"
 	}
 	trueValue := true
+	falseValue := false
 	if !sameAdmin {
 		targetAdmin.ManageMembers = &trueValue
 		targetAdmin.IndexResources = &trueValue
 	}
-	var sourceSoftLimit *bool = nil
-	var targetSoftLimit *bool = nil
+	var sourceSoftLimit = &falseValue
+	var targetSoftLimit = &falseValue
 
 	if !sameSoftLimit {
 		targetSoftLimit = &trueValue

@@ -1,8 +1,8 @@
 package transferconfig
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/goldeneggg/structil"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -348,14 +348,13 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 }
 
 func interfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
-	if reflect.TypeOf(interfaceObj).Kind().String() != "map" {
-		getter, err := structil.NewGetter(interfaceObj)
-		if errorutils.CheckError(err) != nil {
-			return nil, err
-		}
-		interfaceObj = getter.ToMap()
+	b, err := json.Marshal(interfaceObj)
+	if err != nil {
+		return nil, err
 	}
-	return interfaceObj.(map[string]interface{}), nil
+	newMap := make(map[string]interface{})
+	err = json.Unmarshal(b, &newMap)
+	return newMap, err
 }
 
 func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer []accessServices.Project) (err error) {

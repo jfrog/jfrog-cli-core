@@ -309,13 +309,11 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 	// Get full repo info from source and target
 	var sourceRepoFullDetails interface{}
 	err = tcmc.sourceArtifactoryManager.GetRepository(sourceRepoBaseDetails.Key, &sourceRepoFullDetails)
-	log.Info(sourceRepoFullDetails)
 	if err != nil {
 		return
 	}
 	var targetRepoFullDetails interface{}
 	err = tcmc.targetArtifactoryManager.GetRepository(targetRepoBaseDetails.Key, &targetRepoFullDetails)
-	log.Info(targetRepoFullDetails)
 	if err != nil {
 		return
 	}

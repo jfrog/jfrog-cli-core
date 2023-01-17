@@ -31,7 +31,8 @@ func TestCreateAndValidateConflicts(t *testing.T) {
 	}
 	for _, test := range tests {
 		source, target := createProjects(test.sameKey, test.sameName, test.sameDescription, test.sameAdmin, test.sameQuotaBytes, test.sameSoftLimit)
-		conflicts := compareProjects(source, target)
+		conflicts, err := compareProjects(source, target)
+		assert.NoError(t, err)
 		diffCount := 0
 		if conflicts != nil {
 			diffCount = len(strings.Split(conflicts.DifferentProperties, ";"))

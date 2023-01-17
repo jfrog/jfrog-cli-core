@@ -2,7 +2,7 @@ package transferconfig
 
 import (
 	"fmt"
-	"github.com/go-test/deep"
+	"github.com/goldeneggg/structil"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -212,14 +213,20 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (pr
 		var conflict *Conflict
 		if targetProjectWithSameKey != nil {
 			// Project with the same projectKey exists on target
-			conflict = compareProjects(sourceProject, *targetProjectWithSameKey)
+			conflict, err = compareProjects(sourceProject, *targetProjectWithSameKey)
+			if err != nil {
+				return
+			}
 			if conflict != nil {
 				*conflicts = append(*conflicts, *conflict)
 			}
 		}
 		if targetProjectWithSameName != nil && targetProjectWithSameName != targetProjectWithSameKey {
 			// Project with the same display name but different projectKey exists on target
-			conflict = compareProjects(sourceProject, *targetProjectWithSameName)
+			conflict, err = compareProjects(sourceProject, *targetProjectWithSameName)
+			if err != nil {
+				return
+			}
 			if conflict != nil {
 				*conflicts = append(*conflicts, *conflict)
 			}
@@ -228,17 +235,17 @@ func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (pr
 	return
 }
 
-func compareProjects(sourceProject, targetProject accessServices.Project) *Conflict {
-	diff := compareInterfaces(sourceProject, targetProject)
-	if diff == "" {
-		return nil
+func compareProjects(sourceProject, targetProject accessServices.Project) (*Conflict, error) {
+	diff, err := compareInterfaces(sourceProject, targetProject)
+	if err != nil || diff == "" {
+		return nil, err
 	}
 	return &Conflict{
 		Type:                Project,
 		SourceName:          fmt.Sprintf("%s(%s)", sourceProject.DisplayName, sourceProject.ProjectKey),
 		TargetName:          fmt.Sprintf("%s(%s)", targetProject.DisplayName, targetProject.ProjectKey),
 		DifferentProperties: diff,
-	}
+	}, nil
 }
 
 func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer []string, err error) {
@@ -293,8 +300,8 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 
 func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetails, targetRepoBaseDetails services.RepositoryDetails) (diff string, err error) {
 	// Compare basic repository details
-	diff = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
-	if diff != "" {
+	diff, err = compareInterfaces(sourceRepoBaseDetails, targetRepoBaseDetails, filteredRepoKeys...)
+	if err != nil || diff != "" {
 		return
 	}
 
@@ -310,24 +317,45 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 	if err != nil {
 		return
 	}
-	diff = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, filteredRepoKeys...)
+	diff, err = compareInterfaces(sourceRepoFullDetails, targetRepoFullDetails, filteredRepoKeys...)
 	return
 }
 
-func compareInterfaces(first, second interface{}, filteredKeys ...string) string {
-	diffs := deep.Equal(first, second)
-	if len(diffs) == 0 {
-		return ""
+func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff string, err error) {
+	firstMap, err := interfaceToMap(first)
+	if err != nil {
+		return
+	}
+	secondMap, err := interfaceToMap(second)
+	if err != nil {
+		return
 	}
 	diffList := []string{}
-	for _, diff := range diffs {
-		key := strings.Split(diff, ":")[0]
-		if slices.Contains(filteredKeys, strings.Split(key, ".")[0]) {
+	for key, firstValue := range firstMap {
+		if slices.Contains(filteredKeys, key) {
+			// Key should be filtered out
 			continue
 		}
-		diffList = append(diffList, key)
+		if secondValue, ok := secondMap[key]; ok {
+			// Keys are only compared when exiting on both interfaces.
+			if !reflect.DeepEqual(firstValue, secondValue) {
+				diffList = append(diffList, key)
+			}
+		}
 	}
-	return strings.Join(diffList, " ; ")
+	diff = strings.Join(diffList, "; ")
+	return
+}
+
+func interfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
+	if reflect.TypeOf(interfaceObj).Kind().String() != "map" {
+		getter, err := structil.NewGetter(interfaceObj)
+		if errorutils.CheckError(err) != nil {
+			return nil, err
+		}
+		interfaceObj = getter.ToMap()
+	}
+	return interfaceObj.(map[string]interface{}), nil
 }
 
 func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer []accessServices.Project) (err error) {

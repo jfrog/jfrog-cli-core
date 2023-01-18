@@ -1,6 +1,8 @@
 package transferfiles
 
 import (
+	"time"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -9,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
-	"time"
 )
 
 type ProgressBarLabels struct {
@@ -254,9 +255,7 @@ func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
 	}
 	if skip {
 		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, t.windows, ""))
-	}
-
-	if !skip {
+	} else {
 		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", t.progressBarLabels.Storage, t.progressBarLabels.Files, storage, nil, nil, totalFiles, transferredFiles, t.windows, progressbar.GREEN))
 	}
 	return nil

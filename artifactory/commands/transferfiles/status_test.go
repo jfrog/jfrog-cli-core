@@ -2,6 +2,8 @@ package transferfiles
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -9,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -159,7 +160,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	stateManager.TimeEstimationManager.SpeedsAverage = 12
 
 	// Increment transferred size and files. This action also persists the run status.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(500, 5000))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(500, 5000))
 
 	// Save transfer state.
 	assert.NoError(t, stateManager.SaveStateAndSnapshots())

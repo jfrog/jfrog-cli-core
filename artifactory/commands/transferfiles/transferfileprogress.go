@@ -1,6 +1,8 @@
 package transferfiles
 
 import (
+	"time"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -9,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/vbauerster/mpb/v7"
-	"time"
 )
 
 const phase1HeadLine = "Phase 1: Transferring all files in the repository"

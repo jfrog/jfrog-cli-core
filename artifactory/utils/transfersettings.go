@@ -62,7 +62,7 @@ func LoadTransferSettings() (settings *TransferSettings, err error) {
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(content, &settings)
+	err = errorutils.CheckError(json.Unmarshal(content, &settings))
 	return
 }
 

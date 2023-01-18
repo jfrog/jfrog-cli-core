@@ -97,8 +97,8 @@ func populateDirWith(rootDir string, dirs ...FileItem) (err error) {
 }
 
 func TestSearchDestinationPath(t *testing.T) {
-	testDit := FileItem{"test_plugin_install_dir", "test"}
-	confuse := FileItem{"test_plugin_install_dir", "test2"}
+	testDir := FileItem{artifactory, "test_plugin_install_dir", "test"}
+	confuse := FileItem{artifactory, "test_plugin_install_dir", "test2"}
 	manager := &PluginInstallManager{}
 	temp, clean := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer clean()
@@ -108,16 +108,16 @@ func TestSearchDestinationPath(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, exists, fmt.Sprintf("The match is %s", target))
 	// Destination not exists
-	manager.addDestination(testDit)
+	manager.addDestination(testDir[1:])
 	exists, target, err = manager.findDestination(temp)
 	assert.NoError(t, err)
 	assert.False(t, exists, fmt.Sprintf("The match is %s", target))
 	// Destination exists
-	assert.NoError(t, populateDirWith(temp, testDit))
+	assert.NoError(t, populateDirWith(temp, testDir))
 	exists, dst, err := manager.findDestination(temp)
 	assert.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, testDit.toPath(temp), dst.toPath())
+	assert.Equal(t, testDir.toPath(temp), dst.toPath())
 }
 
 func TestGetPluginDirDestination(t *testing.T) {
@@ -131,7 +131,7 @@ func TestGetPluginDirDestination(t *testing.T) {
 		testsutils.UnSetEnvAndAssert(t, jfrogHomeEnvVar)
 		defer testsutils.SetEnvAndAssert(t, jfrogHomeEnvVar, oldVal)
 	}
-	assert.NoError(t, populateDirWith(testHomePath, FileItem{testEnvDir, targetDir}, FileItem{testCustomDir, targetDir}))
+	assert.NoError(t, populateDirWith(testHomePath, FileItem{testEnvDir, artifactory + "-confuse", targetDir}, FileItem{testCustomDir, "confuse-" + artifactory, targetDir}))
 	manager := NewArtifactoryPluginInstallManager(nil)
 	manager.addDestination(FileItem{targetDir})
 	cmd := &InstallDataTransferPluginCommand{transferManger: manager}
@@ -155,13 +155,13 @@ func TestGetPluginDirDestination(t *testing.T) {
 	testsutils.SetEnvAndAssert(t, jfrogHomeEnvVar, filepath.Join(testHomePath, testEnvDir))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, targetDir), dst.toPath())
+	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, artifactory + "-confuse", targetDir), dst.toPath())
 
 	// Flag override
 	cmd.SetJFrogHomePath(filepath.Join(testHomePath, testCustomDir))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, targetDir), dst.toPath())
+	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, "confuse-" + artifactory, targetDir), dst.toPath())
 	cmd.SetJFrogHomePath("not_existing_dir")
 	_, err = cmd.getPluginDirDestination()
 	assert.Errorf(t, err, notValidDestinationErr.Error())

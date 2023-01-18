@@ -84,6 +84,9 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoKey = repoKey
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
+
+		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
 		return nil
 	})
 }

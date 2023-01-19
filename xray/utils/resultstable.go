@@ -650,7 +650,7 @@ func appendUniqueFixVersions(targetFixVersions []string, sourceFixVersions ...st
 // getUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:cveId:fixVersionExist"
 func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []services.Cve, fixVersionExist bool) string {
 	var cveId string
-	if cves != nil && len(cves) != 0 {
+	if len(cves) != 0 {
 		cveId = cves[0].Id
 	}
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)

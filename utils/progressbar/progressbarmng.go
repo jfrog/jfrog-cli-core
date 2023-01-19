@@ -1,6 +1,14 @@
 package progressbar
 
 import (
+	golangLog "log"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gookit/color"
 	artifactoryutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -10,13 +18,6 @@ import (
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 	"golang.org/x/term"
-	golangLog "log"
-	"math"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 const (
@@ -86,11 +87,11 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	return &prog
 }
 
-func (bm *ProgressBarMng) NewHeadLineDoubleValProgBar(headLine string, counterLine string, counterLine2 string, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2 *int64, windows bool, color Color) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewHeadLineDoubleValProgBar(headLine string, counterLine string, counterLine2 string, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, doneTasks2 *int64, windows bool, color Color) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
-	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, DoneTasks2, windows, color)
+	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, doneTasks2, windows, color)
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
@@ -228,7 +229,7 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 
 // A progress bar with two counters values shown on the right side of the progress bar; The first value controls what the bar shows.
 // The total tasks1 can be passes as an int or *int, if you want to use it with int send nil to the optional total and done tasks1 and the wanted totalTasks to total tasks1.
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, secondValueHeadLine string, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTaks2 *int64, windows bool, colour Color) *TasksProgressBar {
+func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, secondValueHeadLine string, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTasks2 *int64, windows bool, colour Color) *TasksProgressBar {
 
 	pb := &TasksProgressBar{}
 	padding, filler := paddingAndFiller(windows)
@@ -241,7 +242,7 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 				decor.Name(" "+firstValueHeadLine+": "),
 				decor.CountersKibiByte(getRenderedFormattedCounters("%.1f")),
 				decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(int(*doneTaks2))
+					s1 := strconv.Itoa(int(*doneTasks2))
 					s2 := strconv.Itoa(int(*totalTasks2))
 					return color.Green.Render(s1 + "/" + s2)
 				}),
@@ -260,7 +261,7 @@ func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, s
 					s2 := artifactoryutils.ConvertIntToStorageSizeString(*OptionalTotalTasks1)
 					return color.Green.Render(s1 + "/" + s2)
 				}), decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(int(*doneTaks2))
+					s1 := strconv.Itoa(int(*doneTasks2))
 					s2 := strconv.Itoa(int(*totalTasks2))
 					return color.Green.Render(s1 + "/" + s2)
 				}),

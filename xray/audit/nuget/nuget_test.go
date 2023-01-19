@@ -32,10 +32,8 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	err = json.Unmarshal(expectedTreeJson, &expectedTrees)
 	assert.NoError(t, err)
 
-	for i, expectedTree := range *expectedTrees {
-		equals := tests.CompareTree(&expectedTree, xrayDependenciesTree[i])
-		if !equals {
-			t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree[i].Nodes)
-		}
+	for i := range *expectedTrees {
+		expectedTree := &(*expectedTrees)[i]
+		assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree[i]), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree[i].Nodes)
 	}
 }

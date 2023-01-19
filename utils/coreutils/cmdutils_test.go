@@ -34,7 +34,7 @@ func TestFindAndRemoveFlagFromCommand(t *testing.T) {
 		if keyValue != expected[index].value {
 			t.Errorf("Expected %s value: %s, got: %s.", expected[index].key, expected[index].value, keyValue)
 		}
-		RemoveFlagFromCommand(&test, flagIndex, valueIndex)
+		RemoveFlagFromCommand(&args[index], flagIndex, valueIndex)
 		if !reflect.DeepEqual(test, expected[index].command) {
 			t.Errorf("Expected command arguments: %v, got: %v.", expected[index].command, test)
 		}

@@ -85,9 +85,12 @@ func TestSignalStopError(t *testing.T) {
 	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stop is already in progress. Please wait...")
 }
 
-const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
-const secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
-const nodeIdForTest = "nodea0gwihu76sk5g-artifactory-primary-0"
+/* #nosec G101 -- Not credentials. */
+const (
+	firstUuidTokenForTest  = "347cd3e9-86b6-4bec-9be9-e053a485f327"
+	secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
+	nodeIdForTest          = "nodea0gwihu76sk5g-artifactory-primary-0"
+)
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "9.9.9", false) })
@@ -311,10 +314,10 @@ func TestGetAllLocalRepositories(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.RequestURI {
 		case "/api/storageinfo/calculate":
-			// Reponse for CalculateStorageInfo
+			// Response for CalculateStorageInfo
 			w.WriteHeader(http.StatusAccepted)
 		case "/api/storageinfo":
-			// Reponse for GetStorageInfo
+			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
 			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{
 				{RepoKey: "repo-1"}, {RepoKey: "repo-2"},
@@ -326,7 +329,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
 		case "/api/repositories?type=local&packageType=":
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
 			bytes, err := json.Marshal(response)
@@ -334,7 +337,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
 		case "/api/repositories?type=federated&packageType=":
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "federated-repo-1"}, {Key: "federated-repo-2"}}
 			bytes, err := json.Marshal(response)
@@ -368,7 +371,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer sourceTestServer.Close()
 
 	// Prepare target mock server
-	targetTestServer, targetserverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
 			w.WriteHeader(http.StatusAccepted)
 			targetServerCalculated = true
@@ -377,7 +380,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer targetTestServer.Close()
 
 	// Init and assert storage info managers
-	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetServerDetails)
 	assert.NoError(t, err)
 	err = transferFilesCommand.initStorageInfoManagers()
 	assert.NoError(t, err)

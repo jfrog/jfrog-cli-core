@@ -77,7 +77,8 @@ func TestGetConfigXml(t *testing.T) {
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.RequestURI == "/api/system/configuration" {
-			w.Write([]byte("<config></config>"))
+			_, err := w.Write([]byte("<config></config>"))
+			assert.NoError(t, err)
 		}
 	})
 	defer testServer.Close()
@@ -90,7 +91,7 @@ func TestGetConfigXml(t *testing.T) {
 }
 
 func TestSanityVerifications(t *testing.T) {
-	users := []services.User{}
+	var users []services.User
 	var rtVersion string
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +154,8 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
+		_, err := w.Write([]byte("Not found"))
+		assert.NoError(t, err)
 	})
 	defer testServer.Close()
 
@@ -166,7 +168,8 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("An admin user is required"))
+		_, err := w.Write([]byte("An admin user is required"))
+		assert.NoError(t, err)
 	})
 	defer testServer.Close()
 

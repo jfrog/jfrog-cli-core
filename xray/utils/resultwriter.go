@@ -140,9 +140,9 @@ func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, inc
 		return err
 	}
 	if len(jsonTable.SecurityViolations) > 0 {
-		return convertViolations(jsonTable, run)
+		return convertViolations(jsonTable, run, simplifiedOutput)
 	}
-	return convertVulnerabilities(jsonTable, run)
+	return convertVulnerabilities(jsonTable, run, simplifiedOutput)
 }
 
 func getCves(cvesRow []formats.CveRow, issueId string) string {
@@ -168,10 +168,9 @@ func getHeadline(impactedPackage, version, key, fixVersion string) string {
 	return fmt.Sprintf("[%s] %s:%s", key, impactedPackage, version)
 }
 
-func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run) error {
+func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run, simplifiedOutput bool) error {
 	for _, violation := range jsonTable.SecurityViolations {
-		sarifProperties, err := getSarifProperties(violation.Cves, violation.IssueId, violation.FixedVersions,
-			violation.ImpactedPackageName, violation.ImpactedPackageVersion, violation.Components)
+		sarifProperties, err := getSarifProperties(violation, simplifiedOutput)
 		if err != nil {
 			return err
 		}
@@ -181,8 +180,8 @@ func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run) erro
 		}
 	}
 	for _, license := range jsonTable.LicensesViolations {
-		impactedPackageFull := getHeadline(license.ImpactedPackageName, license.ImpactedPackageVersion, license.LicenseKey, "")
-		err := addScanResultsToSarifRun(run, "", license.ImpactedPackageVersion, impactedPackageFull, license.LicenseKey, coreutils.Technology(strings.ToLower(license.ImpactedPackageType)))
+		impactedPackageFull := getHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, "")
+		err := addScanResultsToSarifRun(run, "", license.ImpactedDependencyVersion, impactedPackageFull, license.LicenseKey, coreutils.Technology(strings.ToLower(license.ImpactedDependencyType)))
 		if err != nil {
 			return err
 		}
@@ -191,17 +190,19 @@ func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run) erro
 	return nil
 }
 
-func getSarifProperties(cveRows []formats.CveRow, issueId string, fixedVersions []string, impactedPackageName,
-	impactedPackageVersion string, directDependencies []formats.ComponentRow) (SarifProperties, error) {
-	cves := getCves(cveRows, issueId)
-	fixVersion := getMinimalFixVersion(fixedVersions)
-	headline := getHeadline(impactedPackageName, impactedPackageVersion, cves, fixVersion)
-	maxCveScore, err := findMaxCVEScore(cveRows)
+func getSarifProperties(vulnerabilityRow formats.VulnerabilityOrViolationRow, simplifiedOutput bool) (SarifProperties, error) {
+	cves := getCves(vulnerabilityRow.Cves, vulnerabilityRow.IssueId)
+	fixVersion := getMinimalFixVersion(vulnerabilityRow.FixedVersions)
+	headline := getHeadline(vulnerabilityRow.ImpactedDependencyName, vulnerabilityRow.ImpactedDependencyVersion, cves, fixVersion)
+	maxCveScore, err := findMaxCVEScore(vulnerabilityRow.Cves)
 	if err != nil {
 		return SarifProperties{}, err
 	}
-	formattedDirectDependecies := getDirectDependenciesFormatted(directDependencies)
-	description := getDescription(formattedDirectDependecies, maxCveScore, fixedVersions)
+	formattedDirectDependecies := getDirectDependenciesFormatted(vulnerabilityRow.Components)
+	description := vulnerabilityRow.Summary
+	if simplifiedOutput {
+		description = getDescription(formattedDirectDependecies, maxCveScore, vulnerabilityRow.FixedVersions)
+	}
 	return SarifProperties{
 		Cves:        cves,
 		Headline:    headline,
@@ -210,10 +211,9 @@ func getSarifProperties(cveRows []formats.CveRow, issueId string, fixedVersions 
 	}, err
 }
 
-func convertVulnerabilities(jsonTable formats.SimpleJsonResults, run *sarif.Run) error {
+func convertVulnerabilities(jsonTable formats.SimpleJsonResults, run *sarif.Run, simplifiedOutput bool) error {
 	for _, vulnerability := range jsonTable.Vulnerabilities {
-		sarifProperties, err := getSarifProperties(vulnerability.Cves, vulnerability.IssueId, vulnerability.FixedVersions,
-			vulnerability.ImpactedPackageName, vulnerability.ImpactedPackageVersion, vulnerability.Components)
+		sarifProperties, err := getSarifProperties(vulnerability, simplifiedOutput)
 		if err != nil {
 			return err
 		}

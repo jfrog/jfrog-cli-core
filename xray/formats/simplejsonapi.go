@@ -17,56 +17,56 @@ type SimpleJsonResults struct {
 
 // Used for vulnerabilities and security violations
 type VulnerabilityOrViolationRow struct {
-	Summary                  string                    `json:"summary"`
-	Severity                 string                    `json:"severity"`
-	SeverityNumValue         int                       `json:"-"` // For sorting
-	ImpactedPackageName      string                    `json:"impactedPackageName"`
-	ImpactedPackageVersion   string                    `json:"impactedPackageVersion"`
-	ImpactedPackageType      string                    `json:"impactedPackageType"`
-	FixedVersions            []string                  `json:"fixedVersions"`
-	Components               []ComponentRow            `json:"components"`
-	Cves                     []CveRow                  `json:"cves"`
-	IssueId                  string                    `json:"issueId"`
-	References               []string                  `json:"references"`
-	ImpactPaths              [][]ComponentRow          `json:"impactPaths"`
-	JfrogResearchInformation *JfrogResearchInformation `json:"jfrogResearchInformation"`
-	Technology               coreutils.Technology      `json:"-"`
+	Summary                   string                    `json:"summary"`
+	Severity                  string                    `json:"severity"`
+	SeverityNumValue          int                       `json:"-"` // For sorting
+	ImpactedDependencyName    string                    `json:"impactedPackageName"`
+	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string                    `json:"impactedPackageType"`
+	FixedVersions             []string                  `json:"fixedVersions"`
+	Components                []ComponentRow            `json:"components"`
+	Cves                      []CveRow                  `json:"cves"`
+	IssueId                   string                    `json:"issueId"`
+	References                []string                  `json:"references"`
+	ImpactPaths               [][]ComponentRow          `json:"impactPaths"`
+	JfrogResearchInformation  *JfrogResearchInformation `json:"jfrogResearchInformation"`
+	Technology                coreutils.Technology      `json:"-"`
 }
 
 type LicenseRow struct {
-	LicenseKey             string           `json:"licenseKey"`
-	ImpactedPackageName    string           `json:"impactedPackageName"`
-	ImpactedPackageVersion string           `json:"impactedPackageVersion"`
-	ImpactedPackageType    string           `json:"impactedPackageType"`
-	Components             []ComponentRow   `json:"components"`
-	ImpactPaths            [][]ComponentRow `json:"impactPaths"`
+	LicenseKey                string           `json:"licenseKey"`
+	ImpactedDependencyName    string           `json:"impactedPackageName"`
+	ImpactedDependencyVersion string           `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string           `json:"impactedPackageType"`
+	Components                []ComponentRow   `json:"components"`
+	ImpactPaths               [][]ComponentRow `json:"impactPaths"`
 }
 
 type LicenseViolationRow struct {
-	LicenseKey             string         `json:"licenseKey"`
-	Severity               string         `json:"severity"`
-	SeverityNumValue       int            `json:"-"` // For sorting
-	ImpactedPackageName    string         `json:"impactedPackageName"`
-	ImpactedPackageVersion string         `json:"impactedPackageVersion"`
-	ImpactedPackageType    string         `json:"impactedPackageType"`
-	Components             []ComponentRow `json:"components"`
+	LicenseKey                string         `json:"licenseKey"`
+	Severity                  string         `json:"severity"`
+	SeverityNumValue          int            `json:"-"` // For sorting
+	ImpactedDependencyName    string         `json:"impactedPackageName"`
+	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
+	Components                []ComponentRow `json:"components"`
 }
 
 type OperationalRiskViolationRow struct {
-	Severity               string         `json:"severity"`
-	SeverityNumValue       int            `json:"-"` // For sorting
-	ImpactedPackageName    string         `json:"impactedPackageName"`
-	ImpactedPackageVersion string         `json:"impactedPackageVersion"`
-	ImpactedPackageType    string         `json:"impactedPackageType"`
-	Components             []ComponentRow `json:"components"`
-	RiskReason             string         `json:"riskReason"`
-	IsEol                  string         `json:"isEndOfLife"`
-	EolMessage             string         `json:"endOfLifeMessage"`
-	Cadence                string         `json:"cadence"`
-	Commits                string         `json:"commits"`
-	Committers             string         `json:"committers"`
-	NewerVersions          string         `json:"newerVersions"`
-	LatestVersion          string         `json:"latestVersion"`
+	Severity                  string         `json:"severity"`
+	SeverityNumValue          int            `json:"-"` // For sorting
+	ImpactedDependencyName    string         `json:"impactedPackageName"`
+	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
+	Components                []ComponentRow `json:"components"`
+	RiskReason                string         `json:"riskReason"`
+	IsEol                     string         `json:"isEndOfLife"`
+	EolMessage                string         `json:"endOfLifeMessage"`
+	Cadence                   string         `json:"cadence"`
+	Commits                   string         `json:"commits"`
+	Committers                string         `json:"committers"`
+	NewerVersions             string         `json:"newerVersions"`
+	LatestVersion             string         `json:"latestVersion"`
 }
 
 type ComponentRow struct {

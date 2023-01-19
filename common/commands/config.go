@@ -556,7 +556,7 @@ func logIfNotEmpty(value, prefix string, mask, isDefault bool) {
 		}
 		fullString := prefix + value
 		if isDefault {
-			fullString = coreutils.PrintTitle(coreutils.PrintBold(fullString))
+			fullString = coreutils.PrintBoldTitle(fullString)
 		}
 		log.Output(fullString)
 	}

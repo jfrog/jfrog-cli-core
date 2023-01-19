@@ -223,7 +223,7 @@ func TestInterruptIfRequested(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run interruptIfRequested and make sure that the interrupted signal wasn't sent to the channel
-	interruptIfRequested(transferFilesCommand.stopSignal)
+	assert.NoError(t, interruptIfRequested(transferFilesCommand.stopSignal))
 	select {
 	case <-transferFilesCommand.stopSignal:
 		assert.Fail(t, "Signal was sent, but shouldn't be")
@@ -236,7 +236,7 @@ func TestInterruptIfRequested(t *testing.T) {
 	assert.NoError(t, transferFilesCommand.signalStop())
 
 	// Run interruptIfRequested and make sure that the signal was sent to the channel
-	interruptIfRequested(transferFilesCommand.stopSignal)
+	assert.NoError(t, interruptIfRequested(transferFilesCommand.stopSignal))
 	actualSignal, ok := <-transferFilesCommand.stopSignal
 	assert.True(t, ok)
 	assert.Equal(t, os.Interrupt, actualSignal)

@@ -91,7 +91,7 @@ func TestGetConfigXml(t *testing.T) {
 }
 
 func TestSanityVerifications(t *testing.T) {
-	users := []services.User{}
+	var users []services.User
 	var rtVersion string
 	// Create transfer config command
 	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {

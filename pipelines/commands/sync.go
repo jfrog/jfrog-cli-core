@@ -43,9 +43,5 @@ func (sc *SyncCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	syncServErr := serviceManager.SyncPipelineResource(sc.branch, sc.repositoryFullName)
-	if err != nil {
-		return syncServErr
-	}
-	return syncServErr
+	return serviceManager.SyncPipelineResource(sc.branch, sc.repositoryFullName)
 }

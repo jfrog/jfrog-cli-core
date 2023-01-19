@@ -70,15 +70,15 @@ func (sc *StatusCommand) SetMultiBranch(multiBranch bool) *StatusCommand {
 
 func (sc *StatusCommand) Run() error {
 	// Create service manager to fetch run status
-	serviceManager, svcMgrErr := manager.CreateServiceManager(sc.serverDetails)
-	if svcMgrErr != nil {
-		return svcMgrErr
+	serviceManager, err := manager.CreateServiceManager(sc.serverDetails)
+	if err != nil {
+		return err
 	}
 
 	// Get pipeline status using branch name, pipelines name and whether it is multi branch
-	matchingPipes, pipeStatusErr := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
-	if pipeStatusErr != nil {
-		return pipeStatusErr
+	matchingPipes, err := serviceManager.GetPipelineRunStatusByBranch(sc.branch, sc.pipelineName, sc.isMultiBranch)
+	if err != nil {
+		return err
 	}
 	var res string
 	for i := range matchingPipes.Pipelines {
@@ -87,9 +87,9 @@ func (sc *StatusCommand) Run() error {
 		if pipe.LatestRunID != 0 {
 			// When notification option is selected use this flow to notify
 			if sc.pipelineName != "" && sc.notify {
-				monErr := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
-				if monErr != nil {
-					return monErr
+				err := monitorStatusAndNotify(context.Background(), serviceManager, sc.branch, sc.pipelineName, sc.isMultiBranch)
+				if err != nil {
+					return err
 				}
 			} else {
 				respStatus, colorCode, duration := getPipelineStatusAndColorCode(&pipe)

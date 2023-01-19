@@ -52,9 +52,9 @@ func (sc *SyncStatusCommand) Run() error {
 		return err
 	}
 	// Filter pipeline resources sync status with repository name and branch name
-	pipelineSyncStatuses, syncServErr := serviceManager.GetSyncStatusForPipelineResource(sc.repoPath, sc.branch)
+	pipelineSyncStatuses, err := serviceManager.GetSyncStatusForPipelineResource(sc.repoPath, sc.branch)
 	if err != nil {
-		return syncServErr
+		return err
 	}
 	for _, pipeSyncStatus := range pipelineSyncStatuses {
 		pipeSyncStatusCode := status.GetPipelineStatus(pipeSyncStatus.LastSyncStatusCode)

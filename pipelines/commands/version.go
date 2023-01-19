@@ -32,9 +32,9 @@ func (vc *VersionCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	info, sysInfoErr := serviceManager.GetSystemInfo()
+	info, err := serviceManager.GetSystemInfo()
 	if err != nil {
-		return sysInfoErr
+		return err
 	}
 	if info == nil {
 		log.Output("Unable to fetch pipelines version")

@@ -1,11 +1,12 @@
 package state
 
 import (
+	"testing"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestGetRepositoryState(t *testing.T) {
@@ -118,13 +119,13 @@ func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 
 	// Add content to state and snapshot.
 	assert.NoError(t, stateManager.SetRepoFullTransferStarted(time.Now()))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(2, 3))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 3))
 	_ = getRootAndAddSnapshotData(t, stateManager)
 	// Get state before saving.
 	currentState := stateManager.TransferState
 	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 	// Modify state again, and assert that the loaded state from snapshot was not modified and remained as saved.
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(2, 3))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 3))
 	assert.NotEqual(t, stateManager.TransferState.CurrentRepo, currentState.CurrentRepo)
 	assertGetTransferStateAndSnapshot(t, false, currentState, stateManager.repoTransferSnapshot, true)
 

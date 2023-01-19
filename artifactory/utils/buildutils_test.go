@@ -34,7 +34,6 @@ func TestGetBuildName(t *testing.T) {
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 
-	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
@@ -69,6 +68,7 @@ func TestGetBuildName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, buildNameFile, actualBuildName)
 }
+
 func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
 	if coreutils.IsWindows() {
 		t.Skip("Skipping TestGetEmptyBuildNameOnUnixAccessDenied test on windows...")
@@ -77,14 +77,16 @@ func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 
-	// Create build config in temp folder
 	destConfFile := filepath.Join(tmpDir, ".jfrog", "projects")
 	srcConfFile := filepath.Join("testdata", "build.yaml")
 	assert.NoError(t, fileutils.CopyFile(destConfFile, srcConfFile))
 
-	// Remove permissions from config file
-	err := os.Chmod(destConfFile, 0000)
-	assert.NoError(t, err)
+	// Remove permissions from config file.
+	assert.NoError(t, os.Chmod(destConfFile, 0000))
+	defer func() {
+		// Restore permissions for deleting the config file.
+		assert.NoError(t, os.Chmod(destConfFile, 0770))
+	}()
 
 	// Validate build name form config file doesn't throw an error if access is denied.
 	wd, err := os.Getwd()
@@ -96,12 +98,8 @@ func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, buildConfig.loadedFromConfigFile)
 	assert.Empty(t, actualBuildName)
-
-	// Restore permissions for deleting the config file.
-	err = os.Chmod(destConfFile, 0770)
-	assert.NoError(t, err)
-
 }
+
 func TestGetBuildNumber(t *testing.T) {
 	const buildNumber = "buildNumber1"
 	const buildNumberEnv = "envBuildNumber"

@@ -2,6 +2,7 @@ package transferconfig
 
 import (
 	"github.com/jfrog/jfrog-client-go/access/services"
+	artifactoryServices "github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -79,4 +80,30 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 	source = services.Project{DisplayName: sourceName, Description: sourceDescription, AdminPrivileges: sourceAdmin, SoftLimit: sourceSoftLimit, StorageQuotaBytes: sourceQuotaBytes, ProjectKey: sourceKey}
 	target = services.Project{DisplayName: targetName, Description: targetDescription, AdminPrivileges: targetAdmin, SoftLimit: targetSoftLimit, StorageQuotaBytes: targetQuotaBytes, ProjectKey: targetKey}
 	return
+}
+
+func TestCompareInterfaces(t *testing.T) {
+	trueValue := true
+	falseValue := false
+
+	first := artifactoryServices.DockerRemoteRepositoryParams{}
+	first.RemoteRepositoryBaseParams = artifactoryServices.RemoteRepositoryBaseParams{Password: "ppppp"}
+	first.Key = "string1"
+	first.BlackedOut = &trueValue
+	first.AssumedOfflinePeriodSecs = 1111
+	first.Environments = []string{"111", "aaa"}
+	first.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: &trueValue}
+
+	second := artifactoryServices.DockerRemoteRepositoryParams{}
+	second.RemoteRepositoryBaseParams = artifactoryServices.RemoteRepositoryBaseParams{Password: "sssss"}
+	second.Key = "string2"
+	second.BlackedOut = &falseValue
+	second.AssumedOfflinePeriodSecs = 2222
+	second.Environments = []string{"222", "bbb"}
+	second.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: &falseValue}
+
+	diff, err := compareInterfaces(first, second, filteredRepoKeys...)
+	assert.NoError(t, err)
+	// Expect 5 differences (password should be filtered)
+	assert.Len(t, strings.Split(diff, ";"), 5)
 }

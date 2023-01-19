@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/stretchr/testify/assert"
+	"github.com/magiconair/properties/assert"
 	"reflect"
 	"testing"
 )

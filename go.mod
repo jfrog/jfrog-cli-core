@@ -51,7 +51,6 @@ require (
 	github.com/go-git/go-git/v5 v5.5.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
-	github.com/goldeneggg/structil v0.9.1
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect

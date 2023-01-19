@@ -13,7 +13,7 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 			ImpactedPackageVersion: rows[i].ImpactedPackageVersion,
 			ImpactedPackageType:    rows[i].ImpactedPackageType,
 			FixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
-			Components:             ConvertToComponentTableRow(rows[i].Components),
+			DirectDependencies:     ConvertToComponentTableRow(rows[i].Components),
 			Cves:                   ConvertToCveTableRow(rows[i].Cves),
 			IssueId:                rows[i].IssueId,
 		})
@@ -30,7 +30,7 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 			ImpactedPackageName:    rows[i].ImpactedPackageName,
 			ImpactedPackageVersion: rows[i].ImpactedPackageVersion,
 			ImpactedPackageType:    rows[i].ImpactedPackageType,
-			Components:             ConvertToComponentTableRow(rows[i].Components),
+			DirectDependencies:     ConvertToComponentTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -43,7 +43,7 @@ func ConvertToLicenseTableRow(rows []LicenseRow) (tableRows []LicenseTableRow) {
 			ImpactedPackageName:    rows[i].ImpactedPackageName,
 			ImpactedPackageVersion: rows[i].ImpactedPackageVersion,
 			ImpactedPackageType:    rows[i].ImpactedPackageType,
-			Components:             ConvertToComponentTableRow(rows[i].Components),
+			DirectDependencies:     ConvertToComponentTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -57,7 +57,7 @@ func ConvertToOperationalRiskViolationTableRow(rows []OperationalRiskViolationRo
 			ImpactedPackageName:    rows[i].ImpactedPackageName,
 			ImpactedPackageVersion: rows[i].ImpactedPackageVersion,
 			ImpactedPackageType:    rows[i].ImpactedPackageType,
-			Components:             ConvertToComponentTableRow(rows[i].Components),
+			DirectDependencies:     ConvertToComponentTableRow(rows[i].Components),
 			IsEol:                  rows[i].IsEol,
 			Cadence:                rows[i].Cadence,
 			Commits:                rows[i].Commits,
@@ -71,9 +71,9 @@ func ConvertToOperationalRiskViolationTableRow(rows []OperationalRiskViolationRo
 	return
 }
 
-func ConvertToComponentTableRow(rows []ComponentRow) (tableRows []ComponentTableRow) {
+func ConvertToComponentTableRow(rows []ComponentRow) (tableRows []DirectDependenciesTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, ComponentTableRow{
+		tableRows = append(tableRows, DirectDependenciesTableRow{
 			Name:    rows[i].Name,
 			Version: rows[i].Version,
 		})

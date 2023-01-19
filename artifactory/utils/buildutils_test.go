@@ -69,7 +69,10 @@ func TestGetBuildName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, buildNameFile, actualBuildName)
 }
-func TestGetEmptyBuildNameOnAccessDenied(t *testing.T) {
+func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
+	if coreutils.IsWindows() {
+		t.Skip("Skipping TestGetEmptyBuildNameOnUnixAccessDenied test on windows...")
+	}
 	// Create build config in temp folder.
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()

@@ -153,26 +153,39 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		// Projects not supported by Source Artifactory version
 		return
 	}
-
 	projectsSupported = true
-	sourceAccessManager, err := utils.CreateAccessServiceManager(tcmc.sourceServerDetails, false)
-	if err != nil {
-		return
-	}
-	tcmc.sourceAccessManager = *sourceAccessManager
-	targetAccessManager, err := utils.CreateAccessServiceManager(tcmc.targetServerDetails, false)
-	if err != nil {
-		return
-	}
-	tcmc.targetAccessManager = *targetAccessManager
 
-	if _, err = sourceAccessManager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The source's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
+	tcmc.sourceAccessManager, err = createAccessManagerAndValidateToken(tcmc.sourceServerDetails)
+	if err != nil {
 		return
 	}
-	if _, err = targetAccessManager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The target's access token is not valid. Please provide a valid access token by running the 'jf c edit'")
+
+	tcmc.targetAccessManager, err = createAccessManagerAndValidateToken(tcmc.targetServerDetails)
+	if err != nil {
+		return
 	}
+
+	return
+}
+
+func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (accessManager access.AccessServicesManager, err error) {
+	if !(serverDetails.AccessToken != "" && serverDetails.RefreshToken == "") {
+		err = fmt.Errorf("it looks like you configured the '%s' instance with username and password.\n"+
+			"The transfer-config-merge command can be used with admin Access Token only.\n"+
+			"Please use the 'jf c edit %s' command to configure the Access Token and rerun the command.", serverDetails.ServerId, serverDetails.ServerId)
+		return
+	}
+
+	manager, err := utils.CreateAccessServiceManager(serverDetails, false)
+	if err != nil {
+		return
+	}
+
+	if _, err = manager.Ping(); err != nil {
+		err = errorutils.CheckErrorf("The '%s' instance Access Token is not valid. Please provide a valid access token by running the 'jf c edit %s'", serverDetails.ServerId, serverDetails.ServerId)
+		return
+	}
+	accessManager = *manager
 	return
 }
 

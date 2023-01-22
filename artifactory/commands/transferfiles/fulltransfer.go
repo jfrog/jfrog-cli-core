@@ -28,7 +28,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	storage, err := utils.GetUsedSpaceInBytes(&m.repoSummary)
+	totalRepoSize, err := utils.GetUsedSpaceInBytes(&m.repoSummary)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.AddPhase1(storage, skip)
+	return m.progressBar.AddPhase1(m.stateManager.OverallTransfer.TransferredSizeBytes, totalRepoSize, skip)
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -88,7 +88,7 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 func (m *fullTransferPhase) skipPhase() error {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		return m.progressBar.AddPhase1(0, true)
+		return m.progressBar.AddPhase1(0, 0, true)
 	}
 	return nil
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/vbauerster/mpb/v7"
 )
 
+const phase1HeadLine = "Phase 1: Transferring all files in the repository"
+
 type ProgressBarLabels struct {
 	Repositories            string
 	Files                   string
@@ -248,15 +250,17 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(storage int64, skip bool) error {
+func (t *TransferProgressMng) AddPhase1(transferredSize, totalRepoSize int64, skip bool) error {
 	_, _, totalFiles, transferredFiles, err := t.transferState.GetStorageAndFilesRepoPointers(api.Phase1)
 	if err != nil {
 		return err
 	}
 	if skip {
-		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, "Phase 1: Transferring all files in the repository", false, progressbar.GREEN, t.windows, ""))
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, phase1HeadLine, false, progressbar.GREEN, t.windows, ""))
 	} else {
-		t.phases = append(t.phases, t.barsMng.NewHeadLineDoubleValProgBar("Phase 1: Transferring all files in the repository", t.progressBarLabels.Storage, t.progressBarLabels.Files, storage, nil, nil, totalFiles, transferredFiles, t.windows, progressbar.GREEN))
+		bar := t.barsMng.NewHeadLineDoubleValProgBar(phase1HeadLine, t.progressBarLabels.Storage, t.progressBarLabels.Files, totalRepoSize, nil, nil, totalFiles, transferredFiles, t.windows, progressbar.GREEN)
+		t.barsMng.IncBy(int(transferredSize), bar)
+		t.phases = append(t.phases, bar)
 	}
 	return nil
 }

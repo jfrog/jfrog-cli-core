@@ -153,6 +153,7 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		// Projects not supported by Source Artifactory version
 		return
 	}
+
 	projectsSupported = true
 
 	tcmc.sourceAccessManager, err = createAccessManagerAndValidateToken(tcmc.sourceServerDetails)
@@ -169,7 +170,8 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 }
 
 func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (accessManager access.AccessServicesManager, err error) {
-	if !(serverDetails.AccessToken != "" && serverDetails.RefreshToken == "") {
+	adminTokenConfigured := serverDetails.AccessToken != "" && serverDetails.RefreshToken == ""
+	if !adminTokenConfigured {
 		err = fmt.Errorf("it looks like you configured the '%s' instance with username and password.\n"+
 			"The transfer-config-merge command can be used with admin Access Token only.\n"+
 			"Please use the 'jf c edit %s' command to configure the Access Token and rerun the command.", serverDetails.ServerId, serverDetails.ServerId)

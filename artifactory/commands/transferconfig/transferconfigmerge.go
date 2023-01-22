@@ -170,11 +170,15 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 }
 
 func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (accessManager access.AccessServicesManager, err error) {
+	// The refresh token mechanism generates an Access token and adds it to the server-id config.
+	// To validate that the user configured an access token we should check that the access token field is not empty,
+	// and also that the refresh token field is empty.
 	adminTokenConfigured := serverDetails.AccessToken != "" && serverDetails.RefreshToken == ""
+
 	if !adminTokenConfigured {
-		err = fmt.Errorf("it looks like you configured the '%s' instance with username and password.\n"+
+		err = fmt.Errorf("it looks like you configured the '%[1]s' instance with username and password.\n"+
 			"The transfer-config-merge command can be used with admin Access Token only.\n"+
-			"Please use the 'jf c edit %s' command to configure the Access Token and rerun the command.", serverDetails.ServerId, serverDetails.ServerId)
+			"Please use the 'jf c edit %[1]s' command to configure the Access Token and re-run the command", serverDetails.ServerId)
 		return
 	}
 
@@ -184,7 +188,7 @@ func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (a
 	}
 
 	if _, err = manager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The '%s' instance Access Token is not valid. Please provide a valid access token by running the 'jf c edit %s'", serverDetails.ServerId, serverDetails.ServerId)
+		err = errorutils.CheckErrorf("The '%[1]s' instance Access Token is not valid. Please provide a valid access token by running the 'jf c edit %[1]s'", serverDetails.ServerId)
 		return
 	}
 	accessManager = *manager

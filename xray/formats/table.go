@@ -11,28 +11,28 @@ type VulnerabilityTableRow struct {
 	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency\nName"`
 	ImpactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
-	ImpactedDependencyType    string                       `col-name:"Type"`
 	FixedVersions             string                       `col-name:"Fixed\nVersions"`
+	ImpactedDependencyType    string                       `col-name:"Type"`
 	Cves                      []CveTableRow                `embed-table:"true"`
 	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
 }
 
 type LicenseTableRow struct {
 	LicenseKey                string                       `col-name:"License"`
+	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency"`
 	ImpactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
 	ImpactedDependencyType    string                       `col-name:"Type"`
-	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 }
 
 type LicenseViolationTableRow struct {
 	LicenseKey                string                       `col-name:"License"`
 	Severity                  string                       `col-name:"Severity"`
 	SeverityNumValue          int                          // For sorting
+	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency"`
 	ImpactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
 	ImpactedDependencyType    string                       `col-name:"Type"`
-	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 }
 
 type OperationalRiskViolationTableRow struct {

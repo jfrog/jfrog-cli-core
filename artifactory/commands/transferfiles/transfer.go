@@ -381,7 +381,13 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 		return err
 	}
 
-	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState)
+	if err = tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState); err != nil {
+		return err
+	}
+	if tdc.progressbar != nil {
+		tdc.progressbar.increaseTotalSize(int(tdc.stateManager.OverallTransfer.TransferredSizeBytes))
+	}
+	return nil
 }
 
 func (tdc *TransferFilesCommand) initTransferDir() error {
@@ -679,7 +685,9 @@ func (tdc *TransferFilesCommand) signalStop() error {
 		return errorutils.CheckErrorf("Graceful stop is already in progress. Please wait...")
 	}
 
-	if _, err = os.Create(filepath.Join(transferDir, StopFileName)); err != nil {
+	if stopFile, err := os.Create(filepath.Join(transferDir, StopFileName)); err != nil {
+		return errorutils.CheckError(err)
+	} else if err = stopFile.Close(); err != nil {
 		return errorutils.CheckError(err)
 	}
 	log.Info("Gracefully stopping files transfer...")

@@ -538,7 +538,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false, isDefault)
 		logIfNotEmpty(details.User, "User:\t\t\t\t", false, isDefault)
 		logIfNotEmpty(details.Password, "Password:\t\t\t", true, isDefault)
-		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true, isDefault)
+		logAccessTokenIfNotEmpty(details.AccessToken, isDefault)
 		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true, isDefault)
 		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false, isDefault)
 		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true, isDefault)
@@ -556,10 +556,28 @@ func logIfNotEmpty(value, prefix string, mask, isDefault bool) {
 		}
 		fullString := prefix + value
 		if isDefault {
-			fullString = coreutils.PrintTitle(coreutils.PrintBold(fullString))
+			fullString = coreutils.PrintBoldTitle(fullString)
 		}
 		log.Output(fullString)
 	}
+}
+
+func logAccessTokenIfNotEmpty(token string, isDefault bool) {
+	if token == "" {
+		return
+	}
+	tokenString := "***"
+	// Extract the token's subject only if it is JWT
+	if strings.Count(token, ".") == 2 {
+		subject, err := auth.ExtractSubjectFromAccessToken(token)
+		if err != nil {
+			log.Error(err)
+		} else {
+			tokenString += fmt.Sprintf(" (Subject: '%s')", subject)
+		}
+	}
+
+	logIfNotEmpty(tokenString, "Access token:\t\t\t", false, isDefault)
 }
 
 func (cc *ConfigCommand) delete() error {

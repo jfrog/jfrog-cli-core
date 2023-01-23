@@ -48,11 +48,11 @@ func (config *GoCmdConfig) GetErrWriter() io.WriteCloser {
 }
 
 func LogGoVersion() error {
-	output, err := utils.GetParsedGoVersion()
+	version, err := utils.GetParsedGoVersion()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	log.Info("Using go:", output)
+	log.Info("Using go:", version.GetVersion())
 	return nil
 }
 

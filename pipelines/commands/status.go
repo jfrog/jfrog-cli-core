@@ -150,7 +150,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 		Context:                  ctx,
 		MaxRetries:               MaxRetries,
 		RetriesIntervalMilliSecs: MinimumIntervalRetriesInMilliSecs,
-		ErrorMessage:             fmt.Sprintf("Failed to fetch pipeline status"),
+		ErrorMessage:             "Failed to fetch pipeline status",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			pipelineStatus, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName, isMultiBranch)
 			if err != nil {
@@ -181,11 +181,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 // Return false otherwise.
 func pipelineStatusChanged(currentStatus, previousState string) bool {
 	log.Debug("Previous status: %s current status: %s", previousState, currentStatus)
-	if previousState == currentStatus {
-		return false
-	}
-	previousState = currentStatus
-	return true
+	return previousState != currentStatus
 }
 
 // pipelineRunEnded if pipeline status is one of

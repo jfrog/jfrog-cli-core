@@ -70,6 +70,7 @@ func (sc *SyncStatusCommand) displaySyncStatus(pipelineSyncStatuses []services.P
 			log.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[index].IsSyncing,
 				pipelineSyncStatuses[index].LastSyncStartedAt, pipelineSyncStatuses[index].LastSyncEndedAt, pipelineSyncStatuses[index].CommitData.CommitSha,
 				pipelineSyncStatuses[index].CommitData.Committer, pipelineSyncStatuses[index].CommitData.CommitMsg, pipelineSyncStatuses[index].LastSyncLogs))
+			return
 		}
 		log.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[index].IsSyncing, pipelineSyncStatuses[index].LastSyncStartedAt,
 			pipelineSyncStatuses[index].LastSyncEndedAt, pipelineSyncStatuses[index].CommitData.CommitSha, pipelineSyncStatuses[index].CommitData.Committer,

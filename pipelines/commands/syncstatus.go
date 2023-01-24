@@ -5,7 +5,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/status"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/pipelines/services"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type SyncStatusCommand struct {
@@ -33,7 +34,7 @@ func (sc *SyncStatusCommand) SetServerDetails(serverDetails *config.ServerDetail
 }
 
 func (sc *SyncStatusCommand) CommandName() string {
-	return "sync"
+	return " pl_ sync_status"
 }
 
 func (sc *SyncStatusCommand) SetBranch(br string) *SyncStatusCommand {
@@ -56,18 +57,22 @@ func (sc *SyncStatusCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	for _, pipeSyncStatus := range pipelineSyncStatuses {
-		pipeSyncStatusCode := status.GetPipelineStatus(pipeSyncStatus.LastSyncStatusCode)
-		if clientlog.IsStdErrTerminal() && clientlog.IsColorsSupported() {
-			colorCode := status.GetStatusColorCode(pipeSyncStatusCode)
-			clientlog.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[0].IsSyncing,
-				pipelineSyncStatuses[0].LastSyncStartedAt, pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha,
-				pipelineSyncStatuses[0].CommitData.Committer, pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
-			return nil
-		}
-		clientlog.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[0].IsSyncing, pipelineSyncStatuses[0].LastSyncStartedAt,
-			pipelineSyncStatuses[0].LastSyncEndedAt, pipelineSyncStatuses[0].CommitData.CommitSha, pipelineSyncStatuses[0].CommitData.Committer,
-			pipelineSyncStatuses[0].CommitData.CommitMsg, pipelineSyncStatuses[0].LastSyncLogs))
-	}
+	sc.displaySyncStatus(pipelineSyncStatuses)
 	return nil
+}
+
+// displaySyncStatus write the sync status received to standard output
+func (sc *SyncStatusCommand) displaySyncStatus(pipelineSyncStatuses []services.PipelineSyncStatus) {
+	for index, pipeSyncStatus := range pipelineSyncStatuses {
+		pipeSyncStatusCode := status.GetPipelineStatus(pipeSyncStatus.LastSyncStatusCode)
+		if log.IsStdErrTerminal() && log.IsColorsSupported() {
+			colorCode := status.GetStatusColorCode(pipeSyncStatusCode)
+			log.Output(colorCode.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[index].IsSyncing,
+				pipelineSyncStatuses[index].LastSyncStartedAt, pipelineSyncStatuses[index].LastSyncEndedAt, pipelineSyncStatuses[index].CommitData.CommitSha,
+				pipelineSyncStatuses[index].CommitData.Committer, pipelineSyncStatuses[index].CommitData.CommitMsg, pipelineSyncStatuses[index].LastSyncLogs))
+		}
+		log.Output(fmt.Sprintf(PipeStatusFormat, pipeSyncStatusCode, *pipelineSyncStatuses[index].IsSyncing, pipelineSyncStatuses[index].LastSyncStartedAt,
+			pipelineSyncStatuses[index].LastSyncEndedAt, pipelineSyncStatuses[index].CommitData.CommitSha, pipelineSyncStatuses[index].CommitData.Committer,
+			pipelineSyncStatuses[index].CommitData.CommitMsg, pipelineSyncStatuses[index].LastSyncLogs))
+	}
 }

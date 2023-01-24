@@ -23,7 +23,7 @@ func TestMonitorStatusChange(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			assert.Equal(t, monitorStatusChange(testCase.args.pipeStatus, testCase.args.reStatus), testCase.want)
+			assert.Equal(t, pipelineStatusChanged(testCase.args.pipeStatus, testCase.args.reStatus), testCase.want)
 		})
 	}
 }
@@ -45,7 +45,7 @@ func TestHasPipelineRunEnded(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hasPipelineRunEnded(tt.args.pipeStatus); got != tt.want {
+			if got := pipelineRunEnded(tt.args.pipeStatus); got != tt.want {
 				t.Errorf("hasPipelineRunEnded() = %v, want %v", got, tt.want)
 			}
 		})

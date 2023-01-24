@@ -30,7 +30,7 @@ func (tc *TriggerCommand) SetBranch(br string) *TriggerCommand {
 	return tc
 }
 
-func (tc *TriggerCommand) SetPipeline(pl string) *TriggerCommand {
+func (tc *TriggerCommand) SetPipelineName(pl string) *TriggerCommand {
 	tc.pipelineName = pl
 	return tc
 }
@@ -41,7 +41,7 @@ func (tc *TriggerCommand) SetMultiBranch(multiBranch bool) *TriggerCommand {
 }
 
 func (tc *TriggerCommand) CommandName() string {
-	return "trigger"
+	return "pl_trigger"
 }
 
 func (tc *TriggerCommand) Run() error {

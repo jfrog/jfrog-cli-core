@@ -25,7 +25,7 @@ func (sc *SyncCommand) SetServerDetails(serverDetails *config.ServerDetails) *Sy
 }
 
 func (sc *SyncCommand) CommandName() string {
-	return "sync"
+	return "pl_sync"
 }
 
 func (sc *SyncCommand) SetBranch(br string) *SyncCommand {

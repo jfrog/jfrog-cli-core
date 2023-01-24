@@ -15,7 +15,7 @@ func NewVersionCommand() *VersionCommand {
 }
 
 func (vc *VersionCommand) CommandName() string {
-	return "version"
+	return "pl_version"
 }
 
 func (vc *VersionCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -40,6 +40,6 @@ func (vc *VersionCommand) Run() error {
 		log.Output("Unable to fetch pipelines version")
 		return nil
 	}
-	log.Output("Pipelines Server Version: ", info.Version)
+	log.Output("Pipelines Server version: ", info.Version)
 	return nil
 }

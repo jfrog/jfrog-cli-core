@@ -9,9 +9,10 @@ import (
 // CreateServiceManager creates pipelines manager and set auth details
 func CreateServiceManager(serviceDetails *utilsconfig.ServerDetails) (*pipelines.PipelinesServicesManager, error) {
 	pipelinesDetails := *serviceDetails
-	pAuth, authErr := pipelinesDetails.CreatePipelinesAuthConfig() // create pipelines authentication config
-	if authErr != nil {
-		return nil, authErr
+	// Create pipelines authentication config
+	pAuth, err := pipelinesDetails.CreatePipelinesAuthConfig()
+	if err != nil {
+		return nil, err
 	}
 	serviceConfig, err := clientConfig.NewConfigBuilder().
 		SetServiceDetails(pAuth).
@@ -20,9 +21,5 @@ func CreateServiceManager(serviceDetails *utilsconfig.ServerDetails) (*pipelines
 	if err != nil {
 		return nil, err
 	}
-	pipelinesMgr, pipeErr := pipelines.New(serviceConfig)
-	if pipeErr != nil {
-		return nil, pipeErr
-	}
-	return pipelinesMgr, nil
+	return pipelines.New(serviceConfig)
 }

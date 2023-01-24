@@ -12,6 +12,7 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+// Returns a template for prompt item line
 func promptItemTemplate() string {
 	// Example: JFrog Artifactory URL (http://localhost:8080/artifactory/)
 	if log.IsColorsSupported() {
@@ -20,6 +21,7 @@ func promptItemTemplate() string {
 	return " {{ .Option }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
 }
 
+// Returns a template for selection item line
 func selectableItemTemplate() string {
 	if log.IsColorsSupported() {
 		return " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"

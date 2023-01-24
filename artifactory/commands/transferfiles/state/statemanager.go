@@ -1,14 +1,15 @@
 package state
 
 import (
+	"path/filepath"
+	"time"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"path/filepath"
-	"time"
 )
 
 // The interval in which to save the state and run transfer files to the file system.
@@ -84,6 +85,9 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoKey = repoKey
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
+
+		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
 		return nil
 	})
 }
@@ -107,7 +111,7 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
 }
 
 // Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
-func (ts *TransferStateManager) IncTransferredSizeAndFiles(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
+func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.action(func(state *TransferState) error {
 		state.CurrentRepo.Phase1Info.TransferredSizeBytes += chunkTotalSizeInBytes
 		state.CurrentRepo.Phase1Info.TransferredUnits += chunkTotalFiles
@@ -169,19 +173,16 @@ func (ts *TransferStateManager) GetStorageAndFilesRepoPointers(phase int) (total
 			totalUploadedFailedStorage = &ts.CurrentRepo.Phase1Info.TransferredSizeBytes
 			totalFailedFiles = &ts.CurrentRepo.Phase1Info.TotalUnits
 			totalUploadedFailedFiles = &ts.CurrentRepo.Phase1Info.TransferredUnits
-			return nil
 		case api.Phase2:
 			totalFailedStorage = &ts.CurrentRepo.Phase2Info.TotalSizeBytes
 			totalUploadedFailedStorage = &ts.CurrentRepo.Phase2Info.TransferredSizeBytes
 			totalFailedFiles = &ts.CurrentRepo.Phase2Info.TotalUnits
 			totalUploadedFailedFiles = &ts.CurrentRepo.Phase2Info.TransferredUnits
-			return nil
 		case api.Phase3:
 			totalFailedStorage = &ts.CurrentRepo.Phase3Info.TotalSizeBytes
 			totalUploadedFailedStorage = &ts.CurrentRepo.Phase3Info.TransferredSizeBytes
 			totalFailedFiles = &ts.CurrentRepo.Phase3Info.TotalUnits
 			totalUploadedFailedFiles = &ts.CurrentRepo.Phase3Info.TransferredUnits
-			return nil
 		}
 		return nil
 	})
@@ -367,14 +368,14 @@ func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStat
 	chunkTotalSizeInBytes = 0
 	var chunkTotalFiles int64 = 0
 	for _, file := range chunk.Files {
-		if file.Status == api.Success {
+		if file.Status != api.Fail {
 			chunkTotalSizeInBytes += file.SizeBytes
 			chunkTotalFiles++
 		}
 	}
 	switch stateManager.CurrentRepoPhase {
 	case api.Phase1:
-		err = stateManager.IncTransferredSizeAndFiles(chunkTotalFiles, chunkTotalSizeInBytes)
+		err = stateManager.IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes)
 	case api.Phase2:
 		err = stateManager.IncTransferredSizeAndFilesPhase2(chunkTotalFiles, chunkTotalSizeInBytes)
 	case api.Phase3:

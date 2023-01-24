@@ -3,16 +3,17 @@ package transferfiles
 import (
 	"context"
 	"errors"
-	"fmt"
+	"sync"
+	"time"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
-	"time"
 )
 
 const (
@@ -149,9 +150,9 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 	return PollingTasksManager{doneChannel: make(chan bool, totalGoRoutines), totalGoRoutines: totalGoRoutines}
 }
 
-// Runs 2 go routines :
-// 1. Check number of threads
-// 2. Poll uploaded chunks
+// Runs 2 go routines:
+// 1. Periodically update the worker threads count & check whether the process should be stopped.
+// 2. Poll for uploaded chunks.
 func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
@@ -161,7 +162,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(pcWrapper, ptm.doneChannel, phaseBase.buildInfoRepo)
+		periodicallyUpdateThreadsAndStopStatus(pcWrapper, ptm.doneChannel, phaseBase.buildInfoRepo, phaseBase.stopSignal)
 	}()
 
 	// Check status of uploaded chunks.
@@ -179,7 +180,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 
 func (ptm *PollingTasksManager) addGoRoutine() error {
 	if ptm.totalGoRoutines < ptm.totalRunningGoRoutines+1 {
-		return fmt.Errorf("can't create another polling go routine. maximum number of go routines is: %d", ptm.totalGoRoutines)
+		return errorutils.CheckErrorf("can't create another polling go routine. maximum number of go routines is: %d", ptm.totalGoRoutines)
 	}
 	ptm.totalRunningGoRoutines++
 	return nil

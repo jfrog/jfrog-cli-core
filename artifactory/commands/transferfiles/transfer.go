@@ -2,8 +2,8 @@ package transferfiles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -48,6 +48,8 @@ type TransferFilesCommand struct {
 	ignoreState               bool
 	proxyKey                  string
 	status                    bool
+	stop                      bool
+	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
 }
@@ -65,6 +67,7 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 		targetServerDetails: targetServer,
 		timeStarted:         time.Now(),
 		stateManager:        stateManager,
+		stopSignal:          make(chan os.Signal, 1),
 	}, nil
 }
 
@@ -96,6 +99,10 @@ func (tdc *TransferFilesCommand) SetStatus(status bool) {
 	tdc.status = status
 }
 
+func (tdc *TransferFilesCommand) SetStop(stop bool) {
+	tdc.stop = stop
+}
+
 func (tdc *TransferFilesCommand) SetPreChecks(check bool) {
 	tdc.preChecks = check
 }
@@ -103,6 +110,9 @@ func (tdc *TransferFilesCommand) SetPreChecks(check bool) {
 func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()
+	}
+	if tdc.stop {
+		return tdc.signalStop()
 	}
 	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
@@ -135,7 +145,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		}
 	}
 
-	if err = tdc.createTransferDir(); err != nil {
+	if err = tdc.initTransferDir(); err != nil {
 		return err
 	}
 
@@ -371,13 +381,29 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 		return err
 	}
 
-	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState)
+	if err = tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState); err != nil {
+		return err
+	}
+	if tdc.progressbar != nil {
+		tdc.progressbar.increaseTotalSize(int(tdc.stateManager.OverallTransfer.TransferredSizeBytes))
+	}
+	return nil
 }
 
-func (tdc *TransferFilesCommand) createTransferDir() error {
+func (tdc *TransferFilesCommand) initTransferDir() error {
 	transferDir, err := coreutils.GetJfrogTransferDir()
 	if err != nil {
 		return err
+	}
+	exist, err := fileutils.IsDirExists(transferDir, false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		// Remove ~/.jfrog/transfer/stop if exist
+		if err = os.RemoveAll(filepath.Join(transferDir, StopFileName)); err != nil {
+			return errorutils.CheckError(err)
+		}
 	}
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
@@ -459,12 +485,11 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) (func(), *transferPhase) {
 	var newPhase transferPhase
 	finishStop := make(chan bool)
-	stopSignal := make(chan os.Signal, 1)
-	signal.Notify(stopSignal, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(tdc.stopSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		defer close(finishStop)
 		// Wait for the stop signal or close(stopSignal) to happen
-		if <-stopSignal == nil {
+		if <-tdc.stopSignal == nil {
 			// The stopSignal channel is closed
 			return
 		}
@@ -482,7 +507,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 	// Return a cleanup function that closes the stopSignal channel and wait for close if needed
 	return func() {
 		// Close the stop signal channel
-		close(stopSignal)
+		close(tdc.stopSignal)
 		if tdc.shouldStop() {
 			// If we should stop, wait for stop to happen
 			<-finishStop
@@ -503,6 +528,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
 	newPhase.setPackageType(repoSummary.PackageType)
+	newPhase.setStopSignal(tdc.stopSignal)
 }
 
 // Get all local and build-info repositories of the input server
@@ -636,6 +662,38 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 	return
 }
 
+// Create the '~/.jfrog/transfer/stop' file to mark the transfer-file process to stop
+func (tdc *TransferFilesCommand) signalStop() error {
+	_, isRunning, err := state.GetRunningTime()
+	if err != nil {
+		return err
+	}
+	if !isRunning {
+		return errorutils.CheckErrorf("There is no active file transfer process.")
+	}
+
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+
+	exist, err := fileutils.IsFileExists(filepath.Join(transferDir, StopFileName), false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return errorutils.CheckErrorf("Graceful stop is already in progress. Please wait...")
+	}
+
+	if stopFile, err := os.Create(filepath.Join(transferDir, StopFileName)); err != nil {
+		return errorutils.CheckError(err)
+	} else if err = stopFile.Close(); err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Info("Gracefully stopping files transfer...")
+	return nil
+}
+
 func (tdc *TransferFilesCommand) shouldStop() bool {
 	return tdc.context.Err() != nil
 }
@@ -654,16 +712,7 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
-	curVer := version.NewVersion(currentVersion)
-	if !curVer.AtLeast(dataTransferPluginMinVersion) {
-		return errorutils.CheckErrorf(getMinimalVersionErrorMsg(currentVersion))
-	}
-	return nil
-}
-
-func getMinimalVersionErrorMsg(currentVersion string) string {
-	return "You are currently using data-transfer plugin version '" +
-		currentVersion + "' on your source instance, while the minimum required version is '" + dataTransferPluginMinVersion + "' or higher."
+	return coreutils.ValidateMinimumVersion(coreutils.DataTransfer, currentVersion, dataTransferPluginMinVersion)
 }
 
 // Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.
@@ -679,4 +728,31 @@ func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error 
 	}
 	log.Info("data-transfer plugin version: " + verifyResponse.Version)
 	return nil
+}
+
+// Loop on json files containing FilesErrors and collect them to one FilesErrors object.
+func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err error) {
+	for _, logPath := range logPaths {
+		var exists bool
+		exists, err = fileutils.IsFileExists(logPath, false)
+		if err != nil {
+			return
+		}
+		if !exists {
+			err = fmt.Errorf("log file: %s does not exist", logPath)
+			return
+		}
+		var content []byte
+		content, err = fileutils.ReadFile(logPath)
+		if err != nil {
+			return
+		}
+		fileErrors := new(FilesErrors)
+		err = errorutils.CheckError(json.Unmarshal(content, &fileErrors))
+		if err != nil {
+			return
+		}
+		allErrors.Errors = append(allErrors.Errors, fileErrors.Errors...)
+	}
+	return
 }

@@ -190,7 +190,8 @@ func (cc *ConfigCommand) config() error {
 			return errors.New("the received Access Token is an API key, please use the API key as password in username/password authentication")
 		}
 
-		log.Warn("the received Access Token is an API key and will be used as a password in username/password authentication.")
+		log.Warn("The received Access Token is an API key and will be used as a password in username/password authentication.\n" +
+			"To avoid this message in the future please use it a a password.")
 		cc.details.Password = cc.details.AccessToken
 		cc.details.AccessToken = ""
 	}

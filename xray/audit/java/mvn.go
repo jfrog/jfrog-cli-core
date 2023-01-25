@@ -2,7 +2,6 @@ package java
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -57,8 +56,5 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 // The --project-dir option of Maven won't work in this case.
 func isMvnWrapperExist() (bool, error) {
 	wrapperName := mvnw
-	if coreutils.IsWindows() {
-		wrapperName += ".bat"
-	}
 	return fileutils.IsFileExists(wrapperName, false)
 }

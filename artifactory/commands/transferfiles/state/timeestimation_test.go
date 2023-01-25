@@ -3,21 +3,13 @@ package state
 import (
 	"testing"
 
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
 func initTimeEstimationTestSuite(t *testing.T) func() {
 	cleanUpJfrogHome, err := tests.SetJfrogHome()
-	assert.NoError(t, err)
-
-	// Create transfer directory
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	assert.NoError(t, err)
-	err = utils.CreateDirIfNotExist(transferDir)
 	assert.NoError(t, err)
 
 	undoSaveInterval := SetAutoSaveState()

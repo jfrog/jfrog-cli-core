@@ -34,7 +34,7 @@ func (sc *SyncStatusCommand) SetServerDetails(serverDetails *config.ServerDetail
 }
 
 func (sc *SyncStatusCommand) CommandName() string {
-	return " pl_ sync_status"
+	return "pl_ sync_status"
 }
 
 func (sc *SyncStatusCommand) SetBranch(br string) *SyncStatusCommand {
@@ -61,7 +61,7 @@ func (sc *SyncStatusCommand) Run() error {
 	return nil
 }
 
-// displaySyncStatus write the sync status received to standard output
+// displaySyncStatus outputs to stdout the sync status
 func (sc *SyncStatusCommand) displaySyncStatus(pipelineSyncStatuses []services.PipelineSyncStatus) {
 	for index, pipeSyncStatus := range pipelineSyncStatuses {
 		pipeSyncStatusCode := status.GetPipelineStatus(pipeSyncStatus.LastSyncStatusCode)

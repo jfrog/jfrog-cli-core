@@ -2,10 +2,8 @@ package commands
 
 import (
 	"bytes"
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -16,12 +14,6 @@ import (
 
 func initDisplaySyncStatusTest(t *testing.T) (*bytes.Buffer, func()) {
 	cleanUpJfrogHome, err := tests.SetJfrogHome()
-	assert.NoError(t, err)
-
-	// Create transfer directory
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	assert.NoError(t, err)
-	err = utils.CreateDirIfNotExist(transferDir)
 	assert.NoError(t, err)
 
 	// Redirect log to buffer
@@ -40,7 +32,7 @@ func TestSyncStatusCommand_displaySyncStatus(t *testing.T) {
 	defer cleanup()
 
 	// Create pipeline sync status response
-	pipelineSyncStatuses := CreatePipelinesSyncStatus()
+	pipelineSyncStatuses := createPipelinesSyncStatus()
 
 	t.Run("Should print these expected details to standard output", func(t *testing.T) {
 		sc := &SyncStatusCommand{
@@ -59,7 +51,7 @@ func TestSyncStatusCommand_displaySyncStatus(t *testing.T) {
 	})
 }
 
-func CreatePipelinesSyncStatus() []services.PipelineSyncStatus {
+func createPipelinesSyncStatus() []services.PipelineSyncStatus {
 	isSyncing := true
 	commitDetails := services.CommitData{
 		CommitSha: "83749i34urbjbrjkrwoeurheiwrhtt35",

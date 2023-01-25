@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -37,8 +39,7 @@ func (vc *VersionCommand) Run() error {
 		return err
 	}
 	if info == nil {
-		log.Output("Unable to fetch pipelines version")
-		return nil
+		return errorutils.CheckError(fmt.Errorf("unable to fetch pipelines version"))
 	}
 	log.Output("Pipelines Server version: ", info.Version)
 	return nil

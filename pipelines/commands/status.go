@@ -153,7 +153,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			pipelineStatus, err := pipelinesMgr.GetPipelineRunStatusByBranch(branch, pipName, isMultiBranch)
 			if err != nil {
-				// Pipelines is expected to be available any error is not expected and no need to retry
+				// Pipelines is expected to be available. Any error is not expected and no need to retry.
 				return false, err
 			}
 			pipeline := pipelineStatus.Pipelines[0]
@@ -176,7 +176,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 	return retryExecutor.Execute()
 }
 
-// pipelineStatusChanged Return true if the current pipeline status is different from the previous one.
+// pipelineStatusChanged returns true if the current pipeline status is different from the previous one.
 // Return false otherwise.
 func pipelineStatusChanged(currentStatus, previousState string) bool {
 	log.Debug("Previous status: %s current status: %s", previousState, currentStatus)

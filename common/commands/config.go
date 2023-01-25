@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -54,6 +55,11 @@ type ConfigCommand struct {
 	disablePrompts bool
 	cmdType        ConfigAction
 }
+
+const (
+	apiKeyPrefix        = "AKCp8"
+	apiKeyMinimalLength = 73
+)
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
 	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
@@ -173,11 +179,22 @@ func (cc *ConfigCommand) config() error {
 
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
-		if cc.details.AccessToken != "" && cc.details.User == "" {
+		if cc.details.AccessToken != "" && cc.details.User == "" && !isApiKey(cc.details.AccessToken) {
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
 	}
+
+	if isApiKey(cc.details.AccessToken) {
+		if cc.details.User == "" {
+			return errors.New("the received Access Token is an API key, please use the API key as password in username/password authentication")
+		}
+
+		log.Warn("the received Access Token is an API key and will be used as a password in username/password authentication.")
+		cc.details.User = cc.details.AccessToken
+		cc.details.AccessToken = ""
+	}
+
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
 	cc.details.DistributionUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
 	cc.details.XrayUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.XrayUrl)
@@ -330,7 +347,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				if err != nil {
 					return
 				}
-				if cc.details.User == "" {
+				if cc.details.User == "" && !isApiKey(cc.details.AccessToken) {
 					// Try extracting username from Access Token (non-possible on reference token)
 					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 					if cc.details.User == "" {
@@ -348,6 +365,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	}
 
 	return
+}
+
+func isApiKey(token string) bool {
+	return strings.HasPrefix(token, apiKeyPrefix) && len(token) >= apiKeyMinimalLength
 }
 
 func checkCertificateForMTLS(cc *ConfigCommand) {
@@ -691,7 +712,7 @@ func (cc *ConfigCommand) assertUrlsSafe() error {
 
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:
 // 1. The URL uses an http:// scheme
-// 2. The URL leads to a URL outside of the local machine
+// 2. The URL leads to a URL outside the local machine
 func isUrlSafe(urlToCheck string) bool {
 	url, err := url.Parse(urlToCheck)
 	if err != nil {

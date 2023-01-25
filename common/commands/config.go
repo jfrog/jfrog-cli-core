@@ -56,11 +56,6 @@ type ConfigCommand struct {
 	cmdType        ConfigAction
 }
 
-const (
-	apiKeyPrefix        = "AKCp8"
-	apiKeyMinimalLength = 73
-)
-
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
 	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
 }
@@ -179,21 +174,10 @@ func (cc *ConfigCommand) config() error {
 
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
-		if cc.details.AccessToken != "" && cc.details.User == "" && !isApiKey(cc.details.AccessToken) {
+		if cc.details.AccessToken != "" && cc.details.User == "" {
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
-	}
-
-	if isApiKey(cc.details.AccessToken) {
-		if cc.details.User == "" {
-			return errors.New("the received Access Token is an API key, please use the API key as password in username/password authentication")
-		}
-
-		log.Warn("The received Access Token is an API key and will be used as a password in username/password authentication.\n" +
-			"To avoid this message in the future please use it a a password.")
-		cc.details.Password = cc.details.AccessToken
-		cc.details.AccessToken = ""
 	}
 
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -366,10 +350,6 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	}
 
 	return
-}
-
-func isApiKey(token string) bool {
-	return strings.HasPrefix(token, apiKeyPrefix) && len(token) >= apiKeyMinimalLength
 }
 
 func checkCertificateForMTLS(cc *ConfigCommand) {

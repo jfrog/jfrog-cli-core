@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"net/url"
 	"os"
 	"reflect"
@@ -175,6 +176,9 @@ func (cc *ConfigCommand) config() error {
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
+			if httpclient.IsApiKey(cc.details.AccessToken) {
+				return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
+			}
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
@@ -332,7 +336,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				if err != nil {
 					return
 				}
-				if cc.details.User == "" && !isApiKey(cc.details.AccessToken) {
+				if cc.details.User == "" {
+					if httpclient.IsApiKey(cc.details.AccessToken) {
+						return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
+					}
 					// Try extracting username from Access Token (non-possible on reference token)
 					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 					if cc.details.User == "" {

@@ -176,9 +176,11 @@ func (cc *ConfigCommand) config() error {
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
-			if httpclient.IsApiKey(cc.details.AccessToken) {
-				return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
+			err = cc.validateTokenIsNotApiKey()
+			if err != nil {
+				return err
 			}
+
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
@@ -335,10 +337,11 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				if err != nil {
 					return
 				}
+				err = cc.validateTokenIsNotApiKey()
+				if err != nil {
+					return err
+				}
 				if cc.details.User == "" {
-					if httpclient.IsApiKey(cc.details.AccessToken) {
-						return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
-					}
 					// Try extracting username from Access Token (non-possible on reference token)
 					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 					if cc.details.User == "" {
@@ -693,6 +696,13 @@ func (cc *ConfigCommand) assertUrlsSafe() error {
 			log.Warn("Your configured JFrog URL uses an insecure HTTP connection. Please consider using SSL (HTTPS instead of HTTP).")
 		}
 		return nil
+	}
+	return nil
+}
+
+func (cc *ConfigCommand) validateTokenIsNotApiKey() error {
+	if httpclient.IsApiKey(cc.details.AccessToken) {
+		return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
 	}
 	return nil
 }

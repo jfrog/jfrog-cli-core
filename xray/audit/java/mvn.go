@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
@@ -9,11 +10,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool) (modules []*services.GraphNode, err error) {
+const mvnw = "mvnw"
+
+func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool, useWrapper bool) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
-	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile)
+	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile, useWrapper)
 	if err != nil {
 		return
 	}
@@ -21,7 +24,7 @@ func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool) (modules []*serv
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile bool) (err error) {
+func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile bool, useWrapper bool) (err error) {
 	goals := []string{"-B", "compile", "test-compile"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath := ""
@@ -35,10 +38,23 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 			log.Debug("Using resolver config from " + configFilePath)
 		}
 	}
+	if useWrapper {
+		useWrapper, err = isMvnWrapperExist()
+		if err != nil {
+			return
+		}
+	}
 	// Read config
-	vConfig, err := utils.ReadMavenConfig(configFilePath)
+	vConfig, err := utils.ReadMavenConfig(configFilePath, useWrapper)
 	if err != nil {
 		return err
 	}
-	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, true)
+	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, useWrapper, true)
+}
+
+// This function assumes that the Maven wrapper is in the root directory.
+// The --project-dir option of Maven won't work in this case.
+func isMvnWrapperExist() (bool, error) {
+	wrapperName := mvnw
+	return fileutils.IsFileExists(wrapperName, false)
 }

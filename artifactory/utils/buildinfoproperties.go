@@ -164,19 +164,20 @@ func ReadGradleConfig(path string, useWrapperIfMissingConfig bool) (config *vipe
 	return
 }
 
-func ReadMavenConfig(path string) (config *viper.Viper, err error) {
+func ReadMavenConfig(path string, useWrapperIfMissingConfig bool) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultMavenConfig()
+		config = createDefaultMavenConfig(useWrapperIfMissingConfig)
 	} else {
 		config, err = ReadConfigFile(path, YAML)
 	}
 	return
 }
 
-func createDefaultMavenConfig() *viper.Viper {
+func createDefaultMavenConfig(useWrapperIfMissingConfig bool) *viper.Viper {
 	vConfig := viper.New()
 	vConfig.SetConfigType(string(YAML))
 	vConfig.Set("type", Maven.String())
+	vConfig.Set("usewrapper", useWrapperIfMissingConfig)
 	return vConfig
 }
 

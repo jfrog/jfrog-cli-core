@@ -81,7 +81,7 @@ func GenericAudit(
 	return
 }
 
-//  Audits the project found in the current directory using Xray.
+// Audits the project found in the current directory using Xray.
 func doAudit(
 	xrayGraphScanParams services.XrayGraphScanParams,
 	serverDetails *config.ServerDetails,
@@ -111,7 +111,7 @@ func doAudit(
 		}
 		switch tech {
 		case coreutils.Maven:
-			dependencyTrees, e = java.BuildMvnDependencyTree(insecureTls, ignoreConfigFile)
+			dependencyTrees, e = java.BuildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper)
 		case coreutils.Gradle:
 			dependencyTrees, e = java.BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile)
 		case coreutils.Npm:

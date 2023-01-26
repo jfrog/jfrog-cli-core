@@ -97,7 +97,7 @@ func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 
 func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadMavenConfig(mc.configPath)
+	vConfig, err = utils.ReadMavenConfig(mc.configPath, false)
 	if err != nil {
 		return
 	}
@@ -131,7 +131,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.deploymentDisabled)
+	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, false, mc.deploymentDisabled)
 	if err != nil {
 		return err
 	}

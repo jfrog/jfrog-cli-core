@@ -183,7 +183,6 @@ func (cc *ConfigCommand) config() error {
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
 	}
-
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
 	cc.details.DistributionUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
 	cc.details.XrayUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.XrayUrl)

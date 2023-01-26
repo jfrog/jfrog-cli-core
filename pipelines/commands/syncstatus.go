@@ -34,7 +34,7 @@ func (sc *SyncStatusCommand) SetServerDetails(serverDetails *config.ServerDetail
 }
 
 func (sc *SyncStatusCommand) CommandName() string {
-	return "pl_ sync_status"
+	return "pl_sync_status"
 }
 
 func (sc *SyncStatusCommand) SetBranch(br string) *SyncStatusCommand {

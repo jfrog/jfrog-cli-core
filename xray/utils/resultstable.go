@@ -58,7 +58,7 @@ func PrepareViolations(violations []services.Violation, multipleRoots, simplifie
 
 func prepareViolations(violations []services.Violation, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
-		violations = SimplifyViolations(violations, multipleRoots)
+		violations = simplifyViolations(violations, multipleRoots)
 	}
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
@@ -518,7 +518,9 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 	return result
 }
 
-func SimplifyViolations(scanViolations []services.Violation, multipleRoots bool) []services.Violation {
+// simplifyViolations returns a new slice of services.Violations that contains only the unique violations from the input slice
+// The uniqueness of the violations is determined by the getUniqueKey function
+func simplifyViolations(scanViolations []services.Violation, multipleRoots bool) []services.Violation {
 	var uniqueViolations = make(map[string]*services.Violation)
 	for _, violation := range scanViolations {
 		for vulnerableComponentId := range violation.Components {

@@ -31,7 +31,7 @@ const maxPossibleCve = 10.0
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
-type SarifProperties struct {
+type sarifProperties struct {
 	Cves        string
 	Headline    string
 	Severity    string
@@ -44,7 +44,7 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 	switch format {
 	case Table:
 		var err error
-		violations, vulnerabilities, licenses := SplitScanResults(results)
+		violations, vulnerabilities, licenses := splitScanResults(results)
 		if len(results) > 0 {
 			resultsPath, err := writeJsonResults(results)
 			if err != nil {
@@ -102,7 +102,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, includeVulne
 }
 
 func convertScanToSimpleJson(results []services.ScanResponse, errors []formats.SimpleJsonError, includeVulnerabilities, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	violations, vulnerabilities, licenses := SplitScanResults(results)
+	violations, vulnerabilities, licenses := splitScanResults(results)
 	jsonTable := formats.SimpleJsonResults{}
 	if includeVulnerabilities {
 		log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
@@ -190,20 +190,20 @@ func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run, simp
 	return nil
 }
 
-func getSarifProperties(vulnerabilityRow formats.VulnerabilityOrViolationRow, simplifiedOutput bool) (SarifProperties, error) {
+func getSarifProperties(vulnerabilityRow formats.VulnerabilityOrViolationRow, simplifiedOutput bool) (sarifProperties, error) {
 	cves := getCves(vulnerabilityRow.Cves, vulnerabilityRow.IssueId)
 	fixVersion := getMinimalFixVersion(vulnerabilityRow.FixedVersions)
 	headline := getHeadline(vulnerabilityRow.ImpactedDependencyName, vulnerabilityRow.ImpactedDependencyVersion, cves, fixVersion)
 	maxCveScore, err := findMaxCVEScore(vulnerabilityRow.Cves)
 	if err != nil {
-		return SarifProperties{}, err
+		return sarifProperties{}, err
 	}
 	formattedDirectDependecies := getDirectDependenciesFormatted(vulnerabilityRow.Components)
 	description := vulnerabilityRow.Summary
 	if simplifiedOutput {
 		description = getDescription(formattedDirectDependecies, maxCveScore, vulnerabilityRow.FixedVersions)
 	}
-	return SarifProperties{
+	return sarifProperties{
 		Cves:        cves,
 		Headline:    headline,
 		Severity:    maxCveScore,
@@ -298,7 +298,7 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 }
 
 // Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
-func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
+func splitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License

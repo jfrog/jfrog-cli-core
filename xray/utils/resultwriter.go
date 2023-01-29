@@ -44,7 +44,7 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 	switch format {
 	case Table:
 		var err error
-		violations, vulnerabilities, licenses := splitScanResults(results)
+		violations, vulnerabilities, licenses := SplitScanResults(results)
 		if len(results) > 0 {
 			resultsPath, err := writeJsonResults(results)
 			if err != nil {
@@ -102,7 +102,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, includeVulne
 }
 
 func convertScanToSimpleJson(results []services.ScanResponse, errors []formats.SimpleJsonError, includeVulnerabilities, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	violations, vulnerabilities, licenses := splitScanResults(results)
+	violations, vulnerabilities, licenses := SplitScanResults(results)
 	jsonTable := formats.SimpleJsonResults{}
 	if includeVulnerabilities {
 		log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
@@ -298,7 +298,7 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 }
 
 // Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
-func splitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
+func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License

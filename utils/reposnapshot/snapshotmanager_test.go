@@ -208,6 +208,7 @@ func addAndAssertChild(t *testing.T, childrenMapPool map[string]*Node, root, exp
 func initSnapshotManagerTest(t *testing.T) RepoSnapshotManager {
 	file, err := fileutils.CreateTempFile()
 	assert.NoError(t, err)
+	assert.NoError(t, file.Close())
 	return newRepoSnapshotManager(createTestSnapshotTree(t), dummyRepoKey, file.Name())
 }
 

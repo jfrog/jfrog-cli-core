@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gocarina/gocsv"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -103,7 +101,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the remote repositories check process
-			resp, body, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+"api/plugins/execute/remoteRepositoriesCheck", []byte(rrc.configXml), rtDetails)
+			resp, body, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheck", []byte(rrc.configXml), rtDetails)
 			if err != nil {
 				return false, err
 			}
@@ -148,7 +146,7 @@ func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *h
 func (rrc *RemoteRepositoryCheck) createImportPollingAction(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) httputils.PollingAction {
 	return func() (shouldStop bool, responseBody []byte, err error) {
 		// Get config import status
-		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+"api/plugins/execute/remoteRepositoriesCheckStatus", true, rtDetails)
+		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheckStatus", true, rtDetails)
 		if err != nil {
 			return true, nil, err
 		}
@@ -185,31 +183,12 @@ func unmarshalRemoteUrlResponse(body []byte) (*remoteUrlResponse, error) {
 // Create csv summary of all the files with inaccessible remote repositories and log the result
 func handleFailureRun(inaccessibleRepositories []inaccessibleRepository) (err error) {
 	// Create summary
-	csvPath, err := createFailedCheckSummaryCsvFile(inaccessibleRepositories, time.Now())
+	csvPath, err := CreateCSVFile("inaccessible-repositories", inaccessibleRepositories, time.Now())
 	if err != nil {
 		log.Error("Couldn't create the inaccessible remote repository URLs CSV file", err)
 		return
 	}
 	// Log result
 	log.Info(fmt.Sprintf("Found %d inaccessible remote repository URLs. Check the summary CSV file in: %s", len(inaccessibleRepositories), csvPath))
-	return
-}
-
-// Create a csv summary of all the files with long properties
-func createFailedCheckSummaryCsvFile(inaccessibleRepositories []inaccessibleRepository, timeStarted time.Time) (csvPath string, err error) {
-	// Create CSV file
-	summaryCsv, err := clientLog.CreateCustomLogFile(fmt.Sprintf("inaccessible-repositories-%s.csv", timeStarted.Format(clientLog.DefaultLogTimeLayout)))
-	if err != nil {
-		return
-	}
-	csvPath = summaryCsv.Name()
-	defer func() {
-		e := summaryCsv.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
-	}()
-	// Marshal JSON typed FileWithLongProperty array to CSV file
-	err = errorutils.CheckError(gocsv.MarshalFile(inaccessibleRepositories, summaryCsv))
 	return
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,9 +16,14 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-const noContextMessage = "Note: no context was provided, so no policy could be determined to scan against.\n" +
-	"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
-	"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
+const (
+	noContextMessage = "Note: no context was provided, so no policy could be determined to scan against.\n" +
+		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
+		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
+	rootIndex                  = 0
+	directDependencyIndex      = 1
+	directDependencyPathLength = 2
+)
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several projects or files (like in binary scan).
@@ -25,7 +31,7 @@ const noContextMessage = "Note: no context was provided, so no policy could be d
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true)
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -46,17 +52,19 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, multipleRoots bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
-	return prepareViolations(violations, multipleRoots, false)
+func PrepareViolations(violations []services.Violation, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+	return prepareViolations(violations, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, multipleRoots, isTable bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+	if simplifiedOutput {
+		violations = simplifyViolations(violations, multipleRoots)
+	}
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
-
 	for _, violation := range violations {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -68,20 +76,20 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
-						Summary:                  violation.Summary,
-						Severity:                 currSeverity.printableTitle(isTable),
-						SeverityNumValue:         currSeverity.numValue,
-						ImpactedPackageName:      impactedPackagesNames[compIndex],
-						ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
-						ImpactedPackageType:      impactedPackagesTypes[compIndex],
-						FixedVersions:            fixedVersions[compIndex],
-						Components:               components[compIndex],
-						Cves:                     cves,
-						IssueId:                  violation.IssueId,
-						References:               violation.References,
-						JfrogResearchInformation: jfrogResearchInfo,
-						ImpactPaths:              impactPaths[compIndex],
-						Technology:               coreutils.Technology(violation.Technology),
+						Summary:                   violation.Summary,
+						Severity:                  currSeverity.printableTitle(isTable),
+						SeverityNumValue:          currSeverity.numValue,
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						FixedVersions:             fixedVersions[compIndex],
+						Components:                components[compIndex],
+						Cves:                      cves,
+						IssueId:                   violation.IssueId,
+						References:                violation.References,
+						JfrogResearchInformation:  jfrogResearchInfo,
+						ImpactPaths:               impactPaths[compIndex],
+						Technology:                coreutils.Technology(violation.Technology),
 					},
 				)
 			}
@@ -89,13 +97,13 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
-						LicenseKey:             violation.LicenseKey,
-						Severity:               currSeverity.printableTitle(isTable),
-						SeverityNumValue:       currSeverity.numValue,
-						ImpactedPackageName:    impactedPackagesNames[compIndex],
-						ImpactedPackageVersion: impactedPackagesVersions[compIndex],
-						ImpactedPackageType:    impactedPackagesTypes[compIndex],
-						Components:             components[compIndex],
+						LicenseKey:                violation.LicenseKey,
+						Severity:                  currSeverity.printableTitle(isTable),
+						SeverityNumValue:          currSeverity.numValue,
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
 					},
 				)
 			}
@@ -103,20 +111,20 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:               currSeverity.printableTitle(isTable),
-					SeverityNumValue:       currSeverity.numValue,
-					ImpactedPackageName:    impactedPackagesNames[compIndex],
-					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
-					ImpactedPackageType:    impactedPackagesTypes[compIndex],
-					Components:             components[compIndex],
-					IsEol:                  violationOpRiskData.isEol,
-					Cadence:                violationOpRiskData.cadence,
-					Commits:                violationOpRiskData.commits,
-					Committers:             violationOpRiskData.committers,
-					NewerVersions:          violationOpRiskData.newerVersions,
-					LatestVersion:          violationOpRiskData.latestVersion,
-					RiskReason:             violationOpRiskData.riskReason,
-					EolMessage:             violationOpRiskData.eolMessage,
+					Severity:                  currSeverity.printableTitle(isTable),
+					SeverityNumValue:          currSeverity.numValue,
+					ImpactedDependencyName:    impactedPackagesNames[compIndex],
+					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+					Components:                components[compIndex],
+					IsEol:                     violationOpRiskData.isEol,
+					Cadence:                   violationOpRiskData.cadence,
+					Commits:                   violationOpRiskData.commits,
+					Committers:                violationOpRiskData.committers,
+					NewerVersions:             violationOpRiskData.newerVersions,
+					LatestVersion:             violationOpRiskData.latestVersion,
+					RiskReason:                violationOpRiskData.riskReason,
+					EolMessage:                violationOpRiskData.eolMessage,
 				}
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
@@ -149,7 +157,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable b
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
 	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
 
-	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true)
+	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -158,15 +166,17 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
-func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots bool) ([]formats.VulnerabilityOrViolationRow, error) {
-	return prepareVulnerabilities(vulnerabilities, multipleRoots, false)
+func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+	return prepareVulnerabilities(vulnerabilities, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, isTable bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+	if simplifiedOutput {
+		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
+	}
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
-
 	for _, vulnerability := range vulnerabilities {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components)
 		if err != nil {
 			return nil, err
 		}
@@ -176,20 +186,20 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
-					Summary:                  vulnerability.Summary,
-					Severity:                 currSeverity.printableTitle(isTable),
-					SeverityNumValue:         currSeverity.numValue,
-					ImpactedPackageName:      impactedPackagesNames[compIndex],
-					ImpactedPackageVersion:   impactedPackagesVersions[compIndex],
-					ImpactedPackageType:      impactedPackagesTypes[compIndex],
-					FixedVersions:            fixedVersions[compIndex],
-					Components:               components[compIndex],
-					Cves:                     cves,
-					IssueId:                  vulnerability.IssueId,
-					References:               vulnerability.References,
-					JfrogResearchInformation: jfrogResearchInfo,
-					ImpactPaths:              impactPaths[compIndex],
-					Technology:               coreutils.Technology(vulnerability.Technology),
+					Summary:                   vulnerability.Summary,
+					Severity:                  currSeverity.printableTitle(isTable),
+					SeverityNumValue:          currSeverity.numValue,
+					ImpactedDependencyName:    impactedPackagesNames[compIndex],
+					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+					FixedVersions:             fixedVersions[compIndex],
+					Components:                components[compIndex],
+					Cves:                      cves,
+					IssueId:                   vulnerability.IssueId,
+					References:                vulnerability.References,
+					JfrogResearchInformation:  jfrogResearchInfo,
+					ImpactPaths:               impactPaths[compIndex],
+					Technology:                coreutils.Technology(vulnerability.Technology),
 				},
 			)
 		}
@@ -208,8 +218,8 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 // Set multipleRoots to true in case the given licenses array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
-func PrintLicensesTable(licenses []services.License, multipleRoots, printExtended bool) error {
-	licensesRows, err := PrepareLicenses(licenses, multipleRoots)
+func PrintLicensesTable(licenses []services.License, printExtended bool) error {
+	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
 	}
@@ -217,23 +227,22 @@ func PrintLicensesTable(licenses []services.License, multipleRoots, printExtende
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 }
 
-func PrepareLicenses(licenses []services.License, multipleRoots bool) ([]formats.LicenseRow, error) {
+func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) {
 	var licensesRows []formats.LicenseRow
-
 	for _, license := range licenses {
-		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, impactPaths, err := splitComponents(license.Components, multipleRoots)
+		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, impactPaths, err := splitComponents(license.Components)
 		if err != nil {
 			return nil, err
 		}
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				formats.LicenseRow{
-					LicenseKey:             license.Key,
-					ImpactedPackageName:    impactedPackagesNames[compIndex],
-					ImpactedPackageVersion: impactedPackagesVersions[compIndex],
-					ImpactedPackageType:    impactedPackagesTypes[compIndex],
-					Components:             components[compIndex],
-					ImpactPaths:            impactPaths[compIndex],
+					LicenseKey:                license.Key,
+					ImpactedDependencyName:    impactedPackagesNames[compIndex],
+					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+					Components:                components[compIndex],
+					ImpactPaths:               impactPaths[compIndex],
 				},
 			)
 		}
@@ -271,7 +280,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 	}
 }
 
-func splitComponents(impactedPackages map[string]services.Component, multipleRoots bool) (impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string, fixedVersions [][]string, directComponents [][]formats.ComponentRow, impactPaths [][][]formats.ComponentRow, err error) {
+func splitComponents(impactedPackages map[string]services.Component) (impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string, fixedVersions [][]string, directComponents [][]formats.ComponentRow, impactPaths [][][]formats.ComponentRow, err error) {
 	if len(impactedPackages) == 0 {
 		err = errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 		return
@@ -282,7 +291,7 @@ func splitComponents(impactedPackages map[string]services.Component, multipleRoo
 		impactedPackagesVersions = append(impactedPackagesVersions, currCompVersion)
 		impactedPackagesTypes = append(impactedPackagesTypes, currCompType)
 		fixedVersions = append(fixedVersions, currComp.FixedVersions)
-		currDirectComponents, currImpactPaths := getDirectComponentsAndImpactPaths(currComp.ImpactPaths, multipleRoots)
+		currDirectComponents, currImpactPaths := getDirectComponentsAndImpactPaths(currComp.ImpactPaths)
 		directComponents = append(directComponents, currDirectComponents)
 		impactPaths = append(impactPaths, currImpactPaths)
 	}
@@ -370,15 +379,11 @@ func SplitComponentId(componentId string) (string, string, string) {
 }
 
 // Gets a slice of the direct dependencies or packages of the scanned component, that depends on the vulnerable package, and converts the impact paths.
-func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode, multipleRoots bool) (components []formats.ComponentRow, impactPathsRows [][]formats.ComponentRow) {
+func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) (components []formats.ComponentRow, impactPathsRows [][]formats.ComponentRow) {
 	componentsMap := make(map[string]formats.ComponentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
 	impactPathLevel := 1
-	if multipleRoots {
-		impactPathLevel = 0
-	}
-
 	for _, impactPath := range impactPaths {
 		impactPathIndex := impactPathLevel
 		if len(impactPath) <= impactPathLevel {
@@ -477,4 +482,178 @@ func getOperationalRiskViolationReadableData(violation services.Violation) *oper
 		latestVersion: latestVersion,
 		newerVersions: newerVersions,
 	}
+}
+
+// simplifyVulnerabilities returns a new slice of services.Vulnerability that contains only the unique vulnerabilities from the input slice
+// The uniqueness of the vulnerabilities is determined by the getUniqueKey function
+func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multipleRoots bool) []services.Vulnerability {
+	var uniqueVulnerabilities = make(map[string]*services.Vulnerability)
+	for _, vulnerability := range scanVulnerabilities {
+		for vulnerableComponentId := range vulnerability.Components {
+			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
+			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, vulnerability.Cves, len(vulnerability.Components[vulnerableComponentId].FixedVersions) > 0)
+			if uniqueVulnerability, exist := uniqueVulnerabilities[packageKey]; exist {
+				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, vulnerability.Components[vulnerableComponentId].FixedVersions...)
+				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, vulnerability.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
+				uniqueVulnerabilities[packageKey].Components[vulnerableComponentId] = services.Component{
+					FixedVersions: fixedVersions,
+					ImpactPaths:   impactPaths,
+				}
+				continue
+			}
+			uniqueVulnerabilities[packageKey] = &services.Vulnerability{
+				Cves:       vulnerability.Cves,
+				Severity:   vulnerability.Severity,
+				Components: map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
+				IssueId:    vulnerability.IssueId,
+				Technology: vulnerability.Technology,
+			}
+		}
+	}
+	// convert map to slice
+	result := make([]services.Vulnerability, 0, len(uniqueVulnerabilities))
+	for _, v := range uniqueVulnerabilities {
+		result = append(result, *v)
+	}
+	return result
+}
+
+// simplifyViolations returns a new slice of services.Violations that contains only the unique violations from the input slice
+// The uniqueness of the violations is determined by the getUniqueKey function
+func simplifyViolations(scanViolations []services.Violation, multipleRoots bool) []services.Violation {
+	var uniqueViolations = make(map[string]*services.Violation)
+	for _, violation := range scanViolations {
+		for vulnerableComponentId := range violation.Components {
+			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
+			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, violation.Cves, len(violation.Components[vulnerableComponentId].FixedVersions) > 0)
+			if uniqueVulnerability, exist := uniqueViolations[packageKey]; exist {
+				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, violation.Components[vulnerableComponentId].FixedVersions...)
+				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, violation.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
+				uniqueViolations[packageKey].Components[vulnerableComponentId] = services.Component{
+					FixedVersions: fixedVersions,
+					ImpactPaths:   impactPaths,
+				}
+				continue
+			}
+			uniqueViolations[packageKey] = &services.Violation{
+				Severity:      violation.Severity,
+				ViolationType: violation.ViolationType,
+				Components:    map[string]services.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},
+				WatchName:     violation.WatchName,
+				IssueId:       violation.IssueId,
+				Cves:          violation.Cves,
+				LicenseKey:    violation.LicenseKey,
+				LicenseName:   violation.LicenseName,
+				Technology:    violation.Technology,
+			}
+		}
+	}
+	// convert map to slice
+	result := make([]services.Violation, 0, len(uniqueViolations))
+	for _, v := range uniqueViolations {
+		result = append(result, *v)
+	}
+	return result
+}
+
+// appendImpactPathsWithoutDuplicates appends the elements of a source [][]ImpactPathNode struct to a target [][]ImpactPathNode, without adding any duplicate elements.
+// This implementation uses the ComponentId field of the ImpactPathNode struct to check for duplicates, as it is guaranteed to be unique.
+func appendUniqueImpactPaths(target [][]services.ImpactPathNode, source [][]services.ImpactPathNode, multipleRoots bool) [][]services.ImpactPathNode {
+	if multipleRoots {
+		return appendUniqueImpactPathsForMultipleRoots(target, source)
+	}
+	impactPathMap := make(map[string][]services.ImpactPathNode)
+	for _, path := range target {
+		// The first node component id is the key and the value is the whole path
+		key := getImpactPathKey(path)
+		impactPathMap[key] = path
+	}
+
+	for _, path := range source {
+		key := getImpactPathKey(path)
+		if _, exists := impactPathMap[key]; !exists {
+			impactPathMap[key] = path
+			target = append(target, path)
+		}
+	}
+	return target
+}
+
+// getImpactPathKey return a key that is used as a key to identify and deduplicate impact paths.
+// If an impact path length is equal to directDependencyPathLength, then the direct dependency is the key, and it's in the directDependencyIndex place.
+func getImpactPathKey(path []services.ImpactPathNode) string {
+	key := path[rootIndex].ComponentId
+	if len(path) == directDependencyPathLength {
+		key = path[directDependencyIndex].ComponentId
+	}
+	return key
+}
+
+// appendUniqueImpactPathsForMultipleRoots appends the source impact path to the target impact path while avoiding duplicates.
+// Specifically, it is designed for handling multiple root projects, such as Maven or Gradle, by comparing each pair of paths and identifying the path that is closest to the direct dependency.
+func appendUniqueImpactPathsForMultipleRoots(target [][]services.ImpactPathNode, source [][]services.ImpactPathNode) [][]services.ImpactPathNode {
+	for targetPathIndex, targetPath := range target {
+		for sourcePathIndex, sourcePath := range source {
+			var subset []services.ImpactPathNode
+			if len(sourcePath) <= len(targetPath) {
+				subset = isImpactPathIsSubset(targetPath, sourcePath)
+				if len(subset) != 0 {
+					target[targetPathIndex] = subset
+				}
+			} else {
+				subset = isImpactPathIsSubset(sourcePath, targetPath)
+				if len(subset) != 0 {
+					source[sourcePathIndex] = subset
+				}
+			}
+		}
+	}
+
+	return appendUniqueImpactPaths(target, source, false)
+}
+
+// isImpactPathIsSubset checks if targetPath is a subset of sourcePath, and returns the subset if exists
+func isImpactPathIsSubset(target []services.ImpactPathNode, source []services.ImpactPathNode) []services.ImpactPathNode {
+	var subsetImpactPath []services.ImpactPathNode
+	impactPathNodesMap := make(map[string]bool)
+	for _, node := range target {
+		impactPathNodesMap[node.ComponentId] = true
+	}
+
+	for _, node := range source {
+		if impactPathNodesMap[node.ComponentId] {
+			subsetImpactPath = append(subsetImpactPath, node)
+		}
+	}
+
+	if len(subsetImpactPath) == len(target) || len(subsetImpactPath) == len(source) {
+		return subsetImpactPath
+	}
+	return []services.ImpactPathNode{}
+}
+
+// appendUniqueFixVersions returns a new slice of strings that contains elements from both input slices without duplicates
+func appendUniqueFixVersions(targetFixVersions []string, sourceFixVersions ...string) []string {
+	fixVersionsSet := datastructures.MakeSet[string]()
+	var result []string
+	for _, fixVersion := range sourceFixVersions {
+		fixVersionsSet.Add(fixVersion)
+		result = append(result, fixVersion)
+	}
+
+	for _, fixVersion := range targetFixVersions {
+		if exist := fixVersionsSet.Exists(fixVersion); !exist {
+			result = append(result, fixVersion)
+		}
+	}
+	return result
+}
+
+// getUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:cveId:fixVersionExist"
+func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []services.Cve, fixVersionExist bool) string {
+	var cveId string
+	if len(cves) != 0 {
+		cveId = cves[0].Id
+	}
+	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }

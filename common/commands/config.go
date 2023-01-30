@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"net/url"
 	"os"
 	"reflect"
@@ -174,6 +176,11 @@ func (cc *ConfigCommand) config() error {
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
+			err = cc.validateTokenIsNotApiKey()
+			if err != nil {
+				return err
+			}
+
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
@@ -329,6 +336,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				err = readAccessTokenFromConsole(cc.details)
 				if err != nil {
 					return
+				}
+				err = cc.validateTokenIsNotApiKey()
+				if err != nil {
+					return err
 				}
 				if cc.details.User == "" {
 					// Try extracting username from Access Token (non-possible on reference token)
@@ -689,9 +700,16 @@ func (cc *ConfigCommand) assertUrlsSafe() error {
 	return nil
 }
 
+func (cc *ConfigCommand) validateTokenIsNotApiKey() error {
+	if httpclient.IsApiKey(cc.details.AccessToken) {
+		return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
+	}
+	return nil
+}
+
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:
 // 1. The URL uses an http:// scheme
-// 2. The URL leads to a URL outside of the local machine
+// 2. The URL leads to a URL outside the local machine
 func isUrlSafe(urlToCheck string) bool {
 	url, err := url.Parse(urlToCheck)
 	if err != nil {

@@ -30,10 +30,15 @@ const (
 )
 
 func OfflineUpdate(flags *OfflineUpdatesFlags) error {
-	if flags.IsDBSyncV3 {
+	if shouldUseDBSyncV3(flags) {
 		return handleDBSyncV3OfflineUpdate(flags)
 	}
 	return handleDBSyncV1OfflineUpdate(flags)
+}
+
+// We should use DBSync version 3 if the 'periodic' flag was specified.
+func shouldUseDBSyncV3(flags *OfflineUpdatesFlags) bool {
+	return flags.IsPeriodicUpdate
 }
 
 func handleDBSyncV1OfflineUpdate(flags *OfflineUpdatesFlags) error {
@@ -125,7 +130,7 @@ func createV3MetadataFile(state string, body []byte, destFolder string) (err err
 }
 
 func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
-	url := buildUrlDBSyncV3(flags.IsDBSyncV3PeriodicUpdate)
+	url := buildUrlDBSyncV3(flags.IsPeriodicUpdate)
 	log.Info("Getting updates...")
 	headers := make(map[string]string)
 	headers["X-Xray-License"] = flags.License
@@ -144,13 +149,13 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 		return err
 	}
 
-	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsDBSyncV3PeriodicUpdate)
+	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsPeriodicUpdate)
 	if err != nil {
 		return err
 	}
 
 	var state string
-	if flags.IsDBSyncV3PeriodicUpdate {
+	if flags.IsPeriodicUpdate {
 		state = periodicState
 	} else {
 		state = onboardingState
@@ -379,14 +384,23 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 	return
 }
 
+// ValidStreams represents the valid values that can be provided to the 'stream' flag during offline updates.
+var ValidStreams = map[string]bool{PublicData: true, ContextualAnalysis: true, Exposures: true}
+
+const (
+	PublicData         string = "public_data"
+	ContextualAnalysis        = "contextual_analysis"
+	Exposures                 = "exposures"
+)
+
 type OfflineUpdatesFlags struct {
-	License                  string
-	From                     int64
-	To                       int64
-	Version                  string
-	Target                   string
-	IsDBSyncV3               bool
-	IsDBSyncV3PeriodicUpdate bool
+	License          string
+	From             int64
+	To               int64
+	Version          string
+	Target           string
+	Stream           map[string]bool
+	IsPeriodicUpdate bool
 }
 
 type FilesList struct {

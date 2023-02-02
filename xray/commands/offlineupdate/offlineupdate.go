@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	Vulnerability       = "__vuln"
-	Component           = "__comp"
-	JxrayDefaultBaseUrl = "https://jxray.jfrog.io/"
+	Vulnerability = "__vuln"
+	Component     = "__comp"
+	// TODO: change back
+	//JxrayDefaultBaseUrl = "https://jxray.jfrog.io/"
+	JxrayDefaultBaseUrl = "https://jxray-integration.jfrogdev.org/"
 	JxrayApiBundles     = "api/v1/updates/bundles"
 	JxrayApiOnboarding  = "api/v1/updates/onboarding"
 	periodicState       = "periodic"
@@ -130,7 +132,7 @@ func createV3MetadataFile(state string, body []byte, destFolder string) (err err
 }
 
 func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
-	url := buildUrlDBSyncV3(flags.IsPeriodicUpdate)
+	url := buildUrlDBSyncV3(flags)
 	log.Info("Getting updates...")
 	headers := make(map[string]string)
 	headers["X-Xray-License"] = flags.License
@@ -191,9 +193,16 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	return nil
 }
 
-func buildUrlDBSyncV3(isPeriodic bool) string {
+func buildUrlDBSyncV3(flags *OfflineUpdatesFlags) string {
 	url := getJxRayBaseUrl() + "api/v3/updates/"
-	if isPeriodic {
+	// Build JAS urls if needed.
+	if flags.Stream == Exposures {
+		url += Exposures + "/"
+	} else if flags.Stream == ContextualAnalysis {
+		url += ContextualAnalysis + "/"
+	}
+
+	if flags.IsPeriodicUpdate {
 		return url + periodicState
 	} else {
 		return url + onboardingState
@@ -399,7 +408,7 @@ type OfflineUpdatesFlags struct {
 	To               int64
 	Version          string
 	Target           string
-	Stream           map[string]bool
+	Stream           string
 	IsPeriodicUpdate bool
 }
 

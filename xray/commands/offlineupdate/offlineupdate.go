@@ -38,9 +38,9 @@ func OfflineUpdate(flags *OfflineUpdatesFlags) error {
 	return handleDBSyncV1OfflineUpdate(flags)
 }
 
-// We should use DBSync version 3 if the 'periodic' flag was specified.
+// We should use DBSync version 3 if the 'stream' flag was specified.
 func shouldUseDBSyncV3(flags *OfflineUpdatesFlags) bool {
-	return flags.IsPeriodicUpdate
+	return flags.Stream != ""
 }
 
 func handleDBSyncV1OfflineUpdate(flags *OfflineUpdatesFlags) error {

@@ -20,11 +20,9 @@ import (
 )
 
 const (
-	Vulnerability = "__vuln"
-	Component     = "__comp"
-	// TODO: change back
-	//JxrayDefaultBaseUrl = "https://jxray.jfrog.io/"
-	JxrayDefaultBaseUrl = "https://jxray-integration.jfrogdev.org/"
+	Vulnerability       = "__vuln"
+	Component           = "__comp"
+	JxrayDefaultBaseUrl = "https://jxray.jfrog.io/"
 	JxrayApiBundles     = "api/v1/updates/bundles"
 	JxrayApiOnboarding  = "api/v1/updates/onboarding"
 	periodicState       = "periodic"
@@ -38,7 +36,7 @@ func OfflineUpdate(flags *OfflineUpdatesFlags) error {
 	return handleDBSyncV1OfflineUpdate(flags)
 }
 
-// We should use DBSync version 3 if the 'stream' flag was specified.
+// Should use DBSync version 3 if the 'stream' flag was specified.
 func shouldUseDBSyncV3(flags *OfflineUpdatesFlags) bool {
 	return flags.Stream != ""
 }

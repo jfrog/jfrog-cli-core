@@ -183,7 +183,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 		return err
 	}
 
-	packageName := "xray_update_package" + "_" + state
+	packageName := "xray_" + flags.Stream + "update_package" + "_" + state
 	err = createZipArchive(dataDir, flags.Target, packageName, "")
 	if err != nil {
 		return err

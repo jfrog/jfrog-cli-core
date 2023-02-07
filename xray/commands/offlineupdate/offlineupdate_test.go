@@ -38,7 +38,6 @@ var periodicDeleteResponseSection = "\"deletion\":" + periodicDeletionResponse
 var periodicResponse = "{" + periodicUpdateResponseSection + "," + periodicDeleteResponseSection + "}"
 var onboardingResponse = "[{\"download_url\":\"some_url_to_package_onboard\",\"timestamp\":1234}]"
 
-// TODO: add streams to test
 func TestDBSyncV3BuildURL(t *testing.T) {
 	tests := []struct {
 		flags    *OfflineUpdatesFlags
@@ -46,6 +45,10 @@ func TestDBSyncV3BuildURL(t *testing.T) {
 	}{
 		{&OfflineUpdatesFlags{Stream: PublicData, IsPeriodicUpdate: true}, "api/v3/updates/periodic"},
 		{&OfflineUpdatesFlags{Stream: PublicData, IsPeriodicUpdate: false}, "api/v3/updates/onboarding"},
+		{&OfflineUpdatesFlags{Stream: Exposures, IsPeriodicUpdate: true}, "api/v3/updates/exposures/periodic"},
+		{&OfflineUpdatesFlags{Stream: Exposures, IsPeriodicUpdate: false}, "api/v3/updates/exposures/onboarding"},
+		{&OfflineUpdatesFlags{Stream: ContextualAnalysis, IsPeriodicUpdate: true}, "api/v3/updates/contextual_analysis/periodic"},
+		{&OfflineUpdatesFlags{Stream: ContextualAnalysis, IsPeriodicUpdate: false}, "api/v3/updates/contextual_analysis/onboarding"},
 	}
 	for _, test := range tests {
 		url := buildUrlDBSyncV3(test.flags)

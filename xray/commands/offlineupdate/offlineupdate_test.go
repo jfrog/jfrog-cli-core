@@ -38,15 +38,17 @@ var periodicDeleteResponseSection = "\"deletion\":" + periodicDeletionResponse
 var periodicResponse = "{" + periodicUpdateResponseSection + "," + periodicDeleteResponseSection + "}"
 var onboardingResponse = "[{\"download_url\":\"some_url_to_package_onboard\",\"timestamp\":1234}]"
 
+// TODO: add streams to test
 func TestDBSyncV3BuildURL(t *testing.T) {
 	tests := []struct {
-		isPeriodic bool
-		expected   string
+		flags    *OfflineUpdatesFlags
+		expected string
 	}{
-		{true, "api/v3/updates/periodic"}, {false, "api/v3/updates/onboarding"},
+		{&OfflineUpdatesFlags{Stream: PublicData, IsPeriodicUpdate: true}, "api/v3/updates/periodic"},
+		{&OfflineUpdatesFlags{Stream: PublicData, IsPeriodicUpdate: false}, "api/v3/updates/onboarding"},
 	}
 	for _, test := range tests {
-		url := buildUrlDBSyncV3(test.isPeriodic)
+		url := buildUrlDBSyncV3(test.flags)
 		assert.Equal(t, strings.HasSuffix(url, test.expected), true)
 	}
 }

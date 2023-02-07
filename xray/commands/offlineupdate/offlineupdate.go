@@ -396,8 +396,8 @@ var ValidStreams = map[string]bool{PublicData: true, ContextualAnalysis: true, E
 
 const (
 	PublicData         string = "public_data"
-	ContextualAnalysis        = "contextual_analysis"
-	Exposures                 = "exposures"
+	ContextualAnalysis string = "contextual_analysis"
+	Exposures          string = "exposures"
 )
 
 type OfflineUpdatesFlags struct {

@@ -28,7 +28,7 @@ const (
 	logFilePrefix                                   = "transfer-config-conflicts"
 )
 
-var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks"}
+var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks", "description"}
 
 type TransferConfigMergeCommand struct {
 	sourceServerDetails      *config.ServerDetails

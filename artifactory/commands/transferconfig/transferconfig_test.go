@@ -3,21 +3,23 @@ package transferconfig
 import (
 	"bytes"
 	"encoding/json"
-	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+
+	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExportSourceArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		// Read body
@@ -39,8 +41,8 @@ func TestExportSourceArtifactory(t *testing.T) {
 	defer testServer.Close()
 
 	// Test export source artifactory
-	transferConfigCmd := NewTransferConfigCommand(serverDetails, nil)
-	exportDir, cleanUp, err := transferConfigCmd.exportSourceArtifactory(serviceManager)
+	transferConfigCmd := createTransferConfigCommand(t, serverDetails, nil)
+	exportDir, cleanUp, err := transferConfigCmd.exportSourceArtifactory()
 	assert.NoError(t, err)
 	assert.DirExists(t, exportDir)
 	assert.NoError(t, cleanUp())
@@ -49,7 +51,7 @@ func TestExportSourceArtifactory(t *testing.T) {
 
 func TestImportToTargetArtifactory(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		content, err := io.ReadAll(r.Body)
@@ -67,14 +69,14 @@ func TestImportToTargetArtifactory(t *testing.T) {
 	defer testServer.Close()
 
 	// Test export source artifactory
-	transferConfigCmd := NewTransferConfigCommand(nil, serverDetails)
-	err := transferConfigCmd.importToTargetArtifactory(serviceManager, bytes.NewBuffer([]byte("zip-content")))
+	transferConfigCmd := createTransferConfigCommand(t, nil, serverDetails)
+	err := transferConfigCmd.importToTargetArtifactory(bytes.NewBuffer([]byte("zip-content")))
 	assert.NoError(t, err)
 }
 
 func TestGetConfigXml(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.RequestURI == "/api/system/configuration" {
 			_, err := w.Write([]byte("<config></config>"))
@@ -84,17 +86,16 @@ func TestGetConfigXml(t *testing.T) {
 	defer testServer.Close()
 
 	// Test get config xml
-	transferConfigCmd := NewTransferConfigCommand(serverDetails, nil)
-	configXml, err := transferConfigCmd.getConfigXml(serviceManager)
+	transferConfigCmd := createTransferConfigCommand(t, serverDetails, nil)
+	configXml, _, err := transferConfigCmd.getEncryptedItems(make(map[utils.RepoType][]string))
 	assert.NoError(t, err)
 	assert.Equal(t, "<config></config>", configXml)
 }
 
-func TestSanityVerifications(t *testing.T) {
+func TestValidateTargetServer(t *testing.T) {
 	var users []services.User
-	var rtVersion string
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"checkPermissions" {
 			w.WriteHeader(http.StatusOK)
 		} else if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImportVersion" {
@@ -103,7 +104,7 @@ func TestSanityVerifications(t *testing.T) {
 			_, err = w.Write(content)
 			assert.NoError(t, err)
 		} else if r.RequestURI == "/api/system/version" {
-			content, err := json.Marshal(commandUtils.VersionResponse{Version: rtVersion})
+			content, err := json.Marshal(commandUtils.VersionResponse{Version: "7.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
@@ -117,63 +118,67 @@ func TestSanityVerifications(t *testing.T) {
 	})
 	defer testServer.Close()
 
-	// Test low Artifactory version
-	rtVersion = "6.0.0"
-	_, err := validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
-	assert.ErrorContains(t, err, "while this operation requires version")
-
-	// Test same source and target Artifactory servers
-	rtVersion = minArtifactoryVersion
-	_, err = validateMinVersionAndDifferentServers(serviceManager, serverDetails, serverDetails)
-	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
-
-	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
+	transferConfigCmd := createTransferConfigCommand(t, &config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	// Test no users
-	err = transferConfigCmd.validateTargetServer(serviceManager)
+	err := transferConfigCmd.validateTargetServer()
 	assert.NoError(t, err)
 
 	// Test 1 users
-	err = transferConfigCmd.validateTargetServer(serviceManager)
+	err = transferConfigCmd.validateTargetServer()
 	assert.NoError(t, err)
 
 	// Test 2 users
-	err = transferConfigCmd.validateTargetServer(serviceManager)
+	err = transferConfigCmd.validateTargetServer()
 	assert.NoError(t, err)
 
 	// Test 3 users
-	err = transferConfigCmd.validateTargetServer(serviceManager)
+	err = transferConfigCmd.validateTargetServer()
 	assert.ErrorContains(t, err, "cowardly refusing to import the config to the target server, because it contains more than 2 users.")
 
 	// Assert force = true
 	transferConfigCmd.force = true
-	err = transferConfigCmd.validateTargetServer(serviceManager)
+	err = transferConfigCmd.validateTargetServer()
 	assert.NoError(t, err)
 }
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("Not found"))
 		assert.NoError(t, err)
 	})
 	defer testServer.Close()
 
-	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
-	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
+	transferConfigCmd := createTransferConfigCommand(t, &config.ServerDetails{Url: "dummy-url"}, serverDetails)
+	err := transferConfigCmd.verifyConfigImportPlugin()
 	assert.ErrorContains(t, err, "Response from Artifactory: 404 Not Found.")
 }
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, serviceManager := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, err := w.Write([]byte("An admin user is required"))
 		assert.NoError(t, err)
 	})
 	defer testServer.Close()
 
-	transferConfigCmd := NewTransferConfigCommand(&config.ServerDetails{Url: "dummy-url"}, serverDetails)
-	err := transferConfigCmd.verifyConfigImportPlugin(serviceManager)
+	transferConfigCmd := createTransferConfigCommand(t, &config.ServerDetails{Url: "dummy-url"}, serverDetails)
+	err := transferConfigCmd.verifyConfigImportPlugin()
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
+}
+
+func createTransferConfigCommand(t *testing.T, sourceServerDetails, targetServerDetails *config.ServerDetails) *TransferConfigCommand {
+	transferConfigBase := NewTransferConfigCommand(sourceServerDetails, targetServerDetails)
+	var err error
+	if sourceServerDetails != nil {
+		transferConfigBase.SourceArtifactoryManager, err = utils.CreateServiceManager(sourceServerDetails, -1, 0, false)
+		assert.NoError(t, err)
+	}
+	if targetServerDetails != nil {
+		transferConfigBase.TargetArtifactoryManager, err = utils.CreateServiceManager(targetServerDetails, -1, 0, false)
+		assert.NoError(t, err)
+	}
+	return transferConfigBase
 }

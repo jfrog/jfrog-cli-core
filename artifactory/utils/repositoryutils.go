@@ -21,6 +21,7 @@ const (
 	Remote
 	Virtual
 	Federated
+	Unknown
 )
 
 var RepoTypes = []string{
@@ -32,6 +33,20 @@ var RepoTypes = []string{
 
 func (repoType RepoType) String() string {
 	return RepoTypes[repoType]
+}
+
+func RepoTypeFromString(repoTypeStr string) RepoType {
+	switch strings.ToLower(repoTypeStr) {
+	case Local.String():
+		return Local
+	case Remote.String():
+		return Remote
+	case Virtual.String():
+		return Virtual
+	case Federated.String():
+		return Federated
+	}
+	return Unknown
 }
 
 // System repositories in Artifactory to filter in filterRepositoryNames.

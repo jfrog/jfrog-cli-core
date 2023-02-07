@@ -4,9 +4,28 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
+
+// Remove all repositories from the config XML.
+// Since Artifactory 7.49, we transfer the repositories using GET and POST to /api/repository.
+// Therefore we don't need to have then in the config.xml.
+func RemoveAllRepositories(configXml string) (string, error) {
+	for _, repoType := range append(utils.RepoTypes, "releaseBundles") {
+		xmlTagIndices, exist, err := findAllXmlTagIndices(configXml, repoType+`Repositories`, true)
+		if err != nil {
+			return "", err
+		}
+		if !exist {
+			continue
+		}
+		prefix, _, suffix := splitXmlTag(configXml, xmlTagIndices, 0)
+		configXml = prefix + suffix
+	}
+	return configXml, nil
+}
 
 // Find all indiced of the input tagName in the XML.
 // xmlContent   - XML content

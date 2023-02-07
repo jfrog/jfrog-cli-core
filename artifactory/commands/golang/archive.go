@@ -186,19 +186,6 @@ func isVendoredPackage(name string) bool {
 // subdirectories, most files in vendor directories, or irregular files (such
 // as symbolic links) in the output archive.
 func Create(w io.Writer, m module.Version, files []File) (err error) {
-
-	// Check that the version is canonical, the module path is well-formed, and
-	// the major version suffix matches the major version.
-	if vers := module.CanonicalVersion(m.Version); vers != m.Version {
-		if vers == "" {
-			vers = "the version structure to be vX.Y.Z"
-		}
-		return fmt.Errorf("version %q is not canonical (expected %s)", m.Version, vers)
-	}
-	if err := module.Check(m.Path, m.Version); err != nil {
-		return err
-	}
-
 	// Find directories containing go.mod files (other than the root).
 	// These directories will not be included in the output zip.
 	haveGoMod := make(map[string]bool)

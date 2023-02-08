@@ -107,8 +107,8 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase1HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
+	tpm.wg.Add(1)
 	go func() {
-		tpm.wg.Add(1)
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
@@ -145,8 +145,8 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
+	tpm.wg.Add(1)
 	go func() {
-		tpm.wg.Add(1)
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
@@ -184,8 +184,8 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
+	tpm.wg.Add(1)
 	go func() {
-		tpm.wg.Add(1)
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
@@ -217,8 +217,8 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 
 	pb := tpm.barMng.newHeadlineTaskProg(getVals, "Transferring your repositories", tpm.transferLabels.Repositories)
 
+	tpm.reposWg.Add(1)
 	go func() {
-		tpm.reposWg.Add(1)
 		defer tpm.reposWg.Done()
 		for {
 			if tpm.reposShouldStop {
@@ -255,8 +255,8 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 
 	pb := tpm.barMng.newDoubleValueProgressBar(getVals, tpm.transferLabels.Storage, tpm.transferLabels.Files)
 
+	tpm.wg.Add(1)
 	go func() {
-		tpm.wg.Add(1)
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {

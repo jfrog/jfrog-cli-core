@@ -16,6 +16,7 @@ const (
 )
 
 // The interactive questionnaire works as follows:
+//
 //	We have to provide a map of QuestionInfo which include all possible questions may be asked.
 //	1. Mandatory Questions:
 //		* We will ask all the questions in MandatoryQuestionsKeys list one after the other.
@@ -32,13 +33,13 @@ type InteractiveQuestionnaire struct {
 }
 
 // Each question can have the following properties:
-// 		* Msg - will be printed in separate line
-// 		* PromptPrefix - will be printed before the input cursor in the answer line
-// 		* Options - In case the answer must be selected from a predefined list
-// 		* AllowVars - a flag indicates whether a variable (in form of ${var}) is an acceptable answer despite the predefined list
-// 		* Writer - how to write the answer to the final config map
-// 		* MapKey - the key under which the answer will be written to the configMap
-// 		* Callback - optional function can be executed after the answer was inserted. Can be used to implement some dependencies between questions.
+//   - Msg - will be printed in separate line
+//   - PromptPrefix - will be printed before the input cursor in the answer line
+//   - Options - In case the answer must be selected from a predefined list
+//   - AllowVars - a flag indicates whether a variable (in form of ${var}) is an acceptable answer despite the predefined list
+//   - Writer - how to write the answer to the final config map
+//   - MapKey - the key under which the answer will be written to the configMap
+//   - Callback - optional function can be executed after the answer was inserted. Can be used to implement some dependencies between questions.
 type AnswerWriter func(resultMap *map[string]interface{}, key, value string) error
 type questionCallback func(*InteractiveQuestionnaire, string) (string, error)
 
@@ -192,9 +193,9 @@ func AskFromListWithMismatchConfirmation(promptPrefix, misMatchMsg string, optio
 }
 
 // Ask question steps:
-// 		1. Ask for string/from list
-//		2. Write the answer to answersMap (if writer provided)
-// 		3. Run callback (if provided)
+//  1. Ask for string/from list
+//  2. Write the answer to answersMap (if writer provided)
+//  3. Run callback (if provided)
 func (iq *InteractiveQuestionnaire) AskQuestion(question QuestionInfo) (value string, err error) {
 	var answer string
 	if question.Options != nil {

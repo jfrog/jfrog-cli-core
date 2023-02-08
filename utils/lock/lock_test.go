@@ -26,8 +26,8 @@ func init() {
 }
 
 /*
-	The lock mechanism prefers earlier lock requests. If two locks requests have same time stamps, it'll take the one with the smaller PID first.
-	Here we test the functionality of a real process with a real PID and a dummy process with MaxInt pid.
+The lock mechanism prefers earlier lock requests. If two locks requests have same time stamps, it'll take the one with the smaller PID first.
+Here we test the functionality of a real process with a real PID and a dummy process with MaxInt pid.
 */
 func TestLockSmallerPid(t *testing.T) {
 	// First creating the first lock object with special pid number that doesn't exist.
@@ -58,8 +58,8 @@ func TestLockSmallerPid(t *testing.T) {
 }
 
 /*
-	The lock mechanism prefers earlier lock requests. If two locks requests have same time stamps, it'll take the one with the smaller PID first.
-	Here we test the functionality of a real process with a real PID and a dummy process with -1 pid.
+The lock mechanism prefers earlier lock requests. If two locks requests have same time stamps, it'll take the one with the smaller PID first.
+Here we test the functionality of a real process with a real PID and a dummy process with -1 pid.
 */
 func TestLockBiggerPid(t *testing.T) {
 	// First creating the first lock object with special pid number that doesn't exist.

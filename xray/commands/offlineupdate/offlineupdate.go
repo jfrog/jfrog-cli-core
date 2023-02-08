@@ -400,6 +400,10 @@ const (
 	Exposures          string = "exposures"
 )
 
+func GetValidStreamsList() string {
+	return PublicData + ", " + Exposures + " and " + ContextualAnalysis
+}
+
 type OfflineUpdatesFlags struct {
 	License          string
 	From             int64

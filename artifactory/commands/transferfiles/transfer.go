@@ -384,9 +384,6 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 	if err = tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState); err != nil {
 		return err
 	}
-	if tdc.progressbar != nil {
-		tdc.progressbar.increaseTotalSize(int(tdc.stateManager.OverallTransfer.TransferredSizeBytes))
-	}
 	return nil
 }
 

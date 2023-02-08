@@ -62,7 +62,7 @@ func newRepositoryTransferState(repoKey string) TransferState {
 	}
 }
 
-func (ts *TransferState) action(action ActionOnStateFunc) error {
+func (ts *TransferState) Action(action ActionOnStateFunc) error {
 	if err := action(ts); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (ts *TransferState) persistTransferState(snapshot bool) (err error) {
 }
 
 func (ts *TransferState) IsRepoTransferred() (isTransferred bool, err error) {
-	return isTransferred, ts.action(func(state *TransferState) error {
+	return isTransferred, ts.Action(func(state *TransferState) error {
 		isTransferred = state.CurrentRepo.FullTransfer.Ended != ""
 		return nil
 	})

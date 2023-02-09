@@ -160,11 +160,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	} else {
 		state = onboardingState
 	}
-	xrayTempDir, err := getXrayTempDir()
-	if err != nil {
-		return err
-	}
-	dataDir, err := os.MkdirTemp(xrayTempDir, "xray_downloaded_data")
+	dataDir, err := os.MkdirTemp(flags.Target, "xray_downloaded_data")
 	if err != nil {
 		return err
 	}

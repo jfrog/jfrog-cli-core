@@ -112,7 +112,6 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
-				log.Info("phase 1, should stop is true")
 				return
 			}
 			ptr1, ptr2, _, _, err := getVals()
@@ -150,10 +149,8 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
-				log.Info("phase 2, should stop is true")
 				return
 			}
-			log.Info("phase 2 goroutine is working")
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
 				log.Error(err)
@@ -189,7 +186,6 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 		defer tpm.wg.Done()
 		for {
 			if tpm.shouldStop {
-				log.Info("phase 3, should stop is true")
 				return
 			}
 			ptr1, ptr2, _, _, err := getVals()

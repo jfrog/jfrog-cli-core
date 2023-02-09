@@ -31,7 +31,8 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if err != nil {
 		return err
 	}
-	return m.progressBar.AddPhase1(skip)
+	m.progressBar.AddPhase1(skip)
+	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -83,7 +84,7 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 func (m *fullTransferPhase) skipPhase() error {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		return m.progressBar.AddPhase1(true)
+		m.progressBar.AddPhase1(true)
 	}
 	return nil
 }

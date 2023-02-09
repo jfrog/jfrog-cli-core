@@ -83,9 +83,7 @@ func InitTransferProressBarMng(state *state.TransferStateManager, allRepos []str
 }
 
 func (tpm *TransferProgressMng) SetShouldStop(shouldStop bool) {
-
 	tpm.shouldStop = shouldStop
-
 }
 
 func (tpm *TransferProgressMng) SetReposShouldStop() {
@@ -101,9 +99,7 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 			totalFiles = &tpm.stateMng.CurrentRepo.Phase1Info.TotalUnits
 			return nil
 		})
-
 		return transferredStorage, totalStorage, transferresFiles, totalFiles, err
-
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase1HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
@@ -116,7 +112,7 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
-				log.Error(err)
+				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
 			if pb != nil && pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
@@ -138,9 +134,7 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 			totalFiles = &tpm.stateMng.CurrentRepo.Phase2Info.TotalUnits
 			return nil
 		})
-
 		return transferresStorage, totalStorage, transferredFiles, totalFiles, err
-
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
@@ -153,9 +147,9 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
-				log.Error(err)
+				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
-			if ptr1 != nil && ptr2 != nil && pb != nil && pb.GetTasksProgressBar() != nil {
+			if pb != nil && pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
 				pb.GetTasksProgressBar().GetBar().SetCurrent(*ptr1)
 			}
@@ -175,9 +169,7 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 			totalFiles = &tpm.stateMng.CurrentRepo.Phase3Info.TotalUnits
 			return nil
 		})
-
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
-
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
@@ -222,7 +214,7 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 			}
 			transferredRepos, totalRepos, err := getVals()
 			if err != nil {
-				log.Error(err)
+				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
 			if pb != nil && pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*totalRepos)
@@ -280,9 +272,7 @@ func (tpm *TransferProgressMng) NewWorkingThreadsProg() *TasksProgressBar {
 		return ptr, err
 	}
 
-	pb := tpm.barMng.newCounterProgBar(getVal, tpm.transferLabels.WorkingThreads)
-	return pb
-
+	return tpm.barMng.newCounterProgBar(getVal, tpm.transferLabels.WorkingThreads)
 }
 
 func (tpm *TransferProgressMng) GetBarMng() *ProgressBarMng {

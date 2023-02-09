@@ -24,7 +24,8 @@ func (f *filesDiffPhase) initProgressBar() error {
 	if f.progressBar == nil {
 		return nil
 	}
-	return f.progressBar.AddPhase2()
+	f.progressBar.AddPhase2()
+	return nil
 }
 
 func (f *filesDiffPhase) getPhaseName() string {

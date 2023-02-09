@@ -364,8 +364,8 @@ func GetRunningTime() (runningTime string, isRunning bool, err error) {
 	return secondsToLiteralTime(runningSecs, ""), true, nil
 }
 
-func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (chunkTotalSizeInBytes int64, err error) {
-	chunkTotalSizeInBytes = 0
+func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (err error) {
+	var chunkTotalSizeInBytes int64 = 0
 	var chunkTotalFiles int64 = 0
 	for _, file := range chunk.Files {
 		if file.Status != api.Fail {
@@ -381,7 +381,7 @@ func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStat
 	case api.Phase3:
 		err = stateManager.IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes)
 	}
-	return chunkTotalSizeInBytes, err
+	return err
 }
 
 func GetJfrogTransferRepoSnapshotDir(repoKey string) (string, error) {

@@ -149,13 +149,8 @@ func (e *errorsRetryPhase) initProgressBar() error {
 		}
 		filesCount += len(failedFiles.Errors)
 	}
-
 	// The progress bar will also be responsible to display the number of delayed items for this repository.
-	err := e.progressBar.AddPhase3()
-	if err != nil {
-		return err
-	}
-
+	e.progressBar.AddPhase3()
 	return nil
 }
 

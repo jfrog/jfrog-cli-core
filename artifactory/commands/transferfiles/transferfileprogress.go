@@ -40,7 +40,8 @@ type TransferProgressMng struct {
 	emptyLine           *mpb.Bar
 	phases              []*progressbar.TasksWithHeadlineProg
 	// Progress bar manager
-	barsMng     *progressbar.ProgressBarMng
+	barsMng *progressbar.ProgressBarMng
+	// Transfer progress bar manager
 	transferMng *progressbar.TransferProgressMng
 	// In case of an emergency stop the transfer's progress bar will be aborted and the 'stopLine' bar will be display.
 	stopLine *mpb.Bar
@@ -53,17 +54,17 @@ type TransferProgressMng struct {
 // NewTransferProgressMng creates TransferProgressMng object.
 // If the progress bar shouldn't be displayed returns nil.
 func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int) error {
+	// Init the transfer progress bar manager
 	trmng, shouldDisplay, err := progressbar.InitTransferProressBarMng(tdc.stateManager, allSourceLocalRepos)
-	// Init Progress Bars
-	windows := coreutils.IsWindows()
 	if !shouldDisplay || err != nil {
 		return err
 	}
 	transfer := TransferProgressMng{barsMng: trmng.GetBarMng(), shouldDisplay: true, transferMng: trmng}
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
-	transfer.windows = windows
+	transfer.windows = coreutils.IsWindows()
 	transfer.transferMng.SetShouldStop(false)
+	// Init Progress Bars
 	transfer.totalRepositories = transfer.transferMng.NewRepositoriesProgressBar()
 	transfer.totalSize = transfer.transferMng.NewGeneralProgBar()
 	transfer.workingThreads = transfer.transferMng.NewWorkingThreadsProg()
@@ -182,26 +183,23 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 	return nil
 }
 
-func (t *TransferProgressMng) AddPhase1(skip bool) error {
+func (t *TransferProgressMng) AddPhase1(skip bool) {
 	if skip {
 		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, phase1HeadLine, false, progressbar.GREEN, t.windows, ""))
 	} else {
 		bar2 := t.transferMng.NewPhase1ProgressBar()
 		t.phases = append(t.phases, bar2)
 	}
-	return nil
 }
 
-func (t *TransferProgressMng) AddPhase2() error {
+func (t *TransferProgressMng) AddPhase2() {
 	bar := t.transferMng.NewPhase2ProgressBar()
 	t.phases = append(t.phases, bar)
-	return nil
 }
 
-func (t *TransferProgressMng) AddPhase3() error {
+func (t *TransferProgressMng) AddPhase3() {
 	bar := t.transferMng.NewPhase3ProgressBar()
 	t.phases = append(t.phases, bar)
-	return nil
 }
 
 func (t *TransferProgressMng) RemoveRepository() {

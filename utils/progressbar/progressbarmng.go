@@ -68,10 +68,10 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
+// Initialize a progress bar that can show the status of two different values, and a headline above it
 func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, val2HeadLine string, getVal func() (ptr1, ptr2, ptr3, ptr4 *int64, err error)) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
-	// todo : check the option of to have spinner and the event of no tasks
 	prog.headlineBar = bm.NewHeadlineBar(headline)
 	prog.tasksProgressBar = bm.newDoubleValueProgressBar(getVal, val1HeadLine, val2HeadLine)
 	prog.emptyLine = bm.NewHeadlineBar("")
@@ -79,6 +79,7 @@ func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, v
 	return &prog
 }
 
+// Initialize a progress bar that can show the status of two different values
 func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, ptr3, ptr4 *int64, err error), firstValueLine, secondValueLine string) *TasksProgressBar {
 	pb := TasksProgressBar{}
 	windows := coreutils.IsWindows()
@@ -90,22 +91,20 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, p
 		mpb.AppendDecorators(
 			decor.Name(" "+firstValueLine+": "),
 			decor.Any(func(statistics decor.Statistics) string {
-				// todo : change names
-				name1, name2, _, _, err := getVal()
+				val1, val2, _, _, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := artifactoryutils.ConvertIntToStorageSizeString(*name1)
-				s2 := artifactoryutils.ConvertIntToStorageSizeString(*name2)
+				s1 := artifactoryutils.ConvertIntToStorageSizeString(*val1)
+				s2 := artifactoryutils.ConvertIntToStorageSizeString(*val2)
 				return color.Green.Render(s1 + "/" + s2)
 			}), decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
-				// todo : change names
-				_, _, name3, name4, err := getVal()
+				_, _, val3, val4, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := strconv.Itoa(int(*name3))
-				s2 := strconv.Itoa(int(*name4))
+				s1 := strconv.Itoa(int(*val3))
+				s2 := strconv.Itoa(int(*val4))
 				return color.Green.Render(s1 + "/" + s2)
 			}),
 		),
@@ -114,6 +113,7 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, p
 	return &pb
 }
 
+// Initialize a regular tasks progress bar, with a headline above it
 func (bm *ProgressBarMng) newHeadlineTaskProg(getVal func() (ptr1, ptr2 *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
@@ -123,6 +123,7 @@ func (bm *ProgressBarMng) newHeadlineTaskProg(getVal func() (ptr1, ptr2 *int64, 
 	return &prog
 }
 
+// Initialize a regular tasks progress bar, with a headline above it
 func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}

@@ -397,8 +397,8 @@ func updateProgress(phase *phaseBase, timeEstMng *state.TimeEstimationManager,
 	if phase == nil {
 		return nil
 	}
-	//chunkSizeInBytes
-	_, err := state.UpdateChunkInState(phase.stateManager, &chunk)
+
+	err := state.UpdateChunkInState(phase.stateManager, &chunk)
 	if err != nil {
 		return err
 	}

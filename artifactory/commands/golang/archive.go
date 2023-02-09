@@ -41,6 +41,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"golang.org/x/mod/module"
 )
 
@@ -232,22 +233,29 @@ func Create(w io.Writer, m module.Version, files []File) (err error) {
 	zw := zip.NewWriter(w)
 	prefix := fmt.Sprintf("%s@%s/", m.Path, m.Version)
 
-	addFile := func(f File, path string, size int64) error {
-		rc, err := f.Open()
-		if err != nil {
-			return err
+	addFile := func(f File, path string, size int64) (addFileErr error) {
+		var rc io.ReadCloser
+		var w io.Writer
+		rc, addFileErr = f.Open()
+		if addFileErr != nil {
+			return errorutils.CheckError(addFileErr)
 		}
-		defer rc.Close()
-		w, err := zw.Create(prefix + path)
-		if err != nil {
-			return err
+		defer func() {
+			closeErr := errorutils.CheckError(rc.Close())
+			if addFileErr != nil {
+				addFileErr = closeErr
+			}
+		}()
+		w, addFileErr = zw.Create(prefix + path)
+		if addFileErr != nil {
+			return errorutils.CheckError(addFileErr)
 		}
 		lr := &io.LimitedReader{R: rc, N: size + 1}
-		if _, err := io.Copy(w, lr); err != nil {
-			return err
+		if _, addFileErr = io.Copy(w, lr); addFileErr != nil {
+			return addFileErr
 		}
 		if lr.N <= 0 {
-			return fmt.Errorf("file %q is larger than declared size", path)
+			return errorutils.CheckErrorf("file %q is larger than declared size", path)
 		}
 		return nil
 	}
@@ -372,7 +380,7 @@ func (cc collisionChecker) check(p string, isDir bool) error {
 }
 
 // strToFold returns a string with the property that
-//	strings.EqualFold(s, t) iff strToFold(s) == strToFold(t)
+// strings.EqualFold(s, t) iff strToFold(s) == strToFold(t)
 // This lets us test a large set of strings for fold-equivalent
 // duplicates without making a quadratic number of calls
 // to EqualFold. Note that strings.ToUpper and strings.ToLower

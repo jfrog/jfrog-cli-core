@@ -155,13 +155,13 @@ func TestGetPluginDirDestination(t *testing.T) {
 	testsutils.SetEnvAndAssert(t, jfrogHomeEnvVar, filepath.Join(testHomePath, testEnvDir))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, artifactory + "-confuse", targetDir), dst.toPath())
+	assert.Equal(t, filepath.Join(testHomePath, testEnvDir, artifactory+"-confuse", targetDir), dst.toPath())
 
 	// Flag override
 	cmd.SetJFrogHomePath(filepath.Join(testHomePath, testCustomDir))
 	dst, err = cmd.getPluginDirDestination()
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, "confuse-" + artifactory, targetDir), dst.toPath())
+	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, "confuse-"+artifactory, targetDir), dst.toPath())
 	cmd.SetJFrogHomePath("not_existing_dir")
 	_, err = cmd.getPluginDirDestination()
 	assert.Errorf(t, err, notValidDestinationErr.Error())

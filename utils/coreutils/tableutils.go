@@ -32,24 +32,25 @@ var DefaultMaxColWidth = 25
 // Example:
 // These are the structs Customer and Product:
 //
-// type Customer struct {
-//     name     string    `col-name:"Name"`
-//     age      string    `col-name:"Age"`
-//     products []Product `embed-table:"true"`
-// }
+//	type Customer struct {
+//	    name     string    `col-name:"Name"`
+//	    age      string    `col-name:"Age"`
+//	    products []Product `embed-table:"true"`
+//	}
 //
-// type Product struct {
-//     title string `col-name:"Product Title"`
-//     CatNumber string `col-name:"Product\nCatalog #"`
-//     Color string `col-name:"Color" extended:"true"`
-// }
+//	type Product struct {
+//	    title string `col-name:"Product Title"`
+//	    CatNumber string `col-name:"Product\nCatalog #"`
+//	    Color string `col-name:"Color" extended:"true"`
+//	}
 //
 // We'll use it, and run these commands (var DefaultMaxColWidth = 25):
 //
-// customersSlice := []Customer{
-//     {name: "Gai", age: "350", products: []Product{{title: "SpiderFrog Shirt - Medium", CatNumber: "123456", Color: "Green"}, {title: "Floral Bottle", CatNumber: "147585", Color: "Blue"}}},
-//     {name: "Noah", age: "21", products: []Product{{title: "Pouch", CatNumber: "456789", Color: "Red"}, {title: "Ching Ching", CatNumber: "963852", Color: "Gold"}}},
-// }
+//	customersSlice := []Customer{
+//	    {name: "Gai", age: "350", products: []Product{{title: "SpiderFrog Shirt - Medium", CatNumber: "123456", Color: "Green"}, {title: "Floral Bottle", CatNumber: "147585", Color: "Blue"}}},
+//	    {name: "Noah", age: "21", products: []Product{{title: "Pouch", CatNumber: "456789", Color: "Red"}, {title: "Ching Ching", CatNumber: "963852", Color: "Gold"}}},
+//	}
+//
 // err := coreutils.PrintTable(customersSlice, "Customers", "No customers were found", false)
 //
 // That's the table printed:

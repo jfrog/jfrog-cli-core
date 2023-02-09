@@ -69,7 +69,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 }
 
 // Initialize a progress bar that can show the status of two different values, and a headline above it
-func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, val2HeadLine string, getVal func() (ptr1, ptr2, ptr3, ptr4 *int64, err error)) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, val2HeadLine string, getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error)) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headline)
@@ -80,7 +80,7 @@ func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, v
 }
 
 // Initialize a progress bar that can show the status of two different values
-func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, ptr3, ptr4 *int64, err error), firstValueLine, secondValueLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error), firstValueLine, secondValueLine string) *TasksProgressBar {
 	pb := TasksProgressBar{}
 	windows := coreutils.IsWindows()
 	padding, filler := paddingAndFiller(windows)
@@ -91,20 +91,20 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, p
 		mpb.AppendDecorators(
 			decor.Name(" "+firstValueLine+": "),
 			decor.Any(func(statistics decor.Statistics) string {
-				val1, val2, _, _, err := getVal()
+				firstNumerator, firstDenominator, _, _, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := artifactoryutils.ConvertIntToStorageSizeString(*val1)
-				s2 := artifactoryutils.ConvertIntToStorageSizeString(*val2)
+				s1 := artifactoryutils.ConvertIntToStorageSizeString(*firstNumerator)
+				s2 := artifactoryutils.ConvertIntToStorageSizeString(*firstDenominator)
 				return color.Green.Render(s1 + "/" + s2)
 			}), decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
-				_, _, val3, val4, err := getVal()
+				_, _, secondNumerator, secondDenominator, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := strconv.Itoa(int(*val3))
-				s2 := strconv.Itoa(int(*val4))
+				s1 := strconv.Itoa(int(*secondNumerator))
+				s2 := strconv.Itoa(int(*secondDenominator))
 				return color.Green.Render(s1 + "/" + s2)
 			}),
 		),
@@ -114,7 +114,7 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (ptr1, ptr2, p
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) newHeadlineTaskProg(getVal func() (ptr1, ptr2 *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) newHeadlineTaskProg(getVal func() (numerator, denominator *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
@@ -232,7 +232,7 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 	return pb
 }
 
-func (bm *ProgressBarMng) newTasksProgBar(getVal func() (ptr1, ptr2 *int64, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newTasksProgBar(getVal func() (numerator, denominator *int64, err error), headLine string) *TasksProgressBar {
 	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
 	filter := filterColor(GREEN, coreutils.IsWindows())
@@ -271,7 +271,7 @@ func (bm *ProgressBarMng) NewCounterProgressBar(headline string, num int64, valC
 	return pb
 }
 
-func (bm *ProgressBarMng) newCounterProgBar(getVal func() (ptr1 int, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newCounterProgBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(0,
 		nil,
@@ -279,11 +279,11 @@ func (bm *ProgressBarMng) newCounterProgBar(getVal func() (ptr1 int, err error),
 		mpb.PrependDecorators(
 			decor.Name(headLine),
 			decor.Any(func(statistics decor.Statistics) string {
-				name1, err := getVal()
+				value, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := strconv.Itoa(name1)
+				s1 := strconv.Itoa(value)
 				return color.Green.Render(s1)
 			}),
 		),

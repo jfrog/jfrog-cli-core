@@ -250,12 +250,12 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 			if tpm.shouldStop {
 				return
 			}
-			ptr1, ptr2, _, _, err := getVals()
+			transferredStorage, totalStorage, _, _, err := getVals()
 			if err != nil {
 				log.Error(err)
 			}
-			pb.SetGeneralProgressTotal(*ptr2)
-			pb.GetBar().SetCurrent(*ptr1)
+			pb.SetGeneralProgressTotal(*totalStorage)
+			pb.GetBar().SetCurrent(*transferredStorage)
 			time.Sleep(time.Second)
 		}
 	}()
@@ -264,12 +264,12 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 }
 
 func (tpm *TransferProgressMng) NewWorkingThreadsProg() *TasksProgressBar {
-	getVal := func() (ptr int, err error) {
+	getVal := func() (workingThreadsNum int, err error) {
 		err = tpm.stateMng.Action(func(state *state.TransferState) error {
-			ptr = tpm.stateMng.WorkingThreads
+			workingThreadsNum = tpm.stateMng.WorkingThreads
 			return nil
 		})
-		return ptr, err
+		return workingThreadsNum, err
 	}
 
 	return tpm.barMng.newCounterProgBar(getVal, tpm.transferLabels.WorkingThreads)

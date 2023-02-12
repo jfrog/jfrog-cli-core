@@ -263,13 +263,12 @@ func getXrayTempDir() (string, error) {
 }
 
 func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(string) (string, error)) error {
-	//
+	log.Info(fmt.Sprintf("Downloading updates packages to %s.", dataDir))
 	for _, url := range urlsList {
 		fileName, err := fileNameFromUrlFunc(url)
 		if err != nil {
 			return err
 		}
-		log.Info(fmt.Sprintf("Downloading updates package from %s", url))
 		client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 		if err != nil {
 			log.Error(fmt.Sprintf("Couldn't download from %s", url))
@@ -281,6 +280,11 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 			DownloadPath:  url,
 			LocalPath:     dataDir,
 			LocalFileName: fileName}
+		response, _, err := client.SendHead(url, httputils.HttpClientDetails{}, "")
+		if err != nil {
+			return errorutils.CheckErrorf("Couldn't get content length of %s. Error: %s", url, err.Error())
+		}
+		log.Info(fmt.Sprintf("Downloading updates package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
 		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
 		if err != nil {
 			return errorutils.CheckErrorf("Couldn't download from %s. Error: %s", url, err.Error())

@@ -61,15 +61,15 @@ func initSProgressBarLabels(windows bool) TransferLabels {
 }
 
 type TransferProgressMng struct {
-	barMng          *ProgressBarMng
-	stateMng        *state.TransferStateManager
-	transferLabels  TransferLabels
-	wg              sync.WaitGroup
-	reposWg         sync.WaitGroup
-	allRepos        []string
-	ignoreState     bool
-	shouldStop      bool
-	reposShouldStop bool
+	barMng                *ProgressBarMng
+	stateMng              *state.TransferStateManager
+	transferLabels        TransferLabels
+	wg                    sync.WaitGroup
+	reposWg               sync.WaitGroup
+	allRepos              []string
+	ignoreState           bool
+	currentRepoShouldStop bool
+	generalShouldStop     bool
 }
 
 func InitTransferProressBarMng(state *state.TransferStateManager, allRepos []string) (mng *TransferProgressMng, shouldInit bool, err error) {
@@ -77,17 +77,17 @@ func InitTransferProressBarMng(state *state.TransferStateManager, allRepos []str
 	mng.barMng, shouldInit, err = NewBarsMng()
 	mng.stateMng = state
 	mng.allRepos = allRepos
-	mng.reposShouldStop = false
+	mng.generalShouldStop = false
 	mng.transferLabels = initSProgressBarLabels(coreutils.IsWindows())
 	return
 }
 
-func (tpm *TransferProgressMng) SetShouldStop(shouldStop bool) {
-	tpm.shouldStop = shouldStop
+func (tpm *TransferProgressMng) SetCurrentRepoShouldStop(shouldStop bool) {
+	tpm.currentRepoShouldStop = shouldStop
 }
 
-func (tpm *TransferProgressMng) SetReposShouldStop() {
-	tpm.reposShouldStop = true
+func (tpm *TransferProgressMng) SetGeneralShouldStop() {
+	tpm.generalShouldStop = true
 }
 
 func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
@@ -107,14 +107,18 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 	go func() {
 		defer tpm.wg.Done()
 		for {
-			if tpm.shouldStop {
+			if tpm.currentRepoShouldStop {
 				return
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
-			if pb != nil && pb.GetTasksProgressBar() != nil {
+			if pb == nil {
+				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				return
+			}
+			if pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
 				pb.GetTasksProgressBar().GetBar().SetCurrent(*ptr1)
 			}
@@ -142,14 +146,18 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 	go func() {
 		defer tpm.wg.Done()
 		for {
-			if tpm.shouldStop {
+			if tpm.currentRepoShouldStop {
 				return
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
-			if pb != nil && pb.GetTasksProgressBar() != nil {
+			if pb == nil {
+				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				return
+			}
+			if pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
 				pb.GetTasksProgressBar().GetBar().SetCurrent(*ptr1)
 			}
@@ -177,14 +185,18 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 	go func() {
 		defer tpm.wg.Done()
 		for {
-			if tpm.shouldStop {
+			if tpm.currentRepoShouldStop {
 				return
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
 				log.Error(err)
 			}
-			if pb != nil && pb.GetTasksProgressBar() != nil {
+			if pb == nil {
+				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				return
+			}
+			if pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
 				pb.GetTasksProgressBar().GetBar().SetCurrent(*ptr1)
 			}
@@ -209,14 +221,18 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 	go func() {
 		defer tpm.reposWg.Done()
 		for {
-			if tpm.reposShouldStop {
+			if tpm.generalShouldStop {
 				return
 			}
 			transferredRepos, totalRepos, err := getVals()
 			if err != nil {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
-			if pb != nil && pb.GetTasksProgressBar() != nil {
+			if pb == nil {
+				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				return
+			}
+			if pb.GetTasksProgressBar() != nil {
 				pb.GetTasksProgressBar().SetGeneralProgressTotal(*totalRepos)
 				pb.GetTasksProgressBar().GetBar().SetCurrent(*transferredRepos)
 			}
@@ -247,7 +263,7 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 	go func() {
 		defer tpm.wg.Done()
 		for {
-			if tpm.shouldStop {
+			if tpm.currentRepoShouldStop {
 				return
 			}
 			transferredStorage, totalStorage, _, _, err := getVals()

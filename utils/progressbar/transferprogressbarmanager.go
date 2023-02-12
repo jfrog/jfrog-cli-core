@@ -82,11 +82,11 @@ func InitTransferProressBarMng(state *state.TransferStateManager, allRepos []str
 	return
 }
 
-func (tpm *TransferProgressMng) SetCurrentRepoShouldStop(shouldStop bool) {
+func (tpm *TransferProgressMng) StopCurrentRepoProgressBars(shouldStop bool) {
 	tpm.currentRepoShouldStop = shouldStop
 }
 
-func (tpm *TransferProgressMng) SetGeneralShouldStop() {
+func (tpm *TransferProgressMng) StopGlobalProgressBars() {
 	tpm.generalShouldStop = true
 }
 

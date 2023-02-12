@@ -63,7 +63,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.transferState = tdc.stateManager
 	transfer.filesStatus = &fileStatus
 	transfer.windows = coreutils.IsWindows()
-	transfer.transferMng.SetCurrentRepoShouldStop(false)
+	transfer.transferMng.StopCurrentRepoProgressBars(false)
 	// Init Progress Bars
 	transfer.totalRepositories = transfer.transferMng.NewRepositoriesProgressBar()
 	transfer.totalSize = transfer.transferMng.NewGeneralProgBar()
@@ -88,13 +88,13 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	}
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
-	t.transferMng.SetCurrentRepoShouldStop(false)
+	t.transferMng.StopCurrentRepoProgressBars(false)
 }
 
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
-	t.transferMng.SetCurrentRepoShouldStop(true)
-	t.transferMng.SetGeneralShouldStop()
+	t.transferMng.StopCurrentRepoProgressBars(true)
+	t.transferMng.StopGlobalProgressBars()
 	if t.ShouldDisplay() {
 		t.abortMetricsBars()
 		if t.currentRepoHeadline != nil {
@@ -215,7 +215,7 @@ func (t *TransferProgressMng) RemoveRepository() {
 	for i := 0; i < len(t.phases); i++ {
 		t.transferMng.QuitDoubleHeadLineProgWithBar(t.phases[i])
 	}
-	t.transferMng.SetCurrentRepoShouldStop(true)
+	t.transferMng.StopCurrentRepoProgressBars(true)
 	t.transferMng.WaitForPhasesGoRoutinesToFinish()
 	t.phases = nil
 
@@ -239,7 +239,7 @@ func (t *TransferProgressMng) StopGracefully() {
 	time.Sleep(progressbar.ProgressRefreshRate)
 	t.abortMetricsBars()
 	t.RemoveRepository()
-	t.transferMng.SetGeneralShouldStop()
+	t.transferMng.StopGlobalProgressBars()
 	t.transferMng.WaitForReposGoRoutineToFinish()
 	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
 	t.totalRepositories = nil

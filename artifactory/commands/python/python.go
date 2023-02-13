@@ -18,6 +18,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+const (
+	PipenvRemoteRegistryFlag = "--pypi-mirror"
+	PipRemoteRegistryFlag    = "-i"
+)
+
 type PythonCommand struct {
 	serverDetails *config.ServerDetails
 	pythonTool    pythonutils.PythonTool
@@ -103,32 +108,11 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 }
 
 func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
+	rtUrl, err := GetPypiRepoUrl(pc.serverDetails, pc.repository)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-
-	username := pc.serverDetails.GetUser()
-	password := pc.serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if pc.serverDetails.GetAccessToken() != "" {
-		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		}
-		password = pc.serverDetails.GetAccessToken()
-	}
-	if password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
-	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
-
-	if pc.pythonTool == pythonutils.Pip {
-		pc.args = append(pc.args, "-i")
-	} else if pc.pythonTool == pythonutils.Pipenv {
-		pc.args = append(pc.args, "--pypi-mirror")
-	}
-	pc.args = append(pc.args, rtUrl.String())
+	pc.args = append(pc.args, GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl.String())
 	return nil
 }
 
@@ -159,4 +143,42 @@ func (pc *PythonCommand) GetStdWriter() io.WriteCloser {
 
 func (pc *PythonCommand) GetErrWriter() io.WriteCloser {
 	return nil
+}
+
+func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string) (*url.URL, error) {
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository)
+	if err != nil {
+		return nil, err
+	}
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
+	return rtUrl, err
+}
+
+func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, repository string) (*url.URL, string, string, error) {
+	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
+	if err != nil {
+		return nil, "", "", errorutils.CheckError(err)
+	}
+
+	username := serverDetails.GetUser()
+	password := serverDetails.GetPassword()
+
+	// Get credentials from access-token if exists.
+	if serverDetails.GetAccessToken() != "" {
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(serverDetails.GetAccessToken())
+		}
+		password = serverDetails.GetAccessToken()
+	}
+	rtUrl.Path += "api/pypi/" + repository + "/simple"
+	return rtUrl, username, password, err
+}
+
+func GetPypiRemoteRegistryFlag(tool pythonutils.PythonTool) string {
+	if tool == pythonutils.Pip {
+		return PipRemoteRegistryFlag
+	}
+	return PipenvRemoteRegistryFlag
 }

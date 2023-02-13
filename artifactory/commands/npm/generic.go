@@ -35,7 +35,7 @@ func (gca *GenericCommandArgs) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (gc *GenericCommand) Run() (err error) {
-	if err = gc.preparePrerequisites("", false); err != nil {
+	if err = gc.PreparePrerequisites("", false); err != nil {
 		return
 	}
 	return gc.runNpmGenericCommand()

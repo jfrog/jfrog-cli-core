@@ -1,14 +1,14 @@
-[tool.poetry]
+[Tool.poetry]
 name = "my-poetry-project"
 version = "0.1.0"
 description = ""
 authors = ["Tal Arian <tala@jfrog.com>"]
 
-[tool.poetry.dependencies]
+[Tool.poetry.dependencies]
 python = "^3.8"
 numpy = "^1.23.0"
 
-[tool.poetry.dev-dependencies]
+[Tool.poetry.dev-dependencies]
 pytest = "^5.2"
 
 [build-system]

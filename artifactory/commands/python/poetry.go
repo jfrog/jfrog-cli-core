@@ -11,12 +11,10 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
 	"io"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -138,37 +136,29 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 }
 
 func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-
-	username := pc.serverDetails.GetUser()
-	password := pc.serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if pc.serverDetails.GetAccessToken() != "" {
-		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		}
-		password = pc.serverDetails.GetAccessToken()
-	}
-	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
 	if password != "" {
-		return pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
+		return ConfigPoetryRepo(
+			rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path,
+			username,
+			password,
+			pc.poetryConfigRepoName)
 	}
 	return nil
 }
 
-func (pc *PoetryCommand) configPoetryRepo(url, username, password string) error {
+func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 	// Add the poetry repository config
-	err := runPoetryConfigCommand([]string{poetryConfigRepoPrefix + pc.poetryConfigRepoName, url}, false)
+	err := runPoetryConfigCommand([]string{poetryConfigRepoPrefix + configRepoName, url}, false)
 	if err != nil {
 		return err
 	}
 
 	// Set the poetry repository credentials
-	err = runPoetryConfigCommand([]string{poetryConfigAuthPrefix + pc.poetryConfigRepoName, username, password}, true)
+	err = runPoetryConfigCommand([]string{poetryConfigAuthPrefix + configRepoName, username, password}, true)
 	if err != nil {
 		return err
 	}
@@ -178,7 +168,7 @@ func (pc *PoetryCommand) configPoetryRepo(url, username, password string) error 
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), pc.poetryConfigRepoName, url)
+	return addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url)
 }
 
 func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {

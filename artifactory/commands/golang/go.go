@@ -154,11 +154,7 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	serverDetails, err := resolverDetails.CreateArtAuthConfig()
-	if err != nil {
-		return err
-	}
-	repoUrl, err := getArtifactoryApiUrl(gc.resolverParams.TargetRepo(), serverDetails)
+	repoUrl, err := GetGoRepoUrl(resolverDetails, gc.resolverParams.TargetRepo())
 	if err != nil {
 		return err
 	}
@@ -190,6 +186,10 @@ func (gc *GoCommand) run() error {
 					err = e
 				}
 			}()
+			serverDetails, err := resolverDetails.CreateArtAuthConfig()
+			if err != nil {
+				return err
+			}
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
@@ -206,6 +206,14 @@ func (gc *GoCommand) run() error {
 	}
 
 	return err
+}
+
+func GetGoRepoUrl(serverDetails *config.ServerDetails, repo string) (string, error) {
+	authServerDetails, err := serverDetails.CreateArtAuthConfig()
+	if err != nil {
+		return "", err
+	}
+	return getArtifactoryApiUrl(repo, authServerDetails)
 }
 
 // Gets the URL of the specified repository Go API in Artifactory.

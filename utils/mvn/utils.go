@@ -14,7 +14,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
+func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration,
+	goals []string, threads int, insecureTls, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := buildConf.GetBuildName()
 	if err != nil {

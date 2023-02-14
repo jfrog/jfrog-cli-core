@@ -128,6 +128,9 @@ func installPoetryDeps(auditPython *AuditPython) (restoreEnv func() error, err e
 	}
 	if auditPython.RemotePypiRepo != "" {
 		rtUrl, username, password, err := rtpython.GetPypiRepoUrlWithCredentials(auditPython.Server, auditPython.RemotePypiRepo)
+		if err != nil {
+			return restoreEnv, err
+		}
 		if password != "" {
 			err = rtpython.ConfigPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password, auditPython.RemotePypiRepo)
 			if err != nil {

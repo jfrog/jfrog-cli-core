@@ -41,7 +41,6 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	serverDetails      *config.ServerDetails
-	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
 	buildInfoModule    *build.YarnModule
 }
@@ -287,7 +286,7 @@ func RestoreConfigurationsFromBackup(envVarsBackup map[string]*string, restoreYa
 
 func restoreEnvironmentVariables(envVarsBackup map[string]*string) error {
 	for key, value := range envVarsBackup {
-		if value == nil {
+		if value == nil || *value == "" {
 			if err := os.Unsetenv(key); err != nil {
 				return err
 			}

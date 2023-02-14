@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory/auth"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -71,4 +72,15 @@ func TestGetArtifactoryApiUrl(t *testing.T) {
 	url, err = getArtifactoryApiUrl("test-repo", details)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://frog:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@test.com/artifactory/api/go/test-repo", url)
+}
+
+func TestGetGoRepoUrl(t *testing.T) {
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://server.com/artifactory",
+		AccessToken:    "eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA",
+	}
+	repoName := "test-repo"
+	repoUrl, err := GetGoRepoUrl(server, repoName)
+	assert.NoError(t, err)
+	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@server.com/artifactoryapi/go/test-repo", repoUrl)
 }

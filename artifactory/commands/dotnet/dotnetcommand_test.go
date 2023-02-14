@@ -63,7 +63,7 @@ func TestGetFlagValueExists(t *testing.T) {
 func TestInitNewConfig(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
 	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+		_ = fileutils.RemoveTempDir(tmpDir)
 	}()
 	assert.NoError(t, err)
 	repoName := "test-repo"
@@ -112,6 +112,27 @@ func TestInitNewConfig(t *testing.T) {
     </JFrogCli>
   </packageSourceCredentials>
 </configuration>`, string(buf[:n]))
+}
+
+func TestGetSourceDetails(t *testing.T) {
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://server.com/artifactory",
+		User:           "user",
+		Password:       "pass",
+	}
+	repoName := "repo-name"
+	url, user, pass, err := GetSourceDetails(server, repoName, false)
+	assert.NoError(t, err)
+	assert.Equal(t, "user", user)
+	assert.Equal(t, "pass", pass)
+	assert.Equal(t, "https://server.com/artifactory/api/nuget/v3/repo-name", url)
+	server.Password = ""
+	server.AccessToken = "abc123"
+	url, user, pass, err = GetSourceDetails(server, repoName, true)
+	assert.Equal(t, "user", user)
+	assert.Equal(t, "abc123", pass)
+	assert.NoError(t, err)
+	assert.Equal(t, "https://server.com/artifactory/api/nuget/repo-name", url)
 }
 
 func TestPrepareDotnetBuildInfoModule(t *testing.T) {

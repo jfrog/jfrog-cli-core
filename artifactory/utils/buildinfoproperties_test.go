@@ -73,12 +73,12 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	}
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"), propertiesFileConfig)
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"))
 	setProxy(proxyOrg, t)
 
 }
 
-func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, propertiesFileConfig map[string]string) {
+func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",
@@ -141,4 +141,15 @@ func getOriginalProxyValue() string {
 
 func setProxy(proxy string, t *testing.T) {
 	testsutils.SetEnvAndAssert(t, HttpProxy, proxy)
+}
+
+func TestCreateDefaultConfigWithParams(t *testing.T) {
+	params := map[string]any{
+		"usewrapper":   true,
+		"resolver.url": "http://localhost",
+	}
+	config := createDefaultConfigWithParams("YAML", "gradle", params)
+	assert.True(t, config.IsSet("usewrapper"))
+	assert.True(t, config.IsSet("resolver.url"))
+	assert.True(t, config.IsSet("type"))
 }

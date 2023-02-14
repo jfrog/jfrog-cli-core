@@ -49,7 +49,9 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 		if err != nil {
 			return
 		}
-		gradleConfigParams["usewrapper"] = useWrapper
+		if gradleConfigParams != nil {
+			gradleConfigParams["usewrapper"] = useWrapper
+		}
 	}
 	// Read config
 	vConfig, err := utils.ReadGradleConfig(configFilePath, gradleConfigParams)

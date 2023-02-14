@@ -60,6 +60,60 @@ func TestGetFlagValueExists(t *testing.T) {
 	}
 }
 
+func TestInitNewConfig(t *testing.T) {
+	tmpDir, err := fileutils.CreateTempDir()
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
+	assert.NoError(t, err)
+	repoName := "test-repo"
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://server.com/artifactory",
+		User:           "user",
+		Password:       "pass",
+	}
+	configFile, err := InitNewConfig(tmpDir, repoName, server, false)
+	assert.NoError(t, err)
+	f, err := os.Open(configFile.Name())
+	assert.NoError(t, err)
+	buf := make([]byte, 1024)
+	n, err := f.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo" protocolVersion="3" />
+  </packageSources>
+  <packageSourceCredentials>
+    <JFrogCli>
+      <add key="Username" value="user" />
+      <add key="ClearTextPassword" value="pass" />
+    </JFrogCli>
+  </packageSourceCredentials>
+</configuration>`, string(buf[:n]))
+	server.Password = ""
+	server.AccessToken = "abc123"
+	configFile, err = InitNewConfig(tmpDir, repoName, server, true)
+	assert.NoError(t, err)
+	f, err = os.Open(configFile.Name())
+	assert.NoError(t, err)
+	buf = make([]byte, 1024)
+	n, err = f.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" />
+  </packageSources>
+  <packageSourceCredentials>
+    <JFrogCli>
+      <add key="Username" value="user" />
+      <add key="ClearTextPassword" value="abc123" />
+    </JFrogCli>
+  </packageSourceCredentials>
+</configuration>`, string(buf[:n]))
+}
+
 func TestPrepareDotnetBuildInfoModule(t *testing.T) {
 	t.Run("generated config file", func(t *testing.T) { testPrepareDotnetBuildInfoModule(t, []string{}, true) })
 	t.Run("existing with configfile flag", func(t *testing.T) {

@@ -60,7 +60,7 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {

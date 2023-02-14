@@ -73,12 +73,12 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	}
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"))
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"), propertiesFileConfig)
 	setProxy(proxyOrg, t)
 
 }
 
-func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
+func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, propertiesFileConfig map[string]string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",

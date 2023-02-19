@@ -96,10 +96,10 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
 	if err != nil {
-		return "", fmt.Errorf("an error occurred while trying to download '%s' : %s", url, err.Error())
+		return "", fmt.Errorf("an error occurred while trying to download '%s':\n%s", url, err.Error())
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return "", fmt.Errorf("failed while attempting to download '%s' : %s", url, err.Error())
+		return "", fmt.Errorf("failed while attempting to download '%s':\n%s", url, err.Error())
 	}
 
 	// Add execution permissions to the indexer

@@ -357,7 +357,7 @@ func (bc *BuildConfiguration) GetBuildName() (string, error) {
 func (bc *BuildConfiguration) getBuildNameFromConfigFile() (string, error) {
 	confFilePath, exist, err := GetProjectConfFilePath(Build)
 	if os.IsPermission(err) {
-		log.Info("The 'build-name' cannot be read from JFrog config due to permission denied.")
+		log.Debug("The 'build-name' cannot be read from JFrog config due to permission denied.")
 		return "", nil
 	}
 	if err != nil || !exist {

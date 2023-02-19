@@ -143,6 +143,9 @@ func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientuti
 		return nil, errorutils.CheckError(err)
 	}
 	var modulesMap map[string][]clientutils.DeployableArtifactDetails
+	if len(byteValue) == 0 {
+		return &modulesMap, nil
+	}
 	err = json.Unmarshal(byteValue, &modulesMap)
 	if err != nil {
 		return nil, errorutils.CheckError(err)

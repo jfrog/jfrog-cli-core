@@ -9,22 +9,22 @@ import (
 
 // This method runs "npm c ls" command and returns the current npm configuration (calculated by all flags and .npmrc files).
 // For more info see https://docs.npmjs.com/cli/config
-func GetConfigList(npmFlags []string, executablePath string) ([]byte, error) {
+func GetConfigList(npmFlags []string, executablePath string) (data []byte, err error) {
 	pipeReader, pipeWriter := io.Pipe()
-	defer pipeReader.Close()
+	defer func(pipeReader *io.PipeReader) {
+		e := pipeReader.Close()
+		if err == nil {
+			err = e
+		}
+	}(pipeReader)
 
 	npmFlags = append(npmFlags, "--json=false")
 	configListCmdConfig := createConfigListCmdConfig(executablePath, npmFlags, pipeWriter)
-	var npmError error
-	go func() {
-		npmError = gofrogcmd.RunCmd(configListCmdConfig)
-	}()
-
-	data, err := io.ReadAll(pipeReader)
+	npmError := gofrogcmd.RunCmd(configListCmdConfig)
+	data, err = io.ReadAll(pipeReader)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
-
 	if npmError != nil {
 		return nil, errorutils.CheckError(npmError)
 	}

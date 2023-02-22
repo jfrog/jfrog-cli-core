@@ -20,11 +20,17 @@ func GetConfigList(npmFlags []string, executablePath string) (data []byte, err e
 
 	npmFlags = append(npmFlags, "--json=false")
 	configListCmdConfig := createConfigListCmdConfig(executablePath, npmFlags, pipeWriter)
-	npmError := gofrogcmd.RunCmd(configListCmdConfig)
+	var npmErrorChan chan error
+	npmErrorChan = make(chan error, 1)
+	go func() {
+		npmErrorChan <- gofrogcmd.RunCmd(configListCmdConfig)
+	}()
+
 	data, err = io.ReadAll(pipeReader)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
+	npmError := <-npmErrorChan
 	if npmError != nil {
 		return nil, errorutils.CheckError(npmError)
 	}

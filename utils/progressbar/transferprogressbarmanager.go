@@ -115,7 +115,7 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
 			if pb == nil {
-				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				log.Error("Error: We Couldn't initialize the progress bar so we can't set values to it")
 				return
 			}
 			if pb.GetTasksProgressBar() != nil {
@@ -154,7 +154,7 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
 			if pb == nil {
-				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				log.Error("Error: We Couldn't initialize the progress bar so we can't set values to it")
 				return
 			}
 			if pb.GetTasksProgressBar() != nil {
@@ -190,10 +190,10 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 			}
 			ptr1, ptr2, _, _, err := getVals()
 			if err != nil {
-				log.Error(err)
+				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
 			if pb == nil {
-				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
+				log.Error("Error: We Couldn't initialize the progress bar so we can't set values to it")
 				return
 			}
 			if pb.GetTasksProgressBar() != nil {

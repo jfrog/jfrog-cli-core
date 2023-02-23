@@ -96,8 +96,9 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "install",
 	},
 	Poetry: {
-		packageType: Pypi,
-		indicators:  []string{"pyproject.toml", "poetry.lock"},
+		packageType:                Pypi,
+		indicators:                 []string{"pyproject.toml", "poetry.lock"},
+		packageInstallationCommand: "add",
 	},
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},

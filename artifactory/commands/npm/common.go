@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	npmConfigAuthEnv = "NPM_CONFIG_%s:_auth"
+	npmConfigAuthEnv = "npm_config_%s:_auth"
 )
 
 type CommonArgs struct {

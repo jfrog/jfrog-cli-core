@@ -1,6 +1,7 @@
 package npm
 
 import (
+	"fmt"
 	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -54,6 +55,6 @@ func TestPrepareConfigData(t *testing.T) {
 	}
 
 	// Assert that NPM_CONFIG__AUTH environment variable was set
-	assert.Equal(t, authToken, os.Getenv(npmConfigAuthEnv))
-	testsUtils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
+	assert.Equal(t, authToken, os.Getenv(fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry")))
+	testsUtils.UnSetEnvAndAssert(t, fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry"))
 }

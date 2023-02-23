@@ -2,6 +2,7 @@ package npm
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,7 +19,7 @@ import (
 )
 
 const (
-	npmConfigAuthEnv = "NPM_CONFIG__AUTH"
+	npmConfigAuthEnv = "NPM_CONFIG_%s:_auth"
 )
 
 type CommonArgs struct {
@@ -122,28 +123,17 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 	var filteredConf []string
 	configString := string(data) + "\n" + com.npmAuth
 	scanner := bufio.NewScanner(strings.NewReader(configString))
-
 	for scanner.Scan() {
 		currOption := scanner.Text()
-		if currOption != "" {
-			splitOption := strings.SplitN(currOption, "=", 2)
-			key := strings.TrimSpace(splitOption[0])
-			if len(splitOption) == 2 && isValidKey(key) {
-				value := strings.TrimSpace(splitOption[1])
-				if key == "_auth" {
-					// Set "NPM_CONFIG__AUTH" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
-					if err := os.Setenv(npmConfigAuthEnv, value); err != nil {
-						return nil, errorutils.CheckError(err)
-					}
-				} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-					filteredConf = addArrayConfigs(filteredConf, key, value)
-				} else {
-					filteredConf = append(filteredConf, currOption, "\n")
-				}
-			} else if strings.HasPrefix(splitOption[0], "@") {
-				// Override scoped registries (@scope = xyz)
-				filteredConf = append(filteredConf, splitOption[0], " = ", com.registry, "\n")
-			}
+		if currOption == "" {
+			continue
+		}
+		filteredLine, err := processConfigLine(com, currOption)
+		if err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+		if filteredLine != "" {
+			filteredConf = append(filteredConf, filteredLine)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -153,6 +143,32 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(com.jsonOutput), "\n")
 	filteredConf = append(filteredConf, "registry = ", com.registry, "\n")
 	return []byte(strings.Join(filteredConf, "")), nil
+}
+
+func processConfigLine(com *CommonArgs, configLine string) (filteredLine string, err error) {
+	splitOption := strings.SplitN(configLine, "=", 2)
+	key := strings.TrimSpace(splitOption[0])
+	validLine := len(splitOption) == 2 && isValidKey(key)
+	if !validLine {
+		if strings.HasPrefix(splitOption[0], "@") {
+			// Override scoped registries (@scope = xyz)
+			return fmt.Sprintf("%s = %s\n", splitOption[0], com.registry), nil
+		}
+		return
+	}
+	value := strings.TrimSpace(splitOption[1])
+	if key == "_auth" {
+		// Get registry name without the protocol name but including the '//'
+		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
+		// Set "NPM_CONFIG_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
+		return "", os.Setenv(scopedRegistryEnv, value)
+	}
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		return addArrayConfigs(key, value), nil
+	}
+
+	return fmt.Sprintf("%s\n", configLine), err
 }
 
 func (com *CommonArgs) setRestoreNpmrcFunc() error {

@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -179,7 +181,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 		return err
 	}
 
-	packageName := "xray_" + flags.Stream + "update_package" + "_" + state
+	packageName := "xray_" + flags.Stream + "_update_package" + "_" + state
 	err = createZipArchive(dataDir, flags.Target, packageName, "")
 	if err != nil {
 		return err
@@ -188,12 +190,13 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 }
 
 func buildUrlDBSyncV3(flags *OfflineUpdatesFlags) string {
+	streams := NewValidStreams()
 	url := getJxRayBaseUrl() + "api/v3/updates/"
 	// Build JAS urls if needed.
-	if flags.Stream == Exposures {
-		url += Exposures + "/"
-	} else if flags.Stream == ContextualAnalysis {
-		url += ContextualAnalysis + "/"
+	if flags.Stream == streams.GetExposuresStream() {
+		url += streams.GetExposuresStream() + "/"
+	} else if flags.Stream == streams.GetContextualAnalysisStream() {
+		url += streams.GetContextualAnalysisStream() + "/"
 	}
 
 	if flags.IsPeriodicUpdate {
@@ -263,7 +266,7 @@ func getXrayTempDir() (string, error) {
 }
 
 func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(string) (string, error)) error {
-	log.Info(fmt.Sprintf("Downloading updates packages to %s.", dataDir))
+	log.Info(fmt.Sprintf("Downloading updated packages to %s.", dataDir))
 	for _, url := range urlsList {
 		fileName, err := fileNameFromUrlFunc(url)
 		if err != nil {
@@ -284,7 +287,7 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 		if err != nil {
 			return errorutils.CheckErrorf("Couldn't get content length of %s. Error: %s", url, err.Error())
 		}
-		log.Info(fmt.Sprintf("Downloading updates package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
+		log.Info(fmt.Sprintf("Downloading updated package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
 		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
 		if err != nil {
 			return errorutils.CheckErrorf("Couldn't download from %s. Error: %s", url, err.Error())
@@ -392,16 +395,35 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 }
 
 // ValidStreams represents the valid values that can be provided to the 'stream' flag during offline updates.
-var ValidStreams = map[string]bool{PublicData: true, ContextualAnalysis: true, Exposures: true}
+type ValidStreams struct {
+	StreamsMap map[string]bool
+}
 
-const (
-	PublicData         string = "public_data"
-	ContextualAnalysis string = "contextual_analysis"
-	Exposures          string = "exposures"
-)
+func NewValidStreams() *ValidStreams {
+	validStreams := &ValidStreams{StreamsMap: map[string]bool{}}
+	validStreams.StreamsMap[validStreams.GetPublicDataStream()] = true
+	validStreams.StreamsMap[validStreams.GetExposuresStream()] = true
+	validStreams.StreamsMap[validStreams.GetContextualAnalysisStream()] = true
+	return validStreams
+}
 
-func GetValidStreamsList() string {
-	return PublicData + ", " + Exposures + " and " + ContextualAnalysis
+func (vs *ValidStreams) GetValidStreamsList() string {
+	streams := maps.Keys(vs.StreamsMap)
+	sort.Sort(sort.Reverse(sort.StringSlice(streams)))
+	streamsStr := strings.Join(streams[0:len(streams)-1], ", ")
+	return fmt.Sprintf("%s and %s", streamsStr, streams[len(streams)-1])
+}
+
+func (vs *ValidStreams) GetPublicDataStream() string {
+	return "public_data"
+}
+
+func (vs *ValidStreams) GetExposuresStream() string {
+	return "exposures"
+}
+
+func (vs *ValidStreams) GetContextualAnalysisStream() string {
+	return "contextual_analysis"
 }
 
 type OfflineUpdatesFlags struct {

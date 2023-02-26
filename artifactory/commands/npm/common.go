@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	npmConfigAuthEnv        = "npm_config_%s:_auth"
+	npmConfigAuthEnv        = "npm_config_%s:_authToken"
 	npmConfigAuthEnvVersion = "8.14.3"
-	npmLegacyConfigAuthEnv  = "npm_config_auth"
+	npmLegacyConfigAuthEnv  = "npm_config__auth"
 )
 
 type CommonArgs struct {
@@ -160,7 +160,12 @@ func (com *CommonArgs) processConfigLine(configLine string) (filteredLine string
 	}
 	value := strings.TrimSpace(splitOption[1])
 	if key == "_auth" {
-		return "", com.setNpmConfigAuthEnv(value)
+		// Get registry name without the protocol name but including the '//'
+		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
+		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
+		//return "", os.Setenv(scopedRegistryEnv, value)
+		return fmt.Sprintf("//%s=%s\n", scopedRegistryEnv, value), nil
 	}
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 		return addArrayConfigs(key, value), nil

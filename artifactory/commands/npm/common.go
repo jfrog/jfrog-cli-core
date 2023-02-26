@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	npmConfigAuthEnv        = "npm_config_%s:_authToken"
+	npmConfigAuthEnv        = "npm_config_%s:_auth"
 	npmConfigAuthEnvVersion = "8.14.3"
 	npmLegacyConfigAuthEnv  = "npm_config__auth"
 )

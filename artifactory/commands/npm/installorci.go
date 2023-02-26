@@ -153,6 +153,7 @@ func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 
 func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
 	log.Debug(fmt.Sprintf("Running npm %s command.", nic.cmdName))
+	nic.npmArgs = append(nic.npmArgs, "--verbose")
 	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nic.executablePath,
 		Command:      append([]string{nic.cmdName}, nic.npmArgs...),

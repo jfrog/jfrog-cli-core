@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	npmConfigAuthEnv        = "npm_config_%s:_authToken"
-	nodeVersionForLegacyEnv = "18.0.0"
-	npmLegacyConfigAuthEnv  = "npm_config__auth"
+	npmConfigAuthEnv       = "npm_config_%s:_auth"
+	npmVersionForLegacyEnv = "9.3.1"
+	npmLegacyConfigAuthEnv = "npm_config__auth"
 )
 
 type CommonArgs struct {
@@ -37,7 +37,6 @@ type CommonArgs struct {
 	npmAuth        string
 	authArtDetails auth.ServiceDetails
 	npmVersion     *version.Version
-	nodeVersion    *version.Version
 	NpmCommand
 }
 
@@ -45,10 +44,6 @@ func (com *CommonArgs) preparePrerequisites(repo string, overrideNpmrc bool) err
 	log.Debug("Preparing prerequisites...")
 	var err error
 	com.npmVersion, com.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
-	if err != nil {
-		return err
-	}
-	com.nodeVersion, _, err = biutils.GetNodeVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
@@ -175,7 +170,7 @@ func (com *CommonArgs) processConfigLine(configLine string) (filteredLine string
 }
 
 func (com *CommonArgs) setNpmConfigAuthEnv(value string) error {
-	if com.nodeVersion.Compare(nodeVersionForLegacyEnv) < 0 {
+	if com.npmVersion.Compare(npmVersionForLegacyEnv) < 0 {
 		// Get registry name without the protocol name but including the '//'
 		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
 		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.

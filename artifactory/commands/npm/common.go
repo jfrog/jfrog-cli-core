@@ -164,6 +164,10 @@ func (com *CommonArgs) processConfigLine(configLine string) (filteredLine string
 		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
 		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
 		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
+		npmrcLocation, _ := filepath.Abs(npmrcFileName)
+		if err = os.Setenv("npm_config_userconfig", npmrcLocation); err != nil {
+			return "", err
+		}
 		return "", os.Setenv(scopedRegistryEnv, value)
 	}
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {

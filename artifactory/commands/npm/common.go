@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	npmConfigAuthEnv = "npm_config_%s:_auth"
+	npmConfigAuthEnv        = "npm_config_%s:_auth"
+	npmConfigAuthEnvVersion = "8.14.3"
+	npmLegacyConfigAuthEnv  = "npm_config_auth"
 )
 
 type CommonArgs struct {
@@ -128,7 +130,7 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 		if currOption == "" {
 			continue
 		}
-		filteredLine, err := processConfigLine(com, currOption)
+		filteredLine, err := com.processConfigLine(currOption)
 		if err != nil {
 			return nil, errorutils.CheckError(err)
 		}
@@ -145,7 +147,7 @@ func (com *CommonArgs) prepareConfigData(data []byte) ([]byte, error) {
 	return []byte(strings.Join(filteredConf, "")), nil
 }
 
-func processConfigLine(com *CommonArgs, configLine string) (filteredLine string, err error) {
+func (com *CommonArgs) processConfigLine(configLine string) (filteredLine string, err error) {
 	splitOption := strings.SplitN(configLine, "=", 2)
 	key := strings.TrimSpace(splitOption[0])
 	validLine := len(splitOption) == 2 && isValidKey(key)
@@ -158,18 +160,26 @@ func processConfigLine(com *CommonArgs, configLine string) (filteredLine string,
 	}
 	value := strings.TrimSpace(splitOption[1])
 	if key == "_auth" {
-		// Get registry name without the protocol name but including the '//'
-		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
-		// Set "NPM_CONFIG_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
-		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
-		err = os.Setenv(scopedRegistryEnv, value)
-		return fmt.Sprintf("%s = %s", scopedRegistryEnv, value), err
+		return "", com.setNpmConfigAuthEnv(value)
 	}
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 		return addArrayConfigs(key, value), nil
 	}
 
 	return fmt.Sprintf("%s\n", configLine), err
+}
+
+func (com *CommonArgs) setNpmConfigAuthEnv(value string) error {
+	if com.npmVersion.Compare(npmConfigAuthEnvVersion) < 0 {
+		// Get registry name without the protocol name but including the '//'
+		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
+		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
+		return os.Setenv(scopedRegistryEnv, value)
+	}
+	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+	// For Legacy NPM version <= 8.19.3
+	return os.Setenv(npmLegacyConfigAuthEnv, value)
 }
 
 func (com *CommonArgs) setRestoreNpmrcFunc() error {

@@ -14,14 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-var (
-	defaultDeleteRules = spec.DistributionRules{
-		DistributionRules: []spec.DistributionRule{{
-			SiteName: "*",
-		}},
-	}
-)
-
 type DeleteReleaseBundleCommand struct {
 	serverDetails       *config.ServerDetails
 	deleteBundlesParams services.DeleteDistributionParams

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/version"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -96,16 +95,11 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
 	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
-	if err == nil && resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to read the body of the response: %s", resp.Status, url, err.Error())
-		}
-		err = resp.Body.Close()
-		if err != nil {
-			return "", errorutils.CheckErrorf("%s received when attempting to download %s. An error occurred while trying to close the body of the response: %s", resp.Status, url, err.Error())
-		}
-		return "", errorutils.CheckErrorf("%s received when attempting to download %s\n%s", resp.Status, url, body)
+	if err != nil {
+		return "", fmt.Errorf("an error occurred while trying to download '%s':\n%s", url, err.Error())
+	}
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		return "", fmt.Errorf("failed while attempting to download '%s':\n%s", url, err.Error())
 	}
 
 	// Add execution permissions to the indexer

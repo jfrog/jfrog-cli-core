@@ -170,7 +170,8 @@ func (com *CommonArgs) processConfigLine(configLine string) (filteredLine string
 }
 
 func (com *CommonArgs) setNpmConfigAuthEnv(value string) error {
-	if com.npmVersion.Compare(npmVersionForLegacyEnv) < 0 {
+	// Check if the npm version is bigger or equal to 9.3.1
+	if com.npmVersion.Compare(npmVersionForLegacyEnv) <= 0 {
 		// Get registry name without the protocol name but including the '//'
 		registryWithoutProtocolName := com.registry[strings.Index(com.registry, "://")+1:]
 		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
@@ -178,7 +179,7 @@ func (com *CommonArgs) setNpmConfigAuthEnv(value string) error {
 		return os.Setenv(scopedRegistryEnv, value)
 	}
 	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
-	// For Legacy NPM version <= 8.19.3
+	// For Legacy NPM version < 9.3.1
 	return os.Setenv(npmLegacyConfigAuthEnv, value)
 }
 

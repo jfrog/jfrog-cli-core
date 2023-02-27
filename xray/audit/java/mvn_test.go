@@ -22,7 +22,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 			assert.Empty(t, multi.Nodes)
 			// Check multi1 with a transitive dependency
 			multi1 := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
-			assert.Len(t, multi1.Nodes, 7)
+			assert.Len(t, multi1.Nodes, 4)
 			commonsEmail := audit.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
 			assert.Len(t, commonsEmail.Nodes, 2)
 

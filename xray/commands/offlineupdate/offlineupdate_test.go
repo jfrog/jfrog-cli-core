@@ -117,5 +117,7 @@ func TestDBSyncV3createV3MetadataFile(t *testing.T) {
 }
 
 func TestGetValidStreamsString(t *testing.T) {
-	assert.Equal(t, NewValidStreams().GetValidStreamsString(), "public_data, exposures and contextual_analysis")
+	validStreams := NewValidStreams()
+	assert.Equal(t, 3, len(validStreams.StreamsMap))
+	assert.Equal(t, validStreams.GetValidStreamsString(), "public_data, exposures and contextual_analysis")
 }

@@ -202,6 +202,6 @@ func (ca *CommonArgs) setRestoreNpmrcFunc() error {
 	return err
 }
 
-func (com *CommonArgs) GetRestoreNpmrcFunc() func() error {
-	return com.restoreNpmrcFunc
+func (ca *CommonArgs) GetRestoreNpmrcFunc() func() error {
+	return ca.restoreNpmrcFunc
 }

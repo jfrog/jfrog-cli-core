@@ -265,7 +265,7 @@ func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails,
 
 // Adds a source to the nuget config template
 func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string) error {
-	sourceUrl, user, password, err := GetSourceDetails(server, repoName, useNugetV2)
+	sourceUrl, user, password, err := getSourceDetails(server, repoName, useNugetV2)
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails,
 	return err
 }
 
-func GetSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
+func getSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
 	var u *url.URL
 	u, err = url.Parse(details.ArtifactoryUrl)
 	if errorutils.CheckError(err) != nil {

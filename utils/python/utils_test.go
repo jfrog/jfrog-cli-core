@@ -1,12 +1,11 @@
-package python
+package utils
 
 import (
-	"path/filepath"
-	"testing"
-
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
+	"path/filepath"
+	"testing"
 )
 
 func TestAddRepoToPyprojectFile(t *testing.T) {

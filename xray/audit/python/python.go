@@ -3,8 +3,8 @@ package python
 import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	rtpython "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	utils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -127,12 +127,12 @@ func installPoetryDeps(auditPython *AuditPython) (restoreEnv func() error, err e
 		return nil
 	}
 	if auditPython.RemotePypiRepo != "" {
-		rtUrl, username, password, err := rtpython.GetPypiRepoUrlWithCredentials(auditPython.Server, auditPython.RemotePypiRepo)
+		rtUrl, username, password, err := utils.GetPypiRepoUrlWithCredentials(auditPython.Server, auditPython.RemotePypiRepo)
 		if err != nil {
 			return restoreEnv, err
 		}
 		if password != "" {
-			err = rtpython.ConfigPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password, auditPython.RemotePypiRepo)
+			err = utils.ConfigPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password, auditPython.RemotePypiRepo)
 			if err != nil {
 				return restoreEnv, err
 			}
@@ -218,21 +218,21 @@ func getPipExec() string {
 }
 
 func runPipInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName, pipRequirementsFile string) (err error) {
-	rtUrl, err := rtpython.GetPypiRepoUrl(server, depsRepoName)
+	rtUrl, err := utils.GetPypiRepoUrl(server, depsRepoName)
 	if err != nil {
 		return err
 	}
 	args := getPipInstallArgs(pipRequirementsFile)
-	args = append(args, rtpython.GetPypiRemoteRegistryFlag(pythonutils.Pip), rtUrl.String())
+	args = append(args, utils.GetPypiRemoteRegistryFlag(pythonutils.Pip), rtUrl.String())
 	return runPipInstall(args...)
 }
 
 func runPipenvInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName string) (err error) {
-	rtUrl, err := rtpython.GetPypiRepoUrl(server, depsRepoName)
+	rtUrl, err := utils.GetPypiRepoUrl(server, depsRepoName)
 	if err != nil {
 		return err
 	}
-	args := []string{"install", "-d", rtpython.GetPypiRemoteRegistryFlag(pythonutils.Pipenv), rtUrl.String()}
+	args := []string{"install", "-d", utils.GetPypiRemoteRegistryFlag(pythonutils.Pipenv), rtUrl.String()}
 	return executeCommand("pipenv", args...)
 }
 

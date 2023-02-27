@@ -2,7 +2,6 @@ package _go
 
 import (
 	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/golang"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"os"
 	"strings"
@@ -60,7 +59,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 }
 
 func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
-	repoUrl, err := golang.GetGoRepoUrl(server, remoteGoRepo)
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
 	if err != nil {
 		return err
 	}

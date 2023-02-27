@@ -70,7 +70,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		{
 			name: "set scoped registry auth env",
 			com: &CommonArgs{
-				npmVersion: version.NewVersion("9.5.0"),
+				npmVersion: version.NewVersion("9.3.1"),
 				registry:   "https://registry.example.com",
 			},
 			value:       "some_auth_token",
@@ -93,6 +93,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 			assert.NoError(t, err)
 			envValue := os.Getenv(tc.expectedEnv)
 			assert.Equal(t, tc.value, envValue)
+			assert.NoError(t, os.Unsetenv(tc.expectedEnv))
 		})
 	}
 }

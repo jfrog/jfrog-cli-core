@@ -285,7 +285,7 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 			LocalFileName: fileName}
 		response, _, err := client.SendHead(url, httputils.HttpClientDetails{}, "")
 		if err != nil {
-			return errorutils.CheckErrorf("Couldn't get content length of %s. Error: %s", url, err.Error())
+			return fmt.Errorf("couldn't get content length of %s. Error: %s", url, err.Error())
 		}
 		log.Info(fmt.Sprintf("Downloading updated package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
 		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
@@ -407,7 +407,7 @@ func NewValidStreams() *ValidStreams {
 	return validStreams
 }
 
-func (vs *ValidStreams) GetValidStreamsList() string {
+func (vs *ValidStreams) GetValidStreamsString() string {
 	streams := maps.Keys(vs.StreamsMap)
 	sort.Sort(sort.Reverse(sort.StringSlice(streams)))
 	streamsStr := strings.Join(streams[0:len(streams)-1], ", ")

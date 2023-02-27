@@ -255,7 +255,6 @@ func getXrayTempDir() (string, error) {
 }
 
 func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(string) (string, error)) error {
-	//
 	for _, url := range urlsList {
 		fileName, err := fileNameFromUrlFunc(url)
 		if err != nil {

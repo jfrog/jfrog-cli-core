@@ -169,20 +169,20 @@ func (nic *NpmInstallOrCiCommand) collectDependencies() error {
 	return errorutils.CheckError(nic.buildInfoModule.CalcDependencies())
 }
 
-// Gets a config with value which is an array, and adds it to the conf list
-func addArrayConfigs(conf []string, key, arrayValue string) []string {
+// Gets a config with value which is an array
+func addArrayConfigs(key, arrayValue string) string {
 	if arrayValue == "[]" {
-		return conf
+		return ""
 	}
 
 	values := strings.TrimPrefix(strings.TrimSuffix(arrayValue, "]"), "[")
 	valuesSlice := strings.Split(values, ",")
+	var configArrayValues strings.Builder
 	for _, val := range valuesSlice {
-		confToAdd := fmt.Sprintf("%s[] = %s", key, val)
-		conf = append(conf, confToAdd, "\n")
+		configArrayValues.WriteString(fmt.Sprintf("%s[] = %s\n", key, val))
 	}
 
-	return conf
+	return configArrayValues.String()
 }
 
 func removeNpmrcIfExists(workingDirectory string) error {

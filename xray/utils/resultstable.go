@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -422,6 +423,9 @@ type severity struct {
 
 func (s *severity) printableTitle(isTable bool) string {
 	if isTable && log.IsStdOutTerminal() && log.IsColorsSupported() {
+		return s.style.Render(s.emoji + s.title)
+	}
+	if os.Getenv("GITLAB_CI") != "" {
 		return s.style.Render(s.emoji + s.title)
 	}
 	return s.title

@@ -250,6 +250,29 @@ func (node *Node) RestartExploring() error {
 	})
 }
 
+// Recursively find the node matching the path represented by the dirs array.
+// The search is done by comparing the children of each node path, till reaching the final node in the array.
+// If the node is not found, nil is returned.
+// For example:
+// For a structure such as repo->dir1->dir2->dir3
+// The initial call will be to the root, and for an input of ({"dir1","dir2"}), and the final output will be a pointer to dir2.
+func (node *Node) findMatchingNode(childrenDirs []string) (matchingNode *Node, err error) {
+	err = node.readAction(func(node *Node) error {
+		if len(childrenDirs) == 0 {
+			matchingNode = node
+			return nil
+		}
+		for childName, child := range node.children {
+			if childName == childrenDirs[0] {
+				matchingNode, err = child.findMatchingNode(childrenDirs[1:])
+				return err
+			}
+		}
+		return nil
+	})
+	return
+}
+
 func CreateNewNode(dirName string, parent *Node) *Node {
 	return &Node{
 		name:   dirName,

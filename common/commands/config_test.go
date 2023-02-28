@@ -64,6 +64,22 @@ func TestAccessTokenWithUsername(t *testing.T) {
 	configAndTest(t, inputDetails, true)
 }
 
+func TestApiKeyInAccessToken(t *testing.T) {
+	inputDetails := tests.CreateTestServerDetails()
+	apiKey := "AKCp8" + "fsafsadfkljaodjpioqwu4-32742398ujklwertjp89347583jtklsdfmgklsdjuftp397859jsdklfnsljgflkdsjlgjld"
+	inputDetails.AccessToken = apiKey
+
+	// Should throw error if access token is API key and no username
+	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
+	configCmd.disablePrompts = true
+	assert.ErrorContains(t, configCmd.Run(), "the provided Access Token is an API key")
+
+	// Should work without error if access token is API key but username exists
+	inputDetails.User = "ADMIN"
+	configCmd.SetDetails(inputDetails)
+	assert.NoError(t, configCmd.Run())
+}
+
 func TestMTLS(t *testing.T) {
 	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.ClientCertPath = "test/cert/path"

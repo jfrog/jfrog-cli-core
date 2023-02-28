@@ -13,9 +13,9 @@ import (
 const zeroUint32 uint32 = 0
 
 func TestStopGracefully(t *testing.T) {
-	phaseBase := &phaseBase{pcDetails: newProducerConsumerWrapper()}
-	chunkUploaderProducerConsumer := phaseBase.pcDetails.chunkUploaderProducerConsumer
-	chunkBuilderProducerConsumer := phaseBase.pcDetails.chunkBuilderProducerConsumer
+	pBase := &phaseBase{pcDetails: newProducerConsumerWrapper()}
+	chunkUploaderProducerConsumer := pBase.pcDetails.chunkUploaderProducerConsumer
+	chunkBuilderProducerConsumer := pBase.pcDetails.chunkBuilderProducerConsumer
 	go func() {
 		// Stop gracefully after half second
 		time.Sleep(time.Second / 2)
@@ -26,16 +26,19 @@ func TestStopGracefully(t *testing.T) {
 		assert.Greater(t, chunkBuilderProducerConsumer.ActiveThreads(), zeroUint32)
 
 		// Stop the running threads
-		phaseBase.StopGracefully()
+		pBase.StopGracefully()
 	}()
 
+	var err error
 	// Run 5 counter tasks in the uploader and builder producer-consumers
 	uploaderCounter, builderCounter := 0, 0
 	for i := 0; i < 5; i++ {
-		chunkUploaderProducerConsumer.AddTask(createCounterTask(&uploaderCounter))
-		chunkBuilderProducerConsumer.AddTask(createCounterTask(&builderCounter))
+		_, err = chunkUploaderProducerConsumer.AddTask(createCounterTask(&uploaderCounter))
+		assert.NoError(t, err)
+		_, err = chunkBuilderProducerConsumer.AddTask(createCounterTask(&builderCounter))
+		assert.NoError(t, err)
 	}
-	err := runProducerConsumers(phaseBase.pcDetails)
+	err = runProducerConsumers(pBase.pcDetails)
 	assert.NoError(t, err)
 
 	// Wait for no active threads
@@ -49,7 +52,7 @@ func TestStopGracefully(t *testing.T) {
 // Create a task that increases the counter by 1 after a second
 func createCounterTask(counter *int) parallel.TaskFunc {
 	return func(int) error {
-		(*counter)++
+		*counter++
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -65,7 +68,7 @@ func waitForTasksToFinish(t *testing.T, chunkUploaderProducerConsumer, chunkBuil
 			if chunkUploaderProducerConsumer.ActiveThreads() == 0 && chunkBuilderProducerConsumer.ActiveThreads() == 0 {
 				return false, nil
 			}
-			return true, fmt.Errorf("Active uploader threads: %d. Active builder threads: %d.", chunkUploaderProducerConsumer.ActiveThreads(), chunkBuilderProducerConsumer.ActiveThreads())
+			return true, fmt.Errorf("active uploader threads: %d. Active builder threads: %d", chunkUploaderProducerConsumer.ActiveThreads(), chunkBuilderProducerConsumer.ActiveThreads())
 		},
 	}
 	assert.NoError(t, pollingExecutor.Execute())

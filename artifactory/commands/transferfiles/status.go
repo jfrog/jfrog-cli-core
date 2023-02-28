@@ -2,13 +2,16 @@ package transferfiles
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strconv"
-	"strings"
 )
 
 const sizeUnits = "KMGTPE"
@@ -24,6 +27,16 @@ func ShowStatus() error {
 		log.Output(output.String())
 		return nil
 	}
+	isStopping, err := isStopping()
+	if err != nil {
+		return err
+	}
+	if isStopping {
+		addString(&output, "🟡", "Status", "Stopping", 0, coreutils.IsWindows())
+		log.Output(output.String())
+		return nil
+	}
+
 	stateManager, err := state.NewTransferStateManager(true)
 	if err != nil {
 		return err
@@ -45,17 +58,20 @@ func ShowStatus() error {
 	return nil
 }
 
+func isStopping() (bool, error) {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return false, err
+	}
+
+	return fileutils.IsFileExists(filepath.Join(transferDir, StopFileName), false)
+}
+
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
 	windows := coreutils.IsWindows()
-	runningForTabs := 2
-	runningTimeString := "  " + runningTime
-	if windows {
-		runningForTabs = 3
-		runningTimeString = runningTime
-	}
 	addTitle(output, "Overall Transfer Status")
 	addString(output, coreutils.RemoveEmojisIfNonSupportedTerminal("🟢"), "Status", "Running", 3, windows)
-	addString(output, "🏃🏼", "Running for", runningTimeString, runningForTabs, windows)
+	addString(output, "🏃", "Running for", runningTime, 3, windows)
 	addString(output, "🗄 ", "Storage", sizeToString(stateManager.OverallTransfer.TransferredSizeBytes)+" / "+sizeToString(stateManager.OverallTransfer.TotalSizeBytes)+calcPercentageInt64(stateManager.OverallTransfer.TransferredSizeBytes, stateManager.OverallTransfer.TotalSizeBytes), 3, windows)
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 2, windows)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2, windows)
@@ -95,22 +111,22 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 }
 
 func addTitle(output *strings.Builder, title string) {
-	output.WriteString(coreutils.PrintTitle(coreutils.PrintBold(title + "\n")))
+	output.WriteString(coreutils.PrintBoldTitle(title + "\n"))
 }
 
 func addString(output *strings.Builder, emoji, key, value string, tabsCount int, windows bool) {
 	indentation := strings.Repeat("\t", tabsCount)
-	key += ": "
-	if windows {
-		emoji = "●"
-		key = emoji + " " + key
-		output.WriteString(coreutils.PrintBold(key))
-		output.WriteString(indentation + value + "\n")
-		return
+	if indentation == "" {
+		indentation = " "
 	}
 	if len(emoji) > 0 {
-		key = emoji + " " + key
+		if windows {
+			emoji = "●"
+		}
+		emoji += " "
 	}
+	key = emoji + key + ":"
+	// PrintBold removes emojis if they are unsupported. After they are removed, the string is also trimmed, so we should avoid adding trailing spaces to the key.
 	output.WriteString(coreutils.PrintBold(key))
 	output.WriteString(indentation + value + "\n")
 }

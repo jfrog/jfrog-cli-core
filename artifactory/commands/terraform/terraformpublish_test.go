@@ -4,11 +4,9 @@ import (
 	"errors"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
@@ -28,7 +26,7 @@ func TestPreparePrerequisites(t *testing.T) {
 }
 
 func TestCheckIfTerraformModule(t *testing.T) {
-	dirPath := filepath.Join("..", "testdata", "terraform", "terraformproject")
+	dirPath := filepath.Join("..", "testdata", "terraform", "terraform_project")
 	// Check terraform module directory which contain files with a ".tf" extension.
 	isModule, err := checkIfTerraformModule(dirPath)
 	assert.NoError(t, err)
@@ -40,96 +38,68 @@ func TestCheckIfTerraformModule(t *testing.T) {
 	assert.False(t, isModule)
 }
 
-type terraformTests struct {
-	name     string
-	path     string
-	testFunc ProduceTaskFunk
-}
-
 func TestWalkDirAndUploadTerraformModules(t *testing.T) {
-	terraformTestDir := filepath.Join("..", "testdata", "terraform")
-	tests := []terraformTests{
-		{name: "testEmptyModule", path: filepath.Join(terraformTestDir, "empty"), testFunc: mockEmptyModule},
-		{name: "mockProduceTaskFunk", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testTerraformModule},
-		{name: "testSpecialChar", path: filepath.Join(terraformTestDir, "terra$+~&^a#"), testFunc: testSpecialChar},
-	}
-	runTerraformTests(t, tests, []string{})
-	// Test exclusions
-	exclusionsTests := []terraformTests{
-		{name: "testExcludeTestDirectory", path: filepath.Join(terraformTestDir, "terraformproject"), testFunc: testExcludeTestDirectory},
-		{name: "testExcludeTestSubmoduleModule", path: filepath.Join(terraformTestDir, "terraformproject", "test"), testFunc: testExcludeTestSubmoduleModule},
-		{name: "testSpecialChar", path: filepath.Join(terraformTestDir, "terra$+~&^a#"), testFunc: testSpecialCharWithExclusions},
-	}
-	runTerraformTests(t, exclusionsTests, []string{"*test*", "$*"})
+	t.Run("testEmptyModule", func(t *testing.T) { runTerraformTest(t, "empty", mockEmptyModule) })
+	t.Run("mockProduceTaskFunc", func(t *testing.T) {
+		runTerraformTest(t, "terraform_project", getTaskMock(t, []string{"a.tf", "test_dir/b.tf", "test_dir/submodules/test_submodule/c.tf"}))
+	})
+	t.Run("testSpecialChar", func(t *testing.T) {
+		runTerraformTest(t, "terra$+~&^a#", getTaskMock(t, []string{"a.tf", "$+~&^a#@.tf"}))
+	})
+	t.Run("testExcludeTestDirectory", func(t *testing.T) {
+		runTerraformTestWithExclusions(t, "terraform_project", getTaskMock(t, []string{"a.tf"}), []string{"*test_dir*", "*@*"})
+	})
+	t.Run("testExcludeTestSubmoduleModule", func(t *testing.T) {
+		runTerraformTestWithExclusions(t, filepath.Join("terraform_project", "test_dir"), getTaskMock(t, []string{"b.tf"}), []string{"*test_sub*", "*@*"})
+	})
+	t.Run("testExcludeSpecialChar", func(t *testing.T) {
+		runTerraformTestWithExclusions(t, "terra$+~&^a#", getTaskMock(t, []string{"a.tf"}), []string{"*test_dir*", "*@*"})
+	})
 }
 
-func runTerraformTests(t *testing.T, tests []terraformTests, exclusions []string) {
+func getTerraformTestDir(path string) string {
+	return filepath.Join("..", "testdata", "terraform", path)
+}
+
+func runTerraformTest(t *testing.T, subDir string, testFunc ProduceTaskFunc) {
+	runTerraformTestWithExclusions(t, subDir, testFunc, []string{})
+}
+
+func runTerraformTestWithExclusions(t *testing.T, subDir string, testFunc ProduceTaskFunc, exclusions []string) {
 	terraformPublish := NewTerraformPublishCommand()
-	terraformPublish.SetServerDetails(&config.ServerDetails{})
+	terraformPublish.setServerDetails(&config.ServerDetails{})
 	terraformPublish.exclusions = exclusions
-	uploadSummary := clientServicesUtils.NewResult(threads)
+	uploadSummary := getNewUploadSummaryMultiArray()
 	producerConsumer := parallel.NewRunner(threads, 20000, false)
-	errorsQueue := clientutils.NewErrorsQueue(1)
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			assert.NoError(t, terraformPublish.walkDirAndUploadTerraformModules(test.path, producerConsumer, errorsQueue, uploadSummary, test.testFunc))
-			assert.NoError(t, errorsQueue.GetError())
-		})
+	errorsQueue := clientUtils.NewErrorsQueue(1)
+	assert.NoError(t, terraformPublish.walkDirAndUploadTerraformModules(getTerraformTestDir(subDir), producerConsumer, errorsQueue, uploadSummary, testFunc))
+	assert.NoError(t, errorsQueue.GetError())
+}
+
+// In order to verify the walk function has visited the correct dirs, and that the correct files were collected/excluded, we run a dry run upload on the files without an archive.
+func getTaskMock(t *testing.T, expectedPaths []string) func(parallel.Runner, *config.ServerDetails, *[][]*clientServicesUtils.OperationSummary, *services.UploadParams, *clientUtils.ErrorsQueue) (int, error) {
+	return func(_ parallel.Runner, serverDetails *config.ServerDetails, _ *[][]*clientServicesUtils.OperationSummary, uploadParams *services.UploadParams, _ *clientUtils.ErrorsQueue) (int, error) {
+		uploadParams.Target = uploadParams.TargetPathInArchive
+		uploadParams.TargetPathInArchive = ""
+		uploadParams.Archive = ""
+		uploadParams.Target = "dummy-repo/{1}"
+
+		summary, err := createServiceManagerAndUpload(serverDetails, uploadParams, true)
+		assert.NoError(t, err)
+		if !assert.NotNil(t, summary) {
+			return 0, nil
+		}
+		artifacts, err := readArtifactsFromSummary(summary)
+		assert.NoError(t, err)
+		var actualPaths []string
+		for _, artifact := range artifacts {
+			actualPaths = append(actualPaths, artifact.Path)
+		}
+		assert.ElementsMatch(t, actualPaths, expectedPaths)
+		return 0, nil
 	}
 }
 
-func mockEmptyModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, _ *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	return 0, errors.New("Failed: testing empty directory. this function shouldn't be called. ")
-}
-
-func testTerraformModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockProduceTaskFunk(archiveData)
-	if err != nil {
-		return 0, err
-	}
-	return 0, tests.ValidateListsIdentical([]string{"a.tf", "test/b.tf", "test/submodules/testSubmodule/c.tf"}, paths)
-}
-
-func testExcludeTestSubmoduleModule(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockProduceTaskFunk(archiveData)
-	if err != nil {
-		return 0, err
-	}
-	return 0, tests.ValidateListsIdentical([]string{"b/file.tf"}, paths)
-}
-
-func testExcludeTestDirectory(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockProduceTaskFunk(archiveData)
-	if err != nil {
-		return 0, err
-	}
-	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
-}
-
-func testSpecialChar(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockProduceTaskFunk(archiveData)
-	if err != nil {
-		return 0, err
-	}
-	return 0, tests.ValidateListsIdentical([]string{"a.tf", "$+~&^a#.tf"}, paths)
-}
-
-func testSpecialCharWithExclusions(_ parallel.Runner, _ *services.UploadService, _ *clientServicesUtils.Result, _ string, archiveData *services.ArchiveUploadData, _ *clientutils.ErrorsQueue) (int, error) {
-	paths, err := mockProduceTaskFunk(archiveData)
-	if err != nil {
-		return 0, err
-	}
-	return 0, tests.ValidateListsIdentical([]string{"a.tf"}, paths)
-}
-
-func mockProduceTaskFunk(archiveData *services.ArchiveUploadData) (paths []string, err error) {
-	archiveData.GetWriter().GetFilePath()
-	archiveDataReader := content.NewContentReader(archiveData.GetWriter().GetFilePath(), archiveData.GetWriter().GetArrayKey())
-	defer func() {
-		err = archiveDataReader.Close()
-	}()
-	for uploadData := new(services.UploadData); archiveDataReader.NextRecord(uploadData) == nil; uploadData = new(services.UploadData) {
-		paths = append(paths, uploadData.Artifact.TargetPathInArchive)
-	}
-	return
+func mockEmptyModule(_ parallel.Runner, _ *config.ServerDetails, _ *[][]*clientServicesUtils.OperationSummary, _ *services.UploadParams, _ *clientUtils.ErrorsQueue) (int, error) {
+	return 0, errors.New("failed: testing empty directory. this function shouldn't be called. ")
 }

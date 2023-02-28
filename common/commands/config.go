@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"net/url"
 	"os"
 	"reflect"
@@ -174,6 +176,11 @@ func (cc *ConfigCommand) config() error {
 		// Some package managers support basic authentication only.
 		// To support them we try to extract the username from the access token
 		if cc.details.AccessToken != "" && cc.details.User == "" {
+			err = cc.validateTokenIsNotApiKey()
+			if err != nil {
+				return err
+			}
+
 			// Try extracting username from Access Token (non-possible on reference token)
 			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
@@ -329,6 +336,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				err = readAccessTokenFromConsole(cc.details)
 				if err != nil {
 					return
+				}
+				err = cc.validateTokenIsNotApiKey()
+				if err != nil {
+					return err
 				}
 				if cc.details.User == "" {
 					// Try extracting username from Access Token (non-possible on reference token)
@@ -538,7 +549,7 @@ func printConfigs(configuration []*config.ServerDetails) {
 		logIfNotEmpty(details.PipelinesUrl, "Pipelines URL:\t\t\t", false, isDefault)
 		logIfNotEmpty(details.User, "User:\t\t\t\t", false, isDefault)
 		logIfNotEmpty(details.Password, "Password:\t\t\t", true, isDefault)
-		logIfNotEmpty(details.AccessToken, "Access token:\t\t\t", true, isDefault)
+		logAccessTokenIfNotEmpty(details.AccessToken, isDefault)
 		logIfNotEmpty(details.RefreshToken, "Refresh token:\t\t\t", true, isDefault)
 		logIfNotEmpty(details.SshKeyPath, "SSH key file path:\t\t", false, isDefault)
 		logIfNotEmpty(details.SshPassphrase, "SSH passphrase:\t\t\t", true, isDefault)
@@ -556,10 +567,28 @@ func logIfNotEmpty(value, prefix string, mask, isDefault bool) {
 		}
 		fullString := prefix + value
 		if isDefault {
-			fullString = coreutils.PrintTitle(coreutils.PrintBold(fullString))
+			fullString = coreutils.PrintBoldTitle(fullString)
 		}
 		log.Output(fullString)
 	}
+}
+
+func logAccessTokenIfNotEmpty(token string, isDefault bool) {
+	if token == "" {
+		return
+	}
+	tokenString := "***"
+	// Extract the token's subject only if it is JWT
+	if strings.Count(token, ".") == 2 {
+		subject, err := auth.ExtractSubjectFromAccessToken(token)
+		if err != nil {
+			log.Error(err)
+		} else {
+			tokenString += fmt.Sprintf(" (Subject: '%s')", subject)
+		}
+	}
+
+	logIfNotEmpty(tokenString, "Access token:\t\t\t", false, isDefault)
 }
 
 func (cc *ConfigCommand) delete() error {
@@ -671,9 +700,16 @@ func (cc *ConfigCommand) assertUrlsSafe() error {
 	return nil
 }
 
+func (cc *ConfigCommand) validateTokenIsNotApiKey() error {
+	if httpclient.IsApiKey(cc.details.AccessToken) {
+		return errors.New("the provided Access Token is an API key and should be used as a password in username/password authentication")
+	}
+	return nil
+}
+
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:
 // 1. The URL uses an http:// scheme
-// 2. The URL leads to a URL outside of the local machine
+// 2. The URL leads to a URL outside the local machine
 func isUrlSafe(urlToCheck string) bool {
 	url, err := url.Parse(urlToCheck)
 	if err != nil {

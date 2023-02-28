@@ -2,7 +2,6 @@ package goutils
 
 import (
 	"github.com/jfrog/build-info-go/utils"
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
@@ -49,22 +48,12 @@ func (config *GoCmdConfig) GetErrWriter() io.WriteCloser {
 }
 
 func LogGoVersion() error {
-	output, err := getGoVersion()
+	version, err := utils.GetParsedGoVersion()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	log.Info("Using go:", output)
+	log.Info("Using go:", version.GetVersion())
 	return nil
-}
-
-func getGoVersion() (string, error) {
-	goCmd, err := NewGoCmdConfig()
-	if err != nil {
-		return "", err
-	}
-	goCmd.Command = []string{"version"}
-	output, err := gofrogcmd.RunCmdOutput(goCmd)
-	return output, errorutils.CheckError(err)
 }
 
 func GetGoModCachePath() (string, error) {

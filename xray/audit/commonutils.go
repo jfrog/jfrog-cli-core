@@ -63,7 +63,7 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 	if err != nil {
 		return
 	}
-	err = xraycommands.ValidateXrayMinimumVersion(xrayVersion, xraycommands.GraphScanMinXrayVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion)
 	if err != nil {
 		return
 	}
@@ -123,10 +123,14 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 	return nil
 }
 
-func LogExecutableVersion(executable string) {
-	// Get executable version and print to log if possible
-	verString, _ := exec.Command(executable, "--version").CombinedOutput()
-	if len(verString) > 0 {
-		log.Debug(fmt.Sprintf("Used %q version: %s", executable, strings.TrimSpace(string(verString))))
+// Gets executable version and prints to the debug log if possible.
+// Only supported for package managers that use "--version".
+func GetExecutableVersion(executable string) (version string, err error) {
+	verBytes, err := exec.Command(executable, "--version").CombinedOutput()
+	if err != nil || len(verBytes) == 0 {
+		return "", err
 	}
+	version = strings.TrimSpace(string(verBytes))
+	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
+	return
 }

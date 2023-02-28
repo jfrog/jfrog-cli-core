@@ -160,7 +160,7 @@ func getStorageInfoResponse(t *testing.T, w http.ResponseWriter, r *http.Request
 	}
 }
 
-func TestSplitComponentId(t *testing.T) {
+func TestConvertIntToStorageSizeString(t *testing.T) {
 	tests := []struct {
 		num    int
 		output string

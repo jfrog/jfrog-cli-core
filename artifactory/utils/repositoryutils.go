@@ -148,12 +148,12 @@ func GetFilteredBuildInfoRepositories(storageInfo *clientUtils.StorageInfo, incl
 // excludePatterns - Repositories exclusion wildcard pattern
 func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns []string) ([]string, error) {
 	var included []string
-	repoFilter := &RepositoryFilter{
+	includeExcludeFilter := &IncludeExcludeFilter{
 		IncludePatterns: includePatterns,
 		ExcludePatterns: excludePatterns,
 	}
 	for _, repoKey := range *repoKeys {
-		repoIncluded, err := repoFilter.ShouldIncludeRepository(repoKey)
+		repoIncluded, err := includeExcludeFilter.ShouldIncludeRepository(repoKey)
 		if err != nil {
 			return included, err
 		}
@@ -164,18 +164,23 @@ func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns 
 	return included, nil
 }
 
-type RepositoryFilter struct {
+type IncludeExcludeFilter struct {
 	IncludePatterns []string
 	ExcludePatterns []string
 }
 
-func (rf *RepositoryFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
-	// If includePattens is empty, include all repositories.
+func (rf *IncludeExcludeFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
+	rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
+	return rf.ShouldIncludeItem(repoKey)
+}
+
+func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
+	// If includePattens is empty, include all.
 	repoIncluded := len(rf.IncludePatterns) == 0
 
-	// Check if this repository name matches any include pattern.
+	// Check if this item name matches any include pattern.
 	for _, includePattern := range rf.IncludePatterns {
-		matched, err := path.Match(includePattern, repoKey)
+		matched, err := path.Match(includePattern, item)
 		if err != nil {
 			return false, err
 		}
@@ -189,9 +194,9 @@ func (rf *RepositoryFilter) ShouldIncludeRepository(repoKey string) (bool, error
 		return false, nil
 	}
 
-	// Check if this repository name matches any exclude pattern.
-	for _, excludePattern := range append(rf.ExcludePatterns, blacklistedRepositories...) {
-		matched, err := path.Match(excludePattern, repoKey)
+	// Check if this item name matches any exclude pattern.
+	for _, excludePattern := range rf.ExcludePatterns {
+		matched, err := path.Match(excludePattern, item)
 		if err != nil {
 			return false, err
 		}

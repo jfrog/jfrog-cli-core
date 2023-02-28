@@ -7,10 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/stretchr/testify/assert"
@@ -209,6 +211,35 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestInterruptIfRequested(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Create new transfer files command
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+
+	// Run interruptIfRequested and make sure that the interrupted signal wasn't sent to the channel
+	assert.NoError(t, interruptIfRequested(transferFilesCommand.stopSignal))
+	select {
+	case <-transferFilesCommand.stopSignal:
+		assert.Fail(t, "Signal was sent, but shouldn't be")
+	default:
+	}
+
+	// Create the 'stop' file
+	assert.NoError(t, transferFilesCommand.initTransferDir())
+	assert.NoError(t, transferFilesCommand.stateManager.TryLockTransferStateManager())
+	assert.NoError(t, transferFilesCommand.signalStop())
+
+	// Run interruptIfRequested and make sure that the signal was sent to the channel
+	assert.NoError(t, interruptIfRequested(transferFilesCommand.stopSignal))
+	actualSignal, ok := <-transferFilesCommand.stopSignal
+	assert.True(t, ok)
+	assert.Equal(t, os.Interrupt, actualSignal)
 }
 
 // Create mock server to test transfer config commands

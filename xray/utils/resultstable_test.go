@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"testing"
 
@@ -53,7 +54,7 @@ func TestSplitComponentId(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actualCompName, actualCompVersion, actualCompType := splitComponentId(test.componentId)
+		actualCompName, actualCompVersion, actualCompType := SplitComponentId(test.componentId)
 		assert.Equal(t, test.expectedCompName, actualCompName)
 		assert.Equal(t, test.expectedCompVersion, actualCompVersion)
 		assert.Equal(t, test.expectedCompType, actualCompType)
@@ -63,20 +64,16 @@ func TestSplitComponentId(t *testing.T) {
 func TestGetDirectComponents(t *testing.T) {
 	tests := []struct {
 		impactPaths             [][]services.ImpactPathNode
-		multipleRoots           bool
 		expectedComponentRows   []formats.ComponentRow
 		expectedConvImpactPaths [][]formats.ComponentRow
 	}{
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack2", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack1", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, false, []formats.ComponentRow{{Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, true, []formats.ComponentRow{{Name: "jfrog:pack1", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack2", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
+		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
 	}
 
 	for _, test := range tests {
-		actualComponentRows, actualConvImpactPaths := getDirectComponentsAndImpactPaths(test.impactPaths, test.multipleRoots)
+		actualComponentRows, actualConvImpactPaths := getDirectComponentsAndImpactPaths(test.impactPaths)
 		assert.ElementsMatch(t, test.expectedComponentRows, actualComponentRows)
 		assert.ElementsMatch(t, test.expectedConvImpactPaths, actualConvImpactPaths)
 	}
@@ -102,6 +99,304 @@ func TestGetOperationalRiskReadableData(t *testing.T) {
 	for _, test := range tests {
 		results := getOperationalRiskViolationReadableData(test.violation)
 		assert.Equal(t, test.expectedResults, results)
+	}
+}
+
+func TestIsImpactPathIsSubset(t *testing.T) {
+	testCases := []struct {
+		name                           string
+		target, source, expectedResult []services.ImpactPathNode
+	}{
+		{"subset found in both target and source",
+			[]services.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+			[]services.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
+		},
+		{"subset not found in both target and source",
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "D"}},
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+			[]services.ImpactPathNode{},
+		},
+		{"target and source are identical",
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isImpactPathIsSubset(tc.target, tc.source)
+			assert.Equal(t, tc.expectedResult, result)
+		})
+	}
+}
+
+func TestAppendUniqueFixVersions(t *testing.T) {
+	testCases := []struct {
+		targetFixVersions []string
+		sourceFixVersions []string
+		expectedResult    []string
+	}{
+		{
+			targetFixVersions: []string{"1.0", "1.1"},
+			sourceFixVersions: []string{"2.0", "2.1"},
+			expectedResult:    []string{"1.0", "1.1", "2.0", "2.1"},
+		},
+		{
+			targetFixVersions: []string{"1.0", "1.1"},
+			sourceFixVersions: []string{"1.1", "2.0"},
+			expectedResult:    []string{"1.0", "1.1", "2.0"},
+		},
+		{
+			targetFixVersions: []string{},
+			sourceFixVersions: []string{"1.0", "1.1"},
+			expectedResult:    []string{"1.0", "1.1"},
+		},
+		{
+			targetFixVersions: []string{"1.0", "1.1"},
+			sourceFixVersions: []string{},
+			expectedResult:    []string{"1.0", "1.1"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("target:%v, source:%v", tc.targetFixVersions, tc.sourceFixVersions), func(t *testing.T) {
+			result := appendUniqueFixVersions(tc.targetFixVersions, tc.sourceFixVersions...)
+			assert.ElementsMatch(t, tc.expectedResult, result)
+		})
+	}
+}
+
+func TestGetUniqueKey(t *testing.T) {
+	vulnerableDependency := "test-dependency"
+	vulnerableVersion := "1.0"
+	cves := []services.Cve{}
+	expectedKey := "test-dependency:1.0::true"
+	key := getUniqueKey(vulnerableDependency, vulnerableVersion, cves, true)
+	assert.Equal(t, expectedKey, key)
+
+	cves = []services.Cve{
+		{Id: "CVE-1"},
+		{Id: "CVE-2"},
+	}
+	expectedKey = "test-dependency:1.0:CVE-1:false"
+	key = getUniqueKey(vulnerableDependency, vulnerableVersion, cves, false)
+	assert.Equal(t, expectedKey, key)
+}
+
+func TestAppendUniqueImpactPathsForMultipleRoots(t *testing.T) {
+	testCases := []struct {
+		name           string
+		target         [][]services.ImpactPathNode
+		source         [][]services.ImpactPathNode
+		expectedResult [][]services.ImpactPathNode
+	}{
+		{
+			name: "subset is found in both target and source",
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "D"}, {ComponentId: "E"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "D"}, {ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+		},
+		{
+			name: "subset is not found in both target and source",
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "D"}, {ComponentId: "E"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "B"}, {ComponentId: "C"}},
+				{{ComponentId: "D"}, {ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+		},
+		{
+			name:   "target slice is empty",
+			target: [][]services.ImpactPathNode{},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+		},
+		{
+			name: "source slice is empty",
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			source: [][]services.ImpactPathNode{},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+		},
+		{
+			name: "target and source slices are identical",
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+		},
+		{
+			name: "target and source slices contain multiple subsets",
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "E"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}, {ComponentId: "F"}},
+				{{ComponentId: "G"}, {ComponentId: "H"}},
+			},
+			expectedResult: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+				{{ComponentId: "G"}, {ComponentId: "H"}},
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expectedResult, appendUniqueImpactPathsForMultipleRoots(test.target, test.source))
+		})
+	}
+}
+
+func TestGetImpactPathKey(t *testing.T) {
+	testCases := []struct {
+		path        []services.ImpactPathNode
+		expectedKey string
+	}{
+		{
+			path: []services.ImpactPathNode{
+				{ComponentId: "A"},
+				{ComponentId: "B"},
+			},
+			expectedKey: "B",
+		},
+		{
+			path: []services.ImpactPathNode{
+				{ComponentId: "A"},
+			},
+			expectedKey: "A",
+		},
+	}
+
+	for _, test := range testCases {
+		key := getImpactPathKey(test.path)
+		assert.Equal(t, test.expectedKey, key)
+	}
+}
+
+func TestAppendUniqueImpactPaths(t *testing.T) {
+	testCases := []struct {
+		name          string
+		multipleRoots bool
+		target        [][]services.ImpactPathNode
+		source        [][]services.ImpactPathNode
+		expected      [][]services.ImpactPathNode
+	}{
+		{
+			name:          "Test case 1: Unique impact paths found",
+			multipleRoots: false,
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}},
+				{{ComponentId: "B"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "C"}},
+				{{ComponentId: "D"}},
+			},
+			expected: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}},
+				{{ComponentId: "B"}},
+				{{ComponentId: "C"}},
+				{{ComponentId: "D"}},
+			},
+		},
+		{
+			name:          "Test case 2: No unique impact paths found",
+			multipleRoots: false,
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}},
+				{{ComponentId: "B"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}},
+				{{ComponentId: "B"}},
+			},
+			expected: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}},
+				{{ComponentId: "B"}},
+			},
+		},
+		{
+			name:          "Test case 3: paths in source are not in target",
+			multipleRoots: false,
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+			expected: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+				{{ComponentId: "E"}},
+				{{ComponentId: "F"}, {ComponentId: "G"}},
+			},
+		},
+		{
+			name:          "Test case 4: paths in source are already in target",
+			multipleRoots: false,
+			target: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			source: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+			expected: [][]services.ImpactPathNode{
+				{{ComponentId: "A"}, {ComponentId: "B"}},
+				{{ComponentId: "C"}, {ComponentId: "D"}},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := appendUniqueImpactPaths(tc.target, tc.source, tc.multipleRoots)
+			assert.Equal(t, tc.expected, result)
+		})
 	}
 }
 

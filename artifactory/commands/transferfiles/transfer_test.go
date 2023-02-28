@@ -3,22 +3,28 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/gocarina/gocsv"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	coreUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
@@ -37,9 +43,54 @@ func TestCancelFunc(t *testing.T) {
 	assert.True(t, transferFilesCommand.shouldStop())
 }
 
-const firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
-const secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
-const nodeIdForTest = "nodea0gwihu76sk5g-artifactory-primary-0"
+func TestSignalStop(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Create transfer files command and mark the transfer as started
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+	assert.NoError(t, transferFilesCommand.initTransferDir())
+	assert.NoError(t, transferFilesCommand.stateManager.TryLockTransferStateManager())
+
+	// Make sure that the '.jfrog/transfer/stop' doesn't exist
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	assert.NoError(t, err)
+	assert.NoFileExists(t, filepath.Join(transferDir, StopFileName))
+
+	// Run signalStop and make sure that the '.jfrog/transfer/stop' exists
+	assert.NoError(t, transferFilesCommand.signalStop())
+	assert.FileExists(t, filepath.Join(transferDir, StopFileName))
+}
+
+func TestSignalStopError(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Create transfer files command and mark the transfer as started
+	transferFilesCommand, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+
+	// Check "not active file transfer" error
+	assert.EqualError(t, transferFilesCommand.signalStop(), "There is no active file transfer process.")
+
+	// Mock start transfer
+	assert.NoError(t, transferFilesCommand.initTransferDir())
+	assert.NoError(t, transferFilesCommand.stateManager.TryLockTransferStateManager())
+
+	// Check "already in progress" error
+	assert.NoError(t, transferFilesCommand.signalStop())
+	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stop is already in progress. Please wait...")
+}
+
+/* #nosec G101 -- Not credentials. */
+const (
+	firstUuidTokenForTest  = "347cd3e9-86b6-4bec-9be9-e053a485f327"
+	secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
+	nodeIdForTest          = "nodea0gwihu76sk5g-artifactory-primary-0"
+)
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) { testValidateDataTransferPluginMinimumVersion(t, "9.9.9", false) })
@@ -53,7 +104,7 @@ func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {
 func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion string, errorExpected bool) {
 	var pluginVersion string
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifyCompatibility" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifyCompatibility" {
 			content, err := json.Marshal(utils.VersionResponse{Version: pluginVersion})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
@@ -66,7 +117,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	pluginVersion = curVersion
 	err := getAndValidateDataTransferPlugin(srcPluginManager)
 	if errorExpected {
-		assert.EqualError(t, err, getMinimalVersionErrorMsg(curVersion))
+		assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
 		return
 	}
 	assert.NoError(t, err)
@@ -74,7 +125,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 
 func TestVerifySourceTargetConnectivity(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusOK)
 		}
 	})
@@ -88,7 +139,7 @@ func TestVerifySourceTargetConnectivity(t *testing.T) {
 
 func TestVerifySourceTargetConnectivityError(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"verifySourceTargetConnectivity" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"verifySourceTargetConnectivity" {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte("No connection to target"))
 			assert.NoError(t, err)
@@ -110,7 +161,7 @@ func initSrcUserPluginServiceManager(t *testing.T, serverDetails *coreConfig.Ser
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"dataTransferVersion" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"dataTransferVersion" {
 			w.WriteHeader(http.StatusNotFound)
 			_, err := w.Write([]byte("Not found"))
 			assert.NoError(t, err)
@@ -242,10 +293,10 @@ func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 
 func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, totalUploadChunkVisits *int, file api.FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	return commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+pluginsExecuteRestApi+"uploadChunk" {
+		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"uploadChunk" {
 			*totalUploadChunkVisits++
 			getUploadChunkMockResponse(t, w, totalUploadChunkVisits)
-		} else if r.RequestURI == "/"+pluginsExecuteRestApi+syncChunks {
+		} else if r.RequestURI == "/"+utils.PluginsExecuteRestApi+syncChunks {
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
 			// If already visited chunk status, return status done this time.
@@ -263,10 +314,10 @@ func TestGetAllLocalRepositories(t *testing.T) {
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.RequestURI {
 		case "/api/storageinfo/calculate":
-			// Reponse for CalculateStorageInfo
+			// Response for CalculateStorageInfo
 			w.WriteHeader(http.StatusAccepted)
 		case "/api/storageinfo":
-			// Reponse for GetStorageInfo
+			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
 			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{
 				{RepoKey: "repo-1"}, {RepoKey: "repo-2"},
@@ -278,7 +329,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
 		case "/api/repositories?type=local&packageType=":
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
 			bytes, err := json.Marshal(response)
@@ -286,7 +337,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
 		case "/api/repositories?type=federated&packageType=":
-			// Reponse for GetWithFilter
+			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "federated-repo-1"}, {Key: "federated-repo-2"}}
 			bytes, err := json.Marshal(response)
@@ -320,7 +371,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer sourceTestServer.Close()
 
 	// Prepare target mock server
-	targetTestServer, targetserverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/api/storageinfo/calculate" {
 			w.WriteHeader(http.StatusAccepted)
 			targetServerCalculated = true
@@ -329,7 +380,7 @@ func TestInitStorageInfoManagers(t *testing.T) {
 	defer targetTestServer.Close()
 
 	// Init and assert storage info managers
-	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetserverDetails)
+	transferFilesCommand, err := NewTransferFilesCommand(sourceServerDetails, targetServerDetails)
 	assert.NoError(t, err)
 	err = transferFilesCommand.initStorageInfoManagers()
 	assert.NoError(t, err)
@@ -389,4 +440,36 @@ func TestCheckChunkStatusSync(t *testing.T) {
 	chunkStatus.ChunksStatus = chunkStatus.ChunksStatus[:len(chunkStatus.ChunksStatus)-1]
 	checkChunkStatusSync(&chunkStatus, &manager, &errChanMng)
 	assert.Len(t, manager.nodeToChunksMap[nodeIdForTest], 0)
+}
+
+func TestCreateErrorsSummaryFile(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	testDataDir := filepath.Join("..", "testdata", "transfer_summary")
+	logFiles := []string{filepath.Join(testDataDir, "logs1.json"), filepath.Join(testDataDir, "logs2.json")}
+	allErrors, err := parseErrorsFromLogFiles(logFiles)
+	assert.NoError(t, err)
+	// Create Errors Summary Csv File from given JSON log files
+	createdCsvPath, err := utils.CreateCSVFile("transfer-files-logs", allErrors.Errors, time.Now())
+	assert.NoError(t, err)
+	assert.NotEmpty(t, createdCsvPath)
+	createdFile, err := os.Open(createdCsvPath)
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, createdFile.Close())
+	}()
+	actualFileErrors := new([]api.FileUploadStatusResponse)
+	assert.NoError(t, gocsv.UnmarshalFile(createdFile, actualFileErrors))
+
+	// Create expected csv file
+	expectedFile, err := os.Open(filepath.Join(testDataDir, "logs.csv"))
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, expectedFile.Close())
+	}()
+	expectedFileErrors := new([]api.FileUploadStatusResponse)
+	assert.NoError(t, gocsv.UnmarshalFile(expectedFile, expectedFileErrors))
+	assert.ElementsMatch(t, *expectedFileErrors, *actualFileErrors)
 }

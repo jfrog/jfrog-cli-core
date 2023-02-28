@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jfrog/gofrog/version"
-
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -56,12 +54,7 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	}
 
 	// Validate version.
-	rtVersion := version.NewVersion(versionStr)
-	if !rtVersion.AtLeast(minSupportedArtifactoryVersionForNpmCmds) {
-		return errorutils.CheckErrorf("this operation requires Artifactory version " + minSupportedArtifactoryVersionForNpmCmds + " or higher")
-	}
-
-	return nil
+	return coreutils.ValidateMinimumVersion(coreutils.Artifactory, versionStr, minSupportedArtifactoryVersionForNpmCmds)
 }
 
 func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string, err error) {

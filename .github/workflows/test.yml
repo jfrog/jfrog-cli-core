@@ -52,3 +52,4 @@ jobs:
 
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race
+        

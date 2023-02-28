@@ -1,15 +1,16 @@
 package npm
 
 import (
+	"fmt"
+	"github.com/jfrog/gofrog/version"
+	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
-
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-
-	"github.com/stretchr/testify/assert"
 )
 
+// #nosec G101 -- Dummy token for tests.
 const authToken = "YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"
 
 func TestPrepareConfigData(t *testing.T) {
@@ -35,7 +36,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"registry = http://goodRegistry",
 		}
 
-	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken}}
+	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken, npmVersion: version.NewVersion("9.5.0")}}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
@@ -55,6 +56,44 @@ func TestPrepareConfigData(t *testing.T) {
 	}
 
 	// Assert that NPM_CONFIG__AUTH environment variable was set
-	assert.Equal(t, authToken, os.Getenv(npmConfigAuthEnv))
-	testsutils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
+	assert.Equal(t, authToken, os.Getenv(fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry")))
+	testsUtils.UnSetEnvAndAssert(t, fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry"))
+}
+
+func TestSetNpmConfigAuthEnv(t *testing.T) {
+	testCases := []struct {
+		name        string
+		com         *CommonArgs
+		value       string
+		expectedEnv string
+	}{
+		{
+			name: "set scoped registry auth env",
+			com: &CommonArgs{
+				npmVersion: version.NewVersion("9.3.1"),
+				registry:   "https://registry.example.com",
+			},
+			value:       "some_auth_token",
+			expectedEnv: "npm_config_//registry.example.com:_auth",
+		},
+		{
+			name: "set legacy auth env",
+			com: &CommonArgs{
+				npmVersion: version.NewVersion("8.19.3"),
+				registry:   "https://registry.example.com",
+			},
+			value:       "some_auth_token",
+			expectedEnv: "npm_config__auth",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.com.setNpmConfigAuthEnv(tc.value)
+			assert.NoError(t, err)
+			envValue := os.Getenv(tc.expectedEnv)
+			assert.Equal(t, tc.value, envValue)
+			assert.NoError(t, os.Unsetenv(tc.expectedEnv))
+		})
+	}
 }

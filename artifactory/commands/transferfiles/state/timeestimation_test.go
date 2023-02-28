@@ -2,11 +2,12 @@ package state
 
 import (
 	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func initTimeEstimationTestSuite(t *testing.T) func() {
@@ -196,7 +197,7 @@ func newDefaultTimeEstimationManager(t *testing.T, buildInfoRepos bool) *TimeEst
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, buildInfoRepos, true))
 	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, buildInfoRepos, true))
 
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(0, 100*bytesInMB))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(0, 100*bytesInMB))
 	stateManager.OverallTransfer.TotalSizeBytes = 600 * bytesInMB
 	return &TimeEstimationManager{stateManager: stateManager}
 }

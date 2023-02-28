@@ -81,7 +81,7 @@ func GenericAudit(
 	return
 }
 
-//  Audits the project found in the current directory using Xray.
+// Audits the project found in the current directory using Xray.
 func doAudit(
 	xrayGraphScanParams services.XrayGraphScanParams,
 	serverDetails *config.ServerDetails,

@@ -1,6 +1,7 @@
 package terraform
 
 import (
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/parallel"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -8,27 +9,27 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
 const threads = 3
 
 type TerraformPublishCommandArgs struct {
-	namespace  string
-	moduleName string
-	provider   string
-	tag        string
-	exclusions []string
+	namespace          string
+	provider           string
+	tag                string
+	exclusions         []string
+	buildConfiguration *utils.BuildConfiguration
+	collectBuildInfo   bool
+	buildProps         string
 }
 
 type TerraformPublishCommand struct {
@@ -48,21 +49,23 @@ func NewTerraformPublishCommandArgs() *TerraformPublishCommandArgs {
 	return &TerraformPublishCommandArgs{}
 }
 
-func (tpc *TerraformPublishCommand) GetArgs() []string {
-	return tpc.args
-}
-
 func (tpc *TerraformPublishCommand) SetArgs(terraformArg []string) *TerraformPublishCommand {
 	tpc.args = terraformArg
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) SetServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
+func (tpc *TerraformPublishCommand) setServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
 	tpc.serverDetails = serverDetails
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) SetRepo(repo string) *TerraformPublishCommand {
+func (tpc *TerraformPublishCommand) setRepoConfig(conf *utils.RepositoryConfig) *TerraformPublishCommand {
+	serverDetails, _ := conf.ServerDetails()
+	tpc.setRepo(conf.TargetRepo()).setServerDetails(serverDetails)
+	return tpc
+}
+
+func (tpc *TerraformPublishCommand) setRepo(repo string) *TerraformPublishCommand {
 	tpc.repo = repo
 	return tpc
 }
@@ -84,18 +87,9 @@ func (tpc *TerraformPublishCommand) Result() *commandsUtils.Result {
 	return tpc.result
 }
 
-func (tpc *TerraformPublishCommand) SetModuleName(moduleName string) *TerraformPublishCommand {
-	tpc.moduleName = moduleName
-	return tpc
-}
-
 func (tpc *TerraformPublishCommand) Run() error {
 	log.Info("Running Terraform publish")
-	err := tpc.preparePrerequisites()
-	if err != nil {
-		return err
-	}
-	err = tpc.publish()
+	err := tpc.publish()
 	if err != nil {
 		return err
 	}
@@ -103,22 +97,32 @@ func (tpc *TerraformPublishCommand) Run() error {
 	return nil
 }
 
-func (tpc *TerraformPublishCommand) preparePrerequisites() error {
+func (tpc *TerraformPublishCommand) Init() error {
 	err := tpc.extractTerraformPublishOptionsFromArgs(tpc.args)
 	if err != nil {
 		return err
 	}
 	if tpc.namespace == "" || tpc.provider == "" || tpc.tag == "" {
-		return errorutils.CheckErrorf("The --namespace, --provider and --tag options are mandatory.")
+		return errorutils.CheckErrorf("the --namespace, --provider and --tag options are mandatory")
 	}
-	if err := tpc.setRepoFromConfiguration(); err != nil {
+	if err = tpc.setRepoFromConfiguration(); err != nil {
 		return err
 	}
 	artDetails, err := tpc.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
-	return utils.ValidateRepoExists(tpc.repo, artDetails)
+	if err = utils.ValidateRepoExists(tpc.repo, artDetails); err != nil {
+		return err
+	}
+	tpc.collectBuildInfo, err = tpc.buildConfiguration.IsCollectBuildInfo()
+	if err != nil {
+		return err
+	}
+	if tpc.collectBuildInfo {
+		tpc.buildProps, err = utils.CreateBuildPropsFromConfiguration(tpc.buildConfiguration)
+	}
+	return err
 }
 
 func (tpc *TerraformPublishCommand) publish() error {
@@ -159,6 +163,10 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 	}
 	tpa.exclusions = append(tpa.exclusions, strings.Split(exclusionsString, ";")...)
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	args, tpa.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(args)
+	if err != nil {
+		return err
+	}
 	if len(args) != 0 {
 		err = errorutils.CheckErrorf("Unknown flag:" + strings.Split(args[0], "=")[0] + ". for a terraform publish command please provide --namespace, --provider, --tag and optionally --exclusions.")
 	}
@@ -166,20 +174,20 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 }
 
 func (tpc *TerraformPublishCommand) terraformPublish() (int, int, error) {
-	uploadSummary := servicesUtils.NewResult(threads)
+	uploadSummary := getNewUploadSummaryMultiArray()
 	producerConsumer := parallel.NewRunner(3, 20000, false)
-	errorsQueue := clientutils.NewErrorsQueue(threads)
+	errorsQueue := clientUtils.NewErrorsQueue(threads)
 
 	tpc.prepareTerraformPublishTasks(producerConsumer, errorsQueue, uploadSummary)
-	totalUploaded, totalFailed := tpc.performTerraformPublishTasks(producerConsumer, uploadSummary)
+	tpc.performTerraformPublishTasks(producerConsumer)
 	e := errorsQueue.GetError()
 	if e != nil {
 		return 0, 0, e
 	}
-	return totalUploaded, totalFailed, nil
+	return tpc.aggregateSummaryResults(uploadSummary)
 }
 
-func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *servicesUtils.Result) {
+func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parallel.Runner, errorsQueue *clientUtils.ErrorsQueue, uploadSummary *[][]*servicesUtils.OperationSummary) {
 	go func() {
 		defer producer.Done()
 		pwd, err := os.Getwd()
@@ -196,14 +204,34 @@ func (tpc *TerraformPublishCommand) prepareTerraformPublishTasks(producer parall
 	}()
 }
 
-// ProduceTaskFunk is provided as an argument to 'walkDirAndUploadTerraformModules' function for testing purposes.
-type ProduceTaskFunk func(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *servicesUtils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error)
+// ProduceTaskFunc is provided as an argument to 'walkDirAndUploadTerraformModules' function for testing purposes.
+type ProduceTaskFunc func(producer parallel.Runner, serverDetails *config.ServerDetails, uploadSummary *[][]*servicesUtils.OperationSummary, uploadParams *services.UploadParams, errorsQueue *clientUtils.ErrorsQueue) (int, error)
 
-func addTaskWithError(producer parallel.Runner, uploadService *services.UploadService, uploadSummary *servicesUtils.Result, target string, archiveData *services.ArchiveUploadData, errorsQueue *clientutils.ErrorsQueue) (int, error) {
-	return producer.AddTaskWithError(uploadService.CreateUploadAsZipFunc(uploadSummary, target, archiveData, errorsQueue), errorsQueue.AddError)
+func addTaskWithError(producer parallel.Runner, serverDetails *config.ServerDetails, uploadSummary *[][]*servicesUtils.OperationSummary, uploadParams *services.UploadParams, errorsQueue *clientUtils.ErrorsQueue) (int, error) {
+	return producer.AddTaskWithError(uploadModuleTask(serverDetails, uploadSummary, uploadParams), errorsQueue.AddError)
 }
 
-func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientutils.ErrorsQueue, uploadSummary *servicesUtils.Result, produceTaskFunk ProduceTaskFunk) error {
+func uploadModuleTask(serverDetails *config.ServerDetails, uploadSummary *[][]*servicesUtils.OperationSummary, uploadParams *services.UploadParams) parallel.TaskFunc {
+	return func(threadId int) (err error) {
+		summary, err := createServiceManagerAndUpload(serverDetails, uploadParams, false)
+		if err != nil {
+			return err
+		}
+		// Add summary to the thread's summary array.
+		(*uploadSummary)[threadId] = append((*uploadSummary)[threadId], summary)
+		return nil
+	}
+}
+
+func createServiceManagerAndUpload(serverDetails *config.ServerDetails, uploadParams *services.UploadParams, dryRun bool) (operationSummary *servicesUtils.OperationSummary, err error) {
+	serviceManager, err := utils.CreateServiceManagerWithThreads(serverDetails, dryRun, 1, -1, 0)
+	if err != nil {
+		return nil, err
+	}
+	return serviceManager.UploadFilesWithSummary(*uploadParams)
+}
+
+func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientUtils.ErrorsQueue, uploadSummary *[][]*servicesUtils.OperationSummary, produceTaskFunc ProduceTaskFunc) error {
 	return filepath.WalkDir(pwd, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -222,29 +250,12 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 		}
 		if isTerraformModule {
 			uploadParams := tpc.uploadParamsForTerraformPublish(pathInfo.Name(), strings.TrimPrefix(path, pwd+string(filepath.Separator)))
-			archiveData := createTerraformArchiveUploadData(uploadParams, errorsQueue)
-			dataHandlerFunc := GetSaveTaskInContentWriterFunc(archiveData, *uploadParams, errorsQueue)
-			// Collect files that match uploadParams and write them in archiveData's writer.
-			e = services.CollectFilesForUpload(*uploadParams, nil, nil, dataHandlerFunc)
+			_, e = produceTaskFunc(producer, tpc.serverDetails, uploadSummary, uploadParams, errorsQueue)
 			if e != nil {
 				log.Error(e)
 				errorsQueue.AddError(e)
 			}
-			e = archiveData.GetWriter().Close()
-			if e != nil {
-				log.Error(e)
-				errorsQueue.AddError(e)
-			}
-			// In case all files were excluded and no files were written to writer - skip this module.
-			if archiveData.GetWriter().IsEmpty() {
-				return filepath.SkipDir
-			}
-			uploadService := createUploadServiceManager(tpc.serverDetails, errorsQueue)
-			_, e = produceTaskFunk(producer, uploadService, uploadSummary, uploadParams.Target, archiveData, errorsQueue)
-			if e != nil {
-				log.Error(e)
-				errorsQueue.AddError(e)
-			}
+
 			// SkipDir will not stop the walk, but it will make us jump to the next directory.
 			return filepath.SkipDir
 		}
@@ -252,50 +263,52 @@ func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string,
 	})
 }
 
-func createTerraformArchiveUploadData(uploadParams *services.UploadParams, errorsQueue *clientutils.ErrorsQueue) *services.ArchiveUploadData {
-	archiveData := services.ArchiveUploadData{}
-	var err error
-	archiveData.SetUploadParams(services.DeepCopyUploadParams(uploadParams))
-	writer, err := content.NewContentWriter("archive", true, false)
-	if err != nil {
-		log.Error(err)
-		errorsQueue.AddError(err)
-	}
-	archiveData.SetWriter(writer)
-	return &archiveData
-}
-
-func createUploadServiceManager(serverDetails *config.ServerDetails, errorsQueue *clientutils.ErrorsQueue) *services.UploadService {
-	// Upload module using upload service
-	serviceManager, err := utils.CreateServiceManager(serverDetails, 0, 0, false)
-	if err != nil {
-		log.Error(err)
-		errorsQueue.AddError(err)
-	}
-	uploadService := services.NewUploadService(serviceManager.Client())
-	uploadService.ArtDetails = serviceManager.GetConfig().GetServiceDetails()
-	uploadService.Threads = serviceManager.GetConfig().GetThreads()
-	return uploadService
-}
-
-func GetSaveTaskInContentWriterFunc(archiveData *services.ArchiveUploadData, uploadParams services.UploadParams, errorsQueue *clientutils.ErrorsQueue) services.UploadDataHandlerFunc {
-	return func(data services.UploadData) {
-		archiveData.GetWriter().Write(data)
-	}
-}
-
-func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner, uploadSummary *servicesUtils.Result) (totalUploaded, totalFailed int) {
+func (tpc *TerraformPublishCommand) performTerraformPublishTasks(consumer parallel.Runner) {
 	// Blocking until consuming is finished.
 	consumer.Run()
-	totalUploaded = servicesUtils.SumIntArray(uploadSummary.SuccessCount)
-	totalUploadAttempted := servicesUtils.SumIntArray(uploadSummary.TotalCount)
+}
 
-	log.Debug("Uploaded", strconv.Itoa(totalUploaded), "artifacts.")
-	totalFailed = totalUploadAttempted - totalUploaded
-	if totalFailed > 0 {
-		log.Error("Failed uploading", strconv.Itoa(totalFailed), "artifacts.")
+// Aggregate the operation summaries from all threads, to get the number of successful and failed uploads.
+// If collecting build info, also aggregate the artifacts uploaded.
+func (tpc *TerraformPublishCommand) aggregateSummaryResults(uploadSummary *[][]*servicesUtils.OperationSummary) (totalUploaded, totalFailed int, err error) {
+	var artifacts []buildInfo.Artifact
+	for i := 0; i < threads; i++ {
+		threadSummary := (*uploadSummary)[i]
+		for j := range threadSummary {
+			// Operation summary should always be returned.
+			if threadSummary[j] == nil {
+				return 0, 0, errorutils.CheckErrorf("unexpected nil operation summary")
+			}
+			totalUploaded += threadSummary[j].TotalSucceeded
+			totalFailed += threadSummary[j].TotalFailed
+
+			if tpc.collectBuildInfo {
+				buildArtifacts, err := readArtifactsFromSummary(threadSummary[j])
+				if err != nil {
+					return 0, 0, err
+				}
+				artifacts = append(artifacts, buildArtifacts...)
+			}
+		}
+	}
+	if tpc.collectBuildInfo {
+		err = utils.PopulateBuildArtifactsAsPartials(artifacts, tpc.buildConfiguration, buildInfo.Terraform)
 	}
 	return
+}
+
+func readArtifactsFromSummary(summary *servicesUtils.OperationSummary) (artifacts []buildInfo.Artifact, err error) {
+	artifactsDetailsReader := summary.ArtifactsDetailsReader
+	if artifactsDetailsReader == nil {
+		return []buildInfo.Artifact{}, nil
+	}
+	defer func() {
+		e := artifactsDetailsReader.Close()
+		if err == nil {
+			err = e
+		}
+	}()
+	return servicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 }
 
 func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, dirPath string) *services.UploadParams {
@@ -307,7 +320,7 @@ func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, 
 	uploadParams.Recursive = true
 	uploadParams.CommonParams.TargetProps = servicesUtils.NewProperties()
 	uploadParams.CommonParams.Exclusions = append(tpc.exclusions, "*.git", "*.DS_Store")
-
+	uploadParams.BuildProps = tpc.buildProps
 	return &uploadParams
 }
 
@@ -316,8 +329,7 @@ func (tpc *TerraformPublishCommand) getPublishTarget(moduleName string) string {
 	return path.Join(tpc.repo, tpc.namespace, moduleName, tpc.provider, tpc.tag+".zip")
 }
 
-// We identify a Terraform module by the existence of a file with a ".tf" extension inside the module directory.
-// isTerraformModule search for a file with a ".tf" extension inside and returns true it founds at least one.
+// We identify a Terraform module by having at least one file with a ".tf" extension inside the module directory.
 func checkIfTerraformModule(path string) (isModule bool, err error) {
 	dirname := path + string(filepath.Separator)
 	d, err := os.Open(dirname)
@@ -356,6 +368,12 @@ func (tpc *TerraformPublishCommand) setRepoFromConfiguration() error {
 	if err != nil {
 		return err
 	}
-	tpc.SetRepo(deployerParams.TargetRepo())
+	tpc.setRepoConfig(deployerParams)
 	return nil
+}
+
+// Each thread will save the summary of all its operations, in an array at its corresponding index.
+func getNewUploadSummaryMultiArray() *[][]*servicesUtils.OperationSummary {
+	uploadSummary := make([][]*servicesUtils.OperationSummary, threads)
+	return &uploadSummary
 }

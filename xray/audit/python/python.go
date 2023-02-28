@@ -2,19 +2,18 @@ package python
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
-
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 const (
@@ -93,8 +92,12 @@ func getDependencies(pythonTool pythonutils.PythonTool, requirementsFile string)
 	}
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(pythonTool, tempDirPath, localDependenciesPath)
 	if err != nil {
-		audit.LogExecutableVersion("python")
-		audit.LogExecutableVersion(string(pythonTool))
+		if _, innerErr := audit.GetExecutableVersion("python"); innerErr != nil {
+			log.Error(innerErr)
+		}
+		if _, innerErr := audit.GetExecutableVersion(string(pythonTool)); innerErr != nil {
+			log.Error(innerErr)
+		}
 	}
 	return
 }
@@ -111,11 +114,11 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 		}
 		err = runPipInstall(requirementsFile)
 		if err != nil && requirementsFile == "" {
-			clientLog.Debug(err.Error() + "\ntrying to install using a requirements file.")
+			log.Debug(err.Error() + "\ntrying to install using a requirements file.")
 			reqErr := runPipInstall("requirements.txt")
 			if reqErr != nil {
 				// Return Pip install error and log the requirements fallback error.
-				clientLog.Debug(reqErr.Error())
+				log.Debug(reqErr.Error())
 			} else {
 				err = nil
 			}
@@ -141,10 +144,12 @@ func runPythonInstall(pythonTool pythonutils.PythonTool, requirementsFile string
 
 func executeCommand(executable string, args ...string) error {
 	installCmd := exec.Command(executable, args...)
-	clientLog.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
+	log.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
 	output, err := installCmd.CombinedOutput()
 	if err != nil {
-		audit.LogExecutableVersion(executable)
+		if _, innerErr := audit.GetExecutableVersion(executable); innerErr != nil {
+			log.Error(innerErr)
+		}
 		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
 	}
 	return nil

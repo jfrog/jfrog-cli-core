@@ -29,7 +29,7 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode
 	// Calculate npm dependencies
 	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
 	if err != nil {
-		log.Info("Used npm version:", npmVersion)
+		log.Info("Used npm version:", npmVersion.GetVersion())
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format

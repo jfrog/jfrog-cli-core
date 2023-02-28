@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -272,7 +273,12 @@ func createErrorsCsvSummary(sourceRepos []string, timeStarted time.Time) (string
 	if len(errorsFiles) == 0 {
 		return "", nil
 	}
-	return createErrorsSummaryCsvFile(errorsFiles, timeStarted)
+	// Collect all errors from the given log files
+	allErrors, err := parseErrorsFromLogFiles(errorsFiles)
+	if err != nil {
+		return "", err
+	}
+	return cmdutils.CreateCSVFile("transfer-files-logs", allErrors.Errors, timeStarted)
 }
 
 // Gets a list of all errors files from the CLI's cache.

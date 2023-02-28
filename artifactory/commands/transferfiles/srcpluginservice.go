@@ -3,19 +3,17 @@ package transferfiles
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"net/http"
-
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"net/http"
 )
 
 const (
-	pluginsExecuteRestApi = "api/plugins/execute/"
-	syncChunks            = "syncChunks"
-	uploadChunk           = "uploadChunk"
+	syncChunks  = "syncChunks"
+	uploadChunk = "uploadChunk"
 )
 
 type VerifyCompatibilityResponse struct {
@@ -52,7 +50,7 @@ func (sup *srcUserPluginService) syncChunks(ucStatus api.UploadChunksStatusBody)
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+syncChunks, content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
 		return api.UploadChunksStatusResponse{}, err
 	}
@@ -79,7 +77,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk api.UploadChunk) (uploadChunk
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+uploadChunk, content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+uploadChunk, content, &httpDetails)
 	if err != nil {
 		return api.UploadChunkResponse{}, err
 	}
@@ -103,7 +101,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk api.UploadChunk) (uploadChunk
 }
 
 func (sup *srcUserPluginService) version() (string, error) {
-	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + pluginsExecuteRestApi + "dataTransferVersion"
+	dataTransferVersionUrl := sup.GetArtifactoryDetails().GetUrl() + commandsUtils.PluginsExecuteRestApi + "dataTransferVersion"
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	return commandsUtils.GetTransferPluginVersion(sup.client, dataTransferVersionUrl, "data-transfer", commandsUtils.Source, &httpDetails)
 }
@@ -111,7 +109,7 @@ func (sup *srcUserPluginService) version() (string, error) {
 func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +135,7 @@ func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth api.Target
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"verifySourceTargetConnectivity", content, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+"verifySourceTargetConnectivity", content, &httpDetails)
 	if err != nil {
 		return err
 	}
@@ -147,7 +145,7 @@ func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth api.Target
 
 func (sup *srcUserPluginService) stop() (nodeId string, err error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+pluginsExecuteRestApi+"stop", []byte{}, &httpDetails)
+	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+"stop", []byte{}, &httpDetails)
 	if err != nil {
 		return "", err
 	}

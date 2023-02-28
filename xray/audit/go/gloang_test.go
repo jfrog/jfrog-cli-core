@@ -1,6 +1,7 @@
 package _go
 
 import (
+	"github.com/jfrog/build-info-go/utils"
 	"strings"
 	"testing"
 
@@ -29,7 +30,12 @@ func TestBuildGoDependencyList(t *testing.T) {
 
 	// Check root module
 	assert.Equal(t, rootNode[0].Id, goPackageTypeIdentifier+"testGoList")
-	assert.Len(t, rootNode[0].Nodes, 2)
+	assert.Len(t, rootNode[0].Nodes, 3)
+
+	// Test go version node
+	goVersion, err := utils.GetParsedGoVersion()
+	assert.NoError(t, err)
+	audit.GetAndAssertNode(t, rootNode[0].Nodes, strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1))
 
 	// Test child without sub nodes
 	child1 := audit.GetAndAssertNode(t, rootNode[0].Nodes, "golang.org/x/text:v0.3.3")

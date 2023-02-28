@@ -291,6 +291,11 @@ func PrintBold(str string) string {
 	return colorStr(str, color.Bold)
 }
 
+// Print the test to the console with bold style.
+func PrintBoldTitle(str string) string {
+	return PrintBold(PrintTitle(str))
+}
+
 // Print the test to the console in gray color.
 func PrintComment(str string) string {
 	return colorStr(str, color.Gray)

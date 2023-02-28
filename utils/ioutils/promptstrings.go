@@ -12,13 +12,22 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-const (
-	// Example:
-	// JFrog Artifactory URL (http://localhost:8080/artifactory/)
-	promptItemTemplate = " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
-	// Npm-remote ()
-	selectableItemTemplate = " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
-)
+// Returns a template for prompt item line
+func promptItemTemplate() string {
+	// Example: JFrog Artifactory URL (http://localhost:8080/artifactory/)
+	if log.IsColorsSupported() {
+		return " {{ .Option | cyan }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+	}
+	return " {{ .Option }}{{if .TargetValue}}({{ .TargetValue }}){{end}}"
+}
+
+// Returns a template for selection item line
+func selectableItemTemplate() string {
+	if log.IsColorsSupported() {
+		return " {{ .Option | cyan }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
+	}
+	return " {{ .Option }}{{if .DefaultValue}} <{{ .DefaultValue }}>{{end}}"
+}
 
 type PromptItem struct {
 	// The option string to show, i.e - JFrog Artifactory URL.
@@ -39,7 +48,7 @@ type PromptItem struct {
 // JFrog Pipelines URL ()
 func PromptStrings(items []PromptItem, label string, onSelect func(PromptItem)) error {
 	items = append([]PromptItem{{Option: "Save and continue"}}, items...)
-	prompt := createSelectableList(len(items), label, promptItemTemplate)
+	prompt := createSelectableList(len(items), label, promptItemTemplate())
 	for {
 		prompt.Items = items
 		i, _, err := prompt.Run()
@@ -73,7 +82,7 @@ func createSelectableList(numOfItems int, label, itemTemplate string) (prompt *p
 }
 
 func SelectString(items []PromptItem, label string, needSearch bool, onSelect func(PromptItem)) error {
-	selectableList := createSelectableList(len(items), label, selectableItemTemplate)
+	selectableList := createSelectableList(len(items), label, selectableItemTemplate())
 	selectableList.Items = items
 	if needSearch {
 		selectableList.StartInSearchMode = true
@@ -93,7 +102,7 @@ func SelectString(items []PromptItem, label string, needSearch bool, onSelect fu
 }
 
 // On macOS the terminal's bell is ringing when trying to select items using the up and down arrows.
-//  By using bellSkipper the issue is resolved.
+// By using bellSkipper the issue is resolved.
 type bellSkipper struct{ io.WriteCloser }
 
 var charBell = []byte{readline.CharBell}

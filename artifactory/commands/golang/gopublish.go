@@ -1,9 +1,8 @@
 package golang
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os/exec"
-
-	"github.com/jfrog/gofrog/version"
 
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -73,10 +72,9 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
-	rtVersion := version.NewVersion(artifactoryVersion)
-	if !rtVersion.AtLeast(minSupportedArtifactoryVersion) {
-		return errorutils.CheckErrorf("This operation requires Artifactory version 6.2.0 or higher. ")
+	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
+	if err != nil {
+		return err
 	}
 	var goBuild *build.Build
 	var buildName, buildNumber, project string

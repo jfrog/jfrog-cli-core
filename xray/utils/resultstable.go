@@ -310,21 +310,21 @@ var packageTypes = map[string]string{
 // In case componentId's format is invalid, it will be returned as the component name
 // and empty strings will be returned instead of the version and the package type.
 // Examples:
-// 1. componentId: "gav://antparent:ant:1.6.5"
-//    Returned values:
-//      Component name: "antparent:ant"
-//      Component version: "1.6.5"
-//      Package type: "Maven"
-// 2. componentId: "generic://sha256:244fd47e07d1004f0aed9c156aa09083c82bf8944eceb67c946ff7430510a77b/foo.jar"
-//    Returned values:
-//      Component name: "foo.jar"
-//      Component version: ""
-//      Package type: "Generic"
-// 3. componentId: "invalid-comp-id"
-//    Returned values:
-//      Component name: "invalid-comp-id"
-//      Component version: ""
-//      Package type: ""
+//  1. componentId: "gav://antparent:ant:1.6.5"
+//     Returned values:
+//     Component name: "antparent:ant"
+//     Component version: "1.6.5"
+//     Package type: "Maven"
+//  2. componentId: "generic://sha256:244fd47e07d1004f0aed9c156aa09083c82bf8944eceb67c946ff7430510a77b/foo.jar"
+//     Returned values:
+//     Component name: "foo.jar"
+//     Component version: ""
+//     Package type: "Generic"
+//  3. componentId: "invalid-comp-id"
+//     Returned values:
+//     Component name: "invalid-comp-id"
+//     Component version: ""
+//     Package type: ""
 func splitComponentId(componentId string) (string, string, string) {
 	compIdParts := strings.Split(componentId, "://")
 	// Invalid component ID
@@ -417,10 +417,7 @@ type severity struct {
 }
 
 func (s *severity) printableTitle(isTable bool) string {
-	if isTable && log.IsStdOutTerminal() && log.IsColorsSupported() {
-		return s.style.Render(s.emoji + s.title)
-	}
-	if os.Getenv("GITLAB_CI") != "" {
+	if (isTable && log.IsStdOutTerminal() && log.IsColorsSupported()) || os.Getenv("GITLAB_CI") != "" {
 		return s.style.Render(s.emoji + s.title)
 	}
 	return s.title

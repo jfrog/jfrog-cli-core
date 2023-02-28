@@ -101,7 +101,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 		log.Output(title)
 	}
 
-	if log.IsStdOutTerminal() {
+	if log.IsStdOutTerminal() || os.Getenv("GITLAB_CI") == "" {
 		tableWriter.SetStyle(table.StyleLight)
 	}
 	tableWriter.Style().Options.SeparateRows = true

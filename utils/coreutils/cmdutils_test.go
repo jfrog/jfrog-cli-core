@@ -6,7 +6,7 @@ import (
 )
 
 func TestFindAndRemoveFlagFromCommand(t *testing.T) {
-	args := [][]string{
+	argsTable := [][]string{
 		{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"},
 		{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"},
 		{"-X", "GET", "api/build/test3", "--server-id", "test3", "--foo", "bar"},
@@ -26,17 +26,18 @@ func TestFindAndRemoveFlagFromCommand(t *testing.T) {
 		{"--build-number", "3", []string{"-X", "GET", "api/build/test3", "--foo", "bar"}},
 	}
 
-	for index, test := range args {
-		flagIndex, valueIndex, keyValue, err := FindFlag(expected[index].key, test)
+	for index := range argsTable {
+		curTestArgs := argsTable[index]
+		flagIndex, valueIndex, keyValue, err := FindFlag(expected[index].key, curTestArgs)
 		if err != nil {
 			t.Error(err)
 		}
 		if keyValue != expected[index].value {
 			t.Errorf("Expected %s value: %s, got: %s.", expected[index].key, expected[index].value, keyValue)
 		}
-		RemoveFlagFromCommand(&test, flagIndex, valueIndex)
-		if !reflect.DeepEqual(test, expected[index].command) {
-			t.Errorf("Expected command arguments: %v, got: %v.", expected[index].command, test)
+		RemoveFlagFromCommand(&curTestArgs, flagIndex, valueIndex)
+		if !reflect.DeepEqual(curTestArgs, expected[index].command) {
+			t.Errorf("Expected command arguments: %v, got: %v.", expected[index].command, curTestArgs)
 		}
 	}
 }

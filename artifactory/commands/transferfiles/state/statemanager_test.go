@@ -104,11 +104,11 @@ func TestReposTransferredSizeBytes(t *testing.T) {
 
 	// Inc repos transferred sizes.
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(1, 10))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(5, 11))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(5, 11))
 	assertCurrentRepoTransferredFiles(t, stateManager, 6)
 	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, false, true))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(3, 200))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(3, 200))
 	assertCurrentRepoTransferredFiles(t, stateManager, 3)
 
 	// Get repos transferred sizes, one at a time.
@@ -134,10 +134,10 @@ func TestReposOverallBiFiles(t *testing.T) {
 
 	// Inc repos transferred sizes and files.
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(2, 9))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 9))
 	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, true, true))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(1, 10))
-	assert.NoError(t, stateManager.IncTransferredSizeAndFiles(5, 11))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(1, 10))
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(5, 11))
 
 	// Assert the number of transferred bi files in the state.
 	assert.Equal(t, repo2Key, stateManager.CurrentRepo.Name)

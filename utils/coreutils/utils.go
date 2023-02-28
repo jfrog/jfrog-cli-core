@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -29,6 +28,7 @@ const (
 	Xray         MinVersionProduct = "JFrog Xray"
 	DataTransfer MinVersionProduct = "Data Transfer"
 	DockerApi    MinVersionProduct = "Docker API"
+	Projects     MinVersionProduct = "JFrog Projects"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):

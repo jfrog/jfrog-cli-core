@@ -1,13 +1,14 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -33,7 +34,6 @@ func TestGetBuildName(t *testing.T) {
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 
-	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
 	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
@@ -67,6 +67,37 @@ func TestGetBuildName(t *testing.T) {
 	actualBuildName, err = buildConfig.GetBuildName()
 	assert.NoError(t, err)
 	assert.Equal(t, buildNameFile, actualBuildName)
+}
+
+func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
+	if coreutils.IsWindows() {
+		t.Skip("Skipping TestGetEmptyBuildNameOnUnixAccessDenied test on windows...")
+	}
+	// Create build config in temp folder.
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+
+	destConfFile := filepath.Join(tmpDir, ".jfrog", "projects")
+	srcConfFile := filepath.Join("testdata", "build.yaml")
+	assert.NoError(t, fileutils.CopyFile(destConfFile, srcConfFile))
+
+	// Remove permissions from config file.
+	assert.NoError(t, os.Chmod(destConfFile, 0000))
+	defer func() {
+		// Restore permissions for deleting the config file.
+		assert.NoError(t, os.Chmod(destConfFile, 0770))
+	}()
+
+	// Validate build name form config file doesn't throw an error if access is denied.
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallBack := testsutils.ChangeDirWithCallback(t, wd, tmpDir)
+	defer chdirCallBack()
+	buildConfig := NewBuildConfiguration("", "", "", "")
+	actualBuildName, err := buildConfig.GetBuildName()
+	assert.NoError(t, err)
+	assert.False(t, buildConfig.loadedFromConfigFile)
+	assert.Empty(t, actualBuildName)
 }
 
 func TestGetBuildNumber(t *testing.T) {

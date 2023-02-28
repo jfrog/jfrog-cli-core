@@ -3,16 +3,17 @@ package transferfiles
 import (
 	"context"
 	"errors"
-	"fmt"
+	"sync"
+	"time"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transfer"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
-	"time"
 )
 
 const (
@@ -149,9 +150,9 @@ func newPollingTasksManager(totalGoRoutines int) PollingTasksManager {
 	return PollingTasksManager{doneChannel: make(chan bool, totalGoRoutines), totalGoRoutines: totalGoRoutines}
 }
 
-// Runs 2 go routines :
-// 1. Check number of threads
-// 2. Poll uploaded chunks
+// Runs 2 go routines:
+// 1. Periodically update the worker threads count & check whether the process should be stopped.
+// 2. Poll for uploaded chunks.
 func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.WaitGroup, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) error {
 	// Update threads by polling on the settings file.
 	runWaitGroup.Add(1)
@@ -161,7 +162,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		periodicallyUpdateThreads(pcWrapper, ptm.doneChannel, phaseBase.buildInfoRepo)
+		periodicallyUpdateThreadsAndStopStatus(pcWrapper, ptm.doneChannel, phaseBase.buildInfoRepo, phaseBase.stopSignal)
 	}()
 
 	// Check status of uploaded chunks.
@@ -179,7 +180,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 
 func (ptm *PollingTasksManager) addGoRoutine() error {
 	if ptm.totalGoRoutines < ptm.totalRunningGoRoutines+1 {
-		return fmt.Errorf("can't create another polling go routine. maximum number of go routines is: %d", ptm.totalGoRoutines)
+		return errorutils.CheckErrorf("can't create another polling go routine. maximum number of go routines is: %d", ptm.totalGoRoutines)
 	}
 	ptm.totalRunningGoRoutines++
 	return nil
@@ -254,10 +255,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		nodeToChunksMap:  make(map[nodeId]map[api.ChunkId]UploadedChunkData),
 	}
 	curProcessedUploadChunks = 0
-	var progressBar *TransferProgressMng
 	var timeEstMng *state.TimeEstimationManager
 	if phaseBase != nil {
-		progressBar = phaseBase.progressBar
 		timeEstMng = &phaseBase.stateManager.TimeEstimationManager
 	}
 	for {
@@ -269,9 +268,6 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
 		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
 			log.Error("Couldn't set the current number of working threads:", err.Error())
-		}
-		if progressBar != nil {
-			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
 		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
@@ -294,7 +290,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = api.UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, &chunksStatus, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -356,7 +352,7 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 // handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
 // It syncs the chunk status between the CLI and the source Artifactory instance,
 // When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
-func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse, progressbar *TransferProgressMng,
+func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse,
 	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *state.TimeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
 	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
@@ -372,7 +368,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
 			chunkSentTime := chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)][api.ChunkId(chunk.UuidToken)].TimeSent
-			err := updateProgress(phase, progressbar, timeEstMng, chunk, chunkSentTime)
+			err := updateProgress(phase, timeEstMng, chunk, chunkSentTime)
 			if err != nil {
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
@@ -396,21 +392,17 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 	return false
 }
 
-func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *state.TimeEstimationManager,
+func updateProgress(phase *phaseBase, timeEstMng *state.TimeEstimationManager,
 	chunk api.ChunkStatus, chunkSentTime time.Time) error {
 	if phase == nil {
 		return nil
 	}
-	chunkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, &chunk)
+
+	err := state.UpdateChunkInState(phase.stateManager, &chunk)
 	if err != nil {
 		return err
 	}
-	if progressbar != nil {
-		progressbar.increaseTotalSize(int(chunkSizeInBytes))
-		if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunkSizeInBytes)); err != nil {
-			return err
-		}
-	}
+
 	if timeEstMng != nil {
 		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())
 	}

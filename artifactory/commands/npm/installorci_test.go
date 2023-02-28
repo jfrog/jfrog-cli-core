@@ -1,15 +1,14 @@
 package npm
 
 import (
+	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
-
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-
-	"github.com/stretchr/testify/assert"
 )
 
+// #nosec G101 -- Dummy token for tests.
 const authToken = "YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"
 
 func TestPrepareConfigData(t *testing.T) {
@@ -56,5 +55,5 @@ func TestPrepareConfigData(t *testing.T) {
 
 	// Assert that NPM_CONFIG__AUTH environment variable was set
 	assert.Equal(t, authToken, os.Getenv(npmConfigAuthEnv))
-	testsutils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
+	testsUtils.UnSetEnvAndAssert(t, npmConfigAuthEnv)
 }

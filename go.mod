@@ -10,9 +10,9 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gookit/color v1.5.2
 	github.com/jedib0t/go-pretty/v6 v6.4.3
-	github.com/jfrog/build-info-go v1.8.5
+	github.com/jfrog/build-info-go v1.8.6
 	github.com/jfrog/gofrog v1.2.5
-	github.com/jfrog/jfrog-client-go v1.25.0
+	github.com/jfrog/jfrog-client-go v1.26.1
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -93,7 +93,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.24.6-0.20230102092554-c56fc329c8fc
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.26.1-0.20230126120919-2cca98d435ec
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.5-0.20230103131235-4993ad739dc6
 

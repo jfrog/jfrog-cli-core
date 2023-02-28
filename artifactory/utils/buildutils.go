@@ -7,6 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/jfrog/build-info-go/build"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,11 +20,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -342,12 +343,23 @@ func (bc *BuildConfiguration) GetBuildName() (string, error) {
 		return bc.buildName, nil
 	}
 	// Resolve from env var.
-	if envValue := os.Getenv(coreutils.BuildName); envValue != "" {
-		bc.buildName = envValue
+	if bc.buildName = os.Getenv(coreutils.BuildName); bc.buildName != "" {
 		return bc.buildName, nil
 	}
 	// Resolve from config file in '.jfrog' folder.
+	var err error
+	if bc.buildName, err = bc.getBuildNameFromConfigFile(); bc.buildName != "" {
+		bc.loadedFromConfigFile = true
+	}
+	return bc.buildName, err
+}
+
+func (bc *BuildConfiguration) getBuildNameFromConfigFile() (string, error) {
 	confFilePath, exist, err := GetProjectConfFilePath(Build)
+	if os.IsPermission(err) {
+		log.Info("The 'build-name' cannot be read from JFrog config due to permission denied.")
+		return "", nil
+	}
 	if err != nil || !exist {
 		return "", err
 	}
@@ -355,10 +367,7 @@ func (bc *BuildConfiguration) GetBuildName() (string, error) {
 	if err != nil || vConfig == nil {
 		return "", err
 	}
-	if bc.buildName = vConfig.GetString(ProjectConfigBuildNameKey); bc.buildName != "" {
-		bc.loadedFromConfigFile = true
-	}
-	return bc.buildName, nil
+	return vConfig.GetString(ProjectConfigBuildNameKey), nil
 }
 
 func (bc *BuildConfiguration) GetBuildNumber() (string, error) {

@@ -16,15 +16,16 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 const (
-	pluginName      = "data-transfer"
-	groovyFileName  = "dataTransfer.groovy"
-	jarFileName     = "data-transfer.jar"
-	dataTransferUrl = "https://releases.jfrog.io/artifactory/jfrog-releases/data-transfer"
-	libDir          = "lib"
-
+	pluginName          = "data-transfer"
+	groovyFileName      = "dataTransfer.groovy"
+	jarFileName         = "data-transfer.jar"
+	dataTransferUrl     = "https://releases.jfrog.io/artifactory/jfrog-releases/data-transfer"
+	libDir              = "lib"
+	artifactory         = "artifactory"
 	pluginReloadRestApi = "api/plugins/reload"
 	jfrogHomeEnvVar     = "JFROG_HOME"
 	latest              = "[RELEASE]"
@@ -33,8 +34,8 @@ const (
 var (
 	defaultSearchPath = filepath.Join("opt", "jfrog")
 	// Plugin directory locations
-	originalDirPath = FileItem{"artifactory", "etc", "plugins"}
-	v7DirPath       = FileItem{"artifactory", "var", "etc", "artifactory", "plugins"}
+	originalDirPath = FileItem{"etc", "plugins"}
+	v7DirPath       = FileItem{"var", "etc", "artifactory", "plugins"}
 	// Error types
 	notValidDestinationErr = errors.Errorf("Can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
 	downloadConnectionErr  = func(baseUrl, fileName, err string) error {
@@ -136,13 +137,23 @@ func (ftm *PluginInstallManager) findDestination(rootDir string) (exists bool, d
 		return
 	}
 	exists = false
-	for _, optionalPluginDirDst := range ftm.destinations {
-		if exists, err = fileutils.IsDirExists(optionalPluginDirDst.toPath(rootDir), false); err != nil {
-			return
-		}
-		if exists {
-			destination = append([]string{rootDir}, optionalPluginDirDst...)
-			return
+	// Search for the product Artifactory folder
+	folderItems, err := fileutils.ListFiles(rootDir, true)
+	if err != nil {
+		return
+	}
+	for _, folder := range folderItems {
+		if strings.Contains(folder, artifactory) {
+			// Search for the destination inside the folder
+			for _, optionalPluginDirDst := range ftm.destinations {
+				if exists, err = fileutils.IsDirExists(optionalPluginDirDst.toPath(folder), false); err != nil {
+					return
+				}
+				if exists {
+					destination = append([]string{folder}, optionalPluginDirDst...)
+					return
+				}
+			}
 		}
 	}
 	return
@@ -326,7 +337,7 @@ func (idtp *InstallDataTransferPluginCommand) sendReloadRequest() error {
 }
 
 func (idtp *InstallDataTransferPluginCommand) Run() (err error) {
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("Installing '%s' plugin...", pluginName))))
+	log.Info(coreutils.PrintBoldTitle(fmt.Sprintf("Installing '%s' plugin...", pluginName)))
 
 	// Get source, destination and transfer action
 	dst, err := idtp.getPluginDirDestination()
@@ -346,6 +357,6 @@ func (idtp *InstallDataTransferPluginCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintTitle(coreutils.PrintBold(fmt.Sprintf("The %s plugin installed successfully.", pluginName))))
+	log.Info(coreutils.PrintBoldTitle(fmt.Sprintf("The %s plugin installed successfully.", pluginName)))
 	return
 }

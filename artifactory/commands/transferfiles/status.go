@@ -2,13 +2,16 @@ package transferfiles
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"strconv"
-	"strings"
 )
 
 const sizeUnits = "KMGTPE"
@@ -24,6 +27,16 @@ func ShowStatus() error {
 		log.Output(output.String())
 		return nil
 	}
+	isStopping, err := isStopping()
+	if err != nil {
+		return err
+	}
+	if isStopping {
+		addString(&output, "🟡", "Status", "Stopping", 0, coreutils.IsWindows())
+		log.Output(output.String())
+		return nil
+	}
+
 	stateManager, err := state.NewTransferStateManager(true)
 	if err != nil {
 		return err
@@ -43,6 +56,15 @@ func ShowStatus() error {
 	}
 	log.Output(output.String())
 	return nil
+}
+
+func isStopping() (bool, error) {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return false, err
+	}
+
+	return fileutils.IsFileExists(filepath.Join(transferDir, StopFileName), false)
 }
 
 func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
@@ -89,7 +111,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 }
 
 func addTitle(output *strings.Builder, title string) {
-	output.WriteString(coreutils.PrintTitle(coreutils.PrintBold(title + "\n")))
+	output.WriteString(coreutils.PrintBoldTitle(title + "\n"))
 }
 
 func addString(output *strings.Builder, emoji, key, value string, tabsCount int, windows bool) {

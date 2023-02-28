@@ -2,6 +2,8 @@ package _go
 
 import (
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"os"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,10 +16,15 @@ const (
 	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
-func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*services.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
+	}
+	if remoteGoRepo != "" {
+		if err = setGoProxy(server, remoteGoRepo); err != nil {
+			return
+		}
 	}
 	// Calculate go dependencies graph
 	dependenciesGraph, err := goutils.GetDependenciesGraph(currentDir)
@@ -49,6 +56,15 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 
 	dependencyTree = []*services.GraphNode{rootNode}
 	return
+}
+
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
+	if err != nil {
+		return err
+	}
+	repoUrl += "|direct"
+	return os.Setenv("GOPROXY", repoUrl)
 }
 
 func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {

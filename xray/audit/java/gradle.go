@@ -12,11 +12,11 @@ import (
 
 const gradlew = "gradlew"
 
-func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool) (dependencyTree []*services.GraphNode, err error) {
+func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 
-	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile)
+	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile, gradleConfigParams)
 	if err != nil {
 		return
 	}
@@ -25,7 +25,7 @@ func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile boo
 	return
 }
 
-func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile bool) (err error) {
+func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (err error) {
 	tasks := "clean compileJava "
 	if !excludeTestDeps {
 		tasks += "compileTestJava "
@@ -49,13 +49,17 @@ func runGradle(buildConfiguration *utils.BuildConfiguration, excludeTestDeps, us
 		if err != nil {
 			return
 		}
+		if gradleConfigParams == nil {
+			gradleConfigParams = make(map[string]any)
+		}
+		gradleConfigParams["usewrapper"] = useWrapper
 	}
 	// Read config
-	vConfig, err := utils.ReadGradleConfig(configFilePath, useWrapper)
+	vConfig, err := utils.ReadGradleConfig(configFilePath, gradleConfigParams)
 	if err != nil {
 		return err
 	}
-	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, useWrapper, true)
+	return gradleutils.RunGradle(vConfig, tasks, "", buildConfiguration, 0, true)
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.

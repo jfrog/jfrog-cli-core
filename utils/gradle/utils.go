@@ -17,7 +17,7 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) error {
+func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {
@@ -35,20 +35,27 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	props, wrapper, plugin, err := createGradleRunConfig(vConfig, deployableArtifactsFile, configuration, threads, useWrapperIfMissingConfig, disableDeploy)
+	props, wrapper, plugin, err := createGradleRunConfig(vConfig, deployableArtifactsFile, threads, disableDeploy)
 	if err != nil {
 		return err
 	}
-	dependenciesPath, err := config.GetJfrogDependenciesPath()
+	dependencyLocalPath, err := GetGradleDependencyLocalPath()
 	if err != nil {
 		return err
 	}
-	dependencyLocalPath := filepath.Join(dependenciesPath, "gradle", build.GradleExtractorDependencyVersion)
 	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractorIfNeeded, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 
-func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, buildConf *utils.BuildConfiguration, threads int, useWrapperIfMissingConfig, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
+func GetGradleDependencyLocalPath() (string, error) {
+	dependenciesPath, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dependenciesPath, "gradle", build.GradleExtractorDependencyVersion), nil
+}
+
+func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, threads int, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
 	wrapper = vConfig.GetBool(useWrapper)
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)

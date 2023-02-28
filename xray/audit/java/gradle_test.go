@@ -17,7 +17,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := BuildGradleDependencyTree(false, true, true)
+	modulesDependencyTrees, err := BuildGradleDependencyTree(false, true, true, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
@@ -40,7 +40,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := BuildGradleDependencyTree(false, false, false)
+	modulesDependencyTrees, err := BuildGradleDependencyTree(false, false, false, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 3)
 
@@ -64,7 +64,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := BuildGradleDependencyTree(true, true, true)
+	modulesDependencyTrees, err := BuildGradleDependencyTree(true, true, true, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module

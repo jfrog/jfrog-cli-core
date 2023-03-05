@@ -246,7 +246,7 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 	getVals := func() (transferredStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
 		err = tpm.stateMng.Action(func(state *state.TransferState) error {
-			transferredStorage = &tpm.stateMng.OverallTransfer.TransferredSizeBytes
+			transferredStorage = &tpm.stateMng.TransferRunStatus.OverallTransfer.TransferredSizeBytes
 			totalStorage = &tpm.stateMng.OverallTransfer.TotalSizeBytes
 			transferredFiles = &tpm.stateMng.OverallTransfer.TransferredUnits
 			totalFiles = &tpm.stateMng.OverallTransfer.TotalUnits

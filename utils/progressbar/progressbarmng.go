@@ -68,6 +68,7 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
+// Initializing a new Tasks with headline progress bar
 // Initialize a progress bar that can show the status of two different values, and a headline above it
 func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, val2HeadLine string, getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error)) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)

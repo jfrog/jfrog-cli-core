@@ -125,7 +125,6 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 			time.Sleep(1 * time.Second)
 		}
 	}()
-
 	return pb
 }
 
@@ -164,7 +163,6 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 			time.Sleep(1 * time.Second)
 		}
 	}()
-
 	return pb
 }
 
@@ -203,7 +201,6 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 			time.Sleep(1 * time.Second)
 		}
 	}()
-
 	return pb
 }
 
@@ -238,7 +235,6 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 			time.Sleep(time.Second)
 		}
 	}()
-
 	return pb
 }
 
@@ -251,7 +247,6 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 			totalFiles = &tpm.stateMng.OverallTransfer.TotalUnits
 			return nil
 		})
-
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
 	}
 
@@ -273,7 +268,6 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 			time.Sleep(time.Second)
 		}
 	}()
-
 	return pb
 }
 

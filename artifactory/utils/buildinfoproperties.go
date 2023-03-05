@@ -173,19 +173,19 @@ func ReadMavenConfig(path string, useWrapperIfMissingConfig bool) (config *viper
 	return
 }
 
-func createDefaultMavenConfig(useWrapperIfMissingConfig bool) *viper.Viper {
+func createDefaultMavenConfig(useWrapper bool) *viper.Viper {
 	vConfig := viper.New()
 	vConfig.SetConfigType(string(YAML))
 	vConfig.Set("type", Maven.String())
-	vConfig.Set("usewrapper", useWrapperIfMissingConfig)
+	vConfig.Set("useWrapper", useWrapper)
 	return vConfig
 }
 
-func createDefaultGradleConfig(useWrapperIfMissingConfig bool) *viper.Viper {
+func createDefaultGradleConfig(useWrapper bool) *viper.Viper {
 	vConfig := viper.New()
 	vConfig.SetConfigType(string(YAML))
 	vConfig.Set("type", Gradle.String())
-	vConfig.Set("usewrapper", useWrapperIfMissingConfig)
+	vConfig.Set("useWrapper", useWrapper)
 	return vConfig
 }
 

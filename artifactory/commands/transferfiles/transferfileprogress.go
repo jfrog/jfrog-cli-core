@@ -236,9 +236,9 @@ func (t *TransferProgressMng) StopGracefully() {
 	t.shouldDisplay = false
 	// Wait a refresh rate to make sure all 'increase' operations have finished before aborting all bars
 	time.Sleep(progressbar.ProgressRefreshRate)
+	t.transferMng.StopGlobalProgressBars()
 	t.abortMetricsBars()
 	t.RemoveRepository()
-	t.transferMng.StopGlobalProgressBars()
 	t.transferMng.WaitForReposGoRoutineToFinish()
 	t.barsMng.QuitTasksWithHeadlineProgressBar(t.totalRepositories)
 	t.totalRepositories = nil

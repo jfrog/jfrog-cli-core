@@ -114,17 +114,17 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) newHeadlineTaskProg(getVal func() (numerator, denominator *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, denominator *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
-	prog.tasksProgressBar = bm.newTasksProgBar(getVal, valHeadLine)
+	prog.tasksProgressBar = bm.newTasksProgressBar(getVal, valHeadLine)
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	if spinner {
@@ -142,7 +142,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	return &prog
 }
 
-func (bm *ProgressBarMng) QuitTasksWithHeadlineProg(prog *TasksWithHeadlineProg) {
+func (bm *ProgressBarMng) QuitTasksWithHeadlineProgressBar(prog *TasksWithHeadlineProg) {
 	prog.headlineBar.Abort(true)
 	prog.headlineBar = nil
 	prog.tasksProgressBar.bar.Abort(true)
@@ -232,7 +232,7 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 	return pb
 }
 
-func (bm *ProgressBarMng) newTasksProgBar(getVal func() (numerator, denominator *int64, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64, err error), headLine string) *TasksProgressBar {
 	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
 	filter := filterColor(GREEN, coreutils.IsWindows())

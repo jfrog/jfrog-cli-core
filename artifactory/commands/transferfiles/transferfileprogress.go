@@ -93,6 +93,7 @@ func (t *TransferProgressMng) NewRepository(name string) {
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
 	t.transferMng.StopCurrentRepoProgressBars(true)
+	t.transferMng.WaitForRepositoryProgressBarForFinalUpdate()
 	t.transferMng.StopGlobalProgressBars()
 	if t.ShouldDisplay() {
 		t.abortMetricsBars()
@@ -100,7 +101,7 @@ func (t *TransferProgressMng) Quit() error {
 			t.RemoveRepository()
 		}
 		if t.totalRepositories != nil {
-			t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
+			t.barsMng.QuitTasksWithHeadlineProgressBar(t.totalRepositories)
 		}
 		// Wait a few refresh rates to make sure all aborts have finished.
 		time.Sleep(progressbar.ProgressRefreshRate * 3)
@@ -184,7 +185,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 
 func (t *TransferProgressMng) AddPhase1(skip bool) {
 	if skip {
-		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProg(0, phase1HeadLine, false, progressbar.GREEN, t.windows, ""))
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProgressBar(0, phase1HeadLine, false, progressbar.GREEN, t.windows, ""))
 	} else {
 		bar2 := t.transferMng.NewPhase1ProgressBar()
 		t.phases = append(t.phases, bar2)
@@ -240,7 +241,7 @@ func (t *TransferProgressMng) StopGracefully() {
 	t.RemoveRepository()
 	t.transferMng.StopGlobalProgressBars()
 	t.transferMng.WaitForReposGoRoutineToFinish()
-	t.barsMng.QuitTasksWithHeadlineProg(t.totalRepositories)
+	t.barsMng.QuitTasksWithHeadlineProgressBar(t.totalRepositories)
 	t.totalRepositories = nil
 	t.stopLine = t.barsMng.NewHeadlineBarWithSpinner(coreutils.RemoveEmojisIfNonSupportedTerminal("🛑 Gracefully stopping files transfer"))
 }

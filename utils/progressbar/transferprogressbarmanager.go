@@ -214,7 +214,6 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 
 		return transferredRepos, totalRepos, nil
 	}
-
 	pb := tpm.barMng.newHeadlineTaskProgressBar(getVals, "Transferring your repositories", tpm.transferLabels.Repositories)
 
 	tpm.reposWg.Add(1)

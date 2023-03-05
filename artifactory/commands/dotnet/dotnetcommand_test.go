@@ -98,8 +98,11 @@ func TestInitNewConfig(t *testing.T) {
 	server.AccessToken = "abc123"
 	configFile, err = InitNewConfig(tmpDir, repoName, server, true)
 	assert.NoError(t, err)
-	f, err = os.Open(configFile.Name())
+	updatedConfigFile, err := os.Open(configFile.Name())
 	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, updatedConfigFile.Close())
+	}()
 	buf = make([]byte, 1024)
 	n, err = f.Read(buf)
 	assert.NoError(t, err)

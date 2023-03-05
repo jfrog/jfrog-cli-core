@@ -211,7 +211,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		yc.buildInfoModule.SetName(yc.buildConfiguration.GetModule())
 	}
 
-	yc.registry, yc.npmAuthIdent, err = GetYarnAuthDetails(yc.serverDetails, yc.registry)
+	yc.registry, yc.npmAuthIdent, err = GetYarnAuthDetails(yc.serverDetails, yc.repo)
 	return err
 }
 

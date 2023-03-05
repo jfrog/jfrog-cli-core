@@ -236,8 +236,7 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
 	filter := filterColor(GREEN, coreutils.IsWindows())
-	// todo : change names
-	name1, name2, err := getVal()
+	numerator, denominator, err := getVal()
 	if err != nil {
 		log.Error(err)
 	}
@@ -247,9 +246,9 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 		mpb.AppendDecorators(
 			decor.Name(" "+headLine+": "),
 			decor.Any(func(statistics decor.Statistics) string {
-				s1 := strconv.Itoa(int(*name1))
-				s2 := strconv.Itoa(int(*name2))
-				return color.Green.Render(s1 + "/" + s2)
+				numeratorString := strconv.Itoa(int(*numerator))
+				denominatorString := strconv.Itoa(int(*denominator))
+				return color.Green.Render(numeratorString + "/" + denominatorString)
 			}),
 		),
 	)

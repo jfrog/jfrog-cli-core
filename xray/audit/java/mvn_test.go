@@ -23,7 +23,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 			assert.Empty(t, multi.Nodes)
 			// Check multi1 with a transitive dependency
 			multi1 := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
-			assert.Len(t, multi1.Nodes, 7)
+			assert.Len(t, multi1.Nodes, 4)
 			commonsEmail := audit.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
 			assert.Len(t, commonsEmail.Nodes, 2)
 
@@ -38,7 +38,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 
 func TestMavenWrapperTrees(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := audit.CreateTestWorkspace(t, "maven-with-wrapper-example")
+	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example-with-wrapper")
 	err := os.Chmod("mvnw", 0700)
 	defer cleanUp()
 	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true, true)
@@ -49,10 +49,9 @@ func TestMavenWrapperTrees(t *testing.T) {
 			assert.Empty(t, multi.Nodes)
 			// Check multi1 with a transitive dependency
 			multi1 := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
-			assert.Len(t, multi1.Nodes, 4)
+			assert.Len(t, multi1.Nodes, 7)
 			commonsEmail := audit.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
 			assert.Len(t, commonsEmail.Nodes, 2)
-
 			// Check multi2 and multi3
 			multi2 := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi2:3.7-SNAPSHOT")
 			assert.Len(t, multi2.Nodes, 1)

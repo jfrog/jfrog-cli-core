@@ -52,8 +52,8 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 
-func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, useWrapper, disableDeploy bool) (map[string]string, bool, error) {
-	isWrapper := vConfig.GetBool("useWrapper")
+func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, isWrapper, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {
+	useWrapper = vConfig.GetBool("useWrapper")
 	vConfig.Set(utils.InsecureTls, insecureTls)
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)
@@ -68,8 +68,7 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, b
 	}
 	buildInfoProps, err := utils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, utils.Maven)
 
-	return buildInfoProps, isWrapper, err
-
+	return buildInfoProps, useWrapper, err
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {

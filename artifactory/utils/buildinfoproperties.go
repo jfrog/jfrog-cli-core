@@ -155,18 +155,18 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	return config, errorutils.CheckError(err)
 }
 
-func ReadGradleConfig(path string, useWrapperIfMissingConfig bool) (config *viper.Viper, err error) {
+func ReadGradleConfig(path string, useWrapper bool) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultGradleConfig(useWrapperIfMissingConfig)
+		config = createDefaultGradleConfig(useWrapper)
 	} else {
 		config, err = ReadConfigFile(path, YAML)
 	}
 	return
 }
 
-func ReadMavenConfig(path string, useWrapperIfMissingConfig bool) (config *viper.Viper, err error) {
+func ReadMavenConfig(path string, useWrapper bool) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultMavenConfig(useWrapperIfMissingConfig)
+		config = createDefaultMavenConfig(useWrapper)
 	} else {
 		config, err = ReadConfigFile(path, YAML)
 	}

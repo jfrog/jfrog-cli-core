@@ -39,7 +39,7 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 		}
 	}
 	if useWrapper {
-		useWrapper, err = isMvnWrapperExist()
+		useWrapper, err = fileutils.IsFileExists(mvnw, false)
 		if err != nil {
 			return
 		}
@@ -50,11 +50,4 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 		return err
 	}
 	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, useWrapper, true)
-}
-
-// This function assumes that the Maven wrapper is in the root directory.
-// The --project-dir option of Maven won't work in this case.
-func isMvnWrapperExist() (bool, error) {
-	wrapperName := mvnw
-	return fileutils.IsFileExists(wrapperName, false)
 }

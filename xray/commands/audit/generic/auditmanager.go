@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"os"
 	"path/filepath"
 	"strings"
@@ -295,8 +296,12 @@ func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[s
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken
 	}
+	authUser := serverDetails.User
+	if authUser == "" {
+		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+	}
 	return map[string]any{
-		"resolver.username":     serverDetails.User,
+		"resolver.username":     authUser,
 		"resolver.password":     authPass,
 		"resolver.url":          serverDetails.ArtifactoryUrl,
 		"resolver.releaseRepo":  depsRepo,

@@ -44,7 +44,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}
-	dependencyLocalPath, err := GetMavenDependencyLocalPath()
+	dependencyLocalPath, err := getMavenDependencyLocalPath()
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 
-func GetMavenDependencyLocalPath() (string, error) {
+func getMavenDependencyLocalPath() (string, error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err

@@ -62,10 +62,10 @@ func TestGetFlagValueExists(t *testing.T) {
 
 func TestInitNewConfig(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
-	defer func() {
-		_ = fileutils.RemoveTempDir(tmpDir)
-	}()
 	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
 	repoName := "test-repo"
 	server := &config.ServerDetails{
 		ArtifactoryUrl: "https://server.com/artifactory",
@@ -76,6 +76,9 @@ func TestInitNewConfig(t *testing.T) {
 	assert.NoError(t, err)
 	f, err := os.Open(configFile.Name())
 	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, f.Close())
+	}()
 	buf := make([]byte, 1024)
 	n, err := f.Read(buf)
 	assert.NoError(t, err)
@@ -97,6 +100,9 @@ func TestInitNewConfig(t *testing.T) {
 	assert.NoError(t, err)
 	f, err = os.Open(configFile.Name())
 	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, f.Close())
+	}()
 	buf = make([]byte, 1024)
 	n, err = f.Read(buf)
 	assert.NoError(t, err)

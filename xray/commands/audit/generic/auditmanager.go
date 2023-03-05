@@ -207,7 +207,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
+		err = errorutils.CheckError(errors.New(errorList.String()))
 	}
 
 	return
@@ -269,7 +269,7 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	case coreutils.Nuget:
 		dependencyTrees, e = nuget.BuildDependencyTree()
 	default:
-		e = errors.New(string(tech) + " is currently not supported")
+		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
 
 	return dependencyTrees, e

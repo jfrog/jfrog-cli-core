@@ -9,7 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool, mvnProps map[string]any) (modules []*services.GraphNode, err error) {
+func buildMvnDependencyTree(insecureTls, ignoreConfigFile bool, mvnProps map[string]any) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 

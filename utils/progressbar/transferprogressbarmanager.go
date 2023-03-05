@@ -14,7 +14,7 @@ const (
 	phase2HeadLine = "Phase 2: Transferring newly created and modified files"
 )
 
-type TransferLabels struct {
+type transferLabels struct {
 	Repositories            string
 	Files                   string
 	Storage                 string
@@ -41,8 +41,8 @@ func formatString(emoji, key string, windows bool) string {
 	return (key)
 }
 
-func initSProgressBarLabels(windows bool) TransferLabels {
-	pbs := TransferLabels{}
+func initSProgressBarLabels(windows bool) transferLabels {
+	pbs := transferLabels{}
 	pbs.RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 	pbs.Repositories = formatString("📦", " Repositories", windows)
 	pbs.Files = formatString("📄", " Files", windows)
@@ -63,7 +63,7 @@ func initSProgressBarLabels(windows bool) TransferLabels {
 type TransferProgressMng struct {
 	barMng                *ProgressBarMng
 	stateMng              *state.TransferStateManager
-	transferLabels        TransferLabels
+	transferLabels        transferLabels
 	wg                    sync.WaitGroup
 	reposWg               sync.WaitGroup
 	allRepos              []string
@@ -288,7 +288,7 @@ func (tpm *TransferProgressMng) NewWorkingThreadsProg() *TasksProgressBar {
 		return workingThreadsNum, err
 	}
 
-	return tpm.barMng.newCounterProgBar(getVal, tpm.transferLabels.WorkingThreads)
+	return tpm.barMng.newCounterProgressBar(getVal, tpm.transferLabels.WorkingThreads)
 }
 
 func (tpm *TransferProgressMng) GetBarMng() *ProgressBarMng {
@@ -328,7 +328,7 @@ func (tpm *TransferProgressMng) NewErrorBar() *TasksProgressBar {
 		}
 		return errnums, err
 	}
-	pb := tpm.barMng.newCounterProgBar(getVals, tpm.transferLabels.TransferFailures)
+	pb := tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.TransferFailures)
 	return pb
 }
 

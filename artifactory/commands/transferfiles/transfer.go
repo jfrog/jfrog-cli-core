@@ -382,7 +382,6 @@ func (tdc *TransferFilesCommand) updateRepoState(repoSummary *serviceUtils.Repos
 	}
 
 	return tdc.stateManager.SetRepoState(repoSummary.RepoKey, usedSpaceInBytes, filesCount, buildInfoRepo, tdc.ignoreState)
-
 }
 
 func (tdc *TransferFilesCommand) initTransferDir() error {

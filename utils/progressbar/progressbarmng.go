@@ -135,7 +135,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	}
 	// If totalTasks is 0 - phase is already finished in previous run.
 	if totalTasks == 0 {
-		prog.tasksProgressBar = bm.NewDoneTasksProgressBar()
+		prog.tasksProgressBar = bm.newDoneTasksProgressBar()
 	} else {
 		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, windows, taskType)
 	}
@@ -257,22 +257,8 @@ func (bm *ProgressBarMng) newTasksProgBar(getVal func() (numerator, denominator 
 	return pb
 }
 
-func (bm *ProgressBarMng) NewCounterProgressBar(headline string, num int64, valColor color.Color) *TasksProgressBar {
-	pb := &TasksProgressBar{}
-	pb.bar = bm.container.Add(num,
-		nil,
-		mpb.BarRemoveOnComplete(),
-		mpb.PrependDecorators(
-			decor.Name(headline),
-			decor.Any(func(statistics decor.Statistics) string {
-				return valColor.Render(pb.GetTotal())
-			}),
-		),
-	)
-	return pb
-}
-
-func (bm *ProgressBarMng) newCounterProgBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
+// Initializing a counter progress bar
+func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(0,
 		nil,
@@ -292,7 +278,8 @@ func (bm *ProgressBarMng) newCounterProgBar(getVal func() (value int, err error)
 	return pb
 }
 
-func (bm *ProgressBarMng) NewDoneTasksProgressBar() *TasksProgressBar {
+// Initializing a progress bar that shows Done status
+func (bm *ProgressBarMng) newDoneTasksProgressBar() *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(1,
 		nil,

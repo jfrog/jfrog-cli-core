@@ -315,10 +315,10 @@ func ModifyYarnConfigurations(execPath, registry, npmAuthIdent string) (map[stri
 		envVarsBackup[key] = &oldVal
 	}
 	// Update scoped registries (these cannot be set in environment variables)
-	return envVarsBackup, errorutils.CheckError(UpdateScopeRegistries(execPath, registry, npmAuthIdent))
+	return envVarsBackup, errorutils.CheckError(updateScopeRegistries(execPath, registry, npmAuthIdent))
 }
 
-func UpdateScopeRegistries(execPath, registry, npmAuthIdent string) error {
+func updateScopeRegistries(execPath, registry, npmAuthIdent string) error {
 	npmScopesStr, err := yarn.ConfigGet(NpmScopesConfigName, execPath, true)
 	if err != nil {
 		return err

@@ -104,7 +104,7 @@ func TestInitNewConfig(t *testing.T) {
 		assert.NoError(t, updatedConfigFile.Close())
 	}()
 	buf = make([]byte, 1024)
-	n, err = f.Read(buf)
+	n, err = updatedConfigFile.Read(buf)
 	assert.NoError(t, err)
 	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
 <configuration>

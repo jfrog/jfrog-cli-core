@@ -93,7 +93,6 @@ func (t *TransferProgressMng) NewRepository(name string) {
 // Quit terminate the TransferProgressMng process.
 func (t *TransferProgressMng) Quit() error {
 	t.transferMng.StopCurrentRepoProgressBars(true)
-	t.transferMng.WaitForRepositoryProgressBarForFinalUpdate()
 	t.transferMng.StopGlobalProgressBars()
 	if t.ShouldDisplay() {
 		t.abortMetricsBars()

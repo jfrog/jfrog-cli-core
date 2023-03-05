@@ -243,19 +243,6 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 	return pb
 }
 
-// This function maakes sure that repositories progress bar supllied to be updated before we quit the transfer-files progress
-func (tpm *TransferProgressMng) WaitForRepositoryProgressBarForFinalUpdate() {
-	for {
-		if tpm.stateMng.TotalRepositories.TotalUnits == tpm.stateMng.TotalRepositories.TransferredUnits {
-			// Since the update go routine of repositories progress bar sleep for a second after every iteration,
-			// We want to sleep for two seconds before return to make sure that repositories progress bar supplied to be updated.
-			time.Sleep(2 * time.Second)
-			return
-		}
-		time.Sleep(time.Second)
-	}
-}
-
 func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 	getVals := func() (transferredStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
 		err = tpm.stateMng.Action(func(state *state.TransferState) error {

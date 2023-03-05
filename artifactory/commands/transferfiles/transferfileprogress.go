@@ -71,7 +71,6 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.runningTime = transfer.transferMng.NewRunningTimeProgressBar()
 	transfer.speedBar = transfer.transferMng.NewSpeedProgBar()
 	transfer.timeEstBar = transfer.transferMng.NewTimeEstBar()
-
 	// Init global error count for the process
 	transfer.errorBar = transfer.transferMng.NewErrorBar()
 	transfer.errorNote = transfer.transferMng.NewErrorNote()

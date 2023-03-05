@@ -110,7 +110,6 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 			}),
 		),
 	)
-
 	return &pb
 }
 

@@ -254,16 +254,15 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 		})
 
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
-
 	}
 
 	pb := tpm.barMng.newDoubleValueProgressBar(getVals, tpm.transferLabels.Storage, tpm.transferLabels.Files)
 
-	tpm.wg.Add(1)
+	tpm.reposWg.Add(1)
 	go func() {
-		defer tpm.wg.Done()
+		defer tpm.reposWg.Done()
 		for {
-			if tpm.currentRepoShouldStop {
+			if tpm.generalShouldStop {
 				return
 			}
 			transferredStorage, totalStorage, _, _, err := getVals()

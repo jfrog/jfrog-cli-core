@@ -263,7 +263,7 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 	go func() {
 		defer tpm.wg.Done()
 		for {
-			if tpm.generalShouldStop {
+			if tpm.currentRepoShouldStop {
 				return
 			}
 			transferredStorage, totalStorage, _, _, err := getVals()

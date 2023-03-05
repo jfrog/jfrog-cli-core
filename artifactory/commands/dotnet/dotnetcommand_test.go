@@ -100,9 +100,6 @@ func TestInitNewConfig(t *testing.T) {
 	assert.NoError(t, err)
 	f, err = os.Open(configFile.Name())
 	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, f.Close())
-	}()
 	buf = make([]byte, 1024)
 	n, err = f.Read(buf)
 	assert.NoError(t, err)

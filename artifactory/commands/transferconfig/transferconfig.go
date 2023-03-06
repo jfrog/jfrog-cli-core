@@ -113,8 +113,8 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// In Artifactory 7.49, the repositories migrated from the artifactory-config.xml to the database.
-	// this method removes the repositories in artifactory-config.xml, to be aligned with new Artifactory versions.
+	// In Artifactory 7.49, the repositories configuration was moved from the artifactory-config.xml to the database.
+	// this method removes the repositories from the artifactory-config.xml file, to be aligned with new Artifactory versions.
 	configXml, err = configxmlutils.RemoveAllRepositories(configXml)
 	if err != nil {
 		return
@@ -294,7 +294,7 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 		return "", nil, err
 	}
 	defer func() {
-		if reactivationErr := reactivateKeyEncryption(); err != nil {
+		if reactivationErr := reactivateKeyEncryption(); err == nil {
 			err = reactivationErr
 		}
 	}()
@@ -306,6 +306,7 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 		return
 	}
 
+	// Get all remote repositories from the source Artifactory server.
 	if remoteRepositoryNames, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoryNames) > 0 {
 		remoteRepositories = make([]interface{}, len(remoteRepositoryNames))
 		for i, repoName := range remoteRepositoryNames {
@@ -511,7 +512,7 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 }
 
 func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos map[utils.RepoType][]string) error {
-	log.Info("Deleting conflicting repositories in the target Artifactory server, if any ...")
+	log.Info("Deleting conflicting repositories in the target Artifactory server, if any exist...")
 	targetRepos, err := tcc.TargetArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return err

@@ -383,7 +383,7 @@ func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remot
 		return
 	}
 	defer func() {
-		if reactivationErr := reactivateKeyEncryption(); err != nil {
+		if reactivationErr := reactivateKeyEncryption(); err == nil {
 			err = reactivationErr
 		}
 	}()

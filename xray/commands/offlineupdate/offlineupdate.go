@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -30,10 +32,15 @@ const (
 )
 
 func OfflineUpdate(flags *OfflineUpdatesFlags) error {
-	if flags.IsDBSyncV3 {
+	if shouldUseDBSyncV3(flags) {
 		return handleDBSyncV3OfflineUpdate(flags)
 	}
 	return handleDBSyncV1OfflineUpdate(flags)
+}
+
+// Should use DBSync version 3 if the 'stream' flag was specified.
+func shouldUseDBSyncV3(flags *OfflineUpdatesFlags) bool {
+	return flags.Stream != ""
 }
 
 func handleDBSyncV1OfflineUpdate(flags *OfflineUpdatesFlags) error {
@@ -125,7 +132,7 @@ func createV3MetadataFile(state string, body []byte, destFolder string) (err err
 }
 
 func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
-	url := buildUrlDBSyncV3(flags.IsDBSyncV3PeriodicUpdate)
+	url := buildUrlDBSyncV3(flags)
 	log.Info("Getting updates...")
 	headers := make(map[string]string)
 	headers["X-Xray-License"] = flags.License
@@ -144,22 +151,18 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 		return err
 	}
 
-	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsDBSyncV3PeriodicUpdate)
+	urlsToDownload, err := getURLsToDownloadDBSyncV3(body, flags.IsPeriodicUpdate)
 	if err != nil {
 		return err
 	}
 
 	var state string
-	if flags.IsDBSyncV3PeriodicUpdate {
+	if flags.IsPeriodicUpdate {
 		state = periodicState
 	} else {
 		state = onboardingState
 	}
-	xrayTempDir, err := getXrayTempDir()
-	if err != nil {
-		return err
-	}
-	dataDir, err := os.MkdirTemp(xrayTempDir, "xray_downloaded_data")
+	dataDir, err := os.MkdirTemp(flags.Target, "xray_downloaded_data")
 	if err != nil {
 		return err
 	}
@@ -178,7 +181,7 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 		return err
 	}
 
-	packageName := "xray_update_package" + "_" + state
+	packageName := "xray_" + flags.Stream + "_update_package" + "_" + state
 	err = createZipArchive(dataDir, flags.Target, packageName, "")
 	if err != nil {
 		return err
@@ -186,9 +189,17 @@ func handleDBSyncV3OfflineUpdate(flags *OfflineUpdatesFlags) (err error) {
 	return nil
 }
 
-func buildUrlDBSyncV3(isPeriodic bool) string {
+func buildUrlDBSyncV3(flags *OfflineUpdatesFlags) string {
+	streams := NewValidStreams()
 	url := getJxRayBaseUrl() + "api/v3/updates/"
-	if isPeriodic {
+	// Build JAS urls if needed.
+	if flags.Stream == streams.GetExposuresStream() {
+		url += streams.GetExposuresStream() + "/"
+	} else if flags.Stream == streams.GetContextualAnalysisStream() {
+		url += streams.GetContextualAnalysisStream() + "/"
+	}
+
+	if flags.IsPeriodicUpdate {
 		return url + periodicState
 	} else {
 		return url + onboardingState
@@ -255,13 +266,12 @@ func getXrayTempDir() (string, error) {
 }
 
 func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(string) (string, error)) error {
-	//
+	log.Info(fmt.Sprintf("Downloading updated packages to %s.", dataDir))
 	for _, url := range urlsList {
 		fileName, err := fileNameFromUrlFunc(url)
 		if err != nil {
 			return err
 		}
-		log.Info(fmt.Sprintf("Downloading updates package from %s", url))
 		client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 		if err != nil {
 			log.Error(fmt.Sprintf("Couldn't download from %s", url))
@@ -273,6 +283,11 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 			DownloadPath:  url,
 			LocalPath:     dataDir,
 			LocalFileName: fileName}
+		response, _, err := client.SendHead(url, httputils.HttpClientDetails{}, "")
+		if err != nil {
+			return fmt.Errorf("couldn't get content length of %s. Error: %s", url, err.Error())
+		}
+		log.Info(fmt.Sprintf("Downloading updated package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
 		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
 		if err != nil {
 			return errorutils.CheckErrorf("Couldn't download from %s. Error: %s", url, err.Error())
@@ -379,14 +394,46 @@ func getFilesList(updatesUrl string, flags *OfflineUpdatesFlags) (vulnerabilitie
 	return
 }
 
+// ValidStreams represents the valid values that can be provided to the 'stream' flag during offline updates.
+type ValidStreams struct {
+	StreamsMap map[string]bool
+}
+
+func NewValidStreams() *ValidStreams {
+	validStreams := &ValidStreams{StreamsMap: map[string]bool{}}
+	validStreams.StreamsMap[validStreams.GetPublicDataStream()] = true
+	validStreams.StreamsMap[validStreams.GetExposuresStream()] = true
+	validStreams.StreamsMap[validStreams.GetContextualAnalysisStream()] = true
+	return validStreams
+}
+
+func (vs *ValidStreams) GetValidStreamsString() string {
+	streams := maps.Keys(vs.StreamsMap)
+	sort.Sort(sort.Reverse(sort.StringSlice(streams)))
+	streamsStr := strings.Join(streams[0:len(streams)-1], ", ")
+	return fmt.Sprintf("%s and %s", streamsStr, streams[len(streams)-1])
+}
+
+func (vs *ValidStreams) GetPublicDataStream() string {
+	return "public_data"
+}
+
+func (vs *ValidStreams) GetExposuresStream() string {
+	return "exposures"
+}
+
+func (vs *ValidStreams) GetContextualAnalysisStream() string {
+	return "contextual_analysis"
+}
+
 type OfflineUpdatesFlags struct {
-	License                  string
-	From                     int64
-	To                       int64
-	Version                  string
-	Target                   string
-	IsDBSyncV3               bool
-	IsDBSyncV3PeriodicUpdate bool
+	License          string
+	From             int64
+	To               int64
+	Version          string
+	Target           string
+	Stream           string
+	IsPeriodicUpdate bool
 }
 
 type FilesList struct {

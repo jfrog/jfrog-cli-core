@@ -38,15 +38,21 @@ var periodicDeleteResponseSection = "\"deletion\":" + periodicDeletionResponse
 var periodicResponse = "{" + periodicUpdateResponseSection + "," + periodicDeleteResponseSection + "}"
 var onboardingResponse = "[{\"download_url\":\"some_url_to_package_onboard\",\"timestamp\":1234}]"
 
-func TestDBSyncV3BuildURL(t *testing.T) {
+func TestBuildUrlDBSyncV3(t *testing.T) {
+	streams := NewValidStreams()
 	tests := []struct {
-		isPeriodic bool
-		expected   string
+		flags    *OfflineUpdatesFlags
+		expected string
 	}{
-		{true, "api/v3/updates/periodic"}, {false, "api/v3/updates/onboarding"},
+		{&OfflineUpdatesFlags{Stream: streams.GetPublicDataStream(), IsPeriodicUpdate: true}, "api/v3/updates/periodic"},
+		{&OfflineUpdatesFlags{Stream: streams.GetPublicDataStream(), IsPeriodicUpdate: false}, "api/v3/updates/onboarding"},
+		{&OfflineUpdatesFlags{Stream: streams.GetExposuresStream(), IsPeriodicUpdate: true}, "api/v3/updates/exposures/periodic"},
+		{&OfflineUpdatesFlags{Stream: streams.GetExposuresStream(), IsPeriodicUpdate: false}, "api/v3/updates/exposures/onboarding"},
+		{&OfflineUpdatesFlags{Stream: streams.GetContextualAnalysisStream(), IsPeriodicUpdate: true}, "api/v3/updates/contextual_analysis/periodic"},
+		{&OfflineUpdatesFlags{Stream: streams.GetContextualAnalysisStream(), IsPeriodicUpdate: false}, "api/v3/updates/contextual_analysis/onboarding"},
 	}
 	for _, test := range tests {
-		url := buildUrlDBSyncV3(test.isPeriodic)
+		url := buildUrlDBSyncV3(test.flags)
 		assert.Equal(t, strings.HasSuffix(url, test.expected), true)
 	}
 }
@@ -108,4 +114,10 @@ func TestDBSyncV3createV3MetadataFile(t *testing.T) {
 		assert.Equal(t, fileContent, test.serverResponse)
 	}
 
+}
+
+func TestGetValidStreamsString(t *testing.T) {
+	validStreams := NewValidStreams()
+	assert.Equal(t, 3, len(validStreams.StreamsMap))
+	assert.Equal(t, validStreams.GetValidStreamsString(), "public_data, exposures and contextual_analysis")
 }

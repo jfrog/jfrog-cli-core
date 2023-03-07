@@ -422,7 +422,7 @@ type severity struct {
 }
 
 func (s *severity) printableTitle(isTable bool) string {
-	if (isTable && log.IsStdOutTerminal() && log.IsColorsSupported()) || os.Getenv("GITLAB_CI") != "" {
+	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		return s.style.Render(s.emoji + s.title)
 	}
 	return s.title

@@ -2,7 +2,6 @@ package java
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
@@ -14,6 +13,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example")
 	defer cleanUp()
+
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true, true)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
@@ -38,9 +38,10 @@ func TestMavenTreesMultiModule(t *testing.T) {
 
 func TestMavenWrapperTrees(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "maven-example-with-wrapper")
+	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example-with-wrapper")
+	err := os.Chmod("mvnw", 0700)
+	assert.NoError(t, err)
 	defer cleanUp()
-	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "mvnw"), 0700))
 	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true, true)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		// Check root module

@@ -44,6 +44,10 @@ type TechData struct {
 	formal string
 	// The executable name of the technology
 	execCommand string
+	// The operator for package versioning
+	packageVersionOperator string
+	// The package installation command of a package
+	packageInstallationCommand string
 }
 
 var technologiesData = map[Technology]TechData{
@@ -59,19 +63,25 @@ var technologiesData = map[Technology]TechData{
 		packageDescriptor: "build.gradle",
 	},
 	Npm: {
-		indicators:        []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
-		exclude:           []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		ciSetupSupport:    true,
-		packageDescriptor: "package.json",
-		formal:            string(Npm),
+		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		ciSetupSupport:             true,
+		packageDescriptor:          "package.json",
+		formal:                     string(Npm),
+		packageVersionOperator:     "@",
+		packageInstallationCommand: "install",
 	},
 	Yarn: {
-		indicators:        []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor: "package.json",
+		indicators:                 []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor:          "package.json",
+		packageVersionOperator:     "@",
+		packageInstallationCommand: "up",
 	},
 	Go: {
-		indicators:        []string{"go.mod"},
-		packageDescriptor: "go.mod",
+		indicators:                 []string{"go.mod"},
+		packageDescriptor:          "go.mod",
+		packageVersionOperator:     "@v",
+		packageInstallationCommand: "get",
 	},
 	Pip: {
 		packageType: Pypi,
@@ -79,13 +89,17 @@ var technologiesData = map[Technology]TechData{
 		exclude:     []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 	},
 	Pipenv: {
-		packageType:       Pypi,
-		indicators:        []string{"Pipfile", "Pipfile.lock"},
-		packageDescriptor: "Pipfile",
+		packageType:                Pypi,
+		indicators:                 []string{"Pipfile", "Pipfile.lock"},
+		packageDescriptor:          "Pipfile",
+		packageVersionOperator:     "==",
+		packageInstallationCommand: "install",
 	},
 	Poetry: {
-		packageType: Pypi,
-		indicators:  []string{"pyproject.toml", "poetry.lock"},
+		packageType:                Pypi,
+		indicators:                 []string{"pyproject.toml", "poetry.lock"},
+		packageInstallationCommand: "add",
+		packageVersionOperator:     "==",
 	},
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
@@ -131,6 +145,14 @@ func (tech Technology) GetPackageDescriptor() string {
 
 func (tech Technology) IsCiSetup() bool {
 	return technologiesData[tech].ciSetupSupport
+}
+
+func (tech Technology) GetPackageOperator() string {
+	return technologiesData[tech].packageVersionOperator
+}
+
+func (tech Technology) GetPackageInstallOperator() string {
+	return technologiesData[tech].packageInstallationCommand
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

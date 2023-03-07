@@ -12,9 +12,9 @@ import (
 
 func TestMavenTreesMultiModule(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example")
+	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "maven-example")
 	defer cleanUp()
-
+	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath), 0700))
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true, true)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {

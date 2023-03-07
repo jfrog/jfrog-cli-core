@@ -68,7 +68,63 @@ func NewBarsMng() (mng *ProgressBarMng, shouldInit bool, err error) {
 	return
 }
 
-func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
+// Initializing a new Tasks with headline progress bar
+// Initialize a progress bar that can show the status of two different values, and a headline above it
+func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, val2HeadLine string, getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error)) *TasksWithHeadlineProg {
+	bm.barsWg.Add(1)
+	prog := TasksWithHeadlineProg{}
+	prog.headlineBar = bm.NewHeadlineBar(headline)
+	prog.tasksProgressBar = bm.newDoubleValueProgressBar(getVal, val1HeadLine, val2HeadLine)
+	prog.emptyLine = bm.NewHeadlineBar("")
+
+	return &prog
+}
+
+// Initialize a progress bar that can show the status of two different values
+func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error), firstValueLine, secondValueLine string) *TasksProgressBar {
+	pb := TasksProgressBar{}
+	windows := coreutils.IsWindows()
+	padding, filler := paddingAndFiller(windows)
+	filter := filterColor(GREEN, windows)
+	pb.bar = bm.container.New(0,
+		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		mpb.BarRemoveOnComplete(),
+		mpb.AppendDecorators(
+			decor.Name(" "+firstValueLine+": "),
+			decor.Any(func(statistics decor.Statistics) string {
+				firstNumerator, firstDenominator, _, _, err := getVal()
+				if err != nil {
+					log.Error(err)
+				}
+				s1 := artifactoryutils.ConvertIntToStorageSizeString(*firstNumerator)
+				s2 := artifactoryutils.ConvertIntToStorageSizeString(*firstDenominator)
+				return color.Green.Render(s1 + "/" + s2)
+			}), decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
+				_, _, secondNumerator, secondDenominator, err := getVal()
+				if err != nil {
+					log.Error(err)
+				}
+				s1 := strconv.Itoa(int(*secondNumerator))
+				s2 := strconv.Itoa(int(*secondDenominator))
+				return color.Green.Render(s1 + "/" + s2)
+			}),
+		),
+	)
+	return &pb
+}
+
+// Initialize a regular tasks progress bar, with a headline above it
+func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, denominator *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
+	bm.barsWg.Add(1)
+	prog := TasksWithHeadlineProg{}
+	prog.headlineBar = bm.NewHeadlineBar(headLine)
+	prog.tasksProgressBar = bm.newTasksProgressBar(getVal, valHeadLine)
+	prog.emptyLine = bm.NewHeadlineBar("")
+	return &prog
+}
+
+// Initialize a regular tasks progress bar, with a headline above it
+func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	if spinner {
@@ -76,10 +132,9 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	} else {
 		prog.headlineBar = bm.NewHeadlineBar(headline)
 	}
-
 	// If totalTasks is 0 - phase is already finished in previous run.
 	if totalTasks == 0 {
-		prog.tasksProgressBar = bm.NewDoneTasksProgressBar()
+		prog.tasksProgressBar = bm.newDoneTasksProgressBar()
 	} else {
 		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, windows, taskType)
 	}
@@ -87,16 +142,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProg(totalTasks int64, headline st
 	return &prog
 }
 
-func (bm *ProgressBarMng) NewHeadLineDoubleValProgBar(headLine string, counterLine string, counterLine2 string, totalTasks1 int64, optionalTotal1, optionalDone1, totalTasks2, doneTasks2 *int64, windows bool, color Color) *TasksWithHeadlineProg {
-	bm.barsWg.Add(1)
-	prog := TasksWithHeadlineProg{}
-	prog.headlineBar = bm.NewHeadlineBar(headLine)
-	prog.tasksProgressBar = bm.NewDoubleValueProgressBar(counterLine, counterLine2, totalTasks1, optionalTotal1, optionalDone1, totalTasks2, doneTasks2, windows, color)
-	prog.emptyLine = bm.NewHeadlineBar("")
-	return &prog
-}
-
-func (bm *ProgressBarMng) QuitTasksWithHeadlineProg(prog *TasksWithHeadlineProg) {
+func (bm *ProgressBarMng) QuitTasksWithHeadlineProgressBar(prog *TasksWithHeadlineProg) {
 	prog.headlineBar.Abort(true)
 	prog.headlineBar = nil
 	prog.tasksProgressBar.bar.Abort(true)
@@ -186,22 +232,52 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 	return pb
 }
 
-func (bm *ProgressBarMng) NewCounterProgressBar(headline string, num int64, valColor color.Color) *TasksProgressBar {
+func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64, err error), headLine string) *TasksProgressBar {
+	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
-	pb.bar = bm.container.Add(num,
-		nil,
+	filter := filterColor(GREEN, coreutils.IsWindows())
+	numerator, denominator, err := getVal()
+	if err != nil {
+		log.Error(err)
+	}
+	pb.bar = bm.container.New(0,
+		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
-		mpb.PrependDecorators(
-			decor.Name(headline),
+		mpb.AppendDecorators(
+			decor.Name(" "+headLine+": "),
 			decor.Any(func(statistics decor.Statistics) string {
-				return valColor.Render(pb.GetTotal())
+				numeratorString := strconv.Itoa(int(*numerator))
+				denominatorString := strconv.Itoa(int(*denominator))
+				return color.Green.Render(numeratorString + "/" + denominatorString)
 			}),
 		),
 	)
 	return pb
 }
 
-func (bm *ProgressBarMng) NewDoneTasksProgressBar() *TasksProgressBar {
+// Initializing a counter progress bar
+func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
+	pb := &TasksProgressBar{}
+	pb.bar = bm.container.Add(0,
+		nil,
+		mpb.BarRemoveOnComplete(),
+		mpb.PrependDecorators(
+			decor.Name(headLine),
+			decor.Any(func(statistics decor.Statistics) string {
+				value, err := getVal()
+				if err != nil {
+					log.Error(err)
+				}
+				s1 := strconv.Itoa(value)
+				return color.Green.Render(s1)
+			}),
+		),
+	)
+	return pb
+}
+
+// Initializing a progress bar that shows Done status
+func (bm *ProgressBarMng) newDoneTasksProgressBar() *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(1,
 		nil,
@@ -224,51 +300,6 @@ func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() 
 			}),
 		),
 	)
-	return pb
-}
-
-// A progress bar with two counters values shown on the right side of the progress bar; The first value controls what the bar shows.
-// The total tasks1 can be passes as an int or *int, if you want to use it with int send nil to the optional total and done tasks1 and the wanted totalTasks to total tasks1.
-func (bm *ProgressBarMng) NewDoubleValueProgressBar(firstValueHeadLine string, secondValueHeadLine string, totalTasks1 int64, OptionalTotalTasks1, optionalDoneTasks1, totalTasks2, doneTasks2 *int64, windows bool, colour Color) *TasksProgressBar {
-
-	pb := &TasksProgressBar{}
-	padding, filler := paddingAndFiller(windows)
-	filter := filterColor(GREEN, windows)
-	if OptionalTotalTasks1 == nil {
-		pb.bar = bm.container.New(0,
-			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
-			mpb.BarRemoveOnComplete(),
-			mpb.AppendDecorators(
-				decor.Name(" "+firstValueHeadLine+": "),
-				decor.CountersKibiByte(getRenderedFormattedCounters("%.1f")),
-				decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(int(*doneTasks2))
-					s2 := strconv.Itoa(int(*totalTasks2))
-					return color.Green.Render(s1 + "/" + s2)
-				}),
-			),
-		)
-		pb.IncGeneralProgressTotalBy(totalTasks1)
-	}
-	if OptionalTotalTasks1 != nil {
-		pb.bar = bm.container.New(0,
-			mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
-			mpb.BarRemoveOnComplete(),
-			mpb.AppendDecorators(
-				decor.Name(" "+firstValueHeadLine+": "),
-				decor.Any(func(statistics decor.Statistics) string {
-					s1 := artifactoryutils.ConvertIntToStorageSizeString(*optionalDoneTasks1)
-					s2 := artifactoryutils.ConvertIntToStorageSizeString(*OptionalTotalTasks1)
-					return color.Green.Render(s1 + "/" + s2)
-				}), decor.Name(" "+secondValueHeadLine+": "), decor.Any(func(statistics decor.Statistics) string {
-					s1 := strconv.Itoa(int(*doneTasks2))
-					s2 := strconv.Itoa(int(*totalTasks2))
-					return color.Green.Render(s1 + "/" + s2)
-				}),
-			),
-		)
-		pb.SetGeneralProgressTotal(*OptionalTotalTasks1)
-	}
 	return pb
 }
 

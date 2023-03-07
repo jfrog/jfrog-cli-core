@@ -40,8 +40,8 @@ func TestMavenWrapperTrees(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example-with-wrapper")
 	err := os.Chmod("mvnw", 0700)
-	assert.NoError(t, err)
 	defer cleanUp()
+	assert.NoError(t, err)
 	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true, true)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		// Check root module

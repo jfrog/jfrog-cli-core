@@ -1,4 +1,4 @@
-package transferconfig
+package transferconfigmerge
 
 import (
 	"github.com/jfrog/jfrog-client-go/access/services"

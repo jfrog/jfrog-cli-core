@@ -1,64 +1,48 @@
-package transferconfig
+package transferconfigmerge
 
 import (
-	"encoding/json"
 	"fmt"
-	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"reflect"
+	"strings"
+	"time"
+
+	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
 	accessServices "github.com/jfrog/jfrog-client-go/access/services"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"reflect"
-	"strings"
-	"time"
 )
 
 type ConflictType string
 
 const (
-	minJFrogProjectsArtifactoryVersion              = "7.0.0"
 	Repository                         ConflictType = "Repository"
 	Project                            ConflictType = "Project"
 	logFilePrefix                                   = "transfer-config-conflicts"
+	minJFrogProjectsArtifactoryVersion              = "7.0.0"
 )
 
 var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks", "description"}
 
 type TransferConfigMergeCommand struct {
-	sourceServerDetails      *config.ServerDetails
-	targetServerDetails      *config.ServerDetails
-	includeReposPatterns     []string
-	excludeReposPatterns     []string
-	includeProjectsPatterns  []string
-	excludeProjectsPatterns  []string
-	sourceArtifactoryManager artifactory.ArtifactoryServicesManager
-	targetArtifactoryManager artifactory.ArtifactoryServicesManager
-	sourceAccessManager      access.AccessServicesManager
-	targetAccessManager      access.AccessServicesManager
+	commandsUtils.TransferConfigBase
+	includeProjectsPatterns []string
+	excludeProjectsPatterns []string
+	sourceAccessManager     access.AccessServicesManager
+	targetAccessManager     access.AccessServicesManager
 }
 
 func NewTransferConfigMergeCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigMergeCommand {
-	return &TransferConfigMergeCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+	return &TransferConfigMergeCommand{TransferConfigBase: *commandsUtils.NewTransferConfigBase(sourceServer, targetServer)}
 }
 
 func (tcmc *TransferConfigMergeCommand) CommandName() string {
 	return "rt_transfer_config_merge"
-}
-
-func (tcmc *TransferConfigMergeCommand) SetIncludeReposPatterns(includeReposPatterns []string) *TransferConfigMergeCommand {
-	tcmc.includeReposPatterns = includeReposPatterns
-	return tcmc
-}
-
-func (tcmc *TransferConfigMergeCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigMergeCommand {
-	tcmc.excludeReposPatterns = excludeReposPatterns
-	return tcmc
 }
 
 func (tcmc *TransferConfigMergeCommand) SetIncludeProjectsPatterns(includeProjectsPatterns []string) *TransferConfigMergeCommand {
@@ -71,6 +55,11 @@ func (tcmc *TransferConfigMergeCommand) SetExcludeProjectsPatterns(excludeProjec
 	return tcmc
 }
 
+type mergeEntities struct {
+	projectsToTransfer []accessServices.Project
+	reposToTransfer    map[utils.RepoType][]string
+}
+
 type Conflict struct {
 	Type                ConflictType `json:"type,omitempty"`
 	SourceName          string       `json:"source_name,omitempty"`
@@ -79,70 +68,33 @@ type Conflict struct {
 }
 
 func (tcmc *TransferConfigMergeCommand) Run() (csvPath string, err error) {
-	log.Info(coreutils.PrintBoldTitle("========== Preparations =========="))
+	tcmc.LogTitle("Preparations")
 	projectsSupported, err := tcmc.initServiceManagersAndValidateServers()
 	if err != nil {
 		return
 	}
-	projectsToTransfer := []accessServices.Project{}
-	conflicts := []Conflict{}
-	if projectsSupported {
-		log.Info(coreutils.PrintBoldTitle("========== Merging projects config =========="))
-		projectsToTransfer, err = tcmc.mergeProjects(&conflicts)
-		if err != nil {
-			return
-		}
-	}
 
-	log.Info(coreutils.PrintBoldTitle("========== Merging repositories config =========="))
-	reposToTransfer, err := tcmc.mergeRepositories(&conflicts)
+	var mergeEntities mergeEntities
+	mergeEntities, csvPath, err = tcmc.mergeEntities(projectsSupported)
 	if err != nil {
 		return
 	}
 
-	if len(conflicts) != 0 {
-		csvPath, err = commandUtils.CreateCSVFile(logFilePrefix, conflicts, time.Now())
-		if err != nil {
-			return
-		}
-		log.Info(fmt.Sprintf("We found %d conflicts when comparing the projects and repositories configuration between the source and target instances.\n"+
-			"Please review the report available at %s", len(conflicts), csvPath) + "\n" +
-			"You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
-			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
-			"Run 'jf rt transfer-config-merge -h' for more information.")
+	if err = tcmc.transferEntities(mergeEntities); err != nil {
 		return
 	}
 
-	log.Info("No Merge conflicts were found while comparing the source and target instances.")
-
-	if len(projectsToTransfer) > 0 {
-		log.Info(fmt.Sprintf("Transferring %d projects ...", len(projectsToTransfer)))
-		err = tcmc.transferProjectsToTarget(projectsToTransfer)
-		if err != nil {
-			return
-		}
-	}
-
-	if len(reposToTransfer) > 0 {
-		log.Info(fmt.Sprintf("Transferring %d repositories ...", len(reposToTransfer)))
-		err = tcmc.transferRepositoriesToTarget(reposToTransfer)
-	}
-
 	log.Info("Config transfer merge completed successfully!")
+	tcmc.LogIfFederatedMemberRemoved()
 	return
 }
 
 func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() (projectsSupported bool, err error) {
-	tcmc.sourceArtifactoryManager, err = utils.CreateServiceManager(tcmc.sourceServerDetails, -1, 0, false)
-	if err != nil {
-		return
-	}
-	tcmc.targetArtifactoryManager, err = utils.CreateServiceManager(tcmc.targetServerDetails, -1, 0, false)
-	if err != nil {
+	if err = tcmc.CreateServiceManagers(false); err != nil {
 		return
 	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	sourceArtifactoryVersion, err := validateMinVersionAndDifferentServers(tcmc.sourceArtifactoryManager, tcmc.sourceServerDetails, tcmc.targetServerDetails)
+	sourceArtifactoryVersion, err := tcmc.ValidateMinVersionAndDifferentServers()
 	if err != nil {
 		return
 	}
@@ -156,12 +108,12 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 
 	projectsSupported = true
 
-	tcmc.sourceAccessManager, err = createAccessManagerAndValidateToken(tcmc.sourceServerDetails)
+	tcmc.sourceAccessManager, err = createAccessManagerAndValidateToken(tcmc.SourceServerDetails)
 	if err != nil {
 		return
 	}
 
-	tcmc.targetAccessManager, err = createAccessManagerAndValidateToken(tcmc.targetServerDetails)
+	tcmc.targetAccessManager, err = createAccessManagerAndValidateToken(tcmc.TargetServerDetails)
 	if err != nil {
 		return
 	}
@@ -188,6 +140,60 @@ func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (a
 	}
 	accessManager = *manager
 	return
+}
+
+func (tcmc *TransferConfigMergeCommand) mergeEntities(projectsSupported bool) (mergeEntities mergeEntities, csvPath string, err error) {
+	conflicts := []Conflict{}
+	if projectsSupported {
+		tcmc.LogTitle("Merging projects config")
+		mergeEntities.projectsToTransfer, err = tcmc.mergeProjects(&conflicts)
+		if err != nil {
+			return
+		}
+	}
+
+	tcmc.LogTitle("Merging repositories config")
+	mergeEntities.reposToTransfer, err = tcmc.mergeRepositories(&conflicts)
+	if err != nil {
+		return
+	}
+
+	if len(conflicts) != 0 {
+		csvPath, err = commandsUtils.CreateCSVFile(logFilePrefix, conflicts, time.Now())
+		if err != nil {
+			return
+		}
+		log.Info(fmt.Sprintf("We found %d conflicts when comparing the projects and repositories configuration between the source and target instances.\n"+
+			"Please review the report available at %s", len(conflicts), csvPath) + "\n" +
+			"You can either resolve the conflicts by manually modifying the configuration on the source or the target,\n" +
+			"or exclude the transfer of the conflicting projects or repositories by adding options to this command.\n" +
+			"Run 'jf rt transfer-config-merge -h' for more information.")
+		return
+	}
+
+	log.Info("No Merge conflicts were found while comparing the source and target instances.")
+	return
+}
+
+func (tcmc *TransferConfigMergeCommand) transferEntities(mergeEntities mergeEntities) (err error) {
+	if len(mergeEntities.projectsToTransfer) > 0 {
+		tcmc.LogTitle("Transferring projects")
+		err = tcmc.transferProjectsToTarget(mergeEntities.projectsToTransfer)
+		if err != nil {
+			return
+		}
+	}
+
+	tcmc.LogTitle("Transferring repositories")
+	var remoteRepositories []interface{}
+	if len(mergeEntities.reposToTransfer[utils.Remote]) > 0 {
+		remoteRepositories, err = tcmc.decryptAndGetAllRemoteRepositories(mergeEntities.reposToTransfer[utils.Remote])
+		if err != nil {
+			return
+		}
+	}
+
+	return tcmc.TransferRepositoriesToTarget(mergeEntities.reposToTransfer, remoteRepositories)
 }
 
 func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (projectsToTransfer []accessServices.Project, err error) {
@@ -262,12 +268,13 @@ func compareProjects(sourceProject, targetProject accessServices.Project) (*Conf
 	}, nil
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer []string, err error) {
-	sourceRepos, err := tcmc.sourceArtifactoryManager.GetAllRepositories()
+func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer map[utils.RepoType][]string, err error) {
+	reposToTransfer = make(map[utils.RepoType][]string)
+	sourceRepos, err := tcmc.SourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
 	}
-	targetRepos, err := tcmc.targetArtifactoryManager.GetAllRepositories()
+	targetRepos, err := tcmc.TargetArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
 	}
@@ -275,10 +282,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 	for _, repo := range *targetRepos {
 		targetReposMap[repo.Key] = repo
 	}
-	includeExcludeFilter := &utils.IncludeExcludeFilter{
-		IncludePatterns: tcmc.includeReposPatterns,
-		ExcludePatterns: tcmc.excludeReposPatterns,
-	}
+	includeExcludeFilter := tcmc.GetRepoFilter()
 	for _, sourceRepo := range *sourceRepos {
 		// Check if repository is filtered out.
 		var shouldIncludeRepo bool
@@ -306,7 +310,8 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 				})
 			}
 		} else {
-			reposToTransfer = append(reposToTransfer, sourceRepo.Key)
+			repoType := utils.RepoTypeFromString(sourceRepo.Type)
+			reposToTransfer[repoType] = append(reposToTransfer[repoType], sourceRepo.Key)
 		}
 	}
 	return
@@ -322,12 +327,12 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 	// The basic details are equal. Continuing to compare the full repository details.
 	// Get full repo info from source and target
 	var sourceRepoFullDetails interface{}
-	err = tcmc.sourceArtifactoryManager.GetRepository(sourceRepoBaseDetails.Key, &sourceRepoFullDetails)
+	err = tcmc.SourceArtifactoryManager.GetRepository(sourceRepoBaseDetails.Key, &sourceRepoFullDetails)
 	if err != nil {
 		return
 	}
 	var targetRepoFullDetails interface{}
-	err = tcmc.targetArtifactoryManager.GetRepository(targetRepoBaseDetails.Key, &targetRepoFullDetails)
+	err = tcmc.TargetArtifactoryManager.GetRepository(targetRepoBaseDetails.Key, &targetRepoFullDetails)
 	if err != nil {
 		return
 	}
@@ -336,17 +341,17 @@ func (tcmc *TransferConfigMergeCommand) compareRepositories(sourceRepoBaseDetail
 }
 
 func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff string, err error) {
-	firstMap, err := interfaceToMap(first)
+	firstMap, err := commandsUtils.InterfaceToMap(first)
 	if err != nil {
 		return
 	}
-	secondMap, err := interfaceToMap(second)
+	secondMap, err := commandsUtils.InterfaceToMap(second)
 	if err != nil {
 		return
 	}
 	diffList := []string{}
 	for key, firstValue := range firstMap {
-		if slices.Contains(filteredKeys, key) {
+		if slices.Contains(filteredKeys, strings.ToLower(key)) {
 			// Key should be filtered out
 			continue
 		}
@@ -361,16 +366,6 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 	return
 }
 
-func interfaceToMap(interfaceObj interface{}) (map[string]interface{}, error) {
-	b, err := json.Marshal(interfaceObj)
-	if err != nil {
-		return nil, err
-	}
-	newMap := make(map[string]interface{})
-	err = json.Unmarshal(b, &newMap)
-	return newMap, err
-}
-
 func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer []accessServices.Project) (err error) {
 	for _, project := range reposToTransfer {
 		log.Info(fmt.Sprintf("Transferring project '%s' ...", project.DisplayName))
@@ -381,35 +376,18 @@ func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer
 	return
 }
 
-func (tcmc *TransferConfigMergeCommand) transferRepositoriesToTarget(reposToTransfer []string) (err error) {
-	// Decrypt source Artifactory to get encrypted parameters
-	var wasEncrypted bool
-	if wasEncrypted, err = tcmc.sourceArtifactoryManager.DeactivateKeyEncryption(); err != nil {
+func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remoteRepositoryNames []string) (remoteRepositories []interface{}, err error) {
+	// Decrypt source Artifactory to get remote repositories with raw text passwords
+	reactivateKeyEncryption, err := tcmc.DeactivateKeyEncryption()
+	if err != nil {
 		return
 	}
 	defer func() {
-		if !wasEncrypted {
-			return
-		}
-		activationErr := tcmc.sourceArtifactoryManager.ActivateKeyEncryption()
-		if err == nil {
-			err = activationErr
+		if reactivationErr := reactivateKeyEncryption(); err == nil {
+			err = reactivationErr
 		}
 	}()
-	for _, repoKey := range reposToTransfer {
-		var params interface{}
-		err = tcmc.sourceArtifactoryManager.GetRepository(repoKey, &params)
-		if err != nil {
-			return
-		}
-		log.Info(fmt.Sprintf("Transferring the configuration of repository '%s' ...", repoKey))
-		err = tcmc.targetArtifactoryManager.CreateRepositoryWithParams(params, repoKey)
-		if err != nil {
-			return
-		}
-	}
-
-	return nil
+	return tcmc.GetAllRemoteRepositories(remoteRepositoryNames)
 }
 
 type projectsMapper struct {

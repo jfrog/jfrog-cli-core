@@ -56,7 +56,7 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadGradleConfig(gc.configPath, false)
+	vConfig, err = utils.ReadGradleConfig(gc.configPath, nil)
 	if err != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func (gc *GradleCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = gradleutils.RunGradle(vConfig, gc.tasks, gc.buildArtifactsDetailsFile, gc.configuration, gc.threads, false, gc.IsXrayScan())
+	err = gradleutils.RunGradle(vConfig, gc.tasks, gc.buildArtifactsDetailsFile, gc.configuration, gc.threads, gc.IsXrayScan())
 	if err != nil {
 		return err
 	}

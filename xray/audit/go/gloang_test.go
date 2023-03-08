@@ -2,6 +2,8 @@ package _go
 
 import (
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,8 +26,15 @@ func TestBuildGoDependencyList(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree()
+	server := &config.ServerDetails{
+		Url:            "https://api.go.here",
+		ArtifactoryUrl: "https://api.go.here/artifactory",
+		User:           "user",
+		AccessToken:    "sdsdccs2232",
+	}
+	rootNode, err := BuildDependencyTree(server, "test-remote")
 	assert.NoError(t, err)
+	assert.Equal(t, "https://user:sdsdccs2232@api.go.here/artifactoryapi/go/test-remote|direct", os.Getenv("GOPROXY"))
 	assert.NotEmpty(t, rootNode)
 
 	// Check root module

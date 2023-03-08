@@ -39,7 +39,7 @@ func testBuildPipDependencyListSetuppy(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(pythonutils.Pip, "")
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
@@ -60,7 +60,7 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
-	rootNode, err := BuildDependencyTree(pythonutils.Pip, "")
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {
@@ -77,7 +77,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(pythonutils.Pip, "requirements.txt")
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
@@ -96,7 +96,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(pythonutils.Pipenv, "")
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pipenv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(pythonutils.Poetry, "")
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Poetry})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,4 +131,9 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 			audit.GetAndAssertNode(t, childNode.Nodes, "packaging:22.0")
 		}
 	}
+}
+
+func TestGetPipInstallArgs(t *testing.T) {
+	assert.Equal(t, []string{"install", "."}, getPipInstallArgs(""))
+	assert.Equal(t, []string{"install", "-r", "requirements.txt"}, getPipInstallArgs("requirements.txt"))
 }

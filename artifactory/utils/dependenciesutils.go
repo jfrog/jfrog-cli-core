@@ -35,7 +35,7 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 		return err
 	}
 
-	return downloadExtractor(artDetails, remotePath, targetPath)
+	return DownloadExtractor(artDetails, remotePath, targetPath)
 }
 
 func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
@@ -61,7 +61,7 @@ func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.
 	return serverDetails, path.Join(repoName, downloadPath), err
 }
 
-func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
+func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
 	downloadUrl := fmt.Sprintf("%s%s", artDetails.ArtifactoryUrl, downloadPath)
 	log.Info("Downloading build-info-extractor from", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)

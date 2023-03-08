@@ -33,23 +33,23 @@ func TestValidateSupportedCommand(t *testing.T) {
 
 func TestSetAndRestoreEnvironmentVariables(t *testing.T) {
 	const jfrogCliTestingEnvVar = "JFROG_CLI_ENV_VAR_FOR_TESTING"
-	yarnCmd := &YarnCommand{envVarsBackup: make(map[string]*string)}
-
 	// Check backup and restore of an existing variable
 	setEnvCallback := tests.SetEnvWithCallbackAndAssert(t, jfrogCliTestingEnvVar, "abc")
-	err := yarnCmd.backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "new-value")
+	backupEnvsMap := make(map[string]*string)
+	oldVal, err := backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "new-value")
 	assert.NoError(t, err)
 	assert.Equal(t, "new-value", os.Getenv(jfrogCliTestingEnvVar))
-	err = yarnCmd.restoreEnvironmentVariables()
-	assert.NoError(t, err)
+	backupEnvsMap[jfrogCliTestingEnvVar] = &oldVal
+	assert.NoError(t, restoreEnvironmentVariables(backupEnvsMap))
 	assert.Equal(t, "abc", os.Getenv(jfrogCliTestingEnvVar))
 
 	// Check backup and restore of a variable that doesn't exist
 	setEnvCallback()
-	err = yarnCmd.backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "another-value")
+	oldVal, err = backupAndSetEnvironmentVariable(jfrogCliTestingEnvVar, "another-value")
 	assert.NoError(t, err)
 	assert.Equal(t, "another-value", os.Getenv(jfrogCliTestingEnvVar))
-	err = yarnCmd.restoreEnvironmentVariables()
+	backupEnvsMap[jfrogCliTestingEnvVar] = &oldVal
+	err = restoreEnvironmentVariables(backupEnvsMap)
 	assert.NoError(t, err)
 	_, exist := os.LookupEnv(jfrogCliTestingEnvVar)
 	assert.False(t, exist)

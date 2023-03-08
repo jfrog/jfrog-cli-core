@@ -1,6 +1,7 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"strconv"
 	"time"
 
@@ -14,6 +15,15 @@ import (
 const (
 	GavPackageTypeIdentifier = "gav://"
 )
+
+type DependencyTreeParams struct {
+	Tool             coreutils.Technology
+	InsecureTls      bool
+	IgnoreConfigFile bool
+	ExcludeTestDeps  bool
+	UseWrapper       bool
+	JavaProps        map[string]any
+}
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
@@ -122,6 +132,13 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 		}
 	}
 	return false
+}
+
+func BuildDependencyTree(params *DependencyTreeParams) (modules []*services.GraphNode, err error) {
+	if params.Tool == coreutils.Maven {
+		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.JavaProps)
+	}
+	return buildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
 }
 
 type dependencyMultimap struct {

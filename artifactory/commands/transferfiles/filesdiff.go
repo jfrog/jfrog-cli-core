@@ -21,10 +21,10 @@ type filesDiffPhase struct {
 }
 
 func (f *filesDiffPhase) initProgressBar() error {
-	if f.progressBar == nil {
-		return nil
+	if f.progressBar != nil {
+		f.progressBar.AddPhase2()
 	}
-	return f.progressBar.AddPhase2()
+	return nil
 }
 
 func (f *filesDiffPhase) getPhaseName() string {

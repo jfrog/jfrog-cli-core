@@ -16,7 +16,7 @@ type PipCommand struct {
 }
 
 func NewPipCommand() *PipCommand {
-	return &PipCommand{PythonCommand: PythonCommand{pythonTool: pythonutils.Pip}}
+	return &PipCommand{PythonCommand: *NewPythonCommand(pythonutils.Pip)}
 }
 
 func (pc *PipCommand) Run() (err error) {

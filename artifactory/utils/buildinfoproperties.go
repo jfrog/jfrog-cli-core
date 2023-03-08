@@ -155,36 +155,31 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	return config, errorutils.CheckError(err)
 }
 
-func ReadGradleConfig(path string, useWrapperIfMissingConfig bool) (config *viper.Viper, err error) {
+func ReadGradleConfig(path string, gradleConfigParams map[string]any) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultGradleConfig(useWrapperIfMissingConfig)
+		config = createDefaultConfigWithParams(YAML, Gradle.String(), gradleConfigParams)
 	} else {
 		config, err = ReadConfigFile(path, YAML)
 	}
 	return
 }
 
-func ReadMavenConfig(path string) (config *viper.Viper, err error) {
+func ReadMavenConfig(path string, mvnProps map[string]any) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultMavenConfig()
+		config = createDefaultConfigWithParams(YAML, Maven.String(), mvnProps)
 	} else {
 		config, err = ReadConfigFile(path, YAML)
 	}
 	return
 }
 
-func createDefaultMavenConfig() *viper.Viper {
+func createDefaultConfigWithParams(configType ConfigType, technology string, params map[string]any) *viper.Viper {
 	vConfig := viper.New()
-	vConfig.SetConfigType(string(YAML))
-	vConfig.Set("type", Maven.String())
-	return vConfig
-}
-
-func createDefaultGradleConfig(useWrapperIfMissingConfig bool) *viper.Viper {
-	vConfig := viper.New()
-	vConfig.SetConfigType(string(YAML))
-	vConfig.Set("type", Gradle.String())
-	vConfig.Set("usewrapper", useWrapperIfMissingConfig)
+	vConfig.SetConfigType(string(configType))
+	vConfig.Set("type", technology)
+	for key, value := range params {
+		vConfig.Set(key, value)
+	}
 	return vConfig
 }
 

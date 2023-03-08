@@ -9,11 +9,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool) (modules []*services.GraphNode, err error) {
+func buildMvnDependencyTree(insecureTls, ignoreConfigFile bool, mvnProps map[string]any) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer cleanBuild(err)
 
-	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile)
+	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile, mvnProps)
 	if err != nil {
 		return
 	}
@@ -21,7 +21,7 @@ func BuildMvnDependencyTree(insecureTls, ignoreConfigFile bool) (modules []*serv
 	return createGavDependencyTree(buildConfiguration)
 }
 
-func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile bool) (err error) {
+func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile bool, mvnProps map[string]any) (err error) {
 	goals := []string{"-B", "compile", "test-compile"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath := ""
@@ -36,7 +36,7 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 		}
 	}
 	// Read config
-	vConfig, err := utils.ReadMavenConfig(configFilePath)
+	vConfig, err := utils.ReadMavenConfig(configFilePath, mvnProps)
 	if err != nil {
 		return err
 	}

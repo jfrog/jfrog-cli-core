@@ -2,8 +2,8 @@ package python
 
 import (
 	"errors"
+	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"io"
-	"net/url"
 	"os/exec"
 
 	"github.com/jfrog/build-info-go/build"
@@ -13,7 +13,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -103,32 +102,11 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 }
 
 func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
+	rtUrl, err := python.GetPypiRepoUrl(pc.serverDetails, pc.repository)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-
-	username := pc.serverDetails.GetUser()
-	password := pc.serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if pc.serverDetails.GetAccessToken() != "" {
-		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		}
-		password = pc.serverDetails.GetAccessToken()
-	}
-	if password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
-	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
-
-	if pc.pythonTool == pythonutils.Pip {
-		pc.args = append(pc.args, "-i")
-	} else if pc.pythonTool == pythonutils.Pipenv {
-		pc.args = append(pc.args, "--pypi-mirror")
-	}
-	pc.args = append(pc.args, rtUrl.String())
+	pc.args = append(pc.args, python.GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl.String())
 	return nil
 }
 

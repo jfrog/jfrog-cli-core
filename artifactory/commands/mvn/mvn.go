@@ -97,7 +97,7 @@ func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 
 func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadMavenConfig(mc.configPath)
+	vConfig, err = utils.ReadMavenConfig(mc.configPath, nil)
 	if err != nil {
 		return
 	}

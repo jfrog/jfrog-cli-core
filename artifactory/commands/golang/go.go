@@ -16,7 +16,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
-	"net/url"
 	"path"
 	"path/filepath"
 	"strings"
@@ -154,11 +153,7 @@ func (gc *GoCommand) run() error {
 	if err != nil {
 		return err
 	}
-	serverDetails, err := resolverDetails.CreateArtAuthConfig()
-	if err != nil {
-		return err
-	}
-	repoUrl, err := getArtifactoryApiUrl(gc.resolverParams.TargetRepo(), serverDetails)
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo())
 	if err != nil {
 		return err
 	}
@@ -190,6 +185,10 @@ func (gc *GoCommand) run() error {
 					err = e
 				}
 			}()
+			serverDetails, err := resolverDetails.CreateArtAuthConfig()
+			if err != nil {
+				return err
+			}
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
 				return err
@@ -206,32 +205,6 @@ func (gc *GoCommand) run() error {
 	}
 
 	return err
-}
-
-// Gets the URL of the specified repository Go API in Artifactory.
-// The URL contains credentials (username and access token or password).
-func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
-	rtUrl, err := url.Parse(details.GetUrl())
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	username := details.GetUser()
-	password := details.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if details.GetAccessToken() != "" {
-		log.Debug("Using proxy with access-token.")
-		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
-		}
-		password = details.GetAccessToken()
-	}
-	if password != "" {
-		rtUrl.User = url.UserPassword(username, password)
-	}
-	rtUrl.Path += "api/go/" + repoName
-	return rtUrl.String(), nil
 }
 
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.

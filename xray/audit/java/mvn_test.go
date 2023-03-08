@@ -14,7 +14,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := BuildMvnDependencyTree(false, true)
+	modulesDependencyTrees, err := buildMvnDependencyTree(false, true, nil)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		// Check root module
 		multi := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")

@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -28,15 +27,12 @@ func (m *fullTransferPhase) initProgressBar() error {
 	if m.progressBar == nil {
 		return nil
 	}
-	totalRepoSize, err := utils.GetUsedSpaceInBytes(&m.repoSummary)
-	if err != nil {
-		return err
-	}
 	skip, err := m.shouldSkipPhase()
 	if err != nil {
 		return err
 	}
-	return m.progressBar.AddPhase1(m.stateManager.OverallTransfer.TransferredSizeBytes, totalRepoSize, skip)
+	m.progressBar.AddPhase1(skip)
+	return nil
 }
 
 func (m *fullTransferPhase) getPhaseName() string {
@@ -88,7 +84,7 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 func (m *fullTransferPhase) skipPhase() error {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
-		return m.progressBar.AddPhase1(0, 0, true)
+		m.progressBar.AddPhase1(true)
 	}
 	return nil
 }

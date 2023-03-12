@@ -18,9 +18,6 @@ import (
 )
 
 const (
-	noContextMessage = "Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
-		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
@@ -156,7 +153,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
-	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
+	log.Output("Below are all vulnerabilities detected.")
 
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true, true)
 	if err != nil {

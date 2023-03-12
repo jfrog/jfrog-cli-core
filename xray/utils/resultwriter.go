@@ -105,7 +105,7 @@ func convertScanToSimpleJson(results []services.ScanResponse, errors []formats.S
 	violations, vulnerabilities, licenses := SplitScanResults(results)
 	jsonTable := formats.SimpleJsonResults{}
 	if includeVulnerabilities {
-		log.Info(noContextMessage + "All vulnerabilities detected will be included in the output JSON.")
+		log.Info("All vulnerabilities detected will be included in the output JSON.")
 		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err

@@ -11,7 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
-const transferRunStatusVersion = 0
+const transferRunStatusVersion = 1
 
 var saveRunStatusMutex sync.Mutex
 
@@ -76,27 +76,32 @@ func (ts *TransferRunStatus) persistTransferRunStatus() (err error) {
 	return nil
 }
 
-func loadTransferRunStatus() (*TransferRunStatus, error) {
+func loadTransferRunStatus() (transferRunStatus TransferRunStatus, exists bool, err error) {
 	statusFilePath, err := coreutils.GetJfrogTransferRunStatusFilePath()
 	if err != nil {
-		return nil, err
+		return
 	}
-	exists, err := fileutils.IsFileExists(statusFilePath, false)
-	if err != nil {
-		return nil, err
-	}
-	transferRunStatus := &TransferRunStatus{}
-	if !exists {
-		return transferRunStatus, nil
+	exists, err = fileutils.IsFileExists(statusFilePath, false)
+	if err != nil || !exists {
+		return
 	}
 
 	content, err := fileutils.ReadFile(statusFilePath)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if err = json.Unmarshal(content, &transferRunStatus); err != nil {
-		return nil, errorutils.CheckError(err)
+	err = errorutils.CheckError(json.Unmarshal(content, &transferRunStatus))
+	return
+}
+
+func VerifyTransferRunStatusVersion() error {
+	transferRunStatus, exists, err := loadTransferRunStatus()
+	if err != nil || !exists {
+		return err
 	}
-	return transferRunStatus, nil
+	if transferRunStatus.Version != transferRunStatusVersion {
+		return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
+	}
+	return nil
 }

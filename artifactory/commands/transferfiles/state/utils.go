@@ -16,6 +16,11 @@ const (
 	secondsInMinute = 60
 	secondsInHour   = 60 * secondsInMinute
 	secondsInDay    = 24 * secondsInHour
+
+	OldTransferDirectoryStructureErrorMsg = "unsupported transfer directory structure found.\n" +
+		"This structure was created on previous runs of a transfer command, but is no longer supported by this JFrog CLI version.\n" +
+		"You may either downgrade JFrog CLI to a supported version, or remove the transfer directory which is located under your JFROG_HOME directory\n" +
+		"(Note - this will remove all your transfer history, which means the transfer will start from scratch)"
 )
 
 func ConvertTimeToRFC3339(timeToConvert time.Time) string {

@@ -125,7 +125,7 @@ func LoadTransferState(repoKey string, snapshot bool) (transferState TransferSta
 	if err = json.Unmarshal(content, &transferState); errorutils.CheckError(err) != nil {
 		return
 	}
-	if transferState.Version > transferStateFileVersion {
+	if transferState.Version != transferStateFileVersion {
 		return TransferState{}, false, errorutils.CheckErrorf(transferStateFileInvalidVersionErrorMsg)
 	}
 	return

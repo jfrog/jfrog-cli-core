@@ -21,6 +21,9 @@ import (
 //
 // In the event of a node reaching completion, a tree collapsing may occur in order to save space:
 // The node will mark itself completed, and will then notify the parent to check completion as well.
+//
+// When resuming from a snapshot, all nodes that weren't completed are re-explored even if they were previously fully explored.
+// Therefore, when persisting the snapshot to disk these fields are removed.
 type RepoSnapshotManager struct {
 	repoKey string
 	// Pointer to the root node of the repository tree.

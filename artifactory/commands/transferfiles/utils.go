@@ -38,10 +38,6 @@ const (
 	SyncErrorReason     = "un-synchronized chunk status due to network issue"
 	SyncErrorStatusCode = 404
 
-	OldTransferDirectoryStructureErrorMsg = "unsupported transfer directory structure found.\n" +
-		"This structure was created on previous runs of a transfer command, but is no longer supported by this JFrog CLI version.\n" +
-		"You may either downgrade JFrog CLI to a supported version, or remove the transfer directory which is located under your JFROG_HOME directory\n" +
-		"(Note - this will remove all your transfer history, which means the transfer will start from scratch)"
 	StopFileName = "stop"
 )
 
@@ -255,7 +251,7 @@ func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, c
 
 		// If empty dir, skip to checking completion.
 		if file.Name != "" {
-			if err = dirNode.FileCompleted(file.Name); err != nil {
+			if err = dirNode.DecrementFilesCount(); err != nil {
 				return
 			}
 		}

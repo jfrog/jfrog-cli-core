@@ -40,7 +40,7 @@ type sarifProperties struct {
 
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
-func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool) error {
+func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, isScan bool) error {
 	switch format {
 	case Table:
 		var err error
@@ -53,15 +53,15 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 			log.Output("The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
-			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended)
+			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended, isScan)
 		} else {
-			err = PrintViolationsTable(violations, isMultipleRoots, printExtended)
+			err = PrintViolationsTable(violations, isMultipleRoots, printExtended, isScan)
 		}
 		if err != nil {
 			return err
 		}
 		if includeLicenses {
-			err = PrintLicensesTable(licenses, printExtended)
+			err = PrintLicensesTable(licenses, printExtended, isScan)
 		}
 		return err
 	case SimpleJson:

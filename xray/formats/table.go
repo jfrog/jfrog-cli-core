@@ -17,12 +17,32 @@ type VulnerabilityTableRow struct {
 	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
 }
 
+type VulnerabilityScanTableRow struct {
+	Severity               string                   `col-name:"Severity"`
+	SeverityNumValue       int                      // For sorting
+	DirectPackages         []DirectPackagesTableRow `embed-table:"true"`
+	ImpactedPackageName    string                   `col-name:"Impacted\nPackage\nName"`
+	ImpactedPackageVersion string                   `col-name:"Impacted\nPackage\nVersion"`
+	FixedVersions          string                   `col-name:"Fixed\nVersions"`
+	ImpactedPackageType    string                   `col-name:"Type"`
+	Cves                   []CveTableRow            `embed-table:"true"`
+	IssueId                string                   `col-name:"Issue ID" extended:"true"`
+}
+
 type LicenseTableRow struct {
 	LicenseKey                string                       `col-name:"License"`
 	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency"`
 	ImpactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
 	ImpactedDependencyType    string                       `col-name:"Type"`
+}
+
+type LicenseScanTableRow struct {
+	LicenseKey             string                   `col-name:"License"`
+	DirectDependencies     []DirectPackagesTableRow `embed-table:"true"`
+	ImpactedPackageName    string                   `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string                   `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedDependencyType string                   `col-name:"Type"`
 }
 
 type LicenseViolationTableRow struct {
@@ -33,6 +53,16 @@ type LicenseViolationTableRow struct {
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency"`
 	ImpactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
 	ImpactedDependencyType    string                       `col-name:"Type"`
+}
+
+type LicenseViolationScanTableRow struct {
+	LicenseKey             string                   `col-name:"License"`
+	Severity               string                   `col-name:"Severity"`
+	SeverityNumValue       int                      // For sorting
+	DirectDependencies     []DirectPackagesTableRow `embed-table:"true"`
+	ImpactedPackageName    string                   `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string                   `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedDependencyType string                   `col-name:"Type"`
 }
 
 type OperationalRiskViolationTableRow struct {
@@ -52,9 +82,31 @@ type OperationalRiskViolationTableRow struct {
 	LatestVersion             string                       `col-name:"Latest\nVersion" extended:"true"`
 }
 
+type OperationalRiskViolationScanTableRow struct {
+	Severity               string                   `col-name:"Severity"`
+	SeverityNumValue       int                      // For sorting
+	DirectDependencies     []DirectPackagesTableRow `embed-table:"true"`
+	ImpactedPackageName    string                   `col-name:"Impacted\nPackage"`
+	ImpactedPackageVersion string                   `col-name:"Impacted\nPackage\nVersion"`
+	ImpactedDependencyType string                   `col-name:"Type"`
+	RiskReason             string                   `col-name:"Risk\nReason"`
+	IsEol                  string                   `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
+	EolMessage             string                   `col-name:"End\nOf\nLife\nMessage" extended:"true"`
+	Cadence                string                   `col-name:"Cadence"  extended:"true"`
+	Commits                string                   `col-name:"Commits"  extended:"true"`
+	Committers             string                   `col-name:"Committers"  extended:"true"`
+	NewerVersions          string                   `col-name:"Newer\nVersions" extended:"true"`
+	LatestVersion          string                   `col-name:"Latest\nVersion" extended:"true"`
+}
+
 type DirectDependenciesTableRow struct {
 	Name    string `col-name:"Direct\nDependency"`
 	Version string `col-name:"Direct\nDependency\nVersion"`
+}
+
+type DirectPackagesTableRow struct {
+	Name    string `col-name:"Direct\nPackage"`
+	Version string `col-name:"Direct\nPackage\nVersion"`
 }
 
 type CveTableRow struct {

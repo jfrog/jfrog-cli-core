@@ -57,7 +57,6 @@ func (nic *NpmInstallOrCiCommand) SetRepoConfig(conf *utils.RepositoryConfig) *N
 }
 
 func (nic *NpmInstallOrCiCommand) Init() error {
-	log.Info(fmt.Sprintf("Running npm %s.", nic.cmdName))
 	// Read config file.
 	log.Debug("Preparing to read the config file", nic.configFilePath)
 	vConfig, err := utils.ReadConfigFile(nic.configFilePath, utils.YAML)
@@ -82,21 +81,20 @@ func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error)
 }
 
 func (nic *NpmInstallOrCiCommand) Run() (err error) {
-	if err = nic.preparePrerequisites(nic.repo, true); err != nil {
+	if err = nic.PreparePrerequisites(nic.repo, true); err != nil {
 		return
 	}
-
-	if err = nic.prepareBuildInfoModule(); err != nil {
-		return
-	}
-
 	defer func() {
 		e := nic.restoreNpmrcFunc()
 		if err == nil {
 			err = e
 		}
 	}()
-	if err = nic.createTempNpmrc(); err != nil {
+	if err = nic.CreateTempNpmrc(); err != nil {
+		return
+	}
+
+	if err = nic.prepareBuildInfoModule(); err != nil {
 		return
 	}
 
@@ -152,7 +150,7 @@ func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 }
 
 func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
-	log.Debug(fmt.Sprintf("Running npm %s command.", nic.cmdName))
+	log.Info(fmt.Sprintf("Running 'npm %s %s' command.", nic.cmdName, strings.Join(nic.npmArgs, " ")))
 	npmCmdConfig := &npmutils.NpmConfig{
 		Npm:          nic.executablePath,
 		Command:      append([]string{nic.cmdName}, nic.npmArgs...),

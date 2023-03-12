@@ -83,7 +83,7 @@ func TestGetBuildInfoEstimatedRemainingTime(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, false, api.Success),
 		},
 	}
-	_, err := UpdateChunkInState(timeEstMng.stateManager, &chunkStatus1)
+	err := UpdateChunkInState(timeEstMng.stateManager, &chunkStatus1)
 	assert.NoError(t, err)
 	assertGetEstimatedRemainingTime(t, timeEstMng, int64((totalBiFiles-2)*buildInfoAverageIndexTimeSec))
 }
@@ -292,7 +292,7 @@ func TestTransferredSizeInState(t *testing.T) {
 
 func addChunkStatus(t *testing.T, timeEstMng *TimeEstimationManager, chunkStatus api.ChunkStatus, workingThreads int, includedInTotalSize bool, durationMillis int64) {
 	if includedInTotalSize {
-		_, err := UpdateChunkInState(timeEstMng.stateManager, &chunkStatus)
+		err := UpdateChunkInState(timeEstMng.stateManager, &chunkStatus)
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, timeEstMng.stateManager.SetWorkingThreads(workingThreads))

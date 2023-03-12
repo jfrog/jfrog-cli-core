@@ -255,10 +255,8 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		nodeToChunksMap:  make(map[nodeId]map[api.ChunkId]UploadedChunkData),
 	}
 	curProcessedUploadChunks = 0
-	var progressBar *TransferProgressMng
 	var timeEstMng *state.TimeEstimationManager
 	if phaseBase != nil {
-		progressBar = phaseBase.progressBar
 		timeEstMng = &phaseBase.stateManager.TimeEstimationManager
 	}
 	for {
@@ -270,9 +268,6 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
 		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
 			log.Error("Couldn't set the current number of working threads:", err.Error())
-		}
-		if progressBar != nil {
-			progressBar.SetRunningThreads(curProcessedUploadChunks)
 		}
 
 		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
@@ -295,7 +290,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = api.UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, &chunksStatus, progressBar, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
+		toStop := handleChunksStatuses(phaseBase, &chunksStatus, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -357,7 +352,7 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 // handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
 // It syncs the chunk status between the CLI and the source Artifactory instance,
 // When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
-func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse, progressbar *TransferProgressMng,
+func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse,
 	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *state.TimeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
 	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
@@ -373,7 +368,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
 			chunkSentTime := chunksLifeCycleManager.nodeToChunksMap[nodeId(chunksStatus.NodeId)][api.ChunkId(chunk.UuidToken)].TimeSent
-			err := updateProgress(phase, progressbar, timeEstMng, chunk, chunkSentTime)
+			err := updateProgress(phase, timeEstMng, chunk, chunkSentTime)
 			if err != nil {
 				log.Error("Unexpected error in progress update: " + err.Error())
 				continue
@@ -397,21 +392,17 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 	return false
 }
 
-func updateProgress(phase *phaseBase, progressbar *TransferProgressMng, timeEstMng *state.TimeEstimationManager,
+func updateProgress(phase *phaseBase, timeEstMng *state.TimeEstimationManager,
 	chunk api.ChunkStatus, chunkSentTime time.Time) error {
 	if phase == nil {
 		return nil
 	}
-	chunkSizeInBytes, err := state.UpdateChunkInState(phase.stateManager, &chunk)
+
+	err := state.UpdateChunkInState(phase.stateManager, &chunk)
 	if err != nil {
 		return err
 	}
-	if progressbar != nil {
-		progressbar.increaseTotalSize(int(chunkSizeInBytes))
-		if err := progressbar.IncrementPhaseBy(phase.phaseId, int(chunkSizeInBytes)); err != nil {
-			return err
-		}
-	}
+
 	if timeEstMng != nil {
 		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())
 	}

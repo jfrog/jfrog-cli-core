@@ -67,7 +67,7 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // buildInfoRepo  - True if build info repository
 // reset          - Delete the repository's previous transfer info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
-	err := ts.TransferState.action(func(state *TransferState) error {
+	err := ts.TransferState.Action(func(state *TransferState) error {
 		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
 		if err != nil {
 			return err
@@ -95,7 +95,7 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 func (ts *TransferStateManager) SetRepoFullTransferStarted(startTime time.Time) error {
 	// We do not want to change the start time if it already exists, because it means we continue transferring from a snapshot.
 	// Some dirs may not be searched again (if done exploring or completed), so handling their diffs from the original time is required.
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		if state.CurrentRepo.FullTransfer.Started == "" {
 			state.CurrentRepo.FullTransfer.Started = ConvertTimeToRFC3339(startTime)
 		}
@@ -104,7 +104,7 @@ func (ts *TransferStateManager) SetRepoFullTransferStarted(startTime time.Time) 
 }
 
 func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.FullTransfer.Ended = ConvertTimeToRFC3339(time.Now())
 		return nil
 	})
@@ -112,7 +112,7 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
 
 // Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
-	err := ts.TransferState.action(func(state *TransferState) error {
+	err := ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase1Info.TransferredSizeBytes += chunkTotalSizeInBytes
 		state.CurrentRepo.Phase1Info.TransferredUnits += chunkTotalFiles
 		return nil
@@ -131,7 +131,7 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles
 }
 
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase2Info.TransferredSizeBytes += chunkTotalSizeInBytes
 		state.CurrentRepo.Phase2Info.TransferredUnits += chunkTotalFiles
 		return nil
@@ -139,7 +139,7 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(chunkTotalFiles
 }
 
 func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSize int64) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase2Info.TotalSizeBytes += totalSize
 		state.CurrentRepo.Phase2Info.TotalUnits += filesNumber
 		return nil
@@ -148,7 +148,7 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSiz
 
 // Set relevant information of files and storage we need to transfer in phase3
 func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSize int64) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase3Info.TotalSizeBytes = totalSize
 		state.CurrentRepo.Phase3Info.TotalUnits = filesNumber
 		return nil
@@ -157,7 +157,7 @@ func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSiz
 
 // Increase transferred storage and files in phase 3
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase3Info.TransferredSizeBytes += chunkTotalSizeInBytes
 		state.CurrentRepo.Phase3Info.TransferredUnits += chunkTotalFiles
 		return nil
@@ -166,7 +166,7 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(chunkTotalFiles
 
 // Returns pointers to TotalStorage, TotalFiles, TransferredFiles and TransferredStorage from progressState of a specific Repository.
 func (ts *TransferStateManager) GetStorageAndFilesRepoPointers(phase int) (totalFailedStorage, totalUploadedFailedStorage, totalFailedFiles, totalUploadedFailedFiles *int64, err error) {
-	err = ts.TransferState.action(func(state *TransferState) error {
+	err = ts.TransferState.Action(func(state *TransferState) error {
 		switch phase {
 		case api.Phase1:
 			totalFailedStorage = &ts.CurrentRepo.Phase1Info.TotalSizeBytes
@@ -192,7 +192,7 @@ func (ts *TransferStateManager) GetStorageAndFilesRepoPointers(phase int) (total
 // Adds new diff details to the repo's diff array in state.
 // Marks files handling as started, and sets the handling range.
 func (ts *TransferStateManager) AddNewDiffToState(startTime time.Time) error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 
 		newDiff := DiffDetails{}
 
@@ -218,7 +218,7 @@ func (ts *TransferStateManager) AddNewDiffToState(startTime time.Time) error {
 }
 
 func (ts *TransferStateManager) SetFilesDiffHandlingCompleted() error {
-	return ts.TransferState.action(func(state *TransferState) error {
+	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Diffs[len(state.CurrentRepo.Diffs)-1].FilesDiffRunTime.Ended = ConvertTimeToRFC3339(time.Now())
 		state.CurrentRepo.Diffs[len(state.CurrentRepo.Diffs)-1].Completed = true
 		return nil
@@ -252,7 +252,7 @@ func (ts *TransferStateManager) GetTransferredSizeBytes() (transferredSizeBytes 
 }
 
 func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, err error) {
-	return start, end, ts.TransferState.action(func(state *TransferState) error {
+	return start, end, ts.TransferState.Action(func(state *TransferState) error {
 		var inErr error
 		start, inErr = ConvertRFC3339ToTime(state.CurrentRepo.Diffs[len(state.CurrentRepo.Diffs)-1].HandledRange.Started)
 		if inErr != nil {
@@ -364,8 +364,8 @@ func GetRunningTime() (runningTime string, isRunning bool, err error) {
 	return secondsToLiteralTime(runningSecs, ""), true, nil
 }
 
-func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (chunkTotalSizeInBytes int64, err error) {
-	chunkTotalSizeInBytes = 0
+func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (err error) {
+	var chunkTotalSizeInBytes int64 = 0
 	var chunkTotalFiles int64 = 0
 	for _, file := range chunk.Files {
 		if file.Status != api.Fail {
@@ -381,7 +381,7 @@ func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStat
 	case api.Phase3:
 		err = stateManager.IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes)
 	}
-	return chunkTotalSizeInBytes, err
+	return err
 }
 
 func GetJfrogTransferRepoSnapshotDir(repoKey string) (string, error) {

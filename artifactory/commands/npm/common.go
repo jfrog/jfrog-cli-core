@@ -40,7 +40,7 @@ type CommonArgs struct {
 	NpmCommand
 }
 
-func (ca *CommonArgs) preparePrerequisites(repo string, overrideNpmrc bool) error {
+func (ca *CommonArgs) PreparePrerequisites(repo string, overrideNpmrc bool) error {
 	log.Debug("Preparing prerequisites...")
 	var err error
 	ca.npmVersion, ca.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
@@ -76,6 +76,11 @@ func (ca *CommonArgs) preparePrerequisites(repo string, overrideNpmrc bool) erro
 	return ca.setRestoreNpmrcFunc()
 }
 
+func (ca *CommonArgs) SetCmdName(cmdName string) *CommonArgs {
+	ca.cmdName = cmdName
+	return ca
+}
+
 func (ca *CommonArgs) setJsonOutput() error {
 	jsonOutput, err := npm.ConfigGet(ca.npmArgs, "json", ca.executablePath)
 	if err != nil {
@@ -101,7 +106,7 @@ func (ca *CommonArgs) setArtifactoryAuth() error {
 
 // In order to make sure the npm resolves artifacts from Artifactory we create a .npmrc file in the project dir.
 // If such a file exists we back it up as npmrcBackupFileName.
-func (ca *CommonArgs) createTempNpmrc() error {
+func (ca *CommonArgs) CreateTempNpmrc() error {
 	log.Debug("Creating project .npmrc file.")
 	data, err := npm.GetConfigList(ca.npmArgs, ca.executablePath)
 	if err != nil {
@@ -195,4 +200,8 @@ func (ca *CommonArgs) setRestoreNpmrcFunc() error {
 		return restoreNpmrcFunc()
 	}
 	return err
+}
+
+func (ca *CommonArgs) GetRestoreNpmrcFunc() func() error {
+	return ca.restoreNpmrcFunc
 }

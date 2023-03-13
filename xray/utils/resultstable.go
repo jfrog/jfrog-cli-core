@@ -153,8 +153,6 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
-	log.Output("Below are all vulnerabilities detected.")
-
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true, true)
 	if err != nil {
 		return err

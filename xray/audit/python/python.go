@@ -196,7 +196,7 @@ func executeCommand(executable string, args ...string) error {
 }
 
 func getPipInstallArgs(requirementsFile string) []string {
-	args := []string{"-m", "pip", "install", "."}
+	args := []string{"-m", "pip", "install"}
 	if requirementsFile == "" {
 		// Run 'pip install .'
 		args = append(args, ".")

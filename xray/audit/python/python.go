@@ -167,10 +167,11 @@ func installPipDeps(auditPython *AuditPython) (restoreEnv func() error, err erro
 		return restoreEnv, runPipInstallFromRemoteRegistry(auditPython.Server, auditPython.RemotePypiRepo, auditPython.PipRequirementsFile)
 	}
 	pipInstallArgs := getPipInstallArgs(auditPython.PipRequirementsFile)
-	err = runPipInstall(pipInstallArgs...)
+	err = executeCommand("python", pipInstallArgs...)
 	if err != nil && auditPython.PipRequirementsFile == "" {
-		log.Debug(err.Error() + "\ntrying to install using a requirements file.")
-		reqErr := runPipInstall("requirements.txt")
+		log.Debug(err.Error() + "\nTrying to install using a requirements file...")
+		pipInstallArgs = getPipInstallArgs("requirements.txt")
+		reqErr := executeCommand("python", pipInstallArgs...)
 		if reqErr != nil {
 			// Return Pip install error and log the requirements fallback error.
 			log.Debug(reqErr.Error())
@@ -194,27 +195,16 @@ func executeCommand(executable string, args ...string) error {
 	return nil
 }
 
-func runPipInstall(args ...string) error {
-	// Try getting 'pip3' executable, if not found use 'pip'
-	pipExec := getPipExec()
-	return executeCommand(pipExec, args...)
-}
-
 func getPipInstallArgs(requirementsFile string) []string {
+	args := []string{"-m", "pip", "install", "."}
 	if requirementsFile == "" {
 		// Run 'pip install .'
-		return []string{"install", "."}
+		args = append(args, ".")
+	} else {
+		// Run pip 'install -r requirements <requirementsFile>'
+		args = append(args, "-r", requirementsFile)
 	}
-	// Run pip 'install -r requirements <requirementsFile>'
-	return []string{"install", "-r", requirementsFile}
-}
-
-func getPipExec() string {
-	pipExec, _ := exec.LookPath("pip3")
-	if pipExec == "" {
-		pipExec = "pip"
-	}
-	return pipExec
+	return args
 }
 
 func runPipInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName, pipRequirementsFile string) (err error) {
@@ -224,7 +214,7 @@ func runPipInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName,
 	}
 	args := getPipInstallArgs(pipRequirementsFile)
 	args = append(args, utils.GetPypiRemoteRegistryFlag(pythonutils.Pip), rtUrl.String())
-	return runPipInstall(args...)
+	return executeCommand("python", args...)
 }
 
 func runPipenvInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName string) (err error) {

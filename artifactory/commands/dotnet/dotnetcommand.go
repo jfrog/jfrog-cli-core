@@ -127,8 +127,9 @@ func (dc *DotnetCommand) Exec() (err error) {
 
 // prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
 // In case no config file was provided - creates a temporary one.
+// avoid generate --configfile when test subcommand is used 
 func (dc *DotnetCommand) prepareDotnetBuildInfoModule(buildInfoModule *build.DotnetModule) (func() error, error) {
-	callbackFunc, err := dc.prepareConfigFile()
+	callbackFunc, err := dc.prepareConfigFile(dc.subCommand)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +188,7 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
+func (dc *DotnetCommand) prepareConfigFile(subCommand string) (cleanup func() error, err error) {
 	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
 	if err != nil {
 		return
@@ -221,7 +222,9 @@ func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
 
 	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2)
 	if err == nil {
-		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
+		if subCommand != "test" {
+			dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
+		}
 	}
 	return
 }

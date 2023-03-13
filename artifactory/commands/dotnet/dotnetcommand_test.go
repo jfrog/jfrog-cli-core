@@ -149,6 +149,7 @@ func TestPrepareDotnetBuildInfoModule(t *testing.T) {
 	t.Run("existing with source flag", func(t *testing.T) {
 		testPrepareDotnetBuildInfoModule(t, []string{"--source", "/path/to/source"}, false)
 	})
+	t.Run("testing dotnet test", func(t *testing.T) { testPrepareDotnetTestCommand (t, []string{}, false) })
 }
 
 func testPrepareDotnetBuildInfoModule(t *testing.T, flags []string, expectedGeneratedConfigFile bool) {
@@ -178,6 +179,34 @@ func testPrepareDotnetBuildInfoModule(t *testing.T, flags []string, expectedGene
 		return
 	}
 	assertConfigFileGenerated(t, module, callbackFunc)
+}
+
+func testPrepareDotnetTestCommand(t *testing.T, flags []string, expectedGeneratedConfigFile bool) {
+	tmpDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
+	module := createNewDotnetModule(t, tmpDir)
+	cmd := DotnetCommand{
+		toolchainType:      dotnet.DotnetCore,
+		subCommand:         "test",
+		argAndFlags:        flags,
+		buildConfiguration: utils.NewBuildConfiguration("", "", "mod", ""),
+		serverDetails:      &config.ServerDetails{ArtifactoryUrl: "https://my-instance.jfrog.io"},
+	}
+	callbackFunc, err := cmd.prepareDotnetBuildInfoModule(module)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, cmd.toolchainType, module.GetToolchainType())
+	assert.Equal(t, cmd.subCommand, module.GetSubcommand())
+	assert.Equal(t, cmd.buildConfiguration.GetModule(), module.GetName())
+
+	if !expectedGeneratedConfigFile {
+		assertConfigFileNotGenerated(t, cmd, module, tmpDir)
+		return
+	}
 }
 
 func assertConfigFileNotGenerated(t *testing.T, cmd DotnetCommand, module *build.DotnetModule, tmpDir string) {

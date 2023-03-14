@@ -644,7 +644,11 @@ func (cc *ConfigCommand) use() error {
 				return err
 			}
 		}
-		log.Info(fmt.Sprintf("Using server ID '%s' (%s).", serverFound.ServerId, serverFound.Url))
+		usingServerLog := fmt.Sprintf("Using server ID '%s'", serverFound.ServerId)
+		if serverFound.Url != "" {
+			usingServerLog += fmt.Sprintf(" (%s).", serverFound.Url)
+		}
+		log.Info(usingServerLog)
 		return nil
 	}
 	return errorutils.CheckErrorf("Could not find a server with ID '%s'.", cc.serverId)

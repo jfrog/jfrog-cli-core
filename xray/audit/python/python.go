@@ -242,7 +242,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	err = executeCommand(pythonPath, cmdArgs...)
 	if err != nil {
 		// Failed running 'python -m venv', trying to run 'virtualenv'
-		log.Debug("Failed running python venv: " + err.Error())
+		log.Debug("Failed running python venv:", err.Error())
 		err = executeCommand("virtualenv", "-p", pythonPath, venvdirName)
 		if err != nil {
 			return

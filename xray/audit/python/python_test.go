@@ -134,6 +134,6 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 }
 
 func TestGetPipInstallArgs(t *testing.T) {
-	assert.Equal(t, []string{"install", "."}, getPipInstallArgs(""))
-	assert.Equal(t, []string{"install", "-r", "requirements.txt"}, getPipInstallArgs("requirements.txt"))
+	assert.Equal(t, []string{"-m", "pip", "install", "."}, getPipInstallArgs(""))
+	assert.Equal(t, []string{"-m", "pip", "install", "-r", "requirements.txt"}, getPipInstallArgs("requirements.txt"))
 }

@@ -29,12 +29,12 @@ func TestReadMissionControlHttpMessage(t *testing.T) {
 	expected = "Validation constraint violation addInstance.req.url property must be a valid URL. Invalid value: 'the'"
 	errorMessage = ReadMissionControlHttpMessage(resp)
 	if expected != errorMessage {
-		t.Error("Unexpected error message. Expected: \n" + expected + "\nGot \n" + errorMessage)
+		t.Error("Unexpected error message. Expected: \n" + expected + "\n Got\n" + errorMessage)
 	}
 	resp = []byte("{\"errors\": [{\"message\": \"Validation constraint violation\",\"details\": [\"addInstance.req.url property must be a valid URL. Invalid value: 'the'\" , \"test\"],\"type\": \"Validation\"}]}")
 	expected = "Validation constraint violation addInstance.req.url property must be a valid URL. Invalid value: 'the' test"
 	errorMessage = ReadMissionControlHttpMessage(resp)
 	if expected != errorMessage {
-		t.Error("Unexpected error message. Expected: \n" + expected + "\nGot \n" + errorMessage)
+		t.Error("Unexpected error message. Expected: \n" + expected + "\n Got\n" + errorMessage)
 	}
 }

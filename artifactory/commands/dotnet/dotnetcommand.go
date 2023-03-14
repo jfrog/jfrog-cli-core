@@ -219,7 +219,7 @@ func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
 		return fileutils.RemoveTempDir(tempDirPath)
 	}
 
-	configFile, err := dc.InitNewConfig(tempDirPath)
+	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2)
 	if err == nil {
 		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
@@ -241,8 +241,8 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 	return "", nil
 }
 
-// The fact that we here, means that neither of the flags were provided, and we need to init our own config.
-func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.File, err error) {
+// InitNewConfig is used when neither of the flags were provided, and we need to init our own config.
+func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
 	configFile, err = os.CreateTemp(configDirPath, configFilePattern)
 	if errorutils.CheckError(err) != nil {
@@ -259,20 +259,20 @@ func (dc *DotnetCommand) InitNewConfig(configDirPath string) (configFile *os.Fil
 	// We would prefer to write the NuGet configuration using the `nuget add source` command,
 	// but the NuGet configuration utility doesn't currently allow setting protocolVersion.
 	// Until that is supported, the templated method must be used.
-	err = dc.addSourceToNugetTemplate(configFile)
+	err = addSourceToNugetTemplate(configFile, server, useNugetV2, repoName)
 	return
 }
 
 // Adds a source to the nuget config template
-func (dc *DotnetCommand) addSourceToNugetTemplate(configFile *os.File) error {
-	sourceUrl, user, password, err := dc.getSourceDetails()
+func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string) error {
+	sourceUrl, user, password, err := getSourceDetails(server, repoName, useNugetV2)
 	if err != nil {
 		return err
 	}
 
 	// Specify the protocolVersion
 	protoVer := "3"
-	if dc.useNugetV2 {
+	if useNugetV2 {
 		protoVer = "2"
 	}
 
@@ -281,28 +281,28 @@ func (dc *DotnetCommand) addSourceToNugetTemplate(configFile *os.File) error {
 	return err
 }
 
-func (dc *DotnetCommand) getSourceDetails() (sourceURL, user, password string, err error) {
+func getSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
 	var u *url.URL
-	u, err = url.Parse(dc.serverDetails.ArtifactoryUrl)
+	u, err = url.Parse(details.ArtifactoryUrl)
 	if errorutils.CheckError(err) != nil {
 		return
 	}
 	nugetApi := "api/nuget/v3"
-	if dc.useNugetV2 {
+	if useNugetV2 {
 		nugetApi = "api/nuget"
 	}
-	u.Path = path.Join(u.Path, nugetApi, dc.repoName)
+	u.Path = path.Join(u.Path, nugetApi, repoName)
 	sourceURL = u.String()
 
-	user = dc.serverDetails.User
-	password = dc.serverDetails.Password
+	user = details.User
+	password = details.Password
 	// If access-token is defined, extract user from it.
-	if dc.serverDetails.AccessToken != "" {
+	if details.AccessToken != "" {
 		log.Debug("Using access-token details for nuget authentication.")
 		if user == "" {
-			user = auth.ExtractUsernameFromAccessToken(dc.serverDetails.AccessToken)
+			user = auth.ExtractUsernameFromAccessToken(details.AccessToken)
 		}
-		password = dc.serverDetails.AccessToken
+		password = details.AccessToken
 	}
 	return
 }

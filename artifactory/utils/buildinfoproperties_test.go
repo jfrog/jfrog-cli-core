@@ -142,3 +142,14 @@ func getOriginalProxyValue() string {
 func setProxy(proxy string, t *testing.T) {
 	testsutils.SetEnvAndAssert(t, HttpProxy, proxy)
 }
+
+func TestCreateDefaultConfigWithParams(t *testing.T) {
+	params := map[string]any{
+		"usewrapper":   true,
+		"resolver.url": "http://localhost",
+	}
+	config := createDefaultConfigWithParams("YAML", "gradle", params)
+	assert.True(t, config.IsSet("usewrapper"))
+	assert.True(t, config.IsSet("resolver.url"))
+	assert.True(t, config.IsSet("type"))
+}

@@ -5,22 +5,16 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
-	buildinfoutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/auth"
+	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/spf13/viper"
 	"io"
-	"net/url"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 )
 
 type PoetryCommand struct {
@@ -29,16 +23,11 @@ type PoetryCommand struct {
 	poetryConfigRepoName string
 }
 
-const (
-	baseConfigRepoName     = "jfrog-server"
-	poetryConfigAuthPrefix = "http-basic."
-	poetryConfigRepoPrefix = "repositories."
-	pyproject              = "pyproject.toml"
-)
+const baseConfigRepoName = "jfrog-server"
 
 func NewPoetryCommand() *PoetryCommand {
 	return &PoetryCommand{
-		PythonCommand:        PythonCommand{pythonTool: pythonutils.Poetry},
+		PythonCommand:        *NewPythonCommand(pythonutils.Poetry),
 		poetryConfigRepoName: baseConfigRepoName,
 	}
 }
@@ -138,69 +127,18 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 }
 
 func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := url.Parse(pc.serverDetails.GetArtifactoryUrl())
+	rtUrl, username, password, err := python.GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
-
-	username := pc.serverDetails.GetUser()
-	password := pc.serverDetails.GetPassword()
-
-	// Get credentials from access-token if exists.
-	if pc.serverDetails.GetAccessToken() != "" {
-		if username == "" {
-			username = auth.ExtractUsernameFromAccessToken(pc.serverDetails.GetAccessToken())
-		}
-		password = pc.serverDetails.GetAccessToken()
-	}
-	rtUrl.Path += "api/pypi/" + pc.repository + "/simple"
 	if password != "" {
-		return pc.configPoetryRepo(rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path, username, password)
+		return python.ConfigPoetryRepo(
+			rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path,
+			username,
+			password,
+			pc.poetryConfigRepoName)
 	}
 	return nil
-}
-
-func (pc *PoetryCommand) configPoetryRepo(url, username, password string) error {
-	// Add the poetry repository config
-	err := runPoetryConfigCommand([]string{poetryConfigRepoPrefix + pc.poetryConfigRepoName, url}, false)
-	if err != nil {
-		return err
-	}
-
-	// Set the poetry repository credentials
-	err = runPoetryConfigCommand([]string{poetryConfigAuthPrefix + pc.poetryConfigRepoName, username, password}, true)
-	if err != nil {
-		return err
-	}
-
-	// Add the repository config to the pyproject.toml
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	return addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), pc.poetryConfigRepoName, url)
-}
-
-func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
-	viper.SetConfigType("toml")
-	viper.SetConfigFile(filepath)
-	err := viper.ReadInConfig()
-	if err != nil {
-		return errorutils.CheckErrorf("Failed to read pyproject.toml: %s", err.Error())
-	}
-	viper.Set("tool.poetry.source", []map[string]string{{"name": poetryRepoName, "url": repoUrl}})
-	err = viper.WriteConfig()
-	if err != nil {
-		return errorutils.CheckErrorf("Failed to add tool.poetry.source to pyproject.toml: %s", err.Error())
-	}
-	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
-	log.Info("Running Poetry update")
-	cmd := buildinfoutils.NewCommand("poetry", "update", []string{})
-	err = gofrogcmd.RunCmd(cmd)
-	if err != nil {
-		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
-	}
-	return err
 }
 
 func (pc *PoetryCommand) CommandName() string {
@@ -233,21 +171,5 @@ func (pc *PoetryCommand) GetStdWriter() io.WriteCloser {
 }
 
 func (pc *PoetryCommand) GetErrWriter() io.WriteCloser {
-	return nil
-}
-
-func runPoetryConfigCommand(args []string, maskArgs bool) error {
-	logMessage := "config "
-	if maskArgs {
-		logMessage += "***"
-	} else {
-		logMessage += strings.Join(args, " ")
-	}
-	log.Info(fmt.Sprintf("Running Poetry %s", logMessage))
-	cmd := buildinfoutils.NewCommand("poetry", "config", args)
-	err := gofrogcmd.RunCmd(cmd)
-	if err != nil {
-		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
-	}
 	return nil
 }

@@ -47,9 +47,20 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}
-	dependencyLocalPath := filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion)
+	dependencyLocalPath, err := getMavenDependencyLocalPath()
+	if err != nil {
+		return err
+	}
 	mavenModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), goals, utils.DownloadExtractorIfNeeded, props, useWrapper).SetMavenOpts(mvnOpts...)
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
+}
+
+func getMavenDependencyLocalPath() (string, error) {
+	dependenciesPath, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion), nil
 }
 
 func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, isWrapper, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {

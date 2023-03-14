@@ -81,21 +81,20 @@ func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error)
 }
 
 func (nic *NpmInstallOrCiCommand) Run() (err error) {
-	if err = nic.preparePrerequisites(nic.repo, true); err != nil {
+	if err = nic.PreparePrerequisites(nic.repo, true); err != nil {
 		return
 	}
-
-	if err = nic.prepareBuildInfoModule(); err != nil {
-		return
-	}
-
 	defer func() {
 		e := nic.restoreNpmrcFunc()
 		if err == nil {
 			err = e
 		}
 	}()
-	if err = nic.createTempNpmrc(); err != nil {
+	if err = nic.CreateTempNpmrc(); err != nil {
+		return
+	}
+
+	if err = nic.prepareBuildInfoModule(); err != nil {
 		return
 	}
 

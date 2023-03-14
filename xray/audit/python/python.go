@@ -231,31 +231,27 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	restoreEnv = func() error {
 		return nil
 	}
+	venvdirName := "venvdir"
 	var cmdArgs []string
 	pythonPath, windowsPyArg := pythonutils.GetPython3Executable()
-
-	execPath, _ := exec.LookPath("virtualenv")
-	if execPath != "" {
-		cmdArgs = append(cmdArgs, "-p", pythonPath)
-	} else {
-		// If virtualenv not exists, try "python3 -m venv"
-		execPath = pythonPath
-		if windowsPyArg != "" {
-			// Add '-3' arg for windows 'py -3' command
-			cmdArgs = append(cmdArgs, windowsPyArg)
-		}
-		cmdArgs = append(cmdArgs, "-m", "venv")
+	if windowsPyArg != "" {
+		// Add '-3' arg for windows 'py -3' command
+		cmdArgs = append(cmdArgs, windowsPyArg)
 	}
-
-	cmdArgs = append(cmdArgs, "venvdir")
-	err = executeCommand(execPath, cmdArgs...)
+	cmdArgs = append(cmdArgs, "-m", "venv", venvdirName)
+	err = executeCommand(pythonPath, cmdArgs...)
 	if err != nil {
-		return
+		// Failed running 'python -m venv', trying to run 'virtualenv'
+		log.Debug("Failed running python venv: " + err.Error())
+		err = executeCommand("virtualenv", "-p", pythonPath, venvdirName)
+		if err != nil {
+			return
+		}
 	}
 
 	// Keep original value of 'PATH'.
 	origPathValue := os.Getenv("PATH")
-	venvPath, err := filepath.Abs("venvdir")
+	venvPath, err := filepath.Abs(venvdirName)
 	if err != nil {
 		return
 	}

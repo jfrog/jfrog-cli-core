@@ -22,7 +22,7 @@ var ApiVersionRegex = regexp.MustCompile(`^(\d+)\.(\d+)$`)
 const MinSupportedApiVersion string = "1.31"
 
 // Docker login error message
-const LoginFailureMessage string = "%s login failed for: %s.\n %s image must be in the form: registry-domain/path-in-repository/image-name:version."
+const LoginFailureMessage string = "%s login failed for: %s.\n%s image must be in the form: registry-domain/path-in-repository/image-name:version."
 
 func NewManager(containerManagerType ContainerManagerType) ContainerManager {
 	return &containerManager{Type: containerManagerType}

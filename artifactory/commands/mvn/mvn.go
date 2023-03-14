@@ -131,7 +131,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, false, mc.deploymentDisabled)
+	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.deploymentDisabled)
 	if err != nil {
 		return err
 	}

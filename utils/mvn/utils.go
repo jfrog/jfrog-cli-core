@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, useWrapperIfMissingConfig, disableDeploy bool) error {
+func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := buildConf.GetBuildName()
 	if err != nil {
@@ -32,11 +32,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	dependenciesPath, err := config.GetJfrogDependenciesPath()
-	if err != nil {
-		return err
-	}
-	props, useWrapper, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, buildConf, goals, threads, insecureTls, useWrapperIfMissingConfig, disableDeploy)
+	props, useWrapper, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, threads, insecureTls, disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -63,7 +59,7 @@ func getMavenDependencyLocalPath() (string, error) {
 	return filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion), nil
 }
 
-func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, isWrapper, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {
+func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, threads int, insecureTls, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {
 	useWrapper = vConfig.GetBool("useWrapper")
 	vConfig.Set(utils.InsecureTls, insecureTls)
 	if threads > 0 {

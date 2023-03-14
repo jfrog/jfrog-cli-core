@@ -28,7 +28,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.19.x
-          cache: true
 
       - name: Install NuGet
         uses: nuget/setup-nuget@v1
@@ -39,6 +38,14 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '3.x'
+
+      - name: Go Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Lint
         run: go vet ./...

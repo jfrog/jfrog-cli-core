@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"os"
 	"path/filepath"
 	"strings"
@@ -271,6 +272,49 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	default:
 		e = errors.New(string(tech) + " is currently not supported")
 	}
+		dependencyTrees, e := getTechDependencyTree(params, tech)
+		if e != nil {
+			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			continue
+		}
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		if e != nil {
+			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			continue
+		}
+		results = append(results, techResults...)
+		isMultipleRoot = len(dependencyTrees) > 1
+	}
+	if errorList.Len() > 0 {
+		err = errors.New(errorList.String())
+	}
+	return
+}
+
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
+	if params.progress != nil {
+		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+	}
+	switch tech {
+	case coreutils.Maven, coreutils.Gradle:
+		dependencyTrees, e = getJavaDependencyTree(params, tech)
+	case coreutils.Npm:
+		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+	case coreutils.Yarn:
+		dependencyTrees, e = yarn.BuildDependencyTree()
+	case coreutils.Go:
+		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
+	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
+		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
+			Server:              params.serverDetails,
+			Tool:                pythonutils.PythonTool(tech),
+			RemotePypiRepo:      params.depsRepo,
+			PipRequirementsFile: params.requirementsFile})
+	case coreutils.Nuget:
+		dependencyTrees, e = nuget.BuildDependencyTree()
+	default:
+		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
+	}
 
 	return dependencyTrees, e
 }
@@ -295,8 +339,12 @@ func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[s
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken
 	}
+	authUser := serverDetails.User
+	if authUser == "" {
+		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+	}
 	return map[string]any{
-		"resolver.username":     serverDetails.User,
+		"resolver.username":     authUser,
 		"resolver.password":     authPass,
 		"resolver.url":          serverDetails.ArtifactoryUrl,
 		"resolver.releaseRepo":  depsRepo,

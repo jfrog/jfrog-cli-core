@@ -136,9 +136,9 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 
 func BuildDependencyTree(params *DependencyTreeParams) (modules []*services.GraphNode, err error) {
 	if params.Tool == coreutils.Maven {
-		return BuildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.JavaProps)
+		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
 	}
-	return BuildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
+	return buildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
 }
 
 type dependencyMultimap struct {

@@ -241,7 +241,7 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 	return "", nil
 }
 
-// The fact that we here, means that neither of the flags were provided, and we need to init our own config.
+// InitNewConfig is used when neither of the flags were provided, and we need to init our own config.
 func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
 	configFile, err = os.CreateTemp(configDirPath, configFilePattern)

@@ -47,7 +47,7 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 
-func GetGradleDependencyLocalPath() (string, error) {
+func getGradleDependencyLocalPath() (string, error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err

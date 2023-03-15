@@ -12,7 +12,7 @@ import (
 
 const gradlew = "gradlew"
 
-func BuildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*services.GraphNode, err error) {
+func buildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 

@@ -33,7 +33,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	props, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, buildConf, goals, threads, insecureTls, disableDeploy)
+	props, useWrapper, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, threads, insecureTls, disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -44,15 +44,15 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}
-	dependencyLocalPath, err := GetMavenDependencyLocalPath()
+	dependencyLocalPath, err := getMavenDependencyLocalPath()
 	if err != nil {
 		return err
 	}
-	mavenModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), goals, utils.DownloadExtractorIfNeeded, props).SetMavenOpts(mvnOpts...)
+	mavenModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), goals, utils.DownloadExtractorIfNeeded, props, useWrapper).SetMavenOpts(mvnOpts...)
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 
-func GetMavenDependencyLocalPath() (string, error) {
+func getMavenDependencyLocalPath() (string, error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err
@@ -60,7 +60,8 @@ func GetMavenDependencyLocalPath() (string, error) {
 	return filepath.Join(dependenciesPath, "maven", build.MavenExtractorDependencyVersion), nil
 }
 
-func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) (map[string]string, error) {
+func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, threads int, insecureTls, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {
+	useWrapper = vConfig.GetBool("useWrapper")
 	vConfig.Set(utils.InsecureTls, insecureTls)
 	if threads > 0 {
 		vConfig.Set(utils.ForkCount, threads)
@@ -73,7 +74,9 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, b
 	if vConfig.IsSet("resolver") {
 		vConfig.Set("buildInfoConfig.artifactoryResolutionEnabled", "true")
 	}
-	return utils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, utils.Maven)
+	buildInfoProps, err := utils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, utils.Maven)
+
+	return buildInfoProps, useWrapper, err
 }
 
 func setEmptyDeployer(vConfig *viper.Viper) {

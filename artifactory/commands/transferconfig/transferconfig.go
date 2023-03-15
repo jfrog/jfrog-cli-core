@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -11,41 +17,33 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
-	minArtifactoryVersion               = "6.23.21"
 	importStartRetries                  = 3
 	importStartRetriesIntervalMilliSecs = 10000
 	importPollingTimeout                = 10 * time.Minute
 	importPollingInterval               = 10 * time.Second
+	interruptedByUserErr                = "Config transfer was cancelled"
 )
 
 type TransferConfigCommand struct {
-	sourceServerDetails  *config.ServerDetails
-	targetServerDetails  *config.ServerDetails
-	dryRun               bool
-	force                bool
-	verbose              bool
-	preChecks            bool
-	includeReposPatterns []string
-	excludeReposPatterns []string
-	workingDir           string
+	commandsUtils.TransferConfigBase
+	dryRun     bool
+	force      bool
+	verbose    bool
+	preChecks  bool
+	workingDir string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
-	return &TransferConfigCommand{sourceServerDetails: sourceServer, targetServerDetails: targetServer}
+	return &TransferConfigCommand{TransferConfigBase: *commandsUtils.NewTransferConfigBase(sourceServer, targetServer)}
 }
 
 func (tcc *TransferConfigCommand) CommandName() string {
@@ -72,58 +70,27 @@ func (tcc *TransferConfigCommand) SetPreChecks(preChecks bool) *TransferConfigCo
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) SetIncludeReposPatterns(includeReposPatterns []string) *TransferConfigCommand {
-	tcc.includeReposPatterns = includeReposPatterns
-	return tcc
-}
-
-func (tcc *TransferConfigCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *TransferConfigCommand {
-	tcc.excludeReposPatterns = excludeReposPatterns
-	return tcc
-}
-
 func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConfigCommand {
 	tcc.workingDir = workingDir
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) getRepoFilter() *utils.IncludeExcludeFilter {
-	return &utils.IncludeExcludeFilter{
-		IncludePatterns: tcc.includeReposPatterns,
-		ExcludePatterns: tcc.excludeReposPatterns,
-	}
-}
-
 func (tcc *TransferConfigCommand) Run() (err error) {
-	sourceServiceManager, err := utils.CreateServiceManager(tcc.sourceServerDetails, -1, 0, tcc.dryRun)
-	if err != nil {
-		return
-	}
-	targetServiceManager, err := utils.CreateServiceManager(tcc.targetServerDetails, -1, 0, false)
-	if err != nil {
-		return
+	if err = tcc.CreateServiceManagers(tcc.dryRun); err != nil {
+		return err
 	}
 	if tcc.preChecks {
-		return tcc.runPreChecks(sourceServiceManager, targetServiceManager)
-	}
-	continueTransfer, err := tcc.printWarnings(sourceServiceManager)
-	if err != nil || !continueTransfer {
-		return
+		return tcc.runPreChecks()
 	}
 
-	log.Info(coreutils.PrintBoldTitle("========== Phase 1/4 - Preparations =========="))
-	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if _, err = validateMinVersionAndDifferentServers(sourceServiceManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
-		return
-	}
-	// Make sure that the target Artifactory is empty and the config-import plugin is installed
-	if err = tcc.validateTargetServer(targetServiceManager); err != nil {
-		return
+	tcc.LogTitle("Phase 1/5 - Preparations")
+	if err = tcc.runPreparations(); err != nil {
+		return err
 	}
 
 	// Run export on the source Artifactory
-	log.Info(coreutils.PrintBoldTitle("========== Phase 2/4 - Export configuration from the source Artifactory =========="))
-	exportPath, cleanUp, err := tcc.exportSourceArtifactory(sourceServiceManager)
+	tcc.LogTitle("Phase 2/5 - Export configuration from the source Artifactory")
+	exportPath, cleanUp, err := tcc.exportSourceArtifactory()
 	defer func() {
 		cleanUpErr := cleanUp()
 		if err == nil {
@@ -134,16 +101,21 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	log.Info(coreutils.PrintBoldTitle("========== Phase 3/4 - Download and modify configuration =========="))
-
-	// Download and decrypt the config XML from the source Artifactory
-	configXml, err := tcc.getConfigXml(sourceServiceManager)
+	tcc.LogTitle("Phase 3/5 - Download and modify configuration")
+	selectedRepos, err := tcc.GetSelectedRepositories()
 	if err != nil {
 		return
 	}
 
-	// Prepare the config XML to be imported to SaaS
-	configXml, federatedMembersRemoved, err := tcc.modifyConfigXml(configXml)
+	// Download and decrypt the config XML from the source Artifactory
+	configXml, remoteRepos, err := tcc.getEncryptedItems(selectedRepos)
+	if err != nil {
+		return
+	}
+
+	// In Artifactory 7.49, the repositories configuration was moved from the artifactory-config.xml to the database.
+	// this method removes the repositories from the artifactory-config.xml file, to be aligned with new Artifactory versions.
+	configXml, err = configxmlutils.RemoveAllRepositories(configXml)
 	if err != nil {
 		return
 	}
@@ -155,8 +127,8 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	// Import the archive to the target Artifactory
-	log.Info(coreutils.PrintBoldTitle("========== Phase 4/4 - Import configuration to the target Artifactory =========="))
-	err = tcc.importToTargetArtifactory(targetServiceManager, archiveConfig)
+	tcc.LogTitle("Phase 4/5 - Import configuration to the target Artifactory")
+	err = tcc.importToTargetArtifactory(archiveConfig)
 	if err != nil {
 		return
 	}
@@ -167,77 +139,96 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		return
 	}
 
-	// If config transfer passed successfully, add conclusion message
-	log.Info("Config transfer completed successfully!")
-	if federatedMembersRemoved {
-		log.Info("☝️  Your Federated repositories have been transferred to your target instance, but their members have been removed on the target. " +
-			"You should add members to your Federated repositories on your target instance as described here - https://www.jfrog.com/confluence/display/JFROG/Federated+Repositories.")
+	tcc.LogTitle("Phase 5/5 - Import repositories to the target Artifactory")
+	if err = tcc.deleteConflictingRepositories(selectedRepos); err != nil {
+		return
 	}
+	if err = tcc.TransferRepositoriesToTarget(selectedRepos, remoteRepos); err != nil {
+		return
+	}
+
+	// If config transfer passed successfully, add conclusion message
+	log.Output()
+	log.Info("Config transfer completed successfully!")
+	tcc.LogIfFederatedMemberRemoved()
 	log.Info("☝️  Please make sure to disable configuration transfer in MyJFrog before running the 'jf transfer-files' command.")
 	return
 }
 
-func (tcc *TransferConfigCommand) runPreChecks(sourceServicesManager, targetServicesManager artifactory.ArtifactoryServicesManager) error {
-	// Warn if default admin:password credentials are exist in the source server
-	_, err := commandsUtils.IsDefaultCredentials(targetServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
+func (tcc *TransferConfigCommand) runPreparations() error {
+	err := tcc.printWarnings()
 	if err != nil {
 		return err
 	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	if _, err = validateMinVersionAndDifferentServers(sourceServicesManager, tcc.sourceServerDetails, tcc.targetServerDetails); err != nil {
+	if _, err = tcc.ValidateMinVersionAndDifferentServers(); err != nil {
 		return err
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
-	if err := tcc.validateTargetServer(targetServicesManager); err != nil {
+	return tcc.validateTargetServer()
+}
+
+func (tcc *TransferConfigCommand) runPreChecks() error {
+	// Warn if default admin:password credentials are exist in the source server
+	_, err := tcc.IsDefaultCredentials()
+	if err != nil {
+		return err
+	}
+	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
+	if _, err = tcc.ValidateMinVersionAndDifferentServers(); err != nil {
+		return err
+	}
+	// Make sure that the target Artifactory is empty and the config-import plugin is installed
+	if err := tcc.validateTargetServer(); err != nil {
 		return err
 	}
 
 	// Download and decrypt the config XML from the source Artifactory
-	configXml, err := tcc.getConfigXml(sourceServicesManager)
+	configXml, _, err := tcc.getEncryptedItems(make(map[utils.RepoType][]string))
 	if err != nil {
 		return err
 	}
 
 	// Remove filtered repositories
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
+	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.GetRepoFilter())
 	if err != nil {
 		return err
 	}
 
-	return tcc.NewPreChecksRunner(&targetServicesManager, configXml).Run(context.Background(), tcc.targetServerDetails)
+	return tcc.NewPreChecksRunner(configXml).Run(context.Background(), tcc.TargetServerDetails)
 }
 
-func (tcc *TransferConfigCommand) printWarnings(sourceServicesManager artifactory.ArtifactoryServicesManager) (continueTransfer bool, err error) {
+func (tcc *TransferConfigCommand) printWarnings() (err error) {
 	// Prompt message
 	promptMsg := "This command will transfer Artifactory config data:\n" +
-		fmt.Sprintf("From %s - <%s>\n", coreutils.PrintBold("Source"), tcc.sourceServerDetails.ArtifactoryUrl) +
-		fmt.Sprintf("To %s - <%s>\n", coreutils.PrintBold("Target"), tcc.targetServerDetails.ArtifactoryUrl) +
+		fmt.Sprintf("From %s - <%s>\n", coreutils.PrintBold("Source"), tcc.SourceServerDetails.ArtifactoryUrl) +
+		fmt.Sprintf("To %s - <%s>\n", coreutils.PrintBold("Target"), tcc.TargetServerDetails.ArtifactoryUrl) +
 		"This action will wipe out all Artifactory content in the target.\n" +
 		"Make sure that you're using strong credentials in your source platform (for example - having the default admin:password credentials isn't recommended).\n" +
 		"Those credentials will be transferred to your SaaS target platform.\n" +
 		"Are you sure you want to continue?"
 
 	if !coreutils.AskYesNo(promptMsg, false) {
-		return false, nil
+		return errorutils.CheckErrorf(interruptedByUserErr)
 	}
 
 	// Check if there is a configured user using default credentials in the source platform.
-	isDefaultCredentials, err := commandsUtils.IsDefaultCredentials(sourceServicesManager, tcc.sourceServerDetails.ArtifactoryUrl)
+	isDefaultCredentials, err := tcc.IsDefaultCredentials()
 	if err != nil {
-		return false, err
+		return err
 	}
 	if isDefaultCredentials && !coreutils.AskYesNo("Are you sure you want to continue?", false) {
-		return false, nil
+		return errorutils.CheckErrorf(interruptedByUserErr)
 	}
-	return true, nil
+	return nil
 }
 
 // Make sure the target Artifactory is empty, by counting the number of the users. If it is bigger than 1, return an error.
 // Also, make sure that the config-import plugin is installed
-func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager artifactory.ArtifactoryServicesManager) error {
+func (tcc *TransferConfigCommand) validateTargetServer() error {
 	// Verify installation of the config-import plugin in the target server and make sure that the user is admin
 	log.Info("Verifying config-import plugin is installed in the target server...")
-	if err := tcc.verifyConfigImportPlugin(targetServicesManager); err != nil {
+	if err := tcc.verifyConfigImportPlugin(); err != nil {
 		return err
 	}
 
@@ -245,7 +236,7 @@ func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager art
 		return nil
 	}
 	log.Info("Verifying target server is empty...")
-	users, err := targetServicesManager.GetAllUsers()
+	users, err := tcc.TargetArtifactoryManager.GetAllUsers()
 	if err != nil {
 		return err
 	}
@@ -256,47 +247,25 @@ func (tcc *TransferConfigCommand) validateTargetServer(targetServicesManager art
 	return nil
 }
 
-// Make sure source and target Artifactory URLs are different.
-// Also make sure that the source Artifactory version is sufficient.
-// Returns the source Artifactory version.
-func validateMinVersionAndDifferentServers(sourceServicesManager artifactory.ArtifactoryServicesManager, sourceServerDetails, targetServerDetails *config.ServerDetails) (string, error) {
-	log.Info("Verifying minimum version of the source server...")
-	sourceArtifactoryVersion, err := sourceServicesManager.GetVersion()
-	if err != nil {
-		return "", err
-	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minArtifactoryVersion)
-	if err != nil {
-		return "", err
-	}
-	// Avoid exporting and importing to the same server
-	log.Info("Verifying source and target servers are different...")
-	if sourceServerDetails.GetArtifactoryUrl() == targetServerDetails.GetArtifactoryUrl() {
-		return "", errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
-	}
-
-	return sourceArtifactoryVersion, nil
-}
-
-func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager artifactory.ArtifactoryServicesManager) error {
-	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.targetServerDetails.GetArtifactoryUrl())
+func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
+	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.TargetServerDetails.GetArtifactoryUrl())
 
 	// Create rtDetails
-	rtDetails, err := commandsUtils.CreateArtifactoryClientDetails(targetServicesManager)
+	rtDetails, err := commandsUtils.CreateArtifactoryClientDetails(tcc.TargetArtifactoryManager)
 	if err != nil {
 		return err
 	}
 
 	// Get config-import plugin version
 	configImportVersionUrl := artifactoryUrl + commandsUtils.PluginsExecuteRestApi + "configImportVersion"
-	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(targetServicesManager.Client(), configImportVersionUrl, "config-import", commandsUtils.Target, rtDetails)
+	configImportPluginVersion, err := commandsUtils.GetTransferPluginVersion(tcc.TargetArtifactoryManager.Client(), configImportVersionUrl, "config-import", commandsUtils.Target, rtDetails)
 	if err != nil {
 		return err
 	}
 	log.Info("config-import plugin version: " + configImportPluginVersion)
 
 	// Execute 'GET /api/plugins/execute/checkPermissions'
-	resp, body, _, err := targetServicesManager.Client().SendGet(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"checkPermissions"+tcc.getWorkingDirParam(), false, rtDetails)
+	resp, body, _, err := tcc.TargetArtifactoryManager.Client().SendGet(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"checkPermissions"+tcc.getWorkingDirParam(), false, rtDetails)
 	if err != nil {
 		return err
 	}
@@ -310,44 +279,56 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin(targetServicesManager
 }
 
 // Creates the Pre-checks runner for the config import command
-func (tcc *TransferConfigCommand) NewPreChecksRunner(targetServiceManager *artifactory.ArtifactoryServicesManager, configXml string) (runner *commandsUtils.PreCheckRunner) {
+func (tcc *TransferConfigCommand) NewPreChecksRunner(configXml string) (runner *commandsUtils.PreCheckRunner) {
 	runner = commandsUtils.NewPreChecksRunner()
 
 	// Add pre checks here
-	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(targetServiceManager, configXml))
+	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, configXml))
 
 	return
 }
 
-// Download and decrypt artifactory.config.xml from the source Artifactory server.
-// It is safer to not store the decrypted artifactory.config.xml file in the file system, and therefore we only keep it in memory.
-func (tcc *TransferConfigCommand) getConfigXml(sourceServiceManager artifactory.ArtifactoryServicesManager) (configXml string, err error) {
-	var wasEncrypted bool
-	if wasEncrypted, err = sourceServiceManager.DeactivateKeyEncryption(); err != nil {
-		return "", err
+func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[utils.RepoType][]string) (configXml string, remoteRepositories []interface{}, err error) {
+	reactivateKeyEncryption, err := tcc.DeactivateKeyEncryption()
+	if err != nil {
+		return "", nil, err
 	}
 	defer func() {
-		if !wasEncrypted {
-			return
-		}
-		activationErr := sourceServiceManager.ActivateKeyEncryption()
-		if err == nil {
-			err = activationErr
+		if reactivationErr := reactivateKeyEncryption(); err == nil {
+			err = reactivationErr
 		}
 	}()
-	return sourceServiceManager.GetConfigDescriptor()
+
+	// Download artifactory.config.xml from the source Artifactory server.
+	// It is safer to not store the decrypted artifactory.config.xml file in the file system, and therefore we only keep it in memory.
+	configXml, err = tcc.SourceArtifactoryManager.GetConfigDescriptor()
+	if err != nil {
+		return
+	}
+
+	// Get all remote repositories from the source Artifactory server.
+	if remoteRepositoryNames, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoryNames) > 0 {
+		remoteRepositories = make([]interface{}, len(remoteRepositoryNames))
+		for i, repoName := range remoteRepositoryNames {
+			if err = tcc.SourceArtifactoryManager.GetRepository(repoName, &remoteRepositories[i]); err != nil {
+				return
+			}
+		}
+	}
+
+	return
 }
 
 // Export the config from the source Artifactory to a local directory.
 // Return the path to the export directory, a cleanup function and an error.
-func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager artifactory.ArtifactoryServicesManager) (string, func() error, error) {
+func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() error, error) {
 	// Create temp directory that will contain the export directory
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
 		return "", func() error { return nil }, err
 	}
 
-	if err = os.Chmod(tempDir, 0777); err != nil {
+	if err = os.Chmod(tempDir, 0700); err != nil {
 		return "", func() error { return nil }, errorutils.CheckError(err)
 	}
 
@@ -361,7 +342,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 		ExcludeContent:  &trueValue,
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(tempDir) }
-	if err = sourceServicesManager.Export(exportParams); err != nil {
+	if err = tcc.SourceArtifactoryManager.Export(exportParams); err != nil {
 		return "", cleanUp, err
 	}
 
@@ -381,25 +362,13 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory(sourceServicesManager 
 	return files[0], cleanUp, nil
 }
 
-// Modify artifactory.config.xml:
-// 1. Remove non-included repositories, if provided
-// 2. Remove federated members of federated repositories
-func (tcc *TransferConfigCommand) modifyConfigXml(configXml string) (string, bool, error) {
-	var err error
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.getRepoFilter())
-	if err != nil {
-		return "", false, err
-	}
-	return configxmlutils.RemoveFederatedMembers(configXml)
-}
-
 // Import from the input buffer to the target Artifactory
-func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManager artifactory.ArtifactoryServicesManager, buffer *bytes.Buffer) (err error) {
-	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.targetServerDetails.GetArtifactoryUrl())
+func (tcc *TransferConfigCommand) importToTargetArtifactory(buffer *bytes.Buffer) (err error) {
+	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.TargetServerDetails.GetArtifactoryUrl())
 	var timestamp []byte
 
 	// Create rtDetails
-	rtDetails, err := commandsUtils.CreateArtifactoryClientDetails(targetServicesManager)
+	rtDetails, err := commandsUtils.CreateArtifactoryClientDetails(tcc.TargetArtifactoryManager)
 	if err != nil {
 		return err
 	}
@@ -413,7 +382,7 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the config import async process
-			resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"configImport"+tcc.getWorkingDirParam(), buffer.Bytes(), rtDetails)
+			resp, body, err := tcc.TargetArtifactoryManager.Client().SendPost(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"configImport"+tcc.getWorkingDirParam(), buffer.Bytes(), rtDetails)
 			if err != nil {
 				return false, err
 			}
@@ -433,17 +402,17 @@ func (tcc *TransferConfigCommand) importToTargetArtifactory(targetServicesManage
 	}
 
 	// Wait for config import completion
-	return tcc.waitForImportCompletion(targetServicesManager, rtDetails, timestamp)
+	return tcc.waitForImportCompletion(rtDetails, timestamp)
 }
 
-func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager artifactory.ArtifactoryServicesManager, rtDetails *httputils.HttpClientDetails, importTimestamp []byte) error {
-	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.targetServerDetails.GetArtifactoryUrl())
+func (tcc *TransferConfigCommand) waitForImportCompletion(rtDetails *httputils.HttpClientDetails, importTimestamp []byte) error {
+	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(tcc.TargetServerDetails.GetArtifactoryUrl())
 
 	pollingExecutor := &httputils.PollingExecutor{
 		Timeout:         importPollingTimeout,
 		PollingInterval: importPollingInterval,
 		MsgPrefix:       "Waiting for config import completion in Artifactory server at " + artifactoryUrl,
-		PollingAction:   tcc.createImportPollingAction(targetServicesManager, rtDetails, artifactoryUrl, importTimestamp),
+		PollingAction:   tcc.createImportPollingAction(rtDetails, artifactoryUrl, importTimestamp),
 	}
 
 	body, err := pollingExecutor.Execute()
@@ -457,10 +426,10 @@ func (tcc *TransferConfigCommand) waitForImportCompletion(targetServicesManager 
 	return nil
 }
 
-func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManager artifactory.ArtifactoryServicesManager, rtDetails *httputils.HttpClientDetails, artifactoryUrl string, importTimestamp []byte) httputils.PollingAction {
+func (tcc *TransferConfigCommand) createImportPollingAction(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, importTimestamp []byte) httputils.PollingAction {
 	return func() (shouldStop bool, responseBody []byte, err error) {
 		// Get config import status
-		resp, body, err := targetServicesManager.Client().SendPost(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"configImportStatus"+tcc.getWorkingDirParam(), importTimestamp, rtDetails)
+		resp, body, err := tcc.TargetArtifactoryManager.Client().SendPost(artifactoryUrl+commandsUtils.PluginsExecuteRestApi+"configImportStatus"+tcc.getWorkingDirParam(), importTimestamp, rtDetails)
 		if err != nil {
 			return true, nil, err
 		}
@@ -482,16 +451,16 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 
 		// 401 or 403 - The user used for the target Artifactory server does not exist anymore.
 		// This is perfectly normal, because the import caused the user to be deleted. We can now use the credentials of the source Artifactory server.
-		newServerDetails := tcc.targetServerDetails
-		newServerDetails.SetUser(tcc.sourceServerDetails.GetUser())
-		newServerDetails.SetPassword(tcc.sourceServerDetails.GetPassword())
-		newServerDetails.SetAccessToken(tcc.sourceServerDetails.GetAccessToken())
+		newServerDetails := tcc.TargetServerDetails
+		newServerDetails.SetUser(tcc.SourceServerDetails.GetUser())
+		newServerDetails.SetPassword(tcc.SourceServerDetails.GetPassword())
+		newServerDetails.SetAccessToken(tcc.SourceServerDetails.GetAccessToken())
 
-		targetServicesManager, err = utils.CreateServiceManager(newServerDetails, -1, 0, false)
+		tcc.TargetArtifactoryManager, err = utils.CreateServiceManager(newServerDetails, -1, 0, false)
 		if err != nil {
 			return true, nil, err
 		}
-		rtDetails, err = commandsUtils.CreateArtifactoryClientDetails(targetServicesManager)
+		rtDetails, err = commandsUtils.CreateArtifactoryClientDetails(tcc.TargetArtifactoryManager)
 		if err != nil {
 			return true, nil, err
 		}
@@ -503,19 +472,19 @@ func (tcc *TransferConfigCommand) createImportPollingAction(targetServicesManage
 
 func (tcc *TransferConfigCommand) updateServerDetails() error {
 	log.Info("Pinging the target Artifactory...")
-	newTargetServerDetails := tcc.targetServerDetails
+	newTargetServerDetails := tcc.TargetServerDetails
 
 	// Copy credentials from the source server details
-	newTargetServerDetails.User = tcc.sourceServerDetails.User
-	newTargetServerDetails.Password = tcc.sourceServerDetails.Password
-	newTargetServerDetails.SshKeyPath = tcc.sourceServerDetails.SshKeyPath
-	newTargetServerDetails.SshPassphrase = tcc.sourceServerDetails.SshPassphrase
-	newTargetServerDetails.AccessToken = tcc.sourceServerDetails.AccessToken
-	newTargetServerDetails.RefreshToken = tcc.sourceServerDetails.RefreshToken
-	newTargetServerDetails.ArtifactoryRefreshToken = tcc.sourceServerDetails.ArtifactoryRefreshToken
-	newTargetServerDetails.ArtifactoryTokenRefreshInterval = tcc.sourceServerDetails.ArtifactoryTokenRefreshInterval
-	newTargetServerDetails.ClientCertPath = tcc.sourceServerDetails.ClientCertPath
-	newTargetServerDetails.ClientCertKeyPath = tcc.sourceServerDetails.ClientCertKeyPath
+	newTargetServerDetails.User = tcc.SourceServerDetails.User
+	newTargetServerDetails.Password = tcc.SourceServerDetails.Password
+	newTargetServerDetails.SshKeyPath = tcc.SourceServerDetails.SshKeyPath
+	newTargetServerDetails.SshPassphrase = tcc.SourceServerDetails.SshPassphrase
+	newTargetServerDetails.AccessToken = tcc.SourceServerDetails.AccessToken
+	newTargetServerDetails.RefreshToken = tcc.SourceServerDetails.RefreshToken
+	newTargetServerDetails.ArtifactoryRefreshToken = tcc.SourceServerDetails.ArtifactoryRefreshToken
+	newTargetServerDetails.ArtifactoryTokenRefreshInterval = tcc.SourceServerDetails.ArtifactoryTokenRefreshInterval
+	newTargetServerDetails.ClientCertPath = tcc.SourceServerDetails.ClientCertPath
+	newTargetServerDetails.ClientCertKeyPath = tcc.SourceServerDetails.ClientCertKeyPath
 
 	// Ping to validate the transfer ended successfully
 	pingCmd := generic.NewPingCommand().SetServerDetails(newTargetServerDetails)
@@ -531,7 +500,7 @@ func (tcc *TransferConfigCommand) updateServerDetails() error {
 	if err != nil {
 		return err
 	}
-	tcc.targetServerDetails = newTargetServerDetails
+	tcc.TargetServerDetails = newTargetServerDetails
 	return nil
 }
 
@@ -540,4 +509,28 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 		return "?params=workingDir=" + tcc.workingDir
 	}
 	return ""
+}
+
+func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos map[utils.RepoType][]string) error {
+	log.Info("Deleting conflicting repositories in the target Artifactory server, if any exist...")
+	targetRepos, err := tcc.TargetArtifactoryManager.GetAllRepositories()
+	if err != nil {
+		return err
+	}
+	allSourceRepos := datastructures.MakeSet[string]()
+	for _, selectedReposWithType := range selectedRepos {
+		for _, selectedRepo := range selectedReposWithType {
+			allSourceRepos.Add(selectedRepo)
+		}
+	}
+
+	for _, targetRepo := range *targetRepos {
+		if allSourceRepos.Exists(targetRepo.Key) {
+			if err = tcc.TargetArtifactoryManager.DeleteRepository(targetRepo.Key); err != nil {
+				return err
+			}
+		}
+	}
+	log.Info("Done deleting conflicting repositories")
+	return nil
 }

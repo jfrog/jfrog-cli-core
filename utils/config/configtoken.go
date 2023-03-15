@@ -85,7 +85,7 @@ func Export(details *ServerDetails) (string, error) {
 	}
 	// If config is encrypted, ask for master key.
 	if conf.Enc {
-		masterKeyFromFile, _, err := getMasterKeyFromSecurityConfFile()
+		masterKeyFromFile, err := getMasterKey()
 		if err != nil {
 			return "", err
 		}

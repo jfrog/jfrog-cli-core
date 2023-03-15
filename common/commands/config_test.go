@@ -206,7 +206,6 @@ func TestAssertUrlsSafe(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestExportEmptyConfig(t *testing.T) {
@@ -223,6 +222,37 @@ func TestExportEmptyConfig(t *testing.T) {
 	defer assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tempDirPath))
 	assert.Error(t, Export(""))
+}
+
+func TestKeyEncryption(t *testing.T) {
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+
+	configAndTest(t, inputDetails, true)
+	configAndTest(t, inputDetails, false)
+}
+
+func TestKeyDecryptionError(t *testing.T) {
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
+
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+
+	// Configure server with JFROG_CLI_ENCRYPTION_KEY set
+	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
+	configCmd.disablePrompts = true
+	assert.NoError(t, configCmd.Run())
+
+	// Get the server details when JFROG_CLI_ENCRYPTION_KEY is not set and expect an error
+	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	_, err := GetConfig("test", false)
+	assert.ErrorContains(t, err, "cannot decrypt config")
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {

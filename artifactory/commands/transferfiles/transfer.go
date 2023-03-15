@@ -402,24 +402,6 @@ func (tdc *TransferFilesCommand) initTransferDir() error {
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
-// Assert the transfer dir is not in the old structure with a united state.json for all repository.
-// There are no means of conversion to the new structure, where repository has its own separated state file.
-// Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
-func assertRepositorySpecificStructure() error {
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	if err != nil {
-		return err
-	}
-	exists, err := fileutils.IsFileExists(filepath.Join(transferDir, coreutils.JfrogTransferStateFileName), false)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-	return errorutils.CheckErrorf(state.OldTransferDirectoryStructureErrorMsg)
-}
-
 func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
 	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
 	if tdc.ignoreState {
@@ -752,8 +734,5 @@ func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err erro
 }
 
 func assertSupportedTransferDirStructure() error {
-	if err := state.VerifyTransferRunStatusVersion(); err != nil {
-		return err
-	}
-	return assertRepositorySpecificStructure()
+	return state.VerifyTransferRunStatusVersion()
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
+// The current version of the run-status.json file.
+// Can be used to identify when the version of the CLI doesn't support the structure of the transfer directory.
 const transferRunStatusVersion = 1
 
 var saveRunStatusMutex sync.Mutex

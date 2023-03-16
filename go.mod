@@ -11,8 +11,8 @@ require (
 	github.com/gookit/color v1.5.2
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/jfrog/build-info-go v1.8.9
-	github.com/jfrog/gofrog v1.2.4
-	github.com/jfrog/jfrog-client-go v1.26.4
+	github.com/jfrog/gofrog v1.2.5
+	github.com/jfrog/jfrog-client-go v1.26.5
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.2
@@ -27,7 +27,6 @@ require (
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v2 v2.4.0
-
 )
 
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
@@ -93,8 +92,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.5-0.20230103131235-4993ad739dc6
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.26.1-0.20230126120919-2cca98d435ec
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.26.5-0.20230314102640-809802a0a374
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230316095417-a9f6b73206d7
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.5-0.20221107113836-a4c9225c690e

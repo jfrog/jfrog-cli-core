@@ -218,14 +218,15 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	if len(params.technologies) == 0 {
-		params.technologies, err = detectedTechnologies()
+	technologies := params.technologies
+	if len(technologies) == 0 {
+		technologies, err = detectedTechnologies()
 		if err != nil {
 			return
 		}
 	}
 	var errorList strings.Builder
-	for _, tech := range coreutils.ToTechnologies(params.technologies) {
+	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
 			continue
 		}

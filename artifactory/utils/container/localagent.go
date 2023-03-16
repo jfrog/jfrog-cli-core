@@ -52,7 +52,7 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 	// Search for image build-info.
 	candidateLayers, manifest, err := labib.searchImage()
 	if err != nil {
-		log.Warn(`Failed to collect build-info, couldn't find image "` + labib.buildInfoBuilder.image.name + `" in Artifactory`)
+		log.Warn(`Failed to collect build-info, couldn't find image "`+labib.buildInfoBuilder.image.name+`" in Artifactory. Error:`, err.Error())
 		return nil, nil
 	} else {
 		log.Debug("Found manifest.json. Proceeding to create build-info.")
@@ -92,16 +92,19 @@ func (labib *localAgentbuildInfoBuilder) searchImage() (map[string]*utils.Result
 func (labib *localAgentbuildInfoBuilder) search(imagePathPattern string) (resultMap map[string]*utils.ResultItem, err error) {
 	resultMap, err = performSearch(imagePathPattern, labib.buildInfoBuilder.serviceManager)
 	if err != nil {
+		log.Debug("Failed to search  marker layer. Error:", err.Error())
 		return
 	}
 	// Validate there are no .marker layers.
 	totalDownloaded, err := downloadMarkerLayersToRemoteCache(resultMap, labib.buildInfoBuilder)
 	if err != nil {
+		log.Debug("Failed to download marker layer. Error:", err.Error())
 		return nil, err
 	}
 	if totalDownloaded > 0 {
 		// Search again after .marker layer were downloaded.
 		if resultMap, err = performSearch(imagePathPattern, labib.buildInfoBuilder.serviceManager); err != nil {
+			log.Debug("Failed to research layers after download marker layers. Error:", err.Error())
 			return
 		}
 	}
@@ -169,9 +172,11 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]*utils.ResultItem, b
 			endpoint := "api/docker/" + remoteRepo + "/v2/" + imageName + "/blobs/" + toNoneMarkerLayer(layerData.Name)
 			resp, body, err := builder.serviceManager.Client().SendHead(baseUrl+endpoint, &clientDetails)
 			if err != nil {
+				log.Debug("Failed to download marker layer. Error:", err.Error())
 				return totalDownloaded, err
 			}
 			if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+				log.Debug("Failed to download marker layer. HTTP stats code:", resp.StatusCode)
 				return totalDownloaded, err
 			}
 			totalDownloaded++

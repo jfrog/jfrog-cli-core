@@ -646,7 +646,9 @@ func (cc *ConfigCommand) use() error {
 		}
 		usingServerLog := fmt.Sprintf("Using server ID '%s'", serverFound.ServerId)
 		if serverFound.Url != "" {
-			usingServerLog += fmt.Sprintf(" (%s).", serverFound.Url)
+			usingServerLog += fmt.Sprintf(" (%s)", serverFound.Url)
+		} else if serverFound.ArtifactoryUrl != "" {
+			usingServerLog += fmt.Sprintf(" (%s)", serverFound.ArtifactoryUrl)
 		}
 		log.Info(usingServerLog)
 		return nil

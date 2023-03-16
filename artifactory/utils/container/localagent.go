@@ -52,7 +52,7 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 	// Search for image build-info.
 	candidateLayers, manifest, err := labib.searchImage()
 	if err != nil {
-		log.Warn(`Failed to collect build-info, couldn't find image "`+labib.buildInfoBuilder.image.name+`" in Artifactory. Error:`, err.Error())
+		log.Warn("Failed to collect build-info, couldn't find image '"+labib.buildInfoBuilder.image.name+"' in Artifactory. Error:", err.Error())
 		return nil, nil
 	} else {
 		log.Debug("Found manifest.json. Proceeding to create build-info.")
@@ -63,11 +63,11 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 
 // Search an image in Artifactory and validate its sha2 with local image.
 func (labib *localAgentbuildInfoBuilder) searchImage() (map[string]*utils.ResultItem, *manifest, error) {
-	longimageName, err := labib.buildInfoBuilder.image.GetImageLongNameWithTag()
+	longImageName, err := labib.buildInfoBuilder.image.GetImageLongNameWithTag()
 	if err != nil {
 		return nil, nil, err
 	}
-	imagePath := strings.Replace(longimageName, ":", "/", 1)
+	imagePath := strings.Replace(longImageName, ":", "/", 1)
 	manifestPathsCandidates := getManifestPaths(imagePath, labib.buildInfoBuilder.getSearchableRepo(), labib.commandType)
 	log.Debug("Start searching for image manifest.json")
 	for _, path := range manifestPathsCandidates {

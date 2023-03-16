@@ -1,6 +1,7 @@
 package dotnet
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
@@ -20,6 +21,12 @@ import (
 const (
 	SourceName        = "JFrogCli"
 	configFilePattern = "jfrog.cli.nuget."
+
+	dotnetTestError = `the command failed with an error.
+Note that JFrog CLI does not restore dependencies during a 'dotnet test' command, so if necessary, run a preceding 'dotnet restore'.
+The initial error is:
+`
+	noRestoreFlag = "--no-restore"
 )
 
 type DotnetCommand struct {
@@ -119,6 +126,9 @@ func (dc *DotnetCommand) Exec() (err error) {
 		}
 	}()
 	if err = buildInfoModule.CalcDependencies(); err != nil {
+		if dc.isDotnetTestCommand() {
+			return errors.New(dotnetTestError + err.Error())
+		}
 		return err
 	}
 	log.Info(fmt.Sprintf("%s finished successfully.", dc.toolchainType))
@@ -128,7 +138,7 @@ func (dc *DotnetCommand) Exec() (err error) {
 // prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
 // In case no config file was provided - creates a temporary one.
 func (dc *DotnetCommand) prepareDotnetBuildInfoModule(buildInfoModule *build.DotnetModule) (func() error, error) {
-	callbackFunc, err := dc.prepareConfigFile()
+	callbackFunc, err := dc.prepareConfigFileIfNecessary()
 	if err != nil {
 		return nil, err
 	}
@@ -187,11 +197,19 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
+func (dc *DotnetCommand) prepareConfigFileIfNecessary() (cleanup func() error, err error) {
 	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
 	if err != nil {
 		return
 	}
+
+	if dc.isDotnetTestCommand() {
+		// The dotnet test command does not support the configfile flag.
+		// To avoid resolving from a registry that is not Artifactory, we add the no-restore flag and require the user to run a restore before the test command.
+		dc.argAndFlags = append(dc.argAndFlags, noRestoreFlag)
+		return
+	}
+
 	cmdFlag := dc.GetToolchain().GetTypeFlagPrefix() + "configfile"
 	currentConfigPath, err := getFlagValueIfExists(cmdFlag, dc.argAndFlags)
 	if err != nil {
@@ -224,6 +242,10 @@ func (dc *DotnetCommand) prepareConfigFile() (cleanup func() error, err error) {
 		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
 	return
+}
+
+func (dc *DotnetCommand) isDotnetTestCommand() bool {
+	return dc.GetToolchain() == dotnet.DotnetCore && dc.subCommand == "test"
 }
 
 // Returns the value of the flag if exists

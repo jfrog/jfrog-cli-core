@@ -2,9 +2,12 @@ package goutils
 
 import (
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
+	"net/url"
 	"os/exec"
 )
 
@@ -94,4 +97,38 @@ func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
 		return nil, errorutils.CheckError(err)
 	}
 	return deps, nil
+}
+
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string) (string, error) {
+	authServerDetails, err := serverDetails.CreateArtAuthConfig()
+	if err != nil {
+		return "", err
+	}
+	return getArtifactoryApiUrl(repo, authServerDetails)
+}
+
+// Gets the URL of the specified repository Go API in Artifactory.
+// The URL contains credentials (username and access token or password).
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
+	rtUrl, err := url.Parse(details.GetUrl())
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	username := details.GetUser()
+	password := details.GetPassword()
+
+	// Get credentials from access-token if exists.
+	if details.GetAccessToken() != "" {
+		log.Debug("Using proxy with access-token.")
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
+		}
+		password = details.GetAccessToken()
+	}
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
+	rtUrl.Path += "api/go/" + repoName
+	return rtUrl.String(), nil
 }

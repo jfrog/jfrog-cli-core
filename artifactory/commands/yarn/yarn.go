@@ -21,9 +21,14 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const yarnrcFileName = ".yarnrc.yml"
-const yarnrcBackupFileName = "jfrog.yarnrc.backup"
-const npmScopesConfigName = "npmScopes"
+const (
+	YarnrcFileName           = ".yarnrc.yml"
+	YarnrcBackupFileName     = "jfrog.yarnrc.backup"
+	NpmScopesConfigName      = "npmScopes"
+	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
+	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"
+	yarnNpmAlwaysAuth        = "YARN_NPM_ALWAYS_AUTH"
+)
 
 type YarnCommand struct {
 	executablePath     string
@@ -35,11 +40,8 @@ type YarnCommand struct {
 	configFilePath     string
 	yarnArgs           []string
 	threads            int
-	restoreYarnrcFunc  func() error
 	serverDetails      *config.ServerDetails
-	authArtDetails     auth.ServiceDetails
 	buildConfiguration *utils.BuildConfiguration
-	envVarsBackup      map[string]*string
 	buildInfoModule    *build.YarnModule
 }
 
@@ -92,18 +94,19 @@ func (yc *YarnCommand) Run() error {
 		}()
 	}
 
-	yc.restoreYarnrcFunc, err = commandUtils.BackupFile(filepath.Join(yc.workingDirectory, yarnrcFileName), filepath.Join(yc.workingDirectory, yarnrcBackupFileName))
+	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), filepath.Join(yc.workingDirectory, YarnrcBackupFileName))
 	if err != nil {
-		return yc.restoreConfigurationsAndError(err)
+		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
 	}
 
-	if err = yc.modifyYarnConfigurations(); err != nil {
-		return yc.restoreConfigurationsAndError(err)
+	backupEnvMap, err := ModifyYarnConfigurations(yc.executablePath, yc.registry, yc.npmAuthIdent)
+	if err != nil {
+		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
 	}
 
 	yc.buildInfoModule.SetArgs(filteredYarnArgs)
 	if err = yc.buildInfoModule.Build(); err != nil {
-		return yc.restoreConfigurationsAndError(err)
+		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
 	}
 
 	if yc.collectBuildInfo {
@@ -111,7 +114,7 @@ func (yc *YarnCommand) Run() error {
 		commandUtils.PrintMissingDependencies(missingDependencies)
 	}
 
-	if err = yc.restoreConfigurationsFromBackup(); err != nil {
+	if err = RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc); err != nil {
 		return err
 	}
 
@@ -161,6 +164,13 @@ func (yc *YarnCommand) readConfigFile() error {
 	return err
 }
 
+func RestoreConfigurationsAndError(envVarsBackup map[string]*string, restoreNpmrcFunc func() error, err error) error {
+	if restoreErr := RestoreConfigurationsFromBackup(envVarsBackup, restoreNpmrcFunc); restoreErr != nil {
+		return fmt.Errorf("two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
+	}
+	return err
+}
+
 func (yc *YarnCommand) preparePrerequisites() error {
 	log.Debug("Preparing prerequisites.")
 	var err error
@@ -201,127 +211,8 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		yc.buildInfoModule.SetName(yc.buildConfiguration.GetModule())
 	}
 
-	if err = yc.setArtifactoryAuth(); err != nil {
-		return err
-	}
-
-	var npmAuthOutput string
-	npmAuthOutput, yc.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(yc.repo, &yc.authArtDetails)
-	if err != nil {
-		return err
-	}
-	yc.npmAuthIdent, err = extractAuthIdentFromNpmAuth(npmAuthOutput)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (yc *YarnCommand) setYarnExecutable() error {
-	yarnExecPath, err := exec.LookPath("yarn")
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	yc.executablePath = yarnExecPath
-	log.Debug("Found Yarn executable at:", yc.executablePath)
-	return nil
-}
-
-func (yc *YarnCommand) setArtifactoryAuth() error {
-	authArtDetails, err := yc.serverDetails.CreateArtAuthConfig()
-	if err != nil {
-		return err
-	}
-	if authArtDetails.GetSshAuthHeaders() != nil {
-		return errorutils.CheckErrorf("SSH authentication is not supported in this command")
-	}
-	yc.authArtDetails = authArtDetails
-	return nil
-}
-
-func (yc *YarnCommand) restoreConfigurationsFromBackup() error {
-	if err := yc.restoreEnvironmentVariables(); err != nil {
-		return err
-	}
-	return yc.restoreYarnrcFunc()
-}
-
-func (yc *YarnCommand) restoreConfigurationsAndError(err error) error {
-	if restoreErr := yc.restoreConfigurationsFromBackup(); restoreErr != nil {
-		return fmt.Errorf("two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
-	}
+	yc.registry, yc.npmAuthIdent, err = GetYarnAuthDetails(yc.serverDetails, yc.repo)
 	return err
-}
-
-func (yc *YarnCommand) restoreEnvironmentVariables() error {
-	for key, value := range yc.envVarsBackup {
-		if value == nil {
-			if err := os.Unsetenv(key); err != nil {
-				return err
-			}
-			continue
-		}
-
-		if err := os.Setenv(key, *value); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (yc *YarnCommand) modifyYarnConfigurations() error {
-	yc.envVarsBackup = make(map[string]*string)
-
-	if err := yc.backupAndSetEnvironmentVariable("YARN_NPM_REGISTRY_SERVER", yc.registry); err != nil {
-		return err
-	}
-
-	if err := yc.backupAndSetEnvironmentVariable("YARN_NPM_AUTH_IDENT", yc.npmAuthIdent); err != nil {
-		return err
-	}
-
-	if err := yc.backupAndSetEnvironmentVariable("YARN_NPM_ALWAYS_AUTH", "true"); err != nil {
-		return err
-	}
-
-	// Update scoped registries (these cannot be set in environment variables)
-	npmScopesStr, err := yarn.ConfigGet(npmScopesConfigName, yc.executablePath, true)
-	if err != nil {
-		return err
-	}
-	npmScopesMap := make(map[string]yarnNpmScope)
-	err = json.Unmarshal([]byte(npmScopesStr), &npmScopesMap)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	artifactoryScope := yarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: yc.npmAuthIdent, NpmRegistryServer: yc.registry}
-	for scopeName := range npmScopesMap {
-		npmScopesMap[scopeName] = artifactoryScope
-	}
-	updatedNpmScopesStr, err := json.Marshal(npmScopesMap)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	err = yarn.ConfigSet(npmScopesConfigName, string(updatedNpmScopesStr), yc.executablePath, true)
-	return errorutils.CheckError(err)
-}
-
-type yarnNpmScope struct {
-	NpmAlwaysAuth     bool   `json:"npmAlwaysAuth,omitempty"`
-	NpmAuthIdent      string `json:"npmAuthIdent,omitempty"`
-	NpmRegistryServer string `json:"npmRegistryServer,omitempty"`
-}
-
-func (yc *YarnCommand) backupAndSetEnvironmentVariable(key, value string) error {
-	oldVal, exist := os.LookupEnv(key)
-	if exist {
-		yc.envVarsBackup[key] = &oldVal
-	} else {
-		yc.envVarsBackup[key] = nil
-	}
-
-	return errorutils.CheckError(os.Setenv(key, value))
 }
 
 func (yc *YarnCommand) prepareBuildInfo() (missingDepsChan chan string, err error) {
@@ -345,6 +236,118 @@ func (yc *YarnCommand) prepareBuildInfo() (missingDepsChan chan string, err erro
 	yc.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
 	yc.buildInfoModule.SetThreads(yc.threads)
 	return
+}
+
+func (yc *YarnCommand) setYarnExecutable() error {
+	yarnExecPath, err := exec.LookPath("yarn")
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
+	yc.executablePath = yarnExecPath
+	log.Debug("Found Yarn executable at:", yc.executablePath)
+	return nil
+}
+
+func GetYarnAuthDetails(server *config.ServerDetails, repo string) (string, string, error) {
+	authRtDetails, err := setArtifactoryAuth(server)
+	if err != nil {
+		return "", "", err
+	}
+	var npmAuthOutput string
+	npmAuthOutput, registry, err := commandUtils.GetArtifactoryNpmRepoDetails(repo, &authRtDetails)
+	if err != nil {
+		return "", "", err
+	}
+	npmAuthIdent, err := extractAuthIdentFromNpmAuth(npmAuthOutput)
+	if err != nil {
+		return "", "", err
+	}
+	return registry, npmAuthIdent, nil
+}
+
+func setArtifactoryAuth(server *config.ServerDetails) (auth.ServiceDetails, error) {
+	authArtDetails, err := server.CreateArtAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	if authArtDetails.GetSshAuthHeaders() != nil {
+		return nil, errorutils.CheckErrorf("SSH authentication is not supported in this command")
+	}
+	return authArtDetails, nil
+}
+
+func RestoreConfigurationsFromBackup(envVarsBackup map[string]*string, restoreYarnrcFunc func() error) error {
+	if err := restoreEnvironmentVariables(envVarsBackup); err != nil {
+		return err
+	}
+	return restoreYarnrcFunc()
+}
+
+func restoreEnvironmentVariables(envVarsBackup map[string]*string) error {
+	for key, value := range envVarsBackup {
+		if value == nil || *value == "" {
+			if err := os.Unsetenv(key); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := os.Setenv(key, *value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ModifyYarnConfigurations(execPath, registry, npmAuthIdent string) (map[string]*string, error) {
+	envVarsUpdated := map[string]string{
+		yarnNpmRegistryServerEnv: registry,
+		yarnNpmAuthIndent:        npmAuthIdent,
+		yarnNpmAlwaysAuth:        "true",
+	}
+	envVarsBackup := make(map[string]*string)
+	for key, value := range envVarsUpdated {
+		oldVal, err := backupAndSetEnvironmentVariable(key, value)
+		if err != nil {
+			return nil, err
+		}
+		envVarsBackup[key] = &oldVal
+	}
+	// Update scoped registries (these cannot be set in environment variables)
+	return envVarsBackup, errorutils.CheckError(updateScopeRegistries(execPath, registry, npmAuthIdent))
+}
+
+func updateScopeRegistries(execPath, registry, npmAuthIdent string) error {
+	npmScopesStr, err := yarn.ConfigGet(NpmScopesConfigName, execPath, true)
+	if err != nil {
+		return err
+	}
+	npmScopesMap := make(map[string]yarnNpmScope)
+	err = json.Unmarshal([]byte(npmScopesStr), &npmScopesMap)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	artifactoryScope := yarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: npmAuthIdent, NpmRegistryServer: registry}
+	for scopeName := range npmScopesMap {
+		npmScopesMap[scopeName] = artifactoryScope
+	}
+	updatedNpmScopesStr, err := json.Marshal(npmScopesMap)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	return yarn.ConfigSet(NpmScopesConfigName, string(updatedNpmScopesStr), execPath, true)
+}
+
+type yarnNpmScope struct {
+	NpmAlwaysAuth     bool   `json:"npmAlwaysAuth,omitempty"`
+	NpmAuthIdent      string `json:"npmAuthIdent,omitempty"`
+	NpmRegistryServer string `json:"npmRegistryServer,omitempty"`
+}
+
+func backupAndSetEnvironmentVariable(key, value string) (string, error) {
+	oldVal, _ := os.LookupEnv(key)
+	return oldVal, errorutils.CheckError(os.Setenv(key, value))
 }
 
 // npmAuth we get back from Artifactory includes several fields, but we need only the field '_auth'

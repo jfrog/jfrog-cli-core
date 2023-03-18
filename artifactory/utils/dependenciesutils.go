@@ -35,7 +35,7 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 		return err
 	}
 
-	return downloadExtractor(artDetails, remotePath, targetPath)
+	return DownloadExtractor(artDetails, remotePath, targetPath)
 }
 
 func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
@@ -43,7 +43,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	if extractorsRemote != "" {
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
-	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n You can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
+	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
 	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
@@ -61,7 +61,7 @@ func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.
 	return serverDetails, path.Join(repoName, downloadPath), err
 }
 
-func downloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
+func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
 	downloadUrl := fmt.Sprintf("%s%s", artDetails.ArtifactoryUrl, downloadPath)
 	log.Info("Downloading build-info-extractor from", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)

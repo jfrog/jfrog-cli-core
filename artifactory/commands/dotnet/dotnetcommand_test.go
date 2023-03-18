@@ -60,6 +60,87 @@ func TestGetFlagValueExists(t *testing.T) {
 	}
 }
 
+func TestInitNewConfig(t *testing.T) {
+	tmpDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
+	repoName := "test-repo"
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://server.com/artifactory",
+		User:           "user",
+		Password:       "pass",
+	}
+	configFile, err := InitNewConfig(tmpDir, repoName, server, false)
+	assert.NoError(t, err)
+	f, err := os.Open(configFile.Name())
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, f.Close())
+	}()
+	buf := make([]byte, 1024)
+	n, err := f.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo" protocolVersion="3" />
+  </packageSources>
+  <packageSourceCredentials>
+    <JFrogCli>
+      <add key="Username" value="user" />
+      <add key="ClearTextPassword" value="pass" />
+    </JFrogCli>
+  </packageSourceCredentials>
+</configuration>`, string(buf[:n]))
+	server.Password = ""
+	server.AccessToken = "abc123"
+	configFile, err = InitNewConfig(tmpDir, repoName, server, true)
+	assert.NoError(t, err)
+	updatedConfigFile, err := os.Open(configFile.Name())
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, updatedConfigFile.Close())
+	}()
+	buf = make([]byte, 1024)
+	n, err = updatedConfigFile.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" />
+  </packageSources>
+  <packageSourceCredentials>
+    <JFrogCli>
+      <add key="Username" value="user" />
+      <add key="ClearTextPassword" value="abc123" />
+    </JFrogCli>
+  </packageSourceCredentials>
+</configuration>`, string(buf[:n]))
+}
+
+func TestGetSourceDetails(t *testing.T) {
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://server.com/artifactory",
+		User:           "user",
+		Password:       "pass",
+	}
+	repoName := "repo-name"
+	url, user, pass, err := getSourceDetails(server, repoName, false)
+	assert.NoError(t, err)
+	assert.Equal(t, "user", user)
+	assert.Equal(t, "pass", pass)
+	assert.Equal(t, "https://server.com/artifactory/api/nuget/v3/repo-name", url)
+	server.Password = ""
+	server.AccessToken = "abc123"
+	url, user, pass, err = getSourceDetails(server, repoName, true)
+	assert.Equal(t, "user", user)
+	assert.Equal(t, "abc123", pass)
+	assert.NoError(t, err)
+	assert.Equal(t, "https://server.com/artifactory/api/nuget/repo-name", url)
+}
+
 func TestPrepareDotnetBuildInfoModule(t *testing.T) {
 	t.Run("generated config file", func(t *testing.T) { testPrepareDotnetBuildInfoModule(t, []string{}, true) })
 	t.Run("existing with configfile flag", func(t *testing.T) {

@@ -193,7 +193,7 @@ func getLocks(filesList []string) (Locks, error) {
 
 // Removes the lock file so other process can continue.
 func (lock *Lock) Unlock() error {
-	log.Debug("Releasing lock: ", lock.fileName)
+	log.Debug("Releasing lock:", lock.fileName)
 	exists, err := fileutils.IsFileExists(lock.fileName, false)
 	if err != nil {
 		return err
@@ -209,7 +209,7 @@ func (lock *Lock) Unlock() error {
 }
 
 func CreateLock(lockDirPath string) (unlock func() error, err error) {
-	log.Debug("Creating lock in: ", lockDirPath)
+	log.Debug("Creating lock in:", lockDirPath)
 	lockFile := new(Lock)
 	unlock = func() error { return lockFile.Unlock() }
 	err = lockFile.createNewLockFile(lockDirPath)

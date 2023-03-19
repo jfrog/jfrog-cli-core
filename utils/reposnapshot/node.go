@@ -10,11 +10,11 @@ import (
 
 // Represents a directory in the repo state snapshot.
 type Node struct {
-	// Mutex is on the Node level to allow modifying non-conflicting content on multiple nodes simultaneously.
-	mutex    sync.Mutex
-	name     string
 	parent   *Node
+	name     string
 	children []*Node
+	// Mutex is on the Node level to allow modifying non-conflicting content on multiple nodes simultaneously.
+	mutex sync.Mutex
 	// The files count is used to identify when handling a node is completed. It is only used during runtime, and is not persisted to disk for future runs.
 	filesCount uint32
 	NodeStatus

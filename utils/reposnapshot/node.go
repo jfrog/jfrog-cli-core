@@ -16,10 +16,17 @@ type Node struct {
 	parent   *Node
 	children []*Node
 	// The files count is used to identify when handling a node is completed. It is only used during runtime, and is not persisted to disk for future runs.
-	filesCount    uint64
-	completed     bool
-	doneExploring bool
+	filesCount uint32
+	NodeStatus
 }
+
+type NodeStatus uint8
+
+const (
+	Exploring NodeStatus = iota
+	DoneExploring
+	Completed
+)
 
 // Used to export/load the node tree to/from a file.
 // Wrapper is needed since fields on the original node are unexported (to avoid operations that aren't thread safe).
@@ -47,7 +54,7 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 	err = node.action(func(node *Node) error {
 		wrapper = &NodeExportWrapper{
 			Name:      node.name,
-			Completed: node.completed,
+			Completed: node.NodeStatus == Completed,
 		}
 		for i := range node.children {
 			converted, err := node.children[i].convertToWrapper()
@@ -64,8 +71,11 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 // Convert the loaded node export wrapper to node.
 func (wrapper *NodeExportWrapper) convertToNode() *Node {
 	node := &Node{
-		name:      wrapper.Name,
-		completed: wrapper.Completed,
+		name: wrapper.Name,
+	}
+	// If node wasn't previously completed, we will start exploring it from scratch.
+	if wrapper.Completed {
+		node.NodeStatus = Completed
 	}
 	for i := range wrapper.Children {
 		converted := wrapper.Children[i].convertToNode()
@@ -98,7 +108,7 @@ func (node *Node) getActualPath() (actualPath string, err error) {
 // Sets node as completed, clear its contents, notifies parent to check completion.
 func (node *Node) setCompleted() error {
 	return node.action(func(node *Node) error {
-		node.completed = true
+		node.NodeStatus = Completed
 		node.children = nil
 		parent := node.parent
 		node.parent = nil
@@ -113,11 +123,11 @@ func (node *Node) setCompleted() error {
 func (node *Node) CheckCompleted() error {
 	isCompleted := false
 	err := node.action(func(node *Node) error {
-		if !node.doneExploring || node.filesCount > 0 {
+		if node.NodeStatus == Exploring || node.filesCount > 0 {
 			return nil
 		}
 		for _, child := range node.children {
-			if !child.completed {
+			if child.NodeStatus < Completed {
 				return nil
 			}
 		}
@@ -178,7 +188,7 @@ func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 // Marks that all contents of the node have been found and added.
 func (node *Node) MarkDoneExploring() error {
 	return node.action(func(node *Node) error {
-		node.doneExploring = true
+		node.NodeStatus = DoneExploring
 		return nil
 	})
 }
@@ -193,7 +203,7 @@ func (node *Node) GetChildren() (children []*Node, err error) {
 
 func (node *Node) IsCompleted() (completed bool, err error) {
 	err = node.action(func(node *Node) error {
-		completed = node.completed
+		completed = node.NodeStatus == Completed
 		return nil
 	})
 	return
@@ -201,7 +211,7 @@ func (node *Node) IsCompleted() (completed bool, err error) {
 
 func (node *Node) IsDoneExploring() (doneExploring bool, err error) {
 	err = node.action(func(node *Node) error {
-		doneExploring = node.doneExploring
+		doneExploring = node.NodeStatus >= DoneExploring
 		return nil
 	})
 	return
@@ -209,8 +219,7 @@ func (node *Node) IsDoneExploring() (doneExploring bool, err error) {
 
 func (node *Node) RestartExploring() error {
 	return node.action(func(node *Node) error {
-		node.doneExploring = false
-		node.completed = false
+		node.NodeStatus = Exploring
 		node.children = nil
 		node.filesCount = 0
 		return nil

@@ -103,7 +103,7 @@ func VerifyTransferRunStatusVersion() error {
 		return err
 	}
 	if transferRunStatus.Version != transferRunStatusVersion {
-		return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
+		return GetOldTransferDirectoryStructureError()
 	}
 	return nil
 }

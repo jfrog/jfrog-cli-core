@@ -10,7 +10,7 @@ func TestConversions(t *testing.T) {
 	root := createTestSnapshotTree(t)
 	node2 := getChild(root, "2")
 	// Set fields to contain a non-empty value.
-	node2.completed = true
+	node2.NodeStatus = Completed
 
 	wrapper, err := root.convertToWrapper()
 	assert.NoError(t, err)
@@ -18,5 +18,5 @@ func TestConversions(t *testing.T) {
 	convertedRoot := wrapper.convertToNode()
 	node2converted := getChild(convertedRoot, "2")
 	assert.Equal(t, ".", node2.parent.name)
-	assert.True(t, node2converted.completed)
+	assert.Equal(t, Completed, node2converted.NodeStatus)
 }

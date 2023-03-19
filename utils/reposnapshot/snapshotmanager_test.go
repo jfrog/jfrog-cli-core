@@ -87,24 +87,24 @@ func TestNodeCompletedWhileExploring(t *testing.T) {
 	node2, err := manager.LookUpNode(path2)
 	assert.NoError(t, err)
 	assert.NotNil(t, node2)
-	node2.doneExploring = false
+	node2.NodeStatus = Exploring
 	assert.NoError(t, node2.CheckCompleted())
 	assertNotCompleted(t, node2)
 
 	// Mark it as explored and try again.
-	node2.doneExploring = true
+	node2.NodeStatus = DoneExploring
 	assert.NoError(t, node2.CheckCompleted())
 	assertCompleted(t, node2)
 }
 
 func assertCompleted(t *testing.T, node *Node) {
-	assert.True(t, node.completed)
+	assert.Equal(t, Completed, node.NodeStatus)
 	assert.Nil(t, node.parent)
 	assert.Len(t, node.children, 0)
 }
 
 func assertNotCompleted(t *testing.T, node *Node) {
-	assert.False(t, node.completed)
+	assert.Less(t, node.NodeStatus, Completed)
 }
 
 type lookUpAndPathTestSuite struct {
@@ -180,7 +180,7 @@ func addChildren(node *Node, children ...*Node) {
 
 func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *Node {
 	node := CreateNewNode(name, parent)
-	node.doneExploring = true
+	node.NodeStatus = DoneExploring
 	for i := 0; i < filesCount; i++ {
 		assert.NoError(t, node.IncrementFilesCount())
 	}
@@ -204,9 +204,9 @@ func addAndAssertChild(t *testing.T, childrenPool []*Node, root, expectedChild *
 }
 
 func getChild(node *Node, childName string) *Node {
-	for i := range node.children {
-		if node.children[i].name == childName {
-			return node.children[i]
+	for _, child := range node.children {
+		if child.name == childName {
+			return child
 		}
 	}
 	return nil

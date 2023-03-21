@@ -63,6 +63,7 @@ func updateEncryptionIfNeeded(config *Config) error {
 	if err != nil || masterKey == "" {
 		return err
 	}
+	// The encryption key exists and will be loaded again in encrypt()
 	return saveConfig(config)
 }
 

@@ -18,9 +18,6 @@ import (
 )
 
 const (
-	noContextMessage = "Note: no context was provided, so no policy could be determined to scan against.\n" +
-		"You can get a list of custom violations by providing one of the command options: --watches, --repo-path or --project.\n" +
-		"Read more about configuring Xray policies here: https://www.jfrog.com/confluence/display/JFROG/Creating+Xray+Policies+and+Rules\n"
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
@@ -31,14 +28,14 @@ const (
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
-func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended, isScan bool) error {
+// If Scan input is true we want to print the scan tables.
+func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended, Scan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
-
-	// Print tables
-	if isScan {
+	// Print tables, if Scan is true; print the scan tables.
+	if Scan {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err
@@ -170,8 +167,6 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended, isScan bool) error {
-	log.Output(noContextMessage + "Below are all vulnerabilities detected.")
-
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true, true)
 	if err != nil {
 		return err

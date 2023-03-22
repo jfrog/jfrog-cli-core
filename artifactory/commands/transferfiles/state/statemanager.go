@@ -40,11 +40,11 @@ type TransferStateManager struct {
 func NewTransferStateManager(loadRunStatus bool) (*TransferStateManager, error) {
 	stateManager := TransferStateManager{}
 	if loadRunStatus {
-		transferRunStatus, err := loadTransferRunStatus()
+		transferRunStatus, _, err := loadTransferRunStatus()
 		if err != nil {
 			return nil, err
 		}
-		stateManager.TransferRunStatus = *transferRunStatus
+		stateManager.TransferRunStatus = transferRunStatus
 	}
 	stateManager.TimeEstimationManager.stateManager = &stateManager
 	return &stateManager, nil

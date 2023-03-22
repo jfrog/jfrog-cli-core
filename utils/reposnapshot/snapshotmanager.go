@@ -15,12 +15,15 @@ import (
 // The snapshot is constructed as a linked prefix tree, where every node has pointers to its children and parent.
 // While traversing over the repository, contents found are added to their respecting node. Later on, files handled are removed from their node.
 // Each node has one of three states:
-//  1. Unexplored / Partially explored - NOT all contents of the directory were found and added to its node (Marked by !DoneExploring).
-//  2. Fully explored - All contents of the directory were found, but NOT all of them handled (Marked by DoneExploring && !Completed).
-//  3. Completed - All contents found and handled (Marked by Completed).
+//  1. Unexplored / Partially explored - NOT all contents of the directory were found and added to its node (Marked by NodeStatus - Exploring).
+//  2. Fully explored - All contents of the directory were found, but NOT all of them handled (Marked by NodeStatus - DoneExploring).
+//  3. Completed - All contents found and handled (Marked by NodeStatus - Completed).
 //
 // In the event of a node reaching completion, a tree collapsing may occur in order to save space:
 // The node will mark itself completed, and will then notify the parent to check completion as well.
+//
+// When resuming from a snapshot, all nodes that weren't completed are re-explored even if they were previously fully explored.
+// Therefore, when persisting the snapshot to disk these fields are removed.
 type RepoSnapshotManager struct {
 	repoKey string
 	// Pointer to the root node of the repository tree.

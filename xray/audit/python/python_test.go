@@ -1,7 +1,6 @@
 package python
 
 import (
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -10,31 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuildPipDependencyListSetuppyWithVirtualenv(t *testing.T) {
-	// Install virtualenv if missing
-	path, _ := exec.LookPath("virtualenv")
-	if path == "" {
-		assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
-		defer func() {
-			assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
-		}()
-	}
-	testBuildPipDependencyListSetuppy(t)
-}
-
-func TestBuildPipDependencyListSetuppyWithPython3Venv(t *testing.T) {
-	// Remove virtualenv if exists
-	path, _ := exec.LookPath("virtualenv")
-	if path != "" {
-		assert.NoError(t, executeCommand("python", "-m", "pip", "uninstall", "virtualenv", "-y"))
-		defer func() {
-			assert.NoError(t, executeCommand("python", "-m", "pip", "install", "virtualenv"))
-		}()
-	}
-	testBuildPipDependencyListSetuppy(t)
-}
-
-func testBuildPipDependencyListSetuppy(t *testing.T) {
+func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
@@ -60,11 +35,11 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
+	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {
-		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
+		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.7.0")
 		if childNode != nil {
 			// Test child module
 			audit.GetAndAssertNode(t, childNode.Nodes, "ptyprocess:0.7.0")
@@ -84,7 +59,7 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 		assert.NotEmpty(t, rootNode[0].Nodes)
 		if rootNode[0].Nodes != nil {
 			// Test root module
-			directDepNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.8.0")
+			directDepNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.7.0")
 			// Test child module
 			audit.GetAndAssertNode(t, directDepNode.Nodes, "ptyprocess:0.7.0")
 		}
@@ -134,6 +109,6 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 }
 
 func TestGetPipInstallArgs(t *testing.T) {
-	assert.Equal(t, []string{"install", "."}, getPipInstallArgs(""))
-	assert.Equal(t, []string{"install", "-r", "requirements.txt"}, getPipInstallArgs("requirements.txt"))
+	assert.Equal(t, []string{"-m", "pip", "install", "."}, getPipInstallArgs(""))
+	assert.Equal(t, []string{"-m", "pip", "install", "-r", "requirements.txt"}, getPipInstallArgs("requirements.txt"))
 }

@@ -10,65 +10,58 @@ import (
 
 // Represents a directory in the repo state snapshot.
 type Node struct {
+	parent   *Node
+	name     string
+	children []*Node
 	// Mutex is on the Node level to allow modifying non-conflicting content on multiple nodes simultaneously.
-	rwMutex            sync.RWMutex
-	name               string
-	parent             *Node
-	children           map[string]*Node
-	filesNamesAndSizes map[string]int64
-	completed          bool
-	doneExploring      bool
+	mutex sync.Mutex
+	// The files count is used to identify when handling a node is completed. It is only used during runtime, and is not persisted to disk for future runs.
+	filesCount uint32
+	NodeStatus
 }
+
+type NodeStatus uint8
+
+const (
+	Exploring NodeStatus = iota
+	DoneExploring
+	Completed
+)
 
 // Used to export/load the node tree to/from a file.
 // Wrapper is needed since fields on the original node are unexported (to avoid operations that aren't thread safe).
-// In addition, wrapper does not hold the parent pointer to avoid cyclic reference on export.
+// The wrapper only contains fields that are used in future runs, hence not all fields from Node are persisted.
+// In addition, it does not hold the parent pointer to avoid cyclic reference on export.
 type NodeExportWrapper struct {
-	Name               string                        `json:"name,omitempty"`
-	Children           map[string]*NodeExportWrapper `json:"children,omitempty"`
-	FilesNamesAndSizes map[string]int64              `json:"files,omitempty"`
-	Completed          bool                          `json:"completed,omitempty"`
-	DoneExploring      bool                          `json:"done_exploring,omitempty"`
+	Name      string               `json:"name,omitempty"`
+	Children  []*NodeExportWrapper `json:"children,omitempty"`
+	Completed bool                 `json:"completed,omitempty"`
 }
 
 type ActionOnNodeFunc func(node *Node) error
 
-// Perform a writing action on the node's content.
+// Perform an action on the node's content.
 // Warning: Calling an action inside another action will cause a deadlock!
-func (node *Node) writeAction(action ActionOnNodeFunc) error {
-	node.rwMutex.Lock()
-	defer node.rwMutex.Unlock()
-
-	return action(node)
-}
-
-// Perform a read only action on the node's content.
-// Warning: Calling an action inside another action will cause a deadlock!
-func (node *Node) readAction(action ActionOnNodeFunc) error {
-	node.rwMutex.RLock()
-	defer node.rwMutex.RUnlock()
+func (node *Node) action(action ActionOnNodeFunc) error {
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
 
 	return action(node)
 }
 
 // Convert node to wrapper in order to save it to file.
 func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
-	err = node.readAction(func(node *Node) error {
+	err = node.action(func(node *Node) error {
 		wrapper = &NodeExportWrapper{
-			Name:               node.name,
-			FilesNamesAndSizes: node.filesNamesAndSizes,
-			Completed:          node.completed,
-			DoneExploring:      node.doneExploring,
+			Name:      node.name,
+			Completed: node.NodeStatus == Completed,
 		}
-		if len(node.children) > 0 {
-			wrapper.Children = make(map[string]*NodeExportWrapper)
-			for _, child := range node.children {
-				converted, err := child.convertToWrapper()
-				if err != nil {
-					return err
-				}
-				wrapper.Children[child.name] = converted
+		for i := range node.children {
+			converted, err := node.children[i].convertToWrapper()
+			if err != nil {
+				return err
 			}
+			wrapper.Children = append(wrapper.Children, converted)
 		}
 		return nil
 	})
@@ -78,25 +71,23 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 // Convert the loaded node export wrapper to node.
 func (wrapper *NodeExportWrapper) convertToNode() *Node {
 	node := &Node{
-		name:               wrapper.Name,
-		filesNamesAndSizes: wrapper.FilesNamesAndSizes,
-		completed:          wrapper.Completed,
-		doneExploring:      wrapper.DoneExploring,
+		name: wrapper.Name,
 	}
-	if len(wrapper.Children) > 0 {
-		node.children = make(map[string]*Node)
-		for i := range wrapper.Children {
-			converted := wrapper.Children[i].convertToNode()
-			node.children[converted.name] = converted
-			node.children[converted.name].parent = node
-		}
+	// If node wasn't previously completed, we will start exploring it from scratch.
+	if wrapper.Completed {
+		node.NodeStatus = Completed
+	}
+	for i := range wrapper.Children {
+		converted := wrapper.Children[i].convertToNode()
+		converted.parent = node
+		node.children = append(node.children, converted)
 	}
 	return node
 }
 
 // Returns the node's relative path in the repository.
 func (node *Node) getActualPath() (actualPath string, err error) {
-	err = node.readAction(func(node *Node) error {
+	err = node.action(func(node *Node) error {
 		curPath := node.name
 		curNode := node
 		// Progress through parent references till reaching root.
@@ -116,10 +107,9 @@ func (node *Node) getActualPath() (actualPath string, err error) {
 
 // Sets node as completed, clear its contents, notifies parent to check completion.
 func (node *Node) setCompleted() error {
-	return node.writeAction(func(node *Node) error {
-		node.completed = true
+	return node.action(func(node *Node) error {
+		node.NodeStatus = Completed
 		node.children = nil
-		node.filesNamesAndSizes = nil
 		parent := node.parent
 		node.parent = nil
 		if parent != nil {
@@ -132,12 +122,12 @@ func (node *Node) setCompleted() error {
 // Check if node completed - if done exploring, done handling files, children are completed.
 func (node *Node) CheckCompleted() error {
 	isCompleted := false
-	err := node.readAction(func(node *Node) error {
-		if !node.doneExploring || len(node.filesNamesAndSizes) > 0 {
+	err := node.action(func(node *Node) error {
+		if node.NodeStatus == Exploring || node.filesCount > 0 {
 			return nil
 		}
 		for _, child := range node.children {
-			if !child.completed {
+			if child.NodeStatus < Completed {
 				return nil
 			}
 		}
@@ -151,39 +141,34 @@ func (node *Node) CheckCompleted() error {
 	return node.setCompleted()
 }
 
-func (node *Node) AddFile(fileName string, size int64) error {
-	return node.writeAction(func(node *Node) error {
-		if node.filesNamesAndSizes == nil {
-			node.filesNamesAndSizes = make(map[string]int64)
-		}
-		node.filesNamesAndSizes[fileName] = size
+func (node *Node) IncrementFilesCount() error {
+	return node.action(func(node *Node) error {
+		node.filesCount++
 		return nil
 	})
 }
 
-func (node *Node) FileCompleted(fileName string) error {
-	return node.writeAction(func(node *Node) error {
-		if _, exists := node.filesNamesAndSizes[fileName]; exists {
-			delete(node.filesNamesAndSizes, fileName)
-			return nil
+func (node *Node) DecrementFilesCount() error {
+	return node.action(func(node *Node) error {
+		if node.filesCount > 0 {
+			node.filesCount--
 		}
-		return errorutils.CheckErrorf("could not find file name '%s' in node of dir '%s'", fileName, node.name)
+		return nil
 	})
 }
 
 // Adds a new child node to children map.
-// childrenMapPool - [Optional] Children map to check existence of a dirName in before creating a new node.
-func (node *Node) AddChildNode(dirName string, childrenMapPool map[string]*Node) error {
-	return node.writeAction(func(node *Node) error {
-		if node.children == nil {
-			node.children = make(map[string]*Node)
+// childrenPool - [Optional] Children array to check existence of a dirName in before creating a new node.
+func (node *Node) AddChildNode(dirName string, childrenPool []*Node) error {
+	return node.action(func(node *Node) error {
+		for i := range childrenPool {
+			if childrenPool[i].name == dirName {
+				childrenPool[i].parent = node
+				node.children = append(node.children, childrenPool[i])
+				return nil
+			}
 		}
-		if child, exists := childrenMapPool[dirName]; exists {
-			child.parent = node
-			node.children[dirName] = child
-			return nil
-		}
-		node.children[dirName] = CreateNewNode(dirName, node)
+		node.children = append(node.children, CreateNewNode(dirName, node))
 		return nil
 	})
 }
@@ -202,22 +187,14 @@ func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 
 // Marks that all contents of the node have been found and added.
 func (node *Node) MarkDoneExploring() error {
-	return node.writeAction(func(node *Node) error {
-		node.doneExploring = true
+	return node.action(func(node *Node) error {
+		node.NodeStatus = DoneExploring
 		return nil
 	})
 }
 
-func (node *Node) GetFiles() (filesMap map[string]int64, err error) {
-	err = node.readAction(func(node *Node) error {
-		filesMap = node.filesNamesAndSizes
-		return nil
-	})
-	return
-}
-
-func (node *Node) GetChildren() (children map[string]*Node, err error) {
-	err = node.readAction(func(node *Node) error {
+func (node *Node) GetChildren() (children []*Node, err error) {
+	err = node.action(func(node *Node) error {
 		children = node.children
 		return nil
 	})
@@ -225,27 +202,26 @@ func (node *Node) GetChildren() (children map[string]*Node, err error) {
 }
 
 func (node *Node) IsCompleted() (completed bool, err error) {
-	err = node.readAction(func(node *Node) error {
-		completed = node.completed
+	err = node.action(func(node *Node) error {
+		completed = node.NodeStatus == Completed
 		return nil
 	})
 	return
 }
 
 func (node *Node) IsDoneExploring() (doneExploring bool, err error) {
-	err = node.readAction(func(node *Node) error {
-		doneExploring = node.doneExploring
+	err = node.action(func(node *Node) error {
+		doneExploring = node.NodeStatus >= DoneExploring
 		return nil
 	})
 	return
 }
 
 func (node *Node) RestartExploring() error {
-	return node.writeAction(func(node *Node) error {
-		node.doneExploring = false
-		node.completed = false
+	return node.action(func(node *Node) error {
+		node.NodeStatus = Exploring
 		node.children = nil
-		node.filesNamesAndSizes = nil
+		node.filesCount = 0
 		return nil
 	})
 }
@@ -257,14 +233,14 @@ func (node *Node) RestartExploring() error {
 // For a structure such as repo->dir1->dir2->dir3
 // The initial call will be to the root, and for an input of ({"dir1","dir2"}), and the final output will be a pointer to dir2.
 func (node *Node) findMatchingNode(childrenDirs []string) (matchingNode *Node, err error) {
-	err = node.readAction(func(node *Node) error {
+	err = node.action(func(node *Node) error {
 		if len(childrenDirs) == 0 {
 			matchingNode = node
 			return nil
 		}
-		for childName, child := range node.children {
-			if childName == childrenDirs[0] {
-				matchingNode, err = child.findMatchingNode(childrenDirs[1:])
+		for i := range node.children {
+			if node.children[i].name == childrenDirs[0] {
+				matchingNode, err = node.children[i].findMatchingNode(childrenDirs[1:])
 				return err
 			}
 		}

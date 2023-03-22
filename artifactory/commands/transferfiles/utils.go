@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,10 +39,6 @@ const (
 	SyncErrorReason     = "un-synchronized chunk status due to network issue"
 	SyncErrorStatusCode = 404
 
-	OldTransferDirectoryStructureErrorMsg = "unsupported transfer directory structure found.\n" +
-		"This structure was created on previous runs of a transfer command, but is no longer supported by this JFrog CLI version.\n" +
-		"You may either downgrade JFrog CLI to a supported version, or remove the transfer directory which is located under your JFROG_HOME directory\n" +
-		"(Note - this will remove all your transfer history, which means the transfer will start from scratch)"
 	StopFileName = "stop"
 )
 
@@ -255,7 +252,7 @@ func setChunkCompletedInRepoSnapshot(stateManager *state.TransferStateManager, c
 
 		// If empty dir, skip to checking completion.
 		if file.Name != "" {
-			if err = dirNode.FileCompleted(file.Name); err != nil {
+			if err = dirNode.DecrementFilesCount(); err != nil {
 				return
 			}
 		}
@@ -302,12 +299,14 @@ func GetThreads() int {
 // the CLI side (by updating the producer consumer if used and the local variable) and as a result reflected on the Artifactory User Plugin side.
 // This method also looks for '~/.jfrog/transfer/stop' file and interrupts the transfer if exists.
 func periodicallyUpdateThreadsAndStopStatus(pcWrapper *producerConsumerWrapper, doneChan chan bool, buildInfoRepo bool, stopSignal chan os.Signal) {
+	log.Debug("Initializing polling on the settings and stop files...")
 	for {
 		time.Sleep(waitTimeBetweenThreadsUpdateSeconds * time.Second)
 		if err := interruptIfRequested(stopSignal); err != nil {
 			log.Error(err)
 		}
 		if shouldStopPolling(doneChan) {
+			log.Debug("Stopping the polling on the settings and stop files for the current phase.")
 			return
 		}
 		if err := updateThreads(pcWrapper, buildInfoRepo); err != nil {
@@ -323,12 +322,14 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 	}
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
 	if curThreads != calculatedNumberOfThreads {
-		curThreads = calculatedNumberOfThreads
 		if pcWrapper != nil {
 			updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedNumberOfThreads)
 			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedNumberOfThreads)
 		}
-		log.Info("Number of threads have been updated to " + strconv.Itoa(curThreads))
+		log.Info(fmt.Sprintf("Number of threads have been updated to %s (was %s).", strconv.Itoa(calculatedNumberOfThreads), strconv.Itoa(curThreads)))
+		curThreads = calculatedNumberOfThreads
+	} else {
+		log.Debug("No change to the number of threads have been detected.")
 	}
 	return nil
 }

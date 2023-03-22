@@ -112,7 +112,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information.",
+			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
 				err.Error(),
 				vConfig.GetString("type"),
 				prefix,
@@ -120,7 +120,7 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
-		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s).", prefix, configFilePath)
+		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)

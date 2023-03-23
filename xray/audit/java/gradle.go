@@ -151,8 +151,10 @@ func (dtp *depTreeManager) execGradleDepTree() (outputFileContent []byte, err er
 	if err != nil {
 		return
 	}
-	if err = os.Chmod(gradleExecPath, 0777); err != nil {
-		return
+	if dtp.useWrapper {
+		if err = os.Chmod(gradleExecPath, 0777); err != nil {
+			return
+		}
 	}
 
 	outputFileAbsolutePath, err := filepath.Abs(depTreeOutputFile)

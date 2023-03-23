@@ -106,7 +106,7 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 				Url:         "https://myartifactory.com",
 				AccessToken: "my-access-token",
 			},
-			expectedUrl: "\n\t\tmaven {\n\t\t\turl \"my-remote-repo\"\n\t\t\tcredentials {\n\t\t\t\tusername = ''\n\t\t\t\tpassword = 'my-access-token'\n\t\t\t}\n\t\t}\n",
+			expectedUrl: "\n\t\tmaven {\n\t\t\turl \"/my-remote-repo\"\n\t\t\tcredentials {\n\t\t\t\tusername = ''\n\t\t\t\tpassword = 'my-access-token'\n\t\t\t}\n\t\t}",
 			expectedErr: "",
 		},
 		{
@@ -117,7 +117,7 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 				User:     "my-username",
 				Password: "my-password",
 			},
-			expectedUrl: "\n\t\tmaven {\n\t\t\turl \"my-remote-repo\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'my-username'\n\t\t\t\tpassword = 'my-password'\n\t\t\t}\n\t\t}\n",
+			expectedUrl: "\n\t\tmaven {\n\t\t\turl \"/my-remote-repo\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'my-username'\n\t\t\t\tpassword = 'my-password'\n\t\t\t}\n\t\t}",
 			expectedErr: "",
 		},
 		{

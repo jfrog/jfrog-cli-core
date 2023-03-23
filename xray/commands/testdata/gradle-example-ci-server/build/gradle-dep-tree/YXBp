@@ -1,0 +1,33 @@
+{
+  "unresolved": false,
+  "configurations": ["annotationProcessor", "compileClasspath", "runtimeClasspath", "spi", "testAnnotationProcessor", "testCompileClasspath", "testRuntimeClasspath"],
+  "children": {
+    "org.apache.wicket:wicket:1.3.7": {
+      "unresolved": false,
+      "configurations": ["compileClasspath", "implementation", "runtimeClasspath", "testCompileClasspath", "testRuntimeClasspath"],
+      "children": {
+        "org.slf4j:slf4j-api:1.4.2": {
+          "unresolved": false,
+          "configurations": ["compileClasspath"],
+          "children": {}
+        }
+      }
+    },
+    "org.jfrog.example.gradle:shared:1.0": {
+      "unresolved": false,
+      "configurations": ["compileClasspath", "implementation", "runtimeClasspath", "testCompileClasspath", "testRuntimeClasspath"],
+      "children": {}
+    },
+    "commons-lang:commons-lang:2.4": {
+      "unresolved": false,
+      "configurations": ["compileClasspath", "implementation", "runtimeClasspath", "testCompileClasspath", "testRuntimeClasspath"],
+      "children": {
+        "commons-io:commons-io:1.2": {
+          "unresolved": false,
+          "configurations": ["compileClasspath"],
+          "children": {}
+        }
+      }
+    }
+  }
+}

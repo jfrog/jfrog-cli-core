@@ -34,6 +34,7 @@ type Params struct {
 	insecureTls         bool
 	useWrapper          bool
 	depsRepo            string
+	releasesRepo        string
 	requirementsFile    string
 	technologies        []string
 	workingDirs         []string
@@ -271,49 +272,6 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	case coreutils.Nuget:
 		dependencyTrees, e = nuget.BuildDependencyTree()
 	default:
-		e = errors.New(string(tech) + " is currently not supported")
-	}
-		dependencyTrees, e := getTechDependencyTree(params, tech)
-		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
-			continue
-		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
-		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
-			continue
-		}
-		results = append(results, techResults...)
-		isMultipleRoot = len(dependencyTrees) > 1
-	}
-	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
-	}
-	return
-}
-
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
-	if params.progress != nil {
-		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
-	}
-	switch tech {
-	case coreutils.Maven, coreutils.Gradle:
-		dependencyTrees, e = getJavaDependencyTree(params, tech)
-	case coreutils.Npm:
-		dependencyTrees, e = npm.BuildDependencyTree(params.args)
-	case coreutils.Yarn:
-		dependencyTrees, e = yarn.BuildDependencyTree()
-	case coreutils.Go:
-		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
-	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
-			Server:              params.serverDetails,
-			Tool:                pythonutils.PythonTool(tech),
-			RemotePypiRepo:      params.depsRepo,
-			PipRequirementsFile: params.requirementsFile})
-	case coreutils.Nuget:
-		dependencyTrees, e = nuget.BuildDependencyTree()
-	default:
 		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
 
@@ -322,8 +280,8 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
 	var javaProps map[string]any
-	if params.DepsRepo() != "" {
-		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
+	if params.DepsRepo() != "" && tech == coreutils.Maven {
+		javaProps = createMvnProps(params.DepsRepo(), params.ServerDetails())
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
@@ -331,11 +289,14 @@ func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*servic
 		IgnoreConfigFile: params.ignoreConfigFile,
 		ExcludeTestDeps:  params.excludeTestDeps,
 		UseWrapper:       params.useWrapper,
-		JavaProps:        javaProps,
+		MvnProps:         javaProps,
+		Server:           params.serverDetails,
+		DepsRepo:         params.depsRepo,
+		ReleasesRepo:     params.releasesRepo,
 	})
 }
 
-func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
+func createMvnProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
 	authPass := serverDetails.Password
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken

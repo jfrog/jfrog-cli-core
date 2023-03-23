@@ -1,6 +1,7 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"strconv"
 	"time"
@@ -22,7 +23,10 @@ type DependencyTreeParams struct {
 	IgnoreConfigFile bool
 	ExcludeTestDeps  bool
 	UseWrapper       bool
-	JavaProps        map[string]any
+	MvnProps         map[string]any
+	Server           *config.ServerDetails
+	DepsRepo         string
+	ReleasesRepo     string
 }
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
@@ -136,9 +140,17 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 
 func BuildDependencyTree(params *DependencyTreeParams) (modules []*services.GraphNode, err error) {
 	if params.Tool == coreutils.Maven {
-		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
+		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.MvnProps)
 	}
-	return buildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
+	server := &config.ServerDetails{}
+	depsRepo := ""
+	releaseRepo := ""
+	if params.IgnoreConfigFile {
+		server = params.Server
+		depsRepo = params.DepsRepo
+		releaseRepo = params.ReleasesRepo
+	}
+	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo, releaseRepo)
 }
 
 type dependencyMultimap struct {

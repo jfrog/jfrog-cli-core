@@ -39,7 +39,7 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
-	dependencyLocalPath, err := GetGradleDependencyLocalPath()
+	dependencyLocalPath, err := getGradleDependencyLocalPath()
 	if err != nil {
 		return err
 	}

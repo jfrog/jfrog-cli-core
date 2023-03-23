@@ -29,7 +29,7 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended, Scan bool) error {
+func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended, scan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true, true)
 	if err != nil {
 		return err

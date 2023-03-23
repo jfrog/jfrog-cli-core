@@ -196,15 +196,14 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 }
 
 func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren map[string]any) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-
 	for gav, details := range currNodeChildren {
 		childNode := &services.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
 			Nodes:  []*services.GraphNode{},
 			Parent: currNode,
+		}
+		if currNode.NodeHasLoop() {
+			return
 		}
 		childNodeChildren := details.(map[string]any)["children"].(map[string]any)
 		populateGradleDependencyTree(childNode, childNodeChildren)

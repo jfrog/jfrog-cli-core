@@ -5,7 +5,7 @@ package formats
 // Use the conversion methods in this package to convert from the API structs to the table structs.
 
 // Used for vulnerabilities and security violations
-type VulnerabilityTableRow struct {
+type vulnerabilityTableRow struct {
 	Severity string `col-name:"Severity"`
 	// For sorting
 	SeverityNumValue          int
@@ -18,7 +18,7 @@ type VulnerabilityTableRow struct {
 	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
 }
 
-type VulnerabilityScanTableRow struct {
+type vulnerabilityScanTableRow struct {
 	Severity string `col-name:"Severity"`
 	// For sorting
 	SeverityNumValue       int
@@ -31,7 +31,7 @@ type VulnerabilityScanTableRow struct {
 	IssueId                string                   `col-name:"Issue ID" extended:"true"`
 }
 
-type LicenseTableRow struct {
+type licenseTableRow struct {
 	LicenseKey                string                       `col-name:"License"`
 	DirectDependencies        []directDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency"`
@@ -39,7 +39,7 @@ type LicenseTableRow struct {
 	ImpactedDependencyType    string                       `col-name:"Type"`
 }
 
-type LicenseScanTableRow struct {
+type licenseScanTableRow struct {
 	LicenseKey             string                   `col-name:"License"`
 	DirectDependencies     []directPackagesTableRow `embed-table:"true"`
 	ImpactedPackageName    string                   `col-name:"Impacted\nPackage"`
@@ -47,7 +47,7 @@ type LicenseScanTableRow struct {
 	ImpactedDependencyType string                   `col-name:"Type"`
 }
 
-type LicenseViolationTableRow struct {
+type licenseViolationTableRow struct {
 	LicenseKey string `col-name:"License"`
 	Severity   string `col-name:"Severity"`
 	// For sorting
@@ -58,7 +58,7 @@ type LicenseViolationTableRow struct {
 	ImpactedDependencyType    string                       `col-name:"Type"`
 }
 
-type LicenseViolationScanTableRow struct {
+type licenseViolationScanTableRow struct {
 	LicenseKey string `col-name:"License"`
 	Severity   string `col-name:"Severity"`
 	// For sorting
@@ -69,7 +69,7 @@ type LicenseViolationScanTableRow struct {
 	ImpactedDependencyType string                   `col-name:"Type"`
 }
 
-type OperationalRiskViolationTableRow struct {
+type operationalRiskViolationTableRow struct {
 	Severity string `col-name:"Severity"`
 	// For sorting
 	SeverityNumValue          int
@@ -87,7 +87,7 @@ type OperationalRiskViolationTableRow struct {
 	LatestVersion             string                       `col-name:"Latest\nVersion" extended:"true"`
 }
 
-type OperationalRiskViolationScanTableRow struct {
+type operationalRiskViolationScanTableRow struct {
 	Severity string `col-name:"Severity"`
 	// For sorting
 	SeverityNumValue       int

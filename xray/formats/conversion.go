@@ -138,9 +138,9 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 	return
 }
 
-func ConvertToComponentTableRow(rows []ComponentRow) (tableRows []DirectDependenciesTableRow) {
+func ConvertToComponentTableRow(rows []ComponentRow) (tableRows []directDependenciesTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, DirectDependenciesTableRow{
+		tableRows = append(tableRows, directDependenciesTableRow{
 			Name:    rows[i].Name,
 			Version: rows[i].Version,
 		})
@@ -148,9 +148,9 @@ func ConvertToComponentTableRow(rows []ComponentRow) (tableRows []DirectDependen
 	return
 }
 
-func ConvertToComponentScanTableRow(rows []ComponentRow) (tableRows []DirectPackagesTableRow) {
+func ConvertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPackagesTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, DirectPackagesTableRow{
+		tableRows = append(tableRows, directPackagesTableRow{
 			Name:    rows[i].Name,
 			Version: rows[i].Version,
 		})
@@ -158,9 +158,9 @@ func ConvertToComponentScanTableRow(rows []ComponentRow) (tableRows []DirectPack
 	return
 }
 
-func ConvertToCveTableRow(rows []CveRow) (tableRows []CveTableRow) {
+func ConvertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, CveTableRow{
+		tableRows = append(tableRows, cveTableRow{
 			Id:     rows[i].Id,
 			CvssV2: rows[i].CvssV2,
 			CvssV3: rows[i].CvssV3,

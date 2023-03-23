@@ -40,6 +40,7 @@ type sarifProperties struct {
 
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
+// If the scan argument is set to true, print the scan tables.
 func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
 	switch format {
 	case Table:

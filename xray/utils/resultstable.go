@@ -34,8 +34,8 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 	if err != nil {
 		return err
 	}
-	// Print tables, if Scan is true; print the scan tables.
-	if Scan {
+	// Print tables, if scan is true; print the scan tables.
+	if scan {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -53,9 +54,14 @@ type depTreeManager struct {
 	useWrapper   bool
 }
 
-// DependenciesMap key in this map is the "GAV" of a dependency, and the value is its children dependencies.
+// DependencyPath represents a map of direct dependencies and their descendants path.
+type DependencyPath struct {
+	Path map[string]DependencyPath `json:"children"`
+}
+
+// DependenciesMap represents a map of direct dependencies and their descendants path from possible different projects.
 type DependenciesMap struct {
-	Dependencies map[string]DependenciesMap `json:"children"`
+	Dependencies map[string][]DependencyPath
 }
 
 // The gradle-dep-tree generates a JSON representation for the dependencies for each gradle build file in the project.
@@ -76,17 +82,15 @@ func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 }
 
 func (dtp *depTreeManager) appendDependenciesTree(jsonDepTree []byte) error {
-	var deps DependenciesMap
-	if err := json.Unmarshal(jsonDepTree, &deps); err != nil {
+	var currentProjectDeps DependencyPath
+	if err := json.Unmarshal(jsonDepTree, &currentProjectDeps); err != nil {
 		return err
 	}
-	for gav, children := range deps.Dependencies {
-		if dtp.Dependencies == nil {
-			dtp.Dependencies = make(map[string]DependenciesMap)
-		}
-		if _, exists := dtp.Dependencies[gav]; !exists {
-			dtp.Dependencies[gav] = children
-		}
+	if dtp.Dependencies == nil {
+		dtp.Dependencies = make(map[string][]DependencyPath)
+	}
+	for gav, children := range currentProjectDeps.Path {
+		dtp.Dependencies[gav] = append(dtp.Dependencies[gav], children)
 	}
 	return nil
 }
@@ -188,30 +192,26 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 		return nil, err
 	}
 
-	var depsGraph []*services.GraphNode
+	depsSet := datastructures.MakeSet[string]()
 	for dependency, children := range dtp.Dependencies {
-		directDependency := &services.GraphNode{
-			Id:    GavPackageTypeIdentifier + dependency,
-			Nodes: []*services.GraphNode{},
-		}
-		populateGradleDependencyTree(directDependency, children)
-		depsGraph = append(depsGraph, directDependency)
+		depsSet.Add(GavPackageTypeIdentifier + dependency)
+		populateGradleDependencyTree(depsSet, children...)
+	}
+
+	var depsGraph []*services.GraphNode
+	for dependency := range depsSet.Elements() {
+		node := &services.GraphNode{Id: dependency}
+		depsGraph = append(depsGraph, node)
 	}
 	return depsGraph, nil
 }
 
-func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren DependenciesMap) {
-	for gav, children := range currNodeChildren.Dependencies {
-		childNode := &services.GraphNode{
-			Id:     GavPackageTypeIdentifier + gav,
-			Nodes:  []*services.GraphNode{},
-			Parent: currNode,
+func populateGradleDependencyTree(depsSet *datastructures.Set[string], currNodeChildren ...DependencyPath) {
+	for _, currChildren := range currNodeChildren {
+		for childGav, descendants := range currChildren.Path {
+			depsSet.Add(GavPackageTypeIdentifier + childGav)
+			populateGradleDependencyTree(depsSet, descendants)
 		}
-		if currNode.NodeHasLoop() {
-			return
-		}
-		populateGradleDependencyTree(childNode, children)
-		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
 }
 

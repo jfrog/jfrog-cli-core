@@ -16,6 +16,12 @@ const (
 	secondsInMinute = 60
 	secondsInHour   = 60 * secondsInMinute
 	secondsInDay    = 24 * secondsInHour
+
+	oldTransferDirectoryStructureErrorFormat = `unsupported transfer directory structure found.
+This structure was created by a previous run of the transfer-files command, but is no longer supported by this JFrog CLI version.
+You may either downgrade JFrog CLI to the version that was used before, or remove the transfer directory which is located under the JFrog CLI home directory (%s).
+
+Note: Deleting the transfer directory will remove all your transfer history, which means the transfer will start from scratch`
 )
 
 func ConvertTimeToRFC3339(timeToConvert time.Time) string {
@@ -105,4 +111,12 @@ func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(transferDir, subDirName), nil
+}
+
+func GetOldTransferDirectoryStructureError() error {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	return errorutils.CheckErrorf(oldTransferDirectoryStructureErrorFormat, transferDir)
 }

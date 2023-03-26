@@ -720,7 +720,7 @@ func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error 
 			missingApi := errMsg[start+1 : strings.Index(errMsg[start+1:], "'")+start+1]
 			reason = fmt.Sprintf(" This is because the '%s' API exposed by the plugin returns a '404 Not Found' response.", missingApi)
 		}
-		return fmt.Errorf("%w; It looks like the 'data-transfer' user plugin isn't installed on the source instance.%s Please refer to the documentation available at https://www.jfrog.com/confluence/display/JFROG/Transfer+Artifactory+Configuration+and+Files+to+JFrog+Cloud for installation instructions", err, reason)
+		return fmt.Errorf("%w;\nIt looks like the 'data-transfer' user plugin isn't installed on the source instance.%s Please refer to the documentation available at https://www.jfrog.com/confluence/display/JFROG/Transfer+Artifactory+Configuration+and+Files+to+JFrog+Cloud for installation instructions", err, reason)
 	}
 
 	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)

@@ -199,7 +199,7 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 	}
 
 	var depsGraph []*services.GraphNode
-	for dependency := range depsSet.Elements() {
+	for _, dependency := range depsSet.ToSlice() {
 		node := &services.GraphNode{Id: dependency}
 		depsGraph = append(depsGraph, node)
 	}

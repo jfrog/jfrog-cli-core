@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/status"
@@ -28,18 +27,6 @@ type StepStatus struct {
 	StatusString     string `col-name:"Status Code"`
 	Id               int
 }
-
-// create Github integration
-// 1. Workspace provided resource file
-// 2. Poll for sync status until sync is completed
-// 3. Get workspace pipelines
-// 4. Trigger all pipelines
-// 5. Get workspace run ids
-// 6. Get pipeline run status and steps status
-// 7. Get Step Logs from console api
-// 8. Display error logs in case of error
-// 9. Ask Query whether to continue JFrog CLI execution or to exit
-// 10. Provide an option to download all the step logs
 
 func NewWorkspaceCommand() *WorkspaceCommand {
 	return &WorkspaceCommand{}
@@ -71,44 +58,40 @@ func (ws *WorkspaceCommand) Run() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Info("performing validation on pipeline resources")
-	valErr := serviceManager.ValidateWorkspace(fileContent)
-	if valErr != nil {
-		return "", valErr
+	log.Info("Performing validation on pipeline resources")
+	err = serviceManager.ValidateWorkspace(fileContent)
+	if err != nil {
+		return "", err
 	}
 	log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
-
-	pipelinesBranch, pipErr := serviceManager.WorkspacePipelines()
-	if pipErr != nil {
-		return "", pipErr
+	pipelinesBranch, err := serviceManager.WorkspacePipelines()
+	if err != nil {
+		return "", err
 	}
-	log.Info("fetching pipelines")
 	for pipName, branch := range pipelinesBranch {
-		log.Info(coreutils.PrintTitle("triggering pipeline run for "), pipName)
-		trigErr := serviceManager.TriggerPipelineRun(branch, pipName, false)
-		if trigErr != nil {
-			return "", trigErr
+		log.Info(coreutils.PrintTitle("Triggering pipeline run for "), pipName)
+		err := serviceManager.TriggerPipelineRun(branch, pipName, false)
+		if err != nil {
+			return "", err
 		}
 	}
-
 	pipelineNames := make([]string, len(pipelinesBranch))
-
 	i := 0
 	for k := range pipelinesBranch {
 		pipelineNames[i] = k
 		i++
 	}
-	log.Info("collecting run ids from pipelines defined in workspace")
-	pipeRunIDs, wsRunErr := serviceManager.WorkspaceRunIDs(pipelineNames)
-	if wsRunErr != nil {
-		return "", wsRunErr
+	log.Debug("Collecting run ids from pipelines defined in workspace")
+	pipeRunIDs, err := serviceManager.WorkspaceRunIDs(pipelineNames)
+	if err != nil {
+		return "", err
 	}
 
 	for _, runId := range pipeRunIDs {
-		log.Info(coreutils.PrintTitle("fetching run status for run id "), runId.LatestRunID)
-		_, runErr := serviceManager.WorkspaceRunStatus(runId.LatestRunID)
-		if runErr != nil {
-			return "", runErr
+		log.Debug(coreutils.PrintTitle("Fetching run status for run id "), runId.LatestRunID)
+		_, err := serviceManager.WorkspaceRunStatus(runId.LatestRunID)
+		if err != nil {
+			return "", err
 		}
 		s, err2 := ws.getStepStatus(runId, serviceManager)
 		if err2 != nil {
@@ -121,21 +104,20 @@ func (ws *WorkspaceCommand) Run() (string, error) {
 // getStepStatus for the given pipeline run fetch associated steps
 // and print status in table format
 func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, serviceManager *pipelines.PipelinesServicesManager) (string, error) {
-
 	for {
 		stopCapturingStepStatus := true
-		log.Info("fetching step status for run id ", runId.LatestRunID)
-		stepstat, stepErr := serviceManager.WorkspaceStepStatus(runId.LatestRunID)
-		if stepErr != nil {
-			return "", stepErr
-		}
-		stepTable := make([]StepStatus, 0)
-		err := json.Unmarshal(stepstat, &stepTable)
+		log.Debug("Fetching step status for run id ", runId.LatestRunID)
+		stepStatus, err := serviceManager.WorkspaceStepStatus(runId.LatestRunID)
 		if err != nil {
 			return "", err
 		}
-		//log.Output(PrettyString(string(stepstat)))
-		endState := slices.Clone(stepTable) // Cloning to preserve original response when deletes are performed
+		stepTable := make([]StepStatus, 0)
+		err = json.Unmarshal(stepStatus, &stepTable)
+		if err != nil {
+			return "", err
+		}
+		// Cloning to preserve original response when deletes are performed
+		endState := slices.Clone(stepTable)
 		for i := 0; i < len(stepTable); i++ {
 			stepTable[i].StatusString = status.GetPipelineStatus(stepTable[i].StatusCode)
 			stopCapturingStepStatus = stopCapturingStepStatus && isStepCompleted(stepTable[i].StatusString)
@@ -149,7 +131,8 @@ func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, service
 			return "", err
 		}
 		if !stopCapturingStepStatus {
-			continue // All steps processing is not completed, keep polling for step status
+			// Keep polling for steps status until all steps are processed
+			continue
 		}
 		err = coreutils.PrintTable(endState, coreutils.PrintTitle(runId.Name+" Step Status"), "No Pipeline steps available", true)
 		if err != nil {
@@ -159,9 +142,9 @@ func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, service
 		for i := 0; i < len(endState); i++ {
 			endState[i].StatusString = status.GetPipelineStatus(endState[i].StatusCode)
 			log.Output(coreutils.PrintTitle("Fetching logs for step " + endState[i].Name))
-			consoleErr := ws.getPipelineStepLogs(strconv.Itoa(endState[i].Id), serviceManager)
-			if consoleErr != nil {
-				return "", consoleErr
+			err := ws.getPipelineStepLogs(strconv.Itoa(endState[i].Id), serviceManager)
+			if err != nil {
+				return "", err
 			}
 		}
 		return "", nil
@@ -174,7 +157,6 @@ func (ws *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *p
 	if err != nil {
 		return err
 	}
-	//rootConsole := consoles["root"]
 	for _, v := range consoles {
 		for _, console := range v {
 			if console.IsShown {
@@ -187,12 +169,4 @@ func (ws *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *p
 
 func isStepCompleted(stepStatus string) bool {
 	return slices.Contains(status.GetRunCompletedStatusList(), stepStatus)
-}
-
-func PrettyString(str string) (string, error) {
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, []byte(str), "", "    "); err != nil {
-		return "", err
-	}
-	return prettyJSON.String(), nil
 }

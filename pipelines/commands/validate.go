@@ -3,10 +3,10 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	yamlconv "github.com/ghodss/yaml"
+	"github.com/ghodss/yaml"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
 	"os"
 	"strings"
@@ -52,23 +52,23 @@ func (vc *ValidateCommand) Run() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, validationErr := vc.ValidateResources()
-	if validationErr != nil {
-		return "", validationErr
+	data, err := vc.ValidateResources()
+	if err != nil {
+		return "", err
 	}
 	return serviceManager.ValidatePipelineSources(data)
 }
 
 func (vc *ValidateCommand) runValidation(resMap map[string]string) ([]byte, error) {
 	var buf *bytes.Buffer
-	payload, valErr := getPayloadToValidatePipelineResource(resMap)
-	if valErr != nil {
-		return []byte{}, valErr
+	payload, err := getPayloadToValidatePipelineResource(resMap)
+	if err != nil {
+		return []byte{}, err
 	}
 	if buf != nil {
-		_, readErr := buf.Read(payload.Bytes())
-		if readErr != nil {
-			return []byte{}, readErr
+		_, err := buf.Read(payload.Bytes())
+		if err != nil {
+			return []byte{}, err
 		}
 	} else {
 		buf = payload
@@ -78,89 +78,77 @@ func (vc *ValidateCommand) runValidation(resMap map[string]string) ([]byte, erro
 }
 
 func (vc *ValidateCommand) ValidateResources() ([]byte, error) {
-
-	clientlog.Info("pipeline resources found for processing ")
+	log.Info("Pipeline resources found for processing ")
 	ymlType := ""
-
 	readFile, err := os.ReadFile(vc.pathToFile)
 	if err != nil {
 		return []byte{}, err
 	}
-	fInfo, err := os.Stat(vc.pathToFile)
+	fileInfo, err := os.Stat(vc.pathToFile)
 	if err != nil {
 		return []byte{}, err
 	}
-
-	toJSON, err3 := convertYAMLToJSON(err, readFile)
-	if err3 != nil {
-		return []byte{}, err3
+	toJSON, err := convertYAMLToJSON(err, readFile)
+	if err != nil {
+		return []byte{}, err
 	}
-	vsc, err4 := convertJSONDataToMap(fInfo, toJSON)
-	if err4 != nil {
-		return []byte{}, err4
+	vsc, err := convertJSONDataToMap(fileInfo, toJSON)
+	if err != nil {
+		return []byte{}, err
 	}
-	var marErr error
-
-	resMap, err5, done := splitDataToPipelinesAndResourcesMap(vsc, marErr, err, ymlType)
+	resMap, err, done := splitDataToPipelinesAndResourcesMap(vsc, ymlType)
 	if done {
-		return []byte{}, err5
+		return []byte{}, err
 	}
-
-	data, resErr := vc.runValidation(resMap)
-	if resErr != nil {
-		return []byte{}, resErr
+	data, err := vc.runValidation(resMap)
+	if err != nil {
+		return []byte{}, err
 	}
-
 	return data, nil
 }
 
 func convertJSONDataToMap(file os.FileInfo, toJSON []byte) (map[string][]interface{}, error) {
-	clientlog.Info("validating pipeline resources ", file.Name())
+	log.Info("Validating pipeline resources ", file.Name())
 	time.Sleep(1 * time.Second)
 	vsc := make(map[string][]interface{})
-	convErr := yamlconv.Unmarshal(toJSON, &vsc)
-	if convErr != nil {
-		return nil, convErr
+	err := yaml.Unmarshal(toJSON, &vsc)
+	if err != nil {
+		return nil, err
 	}
 	return vsc, nil
 }
 
 func convertYAMLToJSON(err error, readFile []byte) ([]byte, error) {
-	toJSON, err := yamlconv.YAMLToJSON(readFile)
+	toJSON, err := yaml.YAMLToJSON(readFile)
 	if err != nil {
-		clientlog.Error("Failed to convert to json")
+		log.Error("Failed to convert to json")
 		return nil, err
 	}
 	return toJSON, nil
 }
 
-func splitDataToPipelinesAndResourcesMap(vsc map[string][]interface{}, marErr error, err error, ymlType string) (map[string]string, error, bool) {
+func splitDataToPipelinesAndResourcesMap(vsc map[string][]interface{}, ymlType string) (map[string]string, error, bool) {
 	resMap := make(map[string]string)
-	var data []byte
 	if v, ok := vsc["resources"]; ok {
-		clientlog.Info("resources found preparing to validate")
-		data, marErr = json.Marshal(v)
-		if marErr != nil {
-			clientlog.Error("failed to marshal to json")
+		log.Info("Resources found preparing to validate")
+		data, err := json.Marshal(v)
+		if err != nil {
+			log.Error("Failed to marshal to json")
 			return nil, err, true
 		}
-
 		ymlType = "resources"
 		resMap[ymlType] = string(data)
-
 	}
 	if vp, ok := vsc["pipelines"]; ok {
-		clientlog.Info("pipelines found preparing to validate")
-		data, marErr = json.Marshal(vp)
-		if marErr != nil {
-			clientlog.Error("failed to marshal to json")
+		log.Info("Pipelines found preparing to validate")
+		data, err := json.Marshal(vp)
+		if err != nil {
+			log.Error("Failed to marshal to json")
 			return nil, err, true
 		}
 		ymlType = "pipelines"
-		//fmt.Println(string(data))
 		resMap[ymlType] = string(data)
 	}
-	//fmt.Printf("%+v \n", resMap)
 	return resMap, nil, false
 }
 
@@ -169,7 +157,7 @@ func getPayloadToValidatePipelineResource(resMap map[string]string) (*bytes.Buff
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(payload)
 	if err != nil {
-		clientlog.Error("Failed to read stream to send payload to trigger pipelines")
+		log.Error("Failed to read stream to send payload to trigger pipelines")
 		return nil, err
 	}
 	return buf, err
@@ -177,11 +165,10 @@ func getPayloadToValidatePipelineResource(resMap map[string]string) (*bytes.Buff
 
 func getPayloadBasedOnYmlType(m map[string]string) *strings.Reader {
 	var resReader, pipReader, valReader *strings.Reader
-	for ymlType, _ := range m {
+	for ymlType := range m {
 		if ymlType == "resources" {
 			resReader = strings.NewReader(`{"fileName":"` + ymlType + `.yml","content":` + m[ymlType] + `,"ymlType":"` + ymlType + `"}`)
 		} else if ymlType == "pipelines" {
-			//fmt.Printf("data : %+v \n", m[ymlType])
 			pipReader = strings.NewReader(`{"fileName":"` + ymlType + `.yml","content":` + m[ymlType] + `,"ymlType":"` + ymlType + `"}`)
 		}
 	}
@@ -208,6 +195,5 @@ func getPayloadBasedOnYmlType(m map[string]string) *strings.Reader {
 		}
 		valReader = strings.NewReader(`{"files":[` + string(all) + `]}`)
 	}
-	//fmt.Printf("exact data : %+v \n", valReader)
 	return valReader
 }

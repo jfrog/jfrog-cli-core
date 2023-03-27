@@ -32,28 +32,32 @@ func NewWorkspaceCommand() *WorkspaceCommand {
 	return &WorkspaceCommand{}
 }
 
-func (ws *WorkspaceCommand) ServerDetails() (*config.ServerDetails, error) {
-	return ws.serverDetails, nil
+func (wc *WorkspaceCommand) ServerDetails() (*config.ServerDetails, error) {
+	return wc.serverDetails, nil
 }
 
-func (ws *WorkspaceCommand) SetServerDetails(serverDetails *config.ServerDetails) *WorkspaceCommand {
-	ws.serverDetails = serverDetails
-	return ws
+func (wc *WorkspaceCommand) SetServerDetails(serverDetails *config.ServerDetails) *WorkspaceCommand {
+	wc.serverDetails = serverDetails
+	return wc
 }
 
-func (ws *WorkspaceCommand) SetPipeResourceFiles(f string) *WorkspaceCommand {
-	ws.pathToFile = f
-	return ws
+func (wc *WorkspaceCommand) SetPipeResourceFiles(f string) *WorkspaceCommand {
+	wc.pathToFile = f
+	return wc
 }
 
-func (ws *WorkspaceCommand) Run() error {
-	serviceManager, err := manager.CreateServiceManager(ws.serverDetails)
+func (wc *WorkspaceCommand) CommandName() string {
+	return "pl_workspace"
+}
+
+func (wc *WorkspaceCommand) Run() error {
+	serviceManager, err := manager.CreateServiceManager(wc.serverDetails)
 	if err != nil {
 		return err
 	}
 	vc := NewValidateCommand()
-	vc.SetServerDetails(ws.serverDetails)
-	vc.SetPipeResourceFiles(ws.pathToFile)
+	vc.SetServerDetails(wc.serverDetails)
+	vc.SetPipeResourceFiles(wc.pathToFile)
 	fileContent, err := vc.ValidateResources()
 	if err != nil {
 		return err
@@ -93,7 +97,7 @@ func (ws *WorkspaceCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		_, err = ws.getStepStatus(runId, serviceManager)
+		_, err = wc.getStepStatus(runId, serviceManager)
 		if err != nil {
 			return err
 		}
@@ -103,7 +107,7 @@ func (ws *WorkspaceCommand) Run() error {
 
 // getStepStatus for the given pipeline run fetch associated steps
 // and print status in table format
-func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, serviceManager *pipelines.PipelinesServicesManager) (string, error) {
+func (wc *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, serviceManager *pipelines.PipelinesServicesManager) (string, error) {
 	for {
 		stopCapturingStepStatus := true
 		log.Debug("Fetching step status for run id ", runId.LatestRunID)
@@ -142,7 +146,7 @@ func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, service
 		for i := 0; i < len(endState); i++ {
 			endState[i].StatusString = status.GetPipelineStatus(endState[i].StatusCode)
 			log.Output(coreutils.PrintTitle("Fetching logs for step " + endState[i].Name))
-			err := ws.getPipelineStepLogs(strconv.Itoa(endState[i].Id), serviceManager)
+			err := wc.getPipelineStepLogs(strconv.Itoa(endState[i].Id), serviceManager)
 			if err != nil {
 				return "", err
 			}
@@ -152,7 +156,7 @@ func (ws *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, service
 }
 
 // getPipelineStepLogs invokes to fetch pipeline step logs for the given step ID
-func (ws *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *pipelines.PipelinesServicesManager) error {
+func (wc *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *pipelines.PipelinesServicesManager) error {
 	consoles, err := serviceManager.GetStepConsoles(stepID)
 	if err != nil {
 		return err

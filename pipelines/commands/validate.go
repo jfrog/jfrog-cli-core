@@ -47,16 +47,22 @@ func (vc *ValidateCommand) SetPipeResourceFiles(f string) *ValidateCommand {
 	return vc
 }
 
-func (vc *ValidateCommand) Run() (string, error) {
+func (vc *ValidateCommand) CommandName() string {
+	return "pl_validate"
+}
+
+func (vc *ValidateCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(vc.serverDetails)
 	if err != nil {
-		return "", err
+		return err
 	}
 	data, err := vc.ValidateResources()
 	if err != nil {
-		return "", err
+		return err
 	}
-	return serviceManager.ValidatePipelineSources(data)
+	response, err := serviceManager.ValidatePipelineSources(data)
+	log.Info(response)
+	return err
 }
 
 func (vc *ValidateCommand) runValidation(resMap map[string]string) ([]byte, error) {

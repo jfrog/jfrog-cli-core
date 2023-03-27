@@ -105,6 +105,7 @@ func createManifestConfigWithLayer() (map[string]*utils.ResultItem, *manifest) {
 	searchResults := make(map[string]*utils.ResultItem, 0)
 	searchResults["manifest.json"] = dummySearchResults
 	searchResults["sha__1"] = dummySearchResults
+	searchResults["sha__2"] = dummySearchResults
 	return searchResults, manifest
 }
 

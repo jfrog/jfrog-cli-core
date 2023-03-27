@@ -45,32 +45,36 @@ allprojects {
 		}`
 )
 
-type gradleDepsMap map[string]any
+type depTreeManager struct {
+	depsPaths map[string][]string
+	DependenciesTree
+	server       *config.ServerDetails
+	releasesRepo string
+	depsRepo     string
+	useWrapper   bool
+}
 
-func (gdg *gradleDepsMap) appendTree(jsonDepTree []byte) error {
-	var rootNode map[string]any
-	if err := json.Unmarshal(jsonDepTree, &rootNode); err != nil {
-		return err
-	}
+// DependenciesTree represents a map between dependencies to their children dependencies in multiple projects.
+type DependenciesTree struct {
+	tree map[string][]DependenciesPaths
+}
 
-	for gav, node := range rootNode["children"].(map[string]any) {
-		if _, exists := (*gdg)[gav]; !exists {
-			(*gdg)[gav] = node
-		}
-	}
-	return nil
+// DependenciesPaths represents a map between dependencies to their children dependencies in a single project.
+type DependenciesPaths struct {
+	Paths map[string]DependenciesPaths `json:"children"`
 }
 
 // The gradle-dep-tree generates a JSON representation for the dependencies for each gradle build file in the project.
-// parseDepTreeFiles iterates over those JSONs, and append them to the map of dependencies in gradleDepsMap struct.
-func (gdg *gradleDepsMap) parseDepTreeFiles(jsonFiles []byte) error {
+// parseDepTreeFiles iterates over those JSONs, and append them to the map of dependencies in DependenciesTree struct.
+func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 	outputFiles := strings.Split(strings.TrimSpace(string(jsonFiles)), "\n")
 	for _, path := range outputFiles {
 		tree, err := os.ReadFile(strings.TrimSpace(path))
 		if err != nil {
 			return err
 		}
-		if err = gdg.appendTree(tree); err != nil {
+
+		if err = dtp.appendDependenciesPaths(tree); err != nil {
 			return err
 		}
 
@@ -78,11 +82,19 @@ func (gdg *gradleDepsMap) parseDepTreeFiles(jsonFiles []byte) error {
 	return nil
 }
 
-type depTreeManager struct {
-	server       *config.ServerDetails
-	releasesRepo string
-	depsRepo     string
-	useWrapper   bool
+func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte) error {
+	var deps DependenciesPaths
+	if err := json.Unmarshal(jsonDepTree, &deps); err != nil {
+		return err
+	}
+	if dtp.tree == nil {
+		dtp.tree = make(map[string][]DependenciesPaths)
+	}
+
+	for gav, children := range deps.Paths {
+		dtp.tree[gav] = append(dtp.tree[gav], children)
+	}
+	return nil
 }
 
 func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*services.GraphNode, err error) {
@@ -178,25 +190,25 @@ func (dtp *depTreeManager) execGradleDepTree() (outputFileContent []byte, err er
 
 // Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input
 func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*services.GraphNode, error) {
-	dependencyMap := gradleDepsMap{}
-	if err := dependencyMap.parseDepTreeFiles(outputFileContent); err != nil {
+	if err := dtp.parseDepTreeFiles(outputFileContent); err != nil {
 		return nil, err
 	}
-
 	var depsGraph []*services.GraphNode
-	for dependency, dependencyDetails := range dependencyMap {
+	for dependency, children := range dtp.tree {
 		directDependency := &services.GraphNode{
 			Id:    GavPackageTypeIdentifier + dependency,
 			Nodes: []*services.GraphNode{},
 		}
-		populateGradleDependencyTree(directDependency, dependencyDetails.(map[string]any)["children"].(map[string]any))
+		for _, childPath := range children {
+			populateGradleDependencyTree(directDependency, childPath)
+		}
 		depsGraph = append(depsGraph, directDependency)
 	}
 	return depsGraph, nil
 }
 
-func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren map[string]any) {
-	for gav, details := range currNodeChildren {
+func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren DependenciesPaths) {
+	for gav, children := range currNodeChildren.Paths {
 		childNode := &services.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
 			Nodes:  []*services.GraphNode{},
@@ -205,8 +217,7 @@ func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren
 		if currNode.NodeHasLoop() {
 			return
 		}
-		childNodeChildren := details.(map[string]any)["children"].(map[string]any)
-		populateGradleDependencyTree(childNode, childNodeChildren)
+		populateGradleDependencyTree(childNode, children)
 		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
 }

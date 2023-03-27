@@ -23,10 +23,17 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(false, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 9)
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "junit:junit:4.11")
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "org.hamcrest:hamcrest-core:1.3")
+		assert.Len(t, modulesDependencyTrees, 7)
+		// Check module
+		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
+		assert.Len(t, module.Nodes, 1)
+
+		// Check direct dependency
+		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "junit:junit:4.11")
+		assert.Len(t, directDependency.Nodes, 1)
+
+		// Check transitive dependency
+		audit.GetAndAssertNode(t, directDependency.Nodes, "org.hamcrest:hamcrest-core:1.3")
 	}
 }
 
@@ -39,9 +46,14 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 8)
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "commons-lang:commons-lang:2.4")
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "org.slf4j:slf4j-api:1.4.2")
+		assert.Len(t, modulesDependencyTrees, 7)
+
+		// Check direct dependency
+		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
+		assert.Len(t, directDependency.Nodes, 1)
+
+		// Check transitive dependency
+		audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 	}
 }
 
@@ -54,9 +66,14 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 9)
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
-		audit.GetAndAssertNode(t, modulesDependencyTrees, "org.slf4j:slf4j-api:1.4.2")
+		assert.Len(t, modulesDependencyTrees, 7)
+
+		// Check direct dependency
+		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
+		assert.Len(t, directDependency.Nodes, 1)
+
+		// Check transitive dependency
+		audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
 	}
 }
 
@@ -141,23 +158,24 @@ func TestGetGraphFromDepTree(t *testing.T) {
 ../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/d2Vic2VydmljZQ==
 `),
 		expectedResult: map[string][]*services.GraphNode{
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0":            {},
-			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":              {},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":         {},
-			GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":               {},
-			GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2": {},
-			GavPackageTypeIdentifier + "junit:junit:4.11":                            {},
-			GavPackageTypeIdentifier + "org.slf4j:slf4j-api:1.4.2":                   {},
 			GavPackageTypeIdentifier + "commons-io:commons-io:1.2":                   {},
-			GavPackageTypeIdentifier + "org.hamcrest:hamcrest-core:1.3":              {},
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0":            {},
+			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":              {{Id: GavPackageTypeIdentifier + "org.slf4j:slf4j-api:1.4.2"}},
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":         {},
+			GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":               {{Id: GavPackageTypeIdentifier + "commons-io:commons-io:1.2"}},
+			GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2": {},
+			GavPackageTypeIdentifier + "junit:junit:4.11":                            {{Id: GavPackageTypeIdentifier + "org.hamcrest:hamcrest-core:1.3"}},
 		},
 	}
 
 	result, err := (&depTreeManager{}).getGraphFromDepTree(testCase.outputFileContent)
 	assert.NoError(t, err)
 	for _, dependency := range result {
-		_, exists := testCase.expectedResult[dependency.Id]
+		depChild, exists := testCase.expectedResult[dependency.Id]
 		assert.True(t, exists)
+		if len(depChild) > 0 {
+			assert.Equal(t, depChild[0].Id, dependency.Nodes[0].Id)
+		}
 	}
 }
 

@@ -196,7 +196,7 @@ func ContainerManagerLogin(image *Image, config *ContainerManagerLoginConfig, co
 	if config.ServerDetails.AccessToken != "" {
 		log.Debug("Using access-token details in " + containerManager.String() + "-login command.")
 		if username == "" {
-			username, _ = auth.ExtractUsernameFromAccessToken(config.ServerDetails.AccessToken)
+			username = auth.ExtractUsernameFromAccessToken(config.ServerDetails.AccessToken)
 		}
 		password = config.ServerDetails.AccessToken
 	}

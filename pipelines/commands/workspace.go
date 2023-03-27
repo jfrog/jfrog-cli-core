@@ -22,9 +22,9 @@ type WorkspaceCommand struct {
 type StepStatus struct {
 	Name             string `col-name:"Name"`
 	StatusCode       int
-	TriggeredAt      string `col-name:"Triggered At"`
-	ExternalBuildUrl string `col-name:"Build URL"`
-	StatusString     string `col-name:"Status Code"`
+	TriggeredAt      string                `col-name:"Triggered At"`
+	ExternalBuildUrl string                `col-name:"Build URL"`
+	StatusString     status.PipelineStatus `col-name:"Status Code"`
 	Id               int
 }
 
@@ -46,33 +46,33 @@ func (ws *WorkspaceCommand) SetPipeResourceFiles(f string) *WorkspaceCommand {
 	return ws
 }
 
-func (ws *WorkspaceCommand) Run() (string, error) {
+func (ws *WorkspaceCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(ws.serverDetails)
 	if err != nil {
-		return "", err
+		return err
 	}
 	vc := NewValidateCommand()
 	vc.SetServerDetails(ws.serverDetails)
 	vc.SetPipeResourceFiles(ws.pathToFile)
 	fileContent, err := vc.ValidateResources()
 	if err != nil {
-		return "", err
+		return err
 	}
 	log.Info("Performing validation on pipeline resources")
 	err = serviceManager.ValidateWorkspace(fileContent)
 	if err != nil {
-		return "", err
+		return err
 	}
 	log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
 	pipelinesBranch, err := serviceManager.WorkspacePipelines()
 	if err != nil {
-		return "", err
+		return err
 	}
 	for pipName, branch := range pipelinesBranch {
 		log.Info(coreutils.PrintTitle("Triggering pipeline run for "), pipName)
 		err := serviceManager.TriggerPipelineRun(branch, pipName, false)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 	pipelineNames := make([]string, len(pipelinesBranch))
@@ -84,21 +84,21 @@ func (ws *WorkspaceCommand) Run() (string, error) {
 	log.Debug("Collecting run ids from pipelines defined in workspace")
 	pipeRunIDs, err := serviceManager.WorkspaceRunIDs(pipelineNames)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	for _, runId := range pipeRunIDs {
 		log.Debug(coreutils.PrintTitle("Fetching run status for run id "), runId.LatestRunID)
 		_, err := serviceManager.WorkspaceRunStatus(runId.LatestRunID)
 		if err != nil {
-			return "", err
+			return err
 		}
-		s, err2 := ws.getStepStatus(runId, serviceManager)
-		if err2 != nil {
-			return s, err2
+		_, err = ws.getStepStatus(runId, serviceManager)
+		if err != nil {
+			return err
 		}
 	}
-	return "", nil
+	return nil
 }
 
 // getStepStatus for the given pipeline run fetch associated steps
@@ -167,6 +167,6 @@ func (ws *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *p
 	return nil
 }
 
-func isStepCompleted(stepStatus string) bool {
+func isStepCompleted(stepStatus status.PipelineStatus) bool {
 	return slices.Contains(status.GetRunCompletedStatusList(), stepStatus)
 }

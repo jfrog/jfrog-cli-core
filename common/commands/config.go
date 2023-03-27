@@ -182,7 +182,7 @@ func (cc *ConfigCommand) config() error {
 			}
 
 			// Try extracting username from Access Token (non-possible on reference token)
-			cc.details.User, _ = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
+			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 		}
 	}
 	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
@@ -343,7 +343,7 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 				}
 				if cc.details.User == "" {
 					// Try extracting username from Access Token (non-possible on reference token)
-					cc.details.User, _ = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
+					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
 					if cc.details.User == "" {
 						ioutils.ScanFromConsole("JFrog username (optional)", &cc.details.User, "")
 					}

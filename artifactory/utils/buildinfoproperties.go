@@ -281,7 +281,7 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 	password := artDetails.GetPassword()
 	if artDetails.GetAccessToken() != "" {
 		if username == "" {
-			username, _ = auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
+			username = auth.ExtractUsernameFromAccessToken(artDetails.GetAccessToken())
 		}
 		password = artDetails.GetAccessToken()
 	}

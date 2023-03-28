@@ -56,7 +56,7 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 		log.Debug(err.Error())
 		return nil, nil
 	} else {
-		log.Debug("Found the following manifest.json with layers to create build-info:", candidateLayers)
+		log.Debug("Found manifest.json with the following layers to create build-info:", candidateLayers)
 	}
 	// Create build-info from search results.
 	return labib.buildInfoBuilder.createBuildInfo(labib.commandType, manifest, candidateLayers, module)

@@ -2,7 +2,6 @@ package container
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path"
 	"strings"
@@ -437,13 +436,13 @@ func getDependenciesFromManifestConfig(candidateLayers map[string]*utils.ResultI
 	var dependencies []buildinfo.Dependency
 	manifestSearchResults, found := candidateLayers["manifest.json"]
 	if !found {
-		return nil, errors.New("failed to collect build-info. The manifest.json was not found in Artifactory")
+		return nil, errorutils.CheckErrorf("failed to collect build-info. The manifest.json was not found in Artifactory")
 	}
 
 	dependencies = append(dependencies, getManifestDependency(manifestSearchResults))
 	imageDetails, found := candidateLayers[digestToLayer(imageSha2)]
 	if !found {
-		return nil, errors.New("failed to collect build-info. Image '" + imageSha2 + "' was not found in Artifactory")
+		return nil, errorutils.CheckErrorf("failed to collect build-info. Image '" + imageSha2 + "' was not found in Artifactory")
 	}
 
 	return append(dependencies, imageDetails.ToDependency()), nil

@@ -69,7 +69,7 @@ func createManifestConfig() (map[string]*utils.ResultItem, string) {
 
 func TestManifestConfigNoManifestFound(t *testing.T) {
 	_, err := getDependenciesFromManifestConfig(createEmptyManifestConfig())
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "The manifest.json was not found in Artifactory")
 }
 
 func createEmptyManifestConfig() (map[string]*utils.ResultItem, string) {
@@ -79,7 +79,7 @@ func createEmptyManifestConfig() (map[string]*utils.ResultItem, string) {
 
 func TestManifestConfigNoLayer(t *testing.T) {
 	_, err := getDependenciesFromManifestConfig(createManifestConfigWithNoLayer())
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "Image 'sha:123' was not found in Artifactory")
 }
 
 func createManifestConfigWithNoLayer() (map[string]*utils.ResultItem, string) {
@@ -112,7 +112,7 @@ func createManifestConfigWithLayer() (map[string]*utils.ResultItem, *manifest) {
 func TestMissingDependenciesInManifestLayer(t *testing.T) {
 	searchResults, manifest := createManifestConfigWithMissingLayer()
 	_, err := getDependenciesFromManifestLayer(searchResults, manifest)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "Could not find layer: sha__2 in Artifactory")
 }
 
 func createManifestConfigWithMissingLayer() (map[string]*utils.ResultItem, *manifest) {

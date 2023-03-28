@@ -8,12 +8,12 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 	for i := range rows {
 		tableRows = append(tableRows, vulnerabilityTableRow{
 			Severity:                  rows[i].Severity,
-			SeverityNumValue:          rows[i].SeverityNumValue,
-			ImpactedDependencyName:    rows[i].ImpactedDependencyName,
-			ImpactedDependencyVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType:    rows[i].ImpactedDependencyType,
+			severityNumValue:          rows[i].SeverityNumValue,
+			impactedDependencyName:    rows[i].ImpactedDependencyName,
+			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType:    rows[i].ImpactedDependencyType,
 			FixedVersions:             strings.Join(rows[i].FixedVersions, "\n"),
-			DirectDependencies:        convertToComponentTableRow(rows[i].Components),
+			directDependencies:        convertToComponentTableRow(rows[i].Components),
 			Cves:                      convertToCveTableRow(rows[i].Cves),
 			IssueId:                   rows[i].IssueId,
 		})
@@ -25,13 +25,13 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	for i := range rows {
 		tableRows = append(tableRows, vulnerabilityScanTableRow{
 			Severity:               rows[i].Severity,
-			SeverityNumValue:       rows[i].SeverityNumValue,
-			ImpactedPackageName:    rows[i].ImpactedDependencyName,
-			ImpactedPackageVersion: rows[i].ImpactedDependencyVersion,
+			severityNumValue:       rows[i].SeverityNumValue,
+			impactedPackageName:    rows[i].ImpactedDependencyName,
+			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,
-			FixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
-			DirectPackages:         convertToComponentScanTableRow(rows[i].Components),
-			Cves:                   convertToCveTableRow(rows[i].Cves),
+			fixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
+			directPackages:         convertToComponentScanTableRow(rows[i].Components),
+			cves:                   convertToCveTableRow(rows[i].Cves),
 			IssueId:                rows[i].IssueId,
 		})
 	}
@@ -43,11 +43,11 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 		tableRows = append(tableRows, licenseViolationTableRow{
 			LicenseKey:                rows[i].LicenseKey,
 			Severity:                  rows[i].Severity,
-			SeverityNumValue:          rows[i].SeverityNumValue,
-			ImpactedDependencyName:    rows[i].ImpactedDependencyName,
-			ImpactedDependencyVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType:    rows[i].ImpactedDependencyType,
-			DirectDependencies:        convertToComponentTableRow(rows[i].Components),
+			severityNumValue:          rows[i].SeverityNumValue,
+			impactedDependencyName:    rows[i].ImpactedDependencyName,
+			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType:    rows[i].ImpactedDependencyType,
+			directDependencies:        convertToComponentTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -56,13 +56,13 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 func ConvertToLicenseViolationScanTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationScanTableRow{
-			LicenseKey:             rows[i].LicenseKey,
+			licenseKey:             rows[i].LicenseKey,
 			Severity:               rows[i].Severity,
-			SeverityNumValue:       rows[i].SeverityNumValue,
-			ImpactedPackageName:    rows[i].ImpactedDependencyName,
-			ImpactedPackageVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType: rows[i].ImpactedDependencyType,
-			DirectDependencies:     convertToComponentScanTableRow(rows[i].Components),
+			severityNumValue:       rows[i].SeverityNumValue,
+			impactedPackageName:    rows[i].ImpactedDependencyName,
+			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType: rows[i].ImpactedDependencyType,
+			directDependencies:     convertToComponentScanTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -71,11 +71,11 @@ func ConvertToLicenseViolationScanTableRow(rows []LicenseViolationRow) (tableRow
 func ConvertToLicenseTableRow(rows []LicenseRow) (tableRows []licenseTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseTableRow{
-			LicenseKey:                rows[i].LicenseKey,
-			ImpactedDependencyName:    rows[i].ImpactedDependencyName,
-			ImpactedDependencyVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType:    rows[i].ImpactedDependencyType,
-			DirectDependencies:        convertToComponentTableRow(rows[i].Components),
+			licenseKey:                rows[i].LicenseKey,
+			impactedDependencyName:    rows[i].ImpactedDependencyName,
+			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType:    rows[i].ImpactedDependencyType,
+			directDependencies:        convertToComponentTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -84,11 +84,11 @@ func ConvertToLicenseTableRow(rows []LicenseRow) (tableRows []licenseTableRow) {
 func ConvertToLicenseScanTableRow(rows []LicenseRow) (tableRows []licenseScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseScanTableRow{
-			LicenseKey:             rows[i].LicenseKey,
-			ImpactedPackageName:    rows[i].ImpactedDependencyName,
-			ImpactedPackageVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType: rows[i].ImpactedDependencyType,
-			DirectDependencies:     convertToComponentScanTableRow(rows[i].Components),
+			licenseKey:             rows[i].LicenseKey,
+			impactedPackageName:    rows[i].ImpactedDependencyName,
+			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType: rows[i].ImpactedDependencyType,
+			directDependencies:     convertToComponentScanTableRow(rows[i].Components),
 		})
 	}
 	return
@@ -98,19 +98,19 @@ func ConvertToOperationalRiskViolationTableRow(rows []OperationalRiskViolationRo
 	for i := range rows {
 		tableRows = append(tableRows, operationalRiskViolationTableRow{
 			Severity:                  rows[i].Severity,
-			SeverityNumValue:          rows[i].SeverityNumValue,
-			ImpactedDependencyName:    rows[i].ImpactedDependencyName,
-			ImpactedDependencyVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType:    rows[i].ImpactedDependencyType,
-			DirectDependencies:        convertToComponentTableRow(rows[i].Components),
-			IsEol:                     rows[i].IsEol,
+			severityNumValue:          rows[i].SeverityNumValue,
+			impactedDependencyName:    rows[i].ImpactedDependencyName,
+			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType:    rows[i].ImpactedDependencyType,
+			directDependencies:        convertToComponentTableRow(rows[i].Components),
+			isEol:                     rows[i].IsEol,
 			Cadence:                   rows[i].Cadence,
 			Commits:                   rows[i].Commits,
 			Committers:                rows[i].Committers,
 			NewerVersions:             rows[i].NewerVersions,
 			LatestVersion:             rows[i].LatestVersion,
-			RiskReason:                rows[i].RiskReason,
-			EolMessage:                rows[i].EolMessage,
+			riskReason:                rows[i].RiskReason,
+			eolMessage:                rows[i].EolMessage,
 		})
 	}
 	return
@@ -120,19 +120,19 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 	for i := range rows {
 		tableRows = append(tableRows, operationalRiskViolationScanTableRow{
 			Severity:               rows[i].Severity,
-			SeverityNumValue:       rows[i].SeverityNumValue,
-			ImpactedPackageName:    rows[i].ImpactedDependencyName,
-			ImpactedPackageVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedDependencyType: rows[i].ImpactedDependencyType,
-			DirectDependencies:     convertToComponentScanTableRow(rows[i].Components),
-			IsEol:                  rows[i].IsEol,
+			severityNumValue:       rows[i].SeverityNumValue,
+			impactedPackageName:    rows[i].ImpactedDependencyName,
+			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
+			impactedDependencyType: rows[i].ImpactedDependencyType,
+			directDependencies:     convertToComponentScanTableRow(rows[i].Components),
+			isEol:                  rows[i].IsEol,
 			Cadence:                rows[i].Cadence,
 			Commits:                rows[i].Commits,
 			Committers:             rows[i].Committers,
 			NewerVersions:          rows[i].NewerVersions,
 			LatestVersion:          rows[i].LatestVersion,
-			RiskReason:             rows[i].RiskReason,
-			EolMessage:             rows[i].EolMessage,
+			riskReason:             rows[i].RiskReason,
+			eolMessage:             rows[i].EolMessage,
 		})
 	}
 	return

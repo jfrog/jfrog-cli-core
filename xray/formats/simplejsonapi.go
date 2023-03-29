@@ -22,7 +22,7 @@ type VulnerabilityOrViolationRow struct {
 	SeverityNumValue          int                       `json:"-"` // For sorting
 	ImpactedDependencyName    string                    `json:"impactedPackageName"`
 	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string                    `json:"ImpactedPackageType"`
+	ImpactedDependencyType    string                    `json:"impactedPackageType"`
 	FixedVersions             []string                  `json:"fixedVersions"`
 	Components                []ComponentRow            `json:"components"`
 	Cves                      []CveRow                  `json:"cves"`
@@ -37,7 +37,7 @@ type LicenseRow struct {
 	LicenseKey                string           `json:"licenseKey"`
 	ImpactedDependencyName    string           `json:"impactedPackageName"`
 	ImpactedDependencyVersion string           `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string           `json:"ImpactedPackageType"`
+	ImpactedDependencyType    string           `json:"impactedPackageType"`
 	Components                []ComponentRow   `json:"components"`
 	ImpactPaths               [][]ComponentRow `json:"impactPaths"`
 }
@@ -48,7 +48,7 @@ type LicenseViolationRow struct {
 	SeverityNumValue          int            `json:"-"` // For sorting
 	ImpactedDependencyName    string         `json:"impactedPackageName"`
 	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"ImpactedPackageType"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
 	Components                []ComponentRow `json:"components"`
 }
 
@@ -57,7 +57,7 @@ type OperationalRiskViolationRow struct {
 	SeverityNumValue          int            `json:"-"` // For sorting
 	ImpactedDependencyName    string         `json:"impactedPackageName"`
 	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"ImpactedPackageType"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
 	Components                []ComponentRow `json:"components"`
 	RiskReason                string         `json:"riskReason"`
 	IsEol                     string         `json:"isEndOfLife"`

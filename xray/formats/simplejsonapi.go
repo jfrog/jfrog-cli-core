@@ -26,7 +26,7 @@ type VulnerabilityOrViolationRow struct {
 	FixedVersions             []string                  `json:"fixedVersions"`
 	Components                []ComponentRow            `json:"components"`
 	Cves                      []CveRow                  `json:"cves"`
-	IssueId                   string                    `json:"IssueId"`
+	IssueId                   string                    `json:"issueId"`
 	References                []string                  `json:"references"`
 	ImpactPaths               [][]ComponentRow          `json:"impactPaths"`
 	JfrogResearchInformation  *JfrogResearchInformation `json:"jfrogResearchInformation"`
@@ -65,8 +65,8 @@ type OperationalRiskViolationRow struct {
 	Cadence                   string         `json:"cadence"`
 	Commits                   string         `json:"commits"`
 	Committers                string         `json:"committers"`
-	NewerVersions             string         `json:"NewerVersions"`
-	LatestVersion             string         `json:"LatestVersion"`
+	NewerVersions             string         `json:"newerVersions"`
+	LatestVersion             string         `json:"latestVersion"`
 }
 
 type ComponentRow struct {

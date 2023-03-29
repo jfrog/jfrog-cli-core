@@ -152,7 +152,7 @@ func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPack
 	for i := range rows {
 		tableRows = append(tableRows, directPackagesTableRow{
 			Name:    rows[i].Name,
-			Version: rows[i].Version,
+			version: rows[i].Version,
 		})
 	}
 	return

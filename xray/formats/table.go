@@ -14,8 +14,8 @@ type vulnerabilityTableRow struct {
 	impactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
 	FixedVersions             string                       `col-name:"Fixed\nVersions"`
 	impactedDependencyType    string                       `col-name:"Type"`
-	Cves                      []cveTableRow                `embed-table:"true"`
-	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
+	cves                      []cveTableRow                `embed-table:"true"`
+	issueId                   string                       `col-name:"Issue ID" extended:"true"`
 }
 
 type vulnerabilityScanTableRow struct {
@@ -28,7 +28,7 @@ type vulnerabilityScanTableRow struct {
 	fixedVersions          string                   `col-name:"Fixed\nVersions"`
 	ImpactedPackageType    string                   `col-name:"Type"`
 	cves                   []cveTableRow            `embed-table:"true"`
-	IssueId                string                   `col-name:"Issue ID" extended:"true"`
+	issueId                string                   `col-name:"Issue ID" extended:"true"`
 }
 
 type licenseTableRow struct {

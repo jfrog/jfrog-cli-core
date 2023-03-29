@@ -23,7 +23,7 @@ const (
 	configFilePattern = "jfrog.cli.nuget."
 
 	dotnetTestError = `the command failed with an error.
-Note that JFrog CLI does not restore dependencies during a 'dotnet test' command, so if necessary, run a preceding 'dotnet restore'.
+Note that JFrog CLI does not restore dependencies during a 'dotnet test' command, so if needed, run a preceding 'dotnet restore'.
 The initial error is:
 `
 	noRestoreFlag = "--no-restore"
@@ -138,7 +138,7 @@ func (dc *DotnetCommand) Exec() (err error) {
 // prepareDotnetBuildInfoModule prepare dotnet modules with the provided cli parameters.
 // In case no config file was provided - creates a temporary one.
 func (dc *DotnetCommand) prepareDotnetBuildInfoModule(buildInfoModule *build.DotnetModule) (func() error, error) {
-	callbackFunc, err := dc.prepareConfigFileIfNecessary()
+	callbackFunc, err := dc.prepareConfigFileIfNeeded()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, source
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
-func (dc *DotnetCommand) prepareConfigFileIfNecessary() (cleanup func() error, err error) {
+func (dc *DotnetCommand) prepareConfigFileIfNeeded() (cleanup func() error, err error) {
 	dc.solutionPath, err = changeWorkingDir(dc.solutionPath)
 	if err != nil {
 		return

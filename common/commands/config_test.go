@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	utilsTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -225,6 +226,10 @@ func TestExportEmptyConfig(t *testing.T) {
 }
 
 func TestKeyEncryption(t *testing.T) {
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
 	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
 	defer func() {
 		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
@@ -238,6 +243,10 @@ func TestKeyEncryption(t *testing.T) {
 }
 
 func TestKeyDecryptionError(t *testing.T) {
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
 	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
 	defer func() {
 		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
@@ -254,7 +263,7 @@ func TestKeyDecryptionError(t *testing.T) {
 
 	// Get the server details when JFROG_CLI_ENCRYPTION_KEY is not set and expect an error
 	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
-	_, err := GetConfig("test", false)
+	_, err = GetConfig("test", false)
 	assert.ErrorContains(t, err, "cannot decrypt config")
 }
 

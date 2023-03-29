@@ -23,7 +23,12 @@ func testLoad(t *testing.T, snapshotPath string, expectedExists bool, expectedRo
 	assert.NoError(t, err)
 	assert.Equal(t, expectedExists, exists)
 	if expectedExists {
-		assert.Equal(t, expectedRoot, sm.root)
+		// Convert to wrapper in order to compare.
+		expectedWrapper, err := expectedRoot.convertToWrapper()
+		assert.NoError(t, err)
+		rootWrapper, err := sm.root.convertToWrapper()
+		assert.NoError(t, err)
+		assert.Equal(t, expectedWrapper, rootWrapper)
 		assert.Equal(t, snapshotPath, sm.snapshotFilePath)
 		assert.Equal(t, dummyRepoKey, sm.repoKey)
 	}
@@ -59,13 +64,13 @@ func TestNodeCompletedAndTreeCollapsing(t *testing.T) {
 		assert.Len(t, node0.children, 1)
 		return
 	}
-	node0a := node0.children["a"]
+	node0a := getChild(node0, "a")
 
 	// Try setting a dir with no children as completed. Should not succeed as it still contains files.
 	assert.NoError(t, node0a.CheckCompleted())
 	assertNotCompleted(t, node0a)
 
-	setAllNodeFilesCompleted(t, node0a)
+	setAllNodeFilesCompleted(node0a)
 	assert.NoError(t, node0a.CheckCompleted())
 	// Node should be completed as all files completed.
 	assertCompleted(t, node0a)
@@ -82,24 +87,24 @@ func TestNodeCompletedWhileExploring(t *testing.T) {
 	node2, err := manager.LookUpNode(path2)
 	assert.NoError(t, err)
 	assert.NotNil(t, node2)
-	node2.doneExploring = false
+	node2.NodeStatus = Exploring
 	assert.NoError(t, node2.CheckCompleted())
 	assertNotCompleted(t, node2)
 
 	// Mark it as explored and try again.
-	node2.doneExploring = true
+	node2.NodeStatus = DoneExploring
 	assert.NoError(t, node2.CheckCompleted())
 	assertCompleted(t, node2)
 }
 
 func assertCompleted(t *testing.T, node *Node) {
-	assert.True(t, node.completed)
+	assert.Equal(t, Completed, node.NodeStatus)
 	assert.Nil(t, node.parent)
 	assert.Len(t, node.children, 0)
 }
 
 func assertNotCompleted(t *testing.T, node *Node) {
-	assert.False(t, node.completed)
+	assert.Less(t, node.NodeStatus, Completed)
 }
 
 type lookUpAndPathTestSuite struct {
@@ -142,10 +147,8 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 	}
 }
 
-func setAllNodeFilesCompleted(t *testing.T, node *Node) {
-	for key := range node.filesNamesAndSizes {
-		assert.NoError(t, node.FileCompleted(key))
-	}
+func setAllNodeFilesCompleted(node *Node) {
+	node.filesCount = 0
 }
 
 // Tree dirs representation:
@@ -156,14 +159,14 @@ func setAllNodeFilesCompleted(t *testing.T, node *Node) {
 // ------> 2
 // ----- + 1 file
 func createTestSnapshotTree(t *testing.T) *Node {
-	root := createNodeBase(t, ".", []string{"file-on-root"}, nil)
-	dir0 := createNodeBase(t, "0", []string{}, root)
-	dir1 := createNodeBase(t, "1", []string{"file-1-f0"}, root)
-	dir2 := createNodeBase(t, "2", []string{}, root)
+	root := createNodeBase(t, ".", 1, nil)
+	dir0 := createNodeBase(t, "0", 0, root)
+	dir1 := createNodeBase(t, "1", 1, root)
+	dir2 := createNodeBase(t, "2", 0, root)
 
-	dir0a := createNodeBase(t, "a", []string{"file-1-0-a-f0", "file-1-0-a-f1", "file-1-0-a-f2"}, dir0)
-	dir1a := createNodeBase(t, "a", []string{"file-1-1-a-f0"}, dir1)
-	dir1b := createNodeBase(t, "b", []string{"file-1-1-b-f0", "file-1-1-b-f1"}, dir1)
+	dir0a := createNodeBase(t, "a", 3, dir0)
+	dir1a := createNodeBase(t, "a", 1, dir1)
+	dir1b := createNodeBase(t, "b", 2, dir1)
 
 	addChildren(root, dir0, dir1, dir2)
 	addChildren(dir0, dir0a)
@@ -172,17 +175,14 @@ func createTestSnapshotTree(t *testing.T) *Node {
 }
 
 func addChildren(node *Node, children ...*Node) {
-	node.children = make(map[string]*Node)
-	for i := range children {
-		node.children[children[i].name] = children[i]
-	}
+	node.children = append(node.children, children...)
 }
 
-func createNodeBase(t *testing.T, name string, filesNames []string, parent *Node) *Node {
+func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *Node {
 	node := CreateNewNode(name, parent)
-	node.doneExploring = true
-	for _, fileName := range filesNames {
-		assert.NoError(t, node.AddFile(fileName, 123))
+	node.NodeStatus = DoneExploring
+	for i := 0; i < filesCount; i++ {
+		assert.NoError(t, node.IncrementFilesCount())
 	}
 	return node
 }
@@ -192,17 +192,24 @@ func TestAddChildNode(t *testing.T) {
 	// Add child with no children pool.
 	addAndAssertChild(t, nil, root, CreateNewNode("no-pool", root))
 	// Add child with empty children pool.
-	pool := make(map[string]*Node)
-	addAndAssertChild(t, pool, root, CreateNewNode("empty-pool", root))
+	addAndAssertChild(t, []*Node{}, root, CreateNewNode("empty-pool", root))
 	// Add child with pool.
 	exists := CreateNewNode("exists", root)
-	pool[exists.name] = exists
-	addAndAssertChild(t, pool, root, exists)
+	addAndAssertChild(t, []*Node{exists}, root, exists)
 }
 
-func addAndAssertChild(t *testing.T, childrenMapPool map[string]*Node, root, expectedChild *Node) {
-	assert.NoError(t, root.AddChildNode(expectedChild.name, childrenMapPool))
-	assert.Equal(t, expectedChild, root.children[expectedChild.name])
+func addAndAssertChild(t *testing.T, childrenPool []*Node, root, expectedChild *Node) {
+	assert.NoError(t, root.AddChildNode(expectedChild.name, childrenPool))
+	assert.Equal(t, expectedChild, getChild(root, expectedChild.name))
+}
+
+func getChild(node *Node, childName string) *Node {
+	for _, child := range node.children {
+		if child.name == childName {
+			return child
+		}
+	}
+	return nil
 }
 
 func initSnapshotManagerTest(t *testing.T) RepoSnapshotManager {

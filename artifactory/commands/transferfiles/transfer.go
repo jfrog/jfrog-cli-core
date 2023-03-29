@@ -149,7 +149,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err = tdc.assertRepositorySpecificStructure(); err != nil {
+	if err = assertSupportedTransferDirStructure(); err != nil {
 		return err
 	}
 
@@ -400,24 +400,6 @@ func (tdc *TransferFilesCommand) initTransferDir() error {
 		}
 	}
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
-}
-
-// Assert the transfer dir is not in the old structure with a united state.json for all repository.
-// There are no means of conversion to the new structure, where repository has its own separated state file.
-// Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
-func (tdc *TransferFilesCommand) assertRepositorySpecificStructure() error {
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	if err != nil {
-		return err
-	}
-	exists, err := fileutils.IsFileExists(filepath.Join(transferDir, coreutils.JfrogTransferStateFileName), false)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-	return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
 }
 
 func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
@@ -713,7 +695,14 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
 	verifyResponse, err := srcUpService.verifyCompatibilityRequest()
 	if err != nil {
-		return err
+		errMsg := err.Error()
+		reason := ""
+		if strings.Contains(errMsg, "The execution name '") && strings.Contains(errMsg, "' could not be found") {
+			start := strings.Index(errMsg, "'")
+			missingApi := errMsg[start+1 : strings.Index(errMsg[start+1:], "'")+start+1]
+			reason = fmt.Sprintf(" This is because the '%s' API exposed by the plugin returns a '404 Not Found' response.", missingApi)
+		}
+		return fmt.Errorf("%s;\nIt looks like the 'data-transfer' user plugin isn't installed on the source instance.%s Please refer to the documentation available at https://www.jfrog.com/confluence/display/JFROG/Transfer+Artifactory+Configuration+and+Files+to+JFrog+Cloud for installation instructions", errMsg, reason)
 	}
 
 	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
@@ -749,4 +738,8 @@ func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err erro
 		allErrors.Errors = append(allErrors.Errors, fileErrors.Errors...)
 	}
 	return
+}
+
+func assertSupportedTransferDirStructure() error {
+	return state.VerifyTransferRunStatusVersion()
 }

@@ -6,7 +6,7 @@ package formats
 
 // Used for vulnerabilities and security violations
 type vulnerabilityTableRow struct {
-	Severity string `col-name:"Severity"`
+	severity string `col-name:"Severity"`
 	// For sorting
 	severityNumValue          int
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
@@ -19,7 +19,7 @@ type vulnerabilityTableRow struct {
 }
 
 type vulnerabilityScanTableRow struct {
-	Severity string `col-name:"Severity"`
+	severity string `col-name:"Severity"`
 	// For sorting
 	severityNumValue       int
 	directPackages         []directPackagesTableRow `embed-table:"true"`
@@ -48,8 +48,8 @@ type licenseScanTableRow struct {
 }
 
 type licenseViolationTableRow struct {
-	LicenseKey string `col-name:"License"`
-	Severity   string `col-name:"Severity"`
+	licenseKey string `col-name:"License"`
+	severity   string `col-name:"Severity"`
 	// For sorting
 	severityNumValue          int
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
@@ -60,7 +60,7 @@ type licenseViolationTableRow struct {
 
 type licenseViolationScanTableRow struct {
 	licenseKey string `col-name:"License"`
-	Severity   string `col-name:"Severity"`
+	severity   string `col-name:"Severity"`
 	// For sorting
 	severityNumValue       int
 	directDependencies     []directPackagesTableRow `embed-table:"true"`
@@ -82,9 +82,9 @@ type operationalRiskViolationTableRow struct {
 	eolMessage                string                       `col-name:"End\nOf\nLife\nMessage" extended:"true"`
 	Cadence                   string                       `col-name:"Cadence"  extended:"true"`
 	Commits                   string                       `col-name:"Commits"  extended:"true"`
-	Committers                string                       `col-name:"Committers"  extended:"true"`
-	NewerVersions             string                       `col-name:"Newer\nVersions" extended:"true"`
-	LatestVersion             string                       `col-name:"Latest\nVersion" extended:"true"`
+	committers                string                       `col-name:"Committers"  extended:"true"`
+	newerVersions             string                       `col-name:"Newer\nVersions" extended:"true"`
+	latestVersion             string                       `col-name:"Latest\nVersion" extended:"true"`
 }
 
 type operationalRiskViolationScanTableRow struct {
@@ -98,7 +98,7 @@ type operationalRiskViolationScanTableRow struct {
 	riskReason             string                   `col-name:"Risk\nReason"`
 	isEol                  string                   `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
 	eolMessage             string                   `col-name:"End\nOf\nLife\nMessage" extended:"true"`
-	Cadence                string                   `col-name:"Cadence"  extended:"true"`
+	cadence                string                   `col-name:"Cadence"  extended:"true"`
 	Commits                string                   `col-name:"Commits"  extended:"true"`
 	Committers             string                   `col-name:"Committers"  extended:"true"`
 	NewerVersions          string                   `col-name:"Newer\nVersions" extended:"true"`
@@ -106,7 +106,7 @@ type operationalRiskViolationScanTableRow struct {
 }
 
 type directDependenciesTableRow struct {
-	Name    string `col-name:"Direct\nDependency"`
+	name    string `col-name:"Direct\nDependency"`
 	Version string `col-name:"Direct\nDependency\nVersion"`
 }
 

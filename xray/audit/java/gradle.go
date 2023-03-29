@@ -1,6 +1,7 @@
 package java
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
@@ -74,7 +75,13 @@ func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 			return err
 		}
 
-		if err = dtp.appendDependenciesPaths(tree); err != nil {
+		encodedFileName := path[strings.LastIndex(path, string(os.PathSeparator))+1:]
+		decodedFileName, err := base64.StdEncoding.DecodeString(encodedFileName)
+		if err != nil {
+			return err
+		}
+
+		if err = dtp.appendDependenciesPaths(tree, string(decodedFileName)); err != nil {
 			return err
 		}
 
@@ -82,7 +89,7 @@ func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 	return nil
 }
 
-func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte) error {
+func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName string) error {
 	var deps DependenciesPaths
 	if err := json.Unmarshal(jsonDepTree, &deps); err != nil {
 		return err
@@ -90,10 +97,7 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte) error {
 	if dtp.tree == nil {
 		dtp.tree = make(map[string][]DependenciesPaths)
 	}
-
-	for gav, children := range deps.Paths {
-		dtp.tree[gav] = append(dtp.tree[gav], children)
-	}
+	dtp.tree[fileName] = append(dtp.tree[fileName], deps)
 	return nil
 }
 
@@ -204,7 +208,7 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 		}
 		depsGraph = append(depsGraph, directDependency)
 	}
-	return depsGraph, nil
+	return services.FlattenGraph(depsGraph), nil
 }
 
 func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren DependenciesPaths) {

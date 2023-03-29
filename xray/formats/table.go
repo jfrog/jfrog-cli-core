@@ -80,7 +80,7 @@ type operationalRiskViolationTableRow struct {
 	riskReason                string                       `col-name:"Risk\nReason"`
 	isEol                     string                       `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
 	eolMessage                string                       `col-name:"End\nOf\nLife\nMessage" extended:"true"`
-	Cadence                   string                       `col-name:"Cadence"  extended:"true"`
+	cadence                   string                       `col-name:"Cadence"  extended:"true"`
 	Commits                   string                       `col-name:"Commits"  extended:"true"`
 	committers                string                       `col-name:"Committers"  extended:"true"`
 	newerVersions             string                       `col-name:"Newer\nVersions" extended:"true"`
@@ -100,23 +100,23 @@ type operationalRiskViolationScanTableRow struct {
 	eolMessage             string                   `col-name:"End\nOf\nLife\nMessage" extended:"true"`
 	cadence                string                   `col-name:"Cadence"  extended:"true"`
 	Commits                string                   `col-name:"Commits"  extended:"true"`
-	Committers             string                   `col-name:"Committers"  extended:"true"`
-	NewerVersions          string                   `col-name:"Newer\nVersions" extended:"true"`
-	LatestVersion          string                   `col-name:"Latest\nVersion" extended:"true"`
+	committers             string                   `col-name:"Committers"  extended:"true"`
+	newerVersions          string                   `col-name:"Newer\nVersions" extended:"true"`
+	latestVersion          string                   `col-name:"Latest\nVersion" extended:"true"`
 }
 
 type directDependenciesTableRow struct {
 	name    string `col-name:"Direct\nDependency"`
-	Version string `col-name:"Direct\nDependency\nVersion"`
+	version string `col-name:"Direct\nDependency\nVersion"`
 }
 
 type directPackagesTableRow struct {
-	Name    string `col-name:"Direct\nPackage"`
-	Version string `col-name:"Direct\nPackage\nVersion"`
+	name    string `col-name:"Direct\nPackage"`
+	version string `col-name:"Direct\nPackage\nVersion"`
 }
 
 type cveTableRow struct {
-	Id     string `col-name:"CVE"`
-	CvssV2 string `col-name:"CVSS\nv2" extended:"true"`
-	CvssV3 string `col-name:"CVSS\nv3" extended:"true"`
+	id     string `col-name:"CVE"`
+	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
+	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }

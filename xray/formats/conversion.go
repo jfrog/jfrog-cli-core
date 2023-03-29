@@ -142,7 +142,7 @@ func convertToComponentTableRow(rows []ComponentRow) (tableRows []directDependen
 	for i := range rows {
 		tableRows = append(tableRows, directDependenciesTableRow{
 			name:    rows[i].Name,
-			Version: rows[i].Version,
+			version: rows[i].Version,
 		})
 	}
 	return
@@ -151,7 +151,7 @@ func convertToComponentTableRow(rows []ComponentRow) (tableRows []directDependen
 func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPackagesTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, directPackagesTableRow{
-			Name:    rows[i].Name,
+			name:    rows[i].Name,
 			version: rows[i].Version,
 		})
 	}
@@ -161,9 +161,9 @@ func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPack
 func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, cveTableRow{
-			Id:     rows[i].Id,
-			CvssV2: rows[i].CvssV2,
-			CvssV3: rows[i].CvssV3,
+			id:     rows[i].Id,
+			cvssV2: rows[i].CvssV2,
+			cvssV3: rows[i].CvssV3,
 		})
 	}
 	return

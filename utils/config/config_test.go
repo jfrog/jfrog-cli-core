@@ -197,7 +197,9 @@ func TestConfigEncryptionEnvVar(t *testing.T) {
 	// Set encryption key in JFROG_CLI_ENCRYPTION_KEY environment variable
 	key := uuid.NewString()[:32]
 	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, key))
-	defer os.Unsetenv(coreutils.EncryptionKey)
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
 
 	// Save the config and ensure the secrets were updated
 	expectedConfig := createEncryptionTestConfig()
@@ -226,7 +228,9 @@ func TestConfigEncryptionEnvVarUpdate(t *testing.T) {
 	// Set encryption key in JFROG_CLI_ENCRYPTION_KEY environment variable
 	key := uuid.NewString()[:32]
 	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, key))
-	defer os.Unsetenv(coreutils.EncryptionKey)
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
 
 	// Read config and ensure that the config was decrypted
 	actualConfig, err = readConf()

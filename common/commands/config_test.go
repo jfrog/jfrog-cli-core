@@ -239,6 +239,9 @@ func TestKeyEncryption(t *testing.T) {
 
 func TestKeyDecryptionError(t *testing.T) {
 	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
 
 	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.User = "admin"

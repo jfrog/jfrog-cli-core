@@ -32,7 +32,7 @@ type secretHandler func(string, string) (string, error)
 
 // Encrypt config file if security configuration file exists and contains master key.
 func (config *Config) encrypt() error {
-	key, err := getMasterKey()
+	key, err := getEncryptionKey()
 	if err != nil || key == "" {
 		return err
 	}
@@ -46,7 +46,7 @@ func (config *Config) decrypt() error {
 	if !config.Enc {
 		return updateEncryptionIfNeeded(config)
 	}
-	key, err := getMasterKey()
+	key, err := getEncryptionKey()
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (config *Config) decrypt() error {
 
 // Encrypt the config file if it is decrypted while security configuration file exists and contains a master key, or if the JFROG_CLI_ENCRYPTION_KEY environment variable exist.
 func updateEncryptionIfNeeded(config *Config) error {
-	masterKey, err := getMasterKey()
+	masterKey, err := getEncryptionKey()
 	if err != nil || masterKey == "" {
 		return err
 	}
@@ -95,14 +95,14 @@ func handleSecrets(config *Config, handler secretHandler, key string) error {
 	return nil
 }
 
-func getMasterKey() (string, error) {
+func getEncryptionKey() (string, error) {
 	if key, exist := os.LookupEnv(coreutils.EncryptionKey); exist {
 		return key, nil
 	}
-	return getMasterKeyFromSecurityConfFile()
+	return getEncryptionKeyFromSecurityConfFile()
 }
 
-func getMasterKeyFromSecurityConfFile() (key string, err error) {
+func getEncryptionKeyFromSecurityConfFile() (key string, err error) {
 	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	if err != nil {
 		return "", err
@@ -130,7 +130,7 @@ func getMasterKeyFromSecurityConfFile() (key string, err error) {
 	}
 	key = config.GetString(masterKeyField)
 	if key == "" {
-		return "", errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file does not contain a master key")
+		return "", errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file does not contain an encryption master key")
 	}
 	return key, nil
 }

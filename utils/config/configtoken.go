@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -85,7 +86,7 @@ func Export(details *ServerDetails) (string, error) {
 	}
 	// If config is encrypted, ask for master key.
 	if conf.Enc {
-		masterKeyFromFile, _, err := getMasterKeyFromSecurityConfFile()
+		masterKeyFromFile, err := getEncryptionKey()
 		if err != nil {
 			return "", err
 		}

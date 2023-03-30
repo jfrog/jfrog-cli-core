@@ -12,7 +12,7 @@ type vulnerabilityTableRow struct {
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
 	impactedDependencyName    string                       `col-name:"Impacted\nDependency\nName"`
 	impactedDependencyVersion string                       `col-name:"Impacted\nDependency\nVersion"`
-	FixedVersions             string                       `col-name:"Fixed\nVersions"`
+	fixedVersions             string                       `col-name:"Fixed\nVersions"`
 	impactedDependencyType    string                       `col-name:"Type"`
 	cves                      []cveTableRow                `embed-table:"true"`
 	issueId                   string                       `col-name:"Issue ID" extended:"true"`

@@ -12,7 +12,7 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 			impactedDependencyName:    rows[i].ImpactedDependencyName,
 			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
 			impactedDependencyType:    rows[i].ImpactedDependencyType,
-			FixedVersions:             strings.Join(rows[i].FixedVersions, "\n"),
+			fixedVersions:             strings.Join(rows[i].FixedVersions, "\n"),
 			directDependencies:        convertToComponentTableRow(rows[i].Components),
 			cves:                      convertToCveTableRow(rows[i].Cves),
 			issueId:                   rows[i].IssueId,

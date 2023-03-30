@@ -142,16 +142,19 @@ func TestGetSourceDetails(t *testing.T) {
 }
 
 func TestPrepareDotnetBuildInfoModule(t *testing.T) {
-	t.Run("generated config file", func(t *testing.T) { testPrepareDotnetBuildInfoModule(t, []string{}, true) })
+	t.Run("generated config file", func(t *testing.T) { testPrepareDotnetBuildInfoModule(t, "restore", []string{}, true) })
 	t.Run("existing with configfile flag", func(t *testing.T) {
-		testPrepareDotnetBuildInfoModule(t, []string{"--configfile", "/path/to/config/file"}, false)
+		testPrepareDotnetBuildInfoModule(t, "restore", []string{"--configfile", "/path/to/config/file"}, false)
 	})
 	t.Run("existing with source flag", func(t *testing.T) {
-		testPrepareDotnetBuildInfoModule(t, []string{"--source", "/path/to/source"}, false)
+		testPrepareDotnetBuildInfoModule(t, "restore", []string{"--source", "/path/to/source"}, false)
+	})
+	t.Run("dotnet test", func(t *testing.T) {
+		testPrepareDotnetBuildInfoModule(t, "test", []string{}, false)
 	})
 }
 
-func testPrepareDotnetBuildInfoModule(t *testing.T, flags []string, expectedGeneratedConfigFile bool) {
+func testPrepareDotnetBuildInfoModule(t *testing.T, subCommand string, flags []string, expectedGeneratedConfigFile bool) {
 	tmpDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	defer func() {
@@ -160,7 +163,7 @@ func testPrepareDotnetBuildInfoModule(t *testing.T, flags []string, expectedGene
 	module := createNewDotnetModule(t, tmpDir)
 	cmd := DotnetCommand{
 		toolchainType:      dotnet.DotnetCore,
-		subCommand:         "restore",
+		subCommand:         subCommand,
 		argAndFlags:        flags,
 		buildConfiguration: utils.NewBuildConfiguration("", "", "mod", ""),
 		serverDetails:      &config.ServerDetails{ArtifactoryUrl: "https://my-instance.jfrog.io"},
@@ -182,6 +185,10 @@ func testPrepareDotnetBuildInfoModule(t *testing.T, flags []string, expectedGene
 
 func assertConfigFileNotGenerated(t *testing.T, cmd DotnetCommand, module *build.DotnetModule, tmpDir string) {
 	assert.Equal(t, cmd.argAndFlags, module.GetArgAndFlags())
+	if cmd.subCommand == "test" {
+		assert.True(t, cmd.isDotnetTestCommand())
+		assert.Contains(t, cmd.argAndFlags, noRestoreFlag)
+	}
 	// Temp dir should remain empty if config file was not generated.
 	contents, err := os.ReadDir(tmpDir)
 	assert.NoError(t, err)

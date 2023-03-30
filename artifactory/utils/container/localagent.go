@@ -52,10 +52,11 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 	// Search for image build-info.
 	candidateLayers, manifest, err := labib.searchImage()
 	if err != nil {
-		log.Warn("Failed to collect build-info, couldn't find image '"+labib.buildInfoBuilder.image.name+"' in Artifactory. Error:", err.Error())
+		log.Warn("Failed to collect build-info. No layer(s) was found for image:'" + labib.buildInfoBuilder.image.name + "'. Hint, try to delete the image from the local cache and rerun the command")
+		log.Debug(err.Error())
 		return nil, nil
 	} else {
-		log.Debug("Found manifest.json. Proceeding to create build-info.")
+		log.Debug("Found manifest.json with the following layers to create build-info:", candidateLayers)
 	}
 	// Create build-info from search results.
 	return labib.buildInfoBuilder.createBuildInfo(labib.commandType, manifest, candidateLayers, module)
@@ -185,7 +186,7 @@ func downloadMarkerLayersToRemoteCache(resultMap map[string]*utils.ResultItem, b
 	return totalDownloaded, nil
 }
 
-func handleMissingLayer(layerMediaType, layerFileName string) error {
+func handleForeignLayer(layerMediaType, layerFileName string) error {
 	// Allow missing layer to be of a foreign type.
 	if layerMediaType == foreignLayerMediaType {
 		log.Info(fmt.Sprintf("Foreign layer: %s is missing in Artifactory and therefore will not be added to the build-info.", layerFileName))

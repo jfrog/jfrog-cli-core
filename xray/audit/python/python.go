@@ -39,7 +39,7 @@ func BuildDependencyTree(auditPython *AuditPython) (dependencyTree []*services.G
 			Id:    pythonPackageTypeIdentifier + rootDep,
 			Nodes: []*services.GraphNode{},
 		}
-		populatePythonDependencyTree(directDependency, dependenciesGraph)
+		audit.PopulateDependencyTree(directDependency, dependenciesGraph, pythonPackageTypeIdentifier)
 		directDependencies = append(directDependencies, directDependency)
 	}
 	root := &services.GraphNode{
@@ -269,21 +269,4 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 		return os.Setenv("PATH", origPathValue)
 	}
 	return
-}
-
-func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, pythonPackageTypeIdentifier)]
-	// Recursively create & append all node's dependencies.
-	for _, dependency := range currDepChildren {
-		childNode := &services.GraphNode{
-			Id:     pythonPackageTypeIdentifier + dependency,
-			Nodes:  []*services.GraphNode{},
-			Parent: currNode,
-		}
-		currNode.Nodes = append(currNode.Nodes, childNode)
-		populatePythonDependencyTree(childNode, dependenciesGraph)
-	}
 }

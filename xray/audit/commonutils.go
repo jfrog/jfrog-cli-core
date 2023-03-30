@@ -48,6 +48,25 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
+// PopulateDependencyTree builds a dependency tree from the currNode argument using the dependenciesGraph.
+// This function is used for technologies that doesn't use build-info for building the dependency graph.
+func PopulateDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, packageIdentifier string) {
+	if currNode.NodeHasLoop() {
+		return
+	}
+	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, packageIdentifier)]
+	// Recursively create & append all node's dependencies.
+	for _, dependency := range currDepChildren {
+		childNode := &services.GraphNode{
+			Id:     packageIdentifier + dependency,
+			Nodes:  []*services.GraphNode{},
+			Parent: currNode,
+		}
+		currNode.Nodes = append(currNode.Nodes, childNode)
+		PopulateDependencyTree(childNode, dependenciesGraph, packageIdentifier)
+	}
+}
+
 func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")

@@ -3,6 +3,7 @@ package _go
 import (
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"os"
 	"strings"
 
@@ -36,6 +37,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 	if err != nil {
 		return
 	}
+	dependenciesGraph = mergeDependencies(dependenciesGraph, dependenciesList)
 	// Get root module name
 	rootModuleName, err := goutils.GetModuleName(currentDir)
 	if err != nil {
@@ -46,7 +48,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 		Id:    goPackageTypeIdentifier + rootModuleName,
 		Nodes: []*services.GraphNode{},
 	}
-	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
+	audit.PopulateDependencyTree(rootNode, dependenciesGraph, goPackageTypeIdentifier)
 
 	// Add go version as child node to dependencies tree
 	err = addGoVersionAsDependency(rootNode)
@@ -58,6 +60,19 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 	return
 }
 
+func mergeDependencies(dependenciesGraph map[string][]string, dependenciesList map[string]bool) map[string][]string {
+	// 'go list all' is more accurate than 'go graph' so we filter out deps that don't exist in go list
+	mergedDepMap := make(map[string][]string)
+	for dependencyName, children := range dependenciesGraph {
+		for _, descendant := range children {
+			if dependenciesList[descendant] {
+				mergedDepMap[dependencyName] = append(mergedDepMap[dependencyName], descendant)
+			}
+		}
+	}
+	return mergedDepMap
+}
+
 func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
 	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
 	if err != nil {
@@ -65,27 +80,6 @@ func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
 	}
 	repoUrl += "|direct"
 	return os.Setenv("GOPROXY", repoUrl)
-}
-
-func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, goPackageTypeIdentifier)]
-	// Recursively create & append all node's dependencies.
-	for _, childName := range currDepChildren {
-		if !dependenciesList[childName] {
-			// 'go list all' is more accurate than 'go graph' so we filter out deps that don't exist in go list
-			continue
-		}
-		childNode := &services.GraphNode{
-			Id:     goPackageTypeIdentifier + childName,
-			Nodes:  []*services.GraphNode{},
-			Parent: currNode,
-		}
-		currNode.Nodes = append(currNode.Nodes, childNode)
-		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
-	}
 }
 
 func addGoVersionAsDependency(rootNode *services.GraphNode) error {

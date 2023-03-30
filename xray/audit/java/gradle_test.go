@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,13 +22,13 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(false, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 7)
+		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
-		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
-		assert.Len(t, module.Nodes, 1)
+		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "webservice")
+		assert.Len(t, module.Nodes, 7)
 
 		// Check direct dependency
-		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "junit:junit:4.11")
+		directDependency := audit.GetAndAssertNode(t, module.Nodes, "junit:junit:4.11")
 		assert.Len(t, directDependency.Nodes, 1)
 
 		// Check transitive dependency
@@ -46,14 +45,18 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 7)
+		assert.Len(t, modulesDependencyTrees, 5)
+
+		// Check module
+		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "api")
+		assert.Len(t, module.Nodes, 4)
 
 		// Check direct dependency
-		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
+		directDependency := audit.GetAndAssertNode(t, module.Nodes, "commons-lang:commons-lang:2.4")
 		assert.Len(t, directDependency.Nodes, 1)
 
 		// Check transitive dependency
-		audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
+		audit.GetAndAssertNode(t, directDependency.Nodes, "commons-io:commons-io:1.2")
 	}
 }
 
@@ -66,14 +69,11 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 7)
+		assert.Len(t, modulesDependencyTrees, 5)
 
 		// Check direct dependency
-		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.apache.wicket:wicket:1.3.7")
-		assert.Len(t, directDependency.Nodes, 1)
-
-		// Check transitive dependency
-		audit.GetAndAssertNode(t, directDependency.Nodes, "org.slf4j:slf4j-api:1.4.2")
+		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "services")
+		assert.Empty(t, directDependency.Nodes)
 	}
 }
 
@@ -147,7 +147,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	testCase := struct {
 		name              string
 		outputFileContent []byte
-		expectedResult    map[string][]*services.GraphNode
+		expectedResult    map[string]map[string]string
 	}{
 		name: "ValidOutputFileContent",
 		outputFileContent: []byte(`
@@ -157,14 +157,24 @@ func TestGetGraphFromDepTree(t *testing.T) {
 ../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2hhcmVk
 ../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/d2Vic2VydmljZQ==
 `),
-		expectedResult: map[string][]*services.GraphNode{
-			GavPackageTypeIdentifier + "commons-io:commons-io:1.2":                   {},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0":            {},
-			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":              {{Id: GavPackageTypeIdentifier + "org.slf4j:slf4j-api:1.4.2"}},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":         {},
-			GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":               {{Id: GavPackageTypeIdentifier + "commons-io:commons-io:1.2"}},
-			GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2": {},
-			GavPackageTypeIdentifier + "junit:junit:4.11":                            {{Id: GavPackageTypeIdentifier + "org.hamcrest:hamcrest-core:1.3"}},
+		expectedResult: map[string]map[string]string{
+			GavPackageTypeIdentifier + "shared":                   {},
+			GavPackageTypeIdentifier + "gradle-example-ci-server": {},
+			GavPackageTypeIdentifier + "services":                 {},
+			GavPackageTypeIdentifier + "webservice": {
+				GavPackageTypeIdentifier + "junit:junit:4.11":                            "",
+				GavPackageTypeIdentifier + "commons-io:commons-io:1.2":                   "",
+				GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":              "",
+				GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":         "",
+				GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0":            "",
+				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":               "",
+				GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2": "",
+			},
+			GavPackageTypeIdentifier + "api": {
+				GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":      "",
+				GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0": "",
+				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":       "",
+			},
 		},
 	}
 
@@ -173,9 +183,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	for _, dependency := range result {
 		depChild, exists := testCase.expectedResult[dependency.Id]
 		assert.True(t, exists)
-		if len(depChild) > 0 {
-			assert.Equal(t, depChild[0].Id, dependency.Nodes[0].Id)
-		}
+		assert.Equal(t, len(depChild), len(dependency.Nodes))
 	}
 }
 
@@ -218,7 +226,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 		mavenCentral()
     }
     dependencies {
-        classpath 'com.jfrog:gradle-dep-tree:+'
+        classpath 'com.jfrog:gradle-dep-tree:2.2.0'
     }
 }
 

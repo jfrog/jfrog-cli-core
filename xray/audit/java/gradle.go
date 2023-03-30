@@ -27,7 +27,7 @@ const (
 		mavenCentral()
     }
     dependencies {
-        classpath 'com.jfrog:gradle-dep-tree:+'
+        classpath 'com.jfrog:gradle-dep-tree:2.2.0'
     }
 }
 

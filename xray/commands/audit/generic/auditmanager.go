@@ -275,7 +275,7 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
 
-	return dependencyTrees, e
+	return services.FlattenGraph(dependencyTrees), e
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {

@@ -99,7 +99,7 @@ type operationalRiskViolationScanTableRow struct {
 	isEol                  string                   `col-name:"Is\nEnd\nOf\nLife" extended:"true"`
 	eolMessage             string                   `col-name:"End\nOf\nLife\nMessage" extended:"true"`
 	cadence                string                   `col-name:"Cadence"  extended:"true"`
-	Commits                string                   `col-name:"Commits"  extended:"true"`
+	commits                string                   `col-name:"Commits"  extended:"true"`
 	committers             string                   `col-name:"Committers"  extended:"true"`
 	newerVersions          string                   `col-name:"Newer\nVersions" extended:"true"`
 	latestVersion          string                   `col-name:"Latest\nVersion" extended:"true"`

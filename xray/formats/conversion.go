@@ -127,7 +127,7 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 			directDependencies:     convertToComponentScanTableRow(rows[i].Components),
 			isEol:                  rows[i].IsEol,
 			cadence:                rows[i].Cadence,
-			Commits:                rows[i].Commits,
+			commits:                rows[i].Commits,
 			committers:             rows[i].Committers,
 			newerVersions:          rows[i].NewerVersions,
 			latestVersion:          rows[i].LatestVersion,

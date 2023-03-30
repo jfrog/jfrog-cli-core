@@ -47,7 +47,6 @@ allprojects {
 )
 
 type depTreeManager struct {
-	depsPaths map[string][]string
 	DependenciesTree
 	server       *config.ServerDetails
 	releasesRepo string
@@ -208,7 +207,7 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 		}
 		depsGraph = append(depsGraph, directDependency)
 	}
-	return services.FlattenGraph(depsGraph), nil
+	return depsGraph, nil
 }
 
 func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren DependenciesPaths) {

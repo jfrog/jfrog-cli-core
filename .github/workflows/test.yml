@@ -32,12 +32,12 @@ jobs:
       - name: Install NuGet
         uses: nuget/setup-nuget@v1
         with:
-          nuget-version: 6.x
+          nuget-version: 5.x
 
       - name: Install dotnet
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.x'
+          dotnet-version: '3.x'
 
       - name: Go Cache
         uses: actions/cache@v3

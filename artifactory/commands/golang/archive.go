@@ -98,10 +98,14 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 	//ignore, gitIgnoreErr := gitignore.NewFromFile(sourcePath + "/.gitignore") ??
 	var files []File
 
-	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
-		relPath, err := filepath.Rel(dir, filePath)
+	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) (currentErr error) {
 		if err != nil {
-			return err
+			currentErr = err
+			return
+		}
+		relPath, currentErr := filepath.Rel(dir, filePath)
+		if currentErr != nil {
+			return
 		}
 		slashPath := filepath.ToSlash(relPath)
 		if info.IsDir() {
@@ -115,7 +119,8 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 			// to exclude them.
 			switch filepath.Base(filePath) {
 			case ".bzr", ".git", ".hg", ".svn":
-				return filepath.SkipDir
+				currentErr = filepath.SkipDir
+				return
 			}
 
 			// Skip some subdirectories inside vendor, but maintain bug
@@ -124,14 +129,15 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 			// for a set of files, whether expressed as a directory tree or zip.
 
 			if isVendoredPackage(slashPath) {
-				return filepath.SkipDir
+				currentErr = filepath.SkipDir
+				return
 			}
 
 			// Skip submodules (directories containing go.mod files).
 			if goModInfo, err := os.Lstat(filepath.Join(filePath, "go.mod")); err == nil && !goModInfo.IsDir() {
-				return filepath.SkipDir
+				currentErr = filepath.SkipDir
 			}
-			return nil
+			return
 		}
 		if info.Mode().IsRegular() {
 			if !isVendoredPackage(slashPath) {
@@ -141,11 +147,11 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 					info:      info,
 				})
 			}
-			return nil
+			return
 		}
 		// Not a regular file or a directory. Probably a symbolic link.
 		// Irregular files are ignored, so skip it.
-		return nil
+		return
 	})
 	if err != nil {
 		return err

@@ -85,7 +85,7 @@ func createEnvVarsSummary(cmd Command) string {
 		if i > 0 {
 			summary += "\n"
 		}
-		summary = "\t" + env.Name + "\n"
+		summary += "\t" + env.Name + "\n"
 		if env.Default != "" {
 			summary += "\t\t[Default: " + env.Default + "]\n"
 		}

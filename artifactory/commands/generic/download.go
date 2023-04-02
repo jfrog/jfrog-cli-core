@@ -62,7 +62,7 @@ func (dc *DownloadCommand) Run() error {
 	return dc.download()
 }
 
-func (dc *DownloadCommand) download() error {
+func (dc *DownloadCommand) download() (err error) {
 	// Init progress bar if needed
 	if dc.progress != nil {
 		dc.progress.InitProgressReaders()
@@ -79,11 +79,12 @@ func (dc *DownloadCommand) download() error {
 		return err
 	}
 	if toCollect && !dc.DryRun() {
-		buildName, err := dc.buildConfiguration.GetBuildName()
+		var buildName, buildNumber string
+		buildName, err = dc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		buildNumber, err = dc.buildConfiguration.GetBuildNumber()
 		if err != nil {
 			return err
 		}
@@ -96,7 +97,8 @@ func (dc *DownloadCommand) download() error {
 	var downloadParamsArray []services.DownloadParams
 	// Create DownloadParams for all File-Spec groups.
 	for i := 0; i < len(dc.Spec().Files); i++ {
-		downParams, err := getDownloadParams(dc.Spec().Get(i), dc.configuration)
+		var downParams services.DownloadParams
+		downParams, err = getDownloadParams(dc.Spec().Get(i), dc.configuration)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -116,13 +118,23 @@ func (dc *DownloadCommand) download() error {
 			log.Error(err)
 		}
 		if summary != nil {
-			defer summary.ArtifactsDetailsReader.Close()
+			defer func() {
+				e := summary.ArtifactsDetailsReader.Close()
+				if err == nil {
+					err = e
+				}
+			}()
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if dc.DetailedSummary() {
 				dc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				defer summary.TransferDetailsReader.Close()
+				defer func() {
+					e := summary.TransferDetailsReader.Close()
+					if err == nil {
+						err = e
+					}
+				}()
 			}
 			totalDownloaded = summary.TotalSucceeded
 			totalFailed = summary.TotalFailed
@@ -145,14 +157,21 @@ func (dc *DownloadCommand) download() error {
 		dc.result.SetFailCount(0)
 		return err
 	} else if dc.SyncDeletesPath() != "" {
-		absSyncDeletesPath, err := filepath.Abs(dc.SyncDeletesPath())
+		var absSyncDeletesPath string
+		absSyncDeletesPath, err = filepath.Abs(dc.SyncDeletesPath())
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 		if _, err = os.Stat(absSyncDeletesPath); err == nil {
 			// Unmarshal the local paths of the downloaded files from the results file reader
-			tmpRoot, err := createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
-			defer fileutils.RemoveTempDir(tmpRoot)
+			var tmpRoot string
+			tmpRoot, err = createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
+			defer func() {
+				e := fileutils.RemoveTempDir(tmpRoot)
+				if err == nil {
+					err = e
+				}
+			}()
 			if err != nil {
 				return err
 			}
@@ -169,11 +188,12 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if toCollect {
-		buildName, err := dc.buildConfiguration.GetBuildName()
+		var buildName, buildNumber string
+		buildName, err = dc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		buildNumber, err = dc.buildConfiguration.GetBuildNumber()
 		if err != nil {
 			return err
 		}
@@ -295,30 +315,36 @@ func createLegalPath(root, path string) string {
 }
 
 func createSyncDeletesWalkFunction(tempRoot string) gofrog.WalkFunc {
-	return func(path string, info os.FileInfo, err error) error {
+	return func(path string, info os.FileInfo, err error) (currentErr error) {
+		if err != nil {
+			currentErr = err
+			return
+		}
 		// Convert path to absolute path
-		path, err = filepath.Abs(path)
-		if errorutils.CheckError(err) != nil {
-			return err
+		path, currentErr = filepath.Abs(path)
+		if errorutils.CheckError(currentErr) != nil {
+			return
 		}
 		pathToCheck := createLegalPath(tempRoot, path)
 
 		// If the path exists under the temp root directory, it means it's been downloaded during the last operations, and cannot be deleted.
 		if fileutils.IsPathExists(pathToCheck, false) {
-			return nil
+			return
 		}
 		log.Info("Deleting:", path)
 		if info.IsDir() {
 			// If current path is a dir - remove all content and return ErrSkipDir to stop walking this path
-			err = fileutils.RemoveTempDir(path)
-			if err == nil {
-				return gofrog.ErrSkipDir
+			currentErr = fileutils.RemoveTempDir(path)
+			if currentErr == nil {
+				currentErr = gofrog.ErrSkipDir
+				return
 			}
 		} else {
 			// Path is a file
-			err = os.Remove(path)
+			currentErr = os.Remove(path)
 		}
 
-		return errorutils.CheckError(err)
+		currentErr = errorutils.CheckError(currentErr)
+		return
 	}
 }

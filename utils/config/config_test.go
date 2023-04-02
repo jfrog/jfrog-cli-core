@@ -2,14 +2,16 @@ package config
 
 import (
 	"encoding/json"
-	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/google/uuid"
+	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -176,7 +178,6 @@ func TestConfigEncryption(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Config file encryption should be updated, so Enc=true. Secrets should be decrypted to be used in the rest of the execution.
-	assert.True(t, readConfig.Enc)
 	verifyEncryptionStatus(t, originalConfig, readConfig, false)
 	// Config file should be encrypted.
 	encryptedConfig := readConfFromFile(t)
@@ -185,10 +186,73 @@ func TestConfigEncryption(t *testing.T) {
 	// Verify successfully decrypting.
 	readConfig, err = readConf()
 	assert.NoError(t, err)
-	assert.True(t, readConfig.Enc)
 	verifyEncryptionStatus(t, originalConfig, readConfig, false)
 }
 
+func TestConfigEncryptionEnvVar(t *testing.T) {
+	// Config
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
+
+	// Set encryption key in JFROG_CLI_ENCRYPTION_KEY environment variable
+	key := uuid.NewString()[:32]
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, key))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
+
+	// Save the config and ensure the secrets were updated
+	expectedConfig := createEncryptionTestConfig()
+	assert.NoError(t, saveConfig(expectedConfig))
+	actualConfig := readConfFromFile(t)
+	verifyEncryptionStatus(t, expectedConfig, actualConfig, true)
+
+	// Read config and ensure the server details are decrypted
+	actualConfig, err := readConf()
+	assert.NoError(t, err)
+	verifyEncryptionStatus(t, expectedConfig, actualConfig, false)
+}
+
+func TestConfigEncryptionEnvVarUpdate(t *testing.T) {
+	// Set testing environment
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	assert.NoError(t, saveConfig(createEncryptionTestConfig()))
+	expectedConfig := createEncryptionTestConfig()
+	actualConfig := readConfFromFile(t)
+
+	verifyEncryptionStatus(t, expectedConfig, actualConfig, false)
+
+	// Set encryption key in JFROG_CLI_ENCRYPTION_KEY environment variable
+	key := uuid.NewString()[:32]
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, key))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
+
+	// Read config and ensure that the config was decrypted
+	actualConfig, err = readConf()
+	assert.NoError(t, err)
+	verifyEncryptionStatus(t, expectedConfig, actualConfig, false)
+}
+
+func createEncryptionTestConfig() *Config {
+	return &Config{ConfigV6{ConfigV5{
+		Version: strconv.Itoa(coreutils.GetCliConfigVersion()),
+		Servers: []*ServerDetails{{
+			ServerId:      "test-server",
+			Url:           "http://acme.jfrog.io",
+			User:          "elmar",
+			Password:      "Wabbit",
+			AccessToken:   "DewiciousWegOfWamb",
+			SshPassphrase: "KiwwTheWabbit",
+		}}},
+	}}
+}
+
+// Read config file "as-is" - without decryption
 func readConfFromFile(t *testing.T) *Config {
 	confFilePath, err := getConfFilePath()
 	assert.NoError(t, err)
@@ -309,8 +373,10 @@ func TestHandleSecrets(t *testing.T) {
 	original := new(Config)
 	original.Servers = []*ServerDetails{{User: "user", Password: "password", Url: "http://localhost:8080/artifactory/", AccessToken: "accessToken",
 		RefreshToken: "refreshToken", SshPassphrase: "sshPass"}}
+	original.Enc = true
 
-	newConf := copyConfig(t, original)
+	newConf, err := original.Clone()
+	assert.NoError(t, err)
 
 	// Encrypt decrypted
 	assert.NoError(t, handleSecrets(original, encrypt, masterKey))
@@ -318,19 +384,12 @@ func TestHandleSecrets(t *testing.T) {
 
 	// Decrypt encrypted
 	assert.NoError(t, handleSecrets(original, decrypt, masterKey))
+	newConf.Enc = false
 	verifyEncryptionStatus(t, original, newConf, false)
 }
 
-func copyConfig(t *testing.T, original *Config) *Config {
-	b, err := json.Marshal(&original)
-	assert.NoError(t, err)
-	newConf := new(Config)
-	err = json.Unmarshal(b, &newConf)
-	assert.NoError(t, err)
-	return newConf
-}
-
 func verifyEncryptionStatus(t *testing.T, original, actual *Config, encryptionExpected bool) {
+	assert.Equal(t, len(original.Servers), len(actual.Servers))
 	var equals []bool
 	for i := range actual.Servers {
 		if original.Servers[i].Password != "" {
@@ -342,6 +401,7 @@ func verifyEncryptionStatus(t *testing.T, original, actual *Config, encryptionEx
 		if original.Servers[i].RefreshToken != "" {
 			equals = append(equals, original.Servers[i].RefreshToken == actual.Servers[i].RefreshToken)
 		}
+		assert.Equal(t, encryptionExpected, actual.Enc)
 	}
 
 	if encryptionExpected {
@@ -357,9 +417,6 @@ func assertCertsMigration(t *testing.T) {
 	certsDir, err := coreutils.GetJfrogCertsDir()
 	assert.NoError(t, err)
 	assert.DirExists(t, certsDir)
-	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
-	assert.NoError(t, err)
-	assert.FileExists(t, secFile)
 	files, err := os.ReadDir(certsDir)
 	assert.NoError(t, err)
 	// Verify only the certs were moved

@@ -92,7 +92,7 @@ func createEnvVarsSummary(cmd Command) string {
 		summary += "\t\t" + env.Description
 		envVarsSummary = append(envVarsSummary, summary)
 	}
-	return strings.Join(envVarsSummary[:], "\n\n")
+	return strings.Join(envVarsSummary[:], "\n")
 }
 
 func convertFlags(cmd Command) ([]cli.Flag, error) {

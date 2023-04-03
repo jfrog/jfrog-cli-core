@@ -151,11 +151,11 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	}{
 		name: "ValidOutputFileContent",
 		outputFileContent: []byte(`
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/Z3JhZGxlLWV4YW1wbGUtY2ktc2VydmVy==
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/YXBp==
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2VydmljZXM=
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2hhcmVk==
+../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/Z3JhZGxlLWV4YW1wbGUtY2ktc2VydmVy
+../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/YXBp
 ../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/d2Vic2VydmljZQ==
+../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2VydmljZXM=
+../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2hhcmVk
 `),
 		expectedResult: map[string]map[string]string{
 			GavPackageTypeIdentifier + "shared":                   {},

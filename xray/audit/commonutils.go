@@ -147,7 +147,6 @@ func BuildImpactPaths(scanResult []services.ScanResponse, dependencyTrees []*ser
 			buildLicensesImpactPaths(result.Licenses, dependencyTrees)
 		}
 	}
-	return
 }
 
 func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*services.GraphNode) {

@@ -144,22 +144,18 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 }
 
 func TestGetGraphFromDepTree(t *testing.T) {
+	// Create and change directory to test workspace
+	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
+	defer cleanUp()
+	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 	testCase := struct {
-		name              string
-		outputFileContent []byte
-		expectedResult    map[string]map[string]string
+		name           string
+		expectedResult map[string]map[string]string
 	}{
 		name: "ValidOutputFileContent",
-		outputFileContent: []byte(`
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/Z3JhZGxlLWV4YW1wbGUtY2ktc2VydmVy
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/YXBp
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/d2Vic2VydmljZQ==
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2VydmljZXM=
-../../commands/testdata/gradle-example-ci-server/build/gradle-dep-tree/c2hhcmVk
-`),
 		expectedResult: map[string]map[string]string{
 			GavPackageTypeIdentifier + "shared":                   {},
-			GavPackageTypeIdentifier + "gradle-example-ci-server": {},
+			GavPackageTypeIdentifier + filepath.Base(tempDirPath): {},
 			GavPackageTypeIdentifier + "services":                 {},
 			GavPackageTypeIdentifier + "webservice": {
 				GavPackageTypeIdentifier + "junit:junit:4.11":                            "",
@@ -178,7 +174,10 @@ func TestGetGraphFromDepTree(t *testing.T) {
 		},
 	}
 
-	result, err := (&depTreeManager{}).getGraphFromDepTree(testCase.outputFileContent)
+	manager := &depTreeManager{}
+	outputFileContent, err := manager.runGradleDepTree()
+	assert.NoError(t, err)
+	result, err := (&depTreeManager{}).getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
 	for _, dependency := range result {
 		depChild, exists := testCase.expectedResult[dependency.Id]

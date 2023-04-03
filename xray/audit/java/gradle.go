@@ -69,12 +69,14 @@ type DependenciesPaths struct {
 func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 	outputFiles := strings.Split(strings.TrimSpace(string(jsonFiles)), "\n")
 	for _, path := range outputFiles {
+		log.Info("reading", strings.TrimSpace(path))
 		tree, err := os.ReadFile(strings.TrimSpace(path))
 		if err != nil {
 			return err
 		}
 
 		encodedFileName := path[strings.LastIndex(path, string(os.PathSeparator))+1:]
+		log.Info("decoding", encodedFileName)
 		decodedFileName, err := base64.StdEncoding.DecodeString(encodedFileName)
 		if err != nil {
 			return err

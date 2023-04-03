@@ -96,8 +96,8 @@ func (dc *DownloadCommand) download() (err error) {
 	var errorOccurred = false
 	var downloadParamsArray []services.DownloadParams
 	// Create DownloadParams for all File-Spec groups.
+	var downParams services.DownloadParams
 	for i := 0; i < len(dc.Spec().Files); i++ {
-		var downParams services.DownloadParams
 		downParams, err = getDownloadParams(dc.Spec().Get(i), dc.configuration)
 		if err != nil {
 			errorOccurred = true
@@ -315,36 +315,33 @@ func createLegalPath(root, path string) string {
 }
 
 func createSyncDeletesWalkFunction(tempRoot string) gofrog.WalkFunc {
-	return func(path string, info os.FileInfo, err error) (currentErr error) {
+	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			currentErr = err
-			return
+			return err
 		}
 		// Convert path to absolute path
-		path, currentErr = filepath.Abs(path)
-		if errorutils.CheckError(currentErr) != nil {
-			return
+		path, err = filepath.Abs(path)
+		if errorutils.CheckError(err) != nil {
+			return err
 		}
 		pathToCheck := createLegalPath(tempRoot, path)
 
 		// If the path exists under the temp root directory, it means it's been downloaded during the last operations, and cannot be deleted.
 		if fileutils.IsPathExists(pathToCheck, false) {
-			return
+			return nil
 		}
 		log.Info("Deleting:", path)
 		if info.IsDir() {
 			// If current path is a dir - remove all content and return ErrSkipDir to stop walking this path
-			currentErr = fileutils.RemoveTempDir(path)
-			if currentErr == nil {
-				currentErr = gofrog.ErrSkipDir
-				return
+			err = fileutils.RemoveTempDir(path)
+			if err == nil {
+				return gofrog.ErrSkipDir
 			}
 		} else {
 			// Path is a file
-			currentErr = os.Remove(path)
+			err = os.Remove(path)
 		}
 
-		currentErr = errorutils.CheckError(currentErr)
-		return
+		return errorutils.CheckError(err)
 	}
 }

@@ -27,13 +27,12 @@ type DependencyTreeParams struct {
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-	return buildConfiguration, func() (err error) {
+	return buildConfiguration, func() error {
 		buildNumber, err := buildConfiguration.GetBuildNumber()
 		if err != nil {
-			return
+			return err
 		}
-		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
-		return
+		return artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 

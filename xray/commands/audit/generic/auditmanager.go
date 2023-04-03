@@ -159,6 +159,11 @@ func (params *Params) SetDepsRepo(depsRepo string) *Params {
 	return params
 }
 
+func (params *Params) SetReleasesRepo(releasesRepo string) *Params {
+	params.releasesRepo = releasesRepo
+	return params
+}
+
 func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
 	params.installFunc = installFunc
 	return params

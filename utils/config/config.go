@@ -151,17 +151,21 @@ func SaveServersConf(details []*ServerDetails) error {
 		return err
 	}
 	conf.Servers = details
+	conf.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	return saveConfig(conf)
 }
 
 func saveConfig(config *Config) error {
-	config.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
-	err := config.encrypt()
+	cloneConfig, err := config.Clone()
+	if err != nil {
+		return err
+	}
+	err = cloneConfig.encrypt()
 	if err != nil {
 		return err
 	}
 
-	content, err := config.getContent()
+	content, err := cloneConfig.getContent()
 	if err != nil {
 		return err
 	}
@@ -231,12 +235,21 @@ func getConfigFile() (content []byte, err error) {
 			content, err = fileutils.ReadFile(versionedConfigPath)
 			return content, err
 		}
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return content, nil
+}
+
+func (config *Config) Clone() (*Config, error) {
+	bytes, err := json.Marshal(config)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	clone := &Config{}
+	if err = json.Unmarshal(bytes, clone); err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	return clone, nil
 }
 
 func (config *Config) getContent() ([]byte, error) {
@@ -349,6 +362,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
+	result.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	err = saveConfig(result)
 	if err != nil {
 		return nil, err

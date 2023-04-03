@@ -231,7 +231,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		scanCmd.includeVulnerabilities,
 		scanCmd.includeLicenses,
 		true,
-		scanCmd.printExtendedTable,
+		scanCmd.printExtendedTable, true,
 	)
 	if err != nil {
 		return err

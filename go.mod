@@ -6,16 +6,16 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
-	github.com/gocarina/gocsv v0.0.0-20230226133904-70c27cb2918a
+	github.com/gocarina/gocsv v0.0.0-20230325173030-9a18a846a479
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.3
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/jfrog/build-info-go v1.9.0
 	github.com/jfrog/gofrog v1.2.5
-	github.com/jfrog/jfrog-client-go v1.27.0
+	github.com/jfrog/jfrog-client-go v1.28.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
-	github.com/owenrumney/go-sarif/v2 v2.1.2
+	github.com/owenrumney/go-sarif/v2 v2.1.3
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.15.0

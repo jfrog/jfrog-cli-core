@@ -29,6 +29,7 @@ type Params struct {
 	xrayGraphScanParams services.XrayGraphScanParams
 	serverDetails       *config.ServerDetails
 	progress            ioUtils.ProgressMgr
+	dependencyTrees     []*services.GraphNode
 	ignoreConfigFile    bool
 	excludeTestDeps     bool
 	insecureTls         bool
@@ -237,6 +238,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			continue
 		}
 		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		audit.BuildImpactPaths(techResults, params.dependencyTrees)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
 			continue
@@ -275,6 +277,7 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
 
+	params.dependencyTrees = dependencyTrees
 	return services.FlattenGraph(dependencyTrees), e
 }
 

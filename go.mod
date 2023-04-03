@@ -8,9 +8,9 @@ require (
 	github.com/forPelevin/gomoji v1.1.8
 	github.com/gocarina/gocsv v0.0.0-20230226133904-70c27cb2918a
 	github.com/google/uuid v1.3.0
-	github.com/gookit/color v1.5.2
+	github.com/gookit/color v1.5.3
 	github.com/jedib0t/go-pretty/v6 v6.4.6
-	github.com/jfrog/build-info-go v1.8.10
+	github.com/jfrog/build-info-go v1.9.0
 	github.com/jfrog/gofrog v1.2.5
 	github.com/jfrog/jfrog-client-go v1.27.0
 	github.com/magiconair/properties v1.8.7
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli v1.22.12
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/mod v0.9.0
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.8.0
@@ -92,8 +92,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20230329130032-38516ece5101
+replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20230403073742-d41800fc68cc
 
-replace github.com/jfrog/build-info-go => github.com/omerzi/build-info-go v1.3.1-0.20230323122824-61c25bac40eb
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230403064815-ea83b399ac8e
 
 //replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.6-0.20221229104702-6b9e00fe7b36

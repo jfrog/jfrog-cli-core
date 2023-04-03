@@ -134,3 +134,92 @@ func GetExecutableVersion(executable string) (version string, err error) {
 	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
 	return
 }
+
+func BuildImpactPaths(scanResult []services.ScanResponse, dependencyTrees []*services.GraphNode) {
+	for _, result := range scanResult {
+		if len(result.Vulnerabilities) > 0 {
+			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTrees)
+		}
+		if len(result.Violations) > 0 {
+			buildViolationsImpactPaths(result.Violations, dependencyTrees)
+		}
+		if len(result.Licenses) > 0 {
+			buildLicensesImpactPaths(result.Licenses, dependencyTrees)
+		}
+	}
+	return
+}
+
+func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*services.GraphNode) {
+	vulnerabilitiesMap := setVulnerabilitiesPathsMap(vulnerabilities, dependencyTrees)
+	for i := range vulnerabilities {
+		for dependencyName := range vulnerabilities[i].Components {
+			updateVulnerableComponent(vulnerabilities[i].Components, vulnerabilitiesMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*services.GraphNode) {
+	violationsMap := setVulnerabilitiesPathsMap(violations, dependencyTrees)
+	for i := range violations {
+		for dependencyName := range violations[i].Components {
+			updateVulnerableComponent(violations[i].Components, violationsMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*services.GraphNode) {
+	licensesMap := setVulnerabilitiesPathsMap(licenses, dependencyTrees)
+	for i := range licenses {
+		for dependencyName := range licenses[i].Components {
+			updateVulnerableComponent(licenses[i].Components, licensesMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func setVulnerabilitiesPathsMap(issues interface{}, dependencyTrees []*services.GraphNode) map[string][][]services.ImpactPathNode {
+	issueMap := make(map[string][][]services.ImpactPathNode)
+	switch v := issues.(type) {
+	case []services.Vulnerability:
+		for _, vulnerability := range v {
+			for dependencyName := range vulnerability.Components {
+				issueMap[dependencyName] = [][]services.ImpactPathNode{}
+			}
+		}
+	case []services.Violation:
+		for _, violation := range v {
+			for dependencyName := range violation.Components {
+				issueMap[dependencyName] = [][]services.ImpactPathNode{}
+			}
+		}
+	case []services.License:
+		for _, license := range v {
+			for dependencyName := range license.Components {
+				issueMap[dependencyName] = [][]services.ImpactPathNode{}
+			}
+		}
+	}
+
+	for _, dependency := range dependencyTrees {
+		setPathsForIssues(dependency, issueMap, []services.ImpactPathNode{})
+	}
+	return issueMap
+}
+
+func updateVulnerableComponent(components map[string]services.Component, impactPaths [][]services.ImpactPathNode, dependencyName string) {
+	components[dependencyName] = services.Component{
+		FixedVersions: components[dependencyName].FixedVersions,
+		ImpactPaths:   impactPaths,
+		Cpes:          components[dependencyName].Cpes,
+	}
+}
+
+func setPathsForIssues(dependency *services.GraphNode, issuesMap map[string][][]services.ImpactPathNode, impactPath []services.ImpactPathNode) {
+	impactPath = append(impactPath, services.ImpactPathNode{ComponentId: dependency.Id})
+	if _, exists := issuesMap[dependency.Id]; exists {
+		issuesMap[dependency.Id] = append(issuesMap[dependency.Id], impactPath)
+	}
+	for _, depChild := range dependency.Nodes {
+		setPathsForIssues(depChild, issuesMap, impactPath)
+	}
+}

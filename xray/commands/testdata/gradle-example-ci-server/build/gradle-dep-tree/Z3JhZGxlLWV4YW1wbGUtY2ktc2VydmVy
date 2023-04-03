@@ -1,5 +1,0 @@
-{
-  "unresolved": false,
-  "configurations": ["annotationProcessor", "archives", "compile", "compileClasspath", "compileOnly", "default", "runtime", "runtimeClasspath", "testAnnotationProcessor", "testCompile", "testCompileClasspath", "testCompileOnly", "testRuntime", "testRuntimeClasspath"],
-  "children": {}
-}

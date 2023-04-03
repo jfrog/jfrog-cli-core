@@ -1,14 +1,15 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"math/rand"
 	"os"
 	"time"
 )
 
-const AnalyzerManagerFilePath = "analyzerManager" // todo add real path
+const analyzerManagerFilePath = "analyzerManager" // todo add real path
 
-func IsTechEligibleForJas(tech string, eligibleTechnologies []string) bool {
+func isTechEligibleForJas(tech coreutils.Technology, eligibleTechnologies []coreutils.Technology) bool {
 	for _, eligibleTech := range eligibleTechnologies {
 		if tech == eligibleTech {
 			return true
@@ -17,14 +18,14 @@ func IsTechEligibleForJas(tech string, eligibleTechnologies []string) bool {
 	return false
 }
 
-func IsAnalyzerManagerExecutableExist() error {
-	if _, err := os.Stat(AnalyzerManagerFilePath); err != nil {
+func isAnalyzerManagerExecutableExist() error {
+	if _, err := os.Stat(analyzerManagerFilePath); err != nil {
 		return err
 	}
 	return nil
 }
 
-func GenerateRandomFileName() string {
+func generateRandomFileName() string {
 	rand.Seed(time.Now().UnixNano())
 	const nameLength = 10
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -33,12 +34,4 @@ func GenerateRandomFileName() string {
 		fileName[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(fileName)
-}
-
-func GetScanRootFolder() string { //todo
-	return ""
-}
-
-func GetXrayVulnerabilities() []string { //todo
-	return []string{}
 }

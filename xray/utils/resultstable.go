@@ -69,7 +69,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 		currSeverity := getSeverity(violation.Severity)
 		switch violation.ViolationType {
 		case "security":
-			cves := convertCves(violation.Cves)
+			cves := ConvertCves(violation.Cves)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
@@ -176,7 +176,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 		if err != nil {
 			return nil, err
 		}
-		cves := convertCves(vulnerability.Cves)
+		cves := ConvertCves(vulnerability.Cves)
 		currSeverity := getSeverity(vulnerability.Severity)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -247,7 +247,7 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
-func convertCves(cves []services.Cve) []formats.CveRow {
+func ConvertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
 		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})

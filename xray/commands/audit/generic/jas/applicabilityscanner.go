@@ -1,9 +1,10 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/sarif"
-	"google.golang.org/genproto/googleapis/devtools/containeranalysis/v1beta1/vulnerability"
 	"gopkg.in/yaml.v2"
 	"os"
 	"os/exec"
@@ -15,7 +16,8 @@ const (
 	applicabilityScanType    = "analyze-applicability"
 )
 
-var eligibleTechnologiesForApplicabilityScan = []string{"npm", "python"}
+//var eligibleTechnologiesForApplicabilityScan = []coreutils.Technology{
+//	coreutils.Npm, coreutils.Pip, coreutils.Poetry, coreutils.Pipenv }
 
 type applicabilityScanConfig struct {
 	Scans []scanConfiguration `yaml:"scans"`
@@ -30,46 +32,76 @@ type scanConfiguration struct {
 	SkippedFolders []string `yaml:"skipped-folders"`
 }
 
-type applicabilityScanManager struct {
-	tech                      string
+type ApplicabilityScanManager struct {
 	applicableVulnerabilities []string
-
-	configFileName  string
-	resultsFileName string
+	xrayVulnerabilities       []services.Vulnerability
+	configFileName            string
+	resultsFileName           string
 }
 
-func NewApplicabilityScanManager(tech string, xrayVulnerabilities []services.Vulnerability) *applicabilityScanManager {
-	return &applicabilityScanManager{
-		tech:                      tech,
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *ApplicabilityScanManager {
+	xrayVulnerabilities := getXrayVulnerabilities(xrayScanResults)
+	return &ApplicabilityScanManager{
 		applicableVulnerabilities: []string{},
-		configFileName:            GenerateRandomFileName() + ".yaml",
-		resultsFileName:           GenerateRandomFileName() + ".sarif",
+		xrayVulnerabilities:       xrayVulnerabilities,
+		configFileName:            generateRandomFileName() + ".yaml",
+		resultsFileName:           generateRandomFileName() + ".sarif",
 	}
 }
 
-func (a *applicabilityScanManager) Run() error {
-	if !IsTechEligibleForJas(a.tech, eligibleTechnologiesForApplicabilityScan) {
-		return nil
+func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.Vulnerability {
+	xrayVulnerabilities := []services.Vulnerability{}
+	for _, result := range xrayScanResults {
+		for _, vul := range result.Vulnerabilities {
+			xrayVulnerabilities = append(xrayVulnerabilities, vul)
+		}
 	}
-	if err := IsAnalyzerManagerExecutableExist(); err != nil {
+	return xrayVulnerabilities
+}
+
+func (a *ApplicabilityScanManager) GetApplicableVulnerabilities() []string {
+	return a.applicableVulnerabilities
+}
+
+//func (a *ApplicabilityScanManager) ShouldRunApplicabilityScan() bool {
+//	if isTechEligibleForJas(a.tech, eligibleTechnologiesForApplicabilityScan) {
+//		return true
+//	}
+//	return false
+//}
+
+func (a *ApplicabilityScanManager) Run() error {
+	if err := isAnalyzerManagerExecutableExist(); err != nil {
 		return err
 	}
-	err := a.createConfigFile()
-	if err != nil {
+	if err := a.createConfigFile(); err != nil {
+		return err
+	}
+	if err := a.runAnalyzerManager(); err != nil {
+		return err
+	}
+	if err := a.parseResults(); err != nil {
+		return err
+	}
+	if err := a.DeleteApplicabilityScanProcessFiles(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *applicabilityScanManager) createConfigFile() error {
+func (a *ApplicabilityScanManager) createConfigFile() error {
+	currentDir, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return err
+	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:          []string{GetScanRootFolder()},
+				Roots:          []string{currentDir},
 				Output:         a.resultsFileName,
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
-				CveWhitelist:   GetXrayVulnerabilities(),
+				CveWhitelist:   a.createCveWhiteList(),
 				SkippedFolders: []string{},
 			},
 		},
@@ -85,15 +117,15 @@ func (a *applicabilityScanManager) createConfigFile() error {
 	return nil
 }
 
-func (a *applicabilityScanManager) runAnalyzerManager() error {
-	_, err := exec.Command(AnalyzerManagerFilePath, applicabilityScanCommand, a.configFileName).Output()
+func (a *ApplicabilityScanManager) runAnalyzerManager() error {
+	_, err := exec.Command(analyzerManagerFilePath, applicabilityScanCommand, a.configFileName).Output()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *applicabilityScanManager) parseResults() error {
+func (a *ApplicabilityScanManager) parseResults() error {
 	report, err := sarif.Open(a.resultsFileName)
 	if err != nil {
 		return err
@@ -108,11 +140,7 @@ func (a *applicabilityScanManager) parseResults() error {
 	return nil
 }
 
-func (a *applicabilityScanManager) addApplicabilityResultsToXrayResults() error {
-	return nil
-}
-
-func (a *applicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
+func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
 	err := os.Remove(a.configFileName)
 	if err != nil {
 		return err
@@ -122,6 +150,19 @@ func (a *applicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
 		return err
 	}
 	return nil
+}
+
+func (a *ApplicabilityScanManager) createCveWhiteList() []string {
+	cveWhiteList := []string{}
+	for _, vulnerability := range a.xrayVulnerabilities {
+		cves := utils.ConvertCves(vulnerability.Cves)
+		for _, cve := range cves {
+			if cve.Id != "" {
+				cveWhiteList = append(cveWhiteList, cve.Id)
+			}
+		}
+	}
+	return cveWhiteList
 }
 
 func isVulnerabilityApplicable(vulnerability *sarif.Result) bool {

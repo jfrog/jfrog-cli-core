@@ -1,6 +1,8 @@
 package audit
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -123,6 +125,12 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetTechnologies(auditCmd.technologies...)
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
+	applicabilityScanResults, err := getApplicabilityScanResults(results) // todo pass to print function
+	fmt.Println(applicabilityScanResults)
+	if err != nil {
+		return err
+	}
+
 	if auditCmd.progress != nil {
 		err = auditCmd.progress.Quit()
 		if err != nil {
@@ -154,6 +162,21 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		err = xrutils.NewFailBuildError()
 	}
 	return
+}
+
+func getApplicabilityScanResults(results []services.ScanResponse) ([]string, error) {
+	applicabilityScanManager := jas.NewApplicabilityScanManager(results)
+	err := applicabilityScanManager.Run()
+	if err != nil {
+		// todo log error, continue
+		deleteFileError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
+		if deleteFileError != nil {
+			// todo log error, stop execution
+			return nil, deleteFileError
+		}
+	}
+	applicabilityScanResults := applicabilityScanManager.GetApplicableVulnerabilities()
+	return applicabilityScanResults, nil
 }
 
 func (auditCmd *GenericAuditCommand) CommandName() string {

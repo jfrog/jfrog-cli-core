@@ -14,7 +14,12 @@ const gradlew = "gradlew"
 
 func buildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
-	defer cleanBuild(err)
+	defer func() {
+		e := cleanBuild()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	err = runGradle(buildConfiguration, excludeTestDeps, useWrapper, ignoreConfigFile, gradleConfigParams)
 	if err != nil {

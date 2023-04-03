@@ -18,10 +18,7 @@ import (
 type RemoteUrlCheckStatus string
 
 const (
-	longPropertyCheckName                      = "Remote repositories URL connectivity"
-	success               RemoteUrlCheckStatus = "SUCCESS"
-	inProgress            RemoteUrlCheckStatus = "IN_PROGRESS"
-
+	longPropertyCheckName           = "Remote repositories URL connectivity"
 	remoteUrlCheckPollingTimeout    = 30 * time.Minute
 	remoteUrlCheckPollingInterval   = 5 * time.Second
 	remoteUrlCheckRetries           = 3

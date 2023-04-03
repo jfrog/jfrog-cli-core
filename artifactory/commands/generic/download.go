@@ -62,7 +62,7 @@ func (dc *DownloadCommand) Run() error {
 	return dc.download()
 }
 
-func (dc *DownloadCommand) download() error {
+func (dc *DownloadCommand) download() (err error) {
 	// Init progress bar if needed
 	if dc.progress != nil {
 		dc.progress.InitProgressReaders()
@@ -79,11 +79,12 @@ func (dc *DownloadCommand) download() error {
 		return err
 	}
 	if toCollect && !dc.DryRun() {
-		buildName, err := dc.buildConfiguration.GetBuildName()
+		var buildName, buildNumber string
+		buildName, err = dc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		buildNumber, err = dc.buildConfiguration.GetBuildNumber()
 		if err != nil {
 			return err
 		}
@@ -95,8 +96,9 @@ func (dc *DownloadCommand) download() error {
 	var errorOccurred = false
 	var downloadParamsArray []services.DownloadParams
 	// Create DownloadParams for all File-Spec groups.
+	var downParams services.DownloadParams
 	for i := 0; i < len(dc.Spec().Files); i++ {
-		downParams, err := getDownloadParams(dc.Spec().Get(i), dc.configuration)
+		downParams, err = getDownloadParams(dc.Spec().Get(i), dc.configuration)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -116,13 +118,23 @@ func (dc *DownloadCommand) download() error {
 			log.Error(err)
 		}
 		if summary != nil {
-			defer summary.ArtifactsDetailsReader.Close()
+			defer func() {
+				e := summary.ArtifactsDetailsReader.Close()
+				if err == nil {
+					err = e
+				}
+			}()
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if dc.DetailedSummary() {
 				dc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				defer summary.TransferDetailsReader.Close()
+				defer func() {
+					e := summary.TransferDetailsReader.Close()
+					if err == nil {
+						err = e
+					}
+				}()
 			}
 			totalDownloaded = summary.TotalSucceeded
 			totalFailed = summary.TotalFailed
@@ -145,14 +157,21 @@ func (dc *DownloadCommand) download() error {
 		dc.result.SetFailCount(0)
 		return err
 	} else if dc.SyncDeletesPath() != "" {
-		absSyncDeletesPath, err := filepath.Abs(dc.SyncDeletesPath())
+		var absSyncDeletesPath string
+		absSyncDeletesPath, err = filepath.Abs(dc.SyncDeletesPath())
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
 		if _, err = os.Stat(absSyncDeletesPath); err == nil {
 			// Unmarshal the local paths of the downloaded files from the results file reader
-			tmpRoot, err := createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
-			defer fileutils.RemoveTempDir(tmpRoot)
+			var tmpRoot string
+			tmpRoot, err = createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
+			defer func() {
+				e := fileutils.RemoveTempDir(tmpRoot)
+				if err == nil {
+					err = e
+				}
+			}()
 			if err != nil {
 				return err
 			}
@@ -169,11 +188,12 @@ func (dc *DownloadCommand) download() error {
 
 	// Build Info
 	if toCollect {
-		buildName, err := dc.buildConfiguration.GetBuildName()
+		var buildName, buildNumber string
+		buildName, err = dc.buildConfiguration.GetBuildName()
 		if err != nil {
 			return err
 		}
-		buildNumber, err := dc.buildConfiguration.GetBuildNumber()
+		buildNumber, err = dc.buildConfiguration.GetBuildNumber()
 		if err != nil {
 			return err
 		}
@@ -296,6 +316,9 @@ func createLegalPath(root, path string) string {
 
 func createSyncDeletesWalkFunction(tempRoot string) gofrog.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		// Convert path to absolute path
 		path, err = filepath.Abs(path)
 		if errorutils.CheckError(err) != nil {

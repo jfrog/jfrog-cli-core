@@ -12,7 +12,12 @@ import (
 
 func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (modules []*services.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
-	defer cleanBuild(err)
+	defer func() {
+		e := cleanBuild()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile, useWrapper, mvnProps)
 	if err != nil {

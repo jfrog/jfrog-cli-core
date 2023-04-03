@@ -25,21 +25,14 @@ type DependencyTreeParams struct {
 	JavaProps        map[string]any
 }
 
-func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
+func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-	return buildConfiguration, func(err error) {
-		buildName, err := buildConfiguration.GetBuildName()
-		if err != nil {
-			return
-		}
+	return buildConfiguration, func() error {
 		buildNumber, err := buildConfiguration.GetBuildNumber()
 		if err != nil {
-			return
+			return err
 		}
-		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
-		if err != nil {
-			return
-		}
+		return artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 

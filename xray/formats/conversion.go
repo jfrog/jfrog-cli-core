@@ -16,6 +16,7 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 			DirectDependencies:        ConvertToComponentTableRow(rows[i].Components),
 			Cves:                      ConvertToCveTableRow(rows[i].Cves),
 			IssueId:                   rows[i].IssueId,
+			ApplicableInCode:          ConvertToApplicableTableValue(rows[i].ApplicableInCode),
 		})
 	}
 	return
@@ -90,4 +91,11 @@ func ConvertToCveTableRow(rows []CveRow) (tableRows []CveTableRow) {
 		})
 	}
 	return
+}
+
+func ConvertToApplicableTableValue(applicable bool) string {
+	if applicable {
+		return "Yes"
+	}
+	return "No"
 }

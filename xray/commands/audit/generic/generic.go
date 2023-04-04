@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 
@@ -125,8 +124,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetTechnologies(auditCmd.technologies...)
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	applicabilityScanResults, err := getApplicabilityScanResults(results) // todo pass to print function
-	fmt.Println(applicabilityScanResults)
+	extendedScanResults, err := jas.GetExtendedScanResults(results)
 	if err != nil {
 		return err
 	}
@@ -140,7 +138,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
 	if printScanResults {
-		err = xrutils.PrintScanResults(results,
+		err = xrutils.PrintScanResults(extendedScanResults,
 			nil,
 			auditCmd.OutputFormat,
 			auditCmd.IncludeVulnerabilities,
@@ -162,21 +160,6 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		err = xrutils.NewFailBuildError()
 	}
 	return
-}
-
-func getApplicabilityScanResults(results []services.ScanResponse) ([]string, error) {
-	applicabilityScanManager := jas.NewApplicabilityScanManager(results)
-	err := applicabilityScanManager.Run()
-	if err != nil {
-		// todo log error, continue
-		deleteFileError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
-		if deleteFileError != nil {
-			// todo log error, stop execution
-			return nil, deleteFileError
-		}
-	}
-	applicabilityScanResults := applicabilityScanManager.GetApplicableVulnerabilities()
-	return applicabilityScanResults, nil
 }
 
 func (auditCmd *GenericAuditCommand) CommandName() string {

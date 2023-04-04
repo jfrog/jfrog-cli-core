@@ -152,8 +152,8 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 // Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipleRoots, printExtended bool) error {
-	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, multipleRoots, true, true)
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, printExtended bool) error {
+	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, applicableCves, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -162,13 +162,13 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, multipl
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
-func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
-	return prepareVulnerabilities(vulnerabilities, multipleRoots, false, simplifiedOutput)
+func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+	return prepareVulnerabilities(vulnerabilities, applicableCves, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func prepareVulnerabilities(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	if simplifiedOutput {
-		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
+		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots) //todo
 	}
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
 	for _, vulnerability := range vulnerabilities {
@@ -196,6 +196,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, multipleRo
 					JfrogResearchInformation:  jfrogResearchInfo,
 					ImpactPaths:               impactPaths[compIndex],
 					Technology:                coreutils.Technology(vulnerability.Technology),
+					ApplicableInCode:          areCvesApplicable(applicableCves, cves),
 				},
 			)
 		}
@@ -652,4 +653,15 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 		cveId = cves[0].Id
 	}
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
+}
+
+func areCvesApplicable(applicableCves []string, xrayCves []formats.CveRow) bool {
+	for _, xrayCve := range xrayCves {
+		for _, applicableCve := range applicableCves {
+			if xrayCve.Id == applicableCve {
+				return true
+			}
+		}
+	}
+	return false
 }

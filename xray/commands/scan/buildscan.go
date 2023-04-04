@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -126,21 +127,26 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
+	extendedScanResults, err := jas.GetExtendedScanResults(scanResponse)
+	if err != nil {
+		return true, err
+	}
+
 	if bsc.outputFormat != xrutils.Table {
 		// Print the violations and/or vulnerabilities as part of one JSON.
-		err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
+		err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
 	} else {
 		// Print two different tables for violations and vulnerabilities (if needed)
 
 		// If "No Xray Fail build policy...." error received, no need to print violations
 		if !noFailBuildPolicy {
-			err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
+			err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}
 		}
 		if bsc.includeVulnerabilities {
-			err = xrutils.PrintScanResults(scanResponse, nil, bsc.outputFormat, true, false, false, bsc.printExtendedTable)
+			err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, true, false, false, bsc.printExtendedTable)
 			if err != nil {
 				return false, err
 			}

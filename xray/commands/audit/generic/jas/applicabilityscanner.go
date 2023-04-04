@@ -2,7 +2,6 @@ package jas
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/sarif"
 	"gopkg.in/yaml.v2"
@@ -18,6 +17,28 @@ const (
 
 //var eligibleTechnologiesForApplicabilityScan = []coreutils.Technology{
 //	coreutils.Npm, coreutils.Pip, coreutils.Poetry, coreutils.Pipenv }
+
+type ExtendedScanResults struct {
+	XrayResults    []services.ScanResponse
+	ApplicableCves []string
+}
+
+func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
+	return e.XrayResults
+}
+
+func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResults, error) {
+	applicabilityScanManager := NewApplicabilityScanManager(results)
+	err := applicabilityScanManager.Run()
+	if err != nil {
+		//todo log error, continue
+		extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicableCves: nil}
+		return &extendedScanResults, nil
+	}
+	applicabilityScanResults := applicabilityScanManager.GetApplicableVulnerabilities()
+	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicableCves: applicabilityScanResults}
+	return &extendedScanResults, nil
+}
 
 type applicabilityScanConfig struct {
 	Scans []scanConfiguration `yaml:"scans"`
@@ -155,8 +176,7 @@ func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
 func (a *ApplicabilityScanManager) createCveWhiteList() []string {
 	cveWhiteList := []string{}
 	for _, vulnerability := range a.xrayVulnerabilities {
-		cves := utils.ConvertCves(vulnerability.Cves)
-		for _, cve := range cves {
+		for _, cve := range vulnerability.Cves {
 			if cve.Id != "" {
 				cveWhiteList = append(cveWhiteList, cve.Id)
 			}

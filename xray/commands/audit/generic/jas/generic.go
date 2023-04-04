@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const analyzerManagerFilePath = "analyzerManager" // todo add real path
+const analyzerManagerFilePath = "/Users/ort/workspace/src/jfrog.com/analyzerManager" // todo add real path
 
 func isTechEligibleForJas(tech coreutils.Technology, eligibleTechnologies []coreutils.Technology) bool {
 	for _, eligibleTech := range eligibleTechnologies {

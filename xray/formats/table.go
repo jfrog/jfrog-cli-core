@@ -15,6 +15,7 @@ type VulnerabilityTableRow struct {
 	ImpactedDependencyType    string                       `col-name:"Type"`
 	Cves                      []CveTableRow                `embed-table:"true"`
 	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
+	ApplicableInCode          string                       `col-name:"Applicable\nIn Code"`
 }
 
 type LicenseTableRow struct {

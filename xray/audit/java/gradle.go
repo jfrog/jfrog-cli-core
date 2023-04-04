@@ -3,7 +3,6 @@ package java
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -130,7 +129,10 @@ func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err err
 		return
 	}
 	defer func() {
-		err = errors.Join(err, fileutils.RemoveTempDir(depTreeDir))
+		e := fileutils.RemoveTempDir(depTreeDir)
+		if err == nil {
+			err = e
+		}
 	}()
 
 	if dtp.useWrapper {
@@ -183,7 +185,10 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		return nil, errorutils.CheckErrorf(fmt.Sprintf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output)))
 	}
 	defer func() {
-		err = errors.Join(err, errorutils.CheckError(os.Remove(outputFilePath)))
+		e := errorutils.CheckError(os.Remove(outputFilePath))
+		if err == nil {
+			err = e
+		}
 	}()
 
 	outputFileContent, err = os.ReadFile(outputFilePath)

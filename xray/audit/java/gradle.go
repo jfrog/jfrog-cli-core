@@ -186,7 +186,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		err = errors.Join(err, errorutils.CheckError(os.Remove(outputFilePath)))
 	}()
 
-	outputFileContent, err = os.ReadFile(depTreeOutputFile)
+	outputFileContent, err = os.ReadFile(outputFilePath)
 	err = errorutils.CheckError(err)
 	return
 }

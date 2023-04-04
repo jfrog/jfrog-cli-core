@@ -201,11 +201,12 @@ func TestCreateDepTreeScript(t *testing.T) {
 		assert.NoError(t, os.Chdir(currDir))
 	}()
 	manager := &depTreeManager{}
-	assert.NoError(t, manager.createDepTreeScript())
+	tmpDir, err = manager.createDepTreeScript()
+	assert.NoError(t, err)
 	defer func() {
-		assert.NoError(t, os.Remove(depTreeInitFile))
+		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
 	}()
-	content, err := os.ReadFile(depTreeInitFile)
+	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", ""), string(content))
 	manager.depsRepo = "deps-repo"
@@ -214,7 +215,8 @@ func TestCreateDepTreeScript(t *testing.T) {
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}
-	assert.NoError(t, manager.createDepTreeScript())
+	tmpDir, err = manager.createDepTreeScript()
+	assert.NoError(t, err)
 	expectedInitScript := `initscript {
     repositories { 
 		maven {
@@ -243,7 +245,7 @@ allprojects {
 	}
     apply plugin: com.jfrog.GradleDepTree
 }`
-	content, err = os.ReadFile(depTreeInitFile)
+	content, err = os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
 	assert.Equal(t, expectedInitScript, string(content))
 }

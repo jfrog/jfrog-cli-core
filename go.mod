@@ -1,28 +1,28 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.19
+go 1.20
 
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
-	github.com/gocarina/gocsv v0.0.0-20230226133904-70c27cb2918a
+	github.com/gocarina/gocsv v0.0.0-20230325173030-9a18a846a479
 	github.com/google/uuid v1.3.0
-	github.com/gookit/color v1.5.2
+	github.com/gookit/color v1.5.3
 	github.com/jedib0t/go-pretty/v6 v6.4.6
-	github.com/jfrog/build-info-go v1.8.10
+	github.com/jfrog/build-info-go v1.9.0
 	github.com/jfrog/gofrog v1.2.5
-	github.com/jfrog/jfrog-client-go v1.27.0
+	github.com/jfrog/jfrog-client-go v0.0.0-00010101000000-000000000000
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
-	github.com/owenrumney/go-sarif/v2 v2.1.2
+	github.com/owenrumney/go-sarif/v2 v2.1.3
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli v1.22.12
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/mod v0.9.0
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.8.0
@@ -35,7 +35,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/CycloneDX/cyclonedx-go v0.7.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230331115716-d34776aa93ec // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
@@ -92,7 +92,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.26.1-0.20230126120919-2cca98d435ec
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20230403150018-9014235c59f5
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230316095417-a9f6b73206d7
 

@@ -383,6 +383,7 @@ func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manife
 	// Add artifacts.
 	artifacts = append(artifacts, getManifestArtifact(candidateLayers["manifest.json"]))
 	artifacts = append(artifacts, candidateLayers[digestToLayer(builder.imageSha2)].ToArtifact())
+
 	// Add layers.
 	imageLayers = append(imageLayers, *candidateLayers["manifest.json"])
 	imageLayers = append(imageLayers, *candidateLayers[digestToLayer(builder.imageSha2)])
@@ -392,17 +393,19 @@ func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manife
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	// Add image layers as artifacts and dependencies.
 	for i := 0; i < totalLayers; i++ {
 		layerFileName := digestToLayer(imageManifest.Layers[i].Digest)
 		item, layerExists := candidateLayers[layerFileName]
 		if !layerExists {
-			err := handleMissingLayer(imageManifest.Layers[i].MediaType, layerFileName)
+			err := handleForeignLayer(imageManifest.Layers[i].MediaType, layerFileName)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 			continue
 		}
+
 		// Decide if the layer is also a dependency.
 		if i < totalDependencies {
 			dependencies = append(dependencies, item.ToDependency())
@@ -413,23 +416,52 @@ func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manife
 	return
 }
 
-func (builder *buildInfoBuilder) createPullBuildProperties(imageManifest *manifest, candidateLayers map[string]*utils.ResultItem) (dependencies []buildinfo.Dependency, err error) {
-	// Add dependencies.
-	dependencies = append(dependencies, getManifestDependency(candidateLayers["manifest.json"]))
-	dependencies = append(dependencies, candidateLayers[digestToLayer(builder.imageSha2)].ToDependency())
-	// Add image layers as dependencies.
+func (builder *buildInfoBuilder) createPullBuildProperties(imageManifest *manifest, imageLayers map[string]*utils.ResultItem) ([]buildinfo.Dependency, error) {
+	configDependencies, err := getDependenciesFromManifestConfig(imageLayers, builder.imageSha2)
+	if err != nil {
+		log.Debug(err.Error())
+		return nil, nil
+	}
+
+	layerDependencies, err := getDependenciesFromManifestLayer(imageLayers, imageManifest)
+	if err != nil {
+		log.Debug(err.Error())
+		return nil, nil
+	}
+
+	return append(configDependencies, layerDependencies...), nil
+}
+
+func getDependenciesFromManifestConfig(candidateLayers map[string]*utils.ResultItem, imageSha2 string) ([]buildinfo.Dependency, error) {
+	var dependencies []buildinfo.Dependency
+	manifestSearchResults, found := candidateLayers["manifest.json"]
+	if !found {
+		return nil, errorutils.CheckErrorf("failed to collect build-info. The manifest.json was not found in Artifactory")
+	}
+
+	dependencies = append(dependencies, getManifestDependency(manifestSearchResults))
+	imageDetails, found := candidateLayers[digestToLayer(imageSha2)]
+	if !found {
+		return nil, errorutils.CheckErrorf("failed to collect build-info. Image '" + imageSha2 + "' was not found in Artifactory")
+	}
+
+	return append(dependencies, imageDetails.ToDependency()), nil
+}
+
+func getDependenciesFromManifestLayer(layers map[string]*utils.ResultItem, imageManifest *manifest) ([]buildinfo.Dependency, error) {
+	var dependencies []buildinfo.Dependency
 	for i := 0; i < len(imageManifest.Layers); i++ {
 		layerFileName := digestToLayer(imageManifest.Layers[i].Digest)
-		item, layerExists := candidateLayers[layerFileName]
+		item, layerExists := layers[layerFileName]
 		if !layerExists {
-			if err := handleMissingLayer(imageManifest.Layers[i].MediaType, layerFileName); err != nil {
+			if err := handleForeignLayer(imageManifest.Layers[i].MediaType, layerFileName); err != nil {
 				return nil, err
 			}
 			continue
 		}
 		dependencies = append(dependencies, item.ToDependency())
 	}
-	return
+	return dependencies, nil
 }
 
 func (builder *buildInfoBuilder) totalDependencies(image *utils.ResultItem) (int, error) {

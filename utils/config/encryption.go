@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"io"
 	"os"
 	"strconv"
@@ -33,7 +32,7 @@ type secretHandler func(string, string) (string, error)
 
 // Encrypt config file if security configuration file exists and contains master key.
 func (config *Config) encrypt() error {
-	key, _, err := getMasterKeyFromSecurityConfFile()
+	key, err := getEncryptionKey()
 	if err != nil || key == "" {
 		return err
 	}
@@ -47,43 +46,25 @@ func (config *Config) decrypt() error {
 	if !config.Enc {
 		return updateEncryptionIfNeeded(config)
 	}
-	key, secFileExists, err := getMasterKeyFromSecurityConfFile()
+	key, err := getEncryptionKey()
 	if err != nil {
 		return err
 	}
-	if !secFileExists {
-		return errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file was not found")
-	}
 	if key == "" {
-		return errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file does not contain a master key")
+		return errorutils.CheckErrorf(decryptErrorPrefix+"security configuration file was not found or the '%s' environment variable was not configured", coreutils.EncryptionKey)
 	}
+	config.Enc = false
 	return handleSecrets(config, decrypt, key)
 }
 
-// Encrypt the config file if it is decrypted while security configuration file exists and contains a master key.
-func updateEncryptionIfNeeded(originalConfig *Config) error {
-	masterKey, _, err := getMasterKeyFromSecurityConfFile()
+// Encrypt the config file if it is decrypted while security configuration file exists and contains a master key, or if the JFROG_CLI_ENCRYPTION_KEY environment variable exist.
+func updateEncryptionIfNeeded(config *Config) error {
+	masterKey, err := getEncryptionKey()
 	if err != nil || masterKey == "" {
 		return err
 	}
-
-	// Marshalling and unmarshalling to get a new separate config struct, to prevent modifying the config for the rest of the execution.
-	decryptedContent, err := originalConfig.getContent()
-	if err != nil {
-		return err
-	}
-	tmpEncConfig := new(Config)
-	err = json.Unmarshal(decryptedContent, &tmpEncConfig)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	err = saveConfig(tmpEncConfig)
-	if err != nil {
-		return err
-	}
-	// Mark that config file is encrypted
-	originalConfig.Enc = true
-	return nil
+	// The encryption key exists and will be loaded again in encrypt()
+	return saveConfig(config)
 }
 
 // Encrypt/Decrypt all secrets in the provided config, with the provided master key.
@@ -114,14 +95,21 @@ func handleSecrets(config *Config, handler secretHandler, key string) error {
 	return nil
 }
 
-func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err error) {
+func getEncryptionKey() (string, error) {
+	if key, exist := os.LookupEnv(coreutils.EncryptionKey); exist {
+		return key, nil
+	}
+	return getEncryptionKeyFromSecurityConfFile()
+}
+
+func getEncryptionKeyFromSecurityConfFile() (key string, err error) {
 	secFile, err := coreutils.GetJfrogSecurityConfFilePath()
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 	exists, err := fileutils.IsFileExists(secFile, false)
 	if err != nil || !exists {
-		return "", false, err
+		return "", err
 	}
 
 	config := viper.New()
@@ -134,14 +122,17 @@ func getMasterKeyFromSecurityConfFile() (key string, secFileExists bool, err err
 		}
 	}()
 	if err != nil {
-		return "", false, errorutils.CheckError(err)
+		return "", errorutils.CheckError(err)
 	}
 	err = config.ReadConfig(f)
 	if err != nil {
-		return "", false, errorutils.CheckError(err)
+		return "", errorutils.CheckError(err)
 	}
 	key = config.GetString(masterKeyField)
-	return key, true, nil
+	if key == "" {
+		return "", errorutils.CheckErrorf(decryptErrorPrefix + "security configuration file does not contain an encryption master key")
+	}
+	return key, nil
 }
 
 func readMasterKeyFromConsole() (string, error) {

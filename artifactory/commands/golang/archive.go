@@ -99,6 +99,9 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 	var files []File
 
 	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		relPath, err := filepath.Rel(dir, filePath)
 		if err != nil {
 			return err
@@ -131,7 +134,6 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 			if goModInfo, err := os.Lstat(filepath.Join(filePath, "go.mod")); err == nil && !goModInfo.IsDir() {
 				return filepath.SkipDir
 			}
-			return nil
 		}
 		if info.Mode().IsRegular() {
 			if !isVendoredPackage(slashPath) {

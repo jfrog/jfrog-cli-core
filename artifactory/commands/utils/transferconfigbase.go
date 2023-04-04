@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -73,10 +74,22 @@ func (tcb *TransferConfigBase) ValidateMinVersionAndDifferentServers() (string, 
 	if err != nil {
 		return "", err
 	}
+	targetArtifactoryVersion, err := tcb.TargetArtifactoryManager.GetVersion()
+	if err != nil {
+		return "", err
+	}
+
+	// Validate minimal Artifactory version in the source server
 	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
 	if err != nil {
 		return "", err
 	}
+
+	// Validate that the target Artifactory server version is >= than the source Artifactory server version
+	if !version.NewVersion(targetArtifactoryVersion).AtLeast(sourceArtifactoryVersion) {
+		return "", errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
+	}
+
 	// Avoid exporting and importing to the same server
 	log.Info("Verifying source and target servers are different...")
 	if tcb.SourceServerDetails.GetArtifactoryUrl() == tcb.TargetServerDetails.GetArtifactoryUrl() {

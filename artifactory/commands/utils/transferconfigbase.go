@@ -85,7 +85,7 @@ func (tcb *TransferConfigBase) ValidateMinVersionAndDifferentServers() (string, 
 		return "", err
 	}
 
-	// Validate that the target Artifactory server is at least as the source Artifactory server
+	// Validate that the target Artifactory server version is >= than the source Artifactory server version
 	if !version.NewVersion(targetArtifactoryVersion).AtLeast(sourceArtifactoryVersion) {
 		return "", errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
 	}

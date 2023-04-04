@@ -7,11 +7,9 @@ import (
 	"strings"
 
 	"github.com/jfrog/build-info-go/build"
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -98,10 +96,6 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 		return
 	}
 
-	if err = nic.runInstallOrCi(); err != nil {
-		return
-	}
-
 	if !nic.collectBuildInfo {
 		log.Info(fmt.Sprintf("npm %s finished successfully.", nic.cmdName))
 		return
@@ -149,22 +143,9 @@ func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 	return nil
 }
 
-func (nic *NpmInstallOrCiCommand) runInstallOrCi() error {
-	log.Info(fmt.Sprintf("Running 'npm %s %s' command.", nic.cmdName, strings.Join(nic.npmArgs, " ")))
-	npmCmdConfig := &npmutils.NpmConfig{
-		Npm:          nic.executablePath,
-		Command:      append([]string{nic.cmdName}, nic.npmArgs...),
-		CommandFlags: nil,
-		StrWriter:    nil,
-		ErrWriter:    nil,
-	}
-
-	return errorutils.CheckError(gofrogcmd.RunCmd(npmCmdConfig))
-}
-
 func (nic *NpmInstallOrCiCommand) collectDependencies() error {
-	nic.buildInfoModule.SetNpmArgs(nic.npmArgs)
-	return errorutils.CheckError(nic.buildInfoModule.CalcDependencies())
+	nic.buildInfoModule.SetNpmArgs(append([]string{nic.cmdName}, nic.npmArgs...))
+	return errorutils.CheckError(nic.buildInfoModule.Build())
 }
 
 // Gets a config with value which is an array

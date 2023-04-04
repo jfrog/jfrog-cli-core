@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -47,56 +48,53 @@ allprojects {
 )
 
 type depTreeManager struct {
-	DependenciesTree
+	dependenciesTree
 	server       *config.ServerDetails
 	releasesRepo string
 	depsRepo     string
 	useWrapper   bool
 }
 
-// DependenciesTree represents a map between dependencies to their children dependencies in multiple projects.
-type DependenciesTree struct {
-	tree map[string][]DependenciesPaths
+// dependenciesTree represents a map between dependencies to their children dependencies in multiple projects.
+type dependenciesTree struct {
+	tree map[string][]dependenciesPaths
 }
 
-// DependenciesPaths represents a map between dependencies to their children dependencies in a single project.
-type DependenciesPaths struct {
-	Paths map[string]DependenciesPaths `json:"children"`
+// dependenciesPaths represents a map between dependencies to their children dependencies in a single project.
+type dependenciesPaths struct {
+	Paths map[string]dependenciesPaths `json:"children"`
 }
 
 // The gradle-dep-tree generates a JSON representation for the dependencies for each gradle build file in the project.
-// parseDepTreeFiles iterates over those JSONs, and append them to the map of dependencies in DependenciesTree struct.
+// parseDepTreeFiles iterates over those JSONs, and append them to the map of dependencies in dependenciesTree struct.
 func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
 	outputFiles := strings.Split(strings.TrimSpace(string(jsonFiles)), "\n")
 	for _, path := range outputFiles {
-		log.Info("reading", strings.TrimSpace(path))
 		tree, err := os.ReadFile(strings.TrimSpace(path))
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 
 		encodedFileName := path[strings.LastIndex(path, string(os.PathSeparator))+1:]
-		log.Info("decoding", encodedFileName)
 		decodedFileName, err := base64.StdEncoding.DecodeString(encodedFileName)
 		if err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
 
 		if err = dtp.appendDependenciesPaths(tree, string(decodedFileName)); err != nil {
-			return err
+			return errorutils.CheckError(err)
 		}
-
 	}
 	return nil
 }
 
 func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName string) error {
-	var deps DependenciesPaths
+	var deps dependenciesPaths
 	if err := json.Unmarshal(jsonDepTree, &deps); err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 	if dtp.tree == nil {
-		dtp.tree = make(map[string][]DependenciesPaths)
+		dtp.tree = make(map[string][]dependenciesPaths)
 	}
 	dtp.tree[fileName] = append(dtp.tree[fileName], deps)
 	return nil
@@ -168,11 +166,6 @@ func (dtp *depTreeManager) execGradleDepTree() (outputFileContent []byte, err er
 	if err != nil {
 		return
 	}
-	if dtp.useWrapper {
-		if err = os.Chmod(gradleExecPath, 0777); err != nil {
-			return
-		}
-	}
 
 	outputFileAbsolutePath, err := filepath.Abs(depTreeOutputFile)
 	if err != nil {
@@ -212,7 +205,7 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 	return depsGraph, nil
 }
 
-func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren DependenciesPaths) {
+func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren dependenciesPaths) {
 	for gav, children := range currNodeChildren.Paths {
 		childNode := &services.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
@@ -237,20 +230,18 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 		return "", fmt.Errorf("either username/password or access token must be set for %s", server.Url)
 	}
 	return fmt.Sprintf(artifactoryRepository,
-		server.ArtifactoryUrl,
+		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,
 		user,
 		pass), nil
 }
 
+// getGradleConfig the remote repository and server details defined in the .jfrog/projects/gradle.yaml file, if configured.
 func getGradleConfig() (string, *config.ServerDetails, error) {
 	var exists bool
 	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Gradle)
-	if err != nil {
+	if err != nil || !exists {
 		return "", nil, err
-	}
-	if !exists {
-		return "", nil, nil
 	}
 	log.Debug("Using resolver config from", configFilePath)
 	configContent, err := utils.ReadConfigFile(configFilePath, utils.YAML)

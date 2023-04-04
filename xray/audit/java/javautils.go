@@ -23,7 +23,7 @@ type DependencyTreeParams struct {
 	IgnoreConfigFile bool
 	ExcludeTestDeps  bool
 	UseWrapper       bool
-	MvnProps         map[string]any
+	JavaProps        map[string]any
 	Server           *config.ServerDetails
 	DepsRepo         string
 	ReleasesRepo     string
@@ -133,7 +133,7 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 
 func BuildDependencyTree(params *DependencyTreeParams) (modules []*services.GraphNode, err error) {
 	if params.Tool == coreutils.Maven {
-		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.MvnProps)
+		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
 	}
 	server := &config.ServerDetails{}
 	depsRepo := ""

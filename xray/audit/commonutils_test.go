@@ -115,7 +115,7 @@ func TestBuildImpactPaths(t *testing.T) {
 		},
 	}
 
-	BuildImpactPaths(scanResult, dependencyTrees)
+	scanResult = BuildImpactPathsForScanResponse(scanResult, dependencyTrees)
 	// assert that the components were updated with impact paths
 	expectedImpactPaths := [][]services.ImpactPathNode{{{ComponentId: "dep1"}}}
 	assert.Equal(t, expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep1"].ImpactPaths)

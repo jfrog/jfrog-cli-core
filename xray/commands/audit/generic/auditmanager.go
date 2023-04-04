@@ -275,9 +275,9 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	default:
 		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
-	// Save the original dependencyTree to build the impact paths for vulnerable dependencies.
+	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
-	// Flatten the graph to speed up the ScanGraph request.
+	// Flatten the graph to speed up the ScanGraph request
 	return services.FlattenGraph(dependencyTrees), e
 }
 

@@ -3,6 +3,7 @@ package java
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -124,14 +125,12 @@ func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, de
 
 func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err error) {
 	// Create the script file in the repository
-	if err = dtp.createDepTreeScript(); err != nil {
+	depTreeDir, err := dtp.createDepTreeScript()
+	if err != nil {
 		return
 	}
 	defer func() {
-		e := os.Remove(depTreeInitFile)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, fileutils.RemoveTempDir(depTreeDir))
 	}()
 
 	if dtp.useWrapper {
@@ -141,10 +140,14 @@ func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err err
 		}
 	}
 
-	return dtp.execGradleDepTree()
+	return dtp.execGradleDepTree(depTreeDir)
 }
 
-func (dtp *depTreeManager) createDepTreeScript() (err error) {
+func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
+	tmpDir, err = fileutils.CreateTempDir()
+	if err != nil {
+		return
+	}
 	depsRepo := ""
 	releasesRepo := ""
 	if dtp.server != nil {
@@ -158,32 +161,34 @@ func (dtp *depTreeManager) createDepTreeScript() (err error) {
 		}
 	}
 	depTreeInitScript := fmt.Sprintf(depTreeInitScript, releasesRepo, depsRepo)
-	return os.WriteFile(depTreeInitFile, []byte(depTreeInitScript), 0666)
+	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 
-func (dtp *depTreeManager) execGradleDepTree() (outputFileContent []byte, err error) {
+func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {
 	gradleExecPath, err := build.GetGradleExecPath(dtp.useWrapper)
 	if err != nil {
+		err = errorutils.CheckError(err)
 		return
 	}
 
-	outputFileAbsolutePath, err := filepath.Abs(depTreeOutputFile)
-	if err != nil {
-		return nil, err
-	}
-	tasks := []string{"clean", "generateDepTrees", "-I", depTreeInitFile, "-q", fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFileAbsolutePath), "-Dcom.jfrog.includeAllBuildFiles=true"}
+	outputFilePath := filepath.Join(depTreeDir, depTreeOutputFile)
+	tasks := []string{
+		"clean",
+		"generateDepTrees", "-I", filepath.Join(depTreeDir, depTreeInitFile),
+		"-q",
+		fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFilePath),
+		"-Dcom.jfrog.includeAllBuildFiles=true"}
 	log.Info("Running gradle dep tree command: ", gradleExecPath, tasks)
 	if output, err := exec.Command(gradleExecPath, tasks...).CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
+		return nil, errorutils.CheckErrorf(fmt.Sprintf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output)))
 	}
 	defer func() {
-		e := os.Remove(outputFileAbsolutePath)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, errorutils.CheckError(os.Remove(outputFilePath)))
 	}()
 
-	return os.ReadFile(depTreeOutputFile)
+	outputFileContent, err = os.ReadFile(depTreeOutputFile)
+	err = errorutils.CheckError(err)
+	return
 }
 
 // Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input

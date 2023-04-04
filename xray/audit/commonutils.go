@@ -134,3 +134,101 @@ func GetExecutableVersion(executable string) (version string, err error) {
 	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
 	return
 }
+
+// BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
+// Returns the updated services.ScanResponse slice.
+func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTrees []*services.GraphNode) []services.ScanResponse {
+	for _, result := range scanResult {
+		if len(result.Vulnerabilities) > 0 {
+			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTrees)
+		}
+		if len(result.Violations) > 0 {
+			buildViolationsImpactPaths(result.Violations, dependencyTrees)
+		}
+		if len(result.Licenses) > 0 {
+			buildLicensesImpactPaths(result.Licenses, dependencyTrees)
+		}
+	}
+	return scanResult
+}
+
+func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*services.GraphNode) {
+	vulnerabilitiesMap := make(map[string][][]services.ImpactPathNode)
+	// Build map of vulnerabilities to their impact paths
+	for _, vulnerability := range vulnerabilities {
+		for dependencyName := range vulnerability.Components {
+			vulnerabilitiesMap[dependencyName] = [][]services.ImpactPathNode{}
+		}
+	}
+
+	// Set the impact paths for each vulnerability in the map
+	for _, dependency := range dependencyTrees {
+		setPathsForIssues(dependency, vulnerabilitiesMap, []services.ImpactPathNode{})
+	}
+
+	for i := range vulnerabilities {
+		for dependencyName := range vulnerabilities[i].Components {
+			updateVulnerableComponent(vulnerabilities[i].Components, vulnerabilitiesMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*services.GraphNode) {
+	violationsMap := make(map[string][][]services.ImpactPathNode)
+	// Build map of violations to their impact paths
+	for _, violation := range violations {
+		for dependencyName := range violation.Components {
+			violationsMap[dependencyName] = [][]services.ImpactPathNode{}
+		}
+	}
+
+	// Set the impact paths for each violation in the map
+	for _, dependency := range dependencyTrees {
+		setPathsForIssues(dependency, violationsMap, []services.ImpactPathNode{})
+	}
+
+	for i := range violations {
+		for dependencyName := range violations[i].Components {
+			updateVulnerableComponent(violations[i].Components, violationsMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*services.GraphNode) {
+	licensesMap := make(map[string][][]services.ImpactPathNode)
+	// Build map of licenses to their impact paths
+	for _, license := range licenses {
+		for dependencyName := range license.Components {
+			licensesMap[dependencyName] = [][]services.ImpactPathNode{}
+		}
+	}
+
+	// Set the impact paths for each license in the map
+	for _, dependency := range dependencyTrees {
+		setPathsForIssues(dependency, licensesMap, []services.ImpactPathNode{})
+	}
+
+	for i := range licenses {
+		for dependencyName := range licenses[i].Components {
+			updateVulnerableComponent(licenses[i].Components, licensesMap[dependencyName], dependencyName)
+		}
+	}
+}
+
+func updateVulnerableComponent(components map[string]services.Component, impactPaths [][]services.ImpactPathNode, dependencyName string) {
+	components[dependencyName] = services.Component{
+		FixedVersions: components[dependencyName].FixedVersions,
+		ImpactPaths:   impactPaths,
+		Cpes:          components[dependencyName].Cpes,
+	}
+}
+
+func setPathsForIssues(dependency *services.GraphNode, issuesMap map[string][][]services.ImpactPathNode, pathFromRoot []services.ImpactPathNode) {
+	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
+	if _, exists := issuesMap[dependency.Id]; exists {
+		issuesMap[dependency.Id] = append(issuesMap[dependency.Id], pathFromRoot)
+	}
+	for _, depChild := range dependency.Nodes {
+		setPathsForIssues(depChild, issuesMap, pathFromRoot)
+	}
+}

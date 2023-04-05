@@ -19,25 +19,25 @@ func TestSetPathsForIssues(t *testing.T) {
 	childNode3.Nodes = []*services.GraphNode{childNode5}
 
 	// Create a test issues map
-	issuesMap := make(map[string][][]services.ImpactPathNode)
-	issuesMap["child1"] = make([][]services.ImpactPathNode, 0)
-	issuesMap["child4"] = make([][]services.ImpactPathNode, 0)
-	issuesMap["child5"] = make([][]services.ImpactPathNode, 0)
+	issuesMap := make(map[string]*services.Component)
+	issuesMap["child1"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
+	issuesMap["child4"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
+	issuesMap["child5"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
 
 	// Call setPathsForIssues with the test data
 	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
 
 	// Check the results
-	assert.Equal(t, issuesMap["child1"][0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child1"][0][1].ComponentId, "child1")
+	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][1].ComponentId, "child1")
 
-	assert.Equal(t, issuesMap["child4"][0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child4"][0][1].ComponentId, "child2")
-	assert.Equal(t, issuesMap["child4"][0][2].ComponentId, "child4")
+	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][1].ComponentId, "child2")
+	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][2].ComponentId, "child4")
 
-	assert.Equal(t, issuesMap["child5"][0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child5"][0][1].ComponentId, "child3")
-	assert.Equal(t, issuesMap["child5"][0][2].ComponentId, "child5")
+	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][1].ComponentId, "child3")
+	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][2].ComponentId, "child5")
 }
 
 func TestUpdateVulnerableComponent(t *testing.T) {
@@ -48,16 +48,22 @@ func TestUpdateVulnerableComponent(t *testing.T) {
 			ImpactPaths:   [][]services.ImpactPathNode{},
 		},
 	}
-	impactPaths := [][]services.ImpactPathNode{
-		{{ComponentId: "dependency2"}},
-	}
 	dependencyName := "dependency1"
-	updateVulnerableComponent(components, impactPaths, dependencyName)
+	issuesMap := map[string]*services.Component{
+		dependencyName: {
+			FixedVersions: []string{"1.0.0"},
+			ImpactPaths: [][]services.ImpactPathNode{
+				{{ComponentId: "dependency2"}},
+			},
+		},
+	}
+
+	updateComponentsWithImpactPaths(components, issuesMap)
 
 	// Check the result
 	expected := services.Component{
 		FixedVersions: []string{"1.0.0"},
-		ImpactPaths:   impactPaths,
+		ImpactPaths:   issuesMap[dependencyName].ImpactPaths,
 	}
 	assert.Equal(t, expected, components[dependencyName])
 }

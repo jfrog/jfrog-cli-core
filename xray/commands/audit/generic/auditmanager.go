@@ -215,7 +215,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
+		err = errorutils.CheckError(errors.New(errorList.String()))
 	}
 
 	return
@@ -282,8 +282,9 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 		err = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 		return
 	}
-
+	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
+	// Flatten the graph to speed up the ScanGraph request
 	return services.FlattenGraph(dependencyTrees), err
 }
 

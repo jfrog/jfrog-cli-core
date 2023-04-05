@@ -29,6 +29,7 @@ type Params struct {
 	xrayGraphScanParams services.XrayGraphScanParams
 	serverDetails       *config.ServerDetails
 	progress            ioUtils.ProgressMgr
+	dependencyTrees     []*services.GraphNode
 	ignoreConfigFile    bool
 	excludeTestDeps     bool
 	insecureTls         bool
@@ -240,6 +241,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
 			continue
 		}
+		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)
 		results = append(results, techResults...)
 		isMultipleRoot = len(dependencyTrees) > 1
 	}
@@ -273,8 +275,10 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	default:
 		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
 	}
-
-	return dependencyTrees, e
+	// Save the full dependencyTree to build impact paths for vulnerable dependencies
+	params.dependencyTrees = dependencyTrees
+	// Flatten the graph to speed up the ScanGraph request
+	return services.FlattenGraph(dependencyTrees), e
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {

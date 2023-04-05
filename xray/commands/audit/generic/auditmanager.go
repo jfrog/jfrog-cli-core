@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -35,6 +34,7 @@ type Params struct {
 	insecureTls         bool
 	useWrapper          bool
 	depsRepo            string
+	releasesRepo        string
 	requirementsFile    string
 	technologies        []string
 	workingDirs         []string
@@ -158,6 +158,11 @@ func (params *Params) SetDepsRepo(depsRepo string) *Params {
 	return params
 }
 
+func (params *Params) SetReleasesRepo(releasesRepo string) *Params {
+	params.releasesRepo = releasesRepo
+	return params
+}
+
 func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
 	params.installFunc = installFunc
 	return params
@@ -209,7 +214,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errorutils.CheckError(errors.New(errorList.String()))
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 
 	return
@@ -246,44 +251,45 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		isMultipleRoot = len(dependencyTrees) > 1
 	}
 	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, err error) {
 	if params.progress != nil {
 		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
-		dependencyTrees, e = getJavaDependencyTree(params, tech)
+		dependencyTrees, err = getJavaDependencyTree(params, tech)
 	case coreutils.Npm:
-		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+		dependencyTrees, err = npm.BuildDependencyTree(params.args)
 	case coreutils.Yarn:
-		dependencyTrees, e = yarn.BuildDependencyTree()
+		dependencyTrees, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
+		dependencyTrees, err = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
+		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              params.serverDetails,
 			Tool:                pythonutils.PythonTool(tech),
 			RemotePypiRepo:      params.depsRepo,
 			PipRequirementsFile: params.requirementsFile})
 	case coreutils.Nuget:
-		dependencyTrees, e = nuget.BuildDependencyTree()
+		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
-		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
+		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
+		return
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
 	// Flatten the graph to speed up the ScanGraph request
-	return services.FlattenGraph(dependencyTrees), e
+	return services.FlattenGraph(dependencyTrees), err
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
 	var javaProps map[string]any
-	if params.DepsRepo() != "" {
+	if params.DepsRepo() != "" && tech == coreutils.Maven {
 		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
@@ -293,6 +299,9 @@ func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*servic
 		ExcludeTestDeps:  params.excludeTestDeps,
 		UseWrapper:       params.useWrapper,
 		JavaProps:        javaProps,
+		Server:           params.serverDetails,
+		DepsRepo:         params.depsRepo,
+		ReleasesRepo:     params.releasesRepo,
 	})
 }
 

@@ -182,7 +182,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		"-Dcom.jfrog.includeAllBuildFiles=true"}
 	log.Info("Running gradle dep tree command: ", gradleExecPath, tasks)
 	if output, err := exec.Command(gradleExecPath, tasks...).CombinedOutput(); err != nil {
-		return nil, errorutils.CheckErrorf(fmt.Sprintf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output)))
+		return nil, errorutils.CheckErrorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
 	}
 	defer func() {
 		e := errorutils.CheckError(os.Remove(outputFilePath))

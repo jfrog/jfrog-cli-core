@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -215,7 +214,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errorutils.CheckError(errors.New(errorList.String()))
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 
 	return
@@ -279,7 +278,7 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	case coreutils.Nuget:
 		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
-		err = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
+		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 		return
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies

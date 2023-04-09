@@ -155,15 +155,6 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	return config, errorutils.CheckError(err)
 }
 
-func ReadGradleConfig(path string, gradleConfigParams map[string]any) (config *viper.Viper, err error) {
-	if path == "" {
-		config = createDefaultConfigWithParams(YAML, Gradle.String(), gradleConfigParams)
-	} else {
-		config, err = ReadConfigFile(path, YAML)
-	}
-	return
-}
-
 func ReadMavenConfig(path string, mvnProps map[string]any) (config *viper.Viper, err error) {
 	if path == "" {
 		config = createDefaultConfigWithParams(YAML, Maven.String(), mvnProps)

@@ -18,57 +18,45 @@ const npmrcFileName = ".npmrc"
 const npmrcBackupFileName = "jfrog.npmrc.backup"
 const minSupportedNpmVersion = "5.4.0"
 
-type NpmInstallOrCiCommand struct {
+type NpmCommand struct {
+	cmdName             string
 	configFilePath      string
 	internalCommandName string
+	executablePath      string
 	collectBuildInfo    bool
 	buildInfoModule     *build.NpmModule
 	CommonArgs
 }
 
-/*type NpmPublishCommandArgs struct {
-	NpmCommand
-	executablePath         string
-	workingDirectory       string
-	collectBuildInfo       bool
-	packedFilePath         string
-	packageInfo            *biutils.PackageInfo
-	publishPath            string
-	tarballProvided        bool
-	artifactsDetailsReader *content.ContentReader
-	xrayScan               bool
-	scanOutputFormat       xrutils.OutputFormat
-}*/
-
-func NewNpmInstallCommand() *NpmInstallOrCiCommand {
-	return &NpmInstallOrCiCommand{CommonArgs: CommonArgs{cmdName: "install"}, internalCommandName: "rt_npm_install"}
+func NewNpmInstallCommand() *NpmCommand {
+	return &NpmCommand{CommonArgs: CommonArgs{cmdName: "install"}, internalCommandName: "rt_npm_install"}
 }
 
-func NewNpmCiCommand() *NpmInstallOrCiCommand {
-	return &NpmInstallOrCiCommand{CommonArgs: CommonArgs{cmdName: "ci"}, internalCommandName: "rt_npm_ci"}
+func NewNpmCiCommand() *NpmCommand {
+	return &NpmCommand{CommonArgs: CommonArgs{cmdName: "ci"}, internalCommandName: "rt_npm_ci"}
 }
 
-func (nic *NpmInstallOrCiCommand) CommandName() string {
+func (nic *NpmCommand) CommandName() string {
 	return nic.internalCommandName
 }
 
-func (nic *NpmInstallOrCiCommand) SetConfigFilePath(configFilePath string) *NpmInstallOrCiCommand {
+func (nic *NpmCommand) SetConfigFilePath(configFilePath string) *NpmCommand {
 	nic.configFilePath = configFilePath
 	return nic
 }
 
-func (nic *NpmInstallOrCiCommand) SetArgs(args []string) *NpmInstallOrCiCommand {
+func (nic *NpmCommand) SetArgs(args []string) *NpmCommand {
 	nic.npmArgs = args
 	return nic
 }
 
-func (nic *NpmInstallOrCiCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmInstallOrCiCommand {
+func (nic *NpmCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmCommand {
 	serverDetails, _ := conf.ServerDetails()
 	nic.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
 	return nic
 }
 
-func (nic *NpmInstallOrCiCommand) Init() error {
+func (nic *NpmCommand) Init() error {
 	// Read config file.
 	log.Debug("Preparing to read the config file", nic.configFilePath)
 	vConfig, err := utils.ReadConfigFile(nic.configFilePath, utils.YAML)
@@ -88,11 +76,11 @@ func (nic *NpmInstallOrCiCommand) Init() error {
 	return nil
 }
 
-func (nic *NpmInstallOrCiCommand) ServerDetails() (*config.ServerDetails, error) {
+func (nic *NpmCommand) ServerDetails() (*config.ServerDetails, error) {
 	return nic.serverDetails, nil
 }
 
-func (nic *NpmInstallOrCiCommand) Run() (err error) {
+func (nic *NpmCommand) Run() (err error) {
 	if err = nic.PreparePrerequisites(nic.repo, true); err != nil {
 		return
 	}
@@ -121,7 +109,7 @@ func (nic *NpmInstallOrCiCommand) Run() (err error) {
 	return
 }
 
-func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
+func (nic *NpmCommand) prepareBuildInfoModule() error {
 	var err error
 	nic.collectBuildInfo, err = nic.buildConfiguration.IsCollectBuildInfo()
 	if err != nil || !nic.collectBuildInfo {
@@ -157,7 +145,7 @@ func (nic *NpmInstallOrCiCommand) prepareBuildInfoModule() error {
 	return nil
 }
 
-func (nic *NpmInstallOrCiCommand) collectDependencies() error {
+func (nic *NpmCommand) collectDependencies() error {
 	nic.buildInfoModule.SetNpmArgs(append([]string{nic.cmdName}, nic.npmArgs...))
 	return errorutils.CheckError(nic.buildInfoModule.Build())
 }

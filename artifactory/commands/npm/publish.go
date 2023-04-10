@@ -31,8 +31,7 @@ import (
 const packDestinationNpmMinVersion = "7.18.0"
 
 type NpmPublishCommandArgs struct {
-	CommonArgs
-	executablePath         string
+	NpmCommand
 	workingDirectory       string
 	collectBuildInfo       bool
 	packedFilePath         string

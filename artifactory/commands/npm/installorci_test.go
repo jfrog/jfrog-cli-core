@@ -36,7 +36,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"registry = http://goodRegistry",
 		}
 
-	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken, npmVersion: version.NewVersion("9.5.0")}}
+	npmi := NpmCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken, npmVersion: version.NewVersion("9.5.0")}}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)

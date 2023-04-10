@@ -33,7 +33,6 @@ const packDestinationNpmMinVersion = "7.18.0"
 type NpmPublishCommandArgs struct {
 	NpmCommand
 	workingDirectory       string
-	collectBuildInfo       bool
 	packedFilePath         string
 	packageInfo            *biutils.PackageInfo
 	publishPath            string

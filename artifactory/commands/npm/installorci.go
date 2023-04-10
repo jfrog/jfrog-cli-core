@@ -26,6 +26,20 @@ type NpmInstallOrCiCommand struct {
 	CommonArgs
 }
 
+/*type NpmPublishCommandArgs struct {
+	NpmCommand
+	executablePath         string
+	workingDirectory       string
+	collectBuildInfo       bool
+	packedFilePath         string
+	packageInfo            *biutils.PackageInfo
+	publishPath            string
+	tarballProvided        bool
+	artifactsDetailsReader *content.ContentReader
+	xrayScan               bool
+	scanOutputFormat       xrutils.OutputFormat
+}*/
+
 func NewNpmInstallCommand() *NpmInstallOrCiCommand {
 	return &NpmInstallOrCiCommand{CommonArgs: CommonArgs{cmdName: "install"}, internalCommandName: "rt_npm_install"}
 }

@@ -19,6 +19,7 @@ type SearchResult struct {
 	Created  string              `json:"created,omitempty"`
 	Modified string              `json:"modified,omitempty"`
 	Sha1     string              `json:"sha1,omitempty"`
+	Sha256   string              `json:"sha256,omitempty"`
 	Md5      string              `json:"md5,omitempty"`
 	Props    map[string][]string `json:"props,omitempty"`
 }
@@ -56,12 +57,17 @@ func printSearchResult(toPrint SearchResult, suffix string) error {
 	return nil
 }
 
-func AqlResultToSearchResult(readers []*content.ContentReader) (*content.ContentReader, error) {
+func AqlResultToSearchResult(readers []*content.ContentReader) (contentReader *content.ContentReader, err error) {
 	writer, err := content.NewContentWriter("results", true, false)
 	if err != nil {
 		return nil, err
 	}
-	defer writer.Close()
+	defer func() {
+		e := writer.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	for _, reader := range readers {
 		for searchResult := new(utils.ResultItem); reader.NextRecord(searchResult) == nil; searchResult = new(utils.ResultItem) {
 			if err != nil {
@@ -80,6 +86,7 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (*content.Content
 			tempResult.Created = searchResult.Created
 			tempResult.Modified = searchResult.Modified
 			tempResult.Sha1 = searchResult.Actual_Sha1
+			tempResult.Sha256 = searchResult.Sha256
 			tempResult.Md5 = searchResult.Actual_Md5
 			tempResult.Props = make(map[string][]string, len(searchResult.Properties))
 			for _, prop := range searchResult.Properties {
@@ -92,7 +99,8 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (*content.Content
 		}
 		reader.Reset()
 	}
-	return content.NewContentReader(writer.GetFilePath(), content.DefaultKey), nil
+	contentReader = content.NewContentReader(writer.GetFilePath(), content.DefaultKey)
+	return
 }
 
 func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err error) {
@@ -121,12 +129,17 @@ func GetSearchParams(f *spec.File) (searchParams services.SearchParams, err erro
 	return
 }
 
-func SearchResultNoDate(reader *content.ContentReader) (*content.ContentReader, error) {
+func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.ContentReader, err error) {
 	writer, err := content.NewContentWriter("results", true, false)
 	if err != nil {
 		return nil, err
 	}
-	defer writer.Close()
+	defer func() {
+		e := writer.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 	for resultItem := new(SearchResult); reader.NextRecord(resultItem) == nil; resultItem = new(SearchResult) {
 		if err != nil {
 			return nil, err
@@ -141,5 +154,6 @@ func SearchResultNoDate(reader *content.ContentReader) (*content.ContentReader, 
 		return nil, err
 	}
 	reader.Reset()
-	return content.NewContentReader(writer.GetFilePath(), writer.GetArrayKey()), nil
+	contentReader = content.NewContentReader(writer.GetFilePath(), writer.GetArrayKey())
+	return
 }

@@ -1,12 +1,14 @@
-# jfrog-cli-core
+<div align="center">
 
+# jfrog-cli-core
 [![Scanned by Frogbot](https://raw.github.com/jfrog/frogbot/master/images/frogbot-badge.svg)](https://github.com/jfrog/frogbot#readme)
+
+</div>
 
 | Branch |                                                                                                                                                                                            Status                                                                                                                                                                                            |
 |:------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | master | [![Test](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml?query=branch%3Amaster) [![Static Analysis](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml/badge.svg?branch=master)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml) |
 |  dev   |     [![Test](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml?query=branch%3Adev) [![Static Analysis](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml/badge.svg?branch=dev)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml)      |
-
 
 ## General
 

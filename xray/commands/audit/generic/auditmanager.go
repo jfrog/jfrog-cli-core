@@ -243,7 +243,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit scan command failed:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)

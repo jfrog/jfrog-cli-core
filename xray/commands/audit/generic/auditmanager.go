@@ -181,8 +181,7 @@ func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRo
 	if err != nil {
 		return
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion)
-	if err != nil {
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion); err != nil {
 		return
 	}
 	params.xrayVersion = xrayVersion

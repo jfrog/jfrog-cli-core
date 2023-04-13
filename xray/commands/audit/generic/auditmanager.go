@@ -103,6 +103,7 @@ func (params *Params) Args() []string {
 func (params *Params) XrayVersion() string {
 	return params.xrayVersion
 }
+
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params

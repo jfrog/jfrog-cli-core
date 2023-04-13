@@ -70,13 +70,11 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 	log.Info("JFrog Xray version is:", xrayVersion)
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		xrayGraphScanPrams.Graph = moduleDependencyTree
-		// Log the scanned module ID
-		moduleName := moduleDependencyTree.Id[strings.Index(moduleDependencyTree.Id, "//")+2:]
-		log.Info("Scanning module " + moduleName + "...")
+		log.Info("Scanning", len(xrayGraphScanPrams.Graph.Nodes), string(technology), "dependencies...")
 		var scanResults *services.ScanResponse
 		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {
-			err = errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
+			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
 			return
 		}
 		for i := range scanResults.Vulnerabilities {

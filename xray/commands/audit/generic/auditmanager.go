@@ -238,7 +238,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed building a dependency tree:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)

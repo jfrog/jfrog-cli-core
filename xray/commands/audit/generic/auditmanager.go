@@ -171,7 +171,7 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project: ")
+		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -196,7 +196,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd)
+		log.Info("Auditing project:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
@@ -238,12 +238,12 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit failed building a dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit scan command failed:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)

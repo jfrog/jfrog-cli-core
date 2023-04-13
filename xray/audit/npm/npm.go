@@ -7,10 +7,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"golang.org/x/exp/slices"
 )
 
 const (
 	npmPackageTypeIdentifier = "npm://"
+	ignoreScriptsFlag        = "--ignore-scripts"
 )
 
 func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode, err error) {
@@ -26,6 +28,8 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode
 	if err != nil {
 		return
 	}
+	npmArgs = addIgnoreScriptsFlag(npmArgs)
+
 	// Calculate npm dependencies
 	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
 	if err != nil {
@@ -35,6 +39,14 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode
 	// Parse the dependencies into Xray dependency tree format
 	dependencyTree = []*services.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
 	return
+}
+
+// Add the --ignore-scripts to prevent execution of npm scripts during npm install.
+func addIgnoreScriptsFlag(npmArgs []string) []string {
+	if !slices.Contains(npmArgs, ignoreScriptsFlag) {
+		return append(npmArgs, ignoreScriptsFlag)
+	}
+	return npmArgs
 }
 
 // Parse the dependencies into an Xray dependency tree format

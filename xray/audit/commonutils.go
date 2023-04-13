@@ -76,7 +76,7 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 		var scanResults *services.ScanResponse
 		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {
-			err = errorutils.CheckErrorf("Scanning %s failed with error: %s", moduleName, err.Error())
+			err = errorutils.CheckErrorf("scanning '%s' failed with error: %s", moduleName, err.Error())
 			return
 		}
 		for i := range scanResults.Vulnerabilities {

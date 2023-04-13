@@ -3,6 +3,7 @@ package audit
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ type Params struct {
 	workingDirs         []string
 	args                []string
 	installFunc         func(tech string) error
+	xrayVersion         string
 }
 
 func NewAuditParams() *Params {
@@ -98,6 +100,9 @@ func (params *Params) Args() []string {
 	return params.args
 }
 
+func (params *Params) XrayVersion() string {
+	return params.xrayVersion
+}
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params
@@ -170,6 +175,18 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+	// Get Xray version
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(params.serverDetails)
+	if err != nil {
+		return
+	}
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion)
+	if err != nil {
+		return
+	}
+	params.xrayVersion = xrayVersion
+	log.Info("JFrog Xray version is:", xrayVersion)
+
 	if len(params.workingDirs) == 0 {
 		log.Info("Auditing project...")
 		return doAudit(params)
@@ -241,7 +258,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech, params.xrayVersion)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue

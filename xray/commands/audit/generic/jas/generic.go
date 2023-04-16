@@ -1,29 +1,11 @@
 package jas
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"math/rand"
-	"os"
 	"time"
 )
 
-const analyzerManagerFilePath = "/Users/ort/workspace/src/jfrog.com/analyzerManager" // todo add real path
-
-func isTechEligibleForJas(tech coreutils.Technology, eligibleTechnologies []coreutils.Technology) bool {
-	for _, eligibleTech := range eligibleTechnologies {
-		if tech == eligibleTech {
-			return true
-		}
-	}
-	return false
-}
-
-func isAnalyzerManagerExecutableExist() error {
-	if _, err := os.Stat(analyzerManagerFilePath); err != nil {
-		return err
-	}
-	return nil
-}
+const analyzerManagerFilePath = "/Users/ort/Documents/am_eco/analyzerManager" // todo add real path
 
 func generateRandomFileName() string {
 	rand.Seed(time.Now().UnixNano())

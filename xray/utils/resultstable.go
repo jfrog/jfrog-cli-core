@@ -196,7 +196,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, applicable
 					JfrogResearchInformation:  jfrogResearchInfo,
 					ImpactPaths:               impactPaths[compIndex],
 					Technology:                coreutils.Technology(vulnerability.Technology),
-					ApplicableInCode:          areCvesApplicable(applicableCves, cves),
+					ApplicableInCode:          printApplicableCveValue(areCvesApplicable(applicableCves, cves), isTable),
 				},
 			)
 		}
@@ -664,4 +664,11 @@ func areCvesApplicable(applicableCves []string, xrayCves []formats.CveRow) bool 
 		}
 	}
 	return false
+}
+
+func printApplicableCveValue(applicable bool, isTable bool) string {
+	if applicable && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
+		return color.New(color.Red).Render("Yes")
+	}
+	return "No"
 }

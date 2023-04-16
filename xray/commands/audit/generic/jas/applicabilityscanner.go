@@ -2,11 +2,13 @@ package jas
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -15,8 +17,9 @@ const (
 	applicabilityScanType    = "analyze-applicability"
 )
 
-//var eligibleTechnologiesForApplicabilityScan = []coreutils.Technology{
-//	coreutils.Npm, coreutils.Pip, coreutils.Poetry, coreutils.Pipenv }
+var (
+	analyzerManagerExecuter AnalyzerManager = &analyzerManager{}
+)
 
 type ExtendedScanResults struct {
 	XrayResults    []services.ScanResponse
@@ -31,7 +34,11 @@ func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResul
 	applicabilityScanManager := NewApplicabilityScanManager(results)
 	err := applicabilityScanManager.Run()
 	if err != nil {
-		//todo log error, continue
+		log.Info("failed to run applicability scan: " + err.Error())
+		deleteFilesError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
+		if deleteFilesError != nil {
+			return nil, deleteFilesError
+		}
 		extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicableCves: nil}
 		return &extendedScanResults, nil
 	}
@@ -40,24 +47,12 @@ func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResul
 	return &extendedScanResults, nil
 }
 
-type applicabilityScanConfig struct {
-	Scans []scanConfiguration `yaml:"scans"`
-}
-
-type scanConfiguration struct {
-	Roots          []string `yaml:"roots"`
-	Output         string   `yaml:"output"`
-	Type           string   `yaml:"type"`
-	GrepDisable    bool     `yaml:"grep-disable"`
-	CveWhitelist   []string `yaml:"cve-whitelist"`
-	SkippedFolders []string `yaml:"skipped-folders"`
-}
-
 type ApplicabilityScanManager struct {
 	applicableVulnerabilities []string
 	xrayVulnerabilities       []services.Vulnerability
 	configFileName            string
 	resultsFileName           string
+	analyzerManager           AnalyzerManager
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *ApplicabilityScanManager {
@@ -66,7 +61,8 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *Appli
 		applicableVulnerabilities: []string{},
 		xrayVulnerabilities:       xrayVulnerabilities,
 		configFileName:            generateRandomFileName() + ".yaml",
-		resultsFileName:           generateRandomFileName() + ".sarif",
+		resultsFileName:           "sarif.sarif", //generateRandomFileName() + ".sarif",
+		analyzerManager:           analyzerManagerExecuter,
 	}
 }
 
@@ -84,15 +80,8 @@ func (a *ApplicabilityScanManager) GetApplicableVulnerabilities() []string {
 	return a.applicableVulnerabilities
 }
 
-//func (a *ApplicabilityScanManager) ShouldRunApplicabilityScan() bool {
-//	if isTechEligibleForJas(a.tech, eligibleTechnologiesForApplicabilityScan) {
-//		return true
-//	}
-//	return false
-//}
-
 func (a *ApplicabilityScanManager) Run() error {
-	if err := isAnalyzerManagerExecutableExist(); err != nil {
+	if err := a.analyzerManager.DoesAnalyzerManagerExecutableExist(); err != nil {
 		return err
 	}
 	if err := a.createConfigFile(); err != nil {
@@ -110,6 +99,19 @@ func (a *ApplicabilityScanManager) Run() error {
 	return nil
 }
 
+type applicabilityScanConfig struct {
+	Scans []scanConfiguration `yaml:"scans"`
+}
+
+type scanConfiguration struct {
+	Roots          []string `yaml:"roots"`
+	Output         string   `yaml:"output"`
+	Type           string   `yaml:"type"`
+	GrepDisable    bool     `yaml:"grep-disable"`
+	CveWhitelist   []string `yaml:"cve-whitelist"`
+	SkippedFolders []string `yaml:"skipped-folders"`
+}
+
 func (a *ApplicabilityScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
@@ -119,7 +121,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 		Scans: []scanConfiguration{
 			{
 				Roots:          []string{currentDir},
-				Output:         a.resultsFileName,
+				Output:         filepath.Join(currentDir, a.resultsFileName),
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
 				CveWhitelist:   a.createCveWhiteList(),
@@ -139,7 +141,11 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 }
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	_, err := exec.Command(analyzerManagerFilePath, applicabilityScanCommand, a.configFileName).Output()
+	currentDir, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return err
+	}
+	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
 	if err != nil {
 		return err
 	}
@@ -191,4 +197,27 @@ func isVulnerabilityApplicable(vulnerability *sarif.Result) bool {
 
 func getVulnerabilityName(sarifRuleId string) string {
 	return strings.Split(sarifRuleId, "_")[1]
+}
+
+type AnalyzerManager interface {
+	DoesAnalyzerManagerExecutableExist() error
+	RunAnalyzerManager(string) error
+}
+
+type analyzerManager struct {
+}
+
+func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() error {
+	if _, err := os.Stat(analyzerManagerFilePath); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (am *analyzerManager) RunAnalyzerManager(configFile string) error {
+	_, err := exec.Command(analyzerManagerFilePath, applicabilityScanCommand, configFile).Output()
+	if err != nil {
+		return err
+	}
+	return nil
 }

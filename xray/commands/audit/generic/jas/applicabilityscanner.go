@@ -18,7 +18,9 @@ const (
 )
 
 var (
-	analyzerManagerExecuter AnalyzerManager = &analyzerManager{}
+	analyzerManagerExecuter                  AnalyzerManager = &analyzerManager{}
+	technologiesEligibleForApplicabilityScan                 = []coreutils.Technology{coreutils.Npm, coreutils.Pip, coreutils.Poetry,
+		coreutils.Pipenv, coreutils.Pypi}
 )
 
 type ExtendedScanResults struct {
@@ -33,7 +35,7 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 
 func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResults, error) {
 	applicabilityScanManager := NewApplicabilityScanManager(results)
-	if !applicabilityScanManager.analyzerManager.DoesAnalyzerManagerExecutableExist() {
+	if !applicabilityScanManager.shouldRun() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
@@ -44,6 +46,28 @@ func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResul
 	applicabilityScanResults := applicabilityScanManager.GetApplicabilityScanResults()
 	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
 	return &extendedScanResults, nil
+}
+
+func (a *ApplicabilityScanManager) shouldRun() bool {
+	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies()
+}
+
+func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
+	for _, vuln := range a.xrayVulnerabilities {
+		for _, technology := range technologiesEligibleForApplicabilityScan {
+			if vuln.Technology == technology.ToString() {
+				return true
+			}
+		}
+	}
+	for _, vuolation := range a.xrayViolations {
+		for _, technology := range technologiesEligibleForApplicabilityScan {
+			if vuolation.Technology == technology.ToString() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func handleApplicabilityScanError(err error, applicabilityScanManager *ApplicabilityScanManager) (*ExtendedScanResults, error) {
@@ -157,14 +181,14 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 }
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
-	if err != nil {
-		return err
-	}
+	//currentDir, err := coreutils.GetWorkingDirectory()
+	//if err != nil {
+	//	return err
+	//}
+	//err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
@@ -199,10 +223,10 @@ func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(a.resultsFileName)
-	if err != nil {
-		return err
-	}
+	//err = os.Remove(a.resultsFileName)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 

@@ -57,7 +57,7 @@ func PrintScanResults(results *jas.ExtendedScanResults, errors []formats.SimpleJ
 		if includeVulnerabilities {
 			err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended)
 		} else {
-			err = PrintViolationsTable(violations, isMultipleRoots, printExtended)
+			err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended)
 		}
 		if err != nil {
 			return err
@@ -114,7 +114,7 @@ func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *j
 		jsonTable.Vulnerabilities = vulJsonTable
 	}
 	if len(violations) > 0 {
-		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, simplifiedOutput)
+		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}

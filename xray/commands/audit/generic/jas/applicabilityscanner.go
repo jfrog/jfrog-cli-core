@@ -58,16 +58,17 @@ func handleApplicabilityScanError(err error, applicabilityScanManager *Applicabi
 type ApplicabilityScanManager struct {
 	applicabilityScannerResults map[string]string
 	xrayVulnerabilities         []services.Vulnerability
+	xrayViolations              []services.Violation
 	configFileName              string
 	resultsFileName             string
 	analyzerManager             AnalyzerManager
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *ApplicabilityScanManager {
-	xrayVulnerabilities := getXrayVulnerabilities(xrayScanResults)
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
-		xrayVulnerabilities:         xrayVulnerabilities,
+		xrayVulnerabilities:         getXrayVulnerabilities(xrayScanResults),
+		xrayViolations:              getXrayViolations(xrayScanResults),
 		configFileName:              generateRandomFileName() + ".yaml",
 		resultsFileName:             "sarif.sarif", //generateRandomFileName() + ".sarif",
 		analyzerManager:             analyzerManagerExecuter,
@@ -82,6 +83,16 @@ func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.
 		}
 	}
 	return xrayVulnerabilities
+}
+
+func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Violation {
+	xrayViolations := []services.Violation{}
+	for _, result := range xrayScanResults {
+		for _, violation := range result.Violations {
+			xrayViolations = append(xrayViolations, violation)
+		}
+	}
+	return xrayViolations
 }
 
 func (a *ApplicabilityScanManager) GetApplicabilityScanResults() map[string]string {
@@ -199,6 +210,13 @@ func (a *ApplicabilityScanManager) createCveList() []string {
 	cveWhiteList := []string{}
 	for _, vulnerability := range a.xrayVulnerabilities {
 		for _, cve := range vulnerability.Cves {
+			if cve.Id != "" {
+				cveWhiteList = append(cveWhiteList, cve.Id)
+			}
+		}
+	}
+	for _, violation := range a.xrayViolations {
+		for _, cve := range violation.Cves {
 			if cve.Id != "" {
 				cveWhiteList = append(cveWhiteList, cve.Id)
 			}

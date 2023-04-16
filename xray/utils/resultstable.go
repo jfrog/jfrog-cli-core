@@ -29,8 +29,8 @@ const (
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
-func PrintViolationsTable(violations []services.Violation, multipleRoots, printExtended bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, multipleRoots, true, true)
+func PrintViolationsTable(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended bool) error {
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -51,11 +51,11 @@ func PrintViolationsTable(violations []services.Violation, multipleRoots, printE
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
-	return prepareViolations(violations, multipleRoots, false, simplifiedOutput)
+func PrepareViolations(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
@@ -89,6 +89,7 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 						JfrogResearchInformation:  jfrogResearchInfo,
 						ImpactPaths:               impactPaths[compIndex],
 						Technology:                coreutils.Technology(violation.Technology),
+						Applicable:                printApplicableCveValue(getApplicableCveValue(extendedResults, cves[0]), isTable),
 					},
 				)
 			}
@@ -136,6 +137,9 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 	sort.Slice(securityViolationsRows, func(i, j int) bool {
 		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
 			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
+		} else if securityViolationsRows[i].Applicable != securityViolationsRows[j].Applicable {
+			return getApplicableCveNumValue(securityViolationsRows[j].Applicable) >
+				getApplicableCveNumValue(securityViolationsRows[i].Applicable)
 		}
 		return len(securityViolationsRows[i].FixedVersions) > 0 && len(securityViolationsRows[j].FixedVersions) > 0
 	})

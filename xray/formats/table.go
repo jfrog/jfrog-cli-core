@@ -7,6 +7,7 @@ package formats
 // Used for vulnerabilities and security violations
 type VulnerabilityTableRow struct {
 	Severity                  string                       `col-name:"Severity"`
+	Applicable                string                       `col-name:"Applicable" omitempty:"true"`
 	SeverityNumValue          int                          // For sorting
 	DirectDependencies        []DirectDependenciesTableRow `embed-table:"true"`
 	ImpactedDependencyName    string                       `col-name:"Impacted\nDependency\nName"`
@@ -15,7 +16,6 @@ type VulnerabilityTableRow struct {
 	ImpactedDependencyType    string                       `col-name:"Type"`
 	Cves                      []CveTableRow                `embed-table:"true"`
 	IssueId                   string                       `col-name:"Issue ID" extended:"true"`
-	ApplicableInCode          string                       `col-name:"Applicable\nIn Code"`
 }
 
 type LicenseTableRow struct {

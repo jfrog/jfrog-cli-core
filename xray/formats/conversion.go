@@ -9,6 +9,7 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 		tableRows = append(tableRows, VulnerabilityTableRow{
 			Severity:                  rows[i].Severity,
 			SeverityNumValue:          rows[i].SeverityNumValue,
+			Applicable:                rows[i].Applicable,
 			ImpactedDependencyName:    rows[i].ImpactedDependencyName,
 			ImpactedDependencyVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedDependencyType:    rows[i].ImpactedDependencyType,
@@ -16,7 +17,6 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 			DirectDependencies:        ConvertToComponentTableRow(rows[i].Components),
 			Cves:                      ConvertToCveTableRow(rows[i].Cves),
 			IssueId:                   rows[i].IssueId,
-			ApplicableInCode:          rows[i].ApplicableInCode,
 		})
 	}
 	return

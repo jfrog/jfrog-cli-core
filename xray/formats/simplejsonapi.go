@@ -19,6 +19,7 @@ type SimpleJsonResults struct {
 type VulnerabilityOrViolationRow struct {
 	Summary                   string                    `json:"summary"`
 	Severity                  string                    `json:"severity"`
+	Applicable                string                    `json:"Applicable"`
 	SeverityNumValue          int                       `json:"-"` // For sorting
 	ImpactedDependencyName    string                    `json:"impactedPackageName"`
 	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
@@ -31,7 +32,6 @@ type VulnerabilityOrViolationRow struct {
 	ImpactPaths               [][]ComponentRow          `json:"impactPaths"`
 	JfrogResearchInformation  *JfrogResearchInformation `json:"jfrogResearchInformation"`
 	Technology                coreutils.Technology      `json:"-"`
-	ApplicableInCode          string                    `json:"ApplicableInCode"`
 }
 
 type LicenseRow struct {

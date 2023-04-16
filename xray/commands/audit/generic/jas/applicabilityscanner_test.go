@@ -48,7 +48,7 @@ func TestGetExtendedScanResults_SuccessfulScan(t *testing.T) {
 	// assert
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicableCves)
+	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
@@ -62,7 +62,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	// assert
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicableCves)
+	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
@@ -96,3 +96,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 }
+
+//not entitled for jas
+
+//unknown cves

@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 	"sort"
 	"strconv"
@@ -152,8 +153,8 @@ func prepareViolations(violations []services.Violation, multipleRoots, isTable, 
 // Set multipleRoots to true in case the given vulnerabilities array contains (or may contain) results of several projects or files (like in binary scan).
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, printExtended bool) error {
-	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, applicableCves, multipleRoots, true, true)
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended bool) error {
+	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -162,11 +163,11 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, applica
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
-func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
-	return prepareVulnerabilities(vulnerabilities, applicableCves, multipleRoots, false, simplifiedOutput)
+func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+	return prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, applicableCves []string, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	if simplifiedOutput {
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots) //todo
 	}
@@ -196,7 +197,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, applicable
 					JfrogResearchInformation:  jfrogResearchInfo,
 					ImpactPaths:               impactPaths[compIndex],
 					Technology:                coreutils.Technology(vulnerability.Technology),
-					ApplicableInCode:          printApplicableCveValue(areCvesApplicable(applicableCves, cves), isTable),
+					Applicable:                printApplicableCveValue(getApplicableCveValue(extendedResults, cves[0]), isTable),
 				},
 			)
 		}
@@ -205,6 +206,9 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, applicable
 	sort.Slice(vulnerabilitiesRows, func(i, j int) bool {
 		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
 			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
+		} else if vulnerabilitiesRows[i].Applicable != vulnerabilitiesRows[j].Applicable {
+			return getApplicableCveNumValue(vulnerabilitiesRows[j].Applicable) >
+				getApplicableCveNumValue(vulnerabilitiesRows[i].Applicable)
 		}
 		return len(vulnerabilitiesRows[i].FixedVersions) > 0 && len(vulnerabilitiesRows[j].FixedVersions) > 0
 	})
@@ -655,20 +659,29 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
-func areCvesApplicable(applicableCves []string, xrayCves []formats.CveRow) bool {
-	for _, xrayCve := range xrayCves {
-		for _, applicableCve := range applicableCves {
-			if xrayCve.Id == applicableCve {
-				return true
-			}
-		}
+func getApplicableCveValue(extendedResults *jas.ExtendedScanResults, xrayCve formats.CveRow) string {
+	if !extendedResults.EntitledForJas {
+		return ""
 	}
-	return false
+	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]
+	if !ok {
+		return "unknown"
+	}
+	return applicableCveValue
 }
 
-func printApplicableCveValue(applicable bool, isTable bool) string {
-	if applicable && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
+func getApplicableCveNumValue(stringValue string) int {
+	if stringValue == "Yes" {
+		return 3
+	} else if stringValue == "unknown" {
+		return 2
+	}
+	return 1
+}
+
+func printApplicableCveValue(applicableValue string, isTable bool) string {
+	if applicableValue == "Yes" && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		return color.New(color.Red).Render("Yes")
 	}
-	return "No"
+	return applicableValue
 }

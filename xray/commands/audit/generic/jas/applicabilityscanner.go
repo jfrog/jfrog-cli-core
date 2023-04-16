@@ -22,8 +22,9 @@ var (
 )
 
 type ExtendedScanResults struct {
-	XrayResults    []services.ScanResponse
-	ApplicableCves []string
+	XrayResults                 []services.ScanResponse
+	ApplicabilityScannerResults map[string]string
+	EntitledForJas              bool
 }
 
 func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
@@ -32,37 +33,44 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 
 func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResults, error) {
 	applicabilityScanManager := NewApplicabilityScanManager(results)
+	if !applicabilityScanManager.analyzerManager.DoesAnalyzerManagerExecutableExist() {
+		log.Info("user not entitled for jas, didnt execute applicability scan")
+		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+	}
 	err := applicabilityScanManager.Run()
 	if err != nil {
-		log.Info("failed to run applicability scan: " + err.Error())
-		deleteFilesError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
-		if deleteFilesError != nil {
-			return nil, deleteFilesError
-		}
-		extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicableCves: nil}
-		return &extendedScanResults, nil
+		return handleApplicabilityScanError(err, applicabilityScanManager)
 	}
-	applicabilityScanResults := applicabilityScanManager.GetApplicableVulnerabilities()
-	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicableCves: applicabilityScanResults}
+	applicabilityScanResults := applicabilityScanManager.GetApplicabilityScanResults()
+	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
 	return &extendedScanResults, nil
 }
 
+func handleApplicabilityScanError(err error, applicabilityScanManager *ApplicabilityScanManager) (*ExtendedScanResults, error) {
+	log.Info("failed to run applicability scan: " + err.Error())
+	deleteFilesError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
+	if deleteFilesError != nil {
+		return nil, deleteFilesError
+	}
+	return nil, err
+}
+
 type ApplicabilityScanManager struct {
-	applicableVulnerabilities []string
-	xrayVulnerabilities       []services.Vulnerability
-	configFileName            string
-	resultsFileName           string
-	analyzerManager           AnalyzerManager
+	applicabilityScannerResults map[string]string
+	xrayVulnerabilities         []services.Vulnerability
+	configFileName              string
+	resultsFileName             string
+	analyzerManager             AnalyzerManager
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *ApplicabilityScanManager {
 	xrayVulnerabilities := getXrayVulnerabilities(xrayScanResults)
 	return &ApplicabilityScanManager{
-		applicableVulnerabilities: []string{},
-		xrayVulnerabilities:       xrayVulnerabilities,
-		configFileName:            generateRandomFileName() + ".yaml",
-		resultsFileName:           "sarif.sarif", //generateRandomFileName() + ".sarif",
-		analyzerManager:           analyzerManagerExecuter,
+		applicabilityScannerResults: map[string]string{},
+		xrayVulnerabilities:         xrayVulnerabilities,
+		configFileName:              generateRandomFileName() + ".yaml",
+		resultsFileName:             "sarif.sarif", //generateRandomFileName() + ".sarif",
+		analyzerManager:             analyzerManagerExecuter,
 	}
 }
 
@@ -76,14 +84,11 @@ func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.
 	return xrayVulnerabilities
 }
 
-func (a *ApplicabilityScanManager) GetApplicableVulnerabilities() []string {
-	return a.applicableVulnerabilities
+func (a *ApplicabilityScanManager) GetApplicabilityScanResults() map[string]string {
+	return a.applicabilityScannerResults
 }
 
 func (a *ApplicabilityScanManager) Run() error {
-	if err := a.analyzerManager.DoesAnalyzerManagerExecutableExist(); err != nil {
-		return err
-	}
 	if err := a.createConfigFile(); err != nil {
 		return err
 	}
@@ -124,7 +129,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 				Output:         filepath.Join(currentDir, a.resultsFileName),
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
-				CveWhitelist:   a.createCveWhiteList(),
+				CveWhitelist:   a.createCveList(),
 				SkippedFolders: []string{},
 			},
 		},
@@ -157,11 +162,22 @@ func (a *ApplicabilityScanManager) parseResults() error {
 	if err != nil {
 		return err
 	}
-	fullVulnerabilitiesList := report.Runs[0].Results
+	var fullVulnerabilitiesList []*sarif.Result
+	if len(report.Runs) > 0 {
+		fullVulnerabilitiesList = report.Runs[0].Results
+	}
+
+	xrayCves := a.createCveList()
+	for _, xrayCve := range xrayCves {
+		a.applicabilityScannerResults[xrayCve] = "unknown"
+	}
+
 	for _, vulnerability := range fullVulnerabilitiesList {
+		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
 		if isVulnerabilityApplicable(vulnerability) {
-			applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
-			a.applicableVulnerabilities = append(a.applicableVulnerabilities, applicableVulnerabilityName)
+			a.applicabilityScannerResults[applicableVulnerabilityName] = "Yes"
+		} else {
+			a.applicabilityScannerResults[applicableVulnerabilityName] = "No"
 		}
 	}
 	return nil
@@ -179,7 +195,7 @@ func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
 	return nil
 }
 
-func (a *ApplicabilityScanManager) createCveWhiteList() []string {
+func (a *ApplicabilityScanManager) createCveList() []string {
 	cveWhiteList := []string{}
 	for _, vulnerability := range a.xrayVulnerabilities {
 		for _, cve := range vulnerability.Cves {
@@ -200,18 +216,18 @@ func getVulnerabilityName(sarifRuleId string) string {
 }
 
 type AnalyzerManager interface {
-	DoesAnalyzerManagerExecutableExist() error
+	DoesAnalyzerManagerExecutableExist() bool
 	RunAnalyzerManager(string) error
 }
 
 type analyzerManager struct {
 }
 
-func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() error {
+func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
 	if _, err := os.Stat(analyzerManagerFilePath); err != nil {
-		return err
+		return false
 	}
-	return nil
+	return true
 }
 
 func (am *analyzerManager) RunAnalyzerManager(configFile string) error {

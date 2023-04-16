@@ -140,13 +140,18 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
+		_, omitEmptyColumnExist := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
 		}
 		if !columnNameExist && !embedTableExist {
 			continue
 		}
-
+		if omitEmptyColumnExist {
+			if omitColumn := shouldOmitEmptyColumn(rowsSliceValue, i); omitColumn {
+				continue
+			}
+		}
 		if embedTable == "true" {
 			var subfieldsProperties []subfieldProperties
 			var err error
@@ -183,6 +188,17 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 	}
 
 	return tableWriter, nil
+}
+
+func shouldOmitEmptyColumn(rows reflect.Value, fieldIndex int) bool {
+	for i := 0; i < rows.Len(); i++ {
+		currRowValue := rows.Index(i)
+		currField := currRowValue.Field(fieldIndex)
+		if currField.String() != "" {
+			return false
+		}
+	}
+	return true
 }
 
 type fieldProperties struct {

@@ -376,6 +376,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	curUploadChunk := api.UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails, base.proxyKey),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
+		SkipFileFiltering:         base.localGeneratedFilter.IsEnabled(),
 	}
 
 	for _, item := range files {

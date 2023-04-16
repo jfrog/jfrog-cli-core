@@ -116,13 +116,13 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 		if err != nil {
 			return err
 		}
-		if len(result.Results) == 0 {
+		if len(result) == 0 {
 			if paginationI == 0 {
 				log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
 			}
 			break
 		}
-		files := convertResultsToFileRepresentation(result.Results)
+		files := convertResultsToFileRepresentation(result)
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)
@@ -144,7 +144,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			return err
 		}
 
-		if len(result.Results) < AqlPaginationLimit {
+		if len(result) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -172,13 +172,19 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
-func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
-	// Handle Docker repositories.
+func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
+	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {
-		return f.getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+		// Handle Docker repositories.
+		timeFrameFilesDiff, err = f.getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+	} else {
+		// Handle all other (non docker) repository types.
+		timeFrameFilesDiff, err = f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 	}
-	// Handle all other (non docker) repository types.
-	return f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, err
+	}
+	return f.localGeneratedFilter.FilterLocalGenerated(timeFrameFilesDiff.Results)
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {

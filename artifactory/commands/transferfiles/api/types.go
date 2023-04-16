@@ -34,8 +34,9 @@ type TargetAuth struct {
 
 type UploadChunk struct {
 	TargetAuth
-	CheckExistenceInFilestore bool                 `json:"check_existence_in_filestore,omitempty"`
 	UploadCandidates          []FileRepresentation `json:"upload_candidates,omitempty"`
+	CheckExistenceInFilestore bool                 `json:"check_existence_in_filestore,omitempty"`
+	SkipFileFiltering         bool                 `json:"skip_file_filtering,omitempty"`
 }
 
 type FileRepresentation struct {

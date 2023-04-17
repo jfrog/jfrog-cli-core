@@ -273,10 +273,11 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, err error) {
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (flatTree []*services.GraphNode, err error) {
 	if params.progress != nil {
 		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
+	var dependencyTrees []*services.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
 		dependencyTrees, err = getJavaDependencyTree(params, tech)
@@ -296,12 +297,16 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
+	}
+	if err != nil {
 		return
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
+
 	// Flatten the graph to speed up the ScanGraph request
-	return services.FlattenGraph(dependencyTrees), err
+	flatTree, err = services.FlattenGraph(dependencyTrees)
+	return
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {

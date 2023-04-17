@@ -122,9 +122,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetRequirementsFile(auditCmd.requirementsFile).
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetTechnologies(auditCmd.technologies...)
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
+	results, _, isMultipleRootProject, auditErr := GenericAudit(auditParams) //dependenciesTrees
 
-	extendedScanResults, err := jas.GetExtendedScanResults(results)
+	extendedScanResults, err := jas.GetExtendedScanResults(results, nil)
 	if err != nil {
 		return err
 	}

@@ -33,8 +33,8 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 	return e.XrayResults
 }
 
-func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResults, error) {
-	applicabilityScanManager := NewApplicabilityScanManager(results)
+func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode) (*ExtendedScanResults, error) {
+	applicabilityScanManager := NewApplicabilityScanManager(results, dependencyTrees)
 	if !applicabilityScanManager.shouldRun() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
@@ -49,7 +49,8 @@ func GetExtendedScanResults(results []services.ScanResponse) (*ExtendedScanResul
 }
 
 func (a *ApplicabilityScanManager) shouldRun() bool {
-	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies()
+	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies() &&
+		(len(a.xrayVulnerabilities) != 0 || len(a.xrayVulnerabilities) != 0)
 }
 
 func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
@@ -88,15 +89,50 @@ type ApplicabilityScanManager struct {
 	analyzerManager             AnalyzerManager
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse) *ApplicabilityScanManager {
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode) *ApplicabilityScanManager {
+	directDependencies := getDirectDependenciesList(dependencyTrees)
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
-		xrayVulnerabilities:         getXrayVulnerabilities(xrayScanResults),
-		xrayViolations:              getXrayViolations(xrayScanResults),
+		xrayVulnerabilities:         setXrayDirectVulnerabilities(xrayScanResults, directDependencies),
+		xrayViolations:              setXrayDirectViolations(xrayScanResults, directDependencies),
 		configFileName:              generateRandomFileName() + ".yaml",
 		resultsFileName:             "sarif.sarif", //generateRandomFileName() + ".sarif",
 		analyzerManager:             analyzerManagerExecuter,
 	}
+}
+
+func setXrayDirectViolations(xrayScanResults []services.ScanResponse, directDependencies []string) []services.Violation {
+	xrayViolationsDirectDependency := []services.Violation{}
+	for _, violation := range getXrayViolations(xrayScanResults) {
+		for _, dep := range directDependencies {
+			if _, ok := violation.Components[dep]; ok {
+				xrayViolationsDirectDependency = append(xrayViolationsDirectDependency, violation)
+			}
+		}
+	}
+	return xrayViolationsDirectDependency
+}
+
+func setXrayDirectVulnerabilities(xrayScanResults []services.ScanResponse, directDependencies []string) []services.Vulnerability {
+	xrayVulnerabilitiesDirectDependency := []services.Vulnerability{}
+	for _, vulnerability := range getXrayVulnerabilities(xrayScanResults) {
+		for _, dep := range directDependencies {
+			if _, ok := vulnerability.Components[dep]; ok {
+				xrayVulnerabilitiesDirectDependency = append(xrayVulnerabilitiesDirectDependency, vulnerability)
+			}
+		}
+	}
+	return xrayVulnerabilitiesDirectDependency
+}
+
+func getDirectDependenciesList(dependencyTrees []*services.GraphNode) []string {
+	directDependencies := []string{}
+	for _, tree := range dependencyTrees {
+		for _, node := range tree.Nodes {
+			directDependencies = append(directDependencies, node.Id)
+		}
+	}
+	return directDependencies
 }
 
 func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.Vulnerability {

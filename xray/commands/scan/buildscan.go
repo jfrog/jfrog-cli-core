@@ -127,7 +127,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	extendedScanResults, err := jas.GetExtendedScanResults(scanResponse)
+	extendedScanResults, err := jas.GetExtendedScanResults(scanResponse, nil)
 	if err != nil {
 		return true, err
 	}

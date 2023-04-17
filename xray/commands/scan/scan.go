@@ -226,7 +226,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults, err := jas.GetExtendedScanResults(flatResults)
+	extendedScanResults, err := jas.GetExtendedScanResults(flatResults, nil)
 	if err != nil {
 		return err
 	}

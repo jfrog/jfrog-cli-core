@@ -1,7 +1,6 @@
 package jas
 
 import (
-	"errors"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -9,7 +8,7 @@ import (
 
 var (
 	analyzerManagerExecutionError error = nil
-	analyzerManagerNotExistError  error = nil
+	analyzerManagerExist                = true
 )
 
 type analyzerManagerMock struct {
@@ -19,8 +18,8 @@ func (am *analyzerManagerMock) RunAnalyzerManager(string) error {
 	return analyzerManagerExecutionError
 }
 
-func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() error {
-	return analyzerManagerExecutionError
+func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() bool {
+	return analyzerManagerExist
 }
 
 var fakeXrayResults = []services.ScanResponse{
@@ -29,11 +28,14 @@ var fakeXrayResults = []services.ScanResponse{
 		Vulnerabilities: []services.Vulnerability{
 			{IssueId: "issueId_1", Cves: []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}}},
 		},
+		Violations: []services.Violation{
+			{IssueId: "issueId_2", Cves: []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}}},
+		},
 	},
 	{
 		ScanId: "scanId_2",
 		Vulnerabilities: []services.Vulnerability{
-			{IssueId: "issueId_2", Cves: []services.Cve{{Id: "test_cve_4"}, {Id: "test_cve_5"}}},
+			{IssueId: "issueId_3", Cves: []services.Cve{{Id: "test_cve_5"}, {Id: "test_cve_6"}}},
 		},
 	},
 }
@@ -53,7 +55,7 @@ func TestGetExtendedScanResults_SuccessfulScan(t *testing.T) {
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	// arrange
-	analyzerManagerNotExistError = errors.New("file does not exist error")
+	//analyzerManagerNotExistError := errors.New("file does not exist error")
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// act
@@ -100,3 +102,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 //not entitled for jas
 
 //unknown cves
+
+// violation
+
+// cve list

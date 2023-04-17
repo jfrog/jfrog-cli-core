@@ -42,35 +42,36 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 }
 
 type File struct {
-	Aql                 utils.Aql
-	Pattern             string
-	Exclusions          []string
-	Target              string
-	Explode             string
-	Props               string
-	TargetProps         string
-	ExcludeProps        string
-	SortOrder           string
-	SortBy              []string
-	Offset              int
-	Limit               int
-	Build               string
-	Project             string
-	ExcludeArtifacts    string
-	IncludeDeps         string
-	Bundle              string
-	PublicGpgKey        string `json:"gpg-key,omitempty"`
-	Recursive           string
-	Flat                string
-	Regexp              string
-	Ant                 string
-	IncludeDirs         string
-	ArchiveEntries      string
-	ValidateSymlinks    string
-	Archive             string
-	Symlinks            string
-	Transitive          string
-	TargetPathInArchive string
+	Aql                     utils.Aql
+	Pattern                 string
+	Exclusions              []string
+	Target                  string
+	Explode                 string
+	BypassArchiveInspection string
+	Props                   string
+	TargetProps             string
+	ExcludeProps            string
+	SortOrder               string
+	SortBy                  []string
+	Offset                  int
+	Limit                   int
+	Build                   string
+	Project                 string
+	ExcludeArtifacts        string
+	IncludeDeps             string
+	Bundle                  string
+	PublicGpgKey            string `json:"gpg-key,omitempty"`
+	Recursive               string
+	Flat                    string
+	Regexp                  string
+	Ant                     string
+	IncludeDirs             string
+	ArchiveEntries          string
+	ValidateSymlinks        string
+	Archive                 string
+	Symlinks                string
+	Transitive              string
+	TargetPathInArchive     string
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {
@@ -79,6 +80,10 @@ func (f File) IsFlat(defaultValue bool) (bool, error) {
 
 func (f File) IsExplode(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.Explode, defaultValue)
+}
+
+func (f File) IsBypassArchiveInspection(defaultValue bool) (bool, error) {
+	return clientutils.StringToBool(f.BypassArchiveInspection, defaultValue)
 }
 
 func (f File) IsRegexp(defaultValue bool) (bool, error) {
@@ -97,7 +102,7 @@ func (f File) IsIncludeDirs(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.IncludeDirs, defaultValue)
 }
 
-func (f File) IsVlidateSymlinks(defaultValue bool) (bool, error) {
+func (f File) IsValidateSymlinks(defaultValue bool) (bool, error) {
 	return clientutils.StringToBool(f.ValidateSymlinks, defaultValue)
 }
 
@@ -183,6 +188,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isRegexp := file.Regexp == "true"
 		isAnt := file.Ant == "true"
 		isExplode, _ := file.IsExplode(false)
+		isBypassArchiveInspection, _ := file.IsBypassArchiveInspection(false)
 		isTransitive, _ := file.IsTransitive(false)
 
 		if isTargetMandatory && !isTarget {
@@ -248,6 +254,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		}
 		if isGPGKey && !isBundle {
 			return errors.New("spec cannot include 'gpg-key' if 'bundle' is not included")
+		}
+		if isBypassArchiveInspection && !isExplode {
+			return errors.New("spec cannot include 'bypass-archive-inspection' if 'explode' is not included")
 		}
 	}
 	return nil

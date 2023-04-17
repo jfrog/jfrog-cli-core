@@ -94,7 +94,7 @@ func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPat
 	}
 
 	httpClientDetails := auth.CreateHttpClientDetails()
-	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
+	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
 		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
 	}

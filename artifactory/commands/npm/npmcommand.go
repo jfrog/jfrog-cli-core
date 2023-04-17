@@ -28,6 +28,13 @@ type NpmCommand struct {
 	CommonArgs
 }
 
+func NewNpmCommand(cmdName string) *NpmCommand {
+	return &NpmCommand{
+		cmdName:    cmdName,
+		CommonArgs: CommonArgs{cmdName: cmdName},
+	}
+}
+
 func NewNpmInstallCommand() *NpmCommand {
 	return &NpmCommand{CommonArgs: CommonArgs{cmdName: "install"}, internalCommandName: "rt_npm_install"}
 }
@@ -198,3 +205,40 @@ func filterFlags(splitArgs []string) []string {
 	}
 	return filteredArgs
 }
+
+/*// GenericCommand represents any npm command which is not "install", "ci" or "publish".
+type GenericCommand struct {
+	*CommonArgs
+}
+
+func NewNpmGenericCommand(cmdName string) *GenericCommand {
+	return &GenericCommand{
+		CommonArgs: &CommonArgs{cmdName: cmdName},
+	}
+}
+
+func (gc *GenericCommand) CommandName() string {
+	return "rt_npm_generic"
+}
+
+func (gc *GenericCommand) ServerDetails() (*config.ServerDetails, error) {
+	return gc.serverDetails, nil
+}
+
+func (gc *GenericCommand) Run() (err error) {
+	if err = gc.PreparePrerequisites("", false); err != nil {
+		return
+	}
+	log.Debug(fmt.Sprintf("Running npm %s command.", gc.cmdName))
+	npmCmdConfig := &npmutils.NpmConfig{
+		Npm:          gc.executablePath,
+		Command:      gc.npmArgs,
+		CommandFlags: nil,
+		StrWriter:    nil,
+		ErrWriter:    nil,
+	}
+	command := npmCmdConfig.GetCmd()
+	command.Stderr = os.Stderr
+	command.Stdout = os.Stderr
+	return coreutils.ConvertExitCodeError(errorutils.CheckError(command.Run()))
+}*/

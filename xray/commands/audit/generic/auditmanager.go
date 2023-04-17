@@ -299,14 +299,13 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (flatTree 
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
 	if err != nil {
-		return
+		return nil, err
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
 
 	// Flatten the graph to speed up the ScanGraph request
-	flatTree, err = services.FlattenGraph(dependencyTrees)
-	return
+	return services.FlattenGraph(dependencyTrees)
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {

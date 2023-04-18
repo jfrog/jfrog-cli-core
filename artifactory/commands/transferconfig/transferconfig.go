@@ -188,7 +188,7 @@ func (tcc *TransferConfigCommand) runPreChecks() error {
 		return err
 	}
 
-	// Download and decrypt the remote repository list from the source Artifactory
+	// Download and decrypt the remote repositories list from the source Artifactory
 	_, remoteRepositories, err := tcc.getEncryptedItems(selectedRepos)
 	if err != nil {
 		return err

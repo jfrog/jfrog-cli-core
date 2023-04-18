@@ -92,8 +92,7 @@ func (rrc *RemoteRepositoryCheck) createRemoteUrlRequest() ([]remoteRepoSettings
 			return nil, errorutils.CheckError(err)
 		}
 		var remoteRepositoryParams services.RemoteRepositoryBaseParams
-		err = json.Unmarshal(remoteRepositoryBytes, &remoteRepositoryParams)
-		if err != nil {
+		if err = json.Unmarshal(remoteRepositoryBytes, &remoteRepositoryParams); err != nil {
 			return nil, errorutils.CheckError(err)
 		}
 

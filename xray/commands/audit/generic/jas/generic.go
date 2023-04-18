@@ -1,21 +1,24 @@
 package jas
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
 const analyzerManagerFilePath = "/Users/ort/Documents/am_eco/analyzerManager" // todo add real path
 
-func generateRandomFileName() string {
-	rand.Seed(time.Now().UnixNano())
-	const nameLength = 10
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	fileName := make([]rune, nameLength)
-	for i := range fileName {
-		fileName[i] = letters[rand.Intn(len(letters))]
+func generateRandomFileName() (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	result := make([]byte, 10)
+	for i := 0; i < 10; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		result[i] = letters[num.Int64()]
 	}
-	return string(fileName)
+
+	return string(result), nil
 }
 
 func removeDuplicateValues(stringSlice []string) []string {

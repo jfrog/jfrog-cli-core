@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"testing"
 
@@ -20,9 +21,9 @@ func TestPrintViolationsTable(t *testing.T) {
 		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: true}, {Components: components, FailBuild: false}}, true},
 		{[]services.Violation{{Components: components, FailBuild: true}, {Components: components, FailBuild: true}, {Components: components, FailBuild: true}}, true},
 	}
-
+	extendedResults := &jas.ExtendedScanResults{nil, nil, false}
 	for _, test := range tests {
-		err := PrintViolationsTable(test.violations, false, true)
+		err := PrintViolationsTable(test.violations, extendedResults, false, true)
 		assert.NoError(t, err)
 		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
 			err = NewFailBuildError()

@@ -34,12 +34,15 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 }
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode) (*ExtendedScanResults, error) {
-	applicabilityScanManager := NewApplicabilityScanManager(results, dependencyTrees)
+	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees)
+	if err != nil {
+		return handleApplicabilityScanError(err, applicabilityScanManager)
+	}
 	if !applicabilityScanManager.shouldRun() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
-	err := applicabilityScanManager.Run()
+	err = applicabilityScanManager.Run()
 	if err != nil {
 		return handleApplicabilityScanError(err, applicabilityScanManager)
 	}
@@ -50,7 +53,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 
 func (a *ApplicabilityScanManager) shouldRun() bool {
 	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies() &&
-		(len(a.xrayVulnerabilities) != 0 || len(a.xrayVulnerabilities) != 0)
+		(len(a.xrayVulnerabilities) != 0 || len(a.xrayViolations) != 0)
 }
 
 func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
@@ -89,16 +92,24 @@ type ApplicabilityScanManager struct {
 	analyzerManager             AnalyzerManager
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode) *ApplicabilityScanManager {
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode) (*ApplicabilityScanManager, error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
+	configFileName, err := generateRandomFileName()
+	if err != nil {
+		return nil, err
+	}
+	resultsFileName, err := generateRandomFileName()
+	if err != nil {
+		return nil, err
+	}
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
 		xrayVulnerabilities:         setXrayDirectVulnerabilities(xrayScanResults, directDependencies),
 		xrayViolations:              setXrayDirectViolations(xrayScanResults, directDependencies),
-		configFileName:              generateRandomFileName() + ".yaml",
-		resultsFileName:             generateRandomFileName() + ".sarif",
+		configFileName:              configFileName + ".yaml",
+		resultsFileName:             resultsFileName + ".sarif",
 		analyzerManager:             analyzerManagerExecuter,
-	}
+	}, nil
 }
 
 func setXrayDirectViolations(xrayScanResults []services.ScanResponse, directDependencies []string) []services.Violation {
@@ -138,9 +149,7 @@ func getDirectDependenciesList(dependencyTrees []*services.GraphNode) []string {
 func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.Vulnerability {
 	xrayVulnerabilities := []services.Vulnerability{}
 	for _, result := range xrayScanResults {
-		for _, vul := range result.Vulnerabilities {
-			xrayVulnerabilities = append(xrayVulnerabilities, vul)
-		}
+		xrayVulnerabilities = append(xrayVulnerabilities, result.Vulnerabilities...)
 	}
 	return xrayVulnerabilities
 }
@@ -148,9 +157,7 @@ func getXrayVulnerabilities(xrayScanResults []services.ScanResponse) []services.
 func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Violation {
 	xrayViolations := []services.Violation{}
 	for _, result := range xrayScanResults {
-		for _, violation := range result.Violations {
-			xrayViolations = append(xrayViolations, violation)
-		}
+		xrayViolations = append(xrayViolations, result.Violations...)
 	}
 	return xrayViolations
 }

@@ -43,7 +43,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	if err != nil {
 		return handleApplicabilityScanError(err, applicabilityScanManager)
 	}
-	applicabilityScanResults := applicabilityScanManager.GetApplicabilityScanResults()
+	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
 	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
 	return &extendedScanResults, nil
 }
@@ -155,23 +155,7 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 	return xrayViolations
 }
 
-func (a *ApplicabilityScanManager) GetResultsFileName() string {
-	return a.resultsFileName
-}
-
-func (a *ApplicabilityScanManager) SetResultsFileName(fileName string) {
-	a.resultsFileName = fileName
-}
-
-func (a *ApplicabilityScanManager) GetConfigFileName() string {
-	return a.configFileName
-}
-
-func (a *ApplicabilityScanManager) SetConfigFileName(fileName string) {
-	a.configFileName = fileName
-}
-
-func (a *ApplicabilityScanManager) GetApplicabilityScanResults() map[string]string {
+func (a *ApplicabilityScanManager) getApplicabilityScanResults() map[string]string {
 	return a.applicabilityScannerResults
 }
 
@@ -209,6 +193,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	if err != nil {
 		return err
 	}
+	cveWhiteList := removeDuplicateValues(a.createCveList())
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -216,7 +201,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 				Output:         filepath.Join(currentDir, a.resultsFileName),
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
-				CveWhitelist:   a.createCveList(),
+				CveWhitelist:   cveWhiteList,
 				SkippedFolders: []string{},
 			},
 		},
@@ -254,7 +239,7 @@ func (a *ApplicabilityScanManager) parseResults() error {
 		fullVulnerabilitiesList = report.Runs[0].Results
 	}
 
-	xrayCves := a.createCveList()
+	xrayCves := removeDuplicateValues(a.createCveList())
 	for _, xrayCve := range xrayCves {
 		a.applicabilityScannerResults[xrayCve] = "unknown"
 	}

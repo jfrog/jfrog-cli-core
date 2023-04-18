@@ -17,3 +17,15 @@ func generateRandomFileName() string {
 	}
 	return string(fileName)
 }
+
+func removeDuplicateValues(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	finalSlice := []string{}
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			finalSlice = append(finalSlice, entry)
+		}
+	}
+	return finalSlice
+}

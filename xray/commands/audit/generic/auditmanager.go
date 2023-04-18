@@ -1,9 +1,9 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"os"
 	"path/filepath"
@@ -29,16 +29,19 @@ type Params struct {
 	xrayGraphScanParams services.XrayGraphScanParams
 	serverDetails       *config.ServerDetails
 	progress            ioUtils.ProgressMgr
+	dependencyTrees     []*services.GraphNode
 	ignoreConfigFile    bool
 	excludeTestDeps     bool
 	insecureTls         bool
 	useWrapper          bool
 	depsRepo            string
+	releasesRepo        string
 	requirementsFile    string
 	technologies        []string
 	workingDirs         []string
 	args                []string
 	installFunc         func(tech string) error
+	xrayVersion         string
 }
 
 func NewAuditParams() *Params {
@@ -95,6 +98,10 @@ func (params *Params) WorkingDirs() []string {
 
 func (params *Params) Args() []string {
 	return params.args
+}
+
+func (params *Params) XrayVersion() string {
+	return params.xrayVersion
 }
 
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
@@ -157,6 +164,11 @@ func (params *Params) SetDepsRepo(depsRepo string) *Params {
 	return params
 }
 
+func (params *Params) SetReleasesRepo(releasesRepo string) *Params {
+	params.releasesRepo = releasesRepo
+	return params
+}
+
 func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
 	params.installFunc = installFunc
 	return params
@@ -164,8 +176,19 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+	// Get Xray version
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(params.serverDetails)
+	if err != nil {
+		return
+	}
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion); err != nil {
+		return
+	}
+	params.xrayVersion = xrayVersion
+	log.Info("JFrog Xray version is:", xrayVersion)
+
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project: ")
+		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -190,7 +213,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd)
+		log.Info("Auditing project:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
@@ -208,7 +231,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errorutils.CheckError(errors.New(errorList.String()))
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 
 	return
@@ -232,54 +255,62 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech, params.xrayVersion)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
+		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)
 		results = append(results, techResults...)
 		isMultipleRoot = len(dependencyTrees) > 1
 	}
 	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (flatTree []*services.GraphNode, err error) {
 	if params.progress != nil {
 		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
+	var dependencyTrees []*services.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
-		dependencyTrees, e = getJavaDependencyTree(params, tech)
+		dependencyTrees, err = getJavaDependencyTree(params, tech)
 	case coreutils.Npm:
-		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+		dependencyTrees, err = npm.BuildDependencyTree(params.args)
 	case coreutils.Yarn:
-		dependencyTrees, e = yarn.BuildDependencyTree()
+		dependencyTrees, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
+		dependencyTrees, err = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
+		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              params.serverDetails,
 			Tool:                pythonutils.PythonTool(tech),
 			RemotePypiRepo:      params.depsRepo,
 			PipRequirementsFile: params.requirementsFile})
 	case coreutils.Nuget:
-		dependencyTrees, e = nuget.BuildDependencyTree()
+		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
-		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
+		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
+	if err != nil {
+		return nil, err
+	}
+	// Save the full dependencyTree to build impact paths for vulnerable dependencies
+	params.dependencyTrees = dependencyTrees
 
-	return dependencyTrees, e
+	// Flatten the graph to speed up the ScanGraph request
+	return services.FlattenGraph(dependencyTrees)
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
 	var javaProps map[string]any
-	if params.DepsRepo() != "" {
+	if params.DepsRepo() != "" && tech == coreutils.Maven {
 		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
@@ -289,6 +320,9 @@ func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*servic
 		ExcludeTestDeps:  params.excludeTestDeps,
 		UseWrapper:       params.useWrapper,
 		JavaProps:        javaProps,
+		Server:           params.serverDetails,
+		DepsRepo:         params.depsRepo,
+		ReleasesRepo:     params.releasesRepo,
 	})
 }
 

@@ -157,6 +157,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 
 func TestApplicabilityScanManager_ShouldRun_AllConditionsMet(t *testing.T) {
 	// arrange
+	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph)
 
 	// act

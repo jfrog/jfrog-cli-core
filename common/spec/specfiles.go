@@ -2,8 +2,6 @@ package spec
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -163,7 +161,7 @@ func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 
 func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error {
 	if len(files) == 0 {
-		return errors.New("spec must include at least one file group")
+		return errorutils.CheckErrorf("spec must include at least one file group")
 	}
 
 	for _, file := range files {
@@ -192,16 +190,16 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isTransitive, _ := file.IsTransitive(false)
 
 		if isTargetMandatory && !isTarget {
-			return errors.New("spec must include target")
+			return errorutils.CheckErrorf("spec must include target")
 		}
 		if !isSearchBasedSpec && !isPattern {
-			return errors.New("spec must include a pattern")
+			return errorutils.CheckErrorf("spec must include a pattern")
 		}
 		if isBuild && isBundle {
 			return fileSpecValidationError("build", "bundle")
 		}
 		if isSearchBasedSpec && !isAql && !isPattern && !isBuild && !isBundle {
-			return errors.New("spec must include either aql, pattern, build or bundle")
+			return errorutils.CheckErrorf("spec must include either aql, pattern, build or bundle")
 		}
 		if isOffset {
 			if isBuild {
@@ -232,36 +230,36 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 			return fileSpecValidationError("aql", "excludeProps")
 		}
 		if !isSortBy && isSortOrder {
-			return errors.New("spec cannot include 'sort-order' if 'sort-by' is not included")
+			return errorutils.CheckErrorf("spec cannot include 'sort-order' if 'sort-by' is not included")
 		}
 		if isSortOrder && !isValidSortOrder {
-			return errors.New("the value of 'sort-order' can only be 'asc' or 'desc'")
+			return errorutils.CheckErrorf("the value of 'sort-order' can only be 'asc' or 'desc'")
 		}
 		if isTransitive && isSortBy {
 			return fileSpecValidationError("transitive", "sort-by")
 		}
 		if !isBuild && (isExcludeArtifacts || isIncludeDeps) {
-			return errors.New("spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included")
+			return errorutils.CheckErrorf("spec cannot include 'exclude-artifacts' or 'include-deps' if 'build' is not included")
 		}
 		if isRegexp && isAnt {
-			return errors.New("can not use the option of regexp and ant together")
+			return errorutils.CheckErrorf("can not use the option of regexp and ant together")
 		}
 		if isArchive && isSymlinks && isExplode {
-			return errors.New("symlinks cannot be stored in an archive that will be exploded in artifactory.\\nWhen uploading a symlink to Artifactory, the symlink is represented in Artifactory as 0 size filewith properties describing the symlink.\\nThis symlink representation is not yet supported by Artifactory when exploding symlinks from a zip")
+			return errorutils.CheckErrorf("symlinks cannot be stored in an archive that will be exploded in artifactory.\\nWhen uploading a symlink to Artifactory, the symlink is represented in Artifactory as 0 size filewith properties describing the symlink.\\nThis symlink representation is not yet supported by Artifactory when exploding symlinks from a zip")
 		}
 		if isArchive && !isValidArchive {
-			return errors.New("the value of 'archive' (if provided) must be 'zip'")
+			return errorutils.CheckErrorf("the value of 'archive' (if provided) must be 'zip'")
 		}
 		if isGPGKey && !isBundle {
-			return errors.New("spec cannot include 'gpg-key' if 'bundle' is not included")
+			return errorutils.CheckErrorf("spec cannot include 'gpg-key' if 'bundle' is not included")
 		}
 		if isBypassArchiveInspection && !isExplode {
-			return errors.New("spec cannot include 'bypass-archive-inspection' if 'explode' is not included")
+			return errorutils.CheckErrorf("spec cannot include 'bypass-archive-inspection' if 'explode' is not included")
 		}
 	}
 	return nil
 }
 
 func fileSpecValidationError(fieldA, fieldB string) error {
-	return fmt.Errorf("spec cannot include both '%s' and '%s'", fieldA, fieldB)
+	return errorutils.CheckErrorf("spec cannot include both '%s' and '%s'", fieldA, fieldB)
 }

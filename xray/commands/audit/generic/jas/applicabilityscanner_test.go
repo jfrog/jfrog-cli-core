@@ -1,6 +1,8 @@
 package jas
 
 import (
+	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -22,66 +24,53 @@ func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() bool {
 	return analyzerManagerExist
 }
 
-var fakeXrayResults = []services.ScanResponse{
+var fakeBasicXrayResults = []services.ScanResponse{
 	{
 		ScanId: "scanId_1",
 		Vulnerabilities: []services.Vulnerability{
-			{IssueId: "issueId_1", Cves: []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}}},
+			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+				Cves:       []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}},
+				Components: map[string]services.Component{"issueId_1_direct_dependency": {}, "issueId_1_non_direct_dependency": {}}},
 		},
 		Violations: []services.Violation{
-			{IssueId: "issueId_2", Cves: []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}}},
+			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				Cves:       []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}},
+				Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 		},
 	},
+}
+
+var fakeBasicDependencyGraph = []*services.GraphNode{
 	{
-		ScanId: "scanId_2",
-		Vulnerabilities: []services.Vulnerability{
-			{IssueId: "issueId_3", Cves: []services.Cve{{Id: "test_cve_5"}, {Id: "test_cve_6"}}},
+		Id: "parent_node_id",
+		Nodes: []*services.GraphNode{
+			{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
+			{Id: "issueId_2_direct_dependency", Nodes: nil},
 		},
 	},
 }
 
-func TestGetExtendedScanResults_SuccessfulScan(t *testing.T) {
-	// arrange
-	analyzerManagerExecuter = &analyzerManagerMock{}
+//not entitled for jas
 
-	// act
-	extendedResults, err := GetExtendedScanResults(fakeXrayResults)
-
-	// assert
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
-}
-
-func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-	// arrange
-	//analyzerManagerNotExistError := errors.New("file does not exist error")
-	analyzerManagerExecuter = &analyzerManagerMock{}
-
-	// act
-	extendedResults, err := GetExtendedScanResults(fakeXrayResults)
-
-	// assert
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
-}
-
-func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-
-}
-
-func TestRun_SuccessfulScan(t *testing.T) {
-
-}
-
-func TestRun_CreateConfigFileFailure(t *testing.T) {
-
-}
-
-func TestRun_ParseResultsFailure(t *testing.T) {
-
-}
+//TestNewApplicabilityScanManager_InputIsValid
+//
+//TestNewApplicabilityScanManager_DependencyTreeDoesntExist
+//
+//TestNewApplicabilityScanManager_NoDirectDependenciesInTree\
+//
+//TestNewApplicabilityScanManager_MultipleDependencyTrees
+//
+//TestNewApplicabilityScanManager_ViolationsdontExist
+//
+//TestNewApplicabilityScanManager_VulnerabilitiesDontExist
+//
+//TestApplicabilityScanManager_ShouldRun_AllConditionsMet
+//
+//TestApplicabilityScanManager_ShouldRun_AnalyzerManagerDoesntExist
+//
+//TestApplicabilityScanManager_ShouldRun_TechnologoesNotEligibleForScan
+//
+//TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty
 
 func TestCreateConfigFile_VerifyFileContent(t *testing.T) {
 
@@ -99,10 +88,36 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 }
 
-//not entitled for jas
+func TestParseResults_UnknownCves(t *testing.T) {
 
-//unknown cves
+}
 
-// violation
+func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
+	// arrange
+	analyzerManagerExist = false
+	analyzerManagerExecuter = &analyzerManagerMock{}
 
-// cve list
+	// act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph)
+
+	// assert
+	assert.NoError(t, err)
+	assert.False(t, extendedResults.EntitledForJas)
+	assert.Equal(t, 1, len(extendedResults.XrayResults))
+	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
+}
+
+func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
+	// arrange
+	analyzerManagerErrorMessage := "analyzer manager failure message"
+	analyzerManagerExecutionError = errors.New(analyzerManagerErrorMessage)
+	analyzerManagerExecuter = &analyzerManagerMock{}
+
+	// act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph)
+
+	// assert
+	assert.Error(t, err)
+	assert.Equal(t, analyzerManagerErrorMessage, err.Error())
+	assert.Nil(t, extendedResults)
+}

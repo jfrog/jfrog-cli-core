@@ -19,8 +19,8 @@ const (
 
 var (
 	analyzerManagerExecuter                  AnalyzerManager = &analyzerManager{}
-	technologiesEligibleForApplicabilityScan                 = []coreutils.Technology{coreutils.Npm, coreutils.Pip, coreutils.Poetry,
-		coreutils.Pipenv, coreutils.Pypi}
+	technologiesEligibleForApplicabilityScan                 = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
+		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
 type ExtendedScanResults struct {
@@ -96,7 +96,7 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		xrayVulnerabilities:         setXrayDirectVulnerabilities(xrayScanResults, directDependencies),
 		xrayViolations:              setXrayDirectViolations(xrayScanResults, directDependencies),
 		configFileName:              generateRandomFileName() + ".yaml",
-		resultsFileName:             "sarif.sarif", //generateRandomFileName() + ".sarif",
+		resultsFileName:             generateRandomFileName() + ".sarif",
 		analyzerManager:             analyzerManagerExecuter,
 	}
 }
@@ -153,6 +153,22 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 		}
 	}
 	return xrayViolations
+}
+
+func (a *ApplicabilityScanManager) GetResultsFileName() string {
+	return a.resultsFileName
+}
+
+func (a *ApplicabilityScanManager) SetResultsFileName(fileName string) {
+	a.resultsFileName = fileName
+}
+
+func (a *ApplicabilityScanManager) GetConfigFileName() string {
+	return a.configFileName
+}
+
+func (a *ApplicabilityScanManager) SetConfigFileName(fileName string) {
+	a.configFileName = fileName
 }
 
 func (a *ApplicabilityScanManager) GetApplicabilityScanResults() map[string]string {
@@ -217,14 +233,14 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 }
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	//currentDir, err := coreutils.GetWorkingDirectory()
-	//if err != nil {
-	//	return err
-	//}
-	//err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
-	//if err != nil {
-	//	return err
-	//}
+	currentDir, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return err
+	}
+	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -255,14 +271,18 @@ func (a *ApplicabilityScanManager) parseResults() error {
 }
 
 func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
-	err := os.Remove(a.configFileName)
-	if err != nil {
-		return err
+	if _, err := os.Stat(a.configFileName); err == nil {
+		err = os.Remove(a.configFileName)
+		if err != nil {
+			return err
+		}
 	}
-	//err = os.Remove(a.resultsFileName)
-	//if err != nil {
-	//	return err
-	//}
+	if _, err := os.Stat(a.resultsFileName); err == nil {
+		err = os.Remove(a.resultsFileName)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

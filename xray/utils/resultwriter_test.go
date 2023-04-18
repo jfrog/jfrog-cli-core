@@ -32,7 +32,7 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 		ScannedPackageType: "Go",
 	}
 	var scanResults []services.ScanResponse
-	extendedResults := &jas.ExtendedScanResults{scanResults, nil, false}
+	extendedResults := &jas.ExtendedScanResults{XrayResults: scanResults}
 	scanResults = append(scanResults, currentScan)
 	sarif, err := GenerateSarifFileFromScan(scanResults, extendedResults, false, false)
 	assert.NoError(t, err)

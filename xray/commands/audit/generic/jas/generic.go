@@ -3,9 +3,16 @@ package jas
 import (
 	"crypto/rand"
 	"math/big"
+	"os"
+	"path/filepath"
 )
 
-const analyzerManagerFilePath = "/Users/ort/Documents/am_eco/analyzerManager" // todo add real path
+const analyzerManagerFilePath = "~/.jfrog/dependencies/analayzerManager/analyzerManager"
+
+func getAnalyzerManagerAbsolutePath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, analyzerManagerFilePath)
+}
 
 func generateRandomFileName() (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"

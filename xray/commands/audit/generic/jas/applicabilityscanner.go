@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -314,14 +315,19 @@ type analyzerManager struct {
 }
 
 func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
-	if _, err := os.Stat(analyzerManagerFilePath); err != nil {
+	if _, err := os.Stat(getAnalyzerManagerAbsolutePath()); err != nil {
 		return false
 	}
 	return true
 }
 
 func (am *analyzerManager) RunAnalyzerManager(configFile string) error {
-	_, err := exec.Command(analyzerManagerFilePath, applicabilityScanCommand, configFile).Output()
+	var err error
+	if runtime.GOOS == "windows" {
+		_, err = exec.Command(getAnalyzerManagerAbsolutePath()+".exe", applicabilityScanCommand, configFile).Output()
+	} else {
+		_, err = exec.Command(getAnalyzerManagerAbsolutePath(), applicabilityScanCommand, configFile).Output()
+	}
 	if err != nil {
 		return err
 	}

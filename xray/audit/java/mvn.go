@@ -28,7 +28,7 @@ func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnP
 }
 
 func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (err error) {
-	goals := []string{"-B", "compile", "test-compile"}
+	goals := []string{"-B", "compile", "test-compile", "-Dcheckstyle.skip", "-Denforcer.skip"}
 	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
 	configFilePath := ""
 	if !ignoreConfigFile {

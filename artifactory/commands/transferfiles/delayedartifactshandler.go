@@ -347,7 +347,7 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			fullPath := filepath.Join(w.dirPath, fmt.Sprintf("%s-%d.json", w.filePrefix, w.fileIndex))
 			log.Debug(fmt.Sprintf("Saving split content JSON file to: %s.", fullPath))
 			if err := fileutils.MoveFile(w.writer.GetFilePath(), fullPath); err != nil {
-				return fmt.Errorf(fmt.Sprintf("Saving file failed! failed moving %s to %s", w.writer.GetFilePath(), fullPath), err)
+				return fmt.Errorf("saving file failed! failed moving %s to %s: %w", w.writer.GetFilePath(), fullPath, err)
 			}
 			w.contentFiles = append(w.contentFiles, fullPath)
 			w.fileIndex++

@@ -3,11 +3,13 @@ package java
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -180,7 +182,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		"-q",
 		fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFilePath),
 		"-Dcom.jfrog.includeAllBuildFiles=true"}
-	log.Info("Running gradle dep tree command: ", gradleExecPath, tasks)
+	log.Info("Running gradle dep tree command:", gradleExecPath, tasks)
 	if output, err := exec.Command(gradleExecPath, tasks...).CombinedOutput(); err != nil {
 		return nil, errorutils.CheckErrorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
 	}
@@ -235,9 +237,18 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 	user := server.User
 	if server.AccessToken != "" {
 		pass = server.AccessToken
+		if user == "" {
+			user = auth.ExtractUsernameFromAccessToken(pass)
+		}
 	}
 	if pass == "" && user == "" {
-		return "", fmt.Errorf("either username/password or access token must be set for %s", server.Url)
+		errString := "either username/password or access token must be set for "
+		if server.Url != "" {
+			errString += server.Url
+		} else {
+			errString += server.ArtifactoryUrl
+		}
+		return "", errors.New(errString)
 	}
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),

@@ -3,6 +3,7 @@ package audit
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ type Params struct {
 	workingDirs         []string
 	args                []string
 	installFunc         func(tech string) error
+	xrayVersion         string
 }
 
 func NewAuditParams() *Params {
@@ -96,6 +98,10 @@ func (params *Params) WorkingDirs() []string {
 
 func (params *Params) Args() []string {
 	return params.args
+}
+
+func (params *Params) XrayVersion() string {
+	return params.xrayVersion
 }
 
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
@@ -170,8 +176,19 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+	// Get Xray version
+	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(params.serverDetails)
+	if err != nil {
+		return
+	}
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion); err != nil {
+		return
+	}
+	params.xrayVersion = xrayVersion
+	log.Info("JFrog Xray version is:", xrayVersion)
+
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project: ")
+		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -196,7 +213,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd)
+		log.Info("Auditing project:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
@@ -238,12 +255,12 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech, params.xrayVersion)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)
@@ -256,10 +273,11 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, err error) {
+func getTechDependencyTree(params *Params, tech coreutils.Technology) (flatTree []*services.GraphNode, err error) {
 	if params.progress != nil {
 		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
+	var dependencyTrees []*services.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
 		dependencyTrees, err = getJavaDependencyTree(params, tech)
@@ -279,12 +297,15 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
-		return
+	}
+	if err != nil {
+		return nil, err
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies
 	params.dependencyTrees = dependencyTrees
+
 	// Flatten the graph to speed up the ScanGraph request
-	return services.FlattenGraph(dependencyTrees), err
+	return services.FlattenGraph(dependencyTrees)
 }
 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {

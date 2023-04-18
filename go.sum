@@ -202,6 +202,8 @@ github.com/jfrog/build-info-go v1.9.1 h1:PxLQ9aBPm2J3WKTkaxU0YmfVCdjHPbIM/WKmrV6
 github.com/jfrog/build-info-go v1.9.1/go.mod h1:n0qDS24PIUH/Dag/lwzWPcMXalu+c3mahjkRrDteKnA=
 github.com/jfrog/gofrog v1.2.5 h1:jCgJC0iGQ8bU7jCC+YEFJTNINyngApIrhd8BjZAVRIE=
 github.com/jfrog/gofrog v1.2.5/go.mod h1:o00tSRff6IapTgaCMuX1Cs9MH08Y1JqnsKgRtx91Gc4=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230418154243-abb6b08aa5a4 h1:PWX5QPJ11zN7+Ag2Rh+hAX7ueadUFrLCPVEkovzyIPo=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230418154243-abb6b08aa5a4/go.mod h1:IXRdpqzDfY7CGdnWs5IcK4bTR10bVEmSGw/FDGsQtLA=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
@@ -326,8 +328,6 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 h1:QldyIu/L63oPpyvQmHgvgickp1Yw510KJOqX7H24mg8=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778/go.mod h1:2MuV+tbUrU1zIOPMxZ5EncGwgmMJsa+9ucAQZXxsObs=
-github.com/yahavi/jfrog-client-go v0.1.2-0.20230406103110-67871fa8aba1 h1:VH8EOzCbHZrW7FIkqdedOf0l0ZavGdc8L8x0qcFbjFc=
-github.com/yahavi/jfrog-client-go v0.1.2-0.20230406103110-67871fa8aba1/go.mod h1:XJhlPfi6iayIVc2SQ/RbztDQOnbnNatsUSQr7wbJ8Ag=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

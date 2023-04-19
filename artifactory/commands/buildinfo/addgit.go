@@ -209,7 +209,12 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	defer os.Chdir(wd)
+	defer func() {
+		e := os.Chdir(wd)
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
 	err = os.Chdir(config.dotGitPath)
 	if errorutils.CheckError(err) != nil {
 		return nil, err

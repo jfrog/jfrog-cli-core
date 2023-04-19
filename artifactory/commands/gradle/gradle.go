@@ -56,7 +56,7 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadGradleConfig(gc.configPath, nil)
+	vConfig, err = utils.ReadConfigFile(gc.configPath, utils.YAML)
 	if err != nil {
 		return
 	}

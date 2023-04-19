@@ -128,7 +128,7 @@ func getPipelineStatusAndColorCode(pipeline *services.Pipelines) (pipelineStatus
 // ConvertSecToDay converts seconds passed as integer to Days, Hours, Minutes, Seconds
 // Duration in D H M S format for example 124 seconds to "0D 0H 2M 4S"
 func convertSecToDay(sec int) string {
-	log.Debug("Duration time in seconds: ", sec)
+	log.Debug("Duration time in seconds:", sec)
 	day := sec / (24 * 3600)
 
 	sec = sec % (24 * 3600)

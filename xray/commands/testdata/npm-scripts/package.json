@@ -1,0 +1,7 @@
+{
+  "name": "npm-ignore-scripts",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "exit 1"
+  }
+}

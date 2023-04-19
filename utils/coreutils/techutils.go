@@ -58,9 +58,9 @@ var technologiesData = map[Technology]TechData{
 		execCommand:       "mvn",
 	},
 	Gradle: {
-		indicators:        []string{".gradle"},
+		indicators:        []string{".gradle", ".gradle.kts"},
 		ciSetupSupport:    true,
-		packageDescriptor: "build.gradle",
+		packageDescriptor: "build.gradle, build.gradle.kts",
 	},
 	Npm: {
 		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},

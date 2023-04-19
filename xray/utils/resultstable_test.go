@@ -21,6 +21,7 @@ func TestPrintViolationsTable(t *testing.T) {
 		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: true}, {Components: components, FailBuild: false}}, true},
 		{[]services.Violation{{Components: components, FailBuild: true}, {Components: components, FailBuild: true}, {Components: components, FailBuild: true}}, true},
 	}
+
 	for _, test := range tests {
 		err := PrintViolationsTable(test.violations, &jas.ExtendedScanResults{}, false, true)
 		assert.NoError(t, err)

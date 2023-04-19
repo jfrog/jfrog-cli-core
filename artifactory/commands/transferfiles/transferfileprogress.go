@@ -55,7 +55,7 @@ type TransferProgressMng struct {
 // If the progress bar shouldn't be displayed returns nil.
 func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCommand, fileStatus int) error {
 	// Init the transfer progress bar manager
-	trmng, shouldDisplay, err := progressbar.InitTransferProressBarMng(tdc.stateManager, allSourceLocalRepos)
+	trmng, shouldDisplay, err := progressbar.InitTransferProgressBarMng(tdc.stateManager, allSourceLocalRepos)
 	if !shouldDisplay || err != nil {
 		return err
 	}

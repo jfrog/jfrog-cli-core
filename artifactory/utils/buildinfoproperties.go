@@ -65,9 +65,7 @@ const ExcludePatterns = "excludePatterns"
 const FilterExcludedArtifactsFromBuild = "filterExcludedArtifactsFromBuild"
 
 // For path and temp files
-const PropertiesTempPrefix = "buildInfoProperties"
 const PropertiesTempPath = "jfrog/properties/"
-const GeneratedBuildInfoTempPrefix = "generatedBuildInfo"
 
 const Proxy = "proxy."
 const Host = "host"

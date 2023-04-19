@@ -46,6 +46,7 @@ type LicenseRow struct {
 type LicenseViolationRow struct {
 	LicenseKey                string         `json:"licenseKey"`
 	Severity                  string         `json:"severity"`
+	Applicable                string         `json:"applicable"`
 	SeverityNumValue          int            `json:"-"` // For sorting
 	ImpactedDependencyName    string         `json:"impactedPackageName"`
 	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`

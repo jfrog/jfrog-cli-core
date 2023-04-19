@@ -30,8 +30,8 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *jas.ExtendedScanResults,  multipleRoots, printExtended, scan bool) error {
-	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults multipleRoots, true, true)
+func PrintViolationsTable(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability,  extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err

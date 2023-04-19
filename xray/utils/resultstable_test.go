@@ -23,7 +23,7 @@ func TestPrintViolationsTable(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := PrintViolationsTable(test.violations, &jas.ExtendedScanResults{}, false, true)
+		err := PrintViolationsTable(test.violations, &jas.ExtendedScanResults{}, false, true, true)
 		assert.NoError(t, err)
 		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
 			err = NewFailBuildError()

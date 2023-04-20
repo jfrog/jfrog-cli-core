@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -14,7 +16,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
@@ -115,8 +116,8 @@ func (scanCmd *ScanCommand) SetBypassArchiveLimits(bypassArchiveLimits bool) *Sc
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) indexFile(filePath string) (*services.GraphNode, error) {
-	var indexerResults services.GraphNode
+func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, error) {
+	var indexerResults xrayUtils.GraphNode
 	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
 	if scanCmd.bypassArchiveLimits {
 		indexerCmd.Args = append(indexerCmd.Args, "--bypass-archive-limits")
@@ -152,20 +153,20 @@ func (scanCmd *ScanCommand) Run() (err error) {
 			}
 		}
 	}()
-	xrayManager, xrayVersion, err := commands.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
+	xrayManager, xrayVersion, err := utils.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
 
 	// Validate Xray minimum version for graph scan command
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, commands.GraphScanMinXrayVersion)
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion)
 	if err != nil {
 		return err
 	}
 
 	if scanCmd.bypassArchiveLimits {
 		// Validate Xray minimum version for BypassArchiveLimits flag for indexer
-		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, commands.BypassArchiveLimitsMinXrayVersion)
+		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.BypassArchiveLimitsMinXrayVersion)
 		if err != nil {
 			return err
 		}
@@ -309,7 +310,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")
 				}
-				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
+				scanResults, err := utils.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
 				if err != nil {
 					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
 					indexedFileErrors[threadId] = append(indexedFileErrors[threadId], formats.SimpleJsonError{FilePath: filePath, ErrorMessage: err.Error()})

@@ -4,7 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,18 +31,10 @@ import (
 
 type Params struct {
 	xrayGraphScanParams services.XrayGraphScanParams
-	serverDetails       *config.ServerDetails
 	progress            ioUtils.ProgressMgr
-	ignoreConfigFile    bool
-	excludeTestDeps     bool
-	insecureTls         bool
-	useWrapper          bool
-	depsRepo            string
-	requirementsFile    string
-	technologies        []string
 	workingDirs         []string
-	args                []string
 	installFunc         func(tech string) error
+	*cmdUtils.GraphBasicParams
 }
 
 func NewAuditParams() *Params {
@@ -53,77 +49,16 @@ func (params *Params) XrayGraphScanParams() services.XrayGraphScanParams {
 	return params.xrayGraphScanParams
 }
 
-func (params *Params) ServerDetails() *config.ServerDetails {
-	return params.serverDetails
-}
-
 func (params *Params) Progress() ioUtils.ProgressMgr {
 	return params.progress
-}
-
-func (params *Params) IgnoreConfigFile() bool {
-	return params.ignoreConfigFile
-}
-
-func (params *Params) ExcludeTestDeps() bool {
-	return params.excludeTestDeps
-}
-
-func (params *Params) InsecureTls() bool {
-	return params.insecureTls
-}
-
-func (params *Params) UseWrapper() bool {
-	return params.useWrapper
-}
-
-func (params *Params) DepsRepo() string {
-	return params.depsRepo
-}
-
-func (params *Params) RequirementsFile() string {
-	return params.requirementsFile
-}
-
-func (params *Params) Technologies() []string {
-	return params.technologies
 }
 
 func (params *Params) WorkingDirs() []string {
 	return params.workingDirs
 }
 
-func (params *Params) Args() []string {
-	return params.args
-}
-
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
-	return params
-}
-
-func (params *Params) SetServerDetails(serverDetails *config.ServerDetails) *Params {
-	params.serverDetails = serverDetails
-	return params
-}
-
-func (params *Params) SetExcludeTestDeps(excludeTestDeps bool) *Params {
-	params.excludeTestDeps = excludeTestDeps
-	return params
-}
-
-func (params *Params) SetUseWrapper(useWrapper bool) *Params {
-	params.useWrapper = useWrapper
-	return params
-}
-
-func (params *Params) SetInsecureTLS(insecureTls bool) *Params {
-	params.insecureTls = insecureTls
-	return params
-}
-
-func (params *Params) SetArgs(args []string) *Params {
-	params.args = args
 	return params
 }
 
@@ -132,28 +67,8 @@ func (params *Params) SetProgressBar(progress ioUtils.ProgressMgr) *Params {
 	return params
 }
 
-func (params *Params) SetRequirementsFile(requirementsFile string) *Params {
-	params.requirementsFile = requirementsFile
-	return params
-}
-
-func (params *Params) SetIgnoreConfigFile(ignoreConfigFile bool) *Params {
-	params.ignoreConfigFile = ignoreConfigFile
-	return params
-}
-
 func (params *Params) SetWorkingDirs(workingDirs []string) *Params {
 	params.workingDirs = workingDirs
-	return params
-}
-
-func (params *Params) SetTechnologies(technologies ...string) *Params {
-	params.technologies = append(params.technologies, technologies...)
-	return params
-}
-
-func (params *Params) SetDepsRepo(depsRepo string) *Params {
-	params.depsRepo = depsRepo
 	return params
 }
 
@@ -218,24 +133,28 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	technologies := params.technologies
+	technologies := params.Technologies
 	if len(technologies) == 0 {
-		technologies, err = detectedTechnologies()
+		technologies, err = utils.DetectedTechnologies()
 		if err != nil {
 			return
 		}
 	}
 	var errorList strings.Builder
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		dependencyTrees, e := getTechDependencyTree(params, tech)
+		dependencyTrees, e := GetTechDependencyTree(params.GraphBasicParams, tech)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, serverDetails, params.progress, tech)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
 			continue
@@ -249,25 +168,33 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
-	if params.progress != nil {
-		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+func GetTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) (dependencyTrees []*xrayUtils.GraphNode, e error) {
+	if params.Progress != nil {
+		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
 		dependencyTrees, e = getJavaDependencyTree(params, tech)
 	case coreutils.Npm:
-		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+		dependencyTrees, e = npm.BuildDependencyTree(params.Args)
 	case coreutils.Yarn:
 		dependencyTrees, e = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
+		serverDetails, e := params.ServerDetails()
+		if e != nil {
+			return nil, e
+		}
+		dependencyTrees, e = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
+		serverDetails, e := params.ServerDetails()
+		if e != nil {
+			return nil, e
+		}
 		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
-			Server:              params.serverDetails,
+			Server:              serverDetails,
 			Tool:                pythonutils.PythonTool(tech),
-			RemotePypiRepo:      params.depsRepo,
-			PipRequirementsFile: params.requirementsFile})
+			RemotePypiRepo:      params.DepsRepo(),
+			PipRequirementsFile: params.RequirementsFile})
 	case coreutils.Nuget:
 		dependencyTrees, e = nuget.BuildDependencyTree()
 	default:
@@ -277,17 +204,21 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependenc
 	return dependencyTrees, e
 }
 
-func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
+func getJavaDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
 	var javaProps map[string]any
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, err
+	}
 	if params.DepsRepo() != "" {
-		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
+		javaProps = createJavaProps(params.DepsRepo(), serverDetails)
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
-		InsecureTls:      params.insecureTls,
-		IgnoreConfigFile: params.ignoreConfigFile,
-		ExcludeTestDeps:  params.excludeTestDeps,
-		UseWrapper:       params.useWrapper,
+		InsecureTls:      params.InsecureTls,
+		IgnoreConfigFile: params.IgnoreConfigFile,
+		ExcludeTestDeps:  params.ExcludeTestDependencies,
+		UseWrapper:       params.UseWrapper,
 		JavaProps:        javaProps,
 	})
 }
@@ -310,21 +241,4 @@ func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[s
 		"resolver.snapshotRepo": depsRepo,
 		"buildInfoConfig.artifactoryResolutionEnabled": true,
 	}
-}
-
-func detectedTechnologies() (technologies []string, err error) {
-	wd, err := os.Getwd()
-	if errorutils.CheckError(err) != nil {
-		return
-	}
-	detectedTechnologies, err := coreutils.DetectTechnologies(wd, false, false)
-	if err != nil {
-		return
-	}
-	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
-	if detectedTechnologiesString == "" {
-		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
-	}
-	log.Info("Detected: " + detectedTechnologiesString)
-	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
 }

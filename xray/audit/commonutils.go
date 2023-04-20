@@ -3,6 +3,8 @@ package audit
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +14,6 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -23,16 +24,16 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
 	return buildXrayDependencyTree(treeHelper, []string{nodeId})
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *services.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *xrayUtils.GraphNode {
 	nodeId := impactPath[len(impactPath)-1]
 	// Initialize the new node
-	xrDependencyTree := &services.GraphNode{}
+	xrDependencyTree := &xrayUtils.GraphNode{}
 	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*services.GraphNode{}
+	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
 		log.Debug("buildXrayDependencyTree exceeded max tree depth")
 		return xrDependencyTree
@@ -48,7 +49,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -102,14 +103,14 @@ func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 	}
 }
 
-func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
+func GetAndAssertNode(t *testing.T, modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
 	module := GetModule(modules, moduleId)
 	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
 	return module
 }
 
 // Get a specific module from the provided modules list
-func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
+func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")
 		id := splitIdentifier[0]

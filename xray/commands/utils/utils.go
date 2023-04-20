@@ -1,11 +1,14 @@
-package commands
+package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
 )
 
 const (
@@ -56,4 +59,21 @@ func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails)
 		return nil, "", err
 	}
 	return xrayManager, xrayVersion, nil
+}
+
+func DetectedTechnologies() (technologies []string, err error) {
+	wd, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	detectedTechnologies, err := coreutils.DetectTechnologies(wd, false, false)
+	if err != nil {
+		return
+	}
+	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
+	if detectedTechnologiesString == "" {
+		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
+	}
+	log.Info("Detected: " + detectedTechnologiesString)
+	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
 }

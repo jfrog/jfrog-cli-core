@@ -8,7 +8,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
-func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -42,9 +42,9 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	rootNode := &services.GraphNode{
+	rootNode := &xrayUtils.GraphNode{
 		Id:    goPackageTypeIdentifier + rootModuleName,
-		Nodes: []*services.GraphNode{},
+		Nodes: []*xrayUtils.GraphNode{},
 	}
 	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
 
@@ -54,7 +54,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 		return
 	}
 
-	dependencyTree = []*services.GraphNode{rootNode}
+	dependencyTree = []*xrayUtils.GraphNode{rootNode}
 	return
 }
 
@@ -67,7 +67,7 @@ func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
 	return os.Setenv("GOPROXY", repoUrl)
 }
 
-func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
+func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
 	if currNode.NodeHasLoop() {
 		return
 	}
@@ -78,9 +78,9 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 			// 'go list all' is more accurate than 'go graph' so we filter out deps that don't exist in go list
 			continue
 		}
-		childNode := &services.GraphNode{
+		childNode := &xrayUtils.GraphNode{
 			Id:     goPackageTypeIdentifier + childName,
-			Nodes:  []*services.GraphNode{},
+			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
@@ -88,16 +88,16 @@ func populateGoDependencyTree(currNode *services.GraphNode, dependenciesGraph ma
 	}
 }
 
-func addGoVersionAsDependency(rootNode *services.GraphNode) error {
+func addGoVersionAsDependency(rootNode *xrayUtils.GraphNode) error {
 	goVersion, err := utils.GetParsedGoVersion()
 	if err != nil {
 		return err
 	}
 	// Convert "go1.17.3" to "github.com/golang/go:v1.17.3"
 	goVersionID := strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1)
-	rootNode.Nodes = append(rootNode.Nodes, &services.GraphNode{
+	rootNode.Nodes = append(rootNode.Nodes, &xrayUtils.GraphNode{
 		Id:    goPackageTypeIdentifier + goVersionID,
-		Nodes: []*services.GraphNode{},
+		Nodes: []*xrayUtils.GraphNode{},
 	})
 	return nil
 }

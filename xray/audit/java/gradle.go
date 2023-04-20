@@ -7,12 +7,12 @@ import (
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 const gradlew = "gradlew"
 
-func buildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*services.GraphNode, err error) {
+func buildGradleDependencyTree(excludeTestDeps, useWrapper, ignoreConfigFile bool, gradleConfigParams map[string]any) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-gradle")
 	defer cleanBuild(err)
 

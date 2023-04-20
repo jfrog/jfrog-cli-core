@@ -69,9 +69,9 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 		if err != nil {
 			return err
 		}
-		return printJson(jsonTable)
+		return PrintJson(jsonTable)
 	case Json:
-		return printJson(results)
+		return PrintJson(results)
 	case Sarif:
 		sarifFile, err := GenerateSarifFileFromScan(results, isMultipleRoots, false)
 		if err != nil {
@@ -338,7 +338,7 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 	return
 }
 
-func printJson(output interface{}) error {
+func PrintJson(output interface{}) error {
 	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)

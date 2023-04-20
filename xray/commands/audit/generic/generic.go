@@ -3,50 +3,26 @@ package audit
 import (
 	"os"
 
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type GenericAuditCommand struct {
-	serverDetails           *config.ServerDetails
-	OutputFormat            xrutils.OutputFormat
-	watches                 []string
-	workingDirs             []string
-	projectKey              string
-	targetRepoPath          string
-	IncludeVulnerabilities  bool
-	IncludeLicenses         bool
-	Fail                    bool
-	PrintExtendedTable      bool
-	excludeTestDependencies bool
-	useWrapper              bool
-	insecureTls             bool
-	args                    []string
-	technologies            []string
-	requirementsFile        string
-	progress                ioUtils.ProgressMgr
+	watches                []string
+	workingDirs            []string
+	projectKey             string
+	targetRepoPath         string
+	IncludeVulnerabilities bool
+	IncludeLicenses        bool
+	Fail                   bool
+	PrintExtendedTable     bool
+	*cmdUtils.GraphBasicParams
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
 	return &GenericAuditCommand{}
-}
-
-func (auditCmd *GenericAuditCommand) SetServerDetails(server *config.ServerDetails) *GenericAuditCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetOutputFormat(format xrutils.OutputFormat) *GenericAuditCommand {
-	auditCmd.OutputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
 }
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {
@@ -106,25 +82,16 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGr
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	server, err := auditCmd.ServerDetails()
 	if err != nil {
 		return
 	}
 	auditParams := NewAuditParams().
-		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
-		SetServerDetails(server).
-		SetExcludeTestDeps(auditCmd.excludeTestDependencies).
-		SetUseWrapper(auditCmd.useWrapper).
-		SetInsecureTLS(auditCmd.insecureTls).
-		SetArgs(auditCmd.args).
-		SetProgressBar(auditCmd.progress).
-		SetRequirementsFile(auditCmd.requirementsFile).
-		SetWorkingDirs(auditCmd.workingDirs).
-		SetTechnologies(auditCmd.technologies...)
+		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams())
+	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	if auditCmd.progress != nil {
-		err = auditCmd.progress.Quit()
+	if auditCmd.Progress != nil {
+		err = auditCmd.Progress.Quit()
 		if err != nil {
 			return
 		}
@@ -158,43 +125,4 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 
 func (auditCmd *GenericAuditCommand) CommandName() string {
 	return "generic_audit"
-}
-
-func (auditCmd *GenericAuditCommand) SetNpmScope(depType string) *GenericAuditCommand {
-	switch depType {
-	case "devOnly":
-		auditCmd.args = []string{"--dev"}
-	case "prodOnly":
-		auditCmd.args = []string{"--prod"}
-	}
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetPipRequirementsFile(requirementsFile string) *GenericAuditCommand {
-	auditCmd.requirementsFile = requirementsFile
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetExcludeTestDependencies(excludeTestDependencies bool) *GenericAuditCommand {
-	auditCmd.excludeTestDependencies = excludeTestDependencies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetUseWrapper(useWrapper bool) *GenericAuditCommand {
-	auditCmd.useWrapper = useWrapper
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetInsecureTls(insecureTls bool) *GenericAuditCommand {
-	auditCmd.insecureTls = insecureTls
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetTechnologies(technologies []string) *GenericAuditCommand {
-	auditCmd.technologies = technologies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetProgress(progress ioUtils.ProgressMgr) {
-	auditCmd.progress = progress
 }

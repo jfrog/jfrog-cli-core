@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	audit "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic"
 	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	utils2 "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -59,9 +58,7 @@ type policyTableStruct struct {
 type Command struct {
 	PackageManagerConfig *artifactory_utils.RepositoryConfig
 	params               *audit.Params
-	ignoreConfigFile     bool
 	workingDir           string
-	installFunc          func(tech string) error
 	OriginPath           string
 	*cmdUtils.GraphBasicParams
 }
@@ -89,7 +86,7 @@ func (ss *Command) Run() (err error) {
 			}
 		}
 	}()
-	techs, err := utils2.DetectedTechnologies()
+	techs, err := cmdUtils.DetectedTechnologies()
 	if err != nil {
 		return err
 	}
@@ -124,7 +121,7 @@ func (ss *Command) curateTree(tech coreutils.Technology) ([]PackageStatus, error
 	}
 	// we check the graph filled
 	if len(ss.DependencyTrees) == 0 {
-		return nil, errors.New(fmt.Sprintf("failed to get graph for package type %v", tech))
+		return nil, fmt.Errorf("failed to get graph for package type %v", tech)
 	}
 	err = ss.SetRegistryByTech(tech)
 	if err != nil {
@@ -202,11 +199,7 @@ func convertToTableStruct(packagesStatus []PackageStatus) []PackageStatusTableSt
 		}
 		var policiesCondTable []policyTableStruct
 		for _, policyCond := range pkgStatus.Policy {
-			policiesCondTable = append(policiesCondTable, policyTableStruct{
-				Policy:    policyCond.Policy,
-				Condition: policyCond.Condition,
-				Category:  policyCond.Category,
-			})
+			policiesCondTable = append(policiesCondTable, policyTableStruct(policyCond))
 		}
 		pkgTable.Policy = policiesCondTable
 		pkgStatusTable = append(pkgStatusTable, pkgTable)
@@ -239,7 +232,7 @@ func (ss *Command) SetRegistryByTech(tech coreutils.Technology) error {
 		}
 		ss.SetPackageManagerConfig(resolverParams)
 	default:
-		return errors.New(fmt.Sprintf("package type %s not supported", tech.ToString()))
+		return fmt.Errorf("package type %s not supported", tech.ToString())
 	}
 	return nil
 }

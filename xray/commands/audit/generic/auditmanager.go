@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 
@@ -35,7 +34,7 @@ type Params struct {
 	releasesRepo        string
 	workingDirs         []string
 	installFunc         func(tech string) error
-	*cmdUtils.GraphBasicParams
+	*utils.GraphBasicParams
 	xrayVersion string
 }
 
@@ -195,7 +194,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func GetTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *utils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
 	if params.Progress != nil {
 		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -214,9 +213,9 @@ func GetTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Tec
 		}
 		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		serverDetails, e := params.ServerDetails()
-		if e != nil {
-			return nil, e
+		serverDetails, err := params.ServerDetails()
+		if err != nil {
+			return nil, err
 		}
 		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              serverDetails,
@@ -238,7 +237,7 @@ func GetTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Tec
 	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
+func getJavaDependencyTree(params *utils.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
 	var javaProps map[string]any
 	serverDetails, err := params.ServerDetails()
 	if err != nil {

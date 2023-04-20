@@ -198,6 +198,10 @@ func GetTechDependencyTree(params *utils.GraphBasicParams, tech coreutils.Techno
 	if params.Progress != nil {
 		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, err
+	}
 	var dependencyTrees []*xrayUtils.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
@@ -207,16 +211,8 @@ func GetTechDependencyTree(params *utils.GraphBasicParams, tech coreutils.Techno
 	case coreutils.Yarn:
 		dependencyTrees, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		serverDetails, err := params.ServerDetails()
-		if err != nil {
-			return nil, err
-		}
 		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		serverDetails, err := params.ServerDetails()
-		if err != nil {
-			return nil, err
-		}
 		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              serverDetails,
 			Tool:                pythonutils.PythonTool(tech),

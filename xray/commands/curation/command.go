@@ -57,7 +57,6 @@ type policyTableStruct struct {
 
 type Command struct {
 	PackageManagerConfig *artifactory_utils.RepositoryConfig
-	params               *audit.Params
 	workingDir           string
 	OriginPath           string
 	*cmdUtils.GraphBasicParams

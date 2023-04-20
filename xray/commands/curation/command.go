@@ -23,10 +23,11 @@ var supportedTech = map[coreutils.Technology]struct{}{
 }
 
 type PackageStatus struct {
+	Action         string   `json:"action"`
 	PackageName    string   `json:"package_name"`
 	PackageVersion string   `json:"package_version"`
-	Status         string   `json:"status"`
-	Parent         string   `json:"parent"`
+	ParentName     string   `json:"parent_name"`
+	ParentVersion  string   `json:"parent_version"`
 	DepRelation    string   `json:"dependency_relation"`
 	PkgType        string   `json:"type"`
 	Policy         []policy `json:"policies"`
@@ -36,11 +37,13 @@ type PackageStatus struct {
 type policy struct {
 	Policy    string `json:"policy"`
 	Condition string `json:"condition"`
+	Category  string `json:"category"`
 }
 
 type PackageStatusTableStruct struct {
 	Status         string              `col-name:"Action"`
-	Parent         string              `col-name:"Direct Dependency\nPackage Name And Version"`
+	ParentName     string              `col-name:"Direct Dependency\nPackage Name"`
+	ParentVersion  string              `col-name:"Direct Dependency\nPackage Version"`
 	PackageName    string              `col-name:"Blocked Package\nName"`
 	PackageVersion string              `col-name:"Blocked Package\nVersion"`
 	PkgType        string              `col-name:"Package Type"`
@@ -50,6 +53,7 @@ type PackageStatusTableStruct struct {
 type policyTableStruct struct {
 	Policy    string `col-name:"Violated Policy\nName"`
 	Condition string `col-name:"Violated Condition\nName"`
+	Category  string `col-name:"Violated Condition\nType"`
 }
 
 type Command struct {
@@ -114,11 +118,12 @@ func (ss *Command) Run() (err error) {
 }
 
 func (ss *Command) curateTree(tech coreutils.Technology) ([]PackageStatus, error) {
-	graph, err := audit.GetTechDependencyTree(ss.GraphBasicParams, tech)
+	_, err := audit.GetTechDependencyTree(ss.GraphBasicParams, tech)
 	if err != nil {
 		return nil, err
 	}
-	if len(graph) == 0 {
+	// we check the graph filled
+	if len(ss.DependencyTrees) == 0 {
 		return nil, errors.New(fmt.Sprintf("failed to get graph for package type %v", tech))
 	}
 	err = ss.SetRegistryByTech(tech)
@@ -154,7 +159,7 @@ func (ss *Command) curateTree(tech coreutils.Technology) ([]PackageStatus, error
 	if ss.Progress != nil {
 		ss.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation block status for %s graph", tech.ToFormal()))
 	}
-	if err := analyzer.recursiveNodeCuration(graph[0], &packagesStatus, "", true); err != nil {
+	if err := analyzer.recursiveNodeCuration(ss.DependencyTrees[0], &packagesStatus, "", "", true); err != nil {
 		return nil, err
 	}
 	return packagesStatus, nil
@@ -188,8 +193,9 @@ func convertToTableStruct(packagesStatus []PackageStatus) []PackageStatusTableSt
 	var pkgStatusTable []PackageStatusTableStruct
 	for _, pkgStatus := range packagesStatus {
 		pkgTable := PackageStatusTableStruct{
-			Status:         pkgStatus.Status,
-			Parent:         pkgStatus.Parent,
+			Status:         pkgStatus.Action,
+			ParentName:     pkgStatus.ParentName,
+			ParentVersion:  pkgStatus.ParentVersion,
 			PackageName:    pkgStatus.PackageName,
 			PackageVersion: pkgStatus.PackageVersion,
 			PkgType:        pkgStatus.PkgType,
@@ -199,6 +205,7 @@ func convertToTableStruct(packagesStatus []PackageStatus) []PackageStatusTableSt
 			policiesCondTable = append(policiesCondTable, policyTableStruct{
 				Policy:    policyCond.Policy,
 				Condition: policyCond.Condition,
+				Category:  policyCond.Category,
 			})
 		}
 		pkgTable.Policy = policiesCondTable

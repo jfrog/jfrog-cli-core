@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/auth"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 
@@ -37,7 +36,7 @@ type Params struct {
 	workingDirs         []string
 	installFunc         func(tech string) error
 	*cmdUtils.GraphBasicParams
-	xrayVersion         string
+	xrayVersion string
 }
 
 func NewAuditParams() *Params {
@@ -92,11 +91,15 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// Get Xray version
-	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(params.serverDetails)
+	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return
 	}
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xraycommands.GraphScanMinXrayVersion); err != nil {
+	_, xrayVersion, err := utils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
+		return
+	}
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
 	params.xrayVersion = xrayVersion
@@ -192,7 +195,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func getTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
 	if params.Progress != nil {
 		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -209,7 +212,7 @@ func getTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Tec
 		if err != nil {
 			return nil, err
 		}
-		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.depsRepo)
+		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
 		serverDetails, e := params.ServerDetails()
 		if e != nil {
@@ -229,7 +232,7 @@ func getTechDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Tec
 		return nil, err
 	}
 	// Save the full dependencyTree to build impact paths for vulnerable dependencies
-	params.dependencyTrees = dependencyTrees
+	params.DependencyTrees = dependencyTrees
 
 	// Flatten the graph to speed up the ScanGraph request
 	return services.FlattenGraph(dependencyTrees)
@@ -251,9 +254,9 @@ func getJavaDependencyTree(params *cmdUtils.GraphBasicParams, tech coreutils.Tec
 		ExcludeTestDeps:  params.ExcludeTestDependencies,
 		UseWrapper:       params.UseWrapper,
 		JavaProps:        javaProps,
-		Server:           params.serverDetails,
-		DepsRepo:         params.depsRepo,
-		ReleasesRepo:     params.releasesRepo,
+		Server:           serverDetails,
+		DepsRepo:         params.DepsRepo(),
+		ReleasesRepo:     params.ReleasesRepo,
 	})
 }
 

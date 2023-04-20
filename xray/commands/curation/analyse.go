@@ -23,10 +23,11 @@ type treeAnalyzer struct {
 	tech              coreutils.Technology
 }
 
-func (nc *treeAnalyzer) recursiveNodeCuration(graph *utils.GraphNode, respStatus *[]PackageStatus, parent string, isRoot bool) error {
+func (nc *treeAnalyzer) recursiveNodeCuration(graph *utils.GraphNode, respStatus *[]PackageStatus, parent, parentVersion string, isRoot bool) error {
 	if parent == "" && !isRoot {
 		_, name, version := getUrlNameAndVersionByTech(nc.tech, graph.Id, nc.url, nc.repo)
-		parent = fmt.Sprintf("%s:%s", name, version)
+		parent = name
+		parentVersion = version
 	}
 	for _, node := range graph.Nodes {
 		packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
@@ -41,21 +42,21 @@ func (nc *treeAnalyzer) recursiveNodeCuration(graph *utils.GraphNode, respStatus
 			}
 		}
 		if resp.StatusCode == http.StatusForbidden {
-			err = nc.tryToAddBlockedPackage(packageUrl, parent, respStatus, name, version)
+			err = nc.addBlockedPackage(packageUrl, parent, parentVersion, respStatus, name, version)
 			if err != nil {
 				log.Error(fmt.Sprintf("%v", err))
 				continue
 			}
 		}
 
-		if err := nc.recursiveNodeCuration(node, respStatus, parent, false); err != nil {
+		if err := nc.recursiveNodeCuration(node, respStatus, parent, parentVersion, false); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (nc *treeAnalyzer) tryToAddBlockedPackage(packageUrl string, parent string, respStatus *[]PackageStatus, name string, version string) error {
+func (nc *treeAnalyzer) addBlockedPackage(packageUrl string, parent, parentVersion string, respStatus *[]PackageStatus, name string, version string) error {
 	getResp, respBody, _, err := nc.artiManager.Client().SendGet(packageUrl, true, &nc.httpClientDetails)
 	if err != nil {
 		if getResp == nil {
@@ -81,13 +82,15 @@ func (nc *treeAnalyzer) tryToAddBlockedPackage(packageUrl string, parent string,
 			if parent != "" {
 				depRelation = "indirect"
 			}
+
 			policies := extractPoliciesFromMsg(respError)
 			*respStatus = append(*respStatus, PackageStatus{
 				PackageName:    name,
 				PackageVersion: version,
-				Status:         Blocked,
+				Action:         Blocked,
 				Policy:         policies,
-				Parent:         parent,
+				ParentName:     parent,
+				ParentVersion:  parentVersion,
 				DepRelation:    depRelation,
 				Resolved:       packageUrl,
 				PkgType:        string(nc.tech),
@@ -107,10 +110,12 @@ func extractPoliciesFromMsg(respError *utils2.ErrorsResp) []policy {
 		exp := msg[start:end]
 		exp = strings.TrimPrefix(exp, "{")
 		polCond := strings.Split(exp, ",")
-		if len(polCond) == 2 {
+		if len(polCond) == 3 {
 			pol := polCond[0]
 			cond := polCond[1]
-			policies = append(policies, policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
+			category := polCond[2]
+			policies = append(policies, policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond),
+				Category: strings.TrimSpace(category)})
 		}
 		if len(msg) <= end+1 {
 			break

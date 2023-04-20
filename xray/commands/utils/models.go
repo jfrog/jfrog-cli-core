@@ -4,12 +4,15 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	xrUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 type GraphBasicParams struct {
 	serverDetails           *config.ServerDetails
 	OutputFormat            xrUtils.OutputFormat
 	Progress                ioUtils.ProgressMgr
+	DependencyTrees         []*xrayUtils.GraphNode
+	ReleasesRepo            string
 	ExcludeTestDependencies bool
 	UseWrapper              bool
 	InsecureTls             bool

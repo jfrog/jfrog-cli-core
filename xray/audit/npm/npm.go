@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/exp/slices"
 )
 

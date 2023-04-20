@@ -250,7 +250,7 @@ func (writerMng *errorWriter) closeWriter() error {
 		log.Debug(fmt.Sprintf("Saving errors outpt to: %s.", writerMng.filePath))
 		err = fileutils.MoveFile(writerMng.writer.GetFilePath(), writerMng.filePath)
 		if err != nil {
-			err = fmt.Errorf(fmt.Sprintf("Saving error file failed! failed moving %s to %s", writerMng.writer.GetFilePath(), writerMng.filePath), err)
+			err = fmt.Errorf("saving error file failed! failed moving %s to %s: %w", writerMng.writer.GetFilePath(), writerMng.filePath, err)
 		}
 	}
 	return err

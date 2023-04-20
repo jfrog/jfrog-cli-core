@@ -589,7 +589,7 @@ type MissionControlDetails struct {
 }
 
 func (serverDetails *ServerDetails) IsEmpty() bool {
-	return len(serverDetails.ServerId) == 0
+	return len(serverDetails.ServerId) == 0 && serverDetails.Url == ""
 }
 
 func (serverDetails *ServerDetails) SetUser(username string) {

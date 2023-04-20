@@ -232,7 +232,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		scanCmd.includeVulnerabilities,
 		scanCmd.includeLicenses,
 		true,
-		scanCmd.printExtendedTable,
+		scanCmd.printExtendedTable, true,
 	)
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				}
 				scanResults, err := utils.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
 				if err != nil {
-					log.Error(fmt.Sprintf("Scanning %s failed with error: %s", graph.Id, err.Error()))
+					log.Error(fmt.Sprintf("scanning '%s' failed with error: %s", graph.Id, err.Error()))
 					indexedFileErrors[threadId] = append(indexedFileErrors[threadId], formats.SimpleJsonError{FilePath: filePath, ErrorMessage: err.Error()})
 					return
 				}

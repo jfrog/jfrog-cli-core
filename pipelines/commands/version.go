@@ -41,6 +41,6 @@ func (vc *VersionCommand) Run() error {
 	if info == nil {
 		return errorutils.CheckError(fmt.Errorf("unable to fetch pipelines version"))
 	}
-	log.Output("Pipelines Server version: ", info.Version)
+	log.Output("Pipelines Server version:", info.Version)
 	return nil
 }

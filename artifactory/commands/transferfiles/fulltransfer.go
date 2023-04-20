@@ -290,7 +290,7 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 		return
 	}
 	if completed {
-		log.Debug(logMsgPrefix+"Skipping completed folder: ", path.Join(m.repoKey, params.relativePath))
+		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
 		return nil, true, nil, nil
 	}
 	// If the node was not completed, we will start exploring it from the beginning.

@@ -75,3 +75,14 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	}
 
 }
+
+func TestIgnoreScripts(t *testing.T) {
+	// Create and change directory to test workspace
+	_, cleanUp := audit.CreateTestWorkspace(t, "npm-scripts")
+	defer cleanUp()
+
+	// The package.json file contain a postinstall script running an "exit 1" command.
+	// Without the "--ignore-scripts" flag, the test will fail.
+	_, err := BuildDependencyTree([]string{})
+	assert.NoError(t, err)
+}

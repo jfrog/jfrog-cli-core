@@ -1,6 +1,7 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"strconv"
@@ -23,23 +24,19 @@ type DependencyTreeParams struct {
 	ExcludeTestDeps  bool
 	UseWrapper       bool
 	JavaProps        map[string]any
+	Server           *config.ServerDetails
+	DepsRepo         string
+	ReleasesRepo     string
 }
 
-func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
+func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-	return buildConfiguration, func(err error) {
-		buildName, err := buildConfiguration.GetBuildName()
-		if err != nil {
-			return
-		}
+	return buildConfiguration, func() error {
 		buildNumber, err := buildConfiguration.GetBuildNumber()
 		if err != nil {
-			return
+			return err
 		}
-		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
-		if err != nil {
-			return
-		}
+		return artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 
@@ -138,7 +135,15 @@ func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.Gra
 	if params.Tool == coreutils.Maven {
 		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
 	}
-	return buildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
+	server := &config.ServerDetails{}
+	depsRepo := ""
+	releaseRepo := ""
+	if params.IgnoreConfigFile {
+		server = params.Server
+		depsRepo = params.DepsRepo
+		releaseRepo = params.ReleasesRepo
+	}
+	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo, releaseRepo)
 }
 
 type dependencyMultimap struct {

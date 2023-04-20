@@ -1,18 +1,18 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.19
+go 1.20
 
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
-	github.com/gocarina/gocsv v0.0.0-20230325173030-9a18a846a479
+	github.com/gocarina/gocsv v0.0.0-20230406101422-6445c2b15027
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.3
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/jfrog/build-info-go v1.9.2
 	github.com/jfrog/gofrog v1.2.5
-	github.com/jfrog/jfrog-client-go v1.28.0
+	github.com/jfrog/jfrog-client-go v1.28.2
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.3
@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.12
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/exp v0.0.0-20230418202329-0354be287a23
-	golang.org/x/mod v0.9.0
+	golang.org/x/mod v0.10.0
 	golang.org/x/term v0.7.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -94,6 +94,4 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/asafambar/jfrog-client-go v0.0.0-20230420080649-de999d83316a
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230316095417-a9f6b73206d7
-
-// replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.5-0.20221107113836-a4c9225c690e
+// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230413153019-16e1e7b457e5

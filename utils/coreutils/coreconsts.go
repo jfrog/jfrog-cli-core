@@ -44,6 +44,7 @@ const (
 	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 	FailNoOp           = "JFROG_CLI_FAIL_NO_OP"
 	CI                 = "CI"
+	ServerID           = "JFROG_CLI_SERVER_ID"
 )
 
 // Although these vars are constant, they are defined inside a vars section and not a constants section because the tests modify these values.

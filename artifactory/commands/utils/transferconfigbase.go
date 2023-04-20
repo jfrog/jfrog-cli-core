@@ -247,7 +247,7 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 	}
 	if _, exist := repoMap["members"]; exist {
 		delete(repoMap, "members")
-		tcb.FederatedMembersRemoved = tcb.FederatedMembersRemoved || true
+		tcb.FederatedMembersRemoved = true
 	}
 	repoBytes, err := json.Marshal(repoMap)
 	if err != nil {

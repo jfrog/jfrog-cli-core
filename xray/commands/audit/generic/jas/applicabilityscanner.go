@@ -44,7 +44,11 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
-	err = applicabilityScanManager.Run()
+	entitledForJas, err := applicabilityScanManager.Run()
+	if !entitledForJas {
+		log.Info("got not entitled error from analyzer manager")
+		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+	}
 	if err != nil {
 		return handleApplicabilityScanError(err, applicabilityScanManager)
 	}
@@ -170,20 +174,20 @@ func (a *ApplicabilityScanManager) getApplicabilityScanResults() map[string]stri
 	return a.applicabilityScannerResults
 }
 
-func (a *ApplicabilityScanManager) Run() error {
+func (a *ApplicabilityScanManager) Run() (bool, error) {
 	if err := a.createConfigFile(); err != nil {
-		return err
+		return true, err
 	}
-	if err := a.runAnalyzerManager(); err != nil {
-		return err
+	if entitledForJas, err := a.runAnalyzerManager(); err != nil {
+		return entitledForJas, err
 	}
 	if err := a.parseResults(); err != nil {
-		return err
+		return true, err
 	}
 	if err := a.DeleteApplicabilityScanProcessFiles(); err != nil {
-		return err
+		return true, err
 	}
-	return nil
+	return true, nil
 }
 
 type applicabilityScanConfig struct {
@@ -228,20 +232,26 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	return nil
 }
 
-func (a *ApplicabilityScanManager) runAnalyzerManager() error {
+func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	err := setAnalyzerManagerEnvVariables(a.serverDetails)
 	if err != nil {
-		return err
+		return true, err
 	}
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
-		return err
+		return true, err
 	}
 	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
 	if err != nil {
-		return err
+		if exitError, ok := err.(*exec.ExitError); ok {
+			exitCode := exitError.ExitCode()
+			if exitCode == 31 { // user not entitled error
+				return false, err
+			}
+		}
+		return true, err
 	}
-	return nil
+	return true, nil
 }
 
 func (a *ApplicabilityScanManager) parseResults() error {

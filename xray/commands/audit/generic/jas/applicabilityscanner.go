@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -34,8 +35,8 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 	return e.XrayResults
 }
 
-func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode) (*ExtendedScanResults, error) {
-	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees)
+func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
+	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
 		return handleApplicabilityScanError(err, applicabilityScanManager)
 	}
@@ -91,9 +92,10 @@ type ApplicabilityScanManager struct {
 	configFileName              string
 	resultsFileName             string
 	analyzerManager             AnalyzerManager
+	serverDetails               *config.ServerDetails
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode) (*ApplicabilityScanManager, error) {
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ApplicabilityScanManager, error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	configFileName, err := generateRandomFileName()
 	if err != nil {
@@ -110,6 +112,7 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		configFileName:              configFileName + ".yaml",
 		resultsFileName:             resultsFileName + ".sarif",
 		analyzerManager:             analyzerManagerExecuter,
+		serverDetails:               serverDetails,
 	}, nil
 }
 
@@ -226,6 +229,10 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 }
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
+	err := setAnalyzerManagerEnvVariables(a.serverDetails)
+	if err != nil {
+		return err
+	}
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err

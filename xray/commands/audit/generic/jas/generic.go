@@ -2,12 +2,19 @@ package jas
 
 import (
 	"crypto/rand"
+	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"math/big"
 	"os"
 	"path/filepath"
 )
 
-const analyzerManagerFilePath = "~/.jfrog/dependencies/analayzerManager/analyzerManager"
+const (
+	analyzerManagerFilePath = "~/.jfrog/dependencies/analayzerManager/analyzerManager"
+	jfUserEnvVariable       = "JF_USER"
+	jfPasswordEnvVariable   = "JF_PASS"
+	jfPlatformUrl           = "JF_PLATFORM_URL"
+)
 
 func getAnalyzerManagerAbsolutePath() string {
 	homeDir, _ := os.UserHomeDir()
@@ -38,4 +45,23 @@ func removeDuplicateValues(stringSlice []string) []string {
 		}
 	}
 	return finalSlice
+}
+
+func setAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
+	if serverDetails == nil {
+		return errors.New("cant get xray server details")
+	}
+	err := os.Setenv(jfUserEnvVariable, serverDetails.User)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv(jfPasswordEnvVariable, serverDetails.Password)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv(jfPlatformUrl, serverDetails.Url)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -124,7 +124,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetTechnologies(auditCmd.technologies...)
 	results, dependenciesTrees, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	extendedScanResults, err := jas.GetExtendedScanResults(results, dependenciesTrees)
+	extendedScanResults, err := jas.GetExtendedScanResults(results, dependenciesTrees, auditParams.serverDetails)
 	if err != nil {
 		return err
 	}

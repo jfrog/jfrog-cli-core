@@ -288,7 +288,7 @@ func downloadData(urlsList []string, dataDir string, fileNameFromUrlFunc func(st
 			return fmt.Errorf("couldn't get content length of %s. Error: %s", url, err.Error())
 		}
 		log.Info(fmt.Sprintf("Downloading updated package from %s. Content size: %.4f MB.", url, float64(response.ContentLength)/1000000))
-		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false)
+		_, err = client.DownloadFile(details, "", httputils.HttpClientDetails{}, false, false)
 		if err != nil {
 			return errorutils.CheckErrorf("Couldn't download from %s. Error: %s", url, err.Error())
 		}

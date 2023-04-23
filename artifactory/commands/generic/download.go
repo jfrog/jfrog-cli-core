@@ -244,7 +244,12 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 		return
 	}
 
-	downParams.ValidateSymlink, err = f.IsVlidateSymlinks(false)
+	downParams.BypassArchiveInspection, err = f.IsBypassArchiveInspection(false)
+	if err != nil {
+		return
+	}
+
+	downParams.ValidateSymlink, err = f.IsValidateSymlinks(false)
 	if err != nil {
 		return
 	}

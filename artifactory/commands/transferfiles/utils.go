@@ -121,10 +121,7 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 	}
 	defer func() {
 		if reader != nil {
-			e := reader.Close()
-			if err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, reader.Close())
 		}
 	}()
 
@@ -134,8 +131,24 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 	}
 
 	result = &serviceUtils.AqlSearchResult{}
-	err = json.Unmarshal(respBody, result)
-	return result, errorutils.CheckError(err)
+	if err = json.Unmarshal(respBody, result); err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+
+	return filterAqlResults(result), nil
+}
+
+// Filter out the root folder in the repository.
+// unfilteredResults - Unfiltered AQL search results
+func filterAqlResults(unfilteredResults *serviceUtils.AqlSearchResult) *serviceUtils.AqlSearchResult {
+	results := &serviceUtils.AqlSearchResult{}
+	for _, result := range unfilteredResults.Results {
+		if result.Path == "." && result.Name == "." {
+			continue
+		}
+		results.Results = append(results.Results, result)
+	}
+	return results
 }
 
 func createTargetAuth(targetRtDetails *config.ServerDetails, proxyKey string) api.TargetAuth {

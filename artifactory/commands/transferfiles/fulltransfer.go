@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -10,8 +13,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -172,9 +173,11 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			return
 		}
 
-		// Empty folder. Add it as candidate.
+		// Add the folder as a candidate to transfer. The reason is to transfer folders with properties or empty folders.
+		curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result.Results) > 0}, m.buildInfoRepo)
+
+		// Empty folder
 		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
 			return
 		}
 

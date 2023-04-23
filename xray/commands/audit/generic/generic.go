@@ -1,11 +1,14 @@
 package audit
 
 import (
+	"os"
+	"sync"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
 )
 
 type GenericAuditCommand struct {
@@ -96,6 +99,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
+	var mutex sync.Mutex
+	go utils.DownloadAnalyzerManagerIfNeeded("", "", "", &mutex)
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).

@@ -1,29 +1,94 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"sync"
+
+	"net/http"
+	"path"
+
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/http"
-	"path"
 )
 
-// DownloadExtractorIfNeeded Downloads the relevant build-info-extractor jar if it does not already exist locally.
+const (
+	// Deprecated, use DependenciesRemoteEnv instead.
+	LegacyExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+
+	// This env var should be used for downloading the CLI's dependencies (extractor jars, analyzerManager and etc.) through an Artifactory remote
+	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
+	// configured to proxy releases.jfrog.io.
+	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
+	DependenciesRemoteEnv = "JFROG_CLI_DEPENDENCIES_REPO"
+
+	// TODO: Analyzer manager consts - should move to new analyzermanger.go file
+	analyzerManagerDownloadPath = ""
+	analyzerManagerDir          = ""
+	analyzerManagerZipName      = ""
+)
+
+// Download the relevant build-info-extractor jar if it does not already exist locally.
 // By default, the jar is downloaded directly from jfrog releases.
-// downloadPath: Artifactory download path.
+//
 // targetPath: The local download path (without the file name).
-func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
+// downloadPath: Artifactory download path.
+func DownloadExtractor(targetPath, downloadPath string) error {
 	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
 
-	return DownloadExtractor(artDetails, remotePath, targetPath)
+	return DownloadDependency(artDetails, remotePath, targetPath, false)
+}
+
+// Download the latest AnalyzerManager executable if not cached locally.
+// By default, the zip is downloaded directly from jfrog releases.
+//
+// mutex: optional  object for background download support
+func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
+	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(analyzerManagerDownloadPath)
+	if err != nil {
+		return err
+	}
+	// Check if the AnalyzerManager should be downloaded.
+	// First get the latest AnalyzerManager checksum from Artifactory.
+	client, httpClientDetails, err := createHttpClient(artDetails)
+	if err != nil {
+		return err
+	}
+	remoteFileDetails, _, err := client.GetRemoteFileDetails(analyzerManagerDownloadPath, &httpClientDetails)
+	if err != nil {
+		return err
+	}
+	// Calc current AnalyzerManager checksum.
+	_, _, sha2, err := utils.GetFileChecksums(filepath.Join(analyzerManagerDir, analyzerManagerZipName))
+	if err != nil {
+		return err
+	}
+	// If ident, no need to download.
+	if remoteFileDetails.Checksum.Sha256 == sha2 {
+		return nil
+	}
+
+	// Download & unzip the analyzer manager files
+	log.Info("The JFrog Analyzer manager zip is not cached locally. Downloading it now...")
+	return DownloadDependency(artDetails, remotePath, analyzerManagerDir, true)
 }
 
 // The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
@@ -81,28 +146,62 @@ func getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath string
 	return path.Join(repoName, downloadPath)
 }
 
-func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {
+func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
 	downloadUrl := fmt.Sprintf("%s%s", artDetails.ArtifactoryUrl, downloadPath)
-	log.Info("Downloading build-info-extractor from", downloadUrl)
+	log.Info("Downloading JFrog's Dependency from ", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)
+	tempDirPath, err := fileutils.CreateTempDir()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, fileutils.RemoveTempDir(tempDirPath))
+	}()
 
+	// Get the expected check-sum before downloading
+	client, httpClientDetails, err := createHttpClient(artDetails)
+	if err != nil {
+		return err
+	}
+	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
+	if err != nil {
+		return err
+	}
+	// Download the file
 	downloadFileDetails := &httpclient.DownloadFileDetails{
 		FileName:      filename,
 		DownloadPath:  downloadUrl,
-		LocalPath:     localDir,
+		LocalPath:     tempDirPath,
 		LocalFileName: filename,
+		ExpectedSha1:  remoteFileDetails.Checksum.Sha1,
 	}
+	client, httpClientDetails, err = createHttpClient(artDetails)
+	if err != nil {
+		return err
+	}
+	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode)
+	if err == nil && resp.StatusCode != http.StatusOK {
+		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
+	}
+	if err != nil {
+		return err
+	}
+	return fileutils.CopyDir(tempDirPath, localDir, true, nil)
+}
 
+func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttpclient.JfrogHttpClient, httpClientDetails httputils.HttpClientDetails, err error) {
 	auth, err := artDetails.CreateArtAuthConfig()
 	if err != nil {
-		return err
+		return
 	}
+	httpClientDetails = auth.CreateHttpClientDetails()
+
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
-		return err
+		return
 	}
 
-	client, err := jfroghttpclient.JfrogClientBuilder().
+	rtHttpClient, err = jfroghttpclient.JfrogClientBuilder().
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(artDetails.InsecureTls).
 		SetClientCertPath(auth.GetClientCertPath()).
@@ -120,4 +219,13 @@ func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPat
 	}
 
 	return err
+}
+
+func GetAnalyzerManagerRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
+	extractorsRemote := os.Getenv(DependenciesRemoteEnv)
+	if extractorsRemote != "" {
+		return getDependenciesRemoteRepo(extractorsRemote, path.Join("artifactory", downloadPath))
+	}
+	log.Debug("'" + DependenciesRemoteEnv + "' environment variable is not configured. JFrog analyzer manager will be downloaded directly from releases.jfrog.io if needed.")
+	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, downloadPath, nil
 }

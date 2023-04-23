@@ -65,9 +65,7 @@ const ExcludePatterns = "excludePatterns"
 const FilterExcludedArtifactsFromBuild = "filterExcludedArtifactsFromBuild"
 
 // For path and temp files
-const PropertiesTempPrefix = "buildInfoProperties"
 const PropertiesTempPath = "jfrog/properties/"
-const GeneratedBuildInfoTempPrefix = "generatedBuildInfo"
 
 const Proxy = "proxy."
 const Host = "host"
@@ -153,15 +151,6 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	}()
 	err = config.ReadConfig(f)
 	return config, errorutils.CheckError(err)
-}
-
-func ReadGradleConfig(path string, gradleConfigParams map[string]any) (config *viper.Viper, err error) {
-	if path == "" {
-		config = createDefaultConfigWithParams(YAML, Gradle.String(), gradleConfigParams)
-	} else {
-		config, err = ReadConfigFile(path, YAML)
-	}
-	return
 }
 
 func ReadMavenConfig(path string, mvnProps map[string]any) (config *viper.Viper, err error) {

@@ -138,7 +138,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
 			isMultipleRootProject,
-			auditCmd.PrintExtendedTable,
+			auditCmd.PrintExtendedTable, false,
 		)
 		if err != nil {
 			return

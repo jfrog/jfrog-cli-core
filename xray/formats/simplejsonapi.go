@@ -19,7 +19,7 @@ type SimpleJsonResults struct {
 type VulnerabilityOrViolationRow struct {
 	Summary                   string                    `json:"summary"`
 	Severity                  string                    `json:"severity"`
-	Applicable                string                    `json:"Applicable"`
+	Applicable                string                    `json:"applicable"`
 	SeverityNumValue          int                       `json:"-"` // For sorting
 	ImpactedDependencyName    string                    `json:"impactedPackageName"`
 	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`

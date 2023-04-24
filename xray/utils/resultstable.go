@@ -691,7 +691,7 @@ func getApplicableCveValue(extendedResults *jas.ExtendedScanResults, xrayCve for
 	}
 	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]
 	if !ok {
-		return "unknown"
+		return "Unknown"
 	}
 	return applicableCveValue
 }

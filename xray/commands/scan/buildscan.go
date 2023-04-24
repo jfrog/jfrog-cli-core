@@ -127,10 +127,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	extendedScanResults, err := jas.GetExtendedScanResults(scanResponse, nil, nil)
-	if err != nil {
-		return true, err
-	}
+	extendedScanResults := &jas.ExtendedScanResults{XrayResults: scanResponse}
 
 	if bsc.outputFormat != xrutils.Table {
 		// Print the violations and/or vulnerabilities as part of one JSON.

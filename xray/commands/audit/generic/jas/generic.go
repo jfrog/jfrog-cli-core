@@ -1,38 +1,42 @@
 package jas
 
 import (
-	"crypto/rand"
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"math/big"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 	"path/filepath"
 )
 
-const (
-	analyzerManagerFilePath = "~/.jfrog/dependencies/analayzerManager/analyzerManager"
-	jfUserEnvVariable       = "JF_USER"
-	jfPasswordEnvVariable   = "JF_PASS"
-	jfPlatformUrl           = "JF_PLATFORM_URL"
+var (
+	analyzerManagerFilePath  = "analayzerManager/analyzerManager"
+	analyzerManagerLogFolder = ""
 )
 
-func getAnalyzerManagerAbsolutePath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, analyzerManagerFilePath)
+const (
+	analyzerManagerDirName   = "analyzerManagerLogs"
+	jfUserEnvVariable        = "JF_USER"
+	jfPasswordEnvVariable    = "JF_PASS"
+	jfTokenEnvVariable       = "JF_TOKEN"
+	jfPlatformUrlEnvVariable = "JF_PLATFORM_URL"
+	logDirEnvVariable        = "AM_LOG_DIRECTORY"
+)
+
+func createAnalyzerManagerLogDir() error {
+	logDir, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerDirName))
+	if err != nil {
+		return err
+	}
+	analyzerManagerLogFolder = logDir
+	return nil
 }
 
-func generateRandomFileName() (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	result := make([]byte, 10)
-	for i := 0; i < 10; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		if err != nil {
-			return "", err
-		}
-		result[i] = letters[num.Int64()]
+func getAnalyzerManagerAbsolutePath() (string, error) {
+	jfrogDir, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return "", err
 	}
-
-	return string(result), nil
+	return filepath.Join(jfrogDir, analyzerManagerFilePath), nil
 }
 
 func removeDuplicateValues(stringSlice []string) []string {
@@ -59,9 +63,14 @@ func setAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if err != nil {
 		return err
 	}
-	err = os.Setenv(jfPlatformUrl, serverDetails.Url)
+	err = os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url)
 	if err != nil {
 		return err
 	}
-	return nil
+	err = os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv(logDirEnvVariable, analyzerManagerLogFolder)
+	return err
 }

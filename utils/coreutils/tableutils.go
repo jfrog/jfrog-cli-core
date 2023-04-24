@@ -140,15 +140,15 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
-		_, omitEmptyColumnExist := field.Tag.Lookup("omitempty")
+		_, shouldOmitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
 		}
 		if !columnNameExist && !embedTableExist {
 			continue
 		}
-		if omitEmptyColumnExist {
-			if omitColumn := shouldOmitEmptyColumn(rowsSliceValue, i); omitColumn {
+		if shouldOmitEmptyColumn {
+			if omitColumn := isColumnEmpty(rowsSliceValue, i); omitColumn {
 				continue
 			}
 		}
@@ -190,7 +190,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 	return tableWriter, nil
 }
 
-func shouldOmitEmptyColumn(rows reflect.Value, fieldIndex int) bool {
+func isColumnEmpty(rows reflect.Value, fieldIndex int) bool {
 	for i := 0; i < rows.Len(); i++ {
 		currRowValue := rows.Index(i)
 		currField := currRowValue.Field(fieldIndex)

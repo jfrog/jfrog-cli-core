@@ -86,7 +86,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		return
 	}
 	auditParams := NewAuditParams().
-		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams())
+		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
+		SetWorkingDirs(auditCmd.workingDirs)
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 

@@ -25,9 +25,7 @@ type treeAnalyzer struct {
 
 func (nc *treeAnalyzer) recursiveNodeCuration(graph *utils.GraphNode, respStatus *[]PackageStatus, parent, parentVersion string, isRoot bool) error {
 	if parent == "" && !isRoot {
-		_, name, version := getUrlNameAndVersionByTech(nc.tech, graph.Id, nc.url, nc.repo)
-		parent = name
-		parentVersion = version
+		_, parent, parentVersion = getUrlNameAndVersionByTech(nc.tech, graph.Id, nc.url, nc.repo)
 	}
 	for _, node := range graph.Nodes {
 		packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
@@ -110,12 +108,10 @@ func extractPoliciesFromMsg(respError *utils2.ErrorsResp) []policy {
 		exp := msg[start:end]
 		exp = strings.TrimPrefix(exp, "{")
 		polCond := strings.Split(exp, ",")
-		if len(polCond) == 3 {
+		if len(polCond) == 2 {
 			pol := polCond[0]
 			cond := polCond[1]
-			category := polCond[2]
-			policies = append(policies, policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond),
-				Category: strings.TrimSpace(category)})
+			policies = append(policies, policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
 		}
 		if len(msg) <= end+1 {
 			break

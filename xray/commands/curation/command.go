@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -36,7 +37,6 @@ type PackageStatus struct {
 type policy struct {
 	Policy    string `json:"policy"`
 	Condition string `json:"condition"`
-	Category  string `json:"category"`
 }
 
 type PackageStatusTableStruct struct {
@@ -52,12 +52,11 @@ type PackageStatusTableStruct struct {
 type policyTableStruct struct {
 	Policy    string `col-name:"Violated Policy\nName"`
 	Condition string `col-name:"Violated Condition\nName"`
-	Category  string `col-name:"Violated Condition\nType"`
 }
 
 type Command struct {
 	PackageManagerConfig *artifactory_utils.RepositoryConfig
-	workingDir           string
+	workingDirs          []string
 	OriginPath           string
 	*cmdUtils.GraphBasicParams
 }
@@ -66,36 +65,45 @@ func NewCurationCommand() *Command {
 	return &Command{}
 }
 
-func (ss *Command) SetPackageManagerConfig(npmConfig *artifactory_utils.RepositoryConfig) *Command {
-	ss.PackageManagerConfig = npmConfig
+func (ss *Command) SetPackageManagerConfig(pkgMangerConfig *artifactory_utils.RepositoryConfig) *Command {
+	ss.PackageManagerConfig = pkgMangerConfig
 	return ss
 }
 
-func (ss *Command) SetWorkingDirs(dir string) *Command {
-	ss.workingDir = dir
+func (ss *Command) SetWorkingDirs(dirs []string) *Command {
+	ss.workingDirs = dirs
 	return ss
 }
 
 func (ss *Command) Run() (err error) {
-	defer func() {
-		if ss.OriginPath != "" {
-			e := os.Chdir(ss.OriginPath)
+	rootDir, err := os.Getwd()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if len(ss.workingDirs) > 0 {
+		defer func() {
+			e := os.Chdir(rootDir)
 			if err == nil {
 				err = e
 			}
-		}
-	}()
-	techs, err := cmdUtils.DetectedTechnologies()
-	if err != nil {
-		return err
+		}()
+	} else {
+		ss.workingDirs = append(ss.workingDirs, rootDir)
 	}
-	var packagesStatus []PackageStatus
-	for _, tech := range techs {
-		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
-			log.Info(fmt.Sprintf("packge type %s is not supported by curation cli", tech))
-			continue
+	results := map[string][]PackageStatus{}
+	for _, workDir := range ss.workingDirs {
+		absWd, err := filepath.Abs(workDir)
+		if err != nil {
+			return errorutils.CheckError(err)
 		}
-		packagesStatus, err = ss.curateTree(coreutils.Technology(tech))
+		log.Info("curation project:", absWd)
+		if absWd != rootDir {
+			err = os.Chdir(absWd)
+			if err != nil {
+				return err
+			}
+		}
+		err = ss.curateProject(results)
 		if err != nil {
 			return err
 		}
@@ -103,71 +111,90 @@ func (ss *Command) Run() (err error) {
 	if ss.Progress != nil {
 		err = ss.Progress.Quit()
 		if err != nil {
-			return
+			return err
 		}
 	}
-	err = printResult(ss.OutputFormat, packagesStatus)
-	if err != nil {
-		return err
+	for projectPath, packagesStatus := range results {
+		err = printResult(ss.OutputFormat, projectPath, packagesStatus)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (ss *Command) curateTree(tech coreutils.Technology) ([]PackageStatus, error) {
+func (ss *Command) curateProject(results map[string][]PackageStatus) error {
+	techs, err := cmdUtils.DetectedTechnologies()
+	if err != nil {
+		return err
+	}
+	for _, tech := range techs {
+		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
+			log.Info(fmt.Sprintf("packge type %s is not supported by curation cli", tech))
+			continue
+		}
+		ss.curateTree(coreutils.Technology(tech), results)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (ss *Command) curateTree(tech coreutils.Technology, results map[string][]PackageStatus) error {
 	_, err := audit.GetTechDependencyTree(ss.GraphBasicParams, tech)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// we check the graph filled
 	if len(ss.DependencyTrees) == 0 {
-		return nil, fmt.Errorf("failed to get graph for package type %v", tech)
+		return fmt.Errorf("failed to get graph for package type %v", tech)
 	}
 	err = ss.SetRegistryByTech(tech)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// resolve packages from the package manager configured for the project.
 	serverDetails, err := ss.PackageManagerConfig.ServerDetails()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	artiManager, err := artifactory_utils.CreateServiceManager(serverDetails, 2, 0, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	artAuth, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	artiHttpClientDetails := artAuth.CreateHttpClientDetails()
-	url := artAuth.GetUrl()
-	repo := ss.PackageManagerConfig.TargetRepo()
+	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ss.DependencyTrees[0].Id, "", "")
+	if ss.Progress != nil {
+		ss.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation block status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
+	}
+	var packagesStatus []PackageStatus
 	analyzer := treeAnalyzer{
 		artiManager:       artiManager,
 		artAuth:           artAuth,
 		httpClientDetails: artiHttpClientDetails,
-		url:               url,
-		repo:              repo,
+		url:               artAuth.GetUrl(),
+		repo:              ss.PackageManagerConfig.TargetRepo(),
 		tech:              tech,
 	}
-
-	var packagesStatus []PackageStatus
-	if ss.Progress != nil {
-		ss.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation block status for %s graph", tech.ToFormal()))
-	}
 	if err := analyzer.recursiveNodeCuration(ss.DependencyTrees[0], &packagesStatus, "", "", true); err != nil {
-		return nil, err
+		return err
 	}
-	return packagesStatus, nil
+	results[fmt.Sprintf("%s:%s", projectName, projectVersion)] = packagesStatus
+	return nil
 }
 
-func printResult(format utils.OutputFormat, packagesStatus []PackageStatus) error {
+func printResult(format utils.OutputFormat, projectPath string, packagesStatus []PackageStatus) error {
 	if format == "" {
 		format = utils.Table
 	}
+	log.Output(fmt.Sprintf("Found %v blocked packges for project %s", len(packagesStatus), projectPath))
 	switch format {
 	case utils.Json:
-		log.Output(fmt.Sprintf("Found %v blocked packges", len(packagesStatus)))
 		if len(packagesStatus) > 0 {
 			err := utils.PrintJson(packagesStatus)
 			if err != nil {
@@ -181,7 +208,7 @@ func printResult(format utils.OutputFormat, packagesStatus []PackageStatus) erro
 			return err
 		}
 	}
-
+	log.Output("\n")
 	return nil
 }
 

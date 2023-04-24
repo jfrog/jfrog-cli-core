@@ -122,3 +122,10 @@ type cveTableRow struct {
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
+
+type secretsTableRow struct {
+	file       string `col-name:"File Name"`
+	line       string `col-name:"Start Line"`
+	text       string `col-name:"Text"`
+	secretType string `col-name:"Secret Type"`
+}

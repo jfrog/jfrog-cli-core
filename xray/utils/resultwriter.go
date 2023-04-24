@@ -66,6 +66,7 @@ func PrintScanResults(results *jas.ExtendedScanResults, errors []formats.SimpleJ
 		if includeLicenses {
 			err = PrintLicensesTable(licenses, printExtended, scan)
 		}
+		err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas)
 		return err
 	case SimpleJson:
 		jsonTable, err := convertScanToSimpleJson(xrayScanResults, results, errors, isMultipleRoots, includeLicenses, false)

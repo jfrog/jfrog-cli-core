@@ -278,6 +278,14 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
+func PrintSecretsTable(secrets []jas.Secret, entitledForJas bool) error {
+	if entitledForJas {
+		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secrets), "Secrets",
+			"✨ No secrets were found ✨", false)
+	}
+	return nil
+}
+
 func ConvertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
@@ -686,7 +694,7 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 }
 
 func getApplicableCveValue(extendedResults *jas.ExtendedScanResults, xrayCve formats.CveRow) string {
-	if !extendedResults.EntitledForJas {
+	if !extendedResults.EligibleForApplicabilityScan {
 		return ""
 	}
 	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]

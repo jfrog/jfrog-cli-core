@@ -71,6 +71,13 @@ type OperationalRiskViolationRow struct {
 	LatestVersion             string         `json:"latestVersion"`
 }
 
+type SecretsRow struct {
+	File       string `json:"file"`
+	Line       string `json:"line"`
+	Text       string `json:"text"`
+	SecretType string `json:"secretType"`
+}
+
 type ComponentRow struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`

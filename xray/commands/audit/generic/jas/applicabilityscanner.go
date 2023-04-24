@@ -8,9 +8,7 @@ import (
 	"github.com/owenrumney/go-sarif/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -20,41 +18,36 @@ const (
 )
 
 var (
-	analyzerManagerExecuter                  AnalyzerManager = &analyzerManager{}
-	technologiesEligibleForApplicabilityScan                 = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
+	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-type ExtendedScanResults struct {
-	XrayResults                 []services.ScanResponse
-	ApplicabilityScannerResults map[string]string
-	EntitledForJas              bool
-}
-
-func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
-	return e.XrayResults
-}
-
-func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
+func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
 	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
-		return handleApplicabilityScanError(err, applicabilityScanManager)
+		return nil, handleApplicabilityScanError(err, applicabilityScanManager)
 	}
-	if !applicabilityScanManager.shouldRun() {
+	if !applicabilityScanManager.analyzerManager.DoesAnalyzerManagerExecutableExist() {
+		log.Info("analyzer manager doesnt exist, user is not entitled for jas")
+		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false,
+			EligibleForApplicabilityScan: false}, nil
+	}
+	if !applicabilityScanManager.entitledForAppScan() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
-		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: true,
+			EligibleForApplicabilityScan: false}, nil
 	}
 	err = applicabilityScanManager.Run()
 	if err != nil {
-		return handleApplicabilityScanError(err, applicabilityScanManager)
+		return nil, handleApplicabilityScanError(err, applicabilityScanManager)
 	}
 	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
 	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
 	return &extendedScanResults, nil
 }
 
-func (a *ApplicabilityScanManager) shouldRun() bool {
-	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies() &&
+func (a *ApplicabilityScanManager) entitledForAppScan() bool {
+	return a.resultsIncludeEligibleTechnologies() &&
 		(len(a.xrayVulnerabilities) != 0 || len(a.xrayViolations) != 0)
 }
 
@@ -76,13 +69,14 @@ func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
 	return false
 }
 
-func handleApplicabilityScanError(err error, applicabilityScanManager *ApplicabilityScanManager) (*ExtendedScanResults, error) {
+func handleApplicabilityScanError(err error, applicabilityScanManager *ApplicabilityScanManager) error {
 	log.Info("failed to run applicability scan: " + err.Error())
-	deleteFilesError := applicabilityScanManager.DeleteApplicabilityScanProcessFiles()
+	deleteFilesError := deleteJasScanProcessFiles(applicabilityScanManager.configFileName,
+		applicabilityScanManager.resultsFileName)
 	if deleteFilesError != nil {
-		return nil, deleteFilesError
+		return deleteFilesError
 	}
-	return nil, err
+	return err
 }
 
 type ApplicabilityScanManager struct {
@@ -180,17 +174,17 @@ func (a *ApplicabilityScanManager) Run() error {
 	if err := a.parseResults(); err != nil {
 		return err
 	}
-	if err := a.DeleteApplicabilityScanProcessFiles(); err != nil {
+	if err := deleteJasScanProcessFiles(a.configFileName, a.resultsFileName); err != nil {
 		return err
 	}
 	return nil
 }
 
 type applicabilityScanConfig struct {
-	Scans []scanConfiguration `yaml:"scans"`
+	Scans []applicabilityScanConfiguration `yaml:"scans"`
 }
 
-type scanConfiguration struct {
+type applicabilityScanConfiguration struct {
 	Roots          []string `yaml:"roots"`
 	Output         string   `yaml:"output"`
 	Type           string   `yaml:"type"`
@@ -206,7 +200,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	}
 	cveWhiteList := removeDuplicateValues(a.createCveList())
 	configFileContent := applicabilityScanConfig{
-		Scans: []scanConfiguration{
+		Scans: []applicabilityScanConfiguration{
 			{
 				Roots:          []string{currentDir},
 				Output:         filepath.Join(currentDir, a.resultsFileName),
@@ -237,7 +231,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	if err != nil {
 		return err
 	}
-	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
+	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName), applicabilityScanCommand)
 	if err != nil {
 		return err
 	}
@@ -270,22 +264,6 @@ func (a *ApplicabilityScanManager) parseResults() error {
 	return nil
 }
 
-func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
-	if _, err := os.Stat(a.configFileName); err == nil {
-		err = os.Remove(a.configFileName)
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := os.Stat(a.resultsFileName); err == nil {
-		err = os.Remove(a.resultsFileName)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (a *ApplicabilityScanManager) createCveList() []string {
 	cveWhiteList := []string{}
 	for _, vulnerability := range a.xrayVulnerabilities {
@@ -311,32 +289,4 @@ func isVulnerabilityApplicable(vulnerability *sarif.Result) bool {
 
 func getVulnerabilityName(sarifRuleId string) string {
 	return strings.Split(sarifRuleId, "_")[1]
-}
-
-type AnalyzerManager interface {
-	DoesAnalyzerManagerExecutableExist() bool
-	RunAnalyzerManager(string) error
-}
-
-type analyzerManager struct {
-}
-
-func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
-	if _, err := os.Stat(getAnalyzerManagerAbsolutePath()); err != nil {
-		return false
-	}
-	return true
-}
-
-func (am *analyzerManager) RunAnalyzerManager(configFile string) error {
-	var err error
-	if runtime.GOOS == "windows" {
-		_, err = exec.Command(getAnalyzerManagerAbsolutePath()+".exe", applicabilityScanCommand, configFile).Output()
-	} else {
-		_, err = exec.Command(getAnalyzerManagerAbsolutePath(), applicabilityScanCommand, configFile).Output()
-	}
-	if err != nil {
-		return err
-	}
-	return nil
 }

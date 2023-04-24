@@ -1,6 +1,7 @@
 package formats
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"strings"
 )
 
@@ -135,6 +136,18 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 			latestVersion:          rows[i].LatestVersion,
 			riskReason:             rows[i].RiskReason,
 			eolMessage:             rows[i].EolMessage,
+		})
+	}
+	return
+}
+
+func ConvertToSecretsTableRow(rows []jas.Secret) (tableRows []secretsTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, secretsTableRow{
+			file:       rows[i].File,
+			line:       rows[i].Line,
+			text:       rows[i].Text,
+			secretType: rows[i].Type,
 		})
 	}
 	return

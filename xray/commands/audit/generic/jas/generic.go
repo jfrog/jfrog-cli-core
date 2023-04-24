@@ -4,9 +4,12 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -15,6 +18,8 @@ const (
 	jfPasswordEnvVariable   = "JF_PASS"
 	jfPlatformUrl           = "JF_PLATFORM_URL"
 )
+
+var analyzerManagerExecuter AnalyzerManager = &analyzerManager{}
 
 func getAnalyzerManagerAbsolutePath() string {
 	homeDir, _ := os.UserHomeDir()
@@ -64,4 +69,78 @@ func setAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 		return err
 	}
 	return nil
+}
+
+func deleteJasScanProcessFiles(configFile string, resultsFile string) error {
+	if _, err := os.Stat(configFile); err == nil {
+		err = os.Remove(configFile)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(resultsFile); err == nil {
+		err = os.Remove(resultsFile)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type AnalyzerManager interface {
+	DoesAnalyzerManagerExecutableExist() bool
+	RunAnalyzerManager(string, string) error
+}
+
+type analyzerManager struct {
+}
+
+func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
+	if _, err := os.Stat(getAnalyzerManagerAbsolutePath()); err != nil {
+		return false
+	}
+	return true
+}
+
+func (am *analyzerManager) RunAnalyzerManager(configFile string, scanCommand string) error {
+	var err error
+	if runtime.GOOS == "windows" {
+		_, err = exec.Command(getAnalyzerManagerAbsolutePath()+".exe", scanCommand, configFile).Output()
+	} else {
+		_, err = exec.Command(getAnalyzerManagerAbsolutePath(), scanCommand, configFile).Output()
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type ExtendedScanResults struct {
+	XrayResults                  []services.ScanResponse
+	ApplicabilityScannerResults  map[string]string
+	SecretsScanResults           []Secret
+	EntitledForJas               bool
+	EligibleForApplicabilityScan bool
+}
+
+func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
+	return e.XrayResults
+}
+
+func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+	serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
+	applicabilityScanResults, err := getApplicabilityScanResults(results, dependencyTrees, serverDetails)
+	if err != nil {
+		return nil, err
+	}
+	secretsScanResults, err := getSecretsScanResults(serverDetails)
+	if err != nil {
+		return nil, err
+	}
+	return &ExtendedScanResults{
+		XrayResults:                 results,
+		SecretsScanResults:          secretsScanResults,
+		ApplicabilityScannerResults: applicabilityScanResults.ApplicabilityScannerResults,
+		EntitledForJas:              applicabilityScanResults.EntitledForJas,
+	}, nil
 }

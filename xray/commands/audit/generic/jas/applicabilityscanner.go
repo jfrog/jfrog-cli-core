@@ -36,12 +36,12 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 }
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails, technologies []string) (*ExtendedScanResults, error) {
+	serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
 	err := createAnalyzerManagerLogDir()
 	if err != nil {
 		return nil, err
 	}
-	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails, technologies)
+	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
 		log.Info("failed to run applicability scan: " + err.Error())
 		return nil, err
@@ -70,9 +70,16 @@ func (a *ApplicabilityScanManager) shouldRun() bool {
 }
 
 func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
-	for _, technology := range a.technologies {
-		for _, eligibleTech := range technologiesEligibleForApplicabilityScan {
-			if technology == eligibleTech.ToString() {
+	for _, vuln := range a.xrayVulnerabilities {
+		for _, technology := range technologiesEligibleForApplicabilityScan {
+			if vuln.Technology == technology.ToString() {
+				return true
+			}
+		}
+	}
+	for _, violation := range a.xrayViolations {
+		for _, technology := range technologiesEligibleForApplicabilityScan {
+			if violation.Technology == technology.ToString() {
 				return true
 			}
 		}
@@ -88,11 +95,10 @@ type ApplicabilityScanManager struct {
 	resultsFileName             string
 	analyzerManager             AnalyzerManager
 	serverDetails               *config.ServerDetails
-	technologies                []string
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails, technologies []string) (*ApplicabilityScanManager, error) {
+	serverDetails *config.ServerDetails) (*ApplicabilityScanManager, error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -106,7 +112,6 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		resultsFileName:             filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:             analyzerManagerExecuter,
 		serverDetails:               serverDetails,
-		technologies:                technologies,
 	}, nil
 }
 

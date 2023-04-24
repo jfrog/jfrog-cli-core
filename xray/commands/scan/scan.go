@@ -299,7 +299,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// Add a new task to the second producer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
-				params := services.XrayGraphScanParams{
+				params := &services.XrayGraphScanParams{
 					Graph:      graph,
 					RepoPath:   getXrayRepoPathFromTarget(file.Target),
 					Watches:    scanCmd.watches,
@@ -309,7 +309,11 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")
 				}
-				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
+				scanGraphParams := commands.NewScanGraphParams().
+					SetServerDetails(scanCmd.serverDetails).
+					SetXrayGraphScanParams(params).
+					SetXrayVersion(xrayVersion)
+				scanResults, err := commands.RunScanGraphAndGetResults(scanGraphParams)
 				if err != nil {
 					log.Error(fmt.Sprintf("scanning '%s' failed with error: %s", graph.Id, err.Error()))
 					indexedFileErrors[threadId] = append(indexedFileErrors[threadId], formats.SimpleJsonError{FilePath: filePath, ErrorMessage: err.Error()})

@@ -26,22 +26,24 @@ import (
 )
 
 type Params struct {
-	xrayGraphScanParams services.XrayGraphScanParams
-	serverDetails       *config.ServerDetails
-	progress            ioUtils.ProgressMgr
-	dependencyTrees     []*services.GraphNode
-	ignoreConfigFile    bool
-	excludeTestDeps     bool
-	insecureTls         bool
-	useWrapper          bool
-	depsRepo            string
-	releasesRepo        string
-	requirementsFile    string
-	technologies        []string
-	workingDirs         []string
-	args                []string
-	installFunc         func(tech string) error
-	xrayVersion         string
+	xrayGraphScanParams  *services.XrayGraphScanParams
+	serverDetails        *config.ServerDetails
+	progress             ioUtils.ProgressMgr
+	dependencyTrees      []*services.GraphNode
+	ignoreConfigFile     bool
+	excludeTestDeps      bool
+	insecureTls          bool
+	useWrapper           bool
+	withFixVersionFilter bool
+	minSeverityFilter    xraycommands.FilterLevel
+	depsRepo             string
+	releasesRepo         string
+	requirementsFile     string
+	technologies         []string
+	workingDirs          []string
+	args                 []string
+	installFunc          func(tech string) error
+	xrayVersion          string
 }
 
 func NewAuditParams() *Params {
@@ -52,7 +54,7 @@ func (params *Params) InstallFunc() func(tech string) error {
 	return params.installFunc
 }
 
-func (params *Params) XrayGraphScanParams() services.XrayGraphScanParams {
+func (params *Params) XrayGraphScanParams() *services.XrayGraphScanParams {
 	return params.xrayGraphScanParams
 }
 
@@ -104,7 +106,7 @@ func (params *Params) XrayVersion() string {
 	return params.xrayVersion
 }
 
-func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
+func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params
 }
@@ -171,6 +173,24 @@ func (params *Params) SetReleasesRepo(releasesRepo string) *Params {
 
 func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
 	params.installFunc = installFunc
+	return params
+}
+
+func (params *Params) WithFixVersionFilter() bool {
+	return params.withFixVersionFilter
+}
+
+func (params *Params) SetWithFixVersionFilter(withFixVersionFilter bool) *Params {
+	params.withFixVersionFilter = withFixVersionFilter
+	return params
+}
+
+func (params *Params) MinSeverityFilter() xraycommands.FilterLevel {
+	return params.minSeverityFilter
+}
+
+func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
+	params.minSeverityFilter = xraycommands.GetFilterLevelFromSeverity(minSeverityFilter)
 	return params
 }
 
@@ -258,7 +278,14 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech, params.xrayVersion)
+
+		scanGraphParams := xraycommands.NewScanGraphParams().
+			SetServerDetails(params.serverDetails).
+			SetXrayGraphScanParams(params.xrayGraphScanParams).
+			SetXrayVersion(params.xrayVersion).
+			SetWithFixVersionFilter(params.withFixVersionFilter).
+			SetFilterLevel(params.minSeverityFilter)
+		techResults, e := audit.Audit(dependencyTrees, params.progress, tech, scanGraphParams)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue

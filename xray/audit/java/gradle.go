@@ -27,7 +27,6 @@ const (
 	depTreeOutputFile = "gradledeptree.out"
 	depTreeInitScript = `initscript {
     repositories { %s
-		mavenCentral()
     }
     dependencies {
         classpath 'com.jfrog:gradle-dep-tree:2.2.0'

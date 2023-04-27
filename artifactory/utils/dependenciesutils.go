@@ -22,6 +22,7 @@ const (
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	ReleasesRemoteEnv   = "JFROG_CLI_RELEASES_REPO"
 )
 
 // Download the relevant build-info-extractor jar, if it does not already exist locally.
@@ -39,25 +40,40 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 }
 
 func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
+	releasesRemote := os.Getenv(ReleasesRemoteEnv)
+	if releasesRemote != "" {
+		return getRemoteDetails(releasesRemote, downloadPath, ReleasesRemoteEnv)
+	}
+
+	// Fallback for the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
 	if extractorsRemote != "" {
-		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
+		return getRemoteDetails(extractorsRemote, downloadPath, ExtractorsRemoteEnv)
 	}
+
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
-	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
+	log.Debug("'" + ReleasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
-// Get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
-func getExtractorsRemoteDetails(extractorsRemote, downloadPath string) (*config.ServerDetails, string, error) {
-	lastSlashIndex := strings.LastIndex(extractorsRemote, "/")
+// For JFROG_CLI_EXTRACTORS_REMOTE: get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
+// For JFROG_CLI_RELEASES_REPO: get Artifactory server details and a repository proxying https://releases.jfrog.io according to JFROG_CLI_RELEASES_REPO env var.
+func getRemoteDetails(remoteRepo, downloadPath, remoteEnv string) (*config.ServerDetails, string, error) {
+	lastSlashIndex := strings.LastIndex(remoteRepo, "/")
 	if lastSlashIndex == -1 {
-		return nil, "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", ExtractorsRemoteEnv, extractorsRemote)
+		return nil, "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", remoteEnv, remoteRepo)
 	}
 
-	serverDetails, err := config.GetSpecificConfig(extractorsRemote[:lastSlashIndex], false, true)
-	repoName := extractorsRemote[lastSlashIndex+1:]
+	serverDetails, err := config.GetSpecificConfig(remoteRepo[:lastSlashIndex], false, true)
+	if err != nil {
+		return nil, "", err
+	}
+
+	repoName := remoteRepo[lastSlashIndex+1:]
+	if remoteEnv == ReleasesRemoteEnv {
+		repoName = path.Join(repoName, "artifactory", "oss-release-local")
+	}
 	return serverDetails, path.Join(repoName, downloadPath), err
 }
 

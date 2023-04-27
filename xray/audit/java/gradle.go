@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	remoteDepTreePath = "artifactory/oss-releases"
+	remoteDepTreePath = "artifactory/oss-release-local"
 	gradlew           = "gradlew"
 	depTreeInitFile   = "gradledeptree.init"
 	depTreeOutputFile = "gradledeptree.out"
@@ -155,17 +155,46 @@ func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
 	depsRepo := ""
 	releasesRepo := ""
 	if dtp.server != nil {
-		releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", dtp.releasesRepo, remoteDepTreePath), dtp.server)
-		if err != nil {
-			return
-		}
-		depsRepo, err = getDepTreeArtifactoryRepository(dtp.depsRepo, dtp.server)
+		releasesRepo, depsRepo, err = getRemoteRepos(dtp.releasesRepo, dtp.depsRepo, dtp.server)
 		if err != nil {
 			return
 		}
 	}
 	depTreeInitScript := fmt.Sprintf(depTreeInitScript, releasesRepo, depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
+}
+
+func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
+	var err error
+	if releasesRepo == "" {
+		// Try to get releases repository from the environment variable
+		releasesRepo = os.Getenv("JFROG_CLI_RELEASES_REPO")
+		lastSlashIndex := strings.LastIndex(releasesRepo, "/")
+		if lastSlashIndex != -1 {
+			releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", releasesRepo[lastSlashIndex+1:], remoteDepTreePath), server)
+			if err != nil {
+				return "", "", err
+			}
+		} else {
+			log.Debug("releases remote repository is not configured, the gradle-dep-tree plugin will be obtained directly from Maven Central...")
+		}
+	} else {
+		releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath), server)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	if depsRepo == "" {
+		log.Debug("dependencies remote repository is not configured, the dependencies will be obtained directly from Maven Central...")
+	} else {
+		depsRepo, err = getDepTreeArtifactoryRepository(depsRepo, server)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	return releasesRepo, depsRepo, err
 }
 
 func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {

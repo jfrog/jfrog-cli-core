@@ -6,9 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -16,6 +13,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/urfave/cli"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
 )
 
@@ -405,24 +404,26 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 	releaseRepo := repository.ReleaseRepo
 	snapshotRepo := repository.SnapshotRepo
 
+	if repository.ServerId != "" && repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
+		return errorutils.CheckErrorf(errorPrefix + setRepositoryError)
+	}
+	// Server-id flag was not provided.
 	if repository.ServerId == "" {
 		// If no Server ID provided, check if provided via environment variable
-		repository.ServerId = os.Getenv(utils.ServerId)
-	}
-	// Server-id flag/env was not provided.
-	if repository.ServerId == "" {
-		// For config commands - resolver/deployer server-id flags are optional.
-		// In case no server-id flag was provided we use the default configured server id.
-		defaultServerDetails, err := config.GetDefaultServerConf()
-		if err != nil {
-			return err
+		serverId := os.Getenv(coreutils.ServerID)
+		if serverId == "" {
+			// For config commands - resolver/deployer server-id flags are optional.
+			// In case no server-id flag was provided we use the default configured server id.
+			defaultServerDetails, err := config.GetDefaultServerConf()
+			if err != nil {
+				return err
+			}
+			if defaultServerDetails != nil {
+				serverId = defaultServerDetails.ServerId
+			}
 		}
-		defaultServerId := ""
-		if defaultServerDetails != nil {
-			defaultServerId = defaultServerDetails.ServerId
-		}
-		// No default server was configured.
-		if defaultServerId == "" {
+		// No default server was configured and also no environment variable
+		if serverId == "" {
 			// Repositories flags were provided.
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
 				return errorutils.CheckErrorf(errorPrefix + setServerIdError)
@@ -430,13 +431,8 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 		} else {
 			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-				repository.ServerId = defaultServerId
+				repository.ServerId = serverId
 			}
-		}
-	} else {
-		// Server-id flag was provided, but no repositories flags.
-		if repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-			return errorutils.CheckErrorf(errorPrefix + setRepositoryError)
 		}
 	}
 	// Release/snapshot repositories should be entangled to each other.

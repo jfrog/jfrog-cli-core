@@ -76,11 +76,12 @@ func (nc *treeAnalyzer) addBlockedPackage(packageUrl string, parent, parentVersi
 			return nil
 		}
 		if strings.Contains(strings.ToLower(respError.Errors[0].Message), "jfrog packages curation") {
-			depRelation := "direct"
-			if parent != "" {
-				depRelation = "indirect"
+			depRelation := "indirect"
+			if parent == "" {
+				depRelation = "direct"
+				parent = name
+				parentVersion = version
 			}
-
 			policies := extractPoliciesFromMsg(respError)
 			*respStatus = append(*respStatus, PackageStatus{
 				PackageName:    name,
@@ -99,8 +100,8 @@ func (nc *treeAnalyzer) addBlockedPackage(packageUrl string, parent, parentVersi
 }
 
 // / message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s},{%s, %s}.
-func extractPoliciesFromMsg(respError *utils2.ErrorsResp) []policy {
-	var policies []policy
+func extractPoliciesFromMsg(respError *utils2.ErrorsResp) []Policy {
+	var policies []Policy
 	msg := respError.Errors[0].Message
 	start := strings.Index(msg, "{")
 	end := strings.Index(msg, "}")
@@ -111,7 +112,7 @@ func extractPoliciesFromMsg(respError *utils2.ErrorsResp) []policy {
 		if len(polCond) == 2 {
 			pol := polCond[0]
 			cond := polCond[1]
-			policies = append(policies, policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
+			policies = append(policies, Policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
 		}
 		if len(msg) <= end+1 {
 			break

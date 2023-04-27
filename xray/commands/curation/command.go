@@ -24,17 +24,17 @@ var supportedTech = map[coreutils.Technology]struct{}{
 
 type PackageStatus struct {
 	Action         string   `json:"action"`
-	PackageName    string   `json:"package_name"`
-	PackageVersion string   `json:"package_version"`
-	ParentName     string   `json:"parent_name"`
-	ParentVersion  string   `json:"parent_version"`
+	PackageName    string   `json:"blocked_package_name"`
+	PackageVersion string   `json:"blocked_package_version"`
+	ParentName     string   `json:"direct_dependency_package_name"`
+	ParentVersion  string   `json:"direct_dependency_package_version"`
 	DepRelation    string   `json:"dependency_relation"`
 	PkgType        string   `json:"type"`
-	Policy         []policy `json:"policies"`
+	Policy         []Policy `json:"policies"`
 	Resolved       string   `json:"resolved"`
 }
 
-type policy struct {
+type Policy struct {
 	Policy    string `json:"policy"`
 	Condition string `json:"condition"`
 }
@@ -133,7 +133,7 @@ func (ss *Command) curateProject(results map[string][]PackageStatus) error {
 			log.Info(fmt.Sprintf("packge type %s is not supported by curation cli", tech))
 			continue
 		}
-		ss.curateTree(coreutils.Technology(tech), results)
+		err = ss.curateTree(coreutils.Technology(tech), results)
 		if err != nil {
 			return err
 		}

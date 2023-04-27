@@ -64,7 +64,7 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 		if progress != nil {
 			progress.SetHeadlineMsg(scanMessage)
 		}
-		log.Info(scanMessage)
+		log.Info(scanMessage, "...")
 		var scanResults *services.ScanResponse
 		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
 		if err != nil {

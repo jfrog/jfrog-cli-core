@@ -404,18 +404,23 @@ func (configFile *ConfigFile) setUseNugetV2() {
 func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
 	releaseRepo := repository.ReleaseRepo
 	snapshotRepo := repository.SnapshotRepo
-	// For config commands - resolver/deployer server-id flags are optional.
-	// In case no server-id flag was provided we use the default configured server id.
-	defaultServerDetails, err := config.GetDefaultServerConf()
-	if err != nil {
-		return err
-	}
-	defaultServerId := ""
-	if defaultServerDetails != nil {
-		defaultServerId = defaultServerDetails.ServerId
-	}
-	// Server-id flag was not provided.
+
 	if repository.ServerId == "" {
+		// If no Server ID provided, check if provided via environment variable
+		repository.ServerId = os.Getenv(utils.ServerId)
+	}
+	// Server-id flag/env was not provided.
+	if repository.ServerId == "" {
+		// For config commands - resolver/deployer server-id flags are optional.
+		// In case no server-id flag was provided we use the default configured server id.
+		defaultServerDetails, err := config.GetDefaultServerConf()
+		if err != nil {
+			return err
+		}
+		defaultServerId := ""
+		if defaultServerDetails != nil {
+			defaultServerId = defaultServerDetails.ServerId
+		}
 		// No default server was configured.
 		if defaultServerId == "" {
 			// Repositories flags were provided.

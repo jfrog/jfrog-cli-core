@@ -17,21 +17,22 @@ import (
 )
 
 const (
-	// This env var should be used for downloading the extractor jars through an Artifactory remote
+	// releasesRemoteEnv should be used for downloading the extractor jars through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
+	releasesRemoteEnv = "JFROG_CLI_RELEASES_REPO"
+	// ExtractorsRemoteEnv is deprecated, it is replaced with releasesRemoteEnv.
+	// Its functionality was similar to releasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
-	releasesRemoteEnv   = "JFROG_CLI_RELEASES_REPO"
 )
 
 // Download the relevant build-info-extractor jar, if it does not already exist locally.
 // By default, the jar is downloaded directly from jfrog releases.
-//
 // downloadPath: Artifactory download path.
 // targetPath: The local download path (without the file name).
 func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
-	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
+	artDetails, remotePath, err := getExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -39,13 +40,15 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 	return DownloadExtractor(artDetails, remotePath, targetPath)
 }
 
-func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
+// The getExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
+// downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
+func getExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
 	releasesRemote := os.Getenv(releasesRemoteEnv)
 	if releasesRemote != "" {
 		return getRemoteDetails(releasesRemote, downloadPath, releasesRemoteEnv)
 	}
 
-	// Fallback for the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
+	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
 	if extractorsRemote != "" {
 		return getRemoteDetails(extractorsRemote, downloadPath, ExtractorsRemoteEnv)
@@ -57,8 +60,10 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
-// For JFROG_CLI_EXTRACTORS_REMOTE: get Artifactory server details and a repository proxying oss.jfrog.org according to JFROG_CLI_EXTRACTORS_REMOTE env var.
-// For JFROG_CLI_RELEASES_REPO: get Artifactory server details and a repository proxying https://releases.jfrog.io according to JFROG_CLI_RELEASES_REPO env var.
+// getRemoteDetails function retrieve the server details and download path for the build-info extractor file.
+// remoteRepo - the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
+// downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
+// remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
 func getRemoteDetails(remoteRepo, downloadPath, remoteEnv string) (*config.ServerDetails, string, error) {
 	lastSlashIndex := strings.LastIndex(remoteRepo, "/")
 	if lastSlashIndex == -1 {

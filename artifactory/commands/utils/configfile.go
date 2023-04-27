@@ -428,11 +428,9 @@ func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) 
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
 				return errorutils.CheckErrorf(errorPrefix + setServerIdError)
 			}
-		} else {
+		} else if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
 			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
-			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-				repository.ServerId = serverId
-			}
+			repository.ServerId = serverId
 		}
 	}
 	// Release/snapshot repositories should be entangled to each other.

@@ -220,7 +220,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 	expectedInitScript := `initscript {
     repositories { 
 		maven {
-			url "https://myartifactory.com/artifactory/release-repo/artifactory/oss-releases"
+			url "https://myartifactory.com/artifactory/release-repo/artifactory/oss-release-local"
 			credentials {
 				username = ''
 				password = 'my-access-token'

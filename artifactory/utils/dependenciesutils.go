@@ -22,7 +22,7 @@ const (
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
-	ReleasesRemoteEnv   = "JFROG_CLI_RELEASES_REPO"
+	releasesRemoteEnv   = "JFROG_CLI_RELEASES_REPO"
 )
 
 // Download the relevant build-info-extractor jar, if it does not already exist locally.
@@ -40,9 +40,9 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 }
 
 func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
-	releasesRemote := os.Getenv(ReleasesRemoteEnv)
+	releasesRemote := os.Getenv(releasesRemoteEnv)
 	if releasesRemote != "" {
-		return getRemoteDetails(releasesRemote, downloadPath, ReleasesRemoteEnv)
+		return getRemoteDetails(releasesRemote, downloadPath, releasesRemoteEnv)
 	}
 
 	// Fallback for the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
@@ -52,7 +52,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	}
 
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
-	log.Debug("'" + ReleasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
+	log.Debug("'" + releasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
@@ -71,7 +71,7 @@ func getRemoteDetails(remoteRepo, downloadPath, remoteEnv string) (*config.Serve
 	}
 
 	repoName := remoteRepo[lastSlashIndex+1:]
-	if remoteEnv == ReleasesRemoteEnv {
+	if remoteEnv == releasesRemoteEnv {
 		repoName = path.Join(repoName, "artifactory", "oss-release-local")
 	}
 	return serverDetails, path.Join(repoName, downloadPath), err

@@ -21,15 +21,16 @@ var transferConfigTestDir = filepath.Join("testdata", "transferconfig")
 func TestIsDefaultCredentialsDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("OK"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -47,15 +48,16 @@ func TestIsDefaultCredentialsDefault(t *testing.T) {
 func TestIsDefaultCredentialsNotDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -74,16 +76,17 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	pingCounter := 0
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[ \"admin\" ]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
 			pingCounter++
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)

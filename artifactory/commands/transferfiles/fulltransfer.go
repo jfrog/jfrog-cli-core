@@ -78,15 +78,15 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 	if err != nil || !repoTransferred {
 		return false, err
 	}
-	return true, m.skipPhase()
+	m.skipPhase()
+	return true, nil
 }
 
-func (m *fullTransferPhase) skipPhase() error {
+func (m *fullTransferPhase) skipPhase() {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
 		m.progressBar.AddPhase1(true)
 	}
-	return nil
 }
 
 func (m *fullTransferPhase) run() error {

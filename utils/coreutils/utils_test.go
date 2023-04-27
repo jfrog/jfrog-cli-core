@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -33,8 +33,10 @@ func TestSpecVarsStringToMap(t *testing.T) {
 
 func assertSpecVars(expected, actual map[string]string, t *testing.T) {
 	if !reflect.DeepEqual(expected, actual) {
-		expectedMap, _ := json.Marshal(expected)
-		actualMap, _ := json.Marshal(actual)
+		expectedMap, err := json.Marshal(expected)
+		assert.NoError(t, err)
+		actualMap, err := json.Marshal(actual)
+		assert.NoError(t, err)
 		t.Error("Wrong matching expected: `" + string(expectedMap) + "` Got `" + string(actualMap) + "`")
 	}
 }

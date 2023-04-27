@@ -95,7 +95,7 @@ const (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string) error {
 	m := module.Version{Version: version, Path: mod}
-	//ignore, gitIgnoreErr := gitignore.NewFromFile(sourcePath + "/.gitignore") ??
+	// ignore, gitIgnoreErr := gitignore.NewFromFile(sourcePath + "/.gitignore") ??
 	var files []File
 
 	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {

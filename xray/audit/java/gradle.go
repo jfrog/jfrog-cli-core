@@ -271,7 +271,7 @@ func getGradleConfig() (string, *config.ServerDetails, error) {
 	}
 	var repository string
 	if configContent.IsSet("resolver.repo") {
-		repository = configContent.Get("resolver.repo").(string)
+		repository = fmt.Sprint(configContent.Get("resolver.repo"))
 	}
 	server, err := utils.GetServerDetails(configContent)
 	return repository, server, err

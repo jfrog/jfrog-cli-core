@@ -161,7 +161,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	allSourceLocalRepos := append(sourceLocalRepos, sourceBuildInfoRepos...)
+	allSourceLocalRepos := append(slices.Clone(sourceLocalRepos), sourceBuildInfoRepos...)
 	targetLocalRepos, targetBuildInfoRepos, err := tdc.getAllLocalRepos(tdc.targetServerDetails, tdc.targetStorageInfoManager)
 	if err != nil {
 		return err
@@ -210,7 +210,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 	if err != nil {
 		return err
 	}
-	//Init State Manager's fields values
+	// Init State Manager's fields values
 	tdc.stateManager.OverallTransfer.TotalSizeBytes = totalSizeBytes
 	tdc.stateManager.OverallTransfer.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))

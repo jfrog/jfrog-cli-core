@@ -106,11 +106,12 @@ func FindBooleanFlag(flagName string, args []string) (flagIndex int, flagValue b
 	for flagIndex, arg = range args {
 		if strings.HasPrefix(arg, flagName) {
 			value := strings.TrimPrefix(arg, flagName)
-			if len(value) == 0 {
+			switch {
+			case len(value) == 0:
 				flagValue = true
-			} else if strings.HasPrefix(value, "=") {
+			case strings.HasPrefix(value, "="):
 				flagValue, err = strconv.ParseBool(value[1:])
-			} else {
+			default:
 				continue
 			}
 			return

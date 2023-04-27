@@ -96,19 +96,21 @@ func TestValidateTargetServer(t *testing.T) {
 	var users []services.User
 	// Create transfer config command
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"checkPermissions" {
+		switch r.RequestURI {
+		case "/" + commandUtils.PluginsExecuteRestApi + "checkPermissions":
 			w.WriteHeader(http.StatusOK)
-		} else if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImportVersion" {
+
+		case "/" + commandUtils.PluginsExecuteRestApi + "configImportVersion":
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/version" {
+		case "/api/system/version":
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "7.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
-		} else {
+		default:
 			content, err := json.Marshal(users)
 			assert.NoError(t, err)
 			_, err = w.Write(content)

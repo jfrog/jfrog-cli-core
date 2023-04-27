@@ -203,11 +203,11 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 		var manifestPaths []string
 		// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
 		for _, file := range manifestFilesResult.Results {
-			if file.Name == "manifest.json" {
+			switch file.Name {
+			case "manifest.json":
 				manifestPaths = append(manifestPaths, file.Path)
-			} else if file.Name == "list.manifest.json" {
-				result = append(result, file)
-			} else {
+			case "list.manifest.json":
+			default:
 				err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
 				return
 			}

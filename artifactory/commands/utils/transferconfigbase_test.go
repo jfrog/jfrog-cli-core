@@ -188,7 +188,7 @@ func TestTransferRepositoryToTarget(t *testing.T) {
 
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if r.Method == "GET" {
+		if r.Method == http.MethodGet {
 			if r.RequestURI == "/api/repositories/federated-local" {
 				_, err := w.Write(federatedRepo)
 				assert.NoError(t, err)
@@ -196,7 +196,7 @@ func TestTransferRepositoryToTarget(t *testing.T) {
 				_, err := w.Write(federatedRepoWithoutMembers)
 				assert.NoError(t, err)
 			}
-		} else if r.Method == "POST" {
+		} else if r.Method == http.MethodPost {
 			body, err := io.ReadAll(r.Body)
 			assert.NoError(t, err)
 

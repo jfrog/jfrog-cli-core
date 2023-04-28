@@ -43,15 +43,15 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 // The getExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 func getExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
-	releasesRemote := os.Getenv(releasesRemoteEnv)
-	if releasesRemote != "" {
-		return getRemoteDetails(releasesRemote, downloadPath, releasesRemoteEnv)
+	releasesServerAndRepo := os.Getenv(releasesRemoteEnv)
+	if releasesServerAndRepo != "" {
+		return getRemoteDetails(releasesServerAndRepo, downloadPath, releasesRemoteEnv)
 	}
 
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
-	extractorsRemote := os.Getenv(ExtractorsRemoteEnv)
-	if extractorsRemote != "" {
-		return getRemoteDetails(extractorsRemote, downloadPath, ExtractorsRemoteEnv)
+	extractorsServerAndRepo := os.Getenv(ExtractorsRemoteEnv)
+	if extractorsServerAndRepo != "" {
+		return getRemoteDetails(extractorsServerAndRepo, downloadPath, ExtractorsRemoteEnv)
 	}
 
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
@@ -61,25 +61,39 @@ func getExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 }
 
 // getRemoteDetails function retrieve the server details and download path for the build-info extractor file.
-// remoteRepo - the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
+// serverAndRepo - the server id and the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 // remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
-func getRemoteDetails(remoteRepo, downloadPath, remoteEnv string) (*config.ServerDetails, string, error) {
-	lastSlashIndex := strings.LastIndex(remoteRepo, "/")
-	if lastSlashIndex == -1 {
-		return nil, "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'.", remoteEnv, remoteRepo)
-	}
-
-	serverDetails, err := config.GetSpecificConfig(remoteRepo[:lastSlashIndex], false, true)
+func getRemoteDetails(serverAndRepo, downloadPath, remoteEnv string) (*config.ServerDetails, string, error) {
+	serverID, repoName, err := splitRepoAndServerId(serverAndRepo, remoteEnv)
 	if err != nil {
 		return nil, "", err
 	}
-
-	repoName := remoteRepo[lastSlashIndex+1:]
-	if remoteEnv == releasesRemoteEnv {
-		repoName = path.Join(repoName, "artifactory", "oss-release-local")
+	serverDetails, err := config.GetSpecificConfig(serverID, false, true)
+	if err != nil {
+		return nil, "", err
 	}
-	return serverDetails, path.Join(repoName, downloadPath), err
+	return serverDetails, getFullRemoteRepoPath(repoName, remoteEnv, downloadPath), err
+}
+
+func splitRepoAndServerId(serverAndRepo, remoteEnv string) (serverID string, repoName string, err error) {
+	// The serverAndRepo is in form of '<ServerID>/<RemoteRepo>'
+	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
+	// Check that the format is valid
+	invalidFormat := lastSlashIndex == -1 || lastSlashIndex == len(serverAndRepo)-1 || lastSlashIndex == 0
+	if invalidFormat {
+		return "", "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
+	}
+	serverID = serverAndRepo[:lastSlashIndex]
+	repoName = serverAndRepo[lastSlashIndex+1:]
+	return
+}
+
+func getFullRemoteRepoPath(repoName, remoteEnv, downloadPath string) string {
+	if remoteEnv == releasesRemoteEnv {
+		return path.Join(repoName, "artifactory", "oss-release-local", downloadPath)
+	}
+	return path.Join(repoName, downloadPath)
 }
 
 func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPath string) error {

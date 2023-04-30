@@ -43,7 +43,9 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	if extractorsRemote != "" {
 		return getExtractorsRemoteDetails(extractorsRemote, downloadPath)
 	}
-	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
+	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n" +
+		"You can set the repository from which this jar is downloaded.\n" +
+		"Read more about it at " + coreutils.JFrogHelpUrl + "jfrog-cli/downloading-the-maven-and-gradle-extractor-jars")
 	log.Debug("'" + ExtractorsRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
@@ -94,7 +96,7 @@ func DownloadExtractor(artDetails *config.ServerDetails, downloadPath, targetPat
 	}
 
 	httpClientDetails := auth.CreateHttpClientDetails()
-	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
+	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
 		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
 	}

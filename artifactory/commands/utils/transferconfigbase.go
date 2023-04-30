@@ -247,7 +247,7 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 	}
 	if _, exist := repoMap["members"]; exist {
 		delete(repoMap, "members")
-		tcb.FederatedMembersRemoved = tcb.FederatedMembersRemoved || true
+		tcb.FederatedMembersRemoved = true
 	}
 	repoBytes, err := json.Marshal(repoMap)
 	if err != nil {
@@ -262,8 +262,9 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 // This method log an info that the federated members should be reconfigured in the target server.
 func (tcb *TransferConfigBase) LogIfFederatedMemberRemoved() {
 	if tcb.FederatedMembersRemoved {
-		log.Info("☝️  Your Federated repositories have been transferred to your target instance, but their members have been removed on the target. " +
-			"You should add members to your Federated repositories on your target instance as described here - https://www.jfrog.com/confluence/display/JFROG/Federated+Repositories.")
+		log.Info("☝️  Your Federated repositories have been transferred to your target instance, but their members have been removed on the target.\n",
+			"You should add members to your Federated repositories on your target instance as described here:",
+			coreutils.JFrogHelpUrl+"jfrog-artifactory-documentation/federated-repositories")
 	}
 }
 

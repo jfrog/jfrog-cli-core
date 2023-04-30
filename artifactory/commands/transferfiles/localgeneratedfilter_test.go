@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var filterLocalGeneratedCases = []struct {
+var filterLocallyGeneratedCases = []struct {
 	paths        []utils.ResultItem
 	returnedPath []string
 }{
@@ -20,46 +20,46 @@ var filterLocalGeneratedCases = []struct {
 	{paths: []utils.ResultItem{{Path: "a", Name: "b"}, {Path: "a/b", Name: "e"}}, returnedPath: []string{"a/b", "a/b/e"}},
 }
 
-func TestFilterLocalGenerated(t *testing.T) {
+func TestFilterLocallyGenerated(t *testing.T) {
 	var err error
-	var returnedLocalGenerated = []byte{}
+	var returnedLocallyGenerated = []byte{}
 	testServer, _, servicesManager := tests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+localGeneratedApi {
+		if r.RequestURI == "/"+locallyGeneratedApi {
 			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(returnedLocalGenerated)
+			_, err = w.Write(returnedLocallyGenerated)
 			assert.NoError(t, err)
 		}
 	})
 	defer testServer.Close()
-	localGeneratedEnabled := NewLocalGenerated(servicesManager, minArtifactoryVersionForLocalGenerated)
-	localGeneratedDisabled := NewLocalGenerated(servicesManager, "7.0.0")
+	locallyGeneratedEnabled := NewLocallyGenerated(servicesManager, minArtifactoryVersionForLocallyGenerated)
+	locallyGeneratedDisabled := NewLocallyGenerated(servicesManager, "7.0.0")
 
-	for _, testCase := range filterLocalGeneratedCases {
+	for _, testCase := range filterLocallyGeneratedCases {
 		t.Run("", func(t *testing.T) {
-			returnedPayload := &LocalGeneratedPayload{Paths: testCase.returnedPath}
-			returnedLocalGenerated, err = json.Marshal(returnedPayload)
+			returnedPayload := &LocallyGeneratedPayload{Paths: testCase.returnedPath}
+			returnedLocallyGenerated, err = json.Marshal(returnedPayload)
 			assert.NoError(t, err)
 
-			results, err := localGeneratedEnabled.FilterLocalGenerated(testCase.paths)
+			results, err := locallyGeneratedEnabled.FilterLocallyGenerated(testCase.paths)
 			assert.NoError(t, err)
 			assert.Len(t, results, len(testCase.returnedPath))
 			for i := range results {
 				assert.Contains(t, testCase.returnedPath, getPathInRepo(&results[i]))
 			}
 
-			results, err = localGeneratedDisabled.FilterLocalGenerated(testCase.paths)
+			results, err = locallyGeneratedDisabled.FilterLocallyGenerated(testCase.paths)
 			assert.NoError(t, err)
 			assert.Equal(t, results, testCase.paths)
 		})
 	}
 }
 
-func TestFilterLocalGeneratedEnabled(t *testing.T) {
+func TestFilterLocallyGeneratedEnabled(t *testing.T) {
 	testServer, _, servicesManager := tests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {})
 	defer testServer.Close()
 
-	assert.True(t, NewLocalGenerated(servicesManager, minArtifactoryVersionForLocalGenerated).IsEnabled())
-	assert.True(t, NewLocalGenerated(servicesManager, "8.0.0").IsEnabled())
-	assert.False(t, NewLocalGenerated(servicesManager, "7.54.5").IsEnabled())
-	assert.False(t, NewLocalGenerated(servicesManager, "6.0.0").IsEnabled())
+	assert.True(t, NewLocallyGenerated(servicesManager, minArtifactoryVersionForLocallyGenerated).IsEnabled())
+	assert.True(t, NewLocallyGenerated(servicesManager, "8.0.0").IsEnabled())
+	assert.False(t, NewLocallyGenerated(servicesManager, "7.54.5").IsEnabled())
+	assert.False(t, NewLocallyGenerated(servicesManager, "6.0.0").IsEnabled())
 }

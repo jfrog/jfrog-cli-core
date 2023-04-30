@@ -4,6 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -15,13 +23,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
@@ -52,7 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
-	localGeneratedFilter      *LocalGeneratedFilter
+	locallyGeneratedFilter    *LocallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -168,7 +169,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err = tdc.initLocalGeneratedFilter(); err != nil {
+	if err = tdc.initLocallyGeneratedFilter(); err != nil {
 		return err
 	}
 
@@ -509,7 +510,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
 	newPhase.setPackageType(repoSummary.PackageType)
-	newPhase.setLocalGeneratedFilter(tdc.localGeneratedFilter)
+	newPhase.setLocallyGeneratedFilter(tdc.locallyGeneratedFilter)
 	newPhase.setStopSignal(tdc.stopSignal)
 }
 
@@ -561,7 +562,7 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	return nil
 }
 
-func (tdc *TransferFilesCommand) initLocalGeneratedFilter() error {
+func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
 	servicesManager, err := createTransferServiceManager(tdc.context, tdc.targetServerDetails)
 	if err != nil {
 		return err
@@ -570,7 +571,7 @@ func (tdc *TransferFilesCommand) initLocalGeneratedFilter() error {
 	if err != nil {
 		return err
 	}
-	tdc.localGeneratedFilter = NewLocalGenerated(servicesManager, targetArtifactoryVersion)
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(servicesManager, targetArtifactoryVersion)
 	return err
 }
 

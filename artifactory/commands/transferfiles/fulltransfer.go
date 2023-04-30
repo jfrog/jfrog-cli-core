@@ -160,8 +160,9 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	curUploadChunk = api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
-		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI
-		SkipFileFiltering: m.localGeneratedFilter.IsEnabled(),
+		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI.
+		// The local generated filter is enabled in the JFrog CLI for target Artifactory servers >= 7.55.
+		SkipFileFiltering: m.locallyGeneratedFilter.IsEnabled(),
 	}
 
 	var result []servicesUtils.ResultItem
@@ -266,7 +267,7 @@ func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginat
 	if err != nil {
 		return []servicesUtils.ResultItem{}, err
 	}
-	return m.localGeneratedFilter.FilterLocalGenerated(aqlResults.Results)
+	return m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {

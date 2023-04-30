@@ -2,13 +2,14 @@ package transferfiles
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -172,6 +173,10 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
+// Get a list of changed files and folders between the input timestamps.
+// fromTimestamp - Time in RFC3339 represents the start time
+// toTimestamp - Time in RFC3339 represents the end time
+// paginationOffset - Requested page
 func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
 	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {
@@ -184,7 +189,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string
 	if err != nil {
 		return []servicesUtils.ResultItem{}, err
 	}
-	return f.localGeneratedFilter.FilterLocalGenerated(timeFrameFilesDiff.Results)
+	return f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {

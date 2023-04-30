@@ -51,8 +51,8 @@ allprojects {
 
 var (
 	emptyRepositoriesErrFmt = "the %s remote repository is not configured, the %s will be obtained directly from Maven Central"
-	emptyReleasesRepoErr    = fmt.Errorf(emptyRepositoriesErrFmt, "releases", "gradle-dep-tree plugin")
-	emptyDepsRepoErr        = fmt.Errorf(emptyRepositoriesErrFmt, "dependencies", "dependencies")
+	errEmptyReleasesRepo    = fmt.Errorf(emptyRepositoriesErrFmt, "releases", "gradle-dep-tree plugin")
+	errEmptyDepsRepo        = fmt.Errorf(emptyRepositoriesErrFmt, "dependencies", "dependencies")
 )
 
 type depTreeManager struct {
@@ -177,12 +177,12 @@ func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
 // Returns the constructed sections.
 func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
 	constructedReleasesRepo, err := constructReleasesRemoteRepo(releasesRepo, server)
-	if err != nil && err != emptyReleasesRepoErr {
+	if err != nil && err != errEmptyReleasesRepo {
 		return "", "", err
 	}
 
 	constructedDepsRepo, err := constructDepsRemoteRepo(depsRepo, server)
-	if err != nil && err != emptyDepsRepoErr {
+	if err != nil && err != errEmptyDepsRepo {
 		return "", "", err
 	}
 	return constructedReleasesRepo, constructedDepsRepo, nil
@@ -194,7 +194,7 @@ func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetai
 		releasesRepo = os.Getenv(coreutils.ReleasesRemoteEnv)
 		_, repoName, err := coreutils.SplitRepoAndServerId(releasesRepo, coreutils.ReleasesRemoteEnv)
 		if err != nil {
-			return "", emptyReleasesRepoErr
+			return "", errEmptyReleasesRepo
 		}
 		releasesRepo = repoName
 	}
@@ -205,7 +205,7 @@ func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetai
 
 func constructDepsRemoteRepo(depsRepo string, server *config.ServerDetails) (string, error) {
 	if depsRepo == "" {
-		return "", emptyDepsRepoErr
+		return "", errEmptyDepsRepo
 	}
 	return getDepTreeArtifactoryRepository(depsRepo, server)
 }
@@ -224,7 +224,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		"-q",
 		fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFilePath),
 		"-Dcom.jfrog.includeAllBuildFiles=true"}
-	log.Info("Running gradle dep tree command:", gradleExecPath, tasks)
+	log.Info("Running gradle deps tree command:", gradleExecPath, strings.Join(tasks, " "))
 	if output, err := exec.Command(gradleExecPath, tasks...).CombinedOutput(); err != nil {
 		return nil, errorutils.CheckErrorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
 	}

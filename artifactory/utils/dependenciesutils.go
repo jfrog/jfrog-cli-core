@@ -19,7 +19,7 @@ import (
 // downloadPath: Artifactory download path.
 // targetPath: The local download path (without the file name).
 func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
-	artDetails, remotePath, err := getExtractorsRemoteDetails(downloadPath)
+	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -27,9 +27,9 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 	return DownloadExtractor(artDetails, remotePath, targetPath)
 }
 
-// The getExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
+// The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
-func getExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
+func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
 	releasesServerAndRepo := os.Getenv(coreutils.ReleasesRemoteEnv)
 	if releasesServerAndRepo != "" {
 		return getRemoteDetails(releasesServerAndRepo, downloadPath, coreutils.ReleasesRemoteEnv)
@@ -41,7 +41,9 @@ func getExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 		return getRemoteDetails(extractorsServerAndRepo, downloadPath, coreutils.ExtractorsRemoteEnv)
 	}
 
-	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\nYou can set the repository from which this jar is downloaded. Read more about it at https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingtheMavenandGradleExtractorJARs")
+	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n" +
+		"You can set the repository from which this jar is downloaded.\n" +
+		"Read more about it at " + coreutils.JFrogHelpUrl + "jfrog-cli/downloading-the-maven-and-gradle-extractor-jars")
 	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil

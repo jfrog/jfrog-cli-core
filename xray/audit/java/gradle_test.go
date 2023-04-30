@@ -263,7 +263,7 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 		expectedRepo string
 		expectedErr  error
 	}{
-		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: emptyReleasesRepoErr},
+		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: errEmptyReleasesRepo},
 		{releasesRepo: "", envVar: "server/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 		{releasesRepo: "repo2", envVar: "", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo2/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 	}
@@ -294,7 +294,7 @@ func TestConstructDepsRemoteRepo(t *testing.T) {
 		expectedRepo string
 		expectedErr  error
 	}{
-		{depsRepo: "", expectedRepo: "", expectedErr: emptyDepsRepoErr},
+		{depsRepo: "", expectedRepo: "", expectedErr: errEmptyDepsRepo},
 		{depsRepo: "repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 	}
 

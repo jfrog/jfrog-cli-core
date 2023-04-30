@@ -35,7 +35,7 @@ type Params struct {
 	insecureTls          bool
 	useWrapper           bool
 	withFixVersionFilter bool
-	minSeverityFilter    xraycommands.FilterLevel
+	minSeverityFilter    string
 	depsRepo             string
 	releasesRepo         string
 	requirementsFile     string
@@ -185,12 +185,12 @@ func (params *Params) SetWithFixVersionFilter(withFixVersionFilter bool) *Params
 	return params
 }
 
-func (params *Params) MinSeverityFilter() xraycommands.FilterLevel {
+func (params *Params) MinSeverityFilter() string {
 	return params.minSeverityFilter
 }
 
 func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
-	params.minSeverityFilter = xraycommands.GetFilterLevelFromSeverity(minSeverityFilter)
+	params.minSeverityFilter = minSeverityFilter
 	return params
 }
 

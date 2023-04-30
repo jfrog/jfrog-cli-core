@@ -43,13 +43,25 @@ type ScanCommand struct {
 	indexerTempDir         string
 	outputFormat           xrutils.OutputFormat
 	projectKey             string
+	minSeverityFilter      string
 	watches                []string
 	includeVulnerabilities bool
 	includeLicenses        bool
 	fail                   bool
 	printExtendedTable     bool
 	bypassArchiveLimits    bool
+	withFixVersionFilter   bool
 	progress               ioUtils.ProgressMgr
+}
+
+func (scanCmd *ScanCommand) SetMinSeverityFilter(minSeverityFilter string) *ScanCommand {
+	scanCmd.minSeverityFilter = minSeverityFilter
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetWithFixVersionFilter(withFixVersionFilter bool) *ScanCommand {
+	scanCmd.withFixVersionFilter = withFixVersionFilter
+	return scanCmd
 }
 
 func (scanCmd *ScanCommand) SetProgress(progress ioUtils.ProgressMgr) {
@@ -312,7 +324,9 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				scanGraphParams := commands.NewScanGraphParams().
 					SetServerDetails(scanCmd.serverDetails).
 					SetXrayGraphScanParams(params).
-					SetXrayVersion(xrayVersion)
+					SetXrayVersion(xrayVersion).
+					SetWithFixVersionFilter(scanCmd.withFixVersionFilter).
+					SetFilterLevel(scanCmd.minSeverityFilter)
 				scanResults, err := commands.RunScanGraphAndGetResults(scanGraphParams)
 				if err != nil {
 					log.Error(fmt.Sprintf("scanning '%s' failed with error: %s", graph.Id, err.Error()))

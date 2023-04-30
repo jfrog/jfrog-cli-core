@@ -67,8 +67,8 @@ func (sgp *ScanGraphParams) SetXrayVersion(xrayVersion string) *ScanGraphParams 
 	return sgp
 }
 
-func (sgp *ScanGraphParams) SetFilterLevel(filterLevel FilterLevel) *ScanGraphParams {
-	sgp.filterLevel = filterLevel
+func (sgp *ScanGraphParams) SetFilterLevel(filterLevel string) *ScanGraphParams {
+	sgp.filterLevel = GetFilterLevelFromSeverity(filterLevel)
 	return sgp
 }
 

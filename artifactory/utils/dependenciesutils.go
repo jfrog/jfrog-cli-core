@@ -49,7 +49,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
-// getRemoteDetails function retrieve the server details and download path for the build-info extractor file.
+// getRemoteDetails function retrieves the server details and downloads path for the build-info extractor file.
 // serverAndRepo - the server id and the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 // remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
@@ -57,11 +57,11 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 func getRemoteDetails(serverAndRepo, downloadPath, remoteEnv string) (server *config.ServerDetails, fullRemoteRepoPath string, err error) {
 	serverID, repoName, err := coreutils.SplitRepoAndServerId(serverAndRepo, remoteEnv)
 	if err != nil {
-		return nil, "", err
+		return
 	}
 	server, err = config.GetSpecificConfig(serverID, false, true)
 	if err != nil {
-		return nil, "", err
+		return
 	}
 	fullRemoteRepoPath = getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath)
 	return

@@ -50,7 +50,7 @@ allprojects {
 )
 
 var (
-	emptyRepositoriesErrFmt = "the %s remote repository is not configured, the %s will be obtained directly from Maven Central"
+	emptyRepositoriesErrFmt = "the %s remote repository is not configured. the %s will be obtained directly from Maven Central"
 	errEmptyReleasesRepo    = fmt.Errorf(emptyRepositoriesErrFmt, "releases", "gradle-dep-tree plugin")
 	errEmptyDepsRepo        = fmt.Errorf(emptyRepositoriesErrFmt, "dependencies", "dependencies")
 )

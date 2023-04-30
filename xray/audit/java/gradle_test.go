@@ -16,7 +16,9 @@ import (
 func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := audit.CreateTestWorkspace(t, "gradle-example-ci-server")
-	defer cleanUp()
+	defer func() {
+		cleanUp()
+	}()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees

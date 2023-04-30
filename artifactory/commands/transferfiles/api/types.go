@@ -33,9 +33,14 @@ type TargetAuth struct {
 }
 
 type UploadChunk struct {
+	// Authentication details of the target server
 	TargetAuth
-	CheckExistenceInFilestore bool                 `json:"check_existence_in_filestore,omitempty"`
-	UploadCandidates          []FileRepresentation `json:"upload_candidates,omitempty"`
+	// Files and folders to transfer
+	UploadCandidates []FileRepresentation `json:"upload_candidates,omitempty"`
+	// True if should check for the existence of artifacts on the target filestore
+	CheckExistenceInFilestore bool `json:"check_existence_in_filestore,omitempty"`
+	// True if should skip file filtering in the Data Transfer plugin
+	SkipFileFiltering bool `json:"skip_file_filtering,omitempty"`
 }
 
 type FileRepresentation struct {

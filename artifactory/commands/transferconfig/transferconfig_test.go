@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,13 +43,18 @@ func TestExportSourceArtifactory(t *testing.T) {
 	})
 	defer testServer.Close()
 
+	// Create working dir
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+
 	// Test export source artifactory
-	transferConfigCmd := createTransferConfigCommand(t, serverDetails, nil)
+	transferConfigCmd := createTransferConfigCommand(t, serverDetails, nil).SetSourceWorkingDir(tmpDir)
 	exportDir, cleanUp, err := transferConfigCmd.exportSourceArtifactory()
 	assert.NoError(t, err)
 	assert.DirExists(t, exportDir)
 	assert.NoError(t, cleanUp())
 	assert.NoDirExists(t, exportDir)
+	assert.True(t, strings.HasPrefix(exportDir, tmpDir))
 }
 
 func TestImportToTargetArtifactory(t *testing.T) {
@@ -143,7 +151,7 @@ func TestValidateTargetServer(t *testing.T) {
 
 func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("Not found"))
 		assert.NoError(t, err)
@@ -157,7 +165,7 @@ func TestVerifyConfigImportPluginNotInstalled(t *testing.T) {
 
 func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	// Create transfer config command
-	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, err := w.Write([]byte("An admin user is required"))
 		assert.NoError(t, err)
@@ -167,6 +175,34 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	transferConfigCmd := createTransferConfigCommand(t, &config.ServerDetails{Url: "dummy-url"}, serverDetails)
 	err := transferConfigCmd.verifyConfigImportPlugin()
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
+}
+
+func TestSetExportPath(t *testing.T) {
+	transferConfigBase := NewTransferConfigCommand(nil, nil)
+
+	// Create export path and check results
+	exportPath, unsetTempDir, err := transferConfigBase.createExportPath()
+	unsetTempDir()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, exportPath)
+	assert.DirExists(t, exportPath)
+
+	// Create working dir
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	tmpDir = filepath.Join(tmpDir, "test-export-dir")
+	assert.NoError(t, os.MkdirAll(tmpDir, 0700))
+	transferConfigBase.sourceWorkingDir = tmpDir
+
+	// Create export path with custom working dir
+	exportPath, unsetTempDir, err = transferConfigBase.createExportPath()
+	unsetTempDir()
+	assert.NoError(t, err)
+	assert.True(t, strings.HasPrefix(exportPath, tmpDir))
+	assert.DirExists(t, exportPath)
+
+	// Ensure unsetTempDir did work
+	assert.NotContains(t, fileutils.GetTempDirBase(), "test-export-dir")
 }
 
 func createTransferConfigCommand(t *testing.T, sourceServerDetails, targetServerDetails *config.ServerDetails) *TransferConfigCommand {

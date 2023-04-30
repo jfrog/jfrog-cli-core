@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/magiconair/properties/assert"
 	"reflect"
@@ -161,4 +162,53 @@ func TestListToText(t *testing.T) {
 	assert.Equal(t, ListToText([]string{"one"}), "one")
 	assert.Equal(t, ListToText([]string{"one", "two"}), "one and two")
 	assert.Equal(t, ListToText([]string{"one", "two", "three"}), "one, two and three")
+}
+
+func TestSplitRepoAndServerId(t *testing.T) {
+	// Test cases
+	tests := []struct {
+		serverAndRepo string
+		remoteEnv     string
+		serverID      string
+		repoName      string
+		err           error
+	}{
+		{
+			serverAndRepo: "myServer/myRepo",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "myServer",
+			repoName:      "myRepo",
+			err:           nil,
+		},
+		{
+			serverAndRepo: "/myRepo",
+			remoteEnv:     ExtractorsRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           fmt.Errorf("'%s' environment variable is '/myRepo' but should be '<server ID>/<repo name>'", ExtractorsRemoteEnv),
+		},
+		{
+			serverAndRepo: "myServer/",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           fmt.Errorf("'%s' environment variable is 'myServer/' but should be '<server ID>/<repo name>'", ReleasesRemoteEnv),
+		},
+		{
+			serverAndRepo: "",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           fmt.Errorf("'%s' environment variable is '' but should be '<server ID>/<repo name>'", ReleasesRemoteEnv),
+		},
+	}
+	for _, test := range tests {
+		serverID, repoName, err := SplitRepoAndServerId(test.serverAndRepo, test.remoteEnv)
+		if err != nil {
+			assert.Equal(t, test.err.Error(), err.Error())
+		}
+		// Assert the results
+		assert.Equal(t, test.serverID, serverID)
+		assert.Equal(t, test.repoName, repoName)
+	}
 }

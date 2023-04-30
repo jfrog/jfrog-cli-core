@@ -49,6 +49,12 @@ allprojects {
 		}`
 )
 
+var (
+	emptyRepositoriesErrFmt = "the %s remote repository is not configured, the %s will be obtained directly from Maven Central"
+	emptyReleasesRepoErr    = fmt.Errorf(emptyRepositoriesErrFmt, "releases", "gradle-dep-tree plugin")
+	emptyDepsRepoErr        = fmt.Errorf(emptyRepositoriesErrFmt, "dependencies", "dependencies")
+)
+
 type depTreeManager struct {
 	dependenciesTree
 	server       *config.ServerDetails
@@ -164,37 +170,44 @@ func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 
+// getRemoteRepos constructs the sections of Artifactory's remote repositories in the gradle-dep-tree init script.
+// releasesRepoName - name of the remote repository that proxies https://releases.jfrog.io
+// depsRemoteRepo - name of the remote repository that proxies the dependencies server, e.g. maven central.
+// server - the Artifactory server details on which the repositories reside in.
+// Returns the constructed sections.
 func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
-	var err error
+	constructedReleasesRepo, err := constructReleasesRemoteRepo(releasesRepo, server)
+	if err != nil && err != emptyReleasesRepoErr {
+		return "", "", err
+	}
+
+	constructedDepsRepo, err := constructDepsRemoteRepo(depsRepo, server)
+	if err != nil && err != emptyDepsRepoErr {
+		return "", "", err
+	}
+	return constructedReleasesRepo, constructedDepsRepo, nil
+}
+
+func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
 	if releasesRepo == "" {
 		// Try to get releases repository from the environment variable
-		releasesRepo = os.Getenv("JFROG_CLI_RELEASES_REPO")
-		lastSlashIndex := strings.LastIndex(releasesRepo, "/")
-		if lastSlashIndex != -1 {
-			releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", releasesRepo[lastSlashIndex+1:], remoteDepTreePath), server)
-			if err != nil {
-				return "", "", err
-			}
-		} else {
-			log.Debug("releases remote repository is not configured, the gradle-dep-tree plugin will be obtained directly from Maven Central...")
-		}
-	} else {
-		releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath), server)
+		releasesRepo = os.Getenv(coreutils.ReleasesRemoteEnv)
+		_, repoName, err := coreutils.SplitRepoAndServerId(releasesRepo, coreutils.ReleasesRemoteEnv)
 		if err != nil {
-			return "", "", err
+			return "", emptyReleasesRepoErr
 		}
+		releasesRepo = repoName
 	}
 
+	releasesPath := fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath)
+	return getDepTreeArtifactoryRepository(releasesPath, server)
+}
+
+func constructDepsRemoteRepo(depsRepo string, server *config.ServerDetails) (string, error) {
 	if depsRepo == "" {
-		log.Debug("dependencies remote repository is not configured, the dependencies will be obtained directly from Maven Central...")
-	} else {
-		depsRepo, err = getDepTreeArtifactoryRepository(depsRepo, server)
-		if err != nil {
-			return "", "", err
-		}
+		return "", emptyDepsRepoErr
 	}
-
-	return releasesRepo, depsRepo, err
+	return getDepTreeArtifactoryRepository(depsRepo, server)
 }
 
 func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {
@@ -262,6 +275,9 @@ func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren
 }
 
 func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDetails) (string, error) {
+	if remoteRepo == "" {
+		return "", nil
+	}
 	pass := server.Password
 	user := server.User
 	if server.AccessToken != "" {

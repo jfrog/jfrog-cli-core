@@ -10,11 +10,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
-	"os"
 	"path"
 )
 
-// Download the relevant build-info-extractor jar, if it does not already exist locally.
+// DownloadExtractorIfNeeded Downloads the relevant build-info-extractor jar if it does not already exist locally.
 // By default, the jar is downloaded directly from jfrog releases.
 // downloadPath: Artifactory download path.
 // targetPath: The local download path (without the file name).
@@ -29,16 +28,10 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 
 // The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
-func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
-	releasesServerAndRepo := os.Getenv(coreutils.ReleasesRemoteEnv)
-	if releasesServerAndRepo != "" {
-		return getRemoteDetails(releasesServerAndRepo, downloadPath, coreutils.ReleasesRemoteEnv)
-	}
-
-	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
-	extractorsServerAndRepo := os.Getenv(coreutils.ExtractorsRemoteEnv)
-	if extractorsServerAndRepo != "" {
-		return getRemoteDetails(extractorsServerAndRepo, downloadPath, coreutils.ExtractorsRemoteEnv)
+func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
+	if err != nil || remoteRepo != "" {
+		return
 	}
 
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n" +
@@ -49,14 +42,33 @@ func GetExtractorsRemoteDetails(downloadPath string) (*config.ServerDetails, str
 	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
 }
 
+func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ReleasesRemoteEnv)
+	if err != nil {
+		return
+	}
+	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
+	if remoteRepo == "" {
+		server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 // getRemoteDetails function retrieves the server details and downloads path for the build-info extractor file.
 // serverAndRepo - the server id and the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 // remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
 // The function returns the server that matches the given server ID, the complete path of the build-info extractor concatenated with the specified remote repository, and an error if occurred.
-func getRemoteDetails(serverAndRepo, downloadPath, remoteEnv string) (server *config.ServerDetails, fullRemoteRepoPath string, err error) {
-	serverID, repoName, err := coreutils.SplitRepoAndServerId(serverAndRepo, remoteEnv)
+func getRemoteDetails(downloadPath, remoteEnv string) (server *config.ServerDetails, fullRemoteRepoPath string, err error) {
+	serverID, repoName, err := coreutils.SplitRepoAndServerId(remoteEnv)
 	if err != nil {
+		return
+	}
+	if serverID == "" && repoName == "" {
+		// Remote details weren't configured. Assuming that https://releases.jfro.io should be used.
 		return
 	}
 	server, err = config.GetSpecificConfig(serverID, false, true)

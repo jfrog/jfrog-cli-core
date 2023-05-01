@@ -528,7 +528,12 @@ func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVe
 	return nil
 }
 
-func SplitRepoAndServerId(serverAndRepo, remoteEnv string) (serverID string, repoName string, err error) {
+func SplitRepoAndServerId(remoteEnv string) (serverID string, repoName string, err error) {
+	serverAndRepo := os.Getenv(remoteEnv)
+	if serverAndRepo == "" {
+		log.Debug(remoteEnv, "is not set")
+		return "", "", nil
+	}
 	// The serverAndRepo is in form of '<ServerID>/<RemoteRepo>'
 	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
 	// Check that the format is valid

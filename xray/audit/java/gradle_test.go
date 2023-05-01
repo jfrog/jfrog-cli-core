@@ -263,7 +263,7 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 		expectedRepo string
 		expectedErr  error
 	}{
-		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: errEmptyReleasesRepo},
+		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: nil},
 		{releasesRepo: "", envVar: "server/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 		{releasesRepo: "repo2", envVar: "", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo2/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 	}
@@ -280,27 +280,5 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 			assert.Equal(t, tc.expectedRepo, actualRepo)
 			assert.Equal(t, tc.expectedErr, actualErr)
 		}()
-	}
-}
-
-func TestConstructDepsRemoteRepo(t *testing.T) {
-	server := &config.ServerDetails{
-		ArtifactoryUrl: "https://myartifactory.com/artifactory",
-		User:           "myuser",
-		Password:       "mypass",
-	}
-	testCases := []struct {
-		depsRepo     string
-		expectedRepo string
-		expectedErr  error
-	}{
-		{depsRepo: "", expectedRepo: "", expectedErr: errEmptyDepsRepo},
-		{depsRepo: "repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
-	}
-
-	for _, tc := range testCases {
-		actualRepo, actualErr := constructDepsRemoteRepo(tc.depsRepo, server)
-		assert.Equal(t, tc.expectedRepo, actualRepo)
-		assert.Equal(t, tc.expectedErr, actualErr)
 	}
 }

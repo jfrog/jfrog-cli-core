@@ -49,12 +49,6 @@ allprojects {
 		}`
 )
 
-var (
-	emptyRepositoriesErrFmt = "the %s remote repository is not configured. the %s will be obtained directly from Maven Central"
-	errEmptyReleasesRepo    = fmt.Errorf(emptyRepositoriesErrFmt, "releases", "gradle-dep-tree plugin")
-	errEmptyDepsRepo        = fmt.Errorf(emptyRepositoriesErrFmt, "dependencies", "dependencies")
-)
-
 type depTreeManager struct {
 	dependenciesTree
 	server       *config.ServerDetails
@@ -158,15 +152,13 @@ func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
 	if err != nil {
 		return
 	}
-	depsRepo := ""
-	releasesRepo := ""
 	if dtp.server != nil {
-		releasesRepo, depsRepo, err = getRemoteRepos(dtp.releasesRepo, dtp.depsRepo, dtp.server)
+		dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.releasesRepo, dtp.depsRepo, dtp.server)
 		if err != nil {
 			return
 		}
 	}
-	depTreeInitScript := fmt.Sprintf(depTreeInitScript, releasesRepo, depsRepo)
+	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, dtp.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 
@@ -177,12 +169,12 @@ func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
 // Returns the constructed sections.
 func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
 	constructedReleasesRepo, err := constructReleasesRemoteRepo(releasesRepo, server)
-	if err != nil && err != errEmptyReleasesRepo {
+	if err != nil {
 		return "", "", err
 	}
 
-	constructedDepsRepo, err := constructDepsRemoteRepo(depsRepo, server)
-	if err != nil && err != errEmptyDepsRepo {
+	constructedDepsRepo, err := getDepTreeArtifactoryRepository(depsRepo, server)
+	if err != nil {
 		return "", "", err
 	}
 	return constructedReleasesRepo, constructedDepsRepo, nil
@@ -191,23 +183,15 @@ func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails)
 func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
 	if releasesRepo == "" {
 		// Try to get releases repository from the environment variable
-		releasesRepo = os.Getenv(coreutils.ReleasesRemoteEnv)
-		_, repoName, err := coreutils.SplitRepoAndServerId(releasesRepo, coreutils.ReleasesRemoteEnv)
-		if err != nil {
-			return "", errEmptyReleasesRepo
+		_, repoName, err := coreutils.SplitRepoAndServerId(coreutils.ReleasesRemoteEnv)
+		if err != nil || repoName == "" {
+			return repoName, err
 		}
 		releasesRepo = repoName
 	}
 
 	releasesPath := fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath)
 	return getDepTreeArtifactoryRepository(releasesPath, server)
-}
-
-func constructDepsRemoteRepo(depsRepo string, server *config.ServerDetails) (string, error) {
-	if depsRepo == "" {
-		return "", errEmptyDepsRepo
-	}
-	return getDepTreeArtifactoryRepository(depsRepo, server)
 }
 
 func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {

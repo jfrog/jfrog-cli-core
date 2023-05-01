@@ -175,7 +175,7 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 }
 
 // GenericAudit audits all the projects found in the given workingDirs
-func GenericAudit(params *Params) (results []services.ScanResponse,  dependencyTrees []*services.GraphNode, isMultipleRoot bool, err error) {
+func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// Get Xray version
 	_, xrayVersion, err := xraycommands.CreateXrayServiceManagerAndGetVersion(params.serverDetails)
 	if err != nil {
@@ -195,7 +195,7 @@ func GenericAudit(params *Params) (results []services.ScanResponse,  dependencyT
 	return auditMultipleWorkingDirs(params)
 }
 
-func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, dependencyTrees []*services.GraphNode, isMultipleRoot bool, err error) {
+func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	projectDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -220,14 +220,13 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			continue
 		}
 
-		techResults, techDependencyTrees, isMultipleRootProject, e := doAudit(params)
+		techResults, isMultipleRootProject, e := doAudit(params)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("audit command in %s failed:\n%s\n", absWd, e.Error()))
 			continue
 		}
 
 		results = append(results, techResults...)
-		dependencyTrees = append(dependencyTrees, techDependencyTrees...)
 		isMultipleRoot = isMultipleRootProject
 	}
 
@@ -239,7 +238,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 }
 
 // Audits the project found in the current directory using Xray.
-func doAudit(params *Params) (results []services.ScanResponse, dependencyTrees []*services.GraphNode, isMultipleRoot bool, err error) {
+func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
 	technologies := params.technologies
@@ -255,7 +254,6 @@ func doAudit(params *Params) (results []services.ScanResponse, dependencyTrees [
 			continue
 		}
 		currentTechDependencyTrees, e := getTechDependencyTree(params, tech)
-		dependencyTrees = append(dependencyTrees, currentTechDependencyTrees...)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue

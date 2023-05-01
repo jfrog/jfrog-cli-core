@@ -1,9 +1,9 @@
 package jas
 
 import (
-	"crypto/rand"
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"math/big"
@@ -13,19 +13,39 @@ import (
 	"runtime"
 )
 
+var (
+	analyzerManagerFilePath  = "analayzerManager/analyzerManager"
+	analyzerManagerLogFolder = ""
+)
+
 const (
-	analyzerManagerFilePath = "~/.jfrog/dependencies/analayzerManager/analyzerManager"
-	jfUserEnvVariable       = "JF_USER"
-	jfPasswordEnvVariable   = "JF_PASS"
-	jfPlatformUrl           = "JF_PLATFORM_URL"
+	analyzerManagerDirName   = "analyzerManagerLogs"
+	jfUserEnvVariable        = "JF_USER"
+	jfPasswordEnvVariable    = "JF_PASS"
+	jfTokenEnvVariable       = "JF_TOKEN"
+	jfPlatformUrlEnvVariable = "JF_PLATFORM_URL"
+	logDirEnvVariable        = "AM_LOG_DIRECTORY"
 )
 
 var analyzerManagerExecuter AnalyzerManager = &analyzerManager{}
 
-func getAnalyzerManagerAbsolutePath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, analyzerManagerFilePath)
+func createAnalyzerManagerLogDir() error {
+	logDir, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerDirName))
+	if err != nil {
+		return err
+	}
+	analyzerManagerLogFolder = logDir
+	return nil
 }
+
+func getAnalyzerManagerAbsolutePath() (string, error) {
+	jfrogDir, err := config.GetJfrogDependenciesPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(jfrogDir, analyzerManagerFilePath), nil
+}
+
 
 func generateRandomFileName() (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
@@ -65,11 +85,16 @@ func setAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if err != nil {
 		return err
 	}
-	err = os.Setenv(jfPlatformUrl, serverDetails.Url)
+	err = os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url)
 	if err != nil {
 		return err
 	}
-	return nil
+	err = os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv(logDirEnvVariable, analyzerManagerLogFolder)
+	return err
 }
 
 func deleteJasScanProcessFiles(configFile string, resultsFile string) error {

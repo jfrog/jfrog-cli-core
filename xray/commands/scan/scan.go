@@ -226,10 +226,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults, err := jas.GetExtendedScanResults(flatResults, nil, scanCmd.serverDetails)
-	if err != nil {
-		return err
-	}
+	extendedScanResults := &jas.ExtendedScanResults{XrayResults: flatResults}
 	err = xrutils.PrintScanResults(extendedScanResults,
 		scanErrors,
 		scanCmd.outputFormat,

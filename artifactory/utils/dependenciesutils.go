@@ -30,7 +30,7 @@ func DownloadExtractorIfNeeded(targetPath, downloadPath string) error {
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
-	if err != nil || remoteRepo != "" {
+	if remoteRepo != "" || err != nil {
 		return
 	}
 
@@ -44,15 +44,13 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 
 func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ReleasesRemoteEnv)
-	if err != nil {
+	if remoteRepo != "" || err != nil {
 		return
 	}
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
-	if remoteRepo == "" {
-		server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
-		if err != nil {
-			return
-		}
+	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
+	if err != nil {
+		return
 	}
 	return
 }

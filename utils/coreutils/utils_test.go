@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -199,16 +200,23 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			remoteEnv:     ReleasesRemoteEnv,
 			serverID:      "",
 			repoName:      "",
-			err:           fmt.Errorf("'%s' environment variable is '' but should be '<server ID>/<repo name>'", ReleasesRemoteEnv),
+			err:           nil,
 		},
 	}
 	for _, test := range tests {
-		serverID, repoName, err := SplitRepoAndServerId(test.serverAndRepo, test.remoteEnv)
-		if err != nil {
-			assert.Equal(t, test.err.Error(), err.Error())
-		}
-		// Assert the results
-		assert.Equal(t, test.serverID, serverID)
-		assert.Equal(t, test.repoName, repoName)
+		func() {
+			assert.NoError(t, os.Setenv(test.remoteEnv, test.serverAndRepo))
+			defer func() {
+				assert.NoError(t, os.Unsetenv(test.remoteEnv))
+			}()
+			serverID, repoName, err := SplitRepoAndServerId(test.remoteEnv)
+			if err != nil {
+				assert.Equal(t, test.err.Error(), err.Error())
+			}
+			// Assert the results
+			assert.Equal(t, test.serverID, serverID)
+			assert.Equal(t, test.repoName, repoName)
+
+		}()
 	}
 }

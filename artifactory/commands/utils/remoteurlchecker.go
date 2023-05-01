@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
@@ -24,6 +25,15 @@ const (
 	remoteUrlCheckRetries           = 3
 	remoteUrlCheckIntervalMilliSecs = 10000
 )
+
+type remoteRepoSettings struct {
+	Key         string `json:"key,omitempty"`
+	Url         string `json:"url,omitempty"`
+	RepoType    string `json:"repo_type,omitempty"`
+	Username    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+	QueryParams string `json:"query_params,omitempty"`
+}
 
 type remoteUrlResponse struct {
 	Status                   RemoteUrlCheckStatus     `json:"status,omitempty"`
@@ -42,11 +52,11 @@ type inaccessibleRepository struct {
 // Run remote repository URLs accessibility test before transferring configuration from one Artifactory to another
 type RemoteRepositoryCheck struct {
 	targetServicesManager *artifactory.ArtifactoryServicesManager
-	configXml             string
+	remoteRepositories    []interface{}
 }
 
-func NewRemoteRepositoryCheck(targetServicesManager *artifactory.ArtifactoryServicesManager, configXml string) *RemoteRepositoryCheck {
-	return &RemoteRepositoryCheck{targetServicesManager, configXml}
+func NewRemoteRepositoryCheck(targetServicesManager *artifactory.ArtifactoryServicesManager, remoteRepositories []interface{}) *RemoteRepositoryCheck {
+	return &RemoteRepositoryCheck{targetServicesManager, remoteRepositories}
 }
 
 func (rrc *RemoteRepositoryCheck) Name() string {
@@ -54,7 +64,11 @@ func (rrc *RemoteRepositoryCheck) Name() string {
 }
 
 func (rrc *RemoteRepositoryCheck) ExecuteCheck(args RunArguments) (passed bool, err error) {
-	inaccessibleRepositories, err := rrc.doCheckRemoteRepositories(args)
+	remoteUrlRequest, err := rrc.createRemoteUrlRequest()
+	if err != nil {
+		return false, err
+	}
+	inaccessibleRepositories, err := rrc.doCheckRemoteRepositories(args, remoteUrlRequest)
 	if err != nil {
 		return false, err
 	}
@@ -64,8 +78,40 @@ func (rrc *RemoteRepositoryCheck) ExecuteCheck(args RunArguments) (passed bool, 
 	return false, handleFailureRun(*inaccessibleRepositories)
 }
 
-func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
+// Create the remote URL request from the received remote repository details from Artifactory
+func (rrc *RemoteRepositoryCheck) createRemoteUrlRequest() ([]remoteRepoSettings, error) {
+	remoteUrlRequests := make([]remoteRepoSettings, len(rrc.remoteRepositories))
+	for i, remoteRepository := range rrc.remoteRepositories {
+		// The remote repository interface is not necessarily of RemoteRepositoryBaseParams
+		// type (can be a map) and therefore we marshal and unmarshal it.
+		remoteRepositoryBytes, err := json.Marshal(remoteRepository)
+		if err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+		var remoteRepositoryParams services.RemoteRepositoryBaseParams
+		if err = json.Unmarshal(remoteRepositoryBytes, &remoteRepositoryParams); err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+
+		remoteUrlRequests[i] = remoteRepoSettings{
+			Key:         remoteRepositoryParams.Key,
+			Url:         remoteRepositoryParams.Url,
+			RepoType:    remoteRepositoryParams.PackageType,
+			Username:    remoteRepositoryParams.Username,
+			Password:    remoteRepositoryParams.Password,
+			QueryParams: remoteRepositoryParams.QueryParams,
+		}
+	}
+	return remoteUrlRequests, nil
+}
+
+func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments, remoteUrlRequest []remoteRepoSettings) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
 	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(args.ServerDetails.ArtifactoryUrl)
+
+	body, err := json.Marshal(remoteUrlRequest)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
 
 	// Create rtDetails
 	rtDetails, err := CreateArtifactoryClientDetails(*rrc.targetServicesManager)
@@ -73,7 +119,7 @@ func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (
 		return nil, err
 	}
 
-	progressBar, err := rrc.startCheckRemoteRepositories(rtDetails, artifactoryUrl, args)
+	progressBar, err := rrc.startCheckRemoteRepositories(rtDetails, artifactoryUrl, args, body)
 	if err != nil {
 		return nil, err
 	}
@@ -87,26 +133,27 @@ func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments) (
 	return rrc.waitForRemoteReposCheckCompletion(rtDetails, artifactoryUrl, progressBar)
 }
 
-func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, args RunArguments) (*progressbar.TasksProgressBar, error) {
+func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, args RunArguments, requestBody []byte) (*progressbar.TasksProgressBar, error) {
 	var response *remoteUrlResponse
 	// Sometimes, POST api/plugins/execute/remoteRepositoriesCheck returns unexpectedly 404 errors, although the config-import plugin is installed.
 	// To overcome this issue, we use a custom retryExecutor and not the default retry executor that retries only on HTTP errors >= 500.
 	retryExecutor := clientutils.RetryExecutor{
+		Context:                  args.Context,
 		MaxRetries:               remoteUrlCheckRetries,
 		RetriesIntervalMilliSecs: remoteUrlCheckIntervalMilliSecs,
 		ErrorMessage:             fmt.Sprintf("Failed to start the remote repositories check in %s", artifactoryUrl),
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the remote repositories check process
-			resp, body, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheck", []byte(rrc.configXml), rtDetails)
+			resp, responseBody, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheck", requestBody, rtDetails)
 			if err != nil {
 				return false, err
 			}
-			if err = errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
+			if err = errorutils.CheckResponseStatusWithBody(resp, responseBody, http.StatusOK); err != nil {
 				return true, err
 			}
 
-			response, err = unmarshalRemoteUrlResponse(body)
+			response, err = unmarshalRemoteUrlResponse(responseBody)
 			return false, err
 		},
 	}

@@ -289,10 +289,6 @@ func (ca *NpmCommand) Run() (err error) {
 		return
 	}
 
-	if !ca.collectBuildInfo {
-		log.Info(fmt.Sprintf("npm %s finished successfully.", ca.cmdName))
-		return
-	}
 	if err = ca.collectDependencies(); err != nil {
 		return
 	}
@@ -303,12 +299,12 @@ func (ca *NpmCommand) Run() (err error) {
 func (ca *NpmCommand) prepareBuildInfoModule() error {
 	var err error
 	ca.collectBuildInfo, err = ca.buildConfiguration.IsCollectBuildInfo()
-	if err != nil || !ca.collectBuildInfo {
+	if err != nil {
 		return err
 	}
 
 	// Build-info should not be created when installing a single package (npm install <package name>).
-	if len(filterFlags(ca.npmArgs)) > 0 {
+	if ca.collectBuildInfo && len(filterFlags(ca.npmArgs)) > 0 {
 		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
 		ca.collectBuildInfo = false
 		return nil

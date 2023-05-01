@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -27,19 +28,21 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (map[string]string, bool, error) {
 	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
-		return nil, false, handleApplicabilityScanError(err, applicabilityScanManager)
+		log.Info("failed to run applicability scan: " + err.Error())
+		return nil, false, err
 	}
 	if !applicabilityScanManager.entitledForAppScan() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return nil, false, nil
 	}
-	entitledForJas, err := applicabilityScanManager.Run()
-	if !entitledForJas {
+	entitledForAppScan, err := applicabilityScanManager.Run()
+	if !entitledForAppScan {
 		log.Info("got not entitled error from analyzer manager")
 		return nil, false, nil
 	}
 	if err != nil {
-		return nil, true, handleApplicabilityScanError(err, applicabilityScanManager)
+		log.Info("failed to run applicability scan: " + err.Error())
+		return nil, true, err
 	}
 	return applicabilityScanManager.applicabilityScannerResults, true, nil
 }
@@ -67,16 +70,6 @@ func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
 	return false
 }
 
-func handleApplicabilityScanError(err error, applicabilityScanManager *ApplicabilityScanManager) error {
-	log.Info("failed to run applicability scan: " + err.Error())
-	deleteFilesError := deleteJasScanProcessFiles(applicabilityScanManager.configFileName,
-		applicabilityScanManager.resultsFileName)
-	if deleteFilesError != nil {
-		return deleteFilesError
-	}
-	return err
-}
-
 type ApplicabilityScanManager struct {
 	applicabilityScannerResults map[string]string
 	xrayVulnerabilities         []services.Vulnerability
@@ -89,6 +82,9 @@ type ApplicabilityScanManager struct {
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (*ApplicabilityScanManager, error) {
+	if serverDetails == nil {
+		return nil, errors.New("cant get xray server details")
+	}
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -155,12 +151,8 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 	return xrayViolations
 }
 
-func (a *ApplicabilityScanManager) getApplicabilityScanResults() map[string]string {
-	return a.applicabilityScannerResults
-}
-
 func (a *ApplicabilityScanManager) Run() (bool, error) {
-	defer a.DeleteApplicabilityScanProcessFiles()
+	defer deleteJasScanProcessFiles(a.configFileName, a.resultsFileName)
 	if err := a.createConfigFile(); err != nil {
 		return true, err
 	}
@@ -223,12 +215,8 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	}
 	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName), applicabilityScanCommand)
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode := exitError.ExitCode()
-			// User not entitled error
-			if exitCode == 31 {
-				return false, err
-			}
+		if notEntitledError := isNotEntitledError(err); notEntitledError {
+			return false, err
 		}
 	}
 	return true, err
@@ -255,22 +243,6 @@ func (a *ApplicabilityScanManager) parseResults() error {
 			a.applicabilityScannerResults[applicableVulnerabilityName] = "Yes"
 		} else {
 			a.applicabilityScannerResults[applicableVulnerabilityName] = "No"
-		}
-	}
-	return nil
-}
-
-func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
-	if exist, _ := fileutils.IsFileExists(a.configFileName, false); exist {
-		err := os.Remove(a.configFileName)
-		if err != nil {
-			return err
-		}
-	}
-	if exist, _ := fileutils.IsFileExists(a.resultsFileName, false); exist {
-		err := os.Remove(a.resultsFileName)
-		if err != nil {
-			return err
 		}
 	}
 	return nil

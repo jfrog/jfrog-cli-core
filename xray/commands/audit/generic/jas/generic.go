@@ -4,13 +4,12 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 )
 
 var (
@@ -44,21 +43,6 @@ func getAnalyzerManagerAbsolutePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(jfrogDir, analyzerManagerFilePath), nil
-}
-
-
-func generateRandomFileName() (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	result := make([]byte, 10)
-	for i := 0; i < 10; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		if err != nil {
-			return "", err
-		}
-		result[i] = letters[num.Int64()]
-	}
-
-	return string(result), nil
 }
 
 func removeDuplicateValues(stringSlice []string) []string {
@@ -98,14 +82,14 @@ func setAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 }
 
 func deleteJasScanProcessFiles(configFile string, resultsFile string) error {
-	if _, err := os.Stat(configFile); err == nil {
-		err = os.Remove(configFile)
+	if exist, _ := fileutils.IsFileExists(configFile, false); exist {
+		err := os.Remove(configFile)
 		if err != nil {
 			return err
 		}
 	}
-	if _, err := os.Stat(resultsFile); err == nil {
-		err = os.Remove(resultsFile)
+	if exist, _ := fileutils.IsFileExists(resultsFile, false); exist {
+		err := os.Remove(resultsFile)
 		if err != nil {
 			return err
 		}
@@ -113,32 +97,26 @@ func deleteJasScanProcessFiles(configFile string, resultsFile string) error {
 	return nil
 }
 
-type AnalyzerManager interface {
-	DoesAnalyzerManagerExecutableExist() bool
-	RunAnalyzerManager(string, string) error
+func isNotEntitledError(err error) bool {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitCode := exitError.ExitCode()
+		// User not entitled error
+		if exitCode == 31 {
+			return true
+		}
+	}
+	return false
 }
 
-type analyzerManager struct {
-}
-
-func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
-	if _, err := os.Stat(getAnalyzerManagerAbsolutePath()); err != nil {
-		return false
+func isUnsupportedCommandError(err error) bool {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitCode := exitError.ExitCode()
+		// Unsupported command
+		if exitCode == 13 {
+			return true
+		}
 	}
-	return true
-}
-
-func (am *analyzerManager) RunAnalyzerManager(configFile string, scanCommand string) error {
-	var err error
-	if runtime.GOOS == "windows" {
-		_, err = exec.Command(getAnalyzerManagerAbsolutePath()+".exe", scanCommand, configFile).Output()
-	} else {
-		_, err = exec.Command(getAnalyzerManagerAbsolutePath(), scanCommand, configFile).Output()
-	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return false
 }
 
 type ExtendedScanResults struct {
@@ -160,12 +138,16 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		log.Info("analyzer manager doesnt exist, user is not entitled for jas")
 		return &ExtendedScanResults{XrayResults: results}, nil
 	}
+	err := createAnalyzerManagerLogDir()
+	if err != nil {
+		return nil, err
+	}
 	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(results,
 		dependencyTrees, serverDetails, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
-	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails)
+	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}

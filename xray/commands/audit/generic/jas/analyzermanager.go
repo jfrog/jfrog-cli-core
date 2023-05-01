@@ -8,7 +8,7 @@ import (
 
 type AnalyzerManager interface {
 	DoesAnalyzerManagerExecutableExist() bool
-	RunAnalyzerManager(string) error
+	RunAnalyzerManager(string, string) error
 }
 
 type analyzerManager struct {
@@ -25,15 +25,15 @@ func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
 	return true
 }
 
-func (am *analyzerManager) RunAnalyzerManager(configFile string) error {
+func (am *analyzerManager) RunAnalyzerManager(configFile string, scanCommand string) error {
 	analyzerManagerPath, err := getAnalyzerManagerAbsolutePath()
 	if err != nil {
 		return err
 	}
 	if coreutils.IsWindows() {
-		err = exec.Command(analyzerManagerPath+".exe", applicabilityScanCommand, configFile).Run()
+		err = exec.Command(analyzerManagerPath+".exe", scanCommand, configFile).Run()
 	} else {
-		err = exec.Command(analyzerManagerPath, applicabilityScanCommand, configFile).Run()
+		err = exec.Command(analyzerManagerPath, scanCommand, configFile).Run()
 	}
 	return err
 }

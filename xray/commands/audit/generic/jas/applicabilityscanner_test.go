@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -11,57 +10,9 @@ import (
 	"testing"
 )
 
-var (
-	analyzerManagerExecutionError error = nil
-	analyzerManagerExist                = true
-)
-
-type analyzerManagerMock struct {
-}
-
-func (am *analyzerManagerMock) RunAnalyzerManager(string) error {
-	return analyzerManagerExecutionError
-}
-
-func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() bool {
-	return analyzerManagerExist
-}
-
-var fakeBasicXrayResults = []services.ScanResponse{
-	{
-		ScanId: "scanId_1",
-		Vulnerabilities: []services.Vulnerability{
-			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-				Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
-		},
-		Violations: []services.Violation{
-			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-				Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
-		},
-	},
-}
-
-var fakeBasicDependencyGraph = []*services.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*services.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-}
-
-var fakeServerDetails = config.ServerDetails{
-	Url:      "platformUrl",
-	Password: "password",
-	User:     "user",
-}
-
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -73,7 +24,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 
 func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, nil, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, nil, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -89,7 +40,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 	fakeBasicXrayResults[0].Violations[0].Components["issueId_2_non_direct_dependency"] = services.Component{}
 
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -104,7 +55,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	multipleDependencyTrees := []*services.GraphNode{fakeBasicDependencyGraph[0], fakeBasicDependencyGraph[0]}
 
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, multipleDependencyTrees, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, multipleDependencyTrees, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -128,7 +79,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	}
 
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(noViolationScanResponse, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(noViolationScanResponse, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -152,7 +103,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	}
 
 	// Act
-	applicabilityScanner, _ := NewApplicabilityScanManager(noVulnerabilitiesScanResponse, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(noVulnerabilitiesScanResponse, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NotEmpty(t, applicabilityScanner)
@@ -162,69 +113,53 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	assert.Empty(t, applicabilityScanner.xrayVulnerabilities)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AllConditionsMet(t *testing.T) {
+func TestApplicabilityScanManager_IsEntitled_AllConditionsMet(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	entitled := applicabilityScanner.entitledForAppScan()
 
 	// Assert
-	assert.True(t, shouldRun)
+	assert.True(t, entitled)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AnalyzerManagerDoesntExist(t *testing.T) {
-	// Arrange
-	analyzerManagerExist = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-
-	// Act
-	shouldRun := applicabilityScanner.shouldRun()
-
-	// Assert
-	assert.False(t, shouldRun)
-
-	// Cleanup
-	analyzerManagerExist = true
-}
-
-func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *testing.T) {
+func TestApplicabilityScanManager_IsEntitled_TechnologiesNotEligibleForScan(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Nuget.ToString()
 	fakeBasicXrayResults[0].Violations[0].Technology = coreutils.Go.ToString()
 	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph,
-		&fakeServerDetails)
+		&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	entitled := applicabilityScanner.entitledForAppScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, entitled)
 
 	// Cleanup
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Pipenv.ToString()
 	fakeBasicXrayResults[0].Violations[0].Technology = coreutils.Pipenv.ToString()
 }
 
-func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
+func TestApplicabilityScanManager_IsEntitled_ScanResultsAreEmpty(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	entitled := applicabilityScanner.entitledForAppScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, entitled)
 }
 
 func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := applicabilityScanner.createConfigFile()
@@ -244,7 +179,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 	applicabilityScanner.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "empty-results.sarif")
 
 	// Act
@@ -262,7 +197,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 	applicabilityScanner.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
@@ -280,7 +215,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 	applicabilityScanner.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
@@ -295,25 +230,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	}
 }
 
-func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-	// Arrange
-	analyzerManagerExist = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
-
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.False(t, extendedResults.EntitledForJas)
-	assert.Equal(t, 1, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
-
-	// Cleanup
-	analyzerManagerExist = true
-}
-
-func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
+func TestApplicabilityScan_GetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	// Arrange
 	analyzerManagerErrorMessage := "analyzer manager failure message"
 	analyzerManagerExecutionError = errors.New(analyzerManagerErrorMessage)

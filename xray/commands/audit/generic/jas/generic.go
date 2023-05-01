@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"math/big"
 	"os"

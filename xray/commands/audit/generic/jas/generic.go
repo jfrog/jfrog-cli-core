@@ -121,6 +121,7 @@ type ExtendedScanResults struct {
 	SecretsScanResults           []Secret
 	EntitledForJas               bool
 	EligibleForApplicabilityScan bool
+	EligibleForSecretScan        bool
 }
 
 func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
@@ -129,18 +130,25 @@ func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
 	serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
-	applicabilityScanResults, err := getApplicabilityScanResults(results, dependencyTrees, serverDetails)
+	if !analyzerManagerExecuter.DoesAnalyzerManagerExecutableExist() {
+		log.Info("analyzer manager doesnt exist, user is not entitled for jas")
+		return &ExtendedScanResults{XrayResults: results}, nil
+	}
+	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(results,
+		dependencyTrees, serverDetails, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
-	secretsScanResults, err := getSecretsScanResults(serverDetails)
+	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails)
 	if err != nil {
 		return nil, err
 	}
 	return &ExtendedScanResults{
-		XrayResults:                 results,
-		SecretsScanResults:          secretsScanResults,
-		ApplicabilityScannerResults: applicabilityScanResults.ApplicabilityScannerResults,
-		EntitledForJas:              applicabilityScanResults.EntitledForJas,
+		XrayResults:                  results,
+		SecretsScanResults:           secretsScanResults,
+		ApplicabilityScannerResults:  applicabilityScanResults,
+		EntitledForJas:               true,
+		EligibleForApplicabilityScan: eligibleForApplicabilityScan,
+		EligibleForSecretScan:        eligibleForSecretsScan,
 	}, nil
 }

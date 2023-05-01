@@ -278,8 +278,8 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
-func PrintSecretsTable(secrets []jas.Secret, entitledForJas bool) error {
-	if entitledForJas {
+func PrintSecretsTable(secrets []jas.Secret, entitledForSecretsScan bool) error {
+	if entitledForSecretsScan {
 		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secrets), "Secrets",
 			"✨ No secrets were found ✨", false)
 	}

@@ -22,28 +22,21 @@ var (
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ExtendedScanResults, error) {
-	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
+func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+	serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (map[string]string, bool, error) {
+	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
-		return nil, handleApplicabilityScanError(err, applicabilityScanManager)
-	}
-	if !applicabilityScanManager.analyzerManager.DoesAnalyzerManagerExecutableExist() {
-		log.Info("analyzer manager doesnt exist, user is not entitled for jas")
-		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false,
-			EligibleForApplicabilityScan: false}, nil
+		return nil, false, handleApplicabilityScanError(err, applicabilityScanManager)
 	}
 	if !applicabilityScanManager.entitledForAppScan() {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
-		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: true,
-			EligibleForApplicabilityScan: false}, nil
+		return nil, false, nil
 	}
 	err = applicabilityScanManager.Run()
 	if err != nil {
-		return nil, handleApplicabilityScanError(err, applicabilityScanManager)
+		return nil, true, handleApplicabilityScanError(err, applicabilityScanManager)
 	}
-	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
-	extendedScanResults := ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
-	return &extendedScanResults, nil
+	return applicabilityScanManager.applicabilityScannerResults, true, nil
 }
 
 func (a *ApplicabilityScanManager) entitledForAppScan() bool {
@@ -89,7 +82,8 @@ type ApplicabilityScanManager struct {
 	serverDetails               *config.ServerDetails
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode, serverDetails *config.ServerDetails) (*ApplicabilityScanManager, error) {
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
+	serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (*ApplicabilityScanManager, error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	configFileName, err := generateRandomFileName()
 	if err != nil {
@@ -105,7 +99,7 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		xrayViolations:              setXrayDirectViolations(xrayScanResults, directDependencies),
 		configFileName:              configFileName + ".yaml",
 		resultsFileName:             resultsFileName + ".sarif",
-		analyzerManager:             analyzerManagerExecuter,
+		analyzerManager:             analyzerManager,
 		serverDetails:               serverDetails,
 	}, nil
 }

@@ -124,8 +124,8 @@ type cveTableRow struct {
 }
 
 type secretsTableRow struct {
-	file       string `col-name:"File Name"`
-	line       string `col-name:"Start Line"`
-	text       string `col-name:"Text"`
-	secretType string `col-name:"Secret Type"`
+	file       string `col-name:"File"`
+	line       string `col-name:"Location"`
+	text       string `col-name:"Secret"`
+	secretType string `col-name:"Type"`
 }

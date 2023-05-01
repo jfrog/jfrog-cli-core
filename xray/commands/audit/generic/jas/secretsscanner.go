@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -18,10 +19,10 @@ const (
 )
 
 type Secret struct {
-	File string
-	Line string
-	Type string
-	Text string
+	File     string
+	Location string
+	Type     string
+	Text     string
 }
 
 type SecretScanManager struct {
@@ -32,20 +33,16 @@ type SecretScanManager struct {
 	serverDetails         *config.ServerDetails
 }
 
-func getSecretsScanResults(serverDetails *config.ServerDetails) ([]Secret, error) {
+func getSecretsScanResults(serverDetails *config.ServerDetails) ([]Secret, bool, error) {
 	secretScanManager, err := NewsSecretsScanManager(serverDetails)
 	if err != nil {
-		return nil, handleSecretsScanError(err, secretScanManager)
-	}
-	if !secretScanManager.analyzerManager.DoesAnalyzerManagerExecutableExist() {
-		log.Info("analyzer manager doesnt exist, user is not entitled for jas")
-		return nil, nil
+		return nil, false, handleSecretsScanError(err, secretScanManager)
 	}
 	err = secretScanManager.Run()
 	if err != nil {
-		return nil, handleSecretsScanError(err, secretScanManager)
+		return nil, true, handleSecretsScanError(err, secretScanManager)
 	}
-	return secretScanManager.secretsScannerResults, nil
+	return secretScanManager.secretsScannerResults, true, nil
 }
 
 func NewsSecretsScanManager(serverDetails *config.ServerDetails) (*SecretScanManager, error) {
@@ -159,14 +156,29 @@ func (s *SecretScanManager) parseResults() error {
 
 	for _, secret := range secretsResults {
 		newSecret := Secret{
-			File: *secret.Locations[0].PhysicalLocation.ArtifactLocation.URI,
-			Line: strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine),
-			Text: partiallyHideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
-			Type: *secret.RuleID,
+			File:     getSecretFileName(secret),
+			Location: getSecretLocation(secret),
+			Text:     partiallyHideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
+			Type:     *secret.RuleID,
 		}
 		finalSecretsList = append(finalSecretsList, newSecret)
 	}
+	s.secretsScannerResults = finalSecretsList
 	return nil
+}
+
+func getSecretFileName(secret *sarif.Result) string {
+	file := *secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
+	splitFileArray := strings.Split(file, "///")
+	if len(splitFileArray) > 1 {
+		return splitFileArray[1]
+	}
+	return splitFileArray[0]
+}
+
+func getSecretLocation(secret *sarif.Result) string {
+	return strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine) + ":" +
+		strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
 }
 
 func partiallyHideSecret(secret string) string {
@@ -178,13 +190,13 @@ func partiallyHideSecret(secret string) string {
 		for i := 0; i < len(secret); i++ {
 			hiddenSecret += "*"
 		}
-	} else { // hide last 7 digits
+	} else { // show first 7 digits
 		i := 0
-		for i < len(secret)-7 {
+		for i < 7 {
 			hiddenSecret += string(secret[i])
 			i++
 		}
-		for i < len(secret) {
+		for i < 30 {
 			hiddenSecret += "*"
 			i++
 		}

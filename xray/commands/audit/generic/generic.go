@@ -1,9 +1,8 @@
 package audit
 
 import (
-	"os"
-
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"

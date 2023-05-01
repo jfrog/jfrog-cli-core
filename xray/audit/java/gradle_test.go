@@ -202,7 +202,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 		assert.NoError(t, os.Chdir(currDir))
 	}()
 	manager := &depTreeManager{}
-	tmpDir, err = manager.createDepTreeScript()
+	tmpDir, err = manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
@@ -216,7 +216,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}
-	tmpDir, err = manager.createDepTreeScript()
+	tmpDir, err = manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	expectedInitScript := `initscript {
     repositories { 

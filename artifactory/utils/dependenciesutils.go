@@ -49,9 +49,6 @@ func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails,
 	}
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
-	if err != nil {
-		return
-	}
 	return
 }
 
@@ -59,9 +56,9 @@ func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails,
 // serverAndRepo - the server id and the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 // remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
-// The function returns the server that matches the given server ID, the complete path of the build-info extractor concatenated with the specified remote repository, and an error if occurred.
+// The function returns the server that matches xthe given server ID, the complete path of the build-info extractor concatenated with the specified remote repository, and an error if occurred.
 func getRemoteDetails(downloadPath, remoteEnv string) (server *config.ServerDetails, fullRemoteRepoPath string, err error) {
-	serverID, repoName, err := coreutils.SplitRepoAndServerId(remoteEnv)
+	serverID, repoName, err := coreutils.GetServerIdAndRepo(remoteEnv)
 	if err != nil {
 		return
 	}

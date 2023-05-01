@@ -209,14 +209,13 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Unsetenv(test.remoteEnv))
 			}()
-			serverID, repoName, err := SplitRepoAndServerId(test.remoteEnv)
+			serverID, repoName, err := GetServerIdAndRepo(test.remoteEnv)
 			if err != nil {
 				assert.Equal(t, test.err.Error(), err.Error())
 			}
 			// Assert the results
 			assert.Equal(t, test.serverID, serverID)
 			assert.Equal(t, test.repoName, repoName)
-
 		}()
 	}
 }

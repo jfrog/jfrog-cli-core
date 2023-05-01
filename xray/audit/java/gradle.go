@@ -126,7 +126,7 @@ func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, de
 
 func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err error) {
 	// Create the script file in the repository
-	depTreeDir, err := dtp.createDepTreeScript()
+	depTreeDir, err := dtp.createDepTreeScriptAndGetDir()
 	if err != nil {
 		return
 	}
@@ -147,7 +147,7 @@ func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err err
 	return dtp.execGradleDepTree(depTreeDir)
 }
 
-func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
+func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err error) {
 	tmpDir, err = fileutils.CreateTempDir()
 	if err != nil {
 		return
@@ -183,7 +183,7 @@ func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails)
 func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
 	if releasesRepo == "" {
 		// Try to get releases repository from the environment variable
-		_, repoName, err := coreutils.SplitRepoAndServerId(coreutils.ReleasesRemoteEnv)
+		_, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
 		if err != nil || repoName == "" {
 			return repoName, err
 		}

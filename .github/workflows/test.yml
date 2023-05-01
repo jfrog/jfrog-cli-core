@@ -22,7 +22,7 @@ jobs:
           python-version: "3.x"
 
       - name: Install python components
-        run: python3 -m pip install pipenv poetry
+        run: python -m pip install pipenv poetry
 
       - name: Install Go
         uses: actions/setup-go@v3

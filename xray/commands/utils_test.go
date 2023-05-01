@@ -38,7 +38,7 @@ func TestFilterResultIfNeeded(t *testing.T) {
 				},
 			},
 			params: ScanGraphParams{
-				filterLevel: NoFilter,
+				severityLevel: NoFilter,
 			},
 			expected: services.ScanResponse{
 				Violations: []services.Violation{
@@ -72,7 +72,7 @@ func TestFilterResultIfNeeded(t *testing.T) {
 				},
 			},
 			params: ScanGraphParams{
-				filterLevel: High,
+				severityLevel: High,
 			},
 			expected: services.ScanResponse{
 				Violations: []services.Violation{
@@ -98,7 +98,7 @@ func TestFilterResultIfNeeded(t *testing.T) {
 	}
 }
 
-func TestGetWithFixVersionFilteredComponents(t *testing.T) {
+func TestGetFixableComponents(t *testing.T) {
 	// create test cases
 	testCases := []struct {
 		name        string
@@ -147,7 +147,7 @@ func TestGetWithFixVersionFilteredComponents(t *testing.T) {
 	// run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualMap := getWithFixVersionFilteredComponents(tc.components)
+			actualMap := getFixableComponents(tc.components)
 			assert.Equal(t, len(tc.expectedMap), len(actualMap))
 			for k, v := range tc.expectedMap {
 				if v.FixedVersions == nil {

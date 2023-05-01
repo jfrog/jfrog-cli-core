@@ -19,7 +19,7 @@ type GenericAuditCommand struct {
 	targetRepoPath          string
 	minSeverityFilter       string
 	requirementsFile        string
-	withFixVersionFilter    bool
+	fixableOnly             bool
 	IncludeVulnerabilities  bool
 	IncludeLicenses         bool
 	Fail                    bool
@@ -95,8 +95,8 @@ func (auditCmd *GenericAuditCommand) SetMinSeverityFilter(minSeverityFilter stri
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) SetWithFixVersionFilter(withFixVersionFilter bool) *GenericAuditCommand {
-	auditCmd.withFixVersionFilter = withFixVersionFilter
+func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditCommand {
+	auditCmd.fixableOnly = fixable
 	return auditCmd
 }
 
@@ -133,7 +133,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetTechnologies(auditCmd.technologies...).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
-		SetWithFixVersionFilter(auditCmd.withFixVersionFilter)
+		SetFixableOnly(auditCmd.fixableOnly)
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	if auditCmd.progress != nil {

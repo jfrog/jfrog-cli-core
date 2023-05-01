@@ -15,25 +15,25 @@ const (
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
 )
 
-type FilterLevel int
+type SeverityLevel int
 
 const (
-	NoFilter FilterLevel = 0
-	Low      FilterLevel = 1
-	Medium   FilterLevel = 2
-	High     FilterLevel = 3
-	Critical FilterLevel = 4
+	NoFilter SeverityLevel = 0
+	Low      SeverityLevel = 1
+	Medium   SeverityLevel = 2
+	High     SeverityLevel = 3
+	Critical SeverityLevel = 4
 )
 
-var mapFilterNameToLevel = map[string]FilterLevel{
+var severityNameToLevel = map[string]SeverityLevel{
 	"low":      Low,
 	"medium":   Medium,
 	"high":     High,
 	"critical": Critical,
 }
 
-func GetFilterLevelFromSeverity(s string) FilterLevel {
-	severity, exists := mapFilterNameToLevel[strings.ToLower(s)]
+func GetLevelOfSeverity(s string) SeverityLevel {
+	severity, exists := severityNameToLevel[strings.ToLower(s)]
 	if !exists {
 		severity = NoFilter
 	}
@@ -41,11 +41,11 @@ func GetFilterLevelFromSeverity(s string) FilterLevel {
 }
 
 type ScanGraphParams struct {
-	serverDetails        *config.ServerDetails
-	xrayGraphScanParams  *services.XrayGraphScanParams
-	withFixVersionFilter bool
-	xrayVersion          string
-	filterLevel          FilterLevel
+	serverDetails       *config.ServerDetails
+	xrayGraphScanParams *services.XrayGraphScanParams
+	fixableOnly         bool
+	xrayVersion         string
+	severityLevel       SeverityLevel
 }
 
 func NewScanGraphParams() *ScanGraphParams {
@@ -67,8 +67,8 @@ func (sgp *ScanGraphParams) SetXrayVersion(xrayVersion string) *ScanGraphParams 
 	return sgp
 }
 
-func (sgp *ScanGraphParams) SetFilterLevel(filterLevel string) *ScanGraphParams {
-	sgp.filterLevel = GetFilterLevelFromSeverity(filterLevel)
+func (sgp *ScanGraphParams) SetSeverityLevel(severity string) *ScanGraphParams {
+	sgp.severityLevel = GetLevelOfSeverity(severity)
 	return sgp
 }
 
@@ -84,12 +84,12 @@ func (sgp *ScanGraphParams) ServerDetails() *config.ServerDetails {
 	return sgp.serverDetails
 }
 
-func (sgp *ScanGraphParams) WithFixVersionFilter() bool {
-	return sgp.withFixVersionFilter
+func (sgp *ScanGraphParams) FixableOnly() bool {
+	return sgp.fixableOnly
 }
 
-func (sgp *ScanGraphParams) SetWithFixVersionFilter(withFixVersionFilter bool) *ScanGraphParams {
-	sgp.withFixVersionFilter = withFixVersionFilter
+func (sgp *ScanGraphParams) SetFixableOnly(fixable bool) *ScanGraphParams {
+	sgp.fixableOnly = fixable
 	return sgp
 }
 
@@ -140,20 +140,20 @@ func filterResultIfNeeded(scanResult *services.ScanResponse, params *ScanGraphPa
 }
 
 func shouldFilterResults(params *ScanGraphParams) bool {
-	return params.filterLevel != NoFilter || params.withFixVersionFilter
+	return params.severityLevel != NoFilter || params.fixableOnly
 }
 
 func filterViolations(violations []services.Violation, params *ScanGraphParams) []services.Violation {
 	var filteredViolations []services.Violation
 	for _, violation := range violations {
-		if params.withFixVersionFilter {
-			violation.Components = getWithFixVersionFilteredComponents(violation.Components)
+		if params.fixableOnly {
+			violation.Components = getFixableComponents(violation.Components)
 			if len(violation.Components) == 0 {
 				// All the components were filtered, filter this violation
 				continue
 			}
 		}
-		if GetFilterLevelFromSeverity(violation.Severity) >= params.filterLevel {
+		if GetLevelOfSeverity(violation.Severity) >= params.severityLevel {
 			filteredViolations = append(filteredViolations, violation)
 		}
 	}
@@ -163,28 +163,28 @@ func filterViolations(violations []services.Violation, params *ScanGraphParams) 
 func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *ScanGraphParams) []services.Vulnerability {
 	var filteredVulnerabilities []services.Vulnerability
 	for _, vulnerability := range vulnerabilities {
-		if params.withFixVersionFilter {
-			vulnerability.Components = getWithFixVersionFilteredComponents(vulnerability.Components)
+		if params.fixableOnly {
+			vulnerability.Components = getFixableComponents(vulnerability.Components)
 			if len(vulnerability.Components) == 0 {
 				// All the components were filtered, filter this violation
 				continue
 			}
 		}
-		if GetFilterLevelFromSeverity(vulnerability.Severity) >= params.filterLevel {
+		if GetLevelOfSeverity(vulnerability.Severity) >= params.severityLevel {
 			filteredVulnerabilities = append(filteredVulnerabilities, vulnerability)
 		}
 	}
 	return filteredVulnerabilities
 }
 
-func getWithFixVersionFilteredComponents(components map[string]services.Component) map[string]services.Component {
-	withFixVersionsComponents := make(map[string]services.Component)
+func getFixableComponents(components map[string]services.Component) map[string]services.Component {
+	fixableComponents := make(map[string]services.Component)
 	for vulnKey, vulnDetails := range components {
 		if len(vulnDetails.FixedVersions) > 0 {
-			withFixVersionsComponents[vulnKey] = vulnDetails
+			fixableComponents[vulnKey] = vulnDetails
 		}
 	}
-	return withFixVersionsComponents
+	return fixableComponents
 }
 
 func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, string, error) {

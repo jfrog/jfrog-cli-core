@@ -99,7 +99,7 @@ func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId stri
 	return module
 }
 
-// GetModule Get a specific module from the provided modules list
+// GetModule gets a specific module from the provided modules list
 func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")
@@ -114,7 +114,7 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 	return nil
 }
 
-// GetExecutableVersion Gets an executable version and prints to the debug log if possible.
+// GetExecutableVersion gets an executable version and prints to the debug log if possible.
 // Only supported for package managers that use "--version".
 func GetExecutableVersion(executable string) (version string, err error) {
 	verBytes, err := exec.Command(executable, "--version").CombinedOutput()

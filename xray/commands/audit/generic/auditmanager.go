@@ -26,24 +26,24 @@ import (
 )
 
 type Params struct {
-	xrayGraphScanParams  *services.XrayGraphScanParams
-	serverDetails        *config.ServerDetails
-	progress             ioUtils.ProgressMgr
-	dependencyTrees      []*services.GraphNode
-	ignoreConfigFile     bool
-	excludeTestDeps      bool
-	insecureTls          bool
-	useWrapper           bool
-	withFixVersionFilter bool
-	minSeverityFilter    string
-	depsRepo             string
-	releasesRepo         string
-	requirementsFile     string
-	technologies         []string
-	workingDirs          []string
-	args                 []string
-	installFunc          func(tech string) error
-	xrayVersion          string
+	xrayGraphScanParams *services.XrayGraphScanParams
+	serverDetails       *config.ServerDetails
+	progress            ioUtils.ProgressMgr
+	dependencyTrees     []*services.GraphNode
+	ignoreConfigFile    bool
+	excludeTestDeps     bool
+	insecureTls         bool
+	useWrapper          bool
+	fixableOnly         bool
+	minSeverityFilter   string
+	depsRepo            string
+	releasesRepo        string
+	requirementsFile    string
+	technologies        []string
+	workingDirs         []string
+	args                []string
+	installFunc         func(tech string) error
+	xrayVersion         string
 }
 
 func NewAuditParams() *Params {
@@ -176,12 +176,12 @@ func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Param
 	return params
 }
 
-func (params *Params) WithFixVersionFilter() bool {
-	return params.withFixVersionFilter
+func (params *Params) FixableOnly() bool {
+	return params.fixableOnly
 }
 
-func (params *Params) SetWithFixVersionFilter(withFixVersionFilter bool) *Params {
-	params.withFixVersionFilter = withFixVersionFilter
+func (params *Params) SetFixableOnly(fixable bool) *Params {
+	params.fixableOnly = fixable
 	return params
 }
 
@@ -283,8 +283,8 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			SetServerDetails(params.serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).
-			SetWithFixVersionFilter(params.withFixVersionFilter).
-			SetFilterLevel(params.minSeverityFilter)
+			SetFixableOnly(params.fixableOnly).
+			SetSeverityLevel(params.minSeverityFilter)
 		techResults, e := audit.Audit(dependencyTrees, params.progress, tech, scanGraphParams)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))

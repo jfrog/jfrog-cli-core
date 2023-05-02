@@ -23,6 +23,11 @@ type treeAnalyzer struct {
 	tech              coreutils.Technology
 }
 
+const (
+	BlockMessageKey  = "jfrog packages curation"
+	NotBeingFoundKey = "not being found"
+)
+
 func (nc *treeAnalyzer) recursiveNodeCuration(graph *utils.GraphNode, respStatus *[]PackageStatus, parent, parentVersion string, isRoot bool) error {
 	if parent == "" && !isRoot {
 		_, parent, parentVersion = getUrlNameAndVersionByTech(nc.tech, graph.Id, nc.url, nc.repo)
@@ -75,24 +80,29 @@ func (nc *treeAnalyzer) addBlockedPackage(packageUrl string, parent, parentVersi
 			log.Error(fmt.Sprintf("No errors messages for package %s, version: %s for download url: %s ", name, version, packageUrl))
 			return nil
 		}
-		if strings.Contains(strings.ToLower(respError.Errors[0].Message), "jfrog packages curation") {
+		if strings.Contains(strings.ToLower(respError.Errors[0].Message), BlockMessageKey) {
 			depRelation := "indirect"
 			if parent == "" {
 				depRelation = "direct"
 				parent = name
 				parentVersion = version
 			}
+			blockingReason := BlockingReasonPolicy
+			if strings.Contains(strings.ToLower(respError.Errors[0].Message), NotBeingFoundKey) {
+				blockingReason = BlockingReasonNotFound
+			}
 			policies := extractPoliciesFromMsg(respError)
 			*respStatus = append(*respStatus, PackageStatus{
-				PackageName:    name,
-				PackageVersion: version,
-				Action:         Blocked,
-				Policy:         policies,
-				ParentName:     parent,
-				ParentVersion:  parentVersion,
-				DepRelation:    depRelation,
-				Resolved:       packageUrl,
-				PkgType:        string(nc.tech),
+				PackageName:       name,
+				PackageVersion:    version,
+				BlockedPackageUrl: packageUrl,
+				Action:            Blocked,
+				Policy:            policies,
+				ParentName:        parent,
+				ParentVersion:     parentVersion,
+				BlockingReason:    blockingReason,
+				DepRelation:       depRelation,
+				PkgType:           string(nc.tech),
 			})
 		}
 	}

@@ -16,6 +16,9 @@ import (
 
 const (
 	Blocked = "blocked"
+
+	BlockingReasonPolicy   = "Policy violations"
+	BlockingReasonNotFound = "Package pending update"
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
@@ -23,15 +26,16 @@ var supportedTech = map[coreutils.Technology]struct{}{
 }
 
 type PackageStatus struct {
-	Action         string   `json:"action"`
-	PackageName    string   `json:"blocked_package_name"`
-	PackageVersion string   `json:"blocked_package_version"`
-	ParentName     string   `json:"direct_dependency_package_name"`
-	ParentVersion  string   `json:"direct_dependency_package_version"`
-	DepRelation    string   `json:"dependency_relation"`
-	PkgType        string   `json:"type"`
-	Policy         []Policy `json:"policies"`
-	Resolved       string   `json:"resolved"`
+	Action            string   `json:"action"`
+	ParentName        string   `json:"direct_dependency_package_name"`
+	ParentVersion     string   `json:"direct_dependency_package_version"`
+	BlockedPackageUrl string   `json:"blocked_package_url"`
+	PackageName       string   `json:"blocked_package_name"`
+	PackageVersion    string   `json:"blocked_package_version"`
+	BlockingReason    string   `json:"blocking_reason"`
+	DepRelation       string   `json:"dependency_relation"`
+	PkgType           string   `json:"type"`
+	Policy            []Policy `json:"policies"`
 }
 
 type Policy struct {
@@ -40,13 +44,15 @@ type Policy struct {
 }
 
 type PackageStatusTableStruct struct {
-	Status         string              `col-name:"Action"`
-	ParentName     string              `col-name:"Direct Dependency\nPackage Name"`
-	ParentVersion  string              `col-name:"Direct Dependency\nPackage Version"`
-	PackageName    string              `col-name:"Blocked Package\nName"`
-	PackageVersion string              `col-name:"Blocked Package\nVersion"`
-	PkgType        string              `col-name:"Package Type"`
-	Policy         []policyTableStruct `embed-table:"true"`
+	Status            string              `col-name:"Action"`
+	ParentName        string              `col-name:"Direct Dependency\nPackage Name"`
+	ParentVersion     string              `col-name:"Direct Dependency\nPackage Version"`
+	BlockedPackageUrl string              `col-name:"Blocked Package URL"`
+	PackageName       string              `col-name:"Blocked Package\nName"`
+	PackageVersion    string              `col-name:"Blocked Package\nVersion"`
+	BlockingReason    string              `col-name:"Blocking Reason"`
+	PkgType           string              `col-name:"Package Type"`
+	Policy            []policyTableStruct `embed-table:"true"`
 }
 
 type policyTableStruct struct {
@@ -203,7 +209,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 		}
 	case utils.Table:
 		pkgStatusTable := convertToTableStruct(packagesStatus)
-		err := coreutils.PrintTable(pkgStatusTable, "Curation", "Found 0 blocked packages", false)
+		err := coreutils.PrintTable(pkgStatusTable, "Curation", "Found 0 blocked packages", true)
 		if err != nil {
 			return err
 		}
@@ -216,12 +222,14 @@ func convertToTableStruct(packagesStatus []PackageStatus) []PackageStatusTableSt
 	var pkgStatusTable []PackageStatusTableStruct
 	for _, pkgStatus := range packagesStatus {
 		pkgTable := PackageStatusTableStruct{
-			Status:         pkgStatus.Action,
-			ParentName:     pkgStatus.ParentName,
-			ParentVersion:  pkgStatus.ParentVersion,
-			PackageName:    pkgStatus.PackageName,
-			PackageVersion: pkgStatus.PackageVersion,
-			PkgType:        pkgStatus.PkgType,
+			Status:            pkgStatus.Action,
+			ParentName:        pkgStatus.ParentName,
+			ParentVersion:     pkgStatus.ParentVersion,
+			BlockedPackageUrl: pkgStatus.BlockedPackageUrl,
+			PackageName:       pkgStatus.PackageName,
+			PackageVersion:    pkgStatus.PackageVersion,
+			BlockingReason:    pkgStatus.BlockingReason,
+			PkgType:           pkgStatus.PkgType,
 		}
 		var policiesCondTable []policyTableStruct
 		for _, policyCond := range pkgStatus.Policy {

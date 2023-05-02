@@ -31,6 +31,8 @@ const maxPossibleCve = 10.0
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
+var CurationOutputFormats = []string{string(Table), string(Json)}
+
 type sarifProperties struct {
 	Cves        string
 	Headline    string

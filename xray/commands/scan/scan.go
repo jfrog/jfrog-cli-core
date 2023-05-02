@@ -43,13 +43,25 @@ type ScanCommand struct {
 	indexerTempDir         string
 	outputFormat           xrutils.OutputFormat
 	projectKey             string
+	minSeverityFilter      string
 	watches                []string
 	includeVulnerabilities bool
 	includeLicenses        bool
 	fail                   bool
 	printExtendedTable     bool
 	bypassArchiveLimits    bool
+	fixableOnly            bool
 	progress               ioUtils.ProgressMgr
+}
+
+func (scanCmd *ScanCommand) SetMinSeverityFilter(minSeverityFilter string) *ScanCommand {
+	scanCmd.minSeverityFilter = minSeverityFilter
+	return scanCmd
+}
+
+func (scanCmd *ScanCommand) SetFixableOnly(fixable bool) *ScanCommand {
+	scanCmd.fixableOnly = fixable
+	return scanCmd
 }
 
 func (scanCmd *ScanCommand) SetProgress(progress ioUtils.ProgressMgr) {
@@ -299,7 +311,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// Add a new task to the second producer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
-				params := services.XrayGraphScanParams{
+				params := &services.XrayGraphScanParams{
 					Graph:      graph,
 					RepoPath:   getXrayRepoPathFromTarget(file.Target),
 					Watches:    scanCmd.watches,
@@ -309,7 +321,13 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")
 				}
-				scanResults, err := commands.RunScanGraphAndGetResults(scanCmd.serverDetails, params, scanCmd.includeVulnerabilities, scanCmd.includeLicenses, xrayVersion)
+				scanGraphParams := commands.NewScanGraphParams().
+					SetServerDetails(scanCmd.serverDetails).
+					SetXrayGraphScanParams(params).
+					SetXrayVersion(xrayVersion).
+					SetFixableOnly(scanCmd.fixableOnly).
+					SetSeverityLevel(scanCmd.minSeverityFilter)
+				scanResults, err := commands.RunScanGraphAndGetResults(scanGraphParams)
 				if err != nil {
 					log.Error(fmt.Sprintf("scanning '%s' failed with error: %s", graph.Id, err.Error()))
 					indexedFileErrors[threadId] = append(indexedFileErrors[threadId], formats.SimpleJsonError{FilePath: filePath, ErrorMessage: err.Error()})

@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
 	"os"
 	"sort"
 	"strconv"
@@ -21,13 +22,7 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
-	Low                        = "Low"
-	Medium                     = "Medium"
-	High                       = "High"
-	Critical                   = "Critical"
 )
-
-var severitiesList = []string{Low, Medium, High, Critical}
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several projects or files (like in binary scan).
@@ -467,15 +462,15 @@ func GetSeveritiesFormat(severity string) (string, error) {
 	severity = strings.ToLower(severity)
 	switch severity {
 	case "low":
-		severity = Low
+		severity = "Low"
 	case "medium":
-		severity = Medium
+		severity = "Medium"
 	case "high":
-		severity = High
+		severity = "High"
 	case "critical":
-		severity = Critical
+		severity = "Critical"
 	default:
-		err = errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(severitiesList))
+		err = errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(severities)))
 	}
 
 	return severity, err

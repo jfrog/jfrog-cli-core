@@ -50,7 +50,7 @@ func (sgp *ScanGraphParams) SetXrayVersion(xrayVersion string) *ScanGraphParams 
 }
 
 func (sgp *ScanGraphParams) SetSeverityLevel(severity string) *ScanGraphParams {
-	sgp.severityLevel = utils.GetSeverity(cases.Title(language.Und).String(severity)).NumValue()
+	sgp.severityLevel = getLevelOfSeverity(severity)
 	return sgp
 }
 

@@ -3,41 +3,24 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"strings"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
 	GraphScanMinXrayVersion           = "3.29.0"
 	ScanTypeMinXrayVersion            = "3.37.2"
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
+	NoFilter                          = 0
 )
 
-type SeverityLevel int
-
-const (
-	NoFilter SeverityLevel = 0
-	Low      SeverityLevel = 1
-	Medium   SeverityLevel = 2
-	High     SeverityLevel = 3
-	Critical SeverityLevel = 4
-)
-
-var severityNameToLevel = map[string]SeverityLevel{
-	"low":      Low,
-	"medium":   Medium,
-	"high":     High,
-	"critical": Critical,
-}
-
-func GetLevelOfSeverity(s string) SeverityLevel {
-	severity, exists := severityNameToLevel[strings.ToLower(s)]
-	if !exists {
-		severity = NoFilter
-	}
-	return severity
+func getLevelOfSeverity(s string) int {
+	severity := utils.GetSeverity(cases.Title(language.Und).String(s))
+	return severity.NumValue()
 }
 
 type ScanGraphParams struct {
@@ -45,7 +28,7 @@ type ScanGraphParams struct {
 	xrayGraphScanParams *services.XrayGraphScanParams
 	fixableOnly         bool
 	xrayVersion         string
-	severityLevel       SeverityLevel
+	severityLevel       int
 }
 
 func NewScanGraphParams() *ScanGraphParams {
@@ -68,7 +51,7 @@ func (sgp *ScanGraphParams) SetXrayVersion(xrayVersion string) *ScanGraphParams 
 }
 
 func (sgp *ScanGraphParams) SetSeverityLevel(severity string) *ScanGraphParams {
-	sgp.severityLevel = GetLevelOfSeverity(severity)
+	sgp.severityLevel = getLevelOfSeverity(severity)
 	return sgp
 }
 
@@ -153,7 +136,7 @@ func filterViolations(violations []services.Violation, params *ScanGraphParams) 
 				continue
 			}
 		}
-		if GetLevelOfSeverity(violation.Severity) >= params.severityLevel {
+		if getLevelOfSeverity(violation.Severity) >= params.severityLevel {
 			filteredViolations = append(filteredViolations, violation)
 		}
 	}
@@ -170,7 +153,7 @@ func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *Sca
 				continue
 			}
 		}
-		if GetLevelOfSeverity(vulnerability.Severity) >= params.severityLevel {
+		if getLevelOfSeverity(vulnerability.Severity) >= params.severityLevel {
 			filteredVulnerabilities = append(filteredVulnerabilities, vulnerability)
 		}
 	}

@@ -15,7 +15,6 @@ const (
 	GraphScanMinXrayVersion           = "3.29.0"
 	ScanTypeMinXrayVersion            = "3.37.2"
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
-	NoFilter                          = 0
 )
 
 func getLevelOfSeverity(s string) int {
@@ -123,7 +122,7 @@ func filterResultIfNeeded(scanResult *services.ScanResponse, params *ScanGraphPa
 }
 
 func shouldFilterResults(params *ScanGraphParams) bool {
-	return params.severityLevel != NoFilter || params.fixableOnly
+	return params.severityLevel > 0 || params.fixableOnly
 }
 
 func filterViolations(violations []services.Violation, params *ScanGraphParams) []services.Violation {

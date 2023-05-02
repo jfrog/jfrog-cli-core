@@ -21,7 +21,13 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
+	Low                        = "Low"
+	Medium                     = "Medium"
+	High                       = "High"
+	Critical                   = "Critical"
 )
+
+var severitiesList = []string{Low, Medium, High, Critical}
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
 // Set multipleRoots to true in case the given violations array contains (or may contain) results of several projects or files (like in binary scan).
@@ -438,6 +444,13 @@ type Severity struct {
 	emoji    string
 }
 
+var severities = map[string]*Severity{
+	"Critical": {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+	"High":     {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
+	"Medium":   {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
+	"Low":      {emoji: "👻", title: "Low", numValue: 1},
+}
+
 func (s *Severity) printableTitle(isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		return s.style.Render(s.emoji + s.title)
@@ -449,11 +462,23 @@ func (s *Severity) NumValue() int {
 	return s.numValue
 }
 
-var severities = map[string]*Severity{
-	"Critical": {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
-	"High":     {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
-	"Medium":   {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
-	"Low":      {emoji: "👻", title: "Low", numValue: 1},
+func GetSeveritiesFormat(severity string) (string, error) {
+	var err error
+	severity = strings.ToLower(severity)
+	switch severity {
+	case "low":
+		severity = Low
+	case "medium":
+		severity = Medium
+	case "high":
+		severity = High
+	case "critical":
+		severity = Critical
+	default:
+		err = errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(severitiesList))
+	}
+
+	return severity, err
 }
 
 func GetSeverity(severityTitle string) *Severity {

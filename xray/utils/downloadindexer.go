@@ -94,7 +94,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 		LocalFileName: indexerBinaryName,
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
-	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
+	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false, false)
 	if err != nil {
 		return "", fmt.Errorf("an error occurred while trying to download '%s':\n%s", url, err.Error())
 	}

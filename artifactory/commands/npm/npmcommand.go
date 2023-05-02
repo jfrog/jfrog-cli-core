@@ -307,7 +307,6 @@ func (ca *NpmCommand) prepareBuildInfoModule() error {
 	if ca.collectBuildInfo && len(filterFlags(ca.npmArgs)) > 0 {
 		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
 		ca.collectBuildInfo = false
-		return nil
 	}
 	buildName, err := ca.buildConfiguration.GetBuildName()
 	if err != nil {

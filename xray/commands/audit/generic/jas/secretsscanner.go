@@ -33,6 +33,7 @@ type SecretScanManager struct {
 	resultsFileName       string
 	analyzerManager       AnalyzerManager
 	serverDetails         *config.ServerDetails
+	projectFullPath       string
 }
 
 func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) ([]Secret, bool, error) {
@@ -97,6 +98,7 @@ type secretsScanConfiguration struct {
 
 func (s *SecretScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
+	s.projectFullPath = currentDir
 	if err != nil {
 		return err
 	}
@@ -189,7 +191,7 @@ func getSecretLocation(secret *sarif.Result) string {
 	return ""
 }
 
-func getHiddenSecret(secret string) string {
+func getHiddenSecret(secret string) string { // todo show always only 3 chars, only 10 cochaviot
 	if secret == "" {
 		return ""
 	}
@@ -210,4 +212,8 @@ func getHiddenSecret(secret string) string {
 		}
 	}
 	return hiddenSecret
+}
+
+func tryExtractRelativePath(secretPath string) string {
+	return secretPath
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"sort"
 	"strconv"
@@ -458,22 +460,12 @@ func (s *Severity) NumValue() int {
 }
 
 func GetSeveritiesFormat(severity string) (string, error) {
-	var err error
-	severity = strings.ToLower(severity)
-	switch severity {
-	case "low":
-		severity = "Low"
-	case "medium":
-		severity = "Medium"
-	case "high":
-		severity = "High"
-	case "critical":
-		severity = "Critical"
-	default:
-		err = errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(severities)))
+	formattedSeverity := cases.Title(language.Und).String(severity)
+	if formattedSeverity != "" && severities[formattedSeverity] == nil {
+		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(severities)))
 	}
 
-	return severity, err
+	return formattedSeverity, nil
 }
 
 func GetSeverity(severityTitle string) *Severity {

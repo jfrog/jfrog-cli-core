@@ -312,11 +312,13 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
 				params := &services.XrayGraphScanParams{
-					Graph:      graph,
-					RepoPath:   getXrayRepoPathFromTarget(file.Target),
-					Watches:    scanCmd.watches,
-					ProjectKey: scanCmd.projectKey,
-					ScanType:   services.Binary,
+					Graph:                  graph,
+					RepoPath:               getXrayRepoPathFromTarget(file.Target),
+					Watches:                scanCmd.watches,
+					IncludeLicenses:        scanCmd.includeLicenses,
+					IncludeVulnerabilities: scanCmd.includeVulnerabilities,
+					ProjectKey:             scanCmd.projectKey,
+					ScanType:               services.Binary,
 				}
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")

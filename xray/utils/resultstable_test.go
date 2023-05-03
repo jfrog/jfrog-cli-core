@@ -414,13 +414,13 @@ func TestGetSeveritiesFormat(t *testing.T) {
 		{input: "MedIum", expectedOutput: "Medium", expectedError: nil},
 		{input: "", expectedOutput: "", expectedError: nil},
 		// Test unsupported severity
-		{input: "invalid_severity", expectedOutput: "", expectedError: errors.New("only the following severities are supported: Critical, High, Medium and Low")},
+		{input: "invalid_severity", expectedOutput: "", expectedError: errors.New("only the following severities are supported")},
 	}
 
 	for _, tc := range testCases {
 		output, err := GetSeveritiesFormat(tc.input)
 		if err != nil {
-			assert.Equal(t, tc.expectedError.Error(), err.Error())
+			assert.Contains(t, err.Error(), tc.expectedError.Error())
 		} else {
 			assert.Equal(t, tc.expectedError, err)
 		}

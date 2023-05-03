@@ -33,6 +33,17 @@ const (
 	Projects     MinVersionProduct = "JFrog Projects"
 )
 
+const (
+	// ReleasesRemoteEnv should be used for downloading the extractor jars through an Artifactory remote
+	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
+	// configured to proxy releases.jfrog.io.
+	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
+	ReleasesRemoteEnv = "JFROG_CLI_RELEASES_REPO"
+	// ExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
+	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
+	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+)
+
 // Error modes (how should the application behave when the CheckError function is invoked):
 type OnError string
 
@@ -515,4 +526,22 @@ func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVe
 			product, currentVersion, minimumVersion))
 	}
 	return nil
+}
+
+func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err error) {
+	serverAndRepo := os.Getenv(remoteEnv)
+	if serverAndRepo == "" {
+		log.Debug(remoteEnv, "is not set")
+		return "", "", nil
+	}
+	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
+	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
+	// Check that the format is valid
+	invalidFormat := lastSlashIndex == -1 || lastSlashIndex == len(serverAndRepo)-1 || lastSlashIndex == 0
+	if invalidFormat {
+		return "", "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
+	}
+	serverID = serverAndRepo[:lastSlashIndex]
+	repoName = serverAndRepo[lastSlashIndex+1:]
+	return
 }

@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -10,8 +13,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -159,9 +160,12 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	curUploadChunk = api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
+		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI.
+		// The local generated filter is enabled in the JFrog CLI for target Artifactory servers >= 7.55.
+		SkipFileFiltering: m.locallyGeneratedFilter.IsEnabled(),
 	}
 
-	var result *servicesUtils.AqlSearchResult
+	var result []servicesUtils.ResultItem
 	paginationI := 0
 	for {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
@@ -173,12 +177,12 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 		}
 
 		// Empty folder. Add it as candidate.
-		if paginationI == 0 && len(result.Results) == 0 {
+		if paginationI == 0 && len(result) == 0 {
 			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
 			return
 		}
 
-		for _, item := range result.Results {
+		for _, item := range result {
 			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 				return
 			}
@@ -200,7 +204,7 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			}
 		}
 
-		if len(result.Results) < AqlPaginationLimit {
+		if len(result) < AqlPaginationLimit {
 			break
 		}
 		paginationI++
@@ -257,9 +261,13 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
+func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
 	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
-	return runAql(m.context, m.srcRtDetails, query)
+	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, err
+	}
+	return m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {

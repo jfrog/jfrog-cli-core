@@ -255,7 +255,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	assert.NotEmpty(t, applicabilityScanner.applicabilityScannerResults)
 	assert.Equal(t, 5, len(applicabilityScanner.applicabilityScannerResults))
 	for _, cveResult := range applicabilityScanner.applicabilityScannerResults {
-		assert.Equal(t, "Unknown", cveResult)
+		assert.Equal(t, UndeterminedStringValue, cveResult)
 	}
 }
 
@@ -272,8 +272,8 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, applicabilityScanner.applicabilityScannerResults)
 	assert.Equal(t, 5, len(applicabilityScanner.applicabilityScannerResults))
-	assert.Equal(t, "Yes", applicabilityScanner.applicabilityScannerResults["testCve1"])
-	assert.Equal(t, "No", applicabilityScanner.applicabilityScannerResults["testCve3"])
+	assert.Equal(t, ApplicableStringValue, applicabilityScanner.applicabilityScannerResults["testCve1"])
+	assert.Equal(t, NotApplicableStringValue, applicabilityScanner.applicabilityScannerResults["testCve3"])
 
 }
 
@@ -291,7 +291,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	assert.NotEmpty(t, applicabilityScanner.applicabilityScannerResults)
 	assert.Equal(t, 5, len(applicabilityScanner.applicabilityScannerResults))
 	for _, cveResult := range applicabilityScanner.applicabilityScannerResults {
-		assert.Equal(t, "No", cveResult)
+		assert.Equal(t, NotApplicableStringValue, cveResult)
 	}
 }
 

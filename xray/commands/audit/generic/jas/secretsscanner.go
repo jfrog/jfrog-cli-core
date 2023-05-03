@@ -21,10 +21,11 @@ const (
 )
 
 type Secret struct {
-	File     string
-	Location string
-	Type     string
-	Text     string
+	Severity   string
+	File       string
+	LineColumn string
+	Type       string
+	Text       string
 }
 
 type SecretScanManager struct {
@@ -33,7 +34,7 @@ type SecretScanManager struct {
 	resultsFileName       string
 	analyzerManager       AnalyzerManager
 	serverDetails         *config.ServerDetails
-	projectFullPath       string
+	projectRootPath       string
 }
 
 func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) ([]Secret, bool, error) {
@@ -65,7 +66,7 @@ func NewsSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager
 	return &SecretScanManager{
 		secretsScannerResults: []Secret{},
 		configFileName:        filepath.Join(tempDir, "config.yaml"),
-		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
+		resultsFileName:       "sarif.sarif", //filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
 		serverDetails:         serverDetails,
 	}, nil
@@ -98,7 +99,7 @@ type secretsScanConfiguration struct {
 
 func (s *SecretScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
-	s.projectFullPath = currentDir
+	s.projectRootPath = currentDir
 	if err != nil {
 		return err
 	}
@@ -155,10 +156,11 @@ func (s *SecretScanManager) parseResults() error {
 
 	for _, secret := range secretsResults {
 		newSecret := Secret{
-			File:     getSecretFileName(secret),
-			Location: getSecretLocation(secret),
-			Text:     getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
-			Type:     *secret.RuleID,
+			//Severity: s.getSecretSeveity(),
+			File:       s.getSecretFileName(secret),
+			LineColumn: s.getSecretLocation(secret),
+			Text:       s.getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
+			Type:       *secret.RuleID,
 		}
 		finalSecretsList = append(finalSecretsList, newSecret)
 	}
@@ -166,19 +168,15 @@ func (s *SecretScanManager) parseResults() error {
 	return nil
 }
 
-func getSecretFileName(secret *sarif.Result) string {
-	file := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
-	if file == nil {
+func (s *SecretScanManager) getSecretFileName(secret *sarif.Result) string {
+	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if filePath == nil {
 		return ""
 	}
-	splitFileArray := strings.Split(*file, "///")
-	if len(splitFileArray) > 1 {
-		return splitFileArray[1]
-	}
-	return splitFileArray[0]
+	return s.extractRelativePath(*filePath)
 }
 
-func getSecretLocation(secret *sarif.Result) string {
+func (s *SecretScanManager) getSecretLocation(secret *sarif.Result) string {
 	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
 	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
 	if startLine != "" && startColumn != "" {
@@ -191,22 +189,22 @@ func getSecretLocation(secret *sarif.Result) string {
 	return ""
 }
 
-func getHiddenSecret(secret string) string { // todo show always only 3 chars, only 10 cochaviot
+func (s *SecretScanManager) getHiddenSecret(secret string) string {
 	if secret == "" {
 		return ""
 	}
 	hiddenSecret := ""
-	if len(secret) <= 10 { // short secret - hide all digits
+	if len(secret) <= 3 {
 		for i := 0; i < len(secret); i++ {
 			hiddenSecret += "*"
 		}
 	} else { // show first 7 digits
 		i := 0
-		for i < 7 {
+		for i < 3 {
 			hiddenSecret += string(secret[i])
 			i++
 		}
-		for i < 30 {
+		for i < 15 {
 			hiddenSecret += "*"
 			i++
 		}
@@ -214,6 +212,8 @@ func getHiddenSecret(secret string) string { // todo show always only 3 chars, o
 	return hiddenSecret
 }
 
-func tryExtractRelativePath(secretPath string) string {
-	return secretPath
+func (s *SecretScanManager) extractRelativePath(secretPath string) string {
+	filePrefix := "file://"
+	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, s.projectRootPath, ""), filePrefix, "")
+	return relativePath
 }

@@ -145,7 +145,7 @@ func ConvertToSecretsTableRow(rows []jas.Secret) (tableRows []secretsTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, secretsTableRow{
 			file:       rows[i].File,
-			line:       rows[i].Location,
+			line:       rows[i].LineColumn,
 			text:       rows[i].Text,
 			secretType: rows[i].Type,
 		})

@@ -278,9 +278,38 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
+// Prepare secrets for all non-table formats (without style or emoji)
+func PrepareSecrets(secrets []jas.Secret) []formats.SecretsRow {
+	return prepareSecrets(secrets, false)
+}
+
+func prepareSecrets(secrets []jas.Secret, isTable bool) []formats.SecretsRow {
+	var secretsRows []formats.SecretsRow
+	for _, secret := range secrets {
+		currSeverity := getSeverity(secret.Severity)
+		secretsRows = append(secretsRows,
+			formats.SecretsRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				File:             secret.File,
+				LineColumn:       secret.LineColumn,
+				Text:             secret.Text,
+				SecretType:       secret.Type,
+			},
+		)
+	}
+
+	sort.Slice(secretsRows, func(i, j int) bool {
+		return secretsRows[i].SeverityNumValue > secretsRows[j].SeverityNumValue
+	})
+
+	return secretsRows
+}
+
 func PrintSecretsTable(secrets []jas.Secret, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
-		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secrets), "Secrets",
+		secretsRows := prepareSecrets(secrets, true)
+		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
 			"✨ No secrets were found ✨", false)
 	}
 	return nil

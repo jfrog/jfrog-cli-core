@@ -54,11 +54,11 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	secretScanManager, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	entitled, err := secretScanManager.runAnalyzerManager()
+	err := secretScanManager.runAnalyzerManager()
 
 	// Assert
-	assert.True(t, entitled)
 	assert.Error(t, err)
+	assert.Equal(t, analyzerManagerExecutionError.Error(), err.Error())
 
 	// Cleanup
 	os.Clearenv()
@@ -112,6 +112,10 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 
 func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner/"
+
+	// Arrange
 	input := "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
@@ -120,14 +124,17 @@ func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := getSecretFileName(secret)
+	fileName := secretScanner.getSecretFileName(secret)
 
 	// Assert
-	assert.Equal(t, "Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js", fileName)
+	assert.Equal(t, "/tests/req.nodejs/file.js", fileName)
 }
 
 func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
+
 	input := "invalid_input"
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
@@ -136,7 +143,7 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	}
 
 	// Act
-	fileName := getSecretFileName(secret)
+	fileName := secretScanner.getSecretFileName(secret)
 
 	// Assert
 	assert.Equal(t, input, fileName)
@@ -144,6 +151,8 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 
 func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: nil}}},
@@ -151,7 +160,7 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	}
 
 	// Act
-	fileName := getSecretFileName(secret)
+	fileName := secretScanner.getSecretFileName(secret)
 
 	// Assert
 	assert.Equal(t, "", fileName)
@@ -159,6 +168,7 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 
 func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	startLine := 19
 	startColumn := 25
 	secret := &sarif.Result{
@@ -171,32 +181,75 @@ func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := getSecretLocation(secret)
+	fileName := secretScanner.getSecretLocation(secret)
 
 	// Assert
 	assert.Equal(t, "19:25", fileName)
 }
 
 func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
+	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+
 	// Act
-	hiddenSecret := getHiddenSecret("")
+	hiddenSecret := secretScanner.getHiddenSecret("")
 
 	// Assert
 	assert.Equal(t, "", hiddenSecret)
 }
 
 func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
+	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+
 	// Act
-	hiddenSecret := getHiddenSecret("secret")
+	hiddenSecret := secretScanner.getHiddenSecret("123")
 
 	// Assert
-	assert.Equal(t, "******", hiddenSecret)
+	assert.Equal(t, "***", hiddenSecret)
 }
 
 func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
+	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+
 	// Act
-	hiddenSecret := getHiddenSecret("long_secret")
+	hiddenSecret := secretScanner.getHiddenSecret("long_secret")
 
 	// Assert
-	assert.Equal(t, "long_se***********************", hiddenSecret)
+	assert.Equal(t, "lon************", hiddenSecret)
+}
+
+func TestGetSeverity_LevelFieldExist(t *testing.T) {
+	// Arrange
+	levelValue := "High"
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secret := &sarif.Result{
+		Locations: []*sarif.Location{
+			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
+		},
+		Level: &levelValue,
+	}
+
+	// Act
+	severity := secretScanner.getSecretSeverity(secret)
+
+	// Assert
+	assert.Equal(t, levelValue, severity)
+}
+
+func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
+	// Arrange
+	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secret := &sarif.Result{
+		Locations: []*sarif.Location{
+			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
+		},
+	}
+
+	// Act
+	severity := secretScanner.getSecretSeverity(secret)
+
+	// Assert
+	assert.Equal(t, "Medium", severity)
 }

@@ -43,12 +43,11 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 		log.Info("failed to run secrets scan: " + err.Error())
 		return nil, false, err
 	}
-	entitledForSecretsScan, err := secretScanManager.Run()
-	if !entitledForSecretsScan {
-		log.Info("got not entitled error from analyzer manager")
-		return nil, false, nil
-	}
+	err = secretScanManager.Run()
 	if err != nil {
+		if isNotEntitledError(err) || isUnsupportedCommandError(err) {
+			return nil, false, nil
+		}
 		log.Info("failed to run secrets scan: " + err.Error())
 		return nil, true, err
 	}
@@ -66,24 +65,24 @@ func NewsSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager
 	return &SecretScanManager{
 		secretsScannerResults: []Secret{},
 		configFileName:        filepath.Join(tempDir, "config.yaml"),
-		resultsFileName:       "sarif.sarif", //filepath.Join(tempDir, "results.sarif"),
+		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
 		serverDetails:         serverDetails,
 	}, nil
 }
 
-func (s *SecretScanManager) Run() (bool, error) {
+func (s *SecretScanManager) Run() error {
 	defer deleteJasScanProcessFiles(s.configFileName, s.resultsFileName)
 	if err := s.createConfigFile(); err != nil {
-		return true, err
+		return err
 	}
-	if entitledForSecretsScan, err := s.runAnalyzerManager(); err != nil {
-		return entitledForSecretsScan, err
+	if err := s.runAnalyzerManager(); err != nil {
+		return err
 	}
 	if err := s.parseResults(); err != nil {
-		return true, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 type secretsScanConfig struct {
@@ -124,22 +123,17 @@ func (s *SecretScanManager) createConfigFile() error {
 	return nil
 }
 
-func (s *SecretScanManager) runAnalyzerManager() (bool, error) {
+func (s *SecretScanManager) runAnalyzerManager() error {
 	err := setAnalyzerManagerEnvVariables(s.serverDetails)
 	if err != nil {
-		return true, err
+		return err
 	}
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
-		return true, err
+		return err
 	}
 	err = s.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, s.configFileName), secretsScanCommand)
-	if err != nil {
-		if notEntitledError := isNotEntitledError(err); notEntitledError {
-			return false, err
-		}
-	}
-	return true, err
+	return err
 }
 
 func (s *SecretScanManager) parseResults() error {
@@ -156,7 +150,7 @@ func (s *SecretScanManager) parseResults() error {
 
 	for _, secret := range secretsResults {
 		newSecret := Secret{
-			//Severity: s.getSecretSeveity(),
+			Severity:   s.getSecretSeverity(secret),
 			File:       s.getSecretFileName(secret),
 			LineColumn: s.getSecretLocation(secret),
 			Text:       s.getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
@@ -216,4 +210,12 @@ func (s *SecretScanManager) extractRelativePath(secretPath string) string {
 	filePrefix := "file://"
 	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, s.projectRootPath, ""), filePrefix, "")
 	return relativePath
+}
+
+func (s *SecretScanManager) getSecretSeverity(secret *sarif.Result) string {
+	if secret.Level != nil {
+		return *secret.Level
+	}
+	return "Medium" // Default value for severity
+
 }

@@ -72,10 +72,12 @@ type OperationalRiskViolationRow struct {
 }
 
 type SecretsRow struct {
-	File       string `json:"file"`
-	Line       string `json:"line"`
-	Text       string `json:"text"`
-	SecretType string `json:"secretType"`
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
+	File             string `json:"file"`
+	LineColumn       string `json:"lineColumn"`
+	Text             string `json:"text"`
+	SecretType       string `json:"secretType"`
 }
 
 type ComponentRow struct {

@@ -102,6 +102,7 @@ func isNotEntitledError(err error) bool {
 		exitCode := exitError.ExitCode()
 		// User not entitled error
 		if exitCode == 31 {
+			log.Info("got not entitled error from analyzer manager")
 			return true
 		}
 	}
@@ -111,8 +112,9 @@ func isNotEntitledError(err error) bool {
 func isUnsupportedCommandError(err error) bool {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
-		// Unsupported command
+		// Analyzer manager doesnt support the requested scan command
 		if exitCode == 13 {
+			log.Info("got unsupported scan command error from analyzer manager")
 			return true
 		}
 	}

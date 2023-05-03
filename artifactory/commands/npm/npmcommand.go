@@ -45,9 +45,10 @@ type NpmCommand struct {
 	buildInfoModule     *build.NpmModule
 }
 
-func NewNpmCommand(cmdName string) *NpmCommand {
+func NewNpmCommand(cmdName string, collectBuildInfo bool) *NpmCommand {
 	return &NpmCommand{
-		cmdName: cmdName,
+		cmdName:          cmdName,
+		collectBuildInfo: collectBuildInfo,
 	}
 }
 
@@ -118,15 +119,12 @@ func (ca *NpmCommand) ServerDetails() (*config.ServerDetails, error) {
 	return ca.serverDetails, nil
 }
 
-func (ca *NpmCommand) PreparePrerequisites(repo string, overrideNpmrc bool) error {
+func (ca *NpmCommand) PreparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites...")
 	var err error
 	ca.npmVersion, ca.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
-	}
-	if !overrideNpmrc {
-		return nil
 	}
 	if ca.npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckErrorf(
@@ -272,7 +270,7 @@ func (ca *NpmCommand) CreateTempNpmrc() error {
 }
 
 func (ca *NpmCommand) Run() (err error) {
-	if err = ca.PreparePrerequisites(ca.repo, true); err != nil {
+	if err = ca.PreparePrerequisites(ca.repo); err != nil {
 		return
 	}
 	defer func() {
@@ -298,11 +296,12 @@ func (ca *NpmCommand) Run() (err error) {
 
 func (ca *NpmCommand) prepareBuildInfoModule() error {
 	var err error
-	ca.collectBuildInfo, err = ca.buildConfiguration.IsCollectBuildInfo()
-	if err != nil {
-		return err
+	if ca.collectBuildInfo {
+		ca.collectBuildInfo, err = ca.buildConfiguration.IsCollectBuildInfo()
+		if err != nil {
+			return err
+		}
 	}
-
 	// Build-info should not be created when installing a single package (npm install <package name>).
 	if ca.collectBuildInfo && len(filterFlags(ca.npmArgs)) > 0 {
 		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
@@ -327,6 +326,7 @@ func (ca *NpmCommand) prepareBuildInfoModule() error {
 	}
 	if ca.buildConfiguration.GetModule() != "" {
 		ca.buildInfoModule.SetName(ca.buildConfiguration.GetModule())
+		ca.buildInfoModule.SetCollectBuildInfo(ca.collectBuildInfo)
 	}
 	return nil
 }

@@ -15,6 +15,12 @@ import (
 )
 
 const (
+	ApplicableStringValue    = "Applicable"
+	NotApplicableStringValue = "Not Applicable"
+	UndeterminedStringValue  = "Undetermined"
+)
+
+const (
 	applicabilityScanCommand = "ca"
 	applicabilityScanType    = "analyze-applicability"
 )
@@ -256,15 +262,15 @@ func (a *ApplicabilityScanManager) parseResults() error {
 
 	xrayCves := removeDuplicateValues(a.createCveList())
 	for _, xrayCve := range xrayCves {
-		a.applicabilityScannerResults[xrayCve] = "Unknown"
+		a.applicabilityScannerResults[xrayCve] = UndeterminedStringValue
 	}
 
 	for _, vulnerability := range fullVulnerabilitiesList {
 		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
 		if isVulnerabilityApplicable(vulnerability) {
-			a.applicabilityScannerResults[applicableVulnerabilityName] = "Yes"
+			a.applicabilityScannerResults[applicableVulnerabilityName] = ApplicableStringValue
 		} else {
-			a.applicabilityScannerResults[applicableVulnerabilityName] = "No"
+			a.applicabilityScannerResults[applicableVulnerabilityName] = NotApplicableStringValue
 		}
 	}
 	return nil

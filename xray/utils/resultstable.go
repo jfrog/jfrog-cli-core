@@ -9,10 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
-
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -81,10 +80,11 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		currSeverity := getSeverity(violation.Severity)
 		switch violation.ViolationType {
 		case "security":
 			cves := ConvertCves(violation.Cves)
+			applicableValue := getApplicableCveValue(extendedResults, cves[0])
+			currSeverity := getSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
@@ -103,11 +103,12 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 						JfrogResearchInformation:  jfrogResearchInfo,
 						ImpactPaths:               impactPaths[compIndex],
 						Technology:                coreutils.Technology(violation.Technology),
-						Applicable:                printApplicableCveValue(getApplicableCveValue(extendedResults, cves[0]), isTable),
+						Applicable:                printApplicableCveValue(applicableValue, isTable),
 					},
 				)
 			}
 		case "license":
+			currSeverity := getSeverity(violation.Severity, jas.UndeterminedStringValue)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
@@ -122,6 +123,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 				)
 			}
 		case "operational_risk":
+			currSeverity := getSeverity(violation.Severity, jas.UndeterminedStringValue)
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
@@ -201,7 +203,8 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := ConvertCves(vulnerability.Cves)
-		currSeverity := getSeverity(vulnerability.Severity)
+		applicableValue := getApplicableCveValue(extendedResults, cves[0])
+		currSeverity := getSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
@@ -220,7 +223,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 					JfrogResearchInformation:  jfrogResearchInfo,
 					ImpactPaths:               impactPaths[compIndex],
 					Technology:                coreutils.Technology(vulnerability.Technology),
-					Applicable:                printApplicableCveValue(getApplicableCveValue(extendedResults, cves[0]), isTable),
+					Applicable:                printApplicableCveValue(applicableValue, isTable),
 				},
 			)
 		}
@@ -454,18 +457,33 @@ func (s *severity) printableTitle(isTable bool) string {
 	return s.title
 }
 
-var severities = map[string]*severity{
-	"Critical": {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
-	"High":     {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
-	"Medium":   {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
-	"Low":      {emoji: "👻", title: "Low", numValue: 1},
+var severities = map[string]map[string]*severity{
+	"Critical": {
+		jas.ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+		jas.NotApplicableStringValue: {emoji: "🐑", title: "Critical", numValue: 4},
+	},
+	"High": {
+		jas.ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
+		jas.NotApplicableStringValue: {emoji: "🐑", title: "High", numValue: 3},
+	},
+	"Medium": {
+		jas.ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
+		jas.NotApplicableStringValue: {emoji: "🐑", title: "Medium", numValue: 2},
+	},
+	"Low": {
+		jas.ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 1},
+		jas.NotApplicableStringValue: {emoji: "🐑", title: "Low", numValue: 1},
+	},
 }
 
-func getSeverity(severityTitle string) *severity {
+func getSeverity(severityTitle string, applicable string) *severity {
 	if severities[severityTitle] == nil {
 		return &severity{title: severityTitle}
 	}
-	return severities[severityTitle]
+	if applicable == jas.NotApplicableStringValue {
+		return severities[severityTitle][jas.NotApplicableStringValue]
+	}
+	return severities[severityTitle][jas.ApplicableStringValue]
 }
 
 type operationalRiskViolationReadableData struct {
@@ -691,23 +709,24 @@ func getApplicableCveValue(extendedResults *jas.ExtendedScanResults, xrayCve for
 	}
 	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]
 	if !ok {
-		return "Unknown"
+		return jas.UndeterminedStringValue
 	}
 	return applicableCveValue
 }
 
 func getApplicableCveNumValue(stringValue string) int {
-	if stringValue == "Yes" {
+	if stringValue == jas.ApplicableStringValue {
 		return 3
-	} else if stringValue == "unknown" {
+	} else if stringValue == jas.UndeterminedStringValue {
 		return 2
 	}
 	return 1
 }
 
 func printApplicableCveValue(applicableValue string, isTable bool) string {
-	if applicableValue == "Yes" && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		return color.New(color.Red).Render("Yes")
+	if applicableValue == jas.ApplicableStringValue && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() ||
+		os.Getenv("GITLAB_CI") != "") {
+		return color.New(color.Red).Render(jas.ApplicableStringValue)
 	}
 	return applicableValue
 }

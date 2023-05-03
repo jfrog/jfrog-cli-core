@@ -408,37 +408,13 @@ func TestGetSeveritiesFormat(t *testing.T) {
 		expectedError  error
 	}{
 		// Test supported severity
-		{
-			input:          "critical",
-			expectedOutput: "Critical",
-			expectedError:  nil,
-		},
-		{
-			input:          "hiGH",
-			expectedOutput: "High",
-			expectedError:  nil,
-		},
-		{
-			input:          "Low",
-			expectedOutput: "Low",
-			expectedError:  nil,
-		},
-		{
-			input:          "MedIum",
-			expectedOutput: "Medium",
-			expectedError:  nil,
-		},
-		{
-			input:          "",
-			expectedOutput: "",
-			expectedError:  nil,
-		},
+		{input: "critical", expectedOutput: "Critical", expectedError: nil},
+		{input: "hiGH", expectedOutput: "High", expectedError: nil},
+		{input: "Low", expectedOutput: "Low", expectedError: nil},
+		{input: "MedIum", expectedOutput: "Medium", expectedError: nil},
+		{input: "", expectedOutput: "", expectedError: nil},
 		// Test unsupported severity
-		{
-			input:          "invalid_severity",
-			expectedOutput: "",
-			expectedError:  errors.New("only the following severities are supported: Critical, High, Medium and Low"),
-		},
+		{input: "invalid_severity", expectedOutput: "", expectedError: errors.New("only the following severities are supported: Critical, High, Medium and Low")},
 	}
 
 	for _, tc := range testCases {

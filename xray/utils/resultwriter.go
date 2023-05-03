@@ -124,7 +124,10 @@ func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *j
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-
+	if len(extendedResults.SecretsScanResults) > 0 {
+		secretsRows := PrepareSecrets(extendedResults.SecretsScanResults)
+		jsonTable.Secrets = secretsRows
+	}
 	if includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)
 		if err != nil {

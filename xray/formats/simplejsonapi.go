@@ -12,6 +12,7 @@ type SimpleJsonResults struct {
 	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
+	Secrets                   []SecretsRow                  `json:"secrets"`
 	Errors                    []SimpleJsonError             `json:"errors"`
 }
 

@@ -324,9 +324,9 @@ func (ca *NpmCommand) prepareBuildInfoModule() error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
+	ca.buildInfoModule.SetCollectBuildInfo(ca.collectBuildInfo)
 	if ca.buildConfiguration.GetModule() != "" {
 		ca.buildInfoModule.SetName(ca.buildConfiguration.GetModule())
-		ca.buildInfoModule.SetCollectBuildInfo(ca.collectBuildInfo)
 	}
 	return nil
 }

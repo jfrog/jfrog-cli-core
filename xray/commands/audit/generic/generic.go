@@ -1,16 +1,13 @@
 package audit
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
-	"os"
-
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"os"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
 )
 
 type GenericAuditCommand struct {

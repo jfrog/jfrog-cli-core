@@ -212,7 +212,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 		Scans: []scanConfiguration{
 			{
 				Roots:          []string{currentDir},
-				Output:         filepath.Join(currentDir, a.resultsFileName),
+				Output:         a.resultsFileName,
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
 				CveWhitelist:   cveWhiteList,
@@ -233,11 +233,10 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return true, err
 	}
-	err = a.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, a.configFileName))
+	err = a.analyzerManager.RunAnalyzerManager(a.configFileName)
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode := exitError.ExitCode()

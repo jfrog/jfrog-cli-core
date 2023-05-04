@@ -20,9 +20,9 @@ func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
 		return false
 	}
 	if exist, _ := fileutils.IsFileExists(analyzerManagerPath, false); exist {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func (am *analyzerManager) RunAnalyzerManager(configFile string) error {

@@ -3,15 +3,19 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -84,7 +88,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 		case "security":
 			cves := ConvertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves[0])
-			currSeverity := getSeverity(violation.Severity, applicableValue)
+			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
@@ -108,7 +112,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 				)
 			}
 		case "license":
-			currSeverity := getSeverity(violation.Severity, jas.UndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, jas.UndeterminedStringValue)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
@@ -123,7 +127,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 				)
 			}
 		case "operational_risk":
-			currSeverity := getSeverity(violation.Severity, jas.UndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, jas.UndeterminedStringValue)
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
@@ -204,7 +208,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 		cves := ConvertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves[0])
-		currSeverity := getSeverity(vulnerability.Severity, applicableValue)
+		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
@@ -443,21 +447,21 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) 
 	return
 }
 
-type severity struct {
+type Severity struct {
 	title    string
 	numValue int
 	style    color.Style
 	emoji    string
 }
 
-func (s *severity) printableTitle(isTable bool) string {
+func (s *Severity) printableTitle(isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		return s.style.Render(s.emoji + s.title)
 	}
 	return s.title
 }
 
-var severities = map[string]map[string]*severity{
+var Severities = map[string]map[string]*Severity{
 	"Critical": {
 		jas.ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
 		jas.NotApplicableStringValue: {emoji: "🐑", title: "Critical", numValue: 4},
@@ -476,14 +480,27 @@ var severities = map[string]map[string]*severity{
 	},
 }
 
-func getSeverity(severityTitle string, applicable string) *severity {
-	if severities[severityTitle] == nil {
-		return &severity{title: severityTitle}
+func (s *Severity) NumValue() int {
+	return s.numValue
+}
+
+func GetSeveritiesFormat(severity string) (string, error) {
+	formattedSeverity := cases.Title(language.Und).String(severity)
+	if formattedSeverity != "" && Severities[jas.ApplicableStringValue][formattedSeverity] == nil {
+		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(Severities)))
+	}
+
+	return formattedSeverity, nil
+}
+
+func GetSeverity(severityTitle string, applicable string) *Severity {
+	if Severities[severityTitle] == nil {
+		return &Severity{title: severityTitle}
 	}
 	if applicable == jas.NotApplicableStringValue {
-		return severities[severityTitle][jas.NotApplicableStringValue]
+		return Severities[severityTitle][jas.NotApplicableStringValue]
 	}
-	return severities[severityTitle][jas.ApplicableStringValue]
+	return Severities[severityTitle][jas.ApplicableStringValue]
 }
 
 type operationalRiskViolationReadableData struct {

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -19,6 +20,9 @@ type GenericAuditCommand struct {
 	workingDirs             []string
 	projectKey              string
 	targetRepoPath          string
+	minSeverityFilter       string
+	requirementsFile        string
+	fixableOnly             bool
 	IncludeVulnerabilities  bool
 	IncludeLicenses         bool
 	Fail                    bool
@@ -28,7 +32,6 @@ type GenericAuditCommand struct {
 	insecureTls             bool
 	args                    []string
 	technologies            []string
-	requirementsFile        string
 	progress                ioUtils.ProgressMgr
 }
 
@@ -90,8 +93,18 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
-	params := services.XrayGraphScanParams{
+func (auditCmd *GenericAuditCommand) SetMinSeverityFilter(minSeverityFilter string) *GenericAuditCommand {
+	auditCmd.minSeverityFilter = minSeverityFilter
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditCommand {
+	auditCmd.fixableOnly = fixable
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
+	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
 		Watches:  auditCmd.watches,
 		ScanType: services.Dependency,
@@ -121,7 +134,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetProgressBar(auditCmd.progress).
 		SetRequirementsFile(auditCmd.requirementsFile).
 		SetWorkingDirs(auditCmd.workingDirs).
-		SetTechnologies(auditCmd.technologies...)
+		SetTechnologies(auditCmd.technologies...).
+		SetMinSeverityFilter(auditCmd.minSeverityFilter).
+		SetFixableOnly(auditCmd.fixableOnly)
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	extendedScanResults, err := jas.GetExtendedScanResults(results, auditParams.dependencyTrees, auditParams.serverDetails)

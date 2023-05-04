@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
@@ -398,6 +399,33 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 			result := appendUniqueImpactPaths(tc.target, tc.source, tc.multipleRoots)
 			assert.Equal(t, tc.expected, result)
 		})
+	}
+}
+
+func TestGetSeveritiesFormat(t *testing.T) {
+	testCases := []struct {
+		input          string
+		expectedOutput string
+		expectedError  error
+	}{
+		// Test supported severity
+		{input: "critical", expectedOutput: "Critical", expectedError: nil},
+		{input: "hiGH", expectedOutput: "High", expectedError: nil},
+		{input: "Low", expectedOutput: "Low", expectedError: nil},
+		{input: "MedIum", expectedOutput: "Medium", expectedError: nil},
+		{input: "", expectedOutput: "", expectedError: nil},
+		// Test unsupported severity
+		{input: "invalid_severity", expectedOutput: "", expectedError: errors.New("only the following severities are supported")},
+	}
+
+	for _, tc := range testCases {
+		output, err := GetSeveritiesFormat(tc.input)
+		if err != nil {
+			assert.Contains(t, err.Error(), tc.expectedError.Error())
+		} else {
+			assert.Equal(t, tc.expectedError, err)
+		}
+		assert.Equal(t, tc.expectedOutput, output)
 	}
 }
 

@@ -4,6 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -15,13 +23,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 	fileWritersChannelSize       = 500000
 	retries                      = 1000
 	retriesWaitMilliSecs         = 1000
-	dataTransferPluginMinVersion = "1.5.0"
+	dataTransferPluginMinVersion = "1.7.0"
 )
 
 type TransferFilesCommand struct {
@@ -52,6 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
+	locallyGeneratedFilter    *LocallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -164,6 +166,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	allSourceLocalRepos := append(sourceLocalRepos, sourceBuildInfoRepos...)
 	targetLocalRepos, targetBuildInfoRepos, err := tdc.getAllLocalRepos(tdc.targetServerDetails, tdc.targetStorageInfoManager)
 	if err != nil {
+		return err
+	}
+
+	if err = tdc.initLocallyGeneratedFilter(); err != nil {
 		return err
 	}
 
@@ -504,6 +510,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
 	newPhase.setPackageType(repoSummary.PackageType)
+	newPhase.setLocallyGeneratedFilter(tdc.locallyGeneratedFilter)
 	newPhase.setStopSignal(tdc.stopSignal)
 }
 
@@ -553,6 +560,19 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 
 	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
 	return nil
+}
+
+func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
+	servicesManager, err := createTransferServiceManager(tdc.context, tdc.targetServerDetails)
+	if err != nil {
+		return err
+	}
+	targetArtifactoryVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return err
+	}
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(servicesManager, targetArtifactoryVersion)
+	return err
 }
 
 func printPhaseChange(message string) {

@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -49,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology, xrayVersion string) (results []services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -60,14 +59,14 @@ func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, xrayGraphScanPrams ser
 	}
 
 	for _, moduleDependencyTree := range modulesDependencyTrees {
-		xrayGraphScanPrams.Graph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(xrayGraphScanPrams.Graph.Nodes), technology)
+		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
+		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)
 		if progress != nil {
 			progress.SetHeadlineMsg(scanMessage)
 		}
 		log.Info(scanMessage, "...")
 		var scanResults *services.ScanResponse
-		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
+		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
 		if err != nil {
 			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
 			return
@@ -101,7 +100,7 @@ func GetAndAssertNode(t *testing.T, modules []*xrayUtils.GraphNode, moduleId str
 	return module
 }
 
-// Get a specific module from the provided modules list
+// GetModule gets a specific module from the provided modules list
 func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")
@@ -116,7 +115,7 @@ func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.Graph
 	return nil
 }
 
-// Gets executable version and prints to the debug log if possible.
+// GetExecutableVersion gets an executable version and prints to the debug log if possible.
 // Only supported for package managers that use "--version".
 func GetExecutableVersion(executable string) (version string, err error) {
 	verBytes, err := exec.Command(executable, "--version").CombinedOutput()
@@ -145,7 +144,7 @@ func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, depende
 	return scanResult
 }
 
-// Initialize map of issues to their components with empty impact paths
+// Initialize a map of issues to their components with empty impact paths
 func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Component, components map[string]services.Component) {
 	for dependencyName := range components {
 		emptyPathsComponent := &services.Component{

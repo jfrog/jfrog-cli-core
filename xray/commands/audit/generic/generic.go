@@ -3,6 +3,8 @@ package audit
 import (
 	"os"
 
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -14,6 +16,9 @@ type GenericAuditCommand struct {
 	workingDirs            []string
 	projectKey             string
 	targetRepoPath         string
+	minSeverityFilter       string
+	requirementsFile        string
+	fixableOnly             bool
 	IncludeVulnerabilities bool
 	IncludeLicenses        bool
 	Fail                   bool
@@ -65,8 +70,18 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
-	params := services.XrayGraphScanParams{
+func (auditCmd *GenericAuditCommand) SetMinSeverityFilter(minSeverityFilter string) *GenericAuditCommand {
+	auditCmd.minSeverityFilter = minSeverityFilter
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditCommand {
+	auditCmd.fixableOnly = fixable
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
+	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
 		Watches:  auditCmd.watches,
 		ScanType: services.Dependency,
@@ -87,7 +102,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
-		SetWorkingDirs(auditCmd.workingDirs)
+		SetWorkingDirs(auditCmd.workingDirs).
+		SetMinSeverityFilter(auditCmd.minSeverityFilter).
+		SetFixableOnly(auditCmd.fixableOnly)
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 

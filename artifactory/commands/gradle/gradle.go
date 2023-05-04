@@ -60,8 +60,12 @@ func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	if err != nil {
 		return
 	}
+	if gc.IsXrayScan() && !vConfig.IsSet("deployer") {
+		err = errorutils.CheckErrorf("Conditional upload can only be preformed if deployer is set in the config")
+		return
+	}
 	// Gradle extractor is needed to run, in order to get the details of the build's artifacts.
-	// Gradle extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	// Gradle's extractor deploy build artifacts. This should be disabled since there is no intent to deploy anything or deploy upon Xray scan results.
 	gc.deploymentDisabled = gc.IsXrayScan() || !vConfig.IsSet("deployer")
 	if gc.shouldCreateBuildArtifactsFile() {
 		// Created a file that will contain all the details about the build's artifacts

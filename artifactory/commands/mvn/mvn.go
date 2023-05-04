@@ -101,7 +101,11 @@ func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	if err != nil {
 		return
 	}
-	// Maven extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything upon Xray scan.
+	if mc.IsXrayScan() && !vConfig.IsSet("deployer") {
+		err = errorutils.CheckErrorf("Conditional upload can only be preformed if deployer is set in the config")
+		return
+	}
+	// Maven extractors deploy build artifacts. This should be disabled since there is no intent to deploy anything or deploy upon Xray scan results.
 	mc.deploymentDisabled = mc.IsXrayScan() || !vConfig.IsSet("deployer")
 	if mc.shouldCreateBuildArtifactsFile() {
 		// Created a file that will contain all the details about the build's artifacts

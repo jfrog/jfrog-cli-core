@@ -3,8 +3,6 @@ package audit
 import (
 	"os"
 
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -16,9 +14,8 @@ type GenericAuditCommand struct {
 	workingDirs            []string
 	projectKey             string
 	targetRepoPath         string
-	minSeverityFilter       string
-	requirementsFile        string
-	fixableOnly             bool
+	minSeverityFilter      string
+	fixableOnly            bool
 	IncludeVulnerabilities bool
 	IncludeLicenses        bool
 	Fail                   bool

@@ -28,14 +28,14 @@ import (
 )
 
 type Params struct {
-	xrayGraphScanParams services.XrayGraphScanParams
+	xrayGraphScanParams *services.XrayGraphScanParams
 	progress            ioUtils.ProgressMgr
 	dependencyTrees     []*xrayUtils.GraphNode
 	releasesRepo        string
 	workingDirs         []string
 	installFunc         func(tech string) error
 	fixableOnly         bool
-	minSeverityFilter   string2de
+	minSeverityFilter   string
 	*utils.GraphBasicParams
 	xrayVersion string
 }
@@ -200,7 +200,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			continue
 		}
 
-		scanGraphParams := xraycommands.NewScanGraphParams().
+		scanGraphParams := utils.NewScanGraphParams().
 			SetServerDetails(serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).

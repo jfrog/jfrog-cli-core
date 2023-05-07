@@ -3,10 +3,10 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 	"sort"
 	"strconv"
@@ -486,7 +486,7 @@ func (s *Severity) NumValue() int {
 
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
-	if formattedSeverity != "" && Severities[jas.ApplicableStringValue][formattedSeverity] == nil {
+	if formattedSeverity != "" && Severities[formattedSeverity][jas.ApplicableStringValue] == nil {
 		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(Severities)))
 	}
 

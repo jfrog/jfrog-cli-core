@@ -273,7 +273,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		currentTechDependencyTrees, e := getTechDependencyTree(params, tech)
+		dependencyTrees, e := getTechDependencyTree(params, tech)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
@@ -285,14 +285,14 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			SetXrayVersion(params.xrayVersion).
 			SetFixableOnly(params.fixableOnly).
 			SetSeverityLevel(params.minSeverityFilter)
-		techResults, e := audit.Audit(currentTechDependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech, params.xrayVersion)
+		techResults, e := audit.Audit(dependencyTrees, params.progress, tech, scanGraphParams)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.dependencyTrees)
 		results = append(results, techResults...)
-		isMultipleRoot = len(currentTechDependencyTrees) > 1
+		isMultipleRoot = len(dependencyTrees) > 1
 	}
 	if errorList.Len() > 0 {
 		err = errorutils.CheckErrorf(errorList.String())

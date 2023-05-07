@@ -220,7 +220,9 @@ func TestExportEmptyConfig(t *testing.T) {
 	}()
 	tempDirPath, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	defer assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	}()
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tempDirPath))
 	assert.Error(t, Export(""))
 }

@@ -38,7 +38,7 @@ func formatString(emoji, key string, windows bool) string {
 		}
 		key = emoji + " " + key
 	}
-	return (key)
+	return key
 }
 
 func initSProgressBarLabels(windows bool) transferLabels {
@@ -72,7 +72,7 @@ type TransferProgressMng struct {
 	generalShouldStop     bool
 }
 
-func InitTransferProressBarMng(state *state.TransferStateManager, allRepos []string) (mng *TransferProgressMng, shouldInit bool, err error) {
+func InitTransferProgressBarMng(state *state.TransferStateManager, allRepos []string) (mng *TransferProgressMng, shouldInit bool, err error) {
 	mng = &TransferProgressMng{}
 	mng.barMng, shouldInit, err = NewBarsMng()
 	mng.stateMng = state

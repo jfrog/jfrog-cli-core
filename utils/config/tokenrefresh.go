@@ -266,10 +266,10 @@ func refreshExpiredAccessToken(serverDetails *ServerDetails, currentAccessToken 
 		return auth.CreateTokenResponseData{}, err
 	}
 
-	refreshTokenParams := accessservices.NewCreateTokenParams(auth.CommonTokenParams{})
+	refreshTokenParams := accessservices.CreateTokenParams{}
 	refreshTokenParams.AccessToken = currentAccessToken
 	refreshTokenParams.RefreshToken = refreshToken
-	return servicesManager.RefreshAccessToken(refreshTokenParams.CommonTokenParams)
+	return servicesManager.RefreshAccessToken(refreshTokenParams)
 }
 
 func createArtifactoryTokensServiceManager(artDetails *ServerDetails) (artifactory.ArtifactoryServicesManager, error) {

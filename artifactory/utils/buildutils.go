@@ -404,7 +404,7 @@ func (bc *BuildConfiguration) GetModule() string {
 
 // Validates:
 // 1. If the build number exists, the build name also exists (and vice versa).
-// 2. If the modules exists, the build name/number are also exist (and vice versa).
+// 2. If the modules exist, the build name/number are also exist (and vice versa).
 func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	buildName, err := bc.GetBuildName()
 	if err != nil {
@@ -420,7 +420,6 @@ func (bc *BuildConfiguration) ValidateBuildAndModuleParams() error {
 	}
 	if module != "" && buildName == "" && buildNumber == "" {
 		return errorutils.CheckErrorf("the build-name and build-number options are mandatory when the module option is provided.")
-
 	}
 	return nil
 }

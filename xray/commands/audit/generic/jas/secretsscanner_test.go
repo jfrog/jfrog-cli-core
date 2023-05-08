@@ -11,7 +11,7 @@ import (
 
 func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 	// Act
-	secretScanManager, err := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, err := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NoError(t, err)
@@ -22,7 +22,7 @@ func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 
 func TestNewSecretsScanManager_ServerNotValid(t *testing.T) {
 	// Act
-	secretScanManager, err := NewsSecretsScanManager(nil, &analyzerManagerMock{})
+	secretScanManager, err := NewSecretsScanManager(nil, &analyzerManagerMock{})
 
 	// Assert
 	assert.Nil(t, secretScanManager)
@@ -31,7 +31,7 @@ func TestNewSecretsScanManager_ServerNotValid(t *testing.T) {
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.createConfigFile()
@@ -51,7 +51,7 @@ func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	// Arrange
 	analyzerManagerExecutionError = errors.New("analyzer manager error")
-	secretScanManager, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.runAnalyzerManager()
@@ -67,7 +67,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
@@ -80,7 +80,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
@@ -112,7 +112,7 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 
 func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner/"
 
 	// Arrange
@@ -132,7 +132,7 @@ func TestGetSecretFileName_InputIsValid(t *testing.T) {
 
 func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
 
 	input := "invalid_input"
@@ -151,7 +151,7 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 
 func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
@@ -168,7 +168,7 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 
 func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	startLine := 19
 	startColumn := 25
 	secret := &sarif.Result{
@@ -189,7 +189,7 @@ func TestGetSecretLocation_InputIsValid(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.getHiddenSecret("")
@@ -200,7 +200,7 @@ func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.getHiddenSecret("123")
@@ -211,7 +211,7 @@ func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.getHiddenSecret("long_secret")
@@ -223,7 +223,7 @@ func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
 func TestGetSeverity_LevelFieldExist(t *testing.T) {
 	// Arrange
 	levelValue := "High"
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
@@ -240,7 +240,7 @@ func TestGetSeverity_LevelFieldExist(t *testing.T) {
 
 func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewsSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},

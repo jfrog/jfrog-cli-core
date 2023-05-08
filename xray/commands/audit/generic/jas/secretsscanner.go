@@ -38,7 +38,7 @@ type SecretScanManager struct {
 }
 
 func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) ([]Secret, bool, error) {
-	secretScanManager, err := NewsSecretsScanManager(serverDetails, analyzerManager)
+	secretScanManager, err := NewSecretsScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		log.Info("failed to run secrets scan: " + err.Error())
 		return nil, false, err
@@ -54,7 +54,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	return secretScanManager.secretsScannerResults, true, nil
 }
 
-func NewsSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (*SecretScanManager, error) {
+func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager AnalyzerManager) (*SecretScanManager, error) {
 	if serverDetails == nil {
 		return nil, errors.New("cant get xray server details")
 	}

@@ -31,7 +31,8 @@ func (am *analyzerManager) RunAnalyzerManager(configFile string) error {
 		return err
 	}
 	if coreutils.IsWindows() {
-		err = exec.Command(analyzerManagerPath+".exe", applicabilityScanCommand, configFile).Run()
+		windowsExecutable := analyzerManagerPath + ".exe"
+		err = exec.Command(windowsExecutable, applicabilityScanCommand, configFile).Run()
 	} else {
 		err = exec.Command(analyzerManagerPath, applicabilityScanCommand, configFile).Run()
 	}

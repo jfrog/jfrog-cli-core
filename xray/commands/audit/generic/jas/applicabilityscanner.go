@@ -72,7 +72,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 
 func (a *ApplicabilityScanManager) shouldRun() bool {
 	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies() &&
-		(len(a.xrayVulnerabilities) != 0 || len(a.xrayViolations) != 0) && len(a.createCveList()) > 0
+		len(a.createCveList()) > 0
 }
 
 func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {

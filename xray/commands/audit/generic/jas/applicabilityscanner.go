@@ -21,8 +21,9 @@ const (
 )
 
 const (
-	applicabilityScanCommand = "ca"
-	applicabilityScanType    = "analyze-applicability"
+	applicabilityScanCommand        = "ca"
+	applicabilityScanType           = "analyze-applicability"
+	applicabilityScanFailureMessage = "failed to run applicability scan: "
 )
 
 var (
@@ -49,10 +50,15 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	}
 	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
-		log.Info("failed to run applicability scan: " + err.Error())
+		log.Info(applicabilityScanFailureMessage + err.Error())
 		return nil, err
 	}
-	if !applicabilityScanManager.shouldRun() {
+	shouldRun, err := applicabilityScanManager.shouldRun()
+	if err != nil {
+		log.Info(applicabilityScanFailureMessage + err.Error())
+		return nil, err
+	}
+	if !shouldRun {
 		log.Info("user not entitled for jas, didnt execute applicability scan")
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
@@ -62,7 +68,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		return &ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
 	if err != nil {
-		log.Info("failed to run applicability scan: " + err.Error())
+		log.Info(applicabilityScanFailureMessage + err.Error())
 		return nil, err
 	}
 	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
@@ -70,9 +76,12 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	return &extendedScanResults, nil
 }
 
-func (a *ApplicabilityScanManager) shouldRun() bool {
-	return a.analyzerManager.DoesAnalyzerManagerExecutableExist() && a.resultsIncludeEligibleTechnologies() &&
-		len(a.createCveList()) > 0
+func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
+	analyzerManagerExist, err := a.analyzerManager.DoesAnalyzerManagerExecutableExist()
+	if err != nil {
+		return false, err
+	}
+	return analyzerManagerExist && a.resultsIncludeEligibleTechnologies() && len(a.createCveList()) > 0, nil
 }
 
 func (a *ApplicabilityScanManager) resultsIncludeEligibleTechnologies() bool {
@@ -276,14 +285,22 @@ func (a *ApplicabilityScanManager) parseResults() error {
 }
 
 func (a *ApplicabilityScanManager) DeleteApplicabilityScanProcessFiles() error {
-	if exist, _ := fileutils.IsFileExists(a.configFileName, false); exist {
-		err := os.Remove(a.configFileName)
+	exist, err := fileutils.IsFileExists(a.configFileName, false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		err = os.Remove(a.configFileName)
 		if err != nil {
 			return err
 		}
 	}
-	if exist, _ := fileutils.IsFileExists(a.resultsFileName, false); exist {
-		err := os.Remove(a.resultsFileName)
+	exist, err = fileutils.IsFileExists(a.resultsFileName, false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		err = os.Remove(a.resultsFileName)
 		if err != nil {
 			return err
 		}

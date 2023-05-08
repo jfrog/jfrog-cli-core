@@ -7,22 +7,26 @@ import (
 )
 
 type AnalyzerManager interface {
-	DoesAnalyzerManagerExecutableExist() bool
+	DoesAnalyzerManagerExecutableExist() (bool, error)
 	RunAnalyzerManager(string) error
 }
 
 type analyzerManager struct {
 }
 
-func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() bool {
+func (am *analyzerManager) DoesAnalyzerManagerExecutableExist() (bool, error) {
 	analyzerManagerPath, err := getAnalyzerManagerAbsolutePath()
 	if err != nil {
-		return false
+		return false, err
 	}
-	if exist, _ := fileutils.IsFileExists(analyzerManagerPath, false); exist {
-		return true
+	exist, err := fileutils.IsFileExists(analyzerManagerPath, false)
+	if err != nil {
+		return false, err
 	}
-	return false
+	if exist {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (am *analyzerManager) RunAnalyzerManager(configFile string) error {

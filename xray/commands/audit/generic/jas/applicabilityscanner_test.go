@@ -23,8 +23,8 @@ func (am *analyzerManagerMock) RunAnalyzerManager(string) error {
 	return analyzerManagerExecutionError
 }
 
-func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() bool {
-	return analyzerManagerExist
+func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() (bool, error) {
+	return analyzerManagerExist, nil
 }
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -168,7 +168,7 @@ func TestApplicabilityScanManager_ShouldRun_AllConditionsMet(t *testing.T) {
 	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	shouldRun, _ := applicabilityScanner.shouldRun()
 
 	// Assert
 	assert.True(t, shouldRun)
@@ -181,7 +181,7 @@ func TestApplicabilityScanManager_ShouldRun_AnalyzerManagerDoesntExist(t *testin
 	applicabilityScanner, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	shouldRun, _ := applicabilityScanner.shouldRun()
 
 	// Assert
 	assert.False(t, shouldRun)
@@ -199,7 +199,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 		&fakeServerDetails)
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	shouldRun, _ := applicabilityScanner.shouldRun()
 
 	// Assert
 	assert.False(t, shouldRun)
@@ -215,7 +215,7 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	applicabilityScanner, _ := NewApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun := applicabilityScanner.shouldRun()
+	shouldRun, _ := applicabilityScanner.shouldRun()
 
 	// Assert
 	assert.False(t, shouldRun)

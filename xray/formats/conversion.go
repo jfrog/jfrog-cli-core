@@ -145,7 +145,7 @@ func ConvertToSecretsTableRow(rows []SecretsRow) (tableRows []secretsTableRow) {
 		tableRows = append(tableRows, secretsTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			line:       rows[i].LineColumn,
+			lineColumn: rows[i].LineColumn,
 			text:       rows[i].Text,
 			secretType: rows[i].SecretType,
 		})
@@ -156,11 +156,11 @@ func ConvertToSecretsTableRow(rows []SecretsRow) (tableRows []secretsTableRow) {
 func ConvertToIacTableRow(rows []IacRow) (tableRows []iacTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, iacTableRow{
-			severity: rows[i].Severity,
-			file:     rows[i].File,
-			line:     rows[i].LineColumn,
-			text:     rows[i].Text,
-			iacType:  rows[i].IacType,
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: rows[i].LineColumn,
+			text:       rows[i].Text,
+			iacType:    rows[i].IacType,
 		})
 	}
 	return

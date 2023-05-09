@@ -148,7 +148,7 @@ func (iac *IacScanManager) parseResults() error {
 			Severity:   getResultSeverity(result),
 			File:       extractRelativePath(getResultFileName(result), iac.projectRootPath),
 			LineColumn: getResultLocationInFile(result),
-			Text:       *result.Locations[0].PhysicalLocation.Region.Snippet.Text,
+			Text:       *result.Message.Text,
 			Type:       *result.RuleID,
 		}
 		finalIacList = append(finalIacList, newIac)

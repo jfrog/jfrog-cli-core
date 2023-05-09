@@ -126,15 +126,15 @@ type cveTableRow struct {
 type secretsTableRow struct {
 	severity   string `col-name:"Severity"`
 	file       string `col-name:"File"`
-	line       string `col-name:"Line:Column"`
+	lineColumn string `col-name:"Line:Column"`
 	text       string `col-name:"Secret"`
 	secretType string `col-name:"Type"`
 }
 
 type iacTableRow struct {
-	severity string `col-name:"Severity"`
-	file     string `col-name:"File"`
-	line     string `col-name:"Line:Column"`
-	text     string `col-name:"Finding"`
-	iacType  string `col-name:"Type"`
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	text       string `col-name:"Finding"`
+	iacType    string `col-name:"Scanner"`
 }

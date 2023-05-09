@@ -66,7 +66,14 @@ func PrintScanResults(results *jas.ExtendedScanResults, errors []formats.SimpleJ
 		if includeLicenses {
 			err = PrintLicensesTable(licenses, printExtended, scan)
 		}
+		if err != nil {
+			return err
+		}
 		err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan)
+		if err != nil {
+			return err
+		}
+		err = PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
 		return err
 	case SimpleJson:
 		jsonTable, err := convertScanToSimpleJson(xrayScanResults, results, errors, isMultipleRoots, includeLicenses, false)
@@ -127,6 +134,10 @@ func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *j
 	if len(extendedResults.SecretsScanResults) > 0 {
 		secretsRows := PrepareSecrets(extendedResults.SecretsScanResults)
 		jsonTable.Secrets = secretsRows
+	}
+	if len(extendedResults.IacScanResults) > 0 {
+		iacRows := PrepareIacs(extendedResults.IacScanResults)
+		jsonTable.Iacs = iacRows
 	}
 	if includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)

@@ -10,8 +10,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -150,9 +148,9 @@ func (s *SecretScanManager) parseResults() error {
 
 	for _, secret := range secretsResults {
 		newSecret := Secret{
-			Severity:   s.getSecretSeverity(secret),
-			File:       s.getSecretFileName(secret),
-			LineColumn: s.getSecretLocation(secret),
+			Severity:   getResultSeverity(secret),
+			File:       getResultFileName(secret),
+			LineColumn: getResultLocationInFile(secret),
 			Text:       s.getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,
 		}
@@ -160,27 +158,6 @@ func (s *SecretScanManager) parseResults() error {
 	}
 	s.secretsScannerResults = finalSecretsList
 	return nil
-}
-
-func (s *SecretScanManager) getSecretFileName(secret *sarif.Result) string {
-	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
-	if filePath == nil {
-		return ""
-	}
-	return s.extractRelativePath(*filePath)
-}
-
-func (s *SecretScanManager) getSecretLocation(secret *sarif.Result) string {
-	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
-	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
-	if startLine != "" && startColumn != "" {
-		return startLine + ":" + startColumn
-	} else if startLine == "" && startColumn != "" {
-		return "startLine:" + startColumn
-	} else if startLine != "" && startColumn == "" {
-		return startLine + ":startColumn"
-	}
-	return ""
 }
 
 func (s *SecretScanManager) getHiddenSecret(secret string) string {
@@ -204,18 +181,4 @@ func (s *SecretScanManager) getHiddenSecret(secret string) string {
 		}
 	}
 	return hiddenSecret
-}
-
-func (s *SecretScanManager) extractRelativePath(secretPath string) string {
-	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, s.projectRootPath, ""), filePrefix, "")
-	return relativePath
-}
-
-func (s *SecretScanManager) getSecretSeverity(secret *sarif.Result) string {
-	if secret.Level != nil {
-		return *secret.Level
-	}
-	return "Medium" // Default value for severity
-
 }

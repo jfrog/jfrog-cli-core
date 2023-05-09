@@ -315,6 +315,43 @@ func PrintSecretsTable(secrets []jas.Secret, entitledForSecretsScan bool) error 
 	return nil
 }
 
+// Prepare iacs for all non-table formats (without style or emoji)
+func PrepareIacs(iacs []jas.Iac) []formats.IacRow {
+	return prepareIacs(iacs, false)
+}
+
+func prepareIacs(iacs []jas.Iac, isTable bool) []formats.IacRow {
+	var iacRows []formats.IacRow
+	for _, iac := range iacs {
+		currSeverity := getSeverity(iac.Severity)
+		iacRows = append(iacRows,
+			formats.IacRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				File:             iac.File,
+				LineColumn:       iac.LineColumn,
+				Text:             iac.Text,
+				IacType:          iac.Type,
+			},
+		)
+	}
+
+	sort.Slice(iacRows, func(i, j int) bool {
+		return iacRows[i].SeverityNumValue > iacRows[j].SeverityNumValue
+	})
+
+	return iacRows
+}
+
+func PrintIacTable(iacs []jas.Iac, entitledForIacScan bool) error {
+	if entitledForIacScan {
+		iacRows := prepareIacs(iacs, true)
+		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Iac Violations",
+			"✨ No Iac violations were found ✨", false)
+	}
+	return nil
+}
+
 func ConvertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {

@@ -7,9 +7,12 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -121,13 +124,50 @@ func isUnsupportedCommandError(err error) bool {
 	return false
 }
 
+func getResultFileName(secret *sarif.Result) string {
+	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if filePath == nil {
+		return ""
+	}
+	return *filePath
+}
+
+func getResultLocationInFile(secret *sarif.Result) string {
+	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
+	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
+	if startLine != "" && startColumn != "" {
+		return startLine + ":" + startColumn
+	} else if startLine == "" && startColumn != "" {
+		return "startLine:" + startColumn
+	} else if startLine != "" && startColumn == "" {
+		return startLine + ":startColumn"
+	}
+	return ""
+}
+
+func extractRelativePath(secretPath string, projectRoot string) string {
+	filePrefix := "file://"
+	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, projectRoot, ""), filePrefix, "")
+	return relativePath
+}
+
+func getResultSeverity(result *sarif.Result) string {
+	if result.Level != nil {
+		return *result.Level
+	}
+	return "Medium" // Default value for severity
+
+}
+
 type ExtendedScanResults struct {
 	XrayResults                  []services.ScanResponse
 	ApplicabilityScannerResults  map[string]string
 	SecretsScanResults           []Secret
+	IacScanResults               []Iac
 	EntitledForJas               bool
 	EligibleForApplicabilityScan bool
 	EligibleForSecretScan        bool
+	EligibleForIacScan           bool
 }
 
 func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
@@ -153,12 +193,18 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	if err != nil {
 		return nil, err
 	}
+	iacScanResults, eligibleForIacScan, err := getIacScanResults(serverDetails, analyzerManagerExecuter)
+	if err != nil {
+		return nil, err
+	}
 	return &ExtendedScanResults{
 		XrayResults:                  results,
-		SecretsScanResults:           secretsScanResults,
 		ApplicabilityScannerResults:  applicabilityScanResults,
+		SecretsScanResults:           secretsScanResults,
+		IacScanResults:               iacScanResults,
 		EntitledForJas:               true,
 		EligibleForApplicabilityScan: eligibleForApplicabilityScan,
 		EligibleForSecretScan:        eligibleForSecretsScan,
+		EligibleForIacScan:           eligibleForIacScan,
 	}, nil
 }

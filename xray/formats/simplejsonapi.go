@@ -13,6 +13,7 @@ type SimpleJsonResults struct {
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
 	Secrets                   []SecretsRow                  `json:"secrets"`
+	Iacs                      []IacRow                      `json:"iacViolations"`
 	Errors                    []SimpleJsonError             `json:"errors"`
 }
 
@@ -79,6 +80,15 @@ type SecretsRow struct {
 	LineColumn       string `json:"lineColumn"`
 	Text             string `json:"text"`
 	SecretType       string `json:"secretType"`
+}
+
+type IacRow struct {
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
+	File             string `json:"file"`
+	LineColumn       string `json:"lineColumn"`
+	Text             string `json:"text"`
+	IacType          string `json:"iacType"`
 }
 
 type ComponentRow struct {

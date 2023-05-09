@@ -153,6 +153,19 @@ func ConvertToSecretsTableRow(rows []SecretsRow) (tableRows []secretsTableRow) {
 	return
 }
 
+func ConvertToIacTableRow(rows []IacRow) (tableRows []iacTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, iacTableRow{
+			severity: rows[i].Severity,
+			file:     rows[i].File,
+			line:     rows[i].LineColumn,
+			text:     rows[i].Text,
+			iacType:  rows[i].IacType,
+		})
+	}
+	return
+}
+
 func convertToComponentTableRow(rows []ComponentRow) (tableRows []directDependenciesTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, directDependenciesTableRow{

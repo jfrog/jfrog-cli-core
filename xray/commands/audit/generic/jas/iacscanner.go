@@ -10,8 +10,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -146,10 +144,10 @@ func (iac *IacScanManager) parseResults() error {
 	finalIacList := []Iac{}
 
 	for _, result := range iacResults {
-		newIac := Iac{ // TODO
+		newIac := Iac{
 			Severity:   getResultSeverity(result),
 			File:       extractRelativePath(getResultFileName(result), iac.projectRootPath),
-			LineColumn: getSecretLocation(result),
+			LineColumn: getResultLocationInFile(result),
 			Text:       *result.Locations[0].PhysicalLocation.Region.Snippet.Text,
 			Type:       *result.RuleID,
 		}
@@ -157,39 +155,4 @@ func (iac *IacScanManager) parseResults() error {
 	}
 	iac.iacScannerResults = finalIacList
 	return nil
-}
-
-func getResultFileName(secret *sarif.Result) string {
-	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
-	if filePath == nil {
-		return ""
-	}
-	return *filePath
-}
-
-func getSecretLocation(secret *sarif.Result) string {
-	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
-	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
-	if startLine != "" && startColumn != "" {
-		return startLine + ":" + startColumn
-	} else if startLine == "" && startColumn != "" {
-		return "startLine:" + startColumn
-	} else if startLine != "" && startColumn == "" {
-		return startLine + ":startColumn"
-	}
-	return ""
-}
-
-func extractRelativePath(secretPath string, projectRoot string) string {
-	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, projectRoot, ""), filePrefix, "")
-	return relativePath
-}
-
-func getResultSeverity(secret *sarif.Result) string {
-	if secret.Level != nil {
-		return *secret.Level
-	}
-	return "Medium" // Default value for severity
-
 }

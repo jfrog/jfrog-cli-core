@@ -112,8 +112,7 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 
 func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner/"
+	projectRootPath := "Users/user/Desktop/secrets_scanner/"
 
 	// Arrange
 	input := "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"
@@ -124,7 +123,7 @@ func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := secretScanner.getSecretFileName(secret)
+	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, "/tests/req.nodejs/file.js", fileName)
@@ -132,8 +131,7 @@ func TestGetSecretFileName_InputIsValid(t *testing.T) {
 
 func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
+	projectRootPath := "Users/user/Desktop/secrets_scanner"
 
 	input := "invalid_input"
 	secret := &sarif.Result{
@@ -143,7 +141,7 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	}
 
 	// Act
-	fileName := secretScanner.getSecretFileName(secret)
+	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, input, fileName)
@@ -151,8 +149,7 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 
 func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanner.projectRootPath = "Users/user/Desktop/secrets_scanner"
+	projectRootPath := "Users/user/Desktop/secrets_scanner"
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: nil}}},
@@ -160,7 +157,7 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	}
 
 	// Act
-	fileName := secretScanner.getSecretFileName(secret)
+	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, "", fileName)
@@ -168,7 +165,6 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 
 func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	startLine := 19
 	startColumn := 25
 	secret := &sarif.Result{
@@ -181,7 +177,7 @@ func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := secretScanner.getSecretLocation(secret)
+	fileName := getResultLocationInFile(secret)
 
 	// Assert
 	assert.Equal(t, "19:25", fileName)
@@ -223,7 +219,6 @@ func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
 func TestGetSeverity_LevelFieldExist(t *testing.T) {
 	// Arrange
 	levelValue := "High"
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
@@ -232,7 +227,7 @@ func TestGetSeverity_LevelFieldExist(t *testing.T) {
 	}
 
 	// Act
-	severity := secretScanner.getSecretSeverity(secret)
+	severity := getResultSeverity(secret)
 
 	// Assert
 	assert.Equal(t, levelValue, severity)
@@ -240,7 +235,6 @@ func TestGetSeverity_LevelFieldExist(t *testing.T) {
 
 func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secret := &sarif.Result{
 		Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
@@ -248,7 +242,7 @@ func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
 	}
 
 	// Act
-	severity := secretScanner.getSecretSeverity(secret)
+	severity := getResultSeverity(secret)
 
 	// Assert
 	assert.Equal(t, "Medium", severity)

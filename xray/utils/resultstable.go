@@ -158,8 +158,8 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
 			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
 		} else if securityViolationsRows[i].Applicable != securityViolationsRows[j].Applicable {
-			return getApplicableCveNumValue(securityViolationsRows[j].Applicable) >
-				getApplicableCveNumValue(securityViolationsRows[i].Applicable)
+			return getApplicableCveNumValue(securityViolationsRows[i].Applicable) >
+				getApplicableCveNumValue(securityViolationsRows[j].Applicable)
 		}
 		return len(securityViolationsRows[i].FixedVersions) > 0 && len(securityViolationsRows[j].FixedVersions) > 0
 	})
@@ -237,8 +237,8 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
 			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
 		} else if vulnerabilitiesRows[i].Applicable != vulnerabilitiesRows[j].Applicable {
-			return getApplicableCveNumValue(vulnerabilitiesRows[j].Applicable) >
-				getApplicableCveNumValue(vulnerabilitiesRows[i].Applicable)
+			return getApplicableCveNumValue(vulnerabilitiesRows[i].Applicable) >
+				getApplicableCveNumValue(vulnerabilitiesRows[j].Applicable)
 		}
 		return len(vulnerabilitiesRows[i].FixedVersions) > 0 && len(vulnerabilitiesRows[j].FixedVersions) > 0
 	})

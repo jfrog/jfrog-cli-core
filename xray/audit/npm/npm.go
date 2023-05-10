@@ -54,8 +54,8 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		dependencyId := npmPackageTypeIdentifier + dependency.Id
-		for _, node := range dependency.RequestedBy {
-			parent := npmPackageTypeIdentifier + node[0]
+		for _, requestedByNode := range dependency.RequestedBy {
+			parent := npmPackageTypeIdentifier + requestedByNode[0]
 			if children, ok := treeMap[parent]; ok {
 				treeMap[parent] = append(children, dependencyId)
 			} else {

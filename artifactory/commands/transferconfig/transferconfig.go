@@ -179,23 +179,22 @@ func (tcc *TransferConfigCommand) runPreChecks() error {
 		return err
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
-	if err := tcc.validateTargetServer(); err != nil {
+	if err = tcc.validateTargetServer(); err != nil {
 		return err
 	}
 
-	// Download and decrypt the config XML from the source Artifactory
-	configXml, _, err := tcc.getEncryptedItems(make(map[utils.RepoType][]string))
+	selectedRepos, err := tcc.GetSelectedRepositories()
 	if err != nil {
 		return err
 	}
 
-	// Remove filtered repositories
-	configXml, err = configxmlutils.RemoveNonIncludedRepositories(configXml, tcc.GetRepoFilter())
+	// Download and decrypt the remote repositories list from the source Artifactory
+	_, remoteRepositories, err := tcc.getEncryptedItems(selectedRepos)
 	if err != nil {
 		return err
 	}
 
-	return tcc.NewPreChecksRunner(configXml).Run(context.Background(), tcc.TargetServerDetails)
+	return tcc.NewPreChecksRunner(remoteRepositories).Run(context.Background(), tcc.TargetServerDetails)
 }
 
 func (tcc *TransferConfigCommand) printWarnings() (err error) {
@@ -279,11 +278,11 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
 }
 
 // Creates the Pre-checks runner for the config import command
-func (tcc *TransferConfigCommand) NewPreChecksRunner(configXml string) (runner *commandsUtils.PreCheckRunner) {
+func (tcc *TransferConfigCommand) NewPreChecksRunner(remoteRepositories []interface{}) (runner *commandsUtils.PreCheckRunner) {
 	runner = commandsUtils.NewPreChecksRunner()
 
 	// Add pre checks here
-	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, configXml))
+	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
 
 	return
 }

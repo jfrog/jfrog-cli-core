@@ -3,6 +3,9 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 	"sort"
@@ -81,7 +84,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		currSeverity := getSeverity(violation.Severity)
+		currSeverity := GetSeverity(violation.Severity)
 		switch violation.ViolationType {
 		case "security":
 			cves := ConvertCves(violation.Cves)
@@ -201,7 +204,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := ConvertCves(vulnerability.Cves)
-		currSeverity := getSeverity(vulnerability.Severity)
+		currSeverity := GetSeverity(vulnerability.Severity)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
@@ -514,30 +517,43 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) 
 	return
 }
 
-type severity struct {
+type Severity struct {
 	title    string
 	numValue int
 	style    color.Style
 	emoji    string
 }
 
-func (s *severity) printableTitle(isTable bool) string {
-	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		return s.style.Render(s.emoji + s.title)
-	}
-	return s.title
-}
-
-var severities = map[string]*severity{
+var severities = map[string]*Severity{
 	"Critical": {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
 	"High":     {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
 	"Medium":   {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
 	"Low":      {emoji: "👻", title: "Low", numValue: 1},
 }
 
-func getSeverity(severityTitle string) *severity {
+func (s *Severity) printableTitle(isTable bool) string {
+	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
+		return s.style.Render(s.emoji + s.title)
+	}
+	return s.title
+}
+
+func (s *Severity) NumValue() int {
+	return s.numValue
+}
+
+func GetSeveritiesFormat(severity string) (string, error) {
+	formattedSeverity := cases.Title(language.Und).String(severity)
+	if formattedSeverity != "" && severities[formattedSeverity] == nil {
+		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(severities)))
+	}
+
+	return formattedSeverity, nil
+}
+
+func GetSeverity(severityTitle string) *Severity {
 	if severities[severityTitle] == nil {
-		return &severity{title: severityTitle}
+		return &Severity{title: severityTitle}
 	}
 	return severities[severityTitle]
 }

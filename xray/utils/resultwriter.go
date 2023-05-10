@@ -98,7 +98,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResu
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-	run := sarif.NewRunWithInformationURI("JFrog Xray", "https://jfrog.com/xray/")
+	run := sarif.NewRunWithInformationURI("JFrog Xray", coreutils.JFrogComUrl+"xray/")
 	err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput)
 	if err != nil {
 		return "", err

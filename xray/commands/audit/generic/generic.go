@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
@@ -20,11 +19,11 @@ type GenericAuditCommand struct {
 	IncludeLicenses        bool
 	Fail                   bool
 	PrintExtendedTable     bool
-	*cmdUtils.GraphBasicParams
+	*xrutils.GraphBasicParams
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
-	return &GenericAuditCommand{}
+	return &GenericAuditCommand{GraphBasicParams: &xrutils.GraphBasicParams{}}
 }
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {

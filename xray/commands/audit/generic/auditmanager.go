@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	utils2 "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 
@@ -36,7 +37,7 @@ type Params struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*utils.GraphBasicParams
+	*utils2.GraphBasicParams
 	xrayVersion string
 }
 
@@ -221,7 +222,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func GetTechDependencyTree(params *utils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
 	if params.Progress != nil {
 		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -260,7 +261,7 @@ func GetTechDependencyTree(params *utils.GraphBasicParams, tech coreutils.Techno
 	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *utils.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
+func getJavaDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
 	var javaProps map[string]any
 	serverDetails, err := params.ServerDetails()
 	if err != nil {

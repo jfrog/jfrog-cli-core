@@ -2,14 +2,13 @@ package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	xrUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 type GraphBasicParams struct {
 	serverDetails           *config.ServerDetails
-	OutputFormat            xrUtils.OutputFormat
+	OutputFormat            OutputFormat
 	Progress                ioUtils.ProgressMgr
 	DependencyTrees         []*xrayUtils.GraphNode
 	ReleasesRepo            string
@@ -71,7 +70,7 @@ func (gbp *GraphBasicParams) SetNpmScope(depType string) *GraphBasicParams {
 	return gbp
 }
 
-func (gbp *GraphBasicParams) SetOutputFormat(format xrUtils.OutputFormat) *GraphBasicParams {
+func (gbp *GraphBasicParams) SetOutputFormat(format OutputFormat) *GraphBasicParams {
 	gbp.OutputFormat = format
 	return gbp
 }
@@ -88,13 +87,4 @@ func (gbp *GraphBasicParams) DepsRepo() string {
 func (gbp *GraphBasicParams) SetIgnoreConfigFile(ignoreConfigFile bool) *GraphBasicParams {
 	gbp.IgnoreConfigFile = ignoreConfigFile
 	return gbp
-}
-
-type ErrorsResp struct {
-	Errors []ErrorResp `json:"errors"`
-}
-
-type ErrorResp struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
 }

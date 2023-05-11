@@ -62,7 +62,6 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 				treeMap[parent] = []string{dependencyId}
 			}
 		}
-
 	}
 	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }

@@ -1,225 +1,446 @@
 [
   {
-    "Id": "@ilg/cli-start-options:0.1.19",
-    "Scopes": [
-      "myScope"
+    "id": "react-dom:18.2.0",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "xpm:0.1.1",
-        "@jfrog/npm_scoped:1.0.0",
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "@ilg/es6-promisifier:0.1.9",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "@ilg/cli-start-options:0.1.19",
-        "xpm:0.1.1",
-        "@jfrog/npm_scoped:1.0.0",
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "@jfrog/npm_scoped:1.0.0",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "async:0.2.10",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "nedb:1.0.2",
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "binary-search-tree:0.2.4",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "nedb:1.0.2",
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "find:0.2.7",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "jquery:3.2.0",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "nedb:1.0.2",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "root:0.0.0"
-      ]
-    ]
-  },
-  {
-    "Id": "nub:1.0.0",
-    "Scopes": [
-      "myScope"
-    ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
-      [
-        "find:0.2.7",
-        "root:0.0.0"
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
       ],
       [
-        "root:0.0.0"
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "shopify-liquid:1.d7.9",
-    "Scopes": [
-      "myScope"
+    "id": "styled-jsx:5.0.0",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "xpm:0.1.1",
-        "@jfrog/npm_scoped:1.0.0",
-        "root:0.0.0"
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "underscore:1.4.4",
-    "Scopes": [
-      "myScope"
+    "id": "jose:4.14.4",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "binary-search-tree:0.2.4",
-        "nedb:1.0.2",
-        "root:0.0.0"
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "openid-client:5.4.2",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "wscript-avoider:3.0.2",
-    "Scopes": [
-      "myScope"
+    "id": "yallist:4.0.0",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "@ilg/cli-start-options:0.1.19",
-        "xpm:0.1.1",
-        "@jfrog/npm_scoped:1.0.0",
-        "root:0.0.0"
+        "lru-cache:6.0.0",
+        "openid-client:5.4.2",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "xml:1.0.1",
-    "Scopes": [
-      "myScope"
+    "id": "lru-cache:6.0.0",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "root:0.0.0"
+        "openid-client:5.4.2",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "xpm:0.1.1",
-    "Scopes": [
-      "myScope"
+    "id": "picocolors:1.0.0",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "@jfrog/npm_scoped:1.0.0",
-        "root:0.0.0"
+        "postcss:8.4.5",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "yaml:0.2.3",
-    "Scopes": [
-      "myScope"
+    "id": "@next/swc-darwin-arm64:12.0.10",
+    "scopes": [
+      "prod"
     ],
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "requestedBy": [
       [
-        "root:0.0.0"
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
       ]
     ]
   },
   {
-    "Id": "root",
-    "Type": "",
-    "Checksum": null,
-    "RequestedBy": [
+    "id": "react:18.2.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
       [
-        ""
+        "react-dom:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "styled-jsx:5.0.0",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "use-subscription:1.5.1",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "uuid:8.3.2",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "oidc-token-hash:5.0.3",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "openid-client:5.4.2",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "pretty-format:3.8.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "preact-render-to-string:5.2.6",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "loose-envify:1.4.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "react-dom:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "scheduler:0.23.0",
+        "react-dom:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "react:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "@next/env:12.0.10",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "caniuse-lite:1.0.30001486",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "source-map-js:1.0.2",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "postcss:8.4.5",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "regenerator-runtime:0.13.11",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "@babel/runtime:7.21.5",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "openid-client:5.4.2",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "js-tokens:4.0.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "loose-envify:1.4.0",
+        "react-dom:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "next-auth:4.22.1",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "next:12.0.10",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "nanoid:3.3.6",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "postcss:8.4.5",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "@panva/hkdf:1.1.1",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "preact-render-to-string:5.2.6",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "preact:10.13.2",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "preact-render-to-string:5.2.6",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ],
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "scheduler:0.23.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "react-dom:18.2.0",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "postcss:8.4.5",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "use-subscription:1.5.1",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "@babel/runtime:7.21.5",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "cookie:0.5.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "object-assign:4.1.1",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "use-subscription:1.5.1",
+        "next:12.0.10",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "oauth:0.9.15",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
+      ]
+    ]
+  },
+  {
+    "id": "object-hash:2.2.0",
+    "scopes": [
+      "prod"
+    ],
+    "requestedBy": [
+      [
+        "openid-client:5.4.2",
+        "next-auth:4.22.1",
+        "npmexmaple:0.1.0"
       ]
     ]
   }

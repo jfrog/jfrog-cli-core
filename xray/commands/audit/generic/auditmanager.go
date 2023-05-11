@@ -338,7 +338,7 @@ func getTechDependencyTree(params *Params, tech coreutils.Technology) (flatTree 
 func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
 	var javaProps map[string]any
 	if params.DepsRepo() != "" && tech == coreutils.Maven {
-		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
+		javaProps = CreateJavaProps(params.DepsRepo(), params.ServerDetails())
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
@@ -353,7 +353,7 @@ func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*servic
 	})
 }
 
-func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
+func CreateJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
 	authPass := serverDetails.Password
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken

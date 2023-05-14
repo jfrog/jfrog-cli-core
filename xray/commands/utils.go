@@ -3,7 +3,6 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -19,7 +18,7 @@ const (
 )
 
 func getLevelOfSeverity(s string) int {
-	severity := utils.GetSeverity(cases.Title(language.Und).String(s), jas.UndeterminedStringValue)
+	severity := utils.GetSeverity(cases.Title(language.Und).String(s), utils.ApplicabilityUndeterminedStringValue)
 	return severity.NumValue()
 }
 

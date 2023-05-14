@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -33,7 +32,7 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
@@ -68,11 +67,11 @@ func PrintViolationsTable(violations []services.Violation, extendedResults *jas.
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, extendedResults *jas.ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
@@ -112,7 +111,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 				)
 			}
 		case "license":
-			currSeverity := GetSeverity(violation.Severity, jas.UndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
@@ -127,7 +126,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 				)
 			}
 		case "operational_risk":
-			currSeverity := GetSeverity(violation.Severity, jas.UndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
@@ -178,7 +177,7 @@ func prepareViolations(violations []services.Violation, extendedResults *jas.Ext
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
@@ -192,11 +191,11 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
-func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	return prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *jas.ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	if simplifiedOutput {
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
 	}
@@ -463,20 +462,20 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[string]*Severity{
 	"Critical": {
-		jas.ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
-		jas.NotApplicableStringValue: {emoji: "👌", title: "Critical", numValue: 4},
+		ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicableStringValue: {emoji: "👌", title: "Critical", numValue: 4},
 	},
 	"High": {
-		jas.ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
-		jas.NotApplicableStringValue: {emoji: "👌", title: "High", numValue: 3},
+		ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
+		NotApplicableStringValue: {emoji: "👌", title: "High", numValue: 3},
 	},
 	"Medium": {
-		jas.ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
-		jas.NotApplicableStringValue: {emoji: "👌", title: "Medium", numValue: 2},
+		ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
+		NotApplicableStringValue: {emoji: "👌", title: "Medium", numValue: 2},
 	},
 	"Low": {
-		jas.ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 1},
-		jas.NotApplicableStringValue: {emoji: "👌", title: "Low", numValue: 1},
+		ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 1},
+		NotApplicableStringValue: {emoji: "👌", title: "Low", numValue: 1},
 	},
 }
 
@@ -486,7 +485,7 @@ func (s *Severity) NumValue() int {
 
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
-	if formattedSeverity != "" && Severities[formattedSeverity][jas.ApplicableStringValue] == nil {
+	if formattedSeverity != "" && Severities[formattedSeverity][ApplicableStringValue] == nil {
 		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(Severities)))
 	}
 
@@ -497,10 +496,10 @@ func GetSeverity(severityTitle string, applicable string) *Severity {
 	if Severities[severityTitle] == nil {
 		return &Severity{title: severityTitle}
 	}
-	if applicable == jas.NotApplicableStringValue {
-		return Severities[severityTitle][jas.NotApplicableStringValue]
+	if applicable == NotApplicableStringValue {
+		return Severities[severityTitle][NotApplicableStringValue]
 	}
-	return Severities[severityTitle][jas.ApplicableStringValue]
+	return Severities[severityTitle][ApplicableStringValue]
 }
 
 type operationalRiskViolationReadableData struct {
@@ -720,30 +719,30 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
-func getApplicableCveValue(extendedResults *jas.ExtendedScanResults, xrayCve formats.CveRow) string {
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""
 	}
 	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]
 	if !ok {
-		return jas.UndeterminedStringValue
+		return ApplicabilityUndeterminedStringValue
 	}
 	return applicableCveValue
 }
 
 func getApplicableCveNumValue(stringValue string) int {
-	if stringValue == jas.ApplicableStringValue {
+	if stringValue == ApplicableStringValue {
 		return 3
-	} else if stringValue == jas.UndeterminedStringValue {
+	} else if stringValue == ApplicabilityUndeterminedStringValue {
 		return 2
 	}
 	return 1
 }
 
 func printApplicableCveValue(applicableValue string, isTable bool) string {
-	if applicableValue == jas.ApplicableStringValue && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() ||
+	if applicableValue == ApplicableStringValue && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() ||
 		os.Getenv("GITLAB_CI") != "") {
-		return color.New(color.Red).Render(jas.ApplicableStringValue)
+		return color.New(color.Red).Render(ApplicableStringValue)
 	}
 	return applicableValue
 }

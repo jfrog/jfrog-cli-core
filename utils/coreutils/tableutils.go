@@ -140,17 +140,15 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
-		_, shouldOmitEmptyColumn := field.Tag.Lookup("omitempty")
+		_, omitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
 		}
 		if !columnNameExist && !embedTableExist {
 			continue
 		}
-		if shouldOmitEmptyColumn {
-			if omitColumn := isColumnEmpty(rowsSliceValue, i); omitColumn {
-				continue
-			}
+		if omitEmptyColumn && isColumnEmpty(rowsSliceValue, i) {
+			continue
 		}
 		if embedTable == "true" {
 			var subfieldsProperties []subfieldProperties

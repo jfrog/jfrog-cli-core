@@ -3,7 +3,7 @@ package audit
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -136,7 +136,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetFixableOnly(auditCmd.fixableOnly)
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	extendedScanResults, err := jas.GetExtendedScanResults(results, auditParams.dependencyTrees, auditParams.serverDetails)
+	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.dependencyTrees, auditParams.serverDetails)
 	if err != nil {
 		return err
 	}

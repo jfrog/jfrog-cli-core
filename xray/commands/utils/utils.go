@@ -18,6 +18,7 @@ const (
 	GraphScanMinXrayVersion           = "3.29.0"
 	ScanTypeMinXrayVersion            = "3.37.2"
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
+	MaxCurationParallelReq            = 30
 )
 
 func getLevelOfSeverity(s string) int {
@@ -199,4 +200,11 @@ func DetectedTechnologies() (technologies []string, err error) {
 	}
 	log.Info("Detected: " + detectedTechnologiesString)
 	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
+}
+
+func DetectNumOfThreads(threadsCount int) (int, error) {
+	if threadsCount > MaxCurationParallelReq {
+		return 0, errorutils.CheckErrorf("number of threads crossed the maximum, the maximum threads allowed is %v", MaxCurationParallelReq)
+	}
+	return threadsCount, nil
 }

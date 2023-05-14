@@ -23,7 +23,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -33,9 +32,8 @@ const (
 	BlockingReasonNotFound = "Package pending update"
 
 	defaultParallelReq = 10
-
-	directRelation   = "direct"
-	indirectRelation = "indirect"
+	directRelation     = "direct"
+	indirectRelation   = "indirect"
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
@@ -110,7 +108,9 @@ type CurationAuditCommand struct {
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
-	return &CurationAuditCommand{}
+	return &CurationAuditCommand{
+		GraphBasicParams: &utils.GraphBasicParams{},
+	}
 }
 
 func (ca *CurationAuditCommand) setPackageManagerConfig(pkgMangerConfig *rtUtils.RepositoryConfig) *CurationAuditCommand {
@@ -129,7 +129,6 @@ func (ca *CurationAuditCommand) SetParallelRequests(threads int) *CurationAuditC
 }
 
 func (ca *CurationAuditCommand) Run() (err error) {
-	timeStart := time.Now()
 	rootDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -166,8 +165,6 @@ func (ca *CurationAuditCommand) Run() (err error) {
 			return err
 		}
 	}
-	timeEnd := time.Since(timeStart)
-	log.Output(fmt.Sprintf("time elapsed: %s", timeEnd.String()))
 	for projectPath, packagesStatus := range results {
 		if err = printResult(ca.OutputFormat, projectPath, packagesStatus); err != nil {
 			return err
@@ -222,7 +219,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	}
 	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.DependencyTrees[0].Id, "", "")
 	if ca.Progress != nil {
-		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation block status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
+		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
 	}
 	if ca.parallelRequests == 0 {
 		ca.parallelRequests = defaultParallelReq
@@ -244,7 +241,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err := analyzer.getNodesStatusInParallel(flattenGraph[0], &p, rootNodeId); err != nil {
 		return err
 	}
-	analyzer.fillGraphRelations(ca.DependencyTrees[0], p,
+	analyzer.fillGraphRelations(ca.DependencyTrees[0], &p,
 		&packagesStatus, "", "", true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
@@ -331,7 +328,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 	return nil
 }
 
-func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap sync.Map,
+func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
 	packagesStatus *[]*PackageStatus, parent, parentVersion string, isRoot bool) {
 	for _, child := range node.Nodes {
 		packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)

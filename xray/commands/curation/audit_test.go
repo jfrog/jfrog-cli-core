@@ -219,10 +219,10 @@ func Test_treeAnalyzer_fillGraphRelations(t *testing.T) {
 	}
 }
 
-func fillSyncedMap(pkgStatus []*PackageStatus) sync.Map {
+func fillSyncedMap(pkgStatus []*PackageStatus) *sync.Map {
 	syncMap := sync.Map{}
 	for _, value := range pkgStatus {
 		syncMap.Store(value.BlockedPackageUrl, value)
 	}
-	return syncMap
+	return &syncMap
 }

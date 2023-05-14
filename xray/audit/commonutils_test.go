@@ -40,6 +40,36 @@ func TestSetPathsForIssues(t *testing.T) {
 	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][2].ComponentId, "child5")
 }
 
+// Checks an edge case where we have a vulnerable indirect dependency which is ALSO a direct dependency
+// In that case we want to display only the direct path.
+func TestSetPathsForIssuesAvoidsDuplicates(t *testing.T) {
+	// Create a test dependency tree
+	rootNode := &services.GraphNode{Id: "root"}
+	childNode1 := &services.GraphNode{Id: "child1"}
+	childNode2 := &services.GraphNode{Id: "child2"}
+	childNode3 := &services.GraphNode{Id: "child3"}
+
+	rootNode.Nodes = []*services.GraphNode{childNode1, childNode2}
+	childNode1.Nodes = []*services.GraphNode{childNode3}
+	childNode2.Nodes = []*services.GraphNode{childNode1}
+
+	// Create a test issues map
+	issuesMap := make(map[string]*services.Component)
+	// child 1 has issue
+	issuesMap["child1"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
+
+	// Call setPathsForIssues with the test data
+	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
+
+	// Check the results
+	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][1].ComponentId, "child1")
+	// Verify that the second impact path (indirect), want's added.
+	assert.Equal(t, len(issuesMap["child1"].ImpactPaths), 1)
+	assert.Equal(t, len(issuesMap["child1"].ImpactPaths[0]), 2)
+
+}
+
 func TestUpdateVulnerableComponent(t *testing.T) {
 	// Create test data
 	components := map[string]services.Component{

@@ -40,9 +40,9 @@ const (
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ReleasesRemoteEnv = "JFROG_CLI_RELEASES_REPO"
-	// ExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
+	// DeprecatedExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
-	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 	// JFrog releases URL
 	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
 )

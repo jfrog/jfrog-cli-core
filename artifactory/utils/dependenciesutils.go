@@ -88,6 +88,8 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	server, remoteRepo, err = getLegacyRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
+		log.Warn("You are using a deprecated %s environment variable. Use %s instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
+			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, coreutils.JFrogHelpUrl)
 		return
 	}
 
@@ -104,7 +106,7 @@ func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails,
 }
 
 func getLegacyRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
-	return getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
+	return getRemoteDetails(downloadPath, coreutils.DeprecatedExtractorsRemoteEnv)
 }
 
 // getRemoteDetails function retrieves the server details and downloads path for the build-info extractor file.

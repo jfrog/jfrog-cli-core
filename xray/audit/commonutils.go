@@ -204,7 +204,14 @@ func updateComponentsWithImpactPaths(components map[string]services.Component, i
 func setPathsForIssues(dependency *services.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
 	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
-		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
+		existingImpactLength := len(issuesImpactPathsMap[dependency.Id].ImpactPaths)
+		if existingImpactLength == 0 {
+			issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
+		}
+		// Found another impact path, replace with the shortest path
+		if existingImpactLength != 0 && existingImpactLength > len(pathFromRoot) {
+			issuesImpactPathsMap[dependency.Id].ImpactPaths[0] = pathFromRoot
+		}
 	}
 	for _, depChild := range dependency.Nodes {
 		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot)

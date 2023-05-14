@@ -203,8 +203,6 @@ github.com/jfrog/build-info-go v1.9.3 h1:ZpVcNM4hH+r6dK0ERdSNaizuZALPgSdE29Da1Ik
 github.com/jfrog/build-info-go v1.9.3/go.mod h1:GbuFS+viHCKZYx9nWHYu7ab1DgQkFdtVN3BJPUNb2D4=
 github.com/jfrog/gofrog v1.3.0 h1:o4zgsBZE4QyDbz2M7D4K6fXPTBJht+8lE87mS9bw7Gk=
 github.com/jfrog/gofrog v1.3.0/go.mod h1:IFMc+V/yf7rA5WZ74CSbXe+Lgf0iApEQLxRZVzKRUR0=
-github.com/jfrog/jfrog-client-go v1.28.3 h1:r/p1tZzaW0afLAk5LBbrcaW4nuL1fcQXpxr9BKfxrNc=
-github.com/jfrog/jfrog-client-go v1.28.3/go.mod h1:xX+2RY7AZn9LtNOFlp5pEkWy/e0oCtCq/T/RNQ+dVIg=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
@@ -284,6 +282,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
+github.com/sarao1310/jfrog-client-go v0.0.0-20230514192503-2c43cff2decf h1:WtXGhImnGGaM/TrQKPSKLp44wS6YFG5BScWAVfos9Ps=
+github.com/sarao1310/jfrog-client-go v0.0.0-20230514192503-2c43cff2decf/go.mod h1:xX+2RY7AZn9LtNOFlp5pEkWy/e0oCtCq/T/RNQ+dVIg=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
 github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=

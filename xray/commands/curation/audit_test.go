@@ -382,6 +382,7 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 			rtManager, err := rtUtils.CreateServiceManager(config, 2, 0, false)
 			require.NoError(t, err)
 			rtAuth, err := config.CreateArtAuthConfig()
+			require.NoError(t, err)
 			defer mockServer.Close()
 			nc := &treeAnalyzer{
 				rtManager:         rtManager,

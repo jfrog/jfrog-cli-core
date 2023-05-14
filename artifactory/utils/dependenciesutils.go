@@ -4,13 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path"
 	"path/filepath"
 	"sync"
-
-	"net/http"
-	"path"
 
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -24,15 +20,6 @@ import (
 )
 
 const (
-	// Deprecated, use DependenciesRemoteEnv instead.
-	LegacyExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
-
-	// This env var should be used for downloading the CLI's dependencies (extractor jars, analyzerManager and etc.) through an Artifactory remote
-	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
-	// configured to proxy releases.jfrog.io.
-	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
-	DependenciesRemoteEnv = "JFROG_CLI_DEPENDENCIES_REPO"
-
 	// TODO: Analyzer manager consts - should move to new analyzermanger.go file
 	analyzerManagerDownloadPath = ""
 	analyzerManagerDir          = ""
@@ -98,30 +85,33 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 	if remoteRepo != "" || err != nil {
 		return
 	}
+	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
+	server, remoteRepo, err = getLegacyRemoteDetailsFromEnv(downloadPath)
+	if remoteRepo != "" || err != nil {
+		return
+	}
 
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n" +
 		"You can set the repository from which this jar is downloaded.\n" +
 		"Read more about it at " + coreutils.JFrogHelpUrl + "jfrog-cli/downloading-the-maven-and-gradle-extractor-jars")
 	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
-	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, path.Join("oss-release-local", downloadPath), nil
+	return &config.ServerDetails{ArtifactoryUrl: coreutils.JfrogReleasesUrl}, path.Join("oss-release-local", downloadPath), nil
 }
 
 func getRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
-	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ReleasesRemoteEnv)
-	if remoteRepo != "" || err != nil {
-		return
-	}
-	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
-	server, remoteRepo, err = getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
-	return
+	return getRemoteDetails(downloadPath, coreutils.ReleasesRemoteEnv)
+}
+
+func getLegacyRemoteDetailsFromEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+	return getRemoteDetails(downloadPath, coreutils.ExtractorsRemoteEnv)
 }
 
 // getRemoteDetails function retrieves the server details and downloads path for the build-info extractor file.
 // serverAndRepo - the server id and the remote repository that proxies releases.jfrog.io, in form of '<ServerID>/<RemoteRepo>'.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
 // remoteEnv - the relevant environment variable that was used: releasesRemoteEnv/ExtractorsRemoteEnv.
-// The function returns the server that matches xthe given server ID, the complete path of the build-info extractor concatenated with the specified remote repository, and an error if occurred.
+// The function returns the server that matches the given server ID, the complete path of the build-info extractor concatenated with the specified remote repository, and an error if occurred.
 func getRemoteDetails(downloadPath, remoteEnv string) (server *config.ServerDetails, fullRemoteRepoPath string, err error) {
 	serverID, repoName, err := coreutils.GetServerIdAndRepo(remoteEnv)
 	if err != nil {
@@ -179,7 +169,7 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	if err != nil {
 		return err
 	}
-	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode)
+	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode, false)
 	if err == nil && resp.StatusCode != http.StatusOK {
 		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
 	}
@@ -194,8 +184,6 @@ func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 	if err != nil {
 		return
 	}
-	httpClientDetails = auth.CreateHttpClientDetails()
-
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return
@@ -208,24 +196,15 @@ func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 		SetClientCertKeyPath(auth.GetClientCertKeyPath()).
 		AppendPreRequestInterceptor(auth.RunPreRequestFunctions).
 		Build()
-	if err != nil {
-		return err
-	}
-
-	httpClientDetails := auth.CreateHttpClientDetails()
-	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, false, false)
-	if err == nil && resp.StatusCode != http.StatusOK {
-		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
-	}
-
-	return err
+	return
 }
 
-func GetAnalyzerManagerRemoteDetails(downloadPath string) (*config.ServerDetails, string, error) {
-	extractorsRemote := os.Getenv(DependenciesRemoteEnv)
-	if extractorsRemote != "" {
-		return getDependenciesRemoteRepo(extractorsRemote, path.Join("artifactory", downloadPath))
+func GetAnalyzerManagerRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
+	if remoteRepo != "" || err != nil {
+		return
 	}
-	log.Debug("'" + DependenciesRemoteEnv + "' environment variable is not configured. JFrog analyzer manager will be downloaded directly from releases.jfrog.io if needed.")
-	return &config.ServerDetails{ArtifactoryUrl: "https://releases.jfrog.io/artifactory/"}, downloadPath, nil
+	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. JFrog analyzer manager will be downloaded directly from releases.jfrog.io if needed.")
+	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
+	return &config.ServerDetails{ArtifactoryUrl: coreutils.JfrogReleasesUrl}, downloadPath, nil
 }

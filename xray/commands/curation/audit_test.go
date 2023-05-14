@@ -1,14 +1,27 @@
 package curation
 
 import (
+	"fmt"
+	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	tests2 "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/require"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strings"
+
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 )
 
 func Test_extractPoliciesFromMsg(t *testing.T) {
+	var err error
+	extractPoliciesRegex, err = regexp.Compile(extractPoliciesRegexTemplate)
+	require.NoError(t, err)
 	tests := []struct {
 		name    string
 		errResp *ErrorsResp
@@ -225,4 +238,207 @@ func fillSyncedMap(pkgStatus []*PackageStatus) *sync.Map {
 		syncMap.Store(value.BlockedPackageUrl, value)
 	}
 	return &syncMap
+}
+
+func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
+	tests := []struct {
+		name            string
+		expectedRequest map[string]bool
+		requestToFail   map[string]bool
+		givenGraph      *xrayUtils.GraphNode
+		expectedResp    []*PackageStatus
+		requestToError  map[string]bool
+		expectedError   string
+	}{
+		{
+			name: "npm tree - two blocked package ",
+			expectedRequest: map[string]bool{
+				"/api/npm/npms/json/-/json-9.0.6.tgz":      false,
+				"/api/npm/npms/xml/-/xml-1.0.1.tgz":        false,
+				"/api/npm/npms/lodash/-/lodash-2.20.0.tgz": false,
+			},
+			requestToFail: map[string]bool{
+				"/api/npm/npms/xml/-/xml-1.0.1.tgz":        false,
+				"/api/npm/npms/lodash/-/lodash-2.20.0.tgz": false,
+			},
+			givenGraph: &xrayUtils.GraphNode{
+				Nodes: []*xrayUtils.GraphNode{
+					{
+						Id: "npm://root-test:1.0.0",
+					},
+					{
+						Id: "npm://json:9.0.6",
+					},
+					{
+						Id: "npm://xml:1.0.1",
+					},
+					{
+						Id: "npm://lodash:2.20.0",
+					},
+				},
+				OtherComponentIds: nil,
+				Parent:            nil,
+			},
+			expectedResp: []*PackageStatus{
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "api/npm/npms/xml/-/xml-1.0.1.tgz",
+					PackageName:       "xml",
+					PackageVersion:    "1.0.1",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "pol1",
+							Condition: "cond1",
+						},
+					},
+				},
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "api/npm/npms/lodash/-/lodash-2.20.0.tgz",
+					PackageName:       "lodash",
+					PackageVersion:    "2.20.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "pol1",
+							Condition: "cond1",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "npm tree - two blocked one error ",
+			expectedRequest: map[string]bool{
+				"/api/npm/npms/json/-/json-9.0.6.tgz":      false,
+				"/api/npm/npms/xml/-/xml-1.0.1.tgz":        false,
+				"/api/npm/npms/lodash/-/lodash-2.20.0.tgz": false,
+			},
+			requestToFail: map[string]bool{
+				"/api/npm/npms/xml/-/xml-1.0.1.tgz":        false,
+				"/api/npm/npms/lodash/-/lodash-2.20.0.tgz": false,
+			},
+			requestToError: map[string]bool{
+				"/api/npm/npms/json/-/json-9.0.6.tgz": false,
+			},
+			givenGraph: &xrayUtils.GraphNode{
+				Nodes: []*xrayUtils.GraphNode{
+					{
+						Id: "npm://root-test:1.0.0",
+					},
+					{
+						Id: "npm://json:9.0.6",
+					},
+					{
+						Id: "npm://xml:1.0.1",
+					},
+					{
+						Id: "npm://lodash:2.20.0",
+					},
+				},
+				OtherComponentIds: nil,
+				Parent:            nil,
+			},
+			expectedResp: []*PackageStatus{
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "api/npm/npms/xml/-/xml-1.0.1.tgz",
+					PackageName:       "xml",
+					PackageVersion:    "1.0.1",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "pol1",
+							Condition: "cond1",
+						},
+					},
+				},
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "api/npm/npms/lodash/-/lodash-2.20.0.tgz",
+					PackageName:       "lodash",
+					PackageVersion:    "2.20.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "pol1",
+							Condition: "cond1",
+						},
+					},
+				},
+			},
+			expectedError: fmt.Sprintf("failed sending HEAD to %s for package %s. Status-code: %v",
+				"/api/npm/npms/json/-/json-9.0.6.tgz", "npm://json:9.0.6", http.StatusInternalServerError),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
+			rtManager, err := rtUtils.CreateServiceManager(config, 2, 0, false)
+			require.NoError(t, err)
+			rtAuth, err := config.CreateArtAuthConfig()
+			defer mockServer.Close()
+			nc := &treeAnalyzer{
+				rtManager:         rtManager,
+				rtAuth:            rtAuth,
+				httpClientDetails: rtAuth.CreateHttpClientDetails(),
+				url:               rtAuth.GetUrl(),
+				repo:              "npms",
+				tech:              "npm",
+				parallelRequests:  3,
+			}
+			syncMap := sync.Map{}
+			if tt.requestToError == nil {
+				require.NoError(t, nc.getNodesStatusInParallel(tt.givenGraph, &syncMap, "npm://test:1.0.0"))
+			} else {
+				gotError := nc.getNodesStatusInParallel(tt.givenGraph, &syncMap, "npm://test:1.0.0")
+				require.Error(t, gotError)
+				errMsgExpected := tt.expectedError[:strings.Index(tt.expectedError, "/")] + rtAuth.GetUrl() +
+					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
+				assert.Equal(t, errMsgExpected, gotError.Error())
+			}
+			for _, pkgStatus := range tt.expectedResp {
+				blockedPkgUrl := fmt.Sprintf("%s%s", rtAuth.GetUrl(), pkgStatus.BlockedPackageUrl)
+				value, exist := syncMap.Load(blockedPkgUrl)
+				require.True(t, exist)
+				gotPkgStatusValue := value.(*PackageStatus)
+				pkgStatus.BlockedPackageUrl = blockedPkgUrl
+				assert.Equal(t, gotPkgStatusValue, pkgStatus)
+			}
+			for _, requestDone := range tt.expectedRequest {
+				assert.True(t, requestDone)
+			}
+		})
+	}
+}
+
+func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail map[string]bool, requestToError map[string]bool) (*httptest.Server, *config.ServerDetails) {
+	serverMock, config, _ := tests2.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			if _, exist := expectedRequest[r.RequestURI]; exist {
+				expectedRequest[r.RequestURI] = true
+			}
+			if _, exist := requestToFail[r.RequestURI]; exist {
+				w.WriteHeader(http.StatusForbidden)
+			}
+			if _, exist := requestToError[r.RequestURI]; exist {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}
+		if r.Method == http.MethodGet {
+			if _, exist := requestToFail[r.RequestURI]; exist {
+				w.WriteHeader(http.StatusForbidden)
+				_, err := w.Write([]byte("{\n    \"errors\": [\n        {\n            \"status\": 403,\n            " +
+					"\"message\": \"Package download was blocked by JFrog Packages " +
+					"Curation service due to the following policies violated {pol1, cond1}\"\n        }\n    ]\n}"))
+				require.NoError(t, err)
+			}
+		}
+	})
+	return serverMock, config
 }

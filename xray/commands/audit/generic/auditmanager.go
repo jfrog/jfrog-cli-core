@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	utils2 "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 
 	"os"
 	"path/filepath"
@@ -31,13 +31,13 @@ import (
 type Params struct {
 	xrayGraphScanParams *services.XrayGraphScanParams
 	progress            ioUtils.ProgressMgr
-	dependencyTrees     []*xrayUtils.GraphNode
+	dependencyTrees     []*xrayCmdUtils.GraphNode
 	releasesRepo        string
 	workingDirs         []string
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*utils2.GraphBasicParams
+	*clientUtils.GraphBasicParams
 	xrayVersion string
 }
 
@@ -222,7 +222,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	return
 }
 
-func GetTechDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress != nil {
 		params.Progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -230,7 +230,7 @@ func GetTechDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Techn
 	if err != nil {
 		return nil, err
 	}
-	var dependencyTrees []*xrayUtils.GraphNode
+	var dependencyTrees []*xrayCmdUtils.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
 		dependencyTrees, err = getJavaDependencyTree(params, tech)
@@ -261,7 +261,7 @@ func GetTechDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Techn
 	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *utils2.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, error) {
+func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
 	var javaProps map[string]any
 	serverDetails, err := params.ServerDetails()
 	if err != nil {

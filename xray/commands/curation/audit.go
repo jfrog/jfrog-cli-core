@@ -20,21 +20,29 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 )
 
 const (
-	// blocked symbol the unaprroved packages by curation service.
+	// Blocked status presents the unapproved requests to curation service.
 	blocked                = "blocked"
 	BlockingReasonPolicy   = "Policy violations"
 	BlockingReasonNotFound = "Package pending update"
 
-	defaultParallelReq = 10
-	directRelation     = "direct"
-	indirectRelation   = "indirect"
+	totalConcurrentRequests = 10
+	directRelation          = "direct"
+	indirectRelation        = "indirect"
+
+	BlockMessageKey  = "jfrog packages curation"
+	NotBeingFoundKey = "not being found"
+
+	extractPoliciesRegexTemplate = "({.*?})"
 )
+
+var extractPoliciesRegex *regexp.Regexp
 
 var supportedTech = map[coreutils.Technology]struct{}{
 	coreutils.Npm: {},
@@ -85,19 +93,14 @@ type policyTable struct {
 }
 
 type treeAnalyzer struct {
-	artiManager       artifactory.ArtifactoryServicesManager
-	artAuth           auth.ServiceDetails
+	rtManager         artifactory.ArtifactoryServicesManager
+	rtAuth            auth.ServiceDetails
 	httpClientDetails httputils.HttpClientDetails
 	url               string
 	repo              string
 	tech              coreutils.Technology
 	parallelRequests  int
 }
-
-const (
-	BlockMessageKey  = "jfrog packages curation"
-	NotBeingFoundKey = "not being found"
-)
 
 type CurationAuditCommand struct {
 	PackageManagerConfig *rtUtils.RepositoryConfig
@@ -144,6 +147,11 @@ func (ca *CurationAuditCommand) Run() (err error) {
 		ca.workingDirs = append(ca.workingDirs, rootDir)
 	}
 	results := map[string][]*PackageStatus{}
+	extractPoliciesRegex, err = regexp.Compile(extractPoliciesRegexTemplate)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
 	for _, workDir := range ca.workingDirs {
 		absWd, err := filepath.Abs(workDir)
 		if err != nil {
@@ -222,12 +230,12 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
 	}
 	if ca.parallelRequests == 0 {
-		ca.parallelRequests = defaultParallelReq
+		ca.parallelRequests = totalConcurrentRequests
 	}
 	var packagesStatus []*PackageStatus
 	analyzer := treeAnalyzer{
-		artiManager:       rtManager,
-		artAuth:           rtAuth,
+		rtManager:         rtManager,
+		rtAuth:            rtAuth,
 		httpClientDetails: rtAuth.CreateHttpClientDetails(),
 		url:               rtAuth.GetUrl(),
 		repo:              ca.PackageManagerConfig.TargetRepo(),
@@ -237,7 +245,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	p := sync.Map{}
 	// Root node id represents the project name and shouldn't be validated with curation
 	rootNodeId := ca.DependencyTrees[0].Id
-	// Fetch status for each node from a flatten graph which have no duplications of nodes.
+	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
 	if err := analyzer.getNodesStatusInParallel(flattenGraph[0], &p, rootNodeId); err != nil {
 		return err
 	}
@@ -374,23 +382,26 @@ func (nc *treeAnalyzer) getNodesStatusInParallel(graph *xrayUtils.GraphNode, p *
 		}
 	}()
 	consumerProducer.Run()
-
 	if err := errorsQueue.GetError(); err != nil {
 		multiErrors = errors.Join(err, multiErrors)
 	}
 	return multiErrors
 }
 
-func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map /*drainChan chan *PackageStatus*/) error {
+func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) error {
 	packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
-	resp, _, err := nc.artiManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
+	resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
 	if err != nil {
+		if resp != nil && resp.StatusCode >= 400 {
+			return fmt.Errorf("failed sending HEAD to %s for package %s. Status-code: %v", packageUrl, node.Id, resp.StatusCode)
+		}
 		if resp == nil || resp.StatusCode != http.StatusForbidden {
 			return err
 		}
+
 	}
 	if resp != nil && resp.StatusCode >= 400 && resp.StatusCode != http.StatusForbidden {
-		return fmt.Errorf("Failed sending HEAD to %s for package %s. Status-code: %v", packageUrl, node.Id, resp.StatusCode)
+		return fmt.Errorf("failed sending HEAD to %s for package %s. Status-code: %v", packageUrl, node.Id, resp.StatusCode)
 	}
 	if resp.StatusCode == http.StatusForbidden {
 		pkStatus, err := nc.getBlockedPackageDetails(packageUrl, name, version)
@@ -406,26 +417,26 @@ func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map /*
 
 // We try to collect curation details from GET response after HEAD request got forbidden status code.
 func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string, version string) (*PackageStatus, error) {
-	getResp, respBody, _, err := nc.artiManager.Client().SendGet(packageUrl, true, &nc.httpClientDetails)
+	getResp, respBody, _, err := nc.rtManager.Client().SendGet(packageUrl, true, &nc.httpClientDetails)
 	if err != nil {
 		if getResp == nil {
 			return nil, err
 		}
 		if getResp.StatusCode != http.StatusForbidden {
-			return nil, fmt.Errorf("Failed sending HEAD request to %s for package '%s:%s'. "+
+			return nil, fmt.Errorf("failed sending HEAD request to %s for package '%s:%s'. "+
 				"Status code: %v. Cause: %v", packageUrl, name, version, getResp.StatusCode, err)
 		}
 	}
 	if getResp.StatusCode == http.StatusForbidden {
 		respError := &ErrorsResp{}
 		if err := json.Unmarshal(respBody, respError); err != nil {
-			log.Error(fmt.Sprintf("failed to decode response for 'forbidden' response, err: %v", err))
-			return nil, nil
+			return nil, errorutils.CheckError(err)
 		}
 		if len(respError.Errors) == 0 {
-			return nil, fmt.Errorf("No errors messages for package %s, version: %s for download url: %s ", name, version, packageUrl)
+			return nil, errorutils.CheckErrorf("received 403 for unknown reason, no curation status will be presented for this package. "+
+				"package name: %s, version: %s, download url: %s ", name, version, packageUrl)
 		}
-		// if the error message contains the curation string key, then we can be sure it got blocked by curation service.
+		// if the error message contains the curation string key, then we can be sure it got blocked by Curation service.
 		if strings.Contains(strings.ToLower(respError.Errors[0].Message), BlockMessageKey) {
 			blockingReason := BlockingReasonPolicy
 			if strings.Contains(strings.ToLower(respError.Errors[0].Message), NotBeingFoundKey) {
@@ -446,28 +457,20 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 	return nil, nil
 }
 
-// Return policies and conditions names from forbidden error message. The error message structure happens when package was blocked by curation.
+// Return policies and conditions names from the FORBIDDEN HTTP error message.
 // Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s},{%s, %s}.
 func extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	var policies []Policy
 	msg := respError.Errors[0].Message
-	start := strings.Index(msg, "{")
-	end := strings.Index(msg, "}")
-	for end != -1 {
-		exp := msg[start:end]
-		exp = strings.TrimPrefix(exp, "{")
-		polCond := strings.Split(exp, ",")
+	allMatches := extractPoliciesRegex.FindAllString(msg, -1)
+	for _, match := range allMatches {
+		match = strings.TrimSuffix(strings.TrimPrefix(match, "{"), "}")
+		polCond := strings.Split(match, ",")
 		if len(polCond) == 2 {
 			pol := polCond[0]
 			cond := polCond[1]
 			policies = append(policies, Policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
 		}
-		if len(msg) <= end+1 {
-			break
-		}
-		msg = msg[end+1:]
-		start = strings.Index(msg, "{")
-		end = strings.Index(msg, "}")
 	}
 	return policies
 }
@@ -480,8 +483,8 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo
 	return
 }
 
-// Graph holds for each node the component id(xray representation)
-// we extract from it packge name, version and contruct artifactory download url.
+// The graph holds, for each node, the component ID (xray representation)
+// from which we extract the package name, version, and construct the Artifactory download URL.
 func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, version string) {
 	id = strings.TrimPrefix(id, tech+"://")
 

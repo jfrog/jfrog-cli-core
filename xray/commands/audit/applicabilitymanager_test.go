@@ -2,6 +2,7 @@ package audit
 
 import (
 	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -86,11 +87,30 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 
 func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 	// Arrange
+	var noDirectDependenciesResults = []services.ScanResponse{
+		{
+			ScanId: "scanId_1",
+			Vulnerabilities: []services.Vulnerability{
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					Cves: []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]services.Component{
+						"issueId_1_direct_dependency":     {},
+						"issueId_1_non_direct_dependency": {}}},
+			},
+			Violations: []services.Violation{
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					Cves: []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]services.Component{
+						"issueId_2_direct_dependency":     {},
+						"issueId_2_non_direct_dependency": {}}},
+			},
+		},
+	}
 	fakeBasicXrayResults[0].Vulnerabilities[0].Components["issueId_1_non_direct_dependency"] = services.Component{}
 	fakeBasicXrayResults[0].Violations[0].Components["issueId_2_non_direct_dependency"] = services.Component{}
 
 	// Act
-	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	applicabilityManager, _, _ := NewApplicabilityScanManager(noDirectDependenciesResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -240,6 +260,21 @@ func TestResultsIncludeEligibleTechnologies(t *testing.T) {
 }
 
 func TestExtractXrayDirectViolations(t *testing.T) {
+	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
+		{
+			ScanId: "scanId_1",
+			Vulnerabilities: []services.Vulnerability{
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
+			},
+			Violations: []services.Violation{
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+			},
+		},
+	}
 	tests := []struct {
 		directDependencies []string
 		expectedResult     []services.Violation
@@ -252,19 +287,34 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 			},
 		},
 		{directDependencies: []string{"issueId_1_direct_dependency"}, // vulnerability dependency, should be ignored by function
-			expectedResult: nil,
+			expectedResult: []services.Violation{},
 		},
 		{directDependencies: []string{},
-			expectedResult: nil,
+			expectedResult: []services.Violation{},
 		},
 	}
 
 	for _, test := range tests {
-		assert.ElementsMatch(t, test.expectedResult, extractXrayDirectViolations(fakeBasicXrayResults, test.directDependencies))
+		assert.Equal(t, test.expectedResult, extractXrayDirectViolations(xrayResponseForDirectViolationsTest, test.directDependencies))
 	}
 }
 
 func TestExtractXrayDirectVulnerabilities(t *testing.T) {
+	var xrayResponseForDirectVulnerabilitiesTest = []services.ScanResponse{
+		{
+			ScanId: "scanId_1",
+			Vulnerabilities: []services.Vulnerability{
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
+			},
+			Violations: []services.Violation{
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+			},
+		},
+	}
 	tests := []struct {
 		directDependencies []string
 		expectedResult     []services.Vulnerability
@@ -277,15 +327,15 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 			},
 		},
 		{directDependencies: []string{"issueId_2_direct_dependency"}, // violation dependency, should be ignored by function
-			expectedResult: nil,
+			expectedResult: []services.Vulnerability{},
 		},
 		{directDependencies: []string{},
-			expectedResult: nil,
+			expectedResult: []services.Vulnerability{},
 		},
 	}
 
 	for _, test := range tests {
-		assert.ElementsMatch(t, test.expectedResult, extractXrayDirectVulnerabilities(fakeBasicXrayResults, test.directDependencies))
+		assert.Equal(t, test.expectedResult, extractXrayDirectVulnerabilities(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies))
 	}
 }
 
@@ -349,7 +399,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-	applicabilityManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "empty-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "empty-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()
@@ -367,7 +417,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-	applicabilityManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "applicable-cve-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()
@@ -385,7 +435,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-	applicabilityManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()
@@ -428,7 +478,7 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, analyzerManagerErrorMessage, err.Error())
+	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
 	assert.Nil(t, extendedResults)
 
 	// Cleanup

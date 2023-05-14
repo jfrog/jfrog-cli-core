@@ -12,8 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const size = "size"
-
 type SearchResult struct {
 	Name         string              `json:"name,omitempty"`
 	Repo         string              `json:"repo,omitempty"`

@@ -34,10 +34,18 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	if err != nil {
 		return nil, err
 	}
-	applicabilityScanManager, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
+	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
+	defer func() {
+		if cleanupFunc != nil {
+			e := cleanupFunc()
+			if err == nil {
+				err = e
+			}
+		}
+	}()
 	shouldRun, err := applicabilityScanManager.shouldRun()
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
@@ -47,12 +55,12 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
 	entitledForJas, err := applicabilityScanManager.Run()
+	if err != nil {
+		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+	}
 	if !entitledForJas {
 		log.Debug("the current user is not entitled for the Advanced Security package")
 		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
 	extendedScanResults := utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
@@ -102,11 +110,14 @@ type ApplicabilityScanManager struct {
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails) (*ApplicabilityScanManager, error) {
+	serverDetails *config.ServerDetails) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return
+	}
+	cleanup = func() error {
+		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
@@ -116,7 +127,7 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		resultsFileName:             filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:             analyzerManagerExecuter,
 		serverDetails:               serverDetails,
-	}, nil
+	}, cleanup, nil
 }
 
 // This function gets a liat of xray scan responses that contains direct and indirect violations, and returns only direct

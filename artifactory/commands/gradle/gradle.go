@@ -61,7 +61,7 @@ func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 		return
 	}
 	if gc.IsXrayScan() && !vConfig.IsSet("deployer") {
-		err = errorutils.CheckErrorf("Conditional upload can only be preformed if deployer is set in the config")
+		err = errorutils.CheckErrorf("Conditional upload can only be performed if deployer is set in the config")
 		return
 	}
 	// Gradle extractor is needed to run, in order to get the details of the build's artifacts.

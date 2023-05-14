@@ -15,7 +15,7 @@ import (
 type ConditionalUploadScanFuncType func(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error
 
 // Function to run as a condition to upload. If not overridden, the default scan function is used.
-var ConditionalUploadScanFunc ConditionalUploadScanFuncType = conditionalUploadDefaultScanFunc
+var ConditionalUploadScanFunc ConditionalUploadScanFuncType = ConditionalUploadDefaultScanFunc
 
 // ScanDeployableArtifacts scans all files founds in the given parsed deployableArtifacts results.
 // If the scan passes, the function returns two file-specs ready for upload. The first one contains all the binaries
@@ -72,6 +72,6 @@ func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err
 	return
 }
 
-func conditionalUploadDefaultScanFunc(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error {
+func ConditionalUploadDefaultScanFunc(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error {
 	return xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(fileSpec).SetThreads(threads).SetOutputFormat(scanOutputFormat).SetFail(true).SetPrintExtendedTable(false).Run()
 }

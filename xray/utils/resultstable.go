@@ -3,10 +3,10 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os"
 	"sort"
 	"strconv"
@@ -289,7 +289,7 @@ func PrepareSecrets(secrets []jas.Secret) []formats.SecretsRow {
 func prepareSecrets(secrets []jas.Secret, isTable bool) []formats.SecretsRow {
 	var secretsRows []formats.SecretsRow
 	for _, secret := range secrets {
-		currSeverity := getSeverity(secret.Severity)
+		currSeverity := GetSeverity(secret.Severity)
 		secretsRows = append(secretsRows,
 			formats.SecretsRow{
 				Severity:         currSeverity.printableTitle(isTable),
@@ -326,7 +326,7 @@ func PrepareIacs(iacs []jas.Iac) []formats.IacRow {
 func prepareIacs(iacs []jas.Iac, isTable bool) []formats.IacRow {
 	var iacRows []formats.IacRow
 	for _, iac := range iacs {
-		currSeverity := getSeverity(iac.Severity)
+		currSeverity := GetSeverity(iac.Severity)
 		iacRows = append(iacRows,
 			formats.IacRow{
 				Severity:         currSeverity.printableTitle(isTable),

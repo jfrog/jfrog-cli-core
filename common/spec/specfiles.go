@@ -70,6 +70,11 @@ type File struct {
 	Symlinks                string
 	Transitive              string
 	TargetPathInArchive     string
+	include                 []string
+}
+
+func (f File) GetInclude() []string {
+	return f.include
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {

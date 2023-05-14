@@ -157,7 +157,7 @@ func ExtractThreadsFromArgs(args []string, defaultValue int) (cleanArgs []string
 		return
 	}
 
-	RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	RemoveFlagFromCommand(&cleanArgs, flagIndex, valueIndex)
 	if numOfThreads != "" {
 		threads, err = strconv.Atoi(numOfThreads)
 		if err != nil {

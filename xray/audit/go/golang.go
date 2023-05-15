@@ -94,7 +94,7 @@ func addGoVersionAsDependency(rootNode *xrayUtils.GraphNode) error {
 		return err
 	}
 	// Convert "go1.17.3" to "github.com/golang/go:v1.17.3"
-	goVersionID := strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1)
+	goVersionID := strings.ReplaceAll(goVersion.GetVersion(), "go", goSourceCodePrefix)
 	rootNode.Nodes = append(rootNode.Nodes, &xrayUtils.GraphNode{
 		Id:    goPackageTypeIdentifier + goVersionID,
 		Nodes: []*xrayUtils.GraphNode{},

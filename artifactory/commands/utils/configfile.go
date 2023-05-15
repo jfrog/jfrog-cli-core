@@ -261,24 +261,16 @@ func (configFile *ConfigFile) configMaven() error {
 		return err
 	}
 	if configFile.Resolver.ServerId != "" {
-		if err := configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", configFile.Resolver.ServerId, utils.Remote); err != nil {
-			return err
-		}
-		if err := configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", configFile.Resolver.ServerId, utils.Remote); err != nil {
-			return err
-		}
+		configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", configFile.Resolver.ServerId, utils.Remote)
+		configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", configFile.Resolver.ServerId, utils.Remote)
 	}
 	// Set deployment repositories
 	if err := configFile.setDeployerId(); err != nil {
 		return err
 	}
 	if configFile.Deployer.ServerId != "" {
-		if err := configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.Local); err != nil {
-			return err
-		}
-		if err := configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.Local); err != nil {
-			return err
-		}
+		configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.Local)
+		configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.Local)
 		configFile.setIncludeExcludePatterns()
 	}
 	return nil
@@ -340,7 +332,7 @@ func (configFile *ConfigFile) setDeployer() error {
 
 	// Set deployment repository
 	if configFile.Deployer.ServerId != "" {
-		return configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", configFile.Deployer.ServerId, utils.Local)
+		configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", configFile.Deployer.ServerId, utils.Local)
 	}
 	return nil
 }
@@ -352,7 +344,7 @@ func (configFile *ConfigFile) setResolver() error {
 	}
 	// Set resolution repository
 	if configFile.Resolver.ServerId != "" {
-		return configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", configFile.Resolver.ServerId, utils.Remote)
+		configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", configFile.Resolver.ServerId, utils.Remote)
 	}
 	return nil
 }
@@ -378,12 +370,10 @@ func (configFile *ConfigFile) setServerId(serverId *string, useArtifactoryQuesti
 	return err
 }
 
-func (configFile *ConfigFile) setRepo(repo *string, message string, serverId string, repoType utils.RepoType) error {
-	var err error
+func (configFile *ConfigFile) setRepo(repo *string, message string, serverId string, repoType utils.RepoType) {
 	if *repo == "" {
-		*repo, err = readRepo(message+PressTabMsg, serverId, repoType, utils.Virtual)
+		*repo = readRepo(message+PressTabMsg, serverId, repoType, utils.Virtual)
 	}
-	return err
 }
 
 func (configFile *ConfigFile) setMavenIvyDescriptors() {
@@ -471,7 +461,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 	return AskFromList("", "Set Artifactory server ID", false, ConvertToSuggests(serversIds), defaultServer), nil
 }
 
-func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType) (string, error) {
+func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType) string {
 	availableRepos, err := getRepositories(serverId, repoTypes...)
 	if err != nil {
 		log.Error("failed getting repositories list: " + err.Error())
@@ -479,9 +469,9 @@ func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType)
 		availableRepos = []string{}
 	}
 	if len(availableRepos) > 0 {
-		return AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ConvertToSuggests(availableRepos)), nil
+		return AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ConvertToSuggests(availableRepos))
 	}
-	return AskString("", promptPrefix, false, false), nil
+	return AskString("", promptPrefix, false, false)
 }
 
 func getServersIdAndDefault() ([]string, string, error) {

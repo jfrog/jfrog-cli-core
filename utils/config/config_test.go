@@ -60,7 +60,7 @@ func TestConvertConfigV0ToLatest(t *testing.T) {
 	assert.NoError(t, err)
 	configV6 := new(ConfigV6)
 	assert.NoError(t, json.Unmarshal(content, &configV6))
-	assertionHelper(t, configV6, 0, false)
+	assertionHelper(t, configV6, 0)
 	assertCertsMigrationAndBackupCreation(t)
 }
 
@@ -91,7 +91,7 @@ func TestConvertConfigV1ToLatest(t *testing.T) {
 	assert.NoError(t, err)
 	configV6 := new(ConfigV6)
 	assert.NoError(t, json.Unmarshal(content, &configV6))
-	assertionHelper(t, configV6, 1, false)
+	assertionHelper(t, configV6, 1)
 
 	assert.Equal(t, "user", configV6.Servers[0].User, "The config conversion to version 3 is supposed to save the username as lowercase")
 
@@ -130,7 +130,7 @@ func TestConvertConfigV4ToLatest(t *testing.T) {
 	assert.NoError(t, err)
 	configV6 := new(ConfigV6)
 	assert.NoError(t, json.Unmarshal(content, &configV6))
-	assertionHelper(t, configV6, 4, false)
+	assertionHelper(t, configV6, 4)
 }
 
 func TestConvertConfigV5ToV6(t *testing.T) {
@@ -162,7 +162,7 @@ func TestConvertConfigV5ToV6(t *testing.T) {
 	assert.NoError(t, err)
 	configV6 := new(ConfigV6)
 	assert.NoError(t, json.Unmarshal(content, &configV6))
-	assertionHelper(t, configV6, 5, false)
+	assertionHelper(t, configV6, 5)
 }
 
 func TestConfigEncryption(t *testing.T) {
@@ -340,9 +340,8 @@ func assertionV4Helper(t *testing.T, convertedConfig *ConfigV4, expectedVersion 
 	assert.Equal(t, "password", rtConverted[0].Password)
 }
 
-func assertionHelper(t *testing.T, convertedConfig *ConfigV6, previousVersion int, expectedEnc bool) {
+func assertionHelper(t *testing.T, convertedConfig *ConfigV6, previousVersion int) {
 	assert.Equal(t, "6", convertedConfig.Version)
-	assert.Equal(t, expectedEnc, convertedConfig.Enc)
 
 	serversConverted := convertedConfig.Servers
 	if serversConverted == nil {

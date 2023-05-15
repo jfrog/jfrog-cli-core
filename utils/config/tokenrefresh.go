@@ -139,7 +139,7 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 
 		newToken, err = createTokensForConfig(serverConfiguration, expirySeconds)
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 		log.Debug("New token created successfully.")
 	} else {

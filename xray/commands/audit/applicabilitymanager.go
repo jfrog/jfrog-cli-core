@@ -255,7 +255,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return true, err
 	}
 	if err != nil {

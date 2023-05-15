@@ -85,7 +85,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		}
 		switch violation.ViolationType {
 		case "security":
-			cves := ConvertCves(violation.Cves)
+			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves[0])
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -157,8 +157,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
 			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
 		} else if securityViolationsRows[i].Applicable != securityViolationsRows[j].Applicable {
-			return getApplicableCveNumValue(securityViolationsRows[i].Applicable) >
-				getApplicableCveNumValue(securityViolationsRows[j].Applicable)
+			return sortByApplicableValue(i, j, securityViolationsRows)
 		}
 		return len(securityViolationsRows[i].FixedVersions) > 0 && len(securityViolationsRows[j].FixedVersions) > 0
 	})
@@ -205,7 +204,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		if err != nil {
 			return nil, err
 		}
-		cves := ConvertCves(vulnerability.Cves)
+		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves[0])
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -236,8 +235,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
 			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
 		} else if vulnerabilitiesRows[i].Applicable != vulnerabilitiesRows[j].Applicable {
-			return getApplicableCveNumValue(vulnerabilitiesRows[i].Applicable) >
-				getApplicableCveNumValue(vulnerabilitiesRows[j].Applicable)
+			sortByApplicableValue(i, j, vulnerabilitiesRows)
 		}
 		return len(vulnerabilitiesRows[i].FixedVersions) > 0 && len(vulnerabilitiesRows[j].FixedVersions) > 0
 	})
@@ -284,7 +282,7 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
-func ConvertCves(cves []services.Cve) []formats.CveRow {
+func convertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
 		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
@@ -745,4 +743,9 @@ func printApplicableCveValue(applicableValue string, isTable bool) string {
 		return color.New(color.Red).Render(ApplicableStringValue)
 	}
 	return applicableValue
+}
+
+func sortByApplicableValue(i int, j int, securityViolationsRows []formats.VulnerabilityOrViolationRow) bool {
+	return getApplicableCveNumValue(securityViolationsRows[i].Applicable) >
+		getApplicableCveNumValue(securityViolationsRows[j].Applicable)
 }

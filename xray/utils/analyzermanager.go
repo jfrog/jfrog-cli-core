@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	analyzerManagerFilePath  = "analayzerManager/analyzerManager"
+	analyzerManagerFilePath  = filepath.Join("analyzerManager", "analyzerManager")
 	analyzerManagerLogFolder = ""
 )
 
@@ -38,7 +38,7 @@ type ExtendedScanResults struct {
 	EntitledForJas              bool
 }
 
-func (e *ExtendedScanResults) GetXrayScanResults() []services.ScanResponse {
+func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 	return e.XrayResults
 }
 
@@ -109,22 +109,18 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if serverDetails == nil {
 		return errors.New("cant get xray server details")
 	}
-	err := os.Setenv(jfUserEnvVariable, serverDetails.User)
-	if err != nil {
+	if err := os.Setenv(jfUserEnvVariable, serverDetails.User); err != nil {
 		return err
 	}
-	err = os.Setenv(jfPasswordEnvVariable, serverDetails.Password)
-	if err != nil {
+	if err := os.Setenv(jfPasswordEnvVariable, serverDetails.Password); err != nil {
 		return err
 	}
-	err = os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url)
-	if err != nil {
+	if err := os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url); err != nil {
 		return err
 	}
-	err = os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken)
-	if err != nil {
+	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); err != nil {
 		return err
 	}
-	err = os.Setenv(logDirEnvVariable, analyzerManagerLogFolder)
+	err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder)
 	return err
 }

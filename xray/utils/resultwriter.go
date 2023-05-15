@@ -42,7 +42,7 @@ type sarifProperties struct {
 // Note that errors are printed only on SimpleJson format.
 // If the scan argument is set to true, print the scan tables.
 func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
-	xrayScanResults := results.GetXrayScanResults()
+	xrayScanResults := results.getXrayScanResults()
 	switch format {
 	case Table:
 		var err error
@@ -90,8 +90,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResu
 		return "", errorutils.CheckError(err)
 	}
 	run := sarif.NewRunWithInformationURI("JFrog Xray", coreutils.JFrogComUrl+"xray/")
-	err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput)
-	if err != nil {
+	if err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput); err != nil {
 		return "", err
 	}
 	report.AddRun(run)

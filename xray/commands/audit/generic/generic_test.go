@@ -1,8 +1,10 @@
-package jas
+package audit
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -59,10 +61,10 @@ var fakeServerDetails = config.ServerDetails{
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExist = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
+	audit.analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	extendedResults, err := jas.GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Assert
 	assert.NoError(t, err)

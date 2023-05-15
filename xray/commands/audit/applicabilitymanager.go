@@ -28,15 +28,11 @@ var (
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
-	err := utils.CreateAnalyzerManagerLogDir()
-	if err != nil {
-		return nil, err
-	}
+func GetApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
-		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	defer func() {
 		if cleanupFunc != nil {

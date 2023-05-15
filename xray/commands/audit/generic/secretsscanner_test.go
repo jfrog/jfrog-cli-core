@@ -1,7 +1,8 @@
-package jas
+package audit
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -123,7 +124,7 @@ func TestGetSecretFileName_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
+	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, "/tests/req.nodejs/file.js", fileName)
@@ -141,7 +142,7 @@ func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
 	}
 
 	// Act
-	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
+	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, input, fileName)
@@ -157,7 +158,7 @@ func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
 	}
 
 	// Act
-	fileName := extractRelativePath(getResultFileName(secret), projectRootPath)
+	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
 
 	// Assert
 	assert.Equal(t, "", fileName)
@@ -177,7 +178,7 @@ func TestGetSecretLocation_InputIsValid(t *testing.T) {
 	}
 
 	// Act
-	fileName := getResultLocationInFile(secret)
+	fileName := jas.getResultLocationInFile(secret)
 
 	// Assert
 	assert.Equal(t, "19:25", fileName)
@@ -227,7 +228,7 @@ func TestGetSeverity_LevelFieldExist(t *testing.T) {
 	}
 
 	// Act
-	severity := getResultSeverity(secret)
+	severity := jas.getResultSeverity(secret)
 
 	// Assert
 	assert.Equal(t, levelValue, severity)
@@ -242,7 +243,7 @@ func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
 	}
 
 	// Act
-	severity := getResultSeverity(secret)
+	severity := jas.getResultSeverity(secret)
 
 	// Assert
 	assert.Equal(t, "Medium", severity)

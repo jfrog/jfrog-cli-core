@@ -4,12 +4,17 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	audit "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/owenrumney/go-sarif/sarif"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -34,9 +39,14 @@ const (
 )
 
 type ExtendedScanResults struct {
-	XrayResults                 []services.ScanResponse
-	ApplicabilityScannerResults map[string]string
-	EntitledForJas              bool
+	XrayResults                  []services.ScanResponse
+	ApplicabilityScannerResults  map[string]string
+	SecretsScanResults           []audit.Secret
+	IacScanResults               []audit.Iac
+	EntitledForJas               bool
+	EligibleForApplicabilityScan bool
+	EligibleForSecretScan        bool
+	EligibleForIacScan           bool
 }
 
 func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
@@ -124,6 +134,81 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	}
 	if err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
 		return err
+	}
+	return nil
+}
+
+func IsNotEntitledError(err error) bool {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitCode := exitError.ExitCode()
+		// User not entitled error
+		if exitCode == 31 {
+			log.Info("got not entitled error from analyzer manager")
+			return true
+		}
+	}
+	return false
+}
+
+func IsUnsupportedCommandError(err error) bool {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitCode := exitError.ExitCode()
+		// Analyzer manager doesnt support the requested scan command
+		if exitCode == 13 {
+			log.Info("got unsupported scan command error from analyzer manager")
+			return true
+		}
+	}
+	return false
+}
+
+func GetResultFileName(secret *sarif.Result) string {
+	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if filePath == nil {
+		return ""
+	}
+	return *filePath
+}
+
+func GetResultLocationInFile(secret *sarif.Result) string {
+	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
+	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
+	if startLine != "" && startColumn != "" {
+		return startLine + ":" + startColumn
+	} else if startLine == "" && startColumn != "" {
+		return "startLine:" + startColumn
+	} else if startLine != "" && startColumn == "" {
+		return startLine + ":startColumn"
+	}
+	return ""
+}
+
+func ExtractRelativePath(secretPath string, projectRoot string) string {
+	filePrefix := "file://"
+	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, projectRoot, ""), filePrefix, "")
+	return relativePath
+}
+
+func GetResultSeverity(result *sarif.Result) string {
+	if result.Level != nil {
+		return *result.Level
+	}
+	return "Medium" // Default value for severity
+
+}
+
+func DeleteJasScanProcessFiles(configFile string, resultsFile string) error {
+	if exist, _ := fileutils.IsFileExists(configFile, false); exist {
+		err := os.Remove(configFile)
+		if err != nil {
+			return err
+		}
+	}
+	if exist, _ := fileutils.IsFileExists(resultsFile, false); exist {
+		err := os.Remove(resultsFile)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

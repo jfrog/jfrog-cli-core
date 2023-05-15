@@ -52,33 +52,23 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFileP
 func TestCreateSimplePropertiesFileWithProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy(proxy, t)
-	var propertiesFileConfig = map[string]string{
-		"resolve.contextUrl": "http://some.url.com",
-		"publish.contextUrl": "http://some.other.url.com",
-		"proxy.host":         host,
-		"proxy.port":         port,
-	}
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_proxy.json"), propertiesFileConfig)
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_proxy.json"))
 	setProxy(proxyOrg, t)
 }
 
 func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setProxy("", t)
-	var propertiesFileConfig = map[string]string{
-		"resolve.contextUrl": "http://some.url.com",
-		"publish.contextUrl": "http://some.other.url.com",
-	}
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"), propertiesFileConfig)
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"))
 	setProxy(proxyOrg, t)
 
 }
 
-func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, propertiesFileConfig map[string]string) {
+func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",

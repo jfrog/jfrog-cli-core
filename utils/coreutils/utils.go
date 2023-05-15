@@ -245,7 +245,7 @@ func ReplaceVars(content []byte, specVars map[string]string) []byte {
 	for key, val := range specVars {
 		key = "${" + key + "}"
 		log.Debug(fmt.Sprintf("Replacing '%s' with '%s'", key, val))
-		content = bytes.Replace(content, []byte(key), []byte(val), -1)
+		content = bytes.ReplaceAll(content, []byte(key), []byte(val))
 	}
 	log.Debug("The reformatted content is: \n" + string(content))
 	return content

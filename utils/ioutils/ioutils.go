@@ -42,7 +42,7 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 
 func ScanPasswordFromConsole(message string) (string, error) {
 	fmt.Print(coreutils.PrintLink(message))
-	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
@@ -97,13 +97,13 @@ func CopyFile(src, dst string, fileMode os.FileMode) (err error) {
 }
 
 func DoubleWinPathSeparator(filePath string) string {
-	return strings.Replace(filePath, "\\", "\\\\", -1)
+	return strings.ReplaceAll(filePath, "\\", "\\\\")
 }
 
 func UnixToWinPathSeparator(filePath string) string {
-	return strings.Replace(filePath, "/", "\\\\", -1)
+	return strings.ReplaceAll(filePath, "/", "\\\\")
 }
 
 func WinToUnixPathSeparator(filePath string) string {
-	return strings.Replace(filePath, "\\", "/", -1)
+	return strings.ReplaceAll(filePath, "\\", "/")
 }

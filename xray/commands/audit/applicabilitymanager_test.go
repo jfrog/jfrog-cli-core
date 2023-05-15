@@ -253,7 +253,6 @@ func TestResultsIncludeEligibleTechnologies(t *testing.T) {
 		{vulnerabilities: []services.Vulnerability{{Technology: "npm"}}, violations: []services.Violation{{Technology: "npm"}}, expectedResult: true},
 		{vulnerabilities: []services.Vulnerability{{Technology: "go"}}, violations: []services.Violation{{Technology: "go"}}, expectedResult: false},
 	}
-
 	for _, test := range tests {
 		assert.Equal(t, test.expectedResult, resultsIncludeEligibleTechnologies(test.vulnerabilities, test.violations))
 	}

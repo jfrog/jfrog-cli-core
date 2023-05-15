@@ -230,7 +230,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
 	}
 	if ca.parallelRequests == 0 {
-		ca.parallelRequests = totalConcurrentRequests
+		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
 	}
 	var packagesStatus []*PackageStatus
 	analyzer := treeAnalyzer{

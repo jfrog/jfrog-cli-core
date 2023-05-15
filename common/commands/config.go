@@ -449,7 +449,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 	if exists {
 		sshKeyBytes, err := os.ReadFile(details.SshKeyPath)
 		if err != nil {
-			return nil
+			return err
 		}
 		encryptedKey, err := auth.IsEncrypted(sshKeyBytes)
 		// If exists and not encrypted (or error occurred), return without asking for passphrase

@@ -20,7 +20,7 @@ import (
 
 func Test_extractPoliciesFromMsg(t *testing.T) {
 	var err error
-	extractPoliciesRegex, err = regexp.Compile(extractPoliciesRegexTemplate)
+	extractPoliciesRegex = regexp.MustCompile(extractPoliciesRegexTemplate)
 	require.NoError(t, err)
 	tests := []struct {
 		name    string
@@ -399,7 +399,9 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 			} else {
 				gotError := nc.getNodesStatusInParallel(tt.givenGraph, &syncMap, "npm://test:1.0.0")
 				require.Error(t, gotError)
-				errMsgExpected := tt.expectedError[:strings.Index(tt.expectedError, "/")] + rtAuth.GetUrl() +
+				startUrl := strings.Index(tt.expectedError, "/")
+				require.GreaterOrEqual(t, startUrl, 0)
+				errMsgExpected := tt.expectedError[:startUrl] + rtAuth.GetUrl() +
 					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
 				assert.Equal(t, errMsgExpected, gotError.Error())
 			}
@@ -407,7 +409,8 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 				blockedPkgUrl := fmt.Sprintf("%s%s", rtAuth.GetUrl(), pkgStatus.BlockedPackageUrl)
 				value, exist := syncMap.Load(blockedPkgUrl)
 				require.True(t, exist)
-				gotPkgStatusValue := value.(*PackageStatus)
+				gotPkgStatusValue, valid := value.(*PackageStatus)
+				assert.True(t, valid)
 				pkgStatus.BlockedPackageUrl = blockedPkgUrl
 				assert.Equal(t, gotPkgStatusValue, pkgStatus)
 			}

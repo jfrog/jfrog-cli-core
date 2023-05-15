@@ -111,6 +111,7 @@ type CurationAuditCommand struct {
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
+	extractPoliciesRegex = regexp.MustCompile(extractPoliciesRegexTemplate)
 	return &CurationAuditCommand{
 		GraphBasicParams: &utils.GraphBasicParams{},
 	}
@@ -147,11 +148,6 @@ func (ca *CurationAuditCommand) Run() (err error) {
 		ca.workingDirs = append(ca.workingDirs, rootDir)
 	}
 	results := map[string][]*PackageStatus{}
-	extractPoliciesRegex, err = regexp.Compile(extractPoliciesRegexTemplate)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
 	for _, workDir := range ca.workingDirs {
 		absWd, err := filepath.Abs(workDir)
 		if err != nil {
@@ -476,8 +472,7 @@ func extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 }
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, version string) {
-	switch tech {
-	case coreutils.Npm:
+	if tech == coreutils.Npm {
 		return getNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
 	}
 	return

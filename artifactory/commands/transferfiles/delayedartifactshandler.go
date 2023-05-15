@@ -119,7 +119,7 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	if len(addedDelayFiles) > 0 && phase.progressBar != nil {
 		phaseTaskProgressBar := phase.progressBar.phases[phase.phaseId].GetTasksProgressBar()
 		oldTotal := phaseTaskProgressBar.GetTotal()
-		delayCount, _, err := countDelayFilesContent(addedDelayFiles)
+		delayCount, err := countDelayFilesContent(addedDelayFiles)
 		if err != nil {
 			return err
 		}
@@ -128,20 +128,16 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	return nil
 }
 
-func countDelayFilesContent(filePaths []string) (int, int64, error) {
+func countDelayFilesContent(filePaths []string) (int, error) {
 	count := 0
-	var storage int64 = 0
 	for _, file := range filePaths {
 		delayFile, err := readDelayFile(file)
 		if err != nil {
-			return 0, storage, err
+			return 0, err
 		}
 		count += len(delayFile.DelayedArtifacts)
-		for _, delay := range delayFile.DelayedArtifacts {
-			storage += delay.Size
-		}
 	}
-	return count, storage, nil
+	return count, nil
 }
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {

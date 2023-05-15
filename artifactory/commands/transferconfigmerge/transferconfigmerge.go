@@ -295,7 +295,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 		}
 		if targetRepo, exists := targetReposMap[sourceRepo.Key]; exists {
 			// The repository exists on target. We need to compare the repositories.
-			diff := ""
+			var diff string
 			diff, err = tcmc.compareRepositories(sourceRepo, targetRepo)
 			if err != nil {
 				return

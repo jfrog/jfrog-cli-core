@@ -112,21 +112,16 @@ func (pc *JFrogPipelinesConfigurator) createVcsIntegration(psm *pipelines.Pipeli
 	default:
 		return "", -1, errorutils.CheckErrorf("vcs type is not supported at the moment")
 	}
-	// If no error, or unexpected error, return.
-	if err == nil {
-		return
+	if _, ok := err.(*services.IntegrationAlreadyExistsError); ok {
+		// If integration already exists, get the id from pipelines.
+		log.Debug("Integration '" + integrationName + "' already exists and will be used. Fetching id from pipelines...")
+		var integration *services.Integration
+		integration, err = psm.GetIntegrationByName(integrationName)
+		if err != nil {
+			return
+		}
+		integrationId = integration.Id
 	}
-	if _, ok := err.(*services.IntegrationAlreadyExistsError); !ok {
-		return
-	}
-
-	// If integration already exists, get the id from pipelines.
-	log.Debug("Integration '" + integrationName + "' already exists and will be used. Fetching id from pipelines...")
-	integration, err := psm.GetIntegrationByName(integrationName)
-	if err != nil {
-		return
-	}
-	integrationId = integration.Id
 	return
 }
 
@@ -190,5 +185,5 @@ func (pc *JFrogPipelinesConfigurator) createRtServiceManager(artDetails *config.
 func createPipelinesSuitableName(data *CiSetupData, suffix string) string {
 	name := strings.Join([]string{data.ProjectDomain, data.RepositoryName, suffix}, "_")
 	// Pipelines does not allow "-" which might exist in repo names.
-	return strings.Replace(name, "-", "_", -1)
+	return strings.ReplaceAll(name, "-", "_")
 }

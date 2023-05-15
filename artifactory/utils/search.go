@@ -13,8 +13,6 @@ import (
 )
 
 type SearchResult struct {
-	Name         string              `json:"name,omitempty"`
-	Repo         string              `json:"repo,omitempty"`
 	Path         string              `json:"path,omitempty"`
 	Type         string              `json:"type,omitempty"`
 	Size         int64               `json:"size,omitempty"`
@@ -22,7 +20,7 @@ type SearchResult struct {
 	Modified     string              `json:"modified,omitempty"`
 	Sha1         string              `json:"sha1,omitempty"`
 	Sha256       string              `json:"sha256,omitempty"`
-	Md5          string              `json:"actual_md5,omitempty"`
+	Md5          string              `json:"md5,omitempty"`
 	OriginalMd5  string              `json:"original_md5,omitempty"`
 	ModifiedBy   string              `json:"modified_by,omitempty"`
 	Updated      string              `json:"updated,omitempty"`
@@ -99,8 +97,6 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (contentReader *c
 			tempResult.ModifiedBy = searchResult.ModifiedBy
 			tempResult.Updated = searchResult.Updated
 			tempResult.CreatedBy = searchResult.CreatedBy
-			tempResult.Name = searchResult.Name
-			tempResult.Repo = searchResult.Repo
 			tempResult.OriginalMd5 = searchResult.OriginalMd5
 			tempResult.Depth = searchResult.Depth
 			tempResult.Props = make(map[string][]string, len(searchResult.Properties))

@@ -99,7 +99,6 @@ func TestValidateTargetServer(t *testing.T) {
 		switch r.RequestURI {
 		case "/" + commandUtils.PluginsExecuteRestApi + "checkPermissions":
 			w.WriteHeader(http.StatusOK)
-
 		case "/" + commandUtils.PluginsExecuteRestApi + "configImportVersion":
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
 			assert.NoError(t, err)

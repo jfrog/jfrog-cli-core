@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
@@ -109,18 +110,20 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if serverDetails == nil {
 		return errors.New("cant get xray server details")
 	}
-	if err := os.Setenv(jfUserEnvVariable, serverDetails.User); err != nil {
+	if err := os.Setenv(jfUserEnvVariable, serverDetails.User); errorutils.CheckError(err) != nil {
 		return err
 	}
-	if err := os.Setenv(jfPasswordEnvVariable, serverDetails.Password); err != nil {
+	if err := os.Setenv(jfPasswordEnvVariable, serverDetails.Password); errorutils.CheckError(err) != nil {
 		return err
 	}
-	if err := os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url); err != nil {
+	if err := os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url); errorutils.CheckError(err) != nil {
 		return err
 	}
-	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); err != nil {
+	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); errorutils.CheckError(err) != nil {
 		return err
 	}
-	err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder)
-	return err
+	if err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
+		return err
+	}
+	return nil
 }

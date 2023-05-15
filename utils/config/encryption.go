@@ -137,7 +137,7 @@ func getEncryptionKeyFromSecurityConfFile() (key string, err error) {
 
 func readMasterKeyFromConsole() (string, error) {
 	log.Output("Please enter the master key: ")
-	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

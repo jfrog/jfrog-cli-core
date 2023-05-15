@@ -73,17 +73,14 @@ func (curlCmd *CurlCommand) Run() error {
 
 	cmdWithoutCreds := strings.Join(curlCmd.arguments, " ")
 	// Add credentials to curl command.
-	credentialsMessage, err := curlCmd.addCommandCredentials()
-	if err != nil {
-		return err
-	}
+	credentialsMessage := curlCmd.addCommandCredentials()
 
 	// Run curl.
 	log.Debug(fmt.Sprintf("Executing curl command: '%s %s'", cmdWithoutCreds, credentialsMessage))
 	return gofrogcmd.RunCmd(curlCmd)
 }
 
-func (curlCmd *CurlCommand) addCommandCredentials() (string, error) {
+func (curlCmd *CurlCommand) addCommandCredentials() string {
 	certificateHelpPrefix := ""
 
 	if curlCmd.serverDetails.ClientCertPath != "" {
@@ -98,14 +95,14 @@ func (curlCmd *CurlCommand) addCommandCredentials() (string, error) {
 		tokenHeader := fmt.Sprintf("Authorization: Bearer %s", curlCmd.serverDetails.AccessToken)
 		curlCmd.arguments = append(curlCmd.arguments, "-H", tokenHeader)
 
-		return certificateHelpPrefix + "-H \"Authorization: Bearer ***\"", nil
+		return certificateHelpPrefix + "-H \"Authorization: Bearer ***\""
 	}
 
 	// Add credentials flag to Command. In case of flag duplication, the latter is used by Curl.
 	credFlag := fmt.Sprintf("-u%s:%s", curlCmd.serverDetails.User, curlCmd.serverDetails.Password)
 	curlCmd.arguments = append(curlCmd.arguments, credFlag)
 
-	return certificateHelpPrefix + "-u***:***", nil
+	return certificateHelpPrefix + "-u***:***"
 }
 
 func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue string, err error) {

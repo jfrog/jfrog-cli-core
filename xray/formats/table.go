@@ -7,7 +7,7 @@ package formats
 // Used for vulnerabilities and security violations
 type vulnerabilityTableRow struct {
 	severity   string `col-name:"Severity"`
-	applicable string `col-name:"Applicable" omitempty:"true"`
+	applicable string `col-name:"Contextual\nAnalysis" omitempty:"true"`
 	// For sorting
 	severityNumValue          int
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
@@ -51,7 +51,7 @@ type licenseScanTableRow struct {
 type licenseViolationTableRow struct {
 	licenseKey string `col-name:"License"`
 	severity   string `col-name:"Severity"`
-	applicable string `col-name:"Applicable"`
+	applicable string `col-name:"Contextual\nAnalysis"`
 	// For sorting
 	severityNumValue          int
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`

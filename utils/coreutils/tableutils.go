@@ -140,22 +140,20 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
-		_, shouldOmitEmptyColumn := field.Tag.Lookup("omitempty")
+		_, omitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
 		}
 		if !columnNameExist && !embedTableExist {
 			continue
 		}
-		if shouldOmitEmptyColumn {
-			if omitColumn := isColumnEmpty(rowsSliceValue, i); omitColumn {
-				continue
-			}
+		if omitEmptyColumn && isColumnEmpty(rowsSliceValue, i) {
+			continue
 		}
 		if embedTable == "true" {
 			var subfieldsProperties []subfieldProperties
 			var err error
-			columnsNames, columnConfigs, subfieldsProperties, err = appendEmbeddedTableFields(columnsNames, columnConfigs, field, printExtended)
+			columnsNames, columnConfigs, subfieldsProperties = appendEmbeddedTableFields(columnsNames, columnConfigs, field, printExtended)
 			if err != nil {
 				return nil, err
 			}
@@ -247,7 +245,7 @@ func getTerminalAllowedWidth(colNum int) (int, error) {
 	return width - subtraction, nil
 }
 
-func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties, error) {
+func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table.ColumnConfig, field reflect.StructField, printExtended bool) ([]interface{}, []table.ColumnConfig, []subfieldProperties) {
 	rowType := field.Type.Elem()
 	fieldsCount := rowType.NumField()
 	var subfieldsProperties []subfieldProperties
@@ -265,7 +263,7 @@ func appendEmbeddedTableFields(columnsNames []interface{}, columnConfigs []table
 		columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
 		subfieldsProperties = append(subfieldsProperties, subfieldProperties{index: i})
 	}
-	return columnsNames, columnConfigs, subfieldsProperties, nil
+	return columnsNames, columnConfigs, subfieldsProperties
 }
 
 func appendEmbeddedTableStrings(rowValues []interface{}, fieldValue reflect.Value, subfieldsProperties []subfieldProperties) []interface{} {

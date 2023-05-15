@@ -12,6 +12,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/slices"
 	"io"
 	"io/fs"
 	"os"
@@ -54,9 +55,8 @@ func (tpc *TerraformPublishCommand) SetArgs(terraformArg []string) *TerraformPub
 	return tpc
 }
 
-func (tpc *TerraformPublishCommand) setServerDetails(serverDetails *config.ServerDetails) *TerraformPublishCommand {
+func (tpc *TerraformPublishCommand) setServerDetails(serverDetails *config.ServerDetails) {
 	tpc.serverDetails = serverDetails
-	return tpc
 }
 
 func (tpc *TerraformPublishCommand) setRepoConfig(conf *utils.RepositoryConfig) *TerraformPublishCommand {
@@ -319,7 +319,7 @@ func (tpc *TerraformPublishCommand) uploadParamsForTerraformPublish(moduleName, 
 	uploadParams.Archive = "zip"
 	uploadParams.Recursive = true
 	uploadParams.CommonParams.TargetProps = servicesUtils.NewProperties()
-	uploadParams.CommonParams.Exclusions = append(tpc.exclusions, "*.git", "*.DS_Store")
+	uploadParams.CommonParams.Exclusions = append(slices.Clone(tpc.exclusions), "*.git", "*.DS_Store")
 	uploadParams.BuildProps = tpc.buildProps
 	return &uploadParams
 }

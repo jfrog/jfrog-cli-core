@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 		ScannedPackageType: "Go",
 	}
 	var scanResults []services.ScanResponse
-	extendedResults := &jas.ExtendedScanResults{XrayResults: scanResults}
+	extendedResults := &ExtendedScanResults{XrayResults: scanResults}
 	scanResults = append(scanResults, currentScan)
 	sarif, err := GenerateSarifFileFromScan(scanResults, extendedResults, false, false)
 	assert.NoError(t, err)

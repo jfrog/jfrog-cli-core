@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -238,7 +237,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &jas.ExtendedScanResults{XrayResults: flatResults}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults}
 	err = xrutils.PrintScanResults(extendedScanResults,
 		scanErrors,
 		scanCmd.outputFormat,

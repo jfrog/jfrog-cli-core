@@ -71,7 +71,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
 	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
 
-	delayCount, _, err := countDelayFilesContent(delayFiles)
+	delayCount, err := countDelayFilesContent(delayFiles)
 	assert.NoError(t, err)
 	assert.Equal(t, delayCount, artifactsNumber)
 }

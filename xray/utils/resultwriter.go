@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -42,8 +41,8 @@ type sarifProperties struct {
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
 // If the scan argument is set to true, print the scan tables.
-func PrintScanResults(results *jas.ExtendedScanResults, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
-	xrayScanResults := results.GetXrayScanResults()
+func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
+	xrayScanResults := results.getXrayScanResults()
 	switch format {
 	case Table:
 		var err error
@@ -93,14 +92,13 @@ func PrintScanResults(results *jas.ExtendedScanResults, errors []formats.SimpleJ
 	return nil
 }
 
-func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResults *jas.ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) (string, error) {
+func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) (string, error) {
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	run := sarif.NewRunWithInformationURI("JFrog Xray", coreutils.JFrogComUrl+"xray/")
-	err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput)
-	if err != nil {
+	if err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput); err != nil {
 		return "", err
 	}
 	report.AddRun(run)
@@ -112,7 +110,7 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResu
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *jas.ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
 	violations, vulnerabilities, licenses := SplitScanResults(results)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
@@ -151,7 +149,7 @@ func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *j
 	return jsonTable, nil
 }
 
-func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, extendedResults *jas.ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) error {
+func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) error {
 	var errors []formats.SimpleJsonError
 	jsonTable, err := convertScanToSimpleJson(currentScan, extendedResults, errors, isMultipleRoots, false, simplifiedOutput)
 	if err != nil {
@@ -328,7 +326,7 @@ func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []
 	return violations, vulnerabilities, licenses
 }
 
-func writeJsonResults(results *jas.ExtendedScanResults) (resultsPath string, err error) {
+func writeJsonResults(results *ExtendedScanResults) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
 	if errorutils.CheckError(err) != nil {
 		return

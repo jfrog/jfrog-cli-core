@@ -18,7 +18,7 @@ const (
 )
 
 func getLevelOfSeverity(s string) int {
-	severity := utils.GetSeverity(cases.Title(language.Und).String(s))
+	severity := utils.GetSeverity(cases.Title(language.Und).String(s), utils.ApplicabilityUndeterminedStringValue)
 	return severity.NumValue()
 }
 

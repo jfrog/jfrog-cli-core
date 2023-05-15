@@ -255,7 +255,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	if err != nil {
 		return
 	}
-	venvBinPath := ""
+	var venvBinPath string
 	if runtime.GOOS == "windows" {
 		venvBinPath = filepath.Join(venvPath, "Scripts")
 	} else {

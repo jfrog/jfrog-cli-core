@@ -711,15 +711,16 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	details.SetAccessToken(serverDetails.AccessToken)
 	// If refresh token is not empty, set a refresh handler and skip other credentials.
 	// First we check access's token, if empty we check artifactory's token.
-	if serverDetails.RefreshToken != "" {
+	switch {
+	case serverDetails.RefreshToken != "":
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)
-	} else if serverDetails.ArtifactoryRefreshToken != "" {
+	case serverDetails.ArtifactoryRefreshToken != "":
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(ArtifactoryTokenRefreshPreRequestInterceptor)
-	} else {
+	default:
 		details.SetUser(serverDetails.User)
 		details.SetPassword(serverDetails.Password)
 	}

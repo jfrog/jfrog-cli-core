@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	// Blocked status presents the unapproved requests to curation service.
+	// The "blocked" represents the unapproved status that can be returned by the Curation Service for dependencies..
 	blocked                = "blocked"
 	BlockingReasonPolicy   = "Policy violations"
 	BlockingReasonNotFound = "Package pending update"
@@ -41,8 +41,6 @@ const (
 
 	extractPoliciesRegexTemplate = "({.*?})"
 )
-
-var extractPoliciesRegex *regexp.Regexp
 
 var supportedTech = map[coreutils.Technology]struct{}{
 	coreutils.Npm: {},
@@ -93,17 +91,19 @@ type policyTable struct {
 }
 
 type treeAnalyzer struct {
-	rtManager         artifactory.ArtifactoryServicesManager
-	rtAuth            auth.ServiceDetails
-	httpClientDetails httputils.HttpClientDetails
-	url               string
-	repo              string
-	tech              coreutils.Technology
-	parallelRequests  int
+	rtManager            artifactory.ArtifactoryServicesManager
+	extractPoliciesRegex *regexp.Regexp
+	rtAuth               auth.ServiceDetails
+	httpClientDetails    httputils.HttpClientDetails
+	url                  string
+	repo                 string
+	tech                 coreutils.Technology
+	parallelRequests     int
 }
 
 type CurationAuditCommand struct {
 	PackageManagerConfig *rtUtils.RepositoryConfig
+	extractPoliciesRegex *regexp.Regexp
 	workingDirs          []string
 	OriginPath           string
 	parallelRequests     int
@@ -111,9 +111,9 @@ type CurationAuditCommand struct {
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
-	extractPoliciesRegex = regexp.MustCompile(extractPoliciesRegexTemplate)
 	return &CurationAuditCommand{
-		GraphBasicParams: &utils.GraphBasicParams{},
+		extractPoliciesRegex: regexp.MustCompile(extractPoliciesRegexTemplate),
+		GraphBasicParams:     &utils.GraphBasicParams{},
 	}
 }
 
@@ -139,10 +139,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 	}
 	if len(ca.workingDirs) > 0 {
 		defer func() {
-			e := os.Chdir(rootDir)
-			if err == nil {
-				err = e
-			}
+			err = errorutils.CheckError(os.Chdir(rootDir))
 		}()
 	} else {
 		ca.workingDirs = append(ca.workingDirs, rootDir)
@@ -159,10 +156,8 @@ func (ca *CurationAuditCommand) Run() (err error) {
 				return errorutils.CheckError(err)
 			}
 		}
+		// If error returned, continue to print results(if any), and return error at the end.
 		err = ca.doCurateAudit(results)
-		if err != nil {
-			return err
-		}
 	}
 	if ca.Progress != nil {
 		if err = ca.Progress.Quit(); err != nil {
@@ -174,7 +169,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 			return err
 		}
 	}
-	return nil
+	return
 }
 
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
@@ -188,8 +183,7 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 				"This package manager however isn't supported by this command.", tech))
 			continue
 		}
-		err = ca.auditTree(coreutils.Technology(tech), results)
-		if err != nil {
+		if err = ca.auditTree(coreutils.Technology(tech), results); err != nil {
 			return err
 		}
 	}
@@ -223,35 +217,34 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	}
 	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.DependencyTrees[0].Id, "", "")
 	if ca.Progress != nil {
-		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph, project %s:%s", tech.ToFormal(), projectName, projectVersion))
+		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
 	}
 	if ca.parallelRequests == 0 {
 		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
 	}
 	var packagesStatus []*PackageStatus
 	analyzer := treeAnalyzer{
-		rtManager:         rtManager,
-		rtAuth:            rtAuth,
-		httpClientDetails: rtAuth.CreateHttpClientDetails(),
-		url:               rtAuth.GetUrl(),
-		repo:              ca.PackageManagerConfig.TargetRepo(),
-		tech:              tech,
-		parallelRequests:  ca.parallelRequests,
+		rtManager:            rtManager,
+		extractPoliciesRegex: ca.extractPoliciesRegex,
+		rtAuth:               rtAuth,
+		httpClientDetails:    rtAuth.CreateHttpClientDetails(),
+		url:                  rtAuth.GetUrl(),
+		repo:                 ca.PackageManagerConfig.TargetRepo(),
+		tech:                 tech,
+		parallelRequests:     ca.parallelRequests,
 	}
-	p := sync.Map{}
+	packagesStatusMap := sync.Map{}
 	// Root node id represents the project name and shouldn't be validated with curation
 	rootNodeId := ca.DependencyTrees[0].Id
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	if err := analyzer.getNodesStatusInParallel(flattenGraph[0], &p, rootNodeId); err != nil {
-		return err
-	}
-	analyzer.fillGraphRelations(ca.DependencyTrees[0], &p,
+	err = analyzer.getNodesStatusInParallel(flattenGraph[0], &packagesStatusMap, rootNodeId)
+	analyzer.fillGraphRelations(ca.DependencyTrees[0], &packagesStatusMap,
 		&packagesStatus, "", "", true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
 	})
 	results[fmt.Sprintf("%s:%s", projectName, projectVersion)] = packagesStatus
-	return nil
+	return err
 }
 
 func printResult(format utils.OutputFormat, projectPath string, packagesStatus []*PackageStatus) error {
@@ -438,7 +431,7 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 			if strings.Contains(strings.ToLower(respError.Errors[0].Message), NotBeingFoundKey) {
 				blockingReason = BlockingReasonNotFound
 			}
-			policies := extractPoliciesFromMsg(respError)
+			policies := nc.extractPoliciesFromMsg(respError)
 			return &PackageStatus{
 				PackageName:       name,
 				PackageVersion:    version,
@@ -455,10 +448,10 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 
 // Return policies and conditions names from the FORBIDDEN HTTP error message.
 // Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s},{%s, %s}.
-func extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
+func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	var policies []Policy
 	msg := respError.Errors[0].Message
-	allMatches := extractPoliciesRegex.FindAllString(msg, -1)
+	allMatches := nc.extractPoliciesRegex.FindAllString(msg, -1)
 	for _, match := range allMatches {
 		match = strings.TrimSuffix(strings.TrimPrefix(match, "{"), "}")
 		polCond := strings.Split(match, ",")

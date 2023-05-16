@@ -1,0 +1,29 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "JFrog Applicability Scanner",
+                    "rules": [],
+                    "version": "APPLIC_SCANNERv0.2.3"
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "ca_scanner/applicability_scanner",
+                        "scan",
+                        "/Users/ort/workspace/src/jfrog.com/jfrog-cli/LeWVtGDMPW.yaml"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/ort/workspace/src/jfrog.com/jfrog-cli"
+                    }
+                }
+            ],
+            "results": []
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

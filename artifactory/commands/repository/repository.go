@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -39,7 +40,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 		if err = utils.ValidateMapEntry(key, value, writersMap); err != nil {
 			return
 		}
-		if err = writersMap[key](&repoConfigMap, key, value.(string)); err != nil {
+		if err = writersMap[key](&repoConfigMap, key, fmt.Sprint(value)); err != nil {
 			return
 		}
 	}
@@ -56,7 +57,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	// Rclass and packageType are mandatory keys in our templates
 	// Using their values we'll pick the suitable handler from one of the handler maps to create/update a repository
 	var handlerFunc func(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error
-	packageType := repoConfigMap[PackageType].(string)
+	packageType := fmt.Sprint(repoConfigMap[PackageType])
 	switch repoConfigMap[Rclass] {
 	case Local:
 		handlerFunc = localRepoHandlers[packageType]
@@ -65,7 +66,7 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	case Virtual:
 		handlerFunc = virtualRepoHandlers[packageType]
 	default:
-		return errorutils.CheckErrorf("unsupported rclass: " + repoConfigMap[Rclass].(string))
+		return errorutils.CheckErrorf("unsupported rclass: %s", repoConfigMap[Rclass])
 	}
 	if handlerFunc == nil {
 		return errors.New("unsupported package type: " + packageType)

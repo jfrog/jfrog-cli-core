@@ -109,8 +109,7 @@ func downloadLayer(searchResult utils.ResultItem, result interface{}, serviceMan
 	// When artifact is expired, it cannot be downloaded from the remote-cache.
 	// To solve this, change back the search results' repository, to its origin remote/virtual.
 	searchResult.Repo = repo
-	path := searchResult.GetItemRelativePath()
-	return artutils.RemoteUnmarshal(serviceManager, path, result)
+	return artutils.RemoteUnmarshal(serviceManager, searchResult.GetItemRelativePath(), result)
 }
 
 func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
@@ -312,10 +311,7 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 	var err error
 	switch commandType {
 	case Pull:
-		dependencies, err = builder.createPullBuildProperties(manifest, candidateLayers)
-		if err != nil {
-			return nil, err
-		}
+		dependencies = builder.createPullBuildProperties(manifest, candidateLayers)
 	case Push:
 		artifacts, dependencies, builder.imageLayers, err = builder.createPushBuildProperties(manifest, candidateLayers)
 		if err != nil {
@@ -416,20 +412,20 @@ func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manife
 	return
 }
 
-func (builder *buildInfoBuilder) createPullBuildProperties(imageManifest *manifest, imageLayers map[string]*utils.ResultItem) ([]buildinfo.Dependency, error) {
+func (builder *buildInfoBuilder) createPullBuildProperties(imageManifest *manifest, imageLayers map[string]*utils.ResultItem) []buildinfo.Dependency {
 	configDependencies, err := getDependenciesFromManifestConfig(imageLayers, builder.imageSha2)
 	if err != nil {
 		log.Debug(err.Error())
-		return nil, nil
+		return nil
 	}
 
 	layerDependencies, err := getDependenciesFromManifestLayer(imageLayers, imageManifest)
 	if err != nil {
 		log.Debug(err.Error())
-		return nil, nil
+		return nil
 	}
 
-	return append(configDependencies, layerDependencies...), nil
+	return append(configDependencies, layerDependencies...)
 }
 
 func getDependenciesFromManifestConfig(candidateLayers map[string]*utils.ResultItem, imageSha2 string) ([]buildinfo.Dependency, error) {

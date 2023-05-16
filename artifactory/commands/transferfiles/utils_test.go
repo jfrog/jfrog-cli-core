@@ -143,11 +143,12 @@ func TestGetMaxUniqueSnapshots(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		packageType := strings.TrimSuffix(strings.TrimPrefix(r.RequestURI, "/api/repositories/"), "-local")
 		var response string
-		if packageType == "docker" {
+		switch packageType {
+		case "docker":
 			response = fmt.Sprintf(repoConfigurationResponse, packageType, 0, 3)
-		} else if packageType == "maven" || packageType == "gradle" || packageType == "nuget" || packageType == "ivy" || packageType == "sbt" {
+		case "maven", "gradle", "nuget", "ivy", "sbt":
 			response = fmt.Sprintf(repoConfigurationResponse, packageType, 5, 0)
-		} else {
+		default:
 			assert.Fail(t, "tried to get the Max Unique Snapshots setting of a repository of an unsupported package type")
 		}
 		_, err := w.Write([]byte(response))
@@ -187,11 +188,12 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 		}
 
 		assert.Equal(t, expectedPackageType, packageType)
-		if repoDetails.PackageType == "docker" {
+		switch repoDetails.PackageType {
+		case "docker":
 			assert.Contains(t, string(body), "\"maxUniqueTags\":5")
-		} else if packageType == "maven" || packageType == "gradle" || packageType == "nuget" || packageType == "ivy" || packageType == "sbt" {
+		case "maven", "gradle", "nuget", "ivy", "sbt":
 			assert.Contains(t, string(body), "\"maxUniqueSnapshots\":5")
-		} else {
+		default:
 			assert.Fail(t, "tried to update the Max Unique Snapshots setting of a repository of an unsupported package type")
 		}
 		_, err = w.Write([]byte(fmt.Sprintf("Repository %s-local update successfully.", packageType)))

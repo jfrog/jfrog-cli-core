@@ -11,26 +11,26 @@ import (
 )
 
 // Build-info builder for remote agents tools such as: Kaniko, OpenShift CLI (oc), or buildx.
-type remoteAgentbuildInfoBuilder struct {
+type RemoteAgentBuildInfoBuilder struct {
 	buildInfoBuilder *buildInfoBuilder
 	manifestSha2     string
 }
 
-func NewRemoteAgentBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, manifestSha256 string) (*remoteAgentbuildInfoBuilder, error) {
+func NewRemoteAgentBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, manifestSha256 string) (*RemoteAgentBuildInfoBuilder, error) {
 	builder, err := newBuildInfoBuilder(image, repository, buildName, buildNumber, project, serviceManager)
-	return &remoteAgentbuildInfoBuilder{
+	return &RemoteAgentBuildInfoBuilder{
 		buildInfoBuilder: builder,
 		manifestSha2:     manifestSha256,
 	}, err
 }
 
-func (rabib *remoteAgentbuildInfoBuilder) GetLayers() *[]utils.ResultItem {
+func (rabib *RemoteAgentBuildInfoBuilder) GetLayers() *[]utils.ResultItem {
 	return &rabib.buildInfoBuilder.imageLayers
 }
 
-func (rabib *remoteAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
+func (rabib *RemoteAgentBuildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	// Search for and image in Artifactory.
-	results, resultsPath, err := rabib.searchImage()
+	results, err := rabib.searchImage()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (rabib *remoteAgentbuildInfoBuilder) Build(module string) (*buildinfo.Build
 		return rabib.buildInfoBuilder.createBuildInfo(Push, manifest, searchResults, module)
 	}
 	// Create build-info based on image fat-manifest.
-	multiPlatformImages, fatManifestDetails, fatManifest, err := rabib.handleFatManifestImage(results, resultsPath)
+	multiPlatformImages, fatManifestDetails, fatManifest, err := rabib.handleFatManifestImage(results)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (rabib *remoteAgentbuildInfoBuilder) Build(module string) (*buildinfo.Build
 }
 
 // Search for image manifest and layers in Artifactory.
-func (rabib *remoteAgentbuildInfoBuilder) handleManifest(resultMap map[string]*utils.ResultItem) (map[string]*utils.ResultItem, *manifest, error) {
+func (rabib *RemoteAgentBuildInfoBuilder) handleManifest(resultMap map[string]*utils.ResultItem) (map[string]*utils.ResultItem, *manifest, error) {
 	if manifest, ok := resultMap["manifest.json"]; ok {
 		err := rabib.isVerifiedManifest(manifest)
 		if err != nil {
@@ -70,7 +70,7 @@ func (rabib *remoteAgentbuildInfoBuilder) handleManifest(resultMap map[string]*u
 	return nil, nil, errorutils.CheckErrorf(`couldn't find image "` + rabib.buildInfoBuilder.image.name + `" manifest in Artifactory`)
 }
 
-func (rabib *remoteAgentbuildInfoBuilder) handleFatManifestImage(results map[string]*utils.ResultItem, resultPath string) (map[string][]*utils.ResultItem, *utils.ResultItem, *FatManifest, error) {
+func (rabib *RemoteAgentBuildInfoBuilder) handleFatManifestImage(results map[string]*utils.ResultItem) (map[string][]*utils.ResultItem, *utils.ResultItem, *FatManifest, error) {
 	if fatManifestResult, ok := results["list.manifest.json"]; ok {
 		log.Debug("Found list.manifest.json. Proceeding to create build-info.")
 		fatManifestRootPath := getFatManifestRoot(fatManifestResult.GetItemRelativeLocation()) + "/*"
@@ -85,34 +85,34 @@ func (rabib *remoteAgentbuildInfoBuilder) handleFatManifestImage(results map[str
 }
 
 // Search image manifest or fat-manifest of and image.
-func (rabib *remoteAgentbuildInfoBuilder) searchImage() (resultMap map[string]*utils.ResultItem, path string, err error) {
-	longimageName, err := rabib.buildInfoBuilder.image.GetImageLongNameWithTag()
+func (rabib *RemoteAgentBuildInfoBuilder) searchImage() (resultMap map[string]*utils.ResultItem, err error) {
+	longImageName, err := rabib.buildInfoBuilder.image.GetImageLongNameWithTag()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	imagePath := strings.Replace(longimageName, ":", "/", 1)
+	imagePath := strings.Replace(longImageName, ":", "/", 1)
 
 	// Search image's manifest.
 	manifestPathsCandidates := getManifestPaths(imagePath, rabib.buildInfoBuilder.getSearchableRepo(), Push)
 	log.Debug("Start searching for image manifest.json")
 	for _, path := range manifestPathsCandidates {
 		log.Debug(`Searching in:"` + path + `"`)
-		resultMap, err := performSearch(path, rabib.buildInfoBuilder.serviceManager)
+		resultMap, err = performSearch(path, rabib.buildInfoBuilder.serviceManager)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		if resultMap == nil {
 			continue
 		}
 		if resultMap["list.manifest.json"] != nil || resultMap["manifest.json"] != nil {
-			return resultMap, path, nil
+			return resultMap, nil
 		}
 	}
-	return nil, "", errorutils.CheckErrorf(imageNotFoundErrorMessage, rabib.buildInfoBuilder.image.name)
+	return nil, errorutils.CheckErrorf(imageNotFoundErrorMessage, rabib.buildInfoBuilder.image.name)
 }
 
 // Verify manifest's sha256. If there is no match, return nil.
-func (rabib *remoteAgentbuildInfoBuilder) isVerifiedManifest(imageManifest *utils.ResultItem) error {
+func (rabib *RemoteAgentBuildInfoBuilder) isVerifiedManifest(imageManifest *utils.ResultItem) error {
 	if imageManifest.GetProperty("docker.manifest.digest") != rabib.manifestSha2 {
 		return errorutils.CheckErrorf(`Found incorrect manifest.json file. Expects digest "` + rabib.manifestSha2 + `" found "` + imageManifest.GetProperty("docker.manifest.digest"))
 	}

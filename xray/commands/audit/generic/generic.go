@@ -1,11 +1,9 @@
 package audit
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 )
@@ -106,13 +104,17 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.dependencyTrees, auditParams.serverDetails)
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return err
+	}
+	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.dependencyTrees, serverDetails)
 	if err != nil {
 		return err
 	}
 
-	if auditCmd.progress != nil {
-		err = auditCmd.progress.Quit()
+	if auditCmd.Progress != nil {
+		err = auditCmd.Progress.Quit()
 		if err != nil {
 			return
 		}

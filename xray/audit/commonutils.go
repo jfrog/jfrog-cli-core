@@ -232,7 +232,6 @@ func appendPath(currentTree map[string]*services.Component, dependency *services
 		currentTree[dependency.Id].ImpactPaths[0] = pathFromRoot
 		return
 	}
-	return
 }
 
 func atLeastOneDirectPath(nodes [][]services.ImpactPathNode) bool {

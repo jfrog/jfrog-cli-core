@@ -312,8 +312,9 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 					},
 				},
 			},
-			expectedError: fmt.Sprintf("failed sending HEAD to %s for package %s. Status-code: %v",
-				"/api/npm/npms/lightweight/-/lightweight-0.1.0.tgz", "npm://lightweight:0.1.0", http.StatusInternalServerError),
+			expectedError: fmt.Sprintf("failed sending HEAD request to %s for package '%s'. Status-code: %v. "+
+				"Cause: executor timeout after 2 attempts with 0 milliseconds wait intervals",
+				"/api/npm/npms/lightweight/-/lightweight-0.1.0.tgz", "lightweight:0.1.0", http.StatusInternalServerError),
 		},
 	}
 	for _, tt := range tests {
@@ -365,13 +366,13 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 
 func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail map[string]bool, requestToError map[string]bool) (*httptest.Server, *config.ServerDetails) {
 	serverMock, config, _ := tests2.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		writeToMap := sync.Mutex{}
+		mapLockReadWrite := sync.Mutex{}
 		if r.Method == http.MethodHead {
+			mapLockReadWrite.Lock()
 			if _, exist := expectedRequest[r.RequestURI]; exist {
-				writeToMap.Lock()
 				expectedRequest[r.RequestURI] = true
-				writeToMap.Unlock()
 			}
+			mapLockReadWrite.Unlock()
 			if _, exist := requestToFail[r.RequestURI]; exist {
 				w.WriteHeader(http.StatusForbidden)
 			}

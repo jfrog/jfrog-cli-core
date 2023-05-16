@@ -40,6 +40,11 @@ const (
 	NotBeingFoundKey = "not being found"
 
 	extractPoliciesRegexTemplate = "({.*?})"
+
+	errorTemplateHeadRequest = "failed sending HEAD request to %s for package '%s:%s'. Status-code: %v. Cause: %v"
+
+	errorTemplateUnsupportedTech = "It looks like this project uses '%s' to download its dependencies. " +
+		"This package manager however isn't supported by this command."
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
@@ -180,8 +185,7 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 	}
 	for _, tech := range techs {
 		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
-			log.Info(fmt.Sprintf("It looks like this project uses '%s' to download its dependencies. "+
-				"This package manager however isn't supported by this command.", tech))
+			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
 			continue
 		}
 		if err = ca.auditTree(coreutils.Technology(tech), results); err != nil {
@@ -238,7 +242,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	// Root node id represents the project name and shouldn't be validated with curation
 	rootNodeId := ca.DependencyTrees[0].Id
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	err = analyzer.getNodesStatusInParallel(flattenGraph[0], &packagesStatusMap, rootNodeId)
+	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
 	analyzer.fillGraphRelations(ca.DependencyTrees[0], &packagesStatusMap,
 		&packagesStatus, "", "", true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
@@ -262,7 +266,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 			}
 		}
 	case utils.Table:
-		pkgStatusTable := convertToTableStruct(packagesStatus)
+		pkgStatusTable := convertToPackageStatusTable(packagesStatus)
 		err := coreutils.PrintTable(pkgStatusTable, "Curation", "Found 0 blocked packages", true)
 		if err != nil {
 			return err
@@ -272,7 +276,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 	return nil
 }
 
-func convertToTableStruct(packagesStatus []*PackageStatus) []PackageStatusTable {
+func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatusTable {
 	var pkgStatusTable []PackageStatusTable
 	for _, pkgStatus := range packagesStatus {
 		pkgTable := PackageStatusTable{
@@ -296,7 +300,7 @@ func convertToTableStruct(packagesStatus []*PackageStatus) []PackageStatusTable 
 }
 
 func (ca *CurationAuditCommand) CommandName() string {
-	return "curation"
+	return "curation_audit"
 }
 
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
@@ -308,7 +312,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 		}
 		if !exists {
 			return errorutils.CheckError(errors.New("no config file was found! Before running the npm command on a " +
-				"project for the first time, the project should be configured using the jf npmc command"))
+				"project for the first time, the project should be configured using the 'jf npmc' command"))
 		}
 		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
 		if err != nil {
@@ -320,8 +324,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 		}
 		ca.setPackageManagerConfig(resolverParams)
 	default:
-		return errorutils.CheckErrorf("It looks like this project uses '%s' to download its dependencies. "+
-			"This package manager however isn't supported by this command", tech.ToString())
+		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.ToString())
 	}
 	return nil
 }
@@ -351,7 +354,7 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, false)
 	}
 }
-func (nc *treeAnalyzer) getNodesStatusInParallel(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeId string) error {
+func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeId string) error {
 	var multiErrors error
 	consumerProducer := parallel.NewBounedRunner(nc.parallelRequests, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
@@ -383,7 +386,7 @@ func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) e
 	resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
 	if err != nil {
 		if resp != nil && resp.StatusCode >= 400 {
-			return fmt.Errorf("failed sending HEAD to %s for package %s. Status-code: %v", packageUrl, node.Id, resp.StatusCode)
+			return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)
 		}
 		if resp == nil || resp.StatusCode != http.StatusForbidden {
 			return err
@@ -391,7 +394,7 @@ func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) e
 
 	}
 	if resp != nil && resp.StatusCode >= 400 && resp.StatusCode != http.StatusForbidden {
-		return fmt.Errorf("failed sending HEAD to %s for package %s. Status-code: %v", packageUrl, node.Id, resp.StatusCode)
+		return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)
 	}
 	if resp.StatusCode == http.StatusForbidden {
 		pkStatus, err := nc.getBlockedPackageDetails(packageUrl, name, version)
@@ -413,8 +416,7 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 			return nil, err
 		}
 		if getResp.StatusCode != http.StatusForbidden {
-			return nil, fmt.Errorf("failed sending HEAD request to %s for package '%s:%s'. "+
-				"Status code: %v. Cause: %v", packageUrl, name, version, getResp.StatusCode, err)
+			return nil, errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, getResp.StatusCode, err)
 		}
 	}
 	if getResp.StatusCode == http.StatusForbidden {

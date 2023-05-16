@@ -109,8 +109,8 @@ func RunMvn(mu *MvnUtils) error {
 		utils.DownloadExtractorIfNeeded,
 		props,
 		useWrapper).
-		SetOutputWriter(mu.outputWriter).
-		SetMavenOpts(mvnOpts...)
+		SetOutputWriter(mu.outputWriter)
+	mavenModule.SetMavenOpts(mvnOpts...)
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 

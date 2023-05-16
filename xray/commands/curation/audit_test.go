@@ -322,7 +322,7 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 			defer os.Setenv(coreutils.HomeDir, cliHomeDirBefore)
 			currentDir, err := os.Getwd()
 			require.NoError(t, err)
-			os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, "../testdata/npm-project/.jfrog"))
+			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, "../testdata/npm-project/.jfrog")))
 
 			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
 			defer mockServer.Close()

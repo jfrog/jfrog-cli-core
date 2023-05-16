@@ -1,11 +1,13 @@
 package audit
 
 import (
-	"os"
-
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
 )
 
 type GenericAuditCommand struct {
@@ -104,8 +106,13 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	if auditCmd.Progress != nil {
-		err = auditCmd.Progress.Quit()
+	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.dependencyTrees, auditParams.serverDetails)
+	if err != nil {
+		return err
+	}
+
+	if auditCmd.progress != nil {
+		err = auditCmd.progress.Quit()
 		if err != nil {
 			return
 		}
@@ -113,7 +120,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
 	if printScanResults {
-		err = xrutils.PrintScanResults(results,
+		err = xrutils.PrintScanResults(extendedScanResults,
 			nil,
 			auditCmd.OutputFormat,
 			auditCmd.IncludeVulnerabilities,

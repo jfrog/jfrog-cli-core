@@ -1,11 +1,11 @@
 package yarn
 
 import (
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"testing"
 
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestParseYarnDependenciesList(t *testing.T) {
@@ -18,20 +18,20 @@ func TestParseYarnDependenciesList(t *testing.T) {
 	}
 
 	packageInfo := &biutils.PackageInfo{Name: "pack3", Version: "3.0.0"}
-	expectedTree := &services.GraphNode{
+	expectedTree := &xrayUtils.GraphNode{
 		Id: "npm://pack3:3.0.0",
-		Nodes: []*services.GraphNode{
+		Nodes: []*xrayUtils.GraphNode{
 			{Id: "npm://pack1:1.0.0",
-				Nodes: []*services.GraphNode{
+				Nodes: []*xrayUtils.GraphNode{
 					{Id: "npm://pack4:4.0.0",
-						Nodes: []*services.GraphNode{}},
+						Nodes: []*xrayUtils.GraphNode{}},
 				}},
 			{Id: "npm://pack2:2.0.0",
-				Nodes: []*services.GraphNode{
+				Nodes: []*xrayUtils.GraphNode{
 					{Id: "npm://pack4:4.0.0",
-						Nodes: []*services.GraphNode{}},
+						Nodes: []*xrayUtils.GraphNode{}},
 					{Id: "npm://pack5:5.0.0",
-						Nodes: []*services.GraphNode{}},
+						Nodes: []*xrayUtils.GraphNode{}},
 				}},
 		},
 	}

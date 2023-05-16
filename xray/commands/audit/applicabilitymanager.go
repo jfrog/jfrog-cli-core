@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -28,7 +29,7 @@ var (
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
 	err := utils.CreateAnalyzerManagerLogDir()
 	if err != nil {
@@ -109,7 +110,7 @@ type ApplicabilityScanManager struct {
 	serverDetails               *config.ServerDetails
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
@@ -160,7 +161,7 @@ func extractXrayDirectVulnerabilities(xrayScanResults []services.ScanResponse, d
 
 // This function gets the dependencies tress of the scanned project, and extract a list containing only directed
 // dependencies node ids.
-func getDirectDependenciesList(dependencyTrees []*services.GraphNode) []string {
+func getDirectDependenciesList(dependencyTrees []*xrayUtils.GraphNode) []string {
 	directDependencies := []string{}
 	for _, tree := range dependencyTrees {
 		for _, node := range tree.Nodes {

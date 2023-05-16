@@ -7,7 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 	YarnV1ErrorPrefix        = "jf audit is only supported for yarn v2 and above."
 )
 
-func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -39,7 +39,7 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	dependencyTree = []*services.GraphNode{parseYarnDependenciesMap(dependenciesMap, packageInfo)}
+	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, packageInfo)}
 	return
 }
 
@@ -57,7 +57,7 @@ func logAndValidateYarnVersion(executablePath string) error {
 }
 
 // Parse the dependencies into a Xray dependency tree format
-func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, packageInfo *biUtils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, packageInfo *biUtils.PackageInfo) (xrDependencyTree *xrayUtils.GraphNode) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		xrayDepId := getXrayDependencyId(dependency)

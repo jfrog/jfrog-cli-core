@@ -146,7 +146,8 @@ func (ca *CurationAuditCommand) Run() (err error) {
 	}
 	results := map[string][]*PackageStatus{}
 	for _, workDir := range ca.workingDirs {
-		absWd, err := filepath.Abs(workDir)
+		var absWd string
+		absWd, err = filepath.Abs(workDir)
 		if err != nil {
 			return errorutils.CheckError(err)
 		}

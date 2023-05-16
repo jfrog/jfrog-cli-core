@@ -1,6 +1,7 @@
 package gradleutils
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -70,7 +71,7 @@ func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string,
 	}
 	if deployableArtifactsFile != "" {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
-		props[utils.DeployableArtifacts] = vConfig.Get(utils.DeployableArtifacts).(string)
+		props[utils.DeployableArtifacts] = fmt.Sprint(vConfig.Get(utils.DeployableArtifacts))
 	}
 	plugin = vConfig.GetBool(usePlugin)
 	return

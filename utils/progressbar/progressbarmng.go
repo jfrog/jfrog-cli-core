@@ -114,7 +114,7 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, denominator *int64, err error), headLine, valHeadLine string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, denominator *int64), headLine, valHeadLine string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	prog.headlineBar = bm.NewHeadlineBar(headLine)
@@ -124,7 +124,7 @@ func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, d
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, color Color, windows bool, taskType string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, windows bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	if spinner {
@@ -232,14 +232,11 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 	return pb
 }
 
-func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64), headLine string) *TasksProgressBar {
 	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
 	filter := filterColor(GREEN, coreutils.IsWindows())
-	numerator, denominator, err := getVal()
-	if err != nil {
-		log.Error(err)
-	}
+	numerator, denominator := getVal()
 	pb.bar = bm.container.New(0,
 		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),

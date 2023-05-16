@@ -2,19 +2,19 @@ package nuget
 
 import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 
 	"github.com/jfrog/build-info-go/build/utils/dotnet/solution"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 const (
 	nugetPackageTypeIdentifier = "nuget://"
 )
 
-func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return
@@ -31,7 +31,7 @@ func BuildDependencyTree() (dependencyTree []*services.GraphNode, err error) {
 	return
 }
 
-func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*services.GraphNode) {
+func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils.GraphNode) {
 	for _, module := range buildInfo.Modules {
 		treeMap := make(map[string][]string)
 		for _, dependency := range module.Dependencies {

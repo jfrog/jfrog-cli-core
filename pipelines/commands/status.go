@@ -99,7 +99,7 @@ func (sc *StatusCommand) Run() error {
 				}
 			} else {
 				respStatus, colorCode, duration := getPipelineStatusAndColorCode(&pipe)
-				res = res + colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", PipelineName,
+				res += colorCode.Sprintf("\n%s %s\n%14s %s\n%14s %d \n%14s %s \n%14s %s\n", PipelineName,
 					pipe.Name, Branch, pipe.PipelineSourceBranch, Run, pipe.Run.RunNumber, Duration,
 					duration, StatusLabel, string(respStatus))
 			}
@@ -131,7 +131,7 @@ func convertSecToDay(sec int) string {
 	log.Debug("Duration time in seconds:", sec)
 	day := sec / (24 * 3600)
 
-	sec = sec % (24 * 3600)
+	sec %= 24 * 3600
 	hour := sec / 3600
 
 	sec %= 3600

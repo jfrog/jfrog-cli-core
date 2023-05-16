@@ -37,7 +37,7 @@ var (
 	originalDirPath = FileItem{"etc", "plugins"}
 	v7DirPath       = FileItem{"var", "etc", "artifactory", "plugins"}
 	// Error types
-	notValidDestinationErr = errors.Errorf("Can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
+	notValidDestinationErr = errors.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
 	downloadConnectionErr  = func(baseUrl, fileName, err string) error {
 		return errors.Errorf("Could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value.", fileName, baseUrl, err)
 	}

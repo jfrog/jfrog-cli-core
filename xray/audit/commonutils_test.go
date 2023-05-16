@@ -2,21 +2,22 @@ package audit
 
 import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestSetPathsForIssues(t *testing.T) {
 	// Create a test dependency tree
-	rootNode := &services.GraphNode{Id: "root"}
-	childNode1 := &services.GraphNode{Id: "child1"}
-	childNode2 := &services.GraphNode{Id: "child2"}
-	childNode3 := &services.GraphNode{Id: "child3"}
-	childNode4 := &services.GraphNode{Id: "child4"}
-	childNode5 := &services.GraphNode{Id: "child5"}
-	rootNode.Nodes = []*services.GraphNode{childNode1, childNode2, childNode3}
-	childNode2.Nodes = []*services.GraphNode{childNode4}
-	childNode3.Nodes = []*services.GraphNode{childNode5}
+	rootNode := &xrayUtils.GraphNode{Id: "root"}
+	childNode1 := &xrayUtils.GraphNode{Id: "child1"}
+	childNode2 := &xrayUtils.GraphNode{Id: "child2"}
+	childNode3 := &xrayUtils.GraphNode{Id: "child3"}
+	childNode4 := &xrayUtils.GraphNode{Id: "child4"}
+	childNode5 := &xrayUtils.GraphNode{Id: "child5"}
+	rootNode.Nodes = []*xrayUtils.GraphNode{childNode1, childNode2, childNode3}
+	childNode2.Nodes = []*xrayUtils.GraphNode{childNode4}
+	childNode3.Nodes = []*xrayUtils.GraphNode{childNode5}
 
 	// Create a test issues map
 	issuesMap := make(map[string]*services.Component)
@@ -104,16 +105,16 @@ func TestBuildImpactPaths(t *testing.T) {
 			},
 		},
 	}
-	dependencyTrees := []*services.GraphNode{
+	dependencyTrees := []*xrayUtils.GraphNode{
 		{
 			Id: "dep1",
-			Nodes: []*services.GraphNode{
+			Nodes: []*xrayUtils.GraphNode{
 				{
 					Id: "dep2",
-					Nodes: []*services.GraphNode{
+					Nodes: []*xrayUtils.GraphNode{
 						{
 							Id:    "dep3",
-							Nodes: []*services.GraphNode{},
+							Nodes: []*xrayUtils.GraphNode{},
 						},
 					},
 				},

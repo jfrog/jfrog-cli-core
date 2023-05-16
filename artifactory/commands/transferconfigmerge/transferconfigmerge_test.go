@@ -75,7 +75,7 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 		targetSoftLimit = &trueValue
 	}
 	if !sameQuotaBytes {
-		targetQuotaBytes = targetQuotaBytes + 125
+		targetQuotaBytes += 125
 	}
 	source = services.Project{DisplayName: sourceName, Description: sourceDescription, AdminPrivileges: sourceAdmin, SoftLimit: sourceSoftLimit, StorageQuotaBytes: sourceQuotaBytes, ProjectKey: sourceKey}
 	target = services.Project{DisplayName: targetName, Description: targetDescription, AdminPrivileges: targetAdmin, SoftLimit: targetSoftLimit, StorageQuotaBytes: targetQuotaBytes, ProjectKey: targetKey}

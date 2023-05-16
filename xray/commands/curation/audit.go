@@ -144,7 +144,9 @@ func (ca *CurationAuditCommand) Run() (err error) {
 	}
 	if len(ca.workingDirs) > 0 {
 		defer func() {
-			err = errorutils.CheckError(os.Chdir(rootDir))
+			if e := errorutils.CheckError(os.Chdir(rootDir)); err == nil {
+				err = e
+			}
 		}()
 	} else {
 		ca.workingDirs = append(ca.workingDirs, rootDir)
@@ -163,16 +165,18 @@ func (ca *CurationAuditCommand) Run() (err error) {
 			}
 		}
 		// If error returned, continue to print results(if any), and return error at the end.
-		err = ca.doCurateAudit(results)
+		if e := ca.doCurateAudit(results); e != nil {
+			err = errors.Join(err, e)
+		}
 	}
 	if ca.Progress != nil {
-		if err = ca.Progress.Quit(); err != nil {
-			return err
+		if e := ca.Progress.Quit(); e != nil {
+			err = errors.Join(err, e)
 		}
 	}
 	for projectPath, packagesStatus := range results {
-		if err = printResult(ca.OutputFormat, projectPath, packagesStatus); err != nil {
-			return err
+		if e := printResult(ca.OutputFormat, projectPath, packagesStatus); e != nil {
+			err = errors.Join(err, e)
 		}
 	}
 	return
@@ -391,7 +395,6 @@ func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) e
 		if resp == nil || resp.StatusCode != http.StatusForbidden {
 			return err
 		}
-
 	}
 	if resp != nil && resp.StatusCode >= 400 && resp.StatusCode != http.StatusForbidden {
 		return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)

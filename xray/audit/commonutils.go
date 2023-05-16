@@ -236,7 +236,7 @@ func appendPath(currentTree map[string]*services.Component, dependency *services
 
 func atLeastOneDirectPath(nodes [][]services.ImpactPathNode) bool {
 	for index := range nodes {
-		if len(nodes[index]) == 2 && nodes[index][0].ComponentId == "root" {
+		if len(nodes[index]) == 2 {
 			return true
 		}
 	}

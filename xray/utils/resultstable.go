@@ -727,7 +727,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []forma
 	}
 	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve[0].Id]
 	if !ok {
-		return
+		return ApplicabilityUndeterminedStringValue
 	}
 	return
 }

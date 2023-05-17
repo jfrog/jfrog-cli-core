@@ -252,7 +252,7 @@ func setProxyIfDefined(config *viper.Viper) error {
 }
 
 func setHttpProxy(config *viper.Viper) error {
-	var proxyConfig string
+	proxyConfig := ""
 	if proxyConfig = os.Getenv(HttpProxyEnvKey); proxyConfig == "" {
 		return nil
 	}
@@ -263,8 +263,7 @@ func setHttpProxy(config *viper.Viper) error {
 	config.Set(httpProxy+Host, host)
 	config.Set(httpProxy+Port, port)
 	config.Set(httpProxy+Username, username)
-	os.Setenv(httpProxy+Password, password)
-	return nil
+	return os.Setenv(httpProxy+Password, password)
 }
 
 func setHttpsProxy(config *viper.Viper) error {
@@ -279,8 +278,7 @@ func setHttpsProxy(config *viper.Viper) error {
 	config.Set(httpsProxy+Host, host)
 	config.Set(httpsProxy+Port, port)
 	config.Set(httpsProxy+Username, username)
-	os.Setenv(httpsProxy+Password, password)
-	return nil
+	return os.Setenv(httpsProxy+Password, password)
 }
 
 func setNoProxyIfDefined(config *viper.Viper) {

@@ -145,7 +145,7 @@ func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectTyp
 
 func TestSetHttpProxy(t *testing.T) {
 	backupProxyPass := os.Getenv(httpProxy + Password)
-	os.Setenv(httpProxy+Password, "")
+	assert.NoError(t, os.Setenv(httpProxy+Password, ""))
 	setAndAssertProxy(httpProxyForTest, t)
 	vConfig := viper.New()
 	err := setProxyIfDefined(vConfig)
@@ -164,14 +164,11 @@ func TestSetHttpProxy(t *testing.T) {
 
 func TestSetHttpsProxy(t *testing.T) {
 	backupProxyPass := os.Getenv(httpsProxy + Password)
-	os.Setenv(httpsProxy+Password, "")
+	assert.NoError(t, os.Setenv(httpsProxy+Password, ""))
 	setAndAssertHttpsProxy(httpsProxyForTest, t)
 	vConfig := viper.New()
 
-	err := setProxyIfDefined(vConfig)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, setProxyIfDefined(vConfig))
 
 	expectedConfig := viper.New()
 	expectedConfig.Set(httpsProxy+Host, httpsHost)

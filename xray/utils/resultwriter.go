@@ -31,6 +31,8 @@ const maxPossibleCve = 10.0
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
+var CurationOutputFormats = []string{string(Table), string(Json)}
+
 type sarifProperties struct {
 	Cves        string
 	Headline    string
@@ -71,9 +73,9 @@ func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonE
 		if err != nil {
 			return err
 		}
-		return printJson(jsonTable)
+		return PrintJson(jsonTable)
 	case Json:
-		return printJson(results)
+		return PrintJson(results)
 	case Sarif:
 		sarifFile, err := GenerateSarifFileFromScan(xrayScanResults, results, isMultipleRoots, false)
 		if err != nil {
@@ -339,7 +341,7 @@ func writeJsonResults(results *ExtendedScanResults) (resultsPath string, err err
 	return
 }
 
-func printJson(output interface{}) error {
+func PrintJson(output interface{}) error {
 	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)

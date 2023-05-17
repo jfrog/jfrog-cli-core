@@ -6,7 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/exp/slices"
 )
 
@@ -15,7 +15,7 @@ const (
 	ignoreScriptsFlag        = "--ignore-scripts"
 )
 
-func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree(npmArgs []string) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -37,7 +37,7 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*services.GraphNode
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	dependencyTree = []*services.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
+	dependencyTree = []*xrayUtils.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
 	return
 }
 
@@ -50,7 +50,7 @@ func addIgnoreScriptsFlag(npmArgs []string) []string {
 }
 
 // Parse the dependencies into an Xray dependency tree format
-func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (xrDependencyTree *services.GraphNode) {
+func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (xrDependencyTree *xrayUtils.GraphNode) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		dependencyId := npmPackageTypeIdentifier + dependency.Id

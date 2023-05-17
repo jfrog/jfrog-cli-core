@@ -13,7 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -102,7 +102,7 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	return nil
 }
 
-func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*services.GraphNode, err error) {
+func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if (server != nil && server.IsEmpty()) || depsRepo == "" {
 		depsRepo, server, err = getGradleConfig()
 		if err != nil {
@@ -225,15 +225,15 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 }
 
 // Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input
-func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*services.GraphNode, error) {
+func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*xrayUtils.GraphNode, error) {
 	if err := dtp.parseDepTreeFiles(outputFileContent); err != nil {
 		return nil, err
 	}
-	var depsGraph []*services.GraphNode
+	var depsGraph []*xrayUtils.GraphNode
 	for dependency, children := range dtp.tree {
-		directDependency := &services.GraphNode{
+		directDependency := &xrayUtils.GraphNode{
 			Id:    GavPackageTypeIdentifier + dependency,
-			Nodes: []*services.GraphNode{},
+			Nodes: []*xrayUtils.GraphNode{},
 		}
 		for _, childPath := range children {
 			populateGradleDependencyTree(directDependency, childPath)
@@ -243,11 +243,11 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 	return depsGraph, nil
 }
 
-func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren dependenciesPaths) {
+func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildren dependenciesPaths) {
 	for gav, children := range currNodeChildren.Paths {
-		childNode := &services.GraphNode{
+		childNode := &xrayUtils.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
-			Nodes:  []*services.GraphNode{},
+			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
 		if currNode.NodeHasLoop() {

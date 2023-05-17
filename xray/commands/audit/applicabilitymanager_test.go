@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -45,11 +46,11 @@ var fakeBasicXrayResults = []services.ScanResponse{
 	},
 }
 
-var fakeBasicDependencyGraph = []*services.GraphNode{
+var fakeBasicDependencyGraph = []*xrayUtils.GraphNode{
 	{
 		Id: "parent_node_id",
-		Nodes: []*services.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
+		Nodes: []*xrayUtils.GraphNode{
+			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
 			{Id: "issueId_2_direct_dependency", Nodes: nil},
 		},
 	},
@@ -122,7 +123,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	// Arrange
-	multipleDependencyTrees := []*services.GraphNode{fakeBasicDependencyGraph[0], fakeBasicDependencyGraph[0]}
+	multipleDependencyTrees := []*xrayUtils.GraphNode{fakeBasicDependencyGraph[0], fakeBasicDependencyGraph[0]}
 
 	// Act
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, multipleDependencyTrees, &fakeServerDetails)
@@ -340,7 +341,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 
 func TestGetDirectDependenciesList(t *testing.T) {
 	tests := []struct {
-		dependenciesTrees []*services.GraphNode
+		dependenciesTrees []*xrayUtils.GraphNode
 		expectedResult    []string
 	}{
 		{
@@ -348,9 +349,9 @@ func TestGetDirectDependenciesList(t *testing.T) {
 			expectedResult:    []string{},
 		},
 		{
-			dependenciesTrees: []*services.GraphNode{
-				{Id: "parent_node_id", Nodes: []*services.GraphNode{
-					{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
+			dependenciesTrees: []*xrayUtils.GraphNode{
+				{Id: "parent_node_id", Nodes: []*xrayUtils.GraphNode{
+					{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
 					{Id: "issueId_2_direct_dependency", Nodes: nil},
 				},
 				},
@@ -358,8 +359,8 @@ func TestGetDirectDependenciesList(t *testing.T) {
 			expectedResult: []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"},
 		},
 		{
-			dependenciesTrees: []*services.GraphNode{
-				{Id: "parent_node_id", Nodes: []*services.GraphNode{
+			dependenciesTrees: []*xrayUtils.GraphNode{
+				{Id: "parent_node_id", Nodes: []*xrayUtils.GraphNode{
 					{Id: "issueId_1_direct_dependency", Nodes: nil},
 					{Id: "issueId_2_direct_dependency", Nodes: nil},
 				},

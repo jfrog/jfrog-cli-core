@@ -161,7 +161,7 @@ func (ca *NpmCommand) setRestoreNpmrcFunc() error {
 	}
 	ca.restoreNpmrcFunc = func() error {
 		if unsetEnvErr := os.Unsetenv(npmConfigAuthEnv); unsetEnvErr != nil {
-			log.Warn("Couldn't unset", npmConfigAuthEnv)
+			return unsetEnvErr
 		}
 		return restoreNpmrcFunc()
 	}

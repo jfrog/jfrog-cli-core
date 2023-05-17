@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -31,12 +31,12 @@ type SecretScanManager struct {
 	secretsScannerResults []Secret
 	configFileName        string
 	resultsFileName       string
-	analyzerManager       jas.AnalyzerManager
+	analyzerManager       utils.AnalyzerManagerInterface
 	serverDetails         *config.ServerDetails
 	projectRootPath       string
 }
 
-func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager jas.AnalyzerManager) ([]Secret, bool, error) {
+func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Secret, bool, error) {
 	secretScanManager, err := NewSecretsScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		log.Info("failed to run secrets scan: " + err.Error())
@@ -44,7 +44,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	}
 	err = secretScanManager.Run()
 	if err != nil {
-		if jas.isNotEntitledError(err) || jas.isUnsupportedCommandError(err) {
+		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
 		log.Info("failed to run secrets scan: " + err.Error())
@@ -53,7 +53,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	return secretScanManager.secretsScannerResults, true, nil
 }
 
-func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager jas.AnalyzerManager) (*SecretScanManager, error) {
+func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (*SecretScanManager, error) {
 	if serverDetails == nil {
 		return nil, errors.New("cant get xray server details")
 	}
@@ -71,14 +71,22 @@ func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager 
 }
 
 func (s *SecretScanManager) Run() error {
-	defer jas.deleteJasScanProcessFiles(s.configFileName, s.resultsFileName)
-	if err := s.createConfigFile(); err != nil {
+	var err error
+	defer func() {
+		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
+			e := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
+			if err == nil {
+				err = e
+			}
+		}
+	}()
+	if err = s.createConfigFile(); err != nil {
 		return err
 	}
-	if err := s.runAnalyzerManager(); err != nil {
+	if err = s.runAnalyzerManager(); err != nil {
 		return err
 	}
-	if err := s.parseResults(); err != nil {
+	if err = s.parseResults(); err != nil {
 		return err
 	}
 	return nil
@@ -123,15 +131,11 @@ func (s *SecretScanManager) createConfigFile() error {
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	err := jas.setAnalyzerManagerEnvVariables(s.serverDetails)
+	err := utils.SetAnalyzerManagerEnvVariables(s.serverDetails)
 	if err != nil {
 		return err
 	}
-	currentDir, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-	err = s.analyzerManager.RunAnalyzerManager(filepath.Join(currentDir, s.configFileName), secretsScanCommand)
+	err = s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
 	return err
 }
 
@@ -149,9 +153,9 @@ func (s *SecretScanManager) parseResults() error {
 
 	for _, secret := range secretsResults {
 		newSecret := Secret{
-			Severity:   jas.getResultSeverity(secret),
-			File:       jas.getResultFileName(secret),
-			LineColumn: jas.getResultLocationInFile(secret),
+			Severity:   utils.GetResultSeverity(secret),
+			File:       utils.GetResultFileName(secret),
+			LineColumn: utils.GetResultLocationInFile(secret),
 			Text:       s.getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,
 		}

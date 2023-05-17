@@ -3,7 +3,6 @@ package audit
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -18,12 +17,12 @@ var (
 type analyzerManagerMock struct {
 }
 
-func (am *analyzerManagerMock) RunAnalyzerManager(string, string) error {
+func (am *analyzerManagerMock) Exec(string) error {
 	return analyzerManagerExecutionError
 }
 
-func (am *analyzerManagerMock) DoesAnalyzerManagerExecutableExist() bool {
-	return analyzerManagerExist
+func (am *analyzerManagerMock) ExistLocally() (bool, error) {
+	return analyzerManagerExist, nil
 }
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -61,7 +60,7 @@ var fakeServerDetails = config.ServerDetails{
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExist = false
-	audit.analyzerManagerExecuter = &analyzerManagerMock{}
+	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
 	extendedResults, err := jas.GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)

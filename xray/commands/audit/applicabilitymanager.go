@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -20,17 +19,17 @@ import (
 const (
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
+	applicabilityScanCommand        = "ca"
 )
 
 var (
-	analyzerManagerExecuter                  utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
-	technologiesEligibleForApplicabilityScan                                = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
+	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-func GetApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, bool, error) {
-	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
+func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
+	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
@@ -42,34 +41,19 @@ func GetApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 			}
 		}
 	}()
-	shouldRun, err := applicabilityScanManager.shouldRun()
-	if err != nil {
-		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
-	}
-	if !shouldRun {
+	if !applicabilityScanManager.eligibleForApplicabilityScan() {
 		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
-		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+		return nil, false, nil
 	}
-	entitledForJas, err := applicabilityScanManager.Run()
+	entitledForAppScan, err := applicabilityScanManager.Run()
 	if err != nil {
-		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+		return nil, true, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
-	if !entitledForJas {
+	if !entitledForAppScan {
 		log.Debug("the current user is not entitled for the Advanced Security package")
-		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+		return nil, false, nil
 	}
-	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
-	extendedScanResults := utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
-	return &extendedScanResults, nil
-}
-
-func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
-	analyzerManagerExist, err := a.analyzerManager.ExistLocally()
-	if err != nil {
-		return false, err
-	}
-	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0, nil
+	return applicabilityScanManager.applicabilityScanResults, true, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:
@@ -96,17 +80,17 @@ func resultsIncludeEligibleTechnologies(xrayVulnerabilities []services.Vulnerabi
 }
 
 type ApplicabilityScanManager struct {
-	applicabilityScannerResults map[string]string
-	xrayVulnerabilities         []services.Vulnerability
-	xrayViolations              []services.Violation
-	configFileName              string
-	resultsFileName             string
-	analyzerManager             utils.AnalyzerManagerInterface
-	serverDetails               *config.ServerDetails
+	applicabilityScanResults map[string]string
+	xrayVulnerabilities      []services.Vulnerability
+	xrayViolations           []services.Violation
+	configFileName           string
+	resultsFileName          string
+	analyzerManager          utils.AnalyzerManagerInterface
+	serverDetails            *config.ServerDetails
 }
 
 func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
-	serverDetails *config.ServerDetails) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
+	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -116,14 +100,19 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &ApplicabilityScanManager{
-		applicabilityScannerResults: map[string]string{},
-		xrayVulnerabilities:         extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
-		xrayViolations:              extractXrayDirectViolations(xrayScanResults, directDependencies),
-		configFileName:              filepath.Join(tempDir, "config.yaml"),
-		resultsFileName:             filepath.Join(tempDir, "results.sarif"),
-		analyzerManager:             analyzerManagerExecuter,
-		serverDetails:               serverDetails,
+		applicabilityScanResults: map[string]string{},
+		xrayVulnerabilities:      extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
+		xrayViolations:           extractXrayDirectViolations(xrayScanResults, directDependencies),
+		configFileName:           filepath.Join(tempDir, "config.yaml"),
+		resultsFileName:          filepath.Join(tempDir, "results.sarif"),
+		analyzerManager:          analyzerManager,
+		serverDetails:            serverDetails,
 	}, cleanup, nil
+}
+
+func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() bool {
+	return resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
+		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0
 }
 
 // This function gets a liat of xray scan responses that contains direct and indirect violations, and returns only direct
@@ -185,14 +174,14 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 }
 
 func (a *ApplicabilityScanManager) getApplicabilityScanResults() map[string]string {
-	return a.applicabilityScannerResults
+	return a.applicabilityScanResults
 }
 
 func (a *ApplicabilityScanManager) Run() (bool, error) {
 	var err error
 	defer func() {
-		if a.deleteApplicabilityScanProcessFiles() != nil {
-			e := a.deleteApplicabilityScanProcessFiles()
+		if deleteJasProcessFiles(a.configFileName, a.resultsFileName) != nil {
+			e := deleteJasProcessFiles(a.configFileName, a.resultsFileName)
 			if err == nil {
 				err = e
 			}
@@ -257,7 +246,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	err = a.analyzerManager.Exec(a.configFileName)
+	err = a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode := exitError.ExitCode()
@@ -282,39 +271,15 @@ func (a *ApplicabilityScanManager) parseResults() error {
 
 	xrayCves := utils.RemoveDuplicateValues(createCveList(a.xrayVulnerabilities, a.xrayViolations))
 	for _, xrayCve := range xrayCves {
-		a.applicabilityScannerResults[xrayCve] = utils.ApplicabilityUndeterminedStringValue
+		a.applicabilityScanResults[xrayCve] = utils.ApplicabilityUndeterminedStringValue
 	}
 
 	for _, vulnerability := range fullVulnerabilitiesList {
 		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
 		if isVulnerabilityApplicable(vulnerability) {
-			a.applicabilityScannerResults[applicableVulnerabilityName] = utils.ApplicableStringValue
+			a.applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
 		} else {
-			a.applicabilityScannerResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
-		}
-	}
-	return nil
-}
-
-func (a *ApplicabilityScanManager) deleteApplicabilityScanProcessFiles() error {
-	exist, err := fileutils.IsFileExists(a.configFileName, false)
-	if err != nil {
-		return err
-	}
-	if exist {
-		err = os.Remove(a.configFileName)
-		if errorutils.CheckError(err) != nil {
-			return err
-		}
-	}
-	exist, err = fileutils.IsFileExists(a.resultsFileName, false)
-	if err != nil {
-		return err
-	}
-	if exist {
-		err = os.Remove(a.resultsFileName)
-		if errorutils.CheckError(err) != nil {
-			return err
+			a.applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
 		}
 	}
 	return nil

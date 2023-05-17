@@ -3,7 +3,6 @@ package audit
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -12,54 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 )
-
-var (
-	analyzerManagerExecutionError error = nil
-	analyzerManagerExist                = true
-)
-
-type analyzerManagerMock struct {
-}
-
-func (am *analyzerManagerMock) Exec(string) error {
-	return analyzerManagerExecutionError
-}
-
-func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExist, nil
-}
-
-var fakeBasicXrayResults = []services.ScanResponse{
-	{
-		ScanId: "scanId_1",
-		Vulnerabilities: []services.Vulnerability{
-			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-				Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
-		},
-		Violations: []services.Violation{
-			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-				Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
-		},
-	},
-}
-
-var fakeBasicDependencyGraph = []*services.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*services.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-}
-
-var fakeServerDetails = config.ServerDetails{
-	Url:      "platformUrl",
-	Password: "password",
-	User:     "user",
-}
 
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
@@ -405,9 +356,9 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	assert.NotEmpty(t, applicabilityManager.applicabilityScannerResults)
-	assert.Equal(t, 5, len(applicabilityManager.applicabilityScannerResults))
-	for _, cveResult := range applicabilityManager.applicabilityScannerResults {
+	assert.NotEmpty(t, applicabilityManager.applicabilityScanResults)
+	assert.Equal(t, 5, len(applicabilityManager.applicabilityScanResults))
+	for _, cveResult := range applicabilityManager.applicabilityScanResults {
 		assert.Equal(t, utils.ApplicabilityUndeterminedStringValue, cveResult)
 	}
 }
@@ -423,10 +374,10 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	assert.NotEmpty(t, applicabilityManager.applicabilityScannerResults)
-	assert.Equal(t, 5, len(applicabilityManager.applicabilityScannerResults))
-	assert.Equal(t, utils.ApplicableStringValue, applicabilityManager.applicabilityScannerResults["testCve1"])
-	assert.Equal(t, utils.NotApplicableStringValue, applicabilityManager.applicabilityScannerResults["testCve3"])
+	assert.NotEmpty(t, applicabilityManager.applicabilityScanResults)
+	assert.Equal(t, 5, len(applicabilityManager.applicabilityScanResults))
+	assert.Equal(t, utils.ApplicableStringValue, applicabilityManager.applicabilityScanResults["testCve1"])
+	assert.Equal(t, utils.NotApplicableStringValue, applicabilityManager.applicabilityScanResults["testCve3"])
 
 }
 
@@ -441,29 +392,11 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	assert.NotEmpty(t, applicabilityManager.applicabilityScannerResults)
-	assert.Equal(t, 5, len(applicabilityManager.applicabilityScannerResults))
-	for _, cveResult := range applicabilityManager.applicabilityScannerResults {
+	assert.NotEmpty(t, applicabilityManager.applicabilityScanResults)
+	assert.Equal(t, 5, len(applicabilityManager.applicabilityScanResults))
+	for _, cveResult := range applicabilityManager.applicabilityScanResults {
 		assert.Equal(t, utils.NotApplicableStringValue, cveResult)
 	}
-}
-
-func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-	// Arrange
-	analyzerManagerExist = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
-
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.False(t, extendedResults.EntitledForJas)
-	assert.Equal(t, 1, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
-
-	// Cleanup
-	analyzerManagerExist = true
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {

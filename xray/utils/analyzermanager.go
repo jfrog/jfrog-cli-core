@@ -4,12 +4,12 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	audit "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic"
+	audit2 "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/owenrumney/go-sarif/sarif"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,7 +29,6 @@ const (
 	jfTokenEnvVariable       = "JF_TOKEN"
 	jfPlatformUrlEnvVariable = "JF_PLATFORM_URL"
 	logDirEnvVariable        = "AM_LOG_DIRECTORY"
-	applicabilityScanCommand = "ca"
 )
 
 const (
@@ -40,9 +39,9 @@ const (
 
 type ExtendedScanResults struct {
 	XrayResults                  []services.ScanResponse
-	ApplicabilityScannerResults  map[string]string
-	SecretsScanResults           []audit.Secret
-	IacScanResults               []audit.Iac
+	ApplicabilityScanResults     map[string]string
+	SecretsScanResults           []audit2.Secret
+	IacScanResults               []audit2.Iac
 	EntitledForJas               bool
 	EligibleForApplicabilityScan bool
 	EligibleForSecretScan        bool
@@ -63,7 +62,7 @@ func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 //   - sarif file containing the scan results
 type AnalyzerManagerInterface interface {
 	ExistLocally() (bool, error)
-	Exec(string) error
+	Exec(string, string) error
 }
 
 type AnalyzerManager struct {
@@ -79,8 +78,8 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 	return fileutils.IsFileExists(analyzerManagerPath, false)
 }
 
-func (am *AnalyzerManager) Exec(configFile string) error {
-	return exec.Command(am.analyzerManagerFullPath, applicabilityScanCommand, configFile).Run()
+func (am *AnalyzerManager) Exec(configFile string, scanCommand string) error {
+	return exec.Command(am.analyzerManagerFullPath, scanCommand, configFile).Run()
 }
 
 func CreateAnalyzerManagerLogDir() error {
@@ -195,20 +194,4 @@ func GetResultSeverity(result *sarif.Result) string {
 	}
 	return "Medium" // Default value for severity
 
-}
-
-func DeleteJasScanProcessFiles(configFile string, resultsFile string) error {
-	if exist, _ := fileutils.IsFileExists(configFile, false); exist {
-		err := os.Remove(configFile)
-		if err != nil {
-			return err
-		}
-	}
-	if exist, _ := fileutils.IsFileExists(resultsFile, false); exist {
-		err := os.Remove(resultsFile)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -1,10 +1,8 @@
 package audit
 
 import (
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -36,12 +34,20 @@ type IacScanManager struct {
 	projectRootPath   string
 }
 
-func GetIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Iac, bool, error) {
-	iacScanManager, err := NewsIacScanManager(serverDetails, analyzerManager)
+func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Iac, bool, error) {
+	iacScanManager, cleanupFunc, err := NewsIacScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		log.Info("failed to run iac scan: " + err.Error())
 		return nil, false, err
 	}
+	defer func() {
+		if cleanupFunc != nil {
+			e := cleanupFunc()
+			if err == nil {
+				err = e
+			}
+		}
+	}()
 	err = iacScanManager.Run()
 	if err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
@@ -53,13 +59,14 @@ func GetIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	return iacScanManager.iacScannerResults, true, nil
 }
 
-func NewsIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (*IacScanManager, error) {
-	if serverDetails == nil {
-		return nil, errors.New("cant get xray server details")
-	}
+func NewsIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
+	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return
+	}
+	cleanup = func() error {
+		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &IacScanManager{
 		iacScannerResults: []Iac{},
@@ -67,18 +74,26 @@ func NewsIacScanManager(serverDetails *config.ServerDetails, analyzerManager uti
 		resultsFileName:   filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:   analyzerManager,
 		serverDetails:     serverDetails,
-	}, nil
+	}, cleanup, nil
 }
 
 func (iac *IacScanManager) Run() error {
-	defer utils.DeleteJasScanProcessFiles(iac.configFileName, iac.resultsFileName)
-	if err := iac.createConfigFile(); err != nil {
+	var err error
+	defer func() {
+		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
+			e := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
+			if err == nil {
+				err = e
+			}
+		}
+	}()
+	if err = iac.createConfigFile(); err != nil {
 		return err
 	}
-	if err := iac.runAnalyzerManager(); err != nil {
+	if err = iac.runAnalyzerManager(); err != nil {
 		return err
 	}
-	if err := iac.parseResults(); err != nil {
+	if err = iac.parseResults(); err != nil {
 		return err
 	}
 	return nil
@@ -125,7 +140,7 @@ func (iac *IacScanManager) runAnalyzerManager() error {
 	if err != nil {
 		return err
 	}
-	err = iac.analyzerManager.Exec(iac.configFileName)
+	err = iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
 	return err
 }
 
@@ -143,9 +158,9 @@ func (iac *IacScanManager) parseResults() error {
 
 	for _, result := range iacResults {
 		newIac := Iac{
-			Severity:   jas.getResultSeverity(result),
-			File:       jas.extractRelativePath(jas.getResultFileName(result), iac.projectRootPath),
-			LineColumn: jas.getResultLocationInFile(result),
+			Severity:   utils.GetResultSeverity(result),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), iac.projectRootPath),
+			LineColumn: utils.GetResultLocationInFile(result),
 			Text:       *result.Message.Text,
 			Type:       *result.RuleID,
 		}

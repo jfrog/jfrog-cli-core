@@ -729,7 +729,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []forma
 	if !ok {
 		return
 	}
-	return applicableCveValue
+	return
 }
 
 func getApplicableCveNumValue(stringValue string) int {

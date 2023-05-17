@@ -252,7 +252,7 @@ func setProxyIfDefined(config *viper.Viper) error {
 }
 
 func setHttpProxy(config *viper.Viper) error {
-	proxyConfig := ""
+	var proxyConfig string
 	if proxyConfig = os.Getenv(HttpProxyEnvKey); proxyConfig == "" {
 		return nil
 	}

@@ -719,9 +719,6 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []formats.CveRow) (applicableCveValue string) {
 	applicableCveValue = ApplicabilityUndeterminedStringValue
-	if xrayCve == nil {
-		return
-	}
 	if len(xrayCve) == 0 || !extendedResults.EntitledForJas {
 		return
 	}

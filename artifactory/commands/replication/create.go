@@ -2,6 +2,7 @@ package replication
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -70,9 +71,9 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 			return
 		}
 		if key == "serverId" {
-			serverId = value.(string)
+			serverId = fmt.Sprint(value)
 		} else {
-			err := writersMap[key](&replicationConfigMap, key, value.(string))
+			err := writersMap[key](&replicationConfigMap, key, fmt.Sprint(value))
 			if err != nil {
 				return err
 			}
@@ -101,7 +102,7 @@ func (rcc *ReplicationCreateCommand) Run() (err error) {
 	// In case 'serverId' is not found, pull replication will be assumed.
 	if serverId != "" {
 		if targetRepo, ok := replicationConfigMap["targetRepoKey"]; ok {
-			if err = updateArtifactoryInfo(&params, serverId, targetRepo.(string)); err != nil {
+			if err = updateArtifactoryInfo(&params, serverId, fmt.Sprint(targetRepo)); err != nil {
 				return err
 			}
 		} else {

@@ -31,3 +31,7 @@ func (nc *NpmCommand) SetRepo(repo string) *NpmCommand {
 	nc.repo = repo
 	return nc
 }
+
+func (nc *NpmCommand) GetRepo() string {
+	return nc.repo
+}

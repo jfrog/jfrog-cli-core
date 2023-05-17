@@ -205,11 +205,10 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 }
 
 func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineProg {
-	getVals := func() (totalRepos, transferredRepos *int64, err error) {
+	getVals := func() (totalRepos, transferredRepos *int64) {
 		totalRepos = &tpm.stateMng.TotalRepositories.TotalUnits
 		transferredRepos = &tpm.stateMng.TotalRepositories.TransferredUnits
-
-		return transferredRepos, totalRepos, nil
+		return transferredRepos, totalRepos
 	}
 	pb := tpm.barMng.newHeadlineTaskProgressBar(getVals, "Transferring your repositories", tpm.transferLabels.Repositories)
 
@@ -220,10 +219,7 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 			if tpm.generalShouldStop {
 				return
 			}
-			transferredRepos, totalRepos, err := getVals()
-			if err != nil {
-				log.Error("Error: Couldn't get needed information about transfer status from state")
-			}
+			transferredRepos, totalRepos := getVals()
 			if pb == nil {
 				log.Error("We Couldn't initialize the progress bar so we can't set values to it")
 				return

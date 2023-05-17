@@ -31,6 +31,8 @@ const maxPossibleCve = 10.0
 
 var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
 
+var CurationOutputFormats = []string{string(Table), string(Json)}
+
 type sarifProperties struct {
 	Cves        string
 	Headline    string
@@ -41,12 +43,13 @@ type sarifProperties struct {
 // PrintScanResults prints Xray scan results in the given format.
 // Note that errors are printed only on SimpleJson format.
 // If the scan argument is set to true, print the scan tables.
-func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
+func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
+	xrayScanResults := results.getXrayScanResults()
 	switch format {
 	case Table:
 		var err error
-		violations, vulnerabilities, licenses := SplitScanResults(results)
-		if len(results) > 0 {
+		violations, vulnerabilities, licenses := SplitScanResults(xrayScanResults)
+		if len(xrayScanResults) > 0 {
 			resultsPath, err := writeJsonResults(results)
 			if err != nil {
 				return err
@@ -54,9 +57,9 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 			log.Output("The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
-			err = PrintVulnerabilitiesTable(vulnerabilities, isMultipleRoots, printExtended, scan)
+			err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)
 		} else {
-			err = PrintViolationsTable(violations, isMultipleRoots, printExtended, scan)
+			err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, scan)
 		}
 		if err != nil {
 			return err
@@ -66,15 +69,15 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 		}
 		return err
 	case SimpleJson:
-		jsonTable, err := convertScanToSimpleJson(results, errors, isMultipleRoots, includeLicenses, false)
+		jsonTable, err := convertScanToSimpleJson(xrayScanResults, results, errors, isMultipleRoots, includeLicenses, false)
 		if err != nil {
 			return err
 		}
-		return printJson(jsonTable)
+		return PrintJson(jsonTable)
 	case Json:
-		return printJson(results)
+		return PrintJson(results)
 	case Sarif:
-		sarifFile, err := GenerateSarifFileFromScan(results, isMultipleRoots, false)
+		sarifFile, err := GenerateSarifFileFromScan(xrayScanResults, results, isMultipleRoots, false)
 		if err != nil {
 			return err
 		}
@@ -83,14 +86,13 @@ func PrintScanResults(results []services.ScanResponse, errors []formats.SimpleJs
 	return nil
 }
 
-func GenerateSarifFileFromScan(currentScan []services.ScanResponse, isMultipleRoots, simplifiedOutput bool) (string, error) {
+func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) (string, error) {
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	run := sarif.NewRunWithInformationURI("JFrog Xray", coreutils.JFrogComUrl+"xray/")
-	err = convertScanToSarif(run, currentScan, isMultipleRoots, simplifiedOutput)
-	if err != nil {
+	if err = convertScanToSarif(run, currentScan, extendedResults, isMultipleRoots, simplifiedOutput); err != nil {
 		return "", err
 	}
 	report.AddRun(run)
@@ -102,18 +104,18 @@ func GenerateSarifFileFromScan(currentScan []services.ScanResponse, isMultipleRo
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertScanToSimpleJson(results []services.ScanResponse, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func convertScanToSimpleJson(results []services.ScanResponse, extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
 	violations, vulnerabilities, licenses := SplitScanResults(results)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
-		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, isMultipleRoots, simplifiedOutput)
+		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, extendedResults, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
 	}
 	if len(violations) > 0 {
-		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, isMultipleRoots, simplifiedOutput)
+		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
@@ -134,9 +136,9 @@ func convertScanToSimpleJson(results []services.ScanResponse, errors []formats.S
 	return jsonTable, nil
 }
 
-func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, isMultipleRoots, simplifiedOutput bool) error {
+func convertScanToSarif(run *sarif.Run, currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) error {
 	var errors []formats.SimpleJsonError
-	jsonTable, err := convertScanToSimpleJson(currentScan, errors, isMultipleRoots, false, simplifiedOutput)
+	jsonTable, err := convertScanToSimpleJson(currentScan, extendedResults, errors, isMultipleRoots, false, simplifiedOutput)
 	if err != nil {
 		return err
 	}
@@ -311,7 +313,7 @@ func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []
 	return violations, vulnerabilities, licenses
 }
 
-func writeJsonResults(results []services.ScanResponse) (resultsPath string, err error) {
+func writeJsonResults(results *ExtendedScanResults) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -339,7 +341,7 @@ func writeJsonResults(results []services.ScanResponse) (resultsPath string, err 
 	return
 }
 
-func printJson(output interface{}) error {
+func PrintJson(output interface{}) error {
 	results, err := json.Marshal(output)
 	if err != nil {
 		return errorutils.CheckError(err)

@@ -1,0 +1,88 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "JFrog Applicability Scanner",
+                    "rules": [
+                        {
+                            "id": "applic_CVE-2021-3807",
+                            "fullDescription": {
+                                "text": "The scanner checks whether the vulnerable function `ansi-regex` is called.",
+                                "markdown": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                            },
+                            "name": "CVE-2021-3807",
+                            "shortDescription": {
+                                "text": "Scanner for CVE-2021-3807"
+                            }
+                        },
+                        {
+                            "id": "applic_CVE-2021-3918",
+                            "fullDescription": {
+                                "text": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument.",
+                                "markdown": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument."
+                            },
+                            "name": "CVE-2021-3918",
+                            "shortDescription": {
+                                "text": "Scanner for CVE-2021-3918"
+                            }
+                        }
+                    ],
+                    "version": "APPLIC_SCANNERv0.2.3"
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "ca_scanner/applicability_scanner",
+                        "scan",
+                        "ca_config_example.yaml"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/ort/Desktop/am_versions_for_ga/mac_arm"
+                    }
+                }
+            ],
+            "results": [
+                {
+                    "message": {
+                        "text": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                    },
+                    "kind": "pass",
+                    "ruleId": "applic_testCve2"
+                },
+                {
+                    "message": {
+                        "text": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                    },
+                    "kind": "pass",
+                    "ruleId": "applic_testCve3"
+                },
+                {
+                    "message": {
+                        "text": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                    },
+                    "kind": "pass",
+                    "ruleId": "applic_testCve4"
+                },   
+                {
+                    "message": {
+                        "text": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                    },
+                    "kind": "pass",
+                    "ruleId": "applic_testCve5"
+                },
+                                {
+                    "message": {
+                        "text": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                    },
+                    "kind": "pass",
+                    "ruleId": "applic_testCve1"
+                }
+            ]
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

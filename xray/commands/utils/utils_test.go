@@ -1,4 +1,4 @@
-package commands
+package utils
 
 import (
 	"github.com/jfrog/jfrog-client-go/xray/services"

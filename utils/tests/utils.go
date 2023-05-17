@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -125,7 +125,7 @@ func compare(expected, actual []string) error {
 }
 
 // CompareTree returns true iff the two trees contain the same nodes (regardless of their order)
-func CompareTree(a, b *services.GraphNode) bool {
+func CompareTree(a, b *xrayUtils.GraphNode) bool {
 	if a.Id != b.Id {
 		return false
 	}

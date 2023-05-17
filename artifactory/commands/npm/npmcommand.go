@@ -130,7 +130,7 @@ func (ca *NpmCommand) PreparePrerequisites(repo string) error {
 	}
 	if ca.npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckErrorf(
-			"JFrog CLI npm %s command requires npm client version "+minSupportedNpmVersion+" or higher. The Current version is: %s", ca.cmdName, ca.npmVersion.GetVersion())
+			"JFrog CLI npm %s command requires npm client version %s or higher. The Current version is: %s", ca.cmdName, minSupportedNpmVersion, ca.npmVersion.GetVersion())
 	}
 
 	if err := ca.setJsonOutput(); err != nil {

@@ -111,9 +111,9 @@ func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
 func (params *Params) SetNpmScope(depType string) *Params {
 	switch depType {
 	case "devOnly":
-		params.args = []string{"--dev"}
+		params.Args = []string{"--dev"}
 	case "prodOnly":
-		params.args = []string{"--prod"}
+		params.Args = []string{"--prod"}
 	}
 	return params
 }

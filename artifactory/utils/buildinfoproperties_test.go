@@ -148,11 +148,8 @@ func TestSetHttpProxy(t *testing.T) {
 	os.Setenv(httpProxy+Password, "")
 	setAndAssertProxy(httpProxyForTest, t)
 	vConfig := viper.New()
-
 	err := setProxyIfDefined(vConfig)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	expectedConfig := viper.New()
 	expectedConfig.Set(httpProxy+Host, host)

@@ -323,13 +323,15 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 			defer os.Setenv(coreutils.HomeDir, cliHomeDirBefore)
 			currentDir, err := os.Getwd()
 			require.NoError(t, err)
-			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, "../testdata/npm-project/.jfrog")))
+			configurationDir := "../testdata/npm-project/.jfrog"
+			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, configurationDir)))
 
 			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
 			defer mockServer.Close()
-			configFilePath := WriteServerDetailsConfigFileBytes(t, config.ArtifactoryUrl, "../testdata/npm-project/.jfrog")
+			configFilePath := WriteServerDetailsConfigFileBytes(t, config.ArtifactoryUrl, configurationDir)
 			defer func() {
 				require.NoError(t, os.Remove(configFilePath))
+				require.NoError(t, os.RemoveAll(filepath.Join(configFilePath, "backup")))
 			}()
 			curationCmd := NewCurationAuditCommand()
 			curationCmd.parallelRequests = 3
@@ -352,6 +354,7 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
 				assert.Equal(t, errMsgExpected, gotError.Error())
 			}
+			// Add the mock server to the expected blocked message url
 			for index := range tt.expectedResp {
 				tt.expectedResp[index].BlockedPackageUrl = fmt.Sprintf("%s%s", strings.TrimSuffix(config.GetArtifactoryUrl(), "/"), tt.expectedResp[index].BlockedPackageUrl)
 			}
@@ -365,8 +368,8 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 }
 
 func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail map[string]bool, requestToError map[string]bool) (*httptest.Server, *config.ServerDetails) {
+	mapLockReadWrite := sync.Mutex{}
 	serverMock, config, _ := tests2.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		mapLockReadWrite := sync.Mutex{}
 		if r.Method == http.MethodHead {
 			mapLockReadWrite.Lock()
 			if _, exist := expectedRequest[r.RequestURI]; exist {

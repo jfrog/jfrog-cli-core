@@ -100,7 +100,7 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		if resp.StatusCode == http.StatusUnauthorized {
-			err = fmt.Errorf(err.Error() + "\nHint: It looks like the provided credentials has no JFrog Xray permissions, maybe wrong or Artifactory only permissions.")
+			err = fmt.Errorf(err.Error() + "\nHint: It appears that the credentials provided do not have sufficient permissions for JFrog Xray. This could be due to either incorrect credentials or limited permissions restricted to Artifactory only.")
 		}
 		return "", fmt.Errorf("failed while attempting to download '%s':\n%s", url, err.Error())
 	}

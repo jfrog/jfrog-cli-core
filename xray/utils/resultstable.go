@@ -717,19 +717,17 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []formats.CveRow) (applicableCveValue string) {
-	applicableCveValue = ApplicabilityUndeterminedStringValue
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""
 	}
 	if len(xrayCve) == 0 {
-		return
-	}
-	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve[0].Id]
-	if !ok {
 		return ApplicabilityUndeterminedStringValue
 	}
-	return
+	if applicableCveValue, exists := extendedResults.ApplicabilityScannerResults[xrayCve[0].Id]; exists {
+		return applicableCveValue
+	}
+	return ApplicabilityUndeterminedStringValue
 }
 
 func getApplicableCveNumValue(stringValue string) int {

@@ -131,18 +131,26 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	err = mvnutils.RunMvn(vConfig, mc.buildArtifactsDetailsFile, mc.configuration, mc.goals, mc.threads, mc.insecureTls, mc.deploymentDisabled)
-	if err != nil {
+	mvnParams := mvnutils.NewMvnUtils().
+		SetConfig(vConfig).
+		SetBuildArtifactsDetailsFile(mc.buildArtifactsDetailsFile).
+		SetBuildConf(mc.configuration).
+		SetGoals(mc.goals).
+		SetInsecureTls(mc.insecureTls).
+		SetDisableDeploy(mc.deploymentDisabled)
+	if err = mvnutils.RunMvn(mvnParams); err != nil {
 		return err
 	}
-	if mc.buildArtifactsDetailsFile != "" {
-		err = mc.unmarshalDeployableArtifacts(mc.buildArtifactsDetailsFile)
-		if err != nil {
-			return err
-		}
-		if mc.IsXrayScan() {
-			return mc.conditionalUpload()
-		}
+
+	if mc.buildArtifactsDetailsFile == "" {
+		return nil
+	}
+
+	if err = mc.unmarshalDeployableArtifacts(mc.buildArtifactsDetailsFile); err != nil {
+		return err
+	}
+	if mc.IsXrayScan() {
+		return mc.conditionalUpload()
 	}
 	return nil
 }

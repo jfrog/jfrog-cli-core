@@ -194,6 +194,16 @@ func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
 	return params
 }
 
+func (params *Params) SetNpmScope(depType string) *Params {
+	switch depType {
+	case "devOnly":
+		params.args = []string{"--dev"}
+	case "prodOnly":
+		params.args = []string{"--prod"}
+	}
+	return params
+}
+
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// Get Xray version

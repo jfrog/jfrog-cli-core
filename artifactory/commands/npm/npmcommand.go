@@ -21,9 +21,11 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const npmrcFileName = ".npmrc"
-const npmrcBackupFileName = "jfrog.npmrc.backup"
-const minSupportedNpmVersion = "5.4.0"
+const (
+	npmrcFileName          = ".npmrc"
+	npmrcBackupFileName    = "jfrog.npmrc.backup"
+	minSupportedNpmVersion = "5.4.0"
+)
 
 type NpmCommand struct {
 	CommonArgs

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,21 +15,22 @@ import (
 )
 
 var (
-	analyzerManagerLogFolder = ""
+	analyzerManagerLogFolder      = ""
+	analyzerManagerExecutableName = "analyzerManager"
 )
 
 const (
-	AnalyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
-	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerDirName        = "analyzerManager"
-	analyzerManagerExecutableName = "analyzerManager"
-	analyzerManagerLogDirName     = "analyzerManagerLogs"
-	jfUserEnvVariable             = "JF_USER"
-	jfPasswordEnvVariable         = "JF_PASS"
-	jfTokenEnvVariable            = "JF_TOKEN"
-	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
-	logDirEnvVariable             = "AM_LOG_DIRECTORY"
-	applicabilityScanCommand      = "ca"
+	ApplicabilityFeatureId      = "contextual_analysis"
+	AnalyzerManagerZipName      = "analyzerManager.zip"
+	analyzerManagerDownloadPath = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
+	analyzerManagerDirName      = "analyzerManager"
+	analyzerManagerLogDirName   = "analyzerManagerLogs"
+	jfUserEnvVariable           = "JF_USER"
+	jfPasswordEnvVariable       = "JF_PASS"
+	jfTokenEnvVariable          = "JF_TOKEN"
+	jfPlatformUrlEnvVariable    = "JF_PLATFORM_URL"
+	logDirEnvVariable           = "AM_LOG_DIRECTORY"
+	applicabilityScanCommand    = "ca"
 )
 
 const (
@@ -65,7 +67,7 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) ExistLocally() (bool, error) {
-	analyzerManagerPath, err := getAnalyzerManagerExecutable()
+	analyzerManagerPath, err := GetAnalyzerManagerExecutable()
 	if err != nil {
 		return false, err
 	}
@@ -88,6 +90,14 @@ func CreateAnalyzerManagerLogDir() error {
 	return nil
 }
 
+func GetAnalyzerManagerDownloadPath() (string, error) {
+	osAndArc, err := coreutils.GetOSAndArc()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s/%s", analyzerManagerDownloadPath, osAndArc, AnalyzerManagerZipName), nil
+}
+
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	jfrogDir, err := config.GetJfrogDependenciesPath()
 	if err != nil {
@@ -96,16 +106,20 @@ func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	return filepath.Join(jfrogDir, analyzerManagerDirName), nil
 }
 
-func getAnalyzerManagerExecutable() (string, error) {
+func GetAnalyzerManagerExecutable() (string, error) {
 	analyzerManagerDir, err := GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return "", err
 	}
+	return filepath.Join(analyzerManagerDir, getAnalyzerManagerExecutableName()), nil
+}
+
+func getAnalyzerManagerExecutableName() string {
 	analyzerManager := analyzerManagerExecutableName
 	if coreutils.IsWindows() {
-		analyzerManager += ".exe"
+		return analyzerManager + ".exe"
 	}
-	return filepath.Join(analyzerManagerDir, analyzerManager), nil
+	return analyzerManager
 }
 
 func RemoveDuplicateValues(stringSlice []string) []string {

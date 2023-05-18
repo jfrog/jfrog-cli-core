@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	ApplicabiltyFeatureId           = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
 )

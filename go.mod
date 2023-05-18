@@ -24,6 +24,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/mod v0.10.0
+	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.8.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0

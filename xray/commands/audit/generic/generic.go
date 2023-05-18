@@ -2,13 +2,14 @@ package audit
 
 import (
 	"os"
-	"sync"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"golang.org/x/sync/errgroup"
 )
 
 type GenericAuditCommand struct {
@@ -96,24 +97,37 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayG
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	// Download (if needed) the analyzer manager in a background routine.
-	var mutex sync.Mutex
-	go utils.DownloadAnalyzerManagerIfNeeded(&mutex)
-
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly)
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {
 		return err
 	}
-	// Ensure that the DownloadAnalyzerManagerIfNeeded call ended.
-	mutex.Lock()
+	xrayManager, err := commandsutils.CreateXrayServiceManager(serverDetails)
+	if err != nil {
+		return err
+	}
+	errGroup := new(errgroup.Group)
+	entitled, err := xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+	if err != nil {
+		return err
+	}
+	if entitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(func() error { return utils.DownloadAnalyzerManagerIfNeeded() })
+	}
+	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
+
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return err
+	}
+
 	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 	if err != nil {
 		return err

@@ -2,11 +2,10 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
-	"sync"
 
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -36,14 +35,12 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 
 // Download the latest AnalyzerManager executable if not cached locally.
 // By default, the zip is downloaded directly from jfrog releases.
-//
-// mutex: optional object for background download support
-func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
-	if mutex != nil {
-		mutex.Lock()
-		defer mutex.Unlock()
+func DownloadAnalyzerManagerIfNeeded() error {
+	downloadPath, err := xrayutils.GetAnalyzerManagerDownloadPath()
+	if err != nil {
+		return err
 	}
-	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(xrayutils.AnalyzerManagerDownloadPath)
+	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -53,7 +50,8 @@ func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
 	if err != nil {
 		return err
 	}
-	remoteFileDetails, _, err := client.GetRemoteFileDetails(xrayutils.AnalyzerManagerDownloadPath, &httpClientDetails)
+	downloadUrl := artDetails.ArtifactoryUrl + remotePath
+	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
 	if err != nil {
 		return err
 	}
@@ -62,18 +60,32 @@ func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
 		return err
 	}
 	// Calc current AnalyzerManager checksum.
-	_, _, sha2, err := utils.GetFileChecksums(filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName))
+	filePath := filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName)
+	exists, err := fileutils.IsFileExists(filePath, false)
 	if err != nil {
 		return err
 	}
-	// If ident, no need to download.
-	if remoteFileDetails.Checksum.Sha256 == sha2 {
-		return nil
+	if exists {
+		_, _, sha2, err := utils.GetFileChecksums(filePath)
+		if err != nil {
+			return err
+		}
+		// If ident, no need to download.
+		if remoteFileDetails.Checksum.Sha256 == sha2 {
+			return nil
+		}
 	}
-
 	// Download & unzip the analyzer manager files
 	log.Info("The JFrog Analyzer manager zip is not cached locally. Downloading it now...")
-	return DownloadDependency(artDetails, remotePath, analyzerManagerDir, true)
+	err = DownloadDependency(artDetails, remotePath, filePath, true)
+	if err != nil {
+		return err
+	}
+	analyzerManagerExecutablePath, err := xrayutils.GetAnalyzerManagerExecutable()
+	if err != nil {
+		return err
+	}
+	return os.Chmod(analyzerManagerExecutablePath, 0777)
 }
 
 // The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
@@ -137,7 +149,7 @@ func getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath string
 }
 
 func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
-	downloadUrl := fmt.Sprintf("%s%s", artDetails.ArtifactoryUrl, downloadPath)
+	downloadUrl := artDetails.ArtifactoryUrl + downloadPath
 	log.Info("Downloading JFrog's Dependency from ", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)
 	tempDirPath, err := fileutils.CreateTempDir()

@@ -217,6 +217,51 @@ func IsLinux() bool {
 	return runtime.GOOS == "linux"
 }
 
+func IsMac() bool {
+	return runtime.GOOS == "darwin"
+}
+
+func GetOSAndArc() (string, error) {
+	arch := runtime.GOARCH
+	// Windows
+	if IsWindows() {
+		return "windows-amd64", nil
+	}
+	// Mac
+	if IsMac() {
+		if arch == "arm64" {
+			return "mac-arm64", nil
+		} else {
+			return "mac-amd64", nil
+		}
+	}
+	// Linux
+	if IsLinux() {
+		switch arch {
+		case "i386":
+		case "i486":
+		case "i586":
+		case "i686":
+		case "i786":
+		case "x86":
+			return "linux-386", nil
+		case "amd64":
+		case "x86_64":
+		case "x64":
+			return "linux-amd64", nil
+		case "arm":
+		case "armv7l":
+			return "linux-arm", nil
+		case "aarch64":
+			return "linux-arm64", nil
+		case "ppc64":
+		case "ppc64le":
+			return "linux-" + arch, nil
+		}
+	}
+	return "", errorutils.CheckErrorf("unsupported OS: %s-%s", runtime.GOOS, arch)
+}
+
 // Return the path of CLI temp dir.
 // This path should be persistent, meaning - should not be cleared at the end of a CLI run.
 func GetCliPersistentTempDirPath() string {

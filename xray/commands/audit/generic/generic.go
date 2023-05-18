@@ -119,7 +119,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	}
 	if entitled {
 		// Download (if needed) the analyzer manager in a background routine.
-		errGroup.Go(func() error { return utils.DownloadAnalyzerManagerIfNeeded() })
+		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
 	}
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 

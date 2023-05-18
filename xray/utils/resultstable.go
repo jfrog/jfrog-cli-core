@@ -717,6 +717,9 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
+// If at least one cve is applicable - final value is applicable
+// Else if at least one cve is undetermined - final value is undetermined
+// Else (case when all cves are not applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""
@@ -725,17 +728,19 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 		return ApplicabilityUndeterminedStringValue
 	}
 	cveExistInResult := false
+	finalApplicableValue := NotApplicableStringValue
 	for _, cve := range xrayCves {
 		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScannerResults[cve.Id]; exists {
 			cveExistInResult = true
-			if currentCveApplicableValue == ApplicableStringValue || currentCveApplicableValue ==
-				ApplicabilityUndeterminedStringValue {
+			if currentCveApplicableValue == ApplicableStringValue {
 				return currentCveApplicableValue
+			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
+				finalApplicableValue = currentCveApplicableValue
 			}
 		}
 	}
 	if cveExistInResult {
-		return NotApplicableStringValue
+		return finalApplicableValue
 	}
 	return ApplicabilityUndeterminedStringValue
 }

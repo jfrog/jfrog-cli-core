@@ -27,6 +27,7 @@ var (
 	analyzerManagerExecuter                  utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
 	technologiesEligibleForApplicabilityScan                                = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
+	skippedFoldersDuringScanList = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
@@ -242,7 +243,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 				Type:           applicabilityScanType,
 				GrepDisable:    false,
 				CveWhitelist:   cveWhiteList,
-				SkippedFolders: []string{},
+				SkippedFolders: skippedFoldersDuringScanList,
 			},
 		},
 	}

@@ -56,7 +56,13 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 	if err != nil {
 		return err
 	}
-	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, true)
+	mvnParams := mvnutils.NewMvnUtils().
+		SetConfig(vConfig).
+		SetBuildConf(buildConfiguration).
+		SetGoals(goals).
+		SetInsecureTls(insecureTls).
+		SetDisableDeploy(true)
+	return mvnutils.RunMvn(mvnParams)
 }
 
 func isMavenWrapperExist() (bool, error) {

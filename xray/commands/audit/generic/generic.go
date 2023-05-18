@@ -96,11 +96,10 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayG
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	if err != nil {
-		return
-	}
+	// Download (if needed) the analyzer manager in a background routine.
 	var mutex sync.Mutex
-	go utils.DownloadAnalyzerManagerIfNeeded("", "", "", &mutex)
+	go utils.DownloadAnalyzerManagerIfNeeded(&mutex)
+
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).
@@ -113,6 +112,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	// Ensure that the DownloadAnalyzerManagerIfNeeded call ended.
+	mutex.Lock()
 	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 	if err != nil {
 		return err

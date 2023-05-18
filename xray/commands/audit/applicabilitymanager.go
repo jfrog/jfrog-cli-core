@@ -2,6 +2,11 @@ package audit
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,10 +17,6 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -31,10 +32,10 @@ var (
 )
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
-	err := utils.CreateAnalyzerManagerLogDir()
+	serverDetails *config.ServerDetails) (extendedResults *utils.ExtendedScanResults, err error) {
+	err = utils.CreateAnalyzerManagerLogDir()
 	if err != nil {
-		return nil, err
+		return
 	}
 	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
@@ -257,9 +258,6 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails)
-	if err != nil {
-		return true, err
-	}
 	if err != nil {
 		return true, err
 	}

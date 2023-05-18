@@ -11,19 +11,13 @@ import (
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-)
-
-const (
-	// TODO: Analyzer manager consts - should move to new analyzermanger.go file
-	analyzerManagerDownloadPath = ""
-	analyzerManagerDir          = ""
-	analyzerManagerZipName      = ""
 )
 
 // Download the relevant build-info-extractor jar if it does not already exist locally.
@@ -43,13 +37,13 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 // Download the latest AnalyzerManager executable if not cached locally.
 // By default, the zip is downloaded directly from jfrog releases.
 //
-// mutex: optional  object for background download support
+// mutex: optional object for background download support
 func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
 	if mutex != nil {
 		mutex.Lock()
 		defer mutex.Unlock()
 	}
-	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(analyzerManagerDownloadPath)
+	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(xrayutils.AnalyzerManagerDownloadPath)
 	if err != nil {
 		return err
 	}
@@ -59,12 +53,16 @@ func DownloadAnalyzerManagerIfNeeded(mutex *sync.Mutex) error {
 	if err != nil {
 		return err
 	}
-	remoteFileDetails, _, err := client.GetRemoteFileDetails(analyzerManagerDownloadPath, &httpClientDetails)
+	remoteFileDetails, _, err := client.GetRemoteFileDetails(xrayutils.AnalyzerManagerDownloadPath, &httpClientDetails)
+	if err != nil {
+		return err
+	}
+	analyzerManagerDir, err := xrayutils.GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return err
 	}
 	// Calc current AnalyzerManager checksum.
-	_, _, sha2, err := utils.GetFileChecksums(filepath.Join(analyzerManagerDir, analyzerManagerZipName))
+	_, _, sha2, err := utils.GetFileChecksums(filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName))
 	if err != nil {
 		return err
 	}

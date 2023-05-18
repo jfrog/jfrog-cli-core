@@ -72,6 +72,22 @@ func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err
 	return
 }
 
+func GetCurationOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err error) {
+	// Default print format is table.
+	format = xrutils.Table
+	if formatFlagVal != "" {
+		switch strings.ToLower(formatFlagVal) {
+		case string(xrutils.Table):
+			format = xrutils.Table
+		case string(xrutils.Json):
+			format = xrutils.Json
+		default:
+			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.CurationOutputFormats))
+		}
+	}
+	return
+}
+
 func conditionalUploadDefaultScanFunc(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error {
 	return xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(fileSpec).SetThreads(threads).SetOutputFormat(scanOutputFormat).SetFail(true).SetPrintExtendedTable(false).Run()
 }

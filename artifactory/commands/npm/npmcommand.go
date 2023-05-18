@@ -386,3 +386,7 @@ func filterFlags(splitArgs []string) []string {
 	}
 	return filteredArgs
 }
+
+func (nc *NpmCommand) GetRepo() string {
+	return nc.repo
+}

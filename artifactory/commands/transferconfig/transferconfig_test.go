@@ -196,7 +196,7 @@ var validateMinVersionAndDifferentServersCases = []struct {
 	{testName: "Source newer than target", sourceVersion: "7.0.1", targetVersion: "7.0.0", expectedError: "can't be higher than the target Artifactory version"},
 }
 
-func TestValidateMinVersionAndDifferentServers(t *testing.T) {
+func TestValidateMinVersion(t *testing.T) {
 	var sourceRtVersion, targetRtVersion string
 	// Create transfer config command
 	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -218,7 +218,7 @@ func TestValidateMinVersionAndDifferentServers(t *testing.T) {
 		t.Run(testCase.testName, func(t *testing.T) {
 			sourceRtVersion = testCase.sourceVersion
 			targetRtVersion = testCase.targetVersion
-			err := NewTransferConfigCommand(sourceServerDetails, targetServerDetails).ValidateMinVersion()
+			err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).ValidateMinVersion()
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
 			} else {

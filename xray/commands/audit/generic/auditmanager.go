@@ -206,6 +206,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			continue
 		}
 		dependencyTrees, e := GetTechDependencyTree(params.GraphBasicParams, tech)
+		params.dependencyTrees = append(params.dependencyTrees, dependencyTrees...)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
@@ -278,7 +279,7 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 		return nil, err
 	}
 	if params.DepsRepo() != "" && tech == coreutils.Maven {
-		javaProps = createJavaProps(params.DepsRepo(), serverDetails)
+		javaProps = CreateJavaProps(params.DepsRepo(), serverDetails)
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
@@ -293,7 +294,7 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 	})
 }
 
-func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
+func CreateJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
 	authPass := serverDetails.Password
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken

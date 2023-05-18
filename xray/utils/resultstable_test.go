@@ -460,6 +460,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			EntitledForJas:              true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
 	}
+
 	for _, testCase := range testCases {
 		assert.Equal(t, testCase.expectedResult, getApplicableCveValue(testCase.scanResults, testCase.cves))
 	}

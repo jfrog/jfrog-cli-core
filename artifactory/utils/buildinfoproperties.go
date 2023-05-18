@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	HttpProxy = "HTTP_PROXY"
+	HttpProxyEnvKey  = "HTTP_PROXY"
+	HttpsProxyEnvKey = "HTTPS_PROXY"
+	NoProxyEnvKey    = "NO_PROXY"
 )
 
 type BuildConfigMapping map[ProjectType][]*map[string]string
@@ -67,9 +69,11 @@ const FilterExcludedArtifactsFromBuild = "filterExcludedArtifactsFromBuild"
 // For path and temp files
 const PropertiesTempPath = "jfrog/properties/"
 
-const Proxy = "proxy."
+const httpProxy = "proxy."
+const NoProxy = "noProxy"
 const Host = "host"
 const Port = "port"
+const httpsProxy = httpProxy + "https."
 
 // Config mapping are used to create buildInfo properties file to be used by BuildInfo extractors.
 // Build config provided by the user may contain other properties that will not be included in the properties file.
@@ -107,8 +111,14 @@ var commonConfigMapping = map[string]string{
 	"deploy.build.timestamp":                 BuildTimestamp,
 	"buildInfo.generated.build.info":         GeneratedBuildInfo,
 	"buildInfo.deployable.artifacts.map":     DeployableArtifacts,
-	"proxy.host":                             Proxy + Host,
-	"proxy.port":                             Proxy + Port,
+	"proxy.host":                             httpProxy + Host,
+	"proxy.port":                             httpProxy + Port,
+	"proxy.username":                         httpProxy + Username,
+	"proxy.password":                         httpProxy + Password,
+	"proxy.noProxy":                          httpProxy + NoProxy,
+	"proxy.https.host":                       httpsProxy + Host,
+	"proxy.https.port":                       httpsProxy + Port,
+	"proxy.https.username":                   httpsProxy + Username,
 	"publish.forkCount":                      ForkCount,
 	"insecureTls":                            InsecureTls,
 }
@@ -232,23 +242,66 @@ func createProps(config *viper.Viper, projectType ProjectType) map[string]string
 	return props
 }
 
-// If the HTTP_PROXY environment variable is set, add to the config proxy details.
+// If one of the HTTP_PROXY, HTTPS_PROXY or No_PROXY environment variables are set, add to the config proxy details.
 func setProxyIfDefined(config *viper.Viper) error {
-	// Add HTTP_PROXY if exists
-	proxy := os.Getenv(HttpProxy)
-	if proxy != "" {
-		url, err := url.Parse(proxy)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-		host, port, err := net.SplitHostPort(url.Host)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-		config.Set(Proxy+Host, host)
-		config.Set(Proxy+Port, port)
+	setNoProxyIfDefined(config)
+	if err := setHttpProxy(config); err != nil {
+		return err
 	}
-	return nil
+	return setHttpsProxy(config)
+}
+
+func setHttpProxy(config *viper.Viper) error {
+	var proxyConfig string
+	if proxyConfig = os.Getenv(HttpProxyEnvKey); proxyConfig == "" {
+		return nil
+	}
+	host, port, username, password, err := parseProxy(proxyConfig)
+	if err != nil {
+		return err
+	}
+	config.Set(httpProxy+Host, host)
+	config.Set(httpProxy+Port, port)
+	config.Set(httpProxy+Username, username)
+	return os.Setenv(httpProxy+Password, password)
+}
+
+func setHttpsProxy(config *viper.Viper) error {
+	var proxyConfig string
+	if proxyConfig = os.Getenv(HttpsProxyEnvKey); proxyConfig == "" {
+		return nil
+	}
+	host, port, username, password, err := parseProxy(proxyConfig)
+	if err != nil {
+		return err
+	}
+	config.Set(httpsProxy+Host, host)
+	config.Set(httpsProxy+Port, port)
+	config.Set(httpsProxy+Username, username)
+	return os.Setenv(httpsProxy+Password, password)
+}
+
+func setNoProxyIfDefined(config *viper.Viper) {
+	noProxy := os.Getenv(NoProxyEnvKey)
+	if noProxy != "" {
+		config.Set(httpProxy+NoProxy, noProxy)
+	}
+}
+
+func parseProxy(proxy string) (host string, port string, username string, password string, err error) {
+	url, err := url.Parse(proxy)
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	host, port, err = net.SplitHostPort(url.Host)
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	password, _ = url.User.Password()
+	username = url.User.Username()
+	return
 }
 
 func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error {

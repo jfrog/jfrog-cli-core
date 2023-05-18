@@ -183,3 +183,47 @@ func createTransferConfigCommand(t *testing.T, sourceServerDetails, targetServer
 	}
 	return transferConfigBase
 }
+
+var validateMinVersionAndDifferentServersCases = []struct {
+	testName      string
+	sourceVersion string
+	targetVersion string
+	expectedError string
+}{
+	{testName: "Same version", sourceVersion: minTransferConfigArtifactoryVersion, targetVersion: minTransferConfigArtifactoryVersion, expectedError: ""},
+	{testName: "Different versions", sourceVersion: "7.0.0", targetVersion: "7.0.1", expectedError: ""},
+	{testName: "Low Artifactory version", sourceVersion: "6.0.0", targetVersion: "7.0.0", expectedError: "while this operation requires version"},
+	{testName: "Source newer than target", sourceVersion: "7.0.1", targetVersion: "7.0.0", expectedError: "can't be higher than the target Artifactory version"},
+}
+
+func TestValidateMinVersionAndDifferentServers(t *testing.T) {
+	var sourceRtVersion, targetRtVersion string
+	// Create transfer config command
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		content, err := json.Marshal(commandUtils.VersionResponse{Version: sourceRtVersion})
+		assert.NoError(t, err)
+		_, err = w.Write(content)
+		assert.NoError(t, err)
+	})
+	defer sourceTestServer.Close()
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		content, err := json.Marshal(commandUtils.VersionResponse{Version: targetRtVersion})
+		assert.NoError(t, err)
+		_, err = w.Write(content)
+		assert.NoError(t, err)
+	})
+	defer targetTestServer.Close()
+
+	for _, testCase := range validateMinVersionAndDifferentServersCases {
+		t.Run(testCase.testName, func(t *testing.T) {
+			sourceRtVersion = testCase.sourceVersion
+			targetRtVersion = testCase.targetVersion
+			err := NewTransferConfigCommand(sourceServerDetails, targetServerDetails).ValidateMinVersion()
+			if testCase.expectedError == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, testCase.expectedError)
+			}
+		})
+	}
+}

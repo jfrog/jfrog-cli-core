@@ -6,8 +6,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -59,17 +59,13 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	if err != nil {
 		return err
 	}
-	// Calc current AnalyzerManager checksum.
-	filePath := filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName)
-	exists, err := fileutils.IsFileExists(filePath, false)
+	// Find current AnalyzerManager checksum.
+	matches, err := filepath.Glob("*.sha256")
 	if err != nil {
 		return err
 	}
-	if exists {
-		_, _, sha2, err := utils.GetFileChecksums(filePath)
-		if err != nil {
-			return err
-		}
+	if len(matches) == 1 {
+		sha2 := strings.TrimSuffix(matches[0], filepath.Ext(matches[0]))
 		// If ident, no need to download.
 		if remoteFileDetails.Checksum.Sha256 == sha2 {
 			return nil
@@ -77,15 +73,29 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	}
 	// Download & unzip the analyzer manager files
 	log.Info("The JFrog Analyzer manager zip is not cached locally. Downloading it now...")
-	err = DownloadDependency(artDetails, remotePath, filePath, true)
-	if err != nil {
+	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}
-	analyzerManagerExecutablePath, err := xrayutils.GetAnalyzerManagerExecutable()
-	if err != nil {
+	if err = os.Chmod(analyzerManagerDir, 0777); err != nil {
 		return err
 	}
-	return os.Chmod(analyzerManagerExecutablePath, 0777)
+	return createChecksumFile(analyzerManagerDir, remoteFileDetails.Checksum.Sha256, ".sha256")
+}
+
+func createChecksumFile(targetPath, checksum, extension string) (err error) {
+	fileName := filepath.Join(targetPath, checksum)
+	out, err := os.Create(fileName + extension)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	defer func() {
+		e := out.Close()
+		if err == nil {
+			err = errorutils.CheckError(e)
+		}
+	}()
+	return
 }
 
 // The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.

@@ -3,6 +3,8 @@ package audit
 import (
 	"os"
 
+	"github.com/jfrog/jfrog-client-go/utils/log"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
@@ -120,6 +122,11 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if entitled {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
+	} else {
+		log.Info(`The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature,
+		which is included as part of the ‘Advanced Security’ package, which hasn’t
+		been enabled on your system.
+		Read more - https://jfrog.com/security-and-compliance/`)
 	}
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 

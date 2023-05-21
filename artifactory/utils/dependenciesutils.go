@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	checksumFileName = "checksum.sha2"
+	ChecksumFileName = "checksum.sha2"
 )
 
 // Download the relevant build-info-extractor jar if it does not already exist locally.
@@ -63,7 +63,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 		return err
 	}
 	// Find current AnalyzerManager checksum.
-	checksumFilePath := filepath.Join(analyzerManagerDir, checksumFileName)
+	checksumFilePath := filepath.Join(analyzerManagerDir, ChecksumFileName)
 	exist, err := fileutils.IsFileExists(checksumFilePath, false)
 	if err != nil {
 		return err

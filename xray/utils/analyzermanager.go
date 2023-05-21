@@ -111,10 +111,10 @@ func getAnalyzerManagerExecutable() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(analyzerManagerDir, getAnalyzerManagerExecutableName()), nil
+	return filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName()), nil
 }
 
-func getAnalyzerManagerExecutableName() string {
+func GetAnalyzerManagerExecutableName() string {
 	analyzerManager := analyzerManagerExecutableName
 	if coreutils.IsWindows() {
 		return analyzerManager + ".exe"

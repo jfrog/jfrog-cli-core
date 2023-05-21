@@ -464,7 +464,6 @@ func TestGetApplicableCveValue(t *testing.T) {
 	for _, testCase := range testCases {
 		assert.Equal(t, testCase.expectedResult, getApplicableCveValue(testCase.scanResults, testCase.cves))
 	}
-
 }
 
 func newBoolPtr(v bool) *bool {

@@ -102,53 +102,18 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	assert.Equal(t, 0, unlockCounter)
 }
 
-var validateMinVersionAndDifferentServersCases = []struct {
-	testName      string
-	sourceVersion string
-	targetVersion string
-	expectedError string
-}{
-	{testName: "Same version", sourceVersion: minTransferConfigArtifactoryVersion, targetVersion: minTransferConfigArtifactoryVersion, expectedError: ""},
-	{testName: "Different versions", sourceVersion: "7.0.0", targetVersion: "7.0.1", expectedError: ""},
-	{testName: "Low Artifactory version", sourceVersion: "6.0.0", targetVersion: "7.0.0", expectedError: "while this operation requires version"},
-	{testName: "Source newer than target", sourceVersion: "7.0.1", targetVersion: "7.0.0", expectedError: "can't be higher than the target Artifactory version"},
-}
-
-func TestValidateMinVersionAndDifferentServers(t *testing.T) {
-	var sourceRtVersion, targetRtVersion string
+func TestValidateDifferentServers(t *testing.T) {
+	var sourceRtVersion string
 	// Create transfer config command
-	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+	_, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		content, err := json.Marshal(VersionResponse{Version: sourceRtVersion})
 		assert.NoError(t, err)
 		_, err = w.Write(content)
 		assert.NoError(t, err)
 	})
-	defer sourceTestServer.Close()
-	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
-		content, err := json.Marshal(VersionResponse{Version: targetRtVersion})
-		assert.NoError(t, err)
-		_, err = w.Write(content)
-		assert.NoError(t, err)
-	})
-	defer targetTestServer.Close()
-
-	for _, testCase := range validateMinVersionAndDifferentServersCases {
-		t.Run(testCase.testName, func(t *testing.T) {
-			sourceRtVersion = testCase.sourceVersion
-			targetRtVersion = testCase.targetVersion
-			actualSourceVersion, err := createTransferConfigBase(t, sourceServerDetails, targetServerDetails).ValidateMinVersionAndDifferentServers()
-			if testCase.expectedError == "" {
-				assert.NoError(t, err)
-				assert.Equal(t, testCase.sourceVersion, actualSourceVersion)
-			} else {
-				assert.ErrorContains(t, err, testCase.expectedError)
-			}
-		})
-	}
 
 	t.Run("Same source and target servers", func(t *testing.T) {
-		sourceRtVersion = minTransferConfigArtifactoryVersion
-		_, err := createTransferConfigBase(t, sourceServerDetails, sourceServerDetails).ValidateMinVersionAndDifferentServers()
+		err := createTransferConfigBase(t, sourceServerDetails, sourceServerDetails).ValidateDifferentServers()
 		assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 	})
 }

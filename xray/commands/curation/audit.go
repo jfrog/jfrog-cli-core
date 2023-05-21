@@ -169,13 +169,13 @@ func (ca *CurationAuditCommand) Run() (err error) {
 			err = errors.Join(err, e)
 		}
 	}
-	if ca.Progress != nil {
-		if e := ca.Progress.Quit(); e != nil {
+	if ca.Progress() != nil {
+		if e := ca.Progress().Quit(); e != nil {
 			err = errors.Join(err, e)
 		}
 	}
 	for projectPath, packagesStatus := range results {
-		if e := printResult(ca.OutputFormat, projectPath, packagesStatus); e != nil {
+		if e := printResult(ca.OutputFormat(), projectPath, packagesStatus); e != nil {
 			err = errors.Join(err, e)
 		}
 	}
@@ -205,7 +205,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		return err
 	}
 	// Validate the graph isn't empty.
-	if len(ca.DependencyTrees) == 0 {
+	if len(ca.FullDependenciesTree()) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
 	}
 	if err = ca.SetRepo(tech); err != nil {
@@ -224,9 +224,9 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
-	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.DependencyTrees[0].Id, "", "")
-	if ca.Progress != nil {
-		ca.Progress.SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
+	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.FullDependenciesTree()[0].Id, "", "")
+	if ca.Progress() != nil {
+		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
 	}
 	if ca.parallelRequests == 0 {
 		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
@@ -244,10 +244,10 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	}
 	packagesStatusMap := sync.Map{}
 	// Root node id represents the project name and shouldn't be validated with curation
-	rootNodeId := ca.DependencyTrees[0].Id
+	rootNodeId := ca.FullDependenciesTree()[0].Id
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
 	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
-	analyzer.fillGraphRelations(ca.DependencyTrees[0], &packagesStatusMap,
+	analyzer.fillGraphRelations(ca.FullDependenciesTree()[0], &packagesStatusMap,
 		&packagesStatus, "", "", true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName

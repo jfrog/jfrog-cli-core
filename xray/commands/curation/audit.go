@@ -170,14 +170,11 @@ func (ca *CurationAuditCommand) Run() (err error) {
 		}
 	}
 	if ca.Progress() != nil {
-		if e := ca.Progress().Quit(); e != nil {
-			err = errors.Join(err, e)
-		}
+		err = errors.Join(err, ca.Progress().Quit())
 	}
+
 	for projectPath, packagesStatus := range results {
-		if e := printResult(ca.OutputFormat(), projectPath, packagesStatus); e != nil {
-			err = errors.Join(err, e)
-		}
+		err = errors.Join(err, printResult(ca.OutputFormat(), projectPath, packagesStatus))
 	}
 	return
 }

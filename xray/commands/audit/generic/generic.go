@@ -114,8 +114,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	}
 
 	if auditCmd.Progress() != nil {
-		err = auditCmd.Progress().Quit()
-		if err != nil {
+		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
 	}

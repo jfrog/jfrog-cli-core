@@ -94,11 +94,14 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		return
 	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	sourceArtifactoryVersion, err := tcmc.ValidateMinVersionAndDifferentServers()
+	err = tcmc.ValidateDifferentServers()
 	if err != nil {
 		return
 	}
-
+	sourceArtifactoryVersion, err := tcmc.SourceArtifactoryManager.GetVersion()
+	if err != nil {
+		return
+	}
 	// Check if JFrog Projects supported by Source Artifactory version
 	versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
 	if versionErr != nil {

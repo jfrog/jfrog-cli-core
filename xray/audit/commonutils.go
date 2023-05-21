@@ -129,16 +129,16 @@ func GetExecutableVersion(executable string) (version string, err error) {
 
 // BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
 // Returns the updated services.ScanResponse slice.
-func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode) []services.ScanResponse {
+func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTree []*xrayUtils.GraphNode) []services.ScanResponse {
 	for _, result := range scanResult {
 		if len(result.Vulnerabilities) > 0 {
-			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTrees)
+			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTree)
 		}
 		if len(result.Violations) > 0 {
-			buildViolationsImpactPaths(result.Violations, dependencyTrees)
+			buildViolationsImpactPaths(result.Violations, dependencyTree)
 		}
 		if len(result.Licenses) > 0 {
-			buildLicensesImpactPaths(result.Licenses, dependencyTrees)
+			buildLicensesImpactPaths(result.Licenses, dependencyTree)
 		}
 	}
 	return scanResult

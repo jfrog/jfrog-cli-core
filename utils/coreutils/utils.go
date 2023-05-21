@@ -238,24 +238,15 @@ func GetOSAndArc() (string, error) {
 	// Linux
 	if IsLinux() {
 		switch arch {
-		case "i386":
-		case "i486":
-		case "i586":
-		case "i686":
-		case "i786":
-		case "x86":
+		case "i386", "i486", "i586", "i686", "i786", "x86":
 			return "linux-386", nil
-		case "amd64":
-		case "x86_64":
-		case "x64":
+		case "amd64", "x86_64", "x64":
 			return "linux-amd64", nil
-		case "arm":
-		case "armv7l":
+		case "arm", "armv7l":
 			return "linux-arm", nil
 		case "aarch64":
 			return "linux-arm64", nil
-		case "ppc64":
-		case "ppc64le":
+		case "ppc64", "ppc64le":
 			return "linux-" + arch, nil
 		}
 	}

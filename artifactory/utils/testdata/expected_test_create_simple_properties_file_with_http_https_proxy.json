@@ -4,6 +4,9 @@
     "artifactory.buildInfoConfig.includeEnvVars": "false",
     "artifactory.org.jfrog.build.extractor.maven.recorder.activate": "true",
     "artifactory.proxy.host": "proxy.mydomain",
+    "artifactory.proxy.https.host": "proxy.mydomains",
+    "artifactory.proxy.https.port": "8889",
+    "artifactory.proxy.https.username": "logins",
     "artifactory.proxy.port": "8888",
     "artifactory.proxy.username": "login",
     "artifactory.publish.artifacts": "true",
@@ -18,6 +21,9 @@
     "buildInfoConfig.includeEnvVars": "false",
     "org.jfrog.build.extractor.maven.recorder.activate": "true",
     "proxy.host": "proxy.mydomain",
+    "proxy.https.host": "proxy.mydomains",
+    "proxy.https.port": "8889",
+    "proxy.https.username": "logins",
     "proxy.port": "8888",
     "proxy.username": "login",
     "publish.artifacts": "true",
@@ -27,4 +33,4 @@
     "publish.forkCount": "3",
     "publish.unstable": "false",
     "resolve.contextUrl": "http://some.url.com"
-}
+   }

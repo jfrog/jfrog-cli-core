@@ -130,7 +130,7 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, t
 	}
 
 	if disableDeploy {
-		setEmptyDeployer(vConfig)
+		setDeployFalse(vConfig)
 	}
 
 	if vConfig.IsSet("resolver") {
@@ -141,9 +141,15 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, t
 	return buildInfoProps, useWrapper, err
 }
 
-func setEmptyDeployer(vConfig *viper.Viper) {
+func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
-	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
-	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.ReleaseRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.SnapshotRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	}
 }

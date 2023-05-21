@@ -67,7 +67,7 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) ExistLocally() (bool, error) {
-	analyzerManagerPath, err := GetAnalyzerManagerExecutable()
+	analyzerManagerPath, err := getAnalyzerManagerExecutable()
 	if err != nil {
 		return false, err
 	}
@@ -106,7 +106,7 @@ func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	return filepath.Join(jfrogDir, analyzerManagerDirName), nil
 }
 
-func GetAnalyzerManagerExecutable() (string, error) {
+func getAnalyzerManagerExecutable() (string, error) {
 	analyzerManagerDir, err := GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return "", err

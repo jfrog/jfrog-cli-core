@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	ApplicabiltyFeatureId           = "contextual_analysis"
+	ApplicabilityFeatureId          = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
 )
@@ -34,8 +34,7 @@ var (
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (extendedResults *utils.ExtendedScanResults, err error) {
-	err = utils.CreateAnalyzerManagerLogDir()
-	if err != nil {
+	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
 		return
 	}
 	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)

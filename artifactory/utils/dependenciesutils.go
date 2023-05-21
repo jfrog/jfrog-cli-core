@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -19,18 +18,22 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+const (
+	checksumFileName = "checksum.sha2"
+)
+
 // Download the relevant build-info-extractor jar if it does not already exist locally.
 // By default, the jar is downloaded directly from jfrog releases.
 //
 // targetPath: The local download path (without the file name).
 // downloadPath: Artifactory download path.
 func DownloadExtractor(targetPath, downloadPath string) error {
-	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
+	artDetails, remotePath, err := getExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
 
-	return DownloadDependency(artDetails, remotePath, targetPath, false)
+	return downloadDependency(artDetails, remotePath, targetPath, false)
 }
 
 // Download the latest AnalyzerManager executable if not cached locally.
@@ -40,7 +43,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	if err != nil {
 		return err
 	}
-	artDetails, remotePath, err := GetAnalyzerManagerRemoteDetails(downloadPath)
+	artDetails, remotePath, err := getAnalyzerManagerRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -60,47 +63,51 @@ func DownloadAnalyzerManagerIfNeeded() error {
 		return err
 	}
 	// Find current AnalyzerManager checksum.
-	matches, err := filepath.Glob("*.sha256")
+	checksumFilePath := filepath.Join(analyzerManagerDir, checksumFileName)
+	exist, err := fileutils.IsFileExists(checksumFilePath, false)
 	if err != nil {
 		return err
 	}
-	if len(matches) == 1 {
-		sha2 := strings.TrimSuffix(matches[0], filepath.Ext(matches[0]))
-		// If ident, no need to download.
-		if remoteFileDetails.Checksum.Sha256 == sha2 {
+	if exist {
+		sha2, err := fileutils.ReadFile(checksumFilePath)
+		if err != nil {
+			return err
+		}
+		// If the checksums are identical, there's no need to download.
+		if remoteFileDetails.Checksum.Sha256 == string(sha2) {
 			return nil
 		}
 	}
 	// Download & unzip the analyzer manager files
-	log.Info("The JFrog Analyzer manager zip is not cached locally. Downloading it now...")
-	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
+	log.Info("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
+	if err = downloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}
 	if err = os.Chmod(analyzerManagerDir, 0777); err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
-	return createChecksumFile(analyzerManagerDir, remoteFileDetails.Checksum.Sha256, ".sha256")
+	return createChecksumFile(checksumFilePath, remoteFileDetails.Checksum.Sha256)
 }
 
-func createChecksumFile(targetPath, checksum, extension string) (err error) {
-	fileName := filepath.Join(targetPath, checksum)
-	out, err := os.Create(fileName + extension)
+func createChecksumFile(targetPath, checksum string) (err error) {
+	out, err := os.Create(targetPath)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
+	if _, err = out.Write([]byte(checksum)); err != nil {
+		return errorutils.CheckError(err)
+	}
 
 	defer func() {
-		e := out.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		e := errorutils.CheckError(out.Close())
+		err = errors.Join(err, e)
 	}()
 	return
 }
 
-// The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
+// The getExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
-func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+func getExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
 		return
@@ -108,7 +115,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	server, remoteRepo, err = getLegacyRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
-		log.Warn("You are using a deprecated %s environment variable. Use %s instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
+		log.Warn("You are using the deprecated %q environment variable. Use %q instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
 			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, coreutils.JFrogHelpUrl)
 		return
 	}
@@ -158,7 +165,7 @@ func getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath string
 	return path.Join(repoName, downloadPath)
 }
 
-func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
+func downloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
 	downloadUrl := artDetails.ArtifactoryUrl + downloadPath
 	log.Info("Downloading JFrog's Dependency from ", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)
@@ -221,12 +228,12 @@ func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 	return
 }
 
-func GetAnalyzerManagerRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+func getAnalyzerManagerRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
 		return
 	}
-	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. JFrog analyzer manager will be downloaded directly from releases.jfrog.io if needed.")
+	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. The Analyzer Manager app will be downloaded directly from releases.jfrog.io if needed.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: coreutils.JfrogReleasesUrl}, downloadPath, nil
 }

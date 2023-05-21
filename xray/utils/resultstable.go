@@ -86,7 +86,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		switch violation.ViolationType {
 		case "security":
 			cves := convertCves(violation.Cves)
-			applicableValue := getApplicableCveValue(extendedResults, cves[0])
+			applicableValue := getApplicableCveValue(extendedResults, cves)
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -205,7 +205,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
-		applicableValue := getApplicableCveValue(extendedResults, cves[0])
+		applicableValue := getApplicableCveValue(extendedResults, cves)
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -791,15 +791,17 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve formats.CveRow) string {
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""
 	}
-	applicableCveValue, ok := extendedResults.ApplicabilityScanResults[xrayCve.Id]
-	if !ok {
+	if len(xrayCve) == 0 {
 		return ApplicabilityUndeterminedStringValue
 	}
-	return applicableCveValue
+	if applicableCveValue, exists := extendedResults.ApplicabilityScanResults[xrayCve[0].Id]; exists {
+		return applicableCveValue
+	}
+	return ApplicabilityUndeterminedStringValue
 }
 
 func getApplicableCveNumValue(stringValue string) int {

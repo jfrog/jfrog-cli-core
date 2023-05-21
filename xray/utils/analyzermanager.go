@@ -23,12 +23,12 @@ var (
 )
 
 const (
-	analyzerManagerDirName   = "analyzerManagerLogs"
-	jfUserEnvVariable        = "JF_USER"
-	jfPasswordEnvVariable    = "JF_PASS"
-	jfTokenEnvVariable       = "JF_TOKEN"
-	jfPlatformUrlEnvVariable = "JF_PLATFORM_URL"
-	logDirEnvVariable        = "AM_LOG_DIRECTORY"
+	analyzerManagerLogDirName = "analyzerManagerLogs"
+	jfUserEnvVariable         = "JF_USER"
+	jfPasswordEnvVariable     = "JF_PASS"
+	jfTokenEnvVariable        = "JF_TOKEN"
+	jfPlatformUrlEnvVariable  = "JF_PLATFORM_URL"
+	logDirEnvVariable         = "AM_LOG_DIRECTORY"
 )
 
 const (
@@ -83,7 +83,7 @@ func (am *AnalyzerManager) Exec(configFile string, scanCommand string) error {
 }
 
 func CreateAnalyzerManagerLogDir() error {
-	logDir, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerDirName))
+	logDir, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerLogDirName))
 	if err != nil {
 		return err
 	}

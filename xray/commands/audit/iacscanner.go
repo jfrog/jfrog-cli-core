@@ -1,11 +1,11 @@
 package audit
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	iacScanCommand = "iac"
-	iacScannerType = "iac-scan-modules"
+	iacScannerType        = "iac-scan-modules"
+	iacScanFailureMessage = "failed to run iac scan. Cause: %s"
+	iacScanCommand        = "iac"
 )
 
-type Iac struct { // TODO
+type Iac struct {
 	Severity   string
 	File       string
 	LineColumn string
@@ -35,10 +36,9 @@ type IacScanManager struct {
 }
 
 func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Iac, bool, error) {
-	iacScanManager, cleanupFunc, err := NewsIacScanManager(serverDetails, analyzerManager)
+	iacScanManager, cleanupFunc, err := newsIacScanManager(serverDetails, analyzerManager)
 	if err != nil {
-		log.Info("failed to run iac scan: " + err.Error())
-		return nil, false, err
+		return nil, false, fmt.Errorf(iacScanFailureMessage, err.Error())
 	}
 	defer func() {
 		if cleanupFunc != nil {
@@ -48,18 +48,17 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 			}
 		}
 	}()
-	err = iacScanManager.Run()
+	err = iacScanManager.run()
 	if err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
-		log.Info("failed to run iac scan: " + err.Error())
-		return nil, true, err
+		return nil, true, fmt.Errorf(iacScanFailureMessage, err.Error())
 	}
 	return iacScanManager.iacScannerResults, true, nil
 }
 
-func NewsIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
+func newsIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
 	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -77,7 +76,7 @@ func NewsIacScanManager(serverDetails *config.ServerDetails, analyzerManager uti
 	}, cleanup, nil
 }
 
-func (iac *IacScanManager) Run() error {
+func (iac *IacScanManager) run() error {
 	var err error
 	defer func() {
 		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
@@ -93,10 +92,8 @@ func (iac *IacScanManager) Run() error {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return err
 	}
-	if err = iac.parseResults(); err != nil {
-		return err
-	}
-	return nil
+	err = iac.parseResults()
+	return err
 }
 
 type iacScanConfig struct {
@@ -129,19 +126,14 @@ func (iac *IacScanManager) createConfigFile() error {
 		return err
 	}
 	err = os.WriteFile(iac.configFileName, yamlData, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
-	err := utils.SetAnalyzerManagerEnvVariables(iac.serverDetails)
-	if err != nil {
+	if err := utils.SetAnalyzerManagerEnvVariables(iac.serverDetails); err != nil {
 		return err
 	}
-	err = iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
-	return err
+	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
 }
 
 func (iac *IacScanManager) parseResults() error {

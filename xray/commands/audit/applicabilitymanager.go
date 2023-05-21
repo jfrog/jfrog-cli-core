@@ -11,7 +11,6 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -29,7 +28,7 @@ var (
 
 func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
-	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
+	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
@@ -45,13 +44,12 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
 		return nil, false, nil
 	}
-	entitledForAppScan, err := applicabilityScanManager.Run()
+	err = applicabilityScanManager.run()
 	if err != nil {
+		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
+			return nil, false, nil
+		}
 		return nil, true, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
-	}
-	if !entitledForAppScan {
-		log.Debug("the current user is not entitled for the Advanced Security package")
-		return nil, false, nil
 	}
 	return applicabilityScanManager.applicabilityScanResults, true, nil
 }
@@ -89,7 +87,7 @@ type ApplicabilityScanManager struct {
 	serverDetails            *config.ServerDetails
 }
 
-func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
@@ -173,11 +171,7 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 	return xrayViolations
 }
 
-func (a *ApplicabilityScanManager) getApplicabilityScanResults() map[string]string {
-	return a.applicabilityScanResults
-}
-
-func (a *ApplicabilityScanManager) Run() (bool, error) {
+func (a *ApplicabilityScanManager) run() error {
 	var err error
 	defer func() {
 		if deleteJasProcessFiles(a.configFileName, a.resultsFileName) != nil {
@@ -188,15 +182,13 @@ func (a *ApplicabilityScanManager) Run() (bool, error) {
 		}
 	}()
 	if err = a.createConfigFile(); err != nil {
-		return true, err
+		return err
 	}
-	if entitledForJas, err := a.runAnalyzerManager(); err != nil {
-		return entitledForJas, err
+	if err = a.runAnalyzerManager(); err != nil {
+		return err
 	}
-	if err = a.parseResults(); err != nil {
-		return true, err
-	}
-	return true, nil
+	err = a.parseResults()
+	return err
 }
 
 type applicabilityScanConfig struct {
@@ -238,25 +230,11 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	return err
 }
 
-func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
-	err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails)
-	if err != nil {
-		return true, err
+func (a *ApplicabilityScanManager) runAnalyzerManager() error {
+	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
+		return err
 	}
-	if err != nil {
-		return true, err
-	}
-	err = a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
-	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode := exitError.ExitCode()
-			// User not entitled error
-			if exitCode == 31 {
-				return false, err
-			}
-		}
-	}
-	return true, err
+	return a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
 }
 
 func (a *ApplicabilityScanManager) parseResults() error {

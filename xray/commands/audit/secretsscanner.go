@@ -1,12 +1,11 @@
 package audit
 
 import (
-	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -14,9 +13,10 @@ import (
 )
 
 const (
-	secretsScanCommand   = "sec"
-	secretsScannersNames = "tokens, entropy"
-	secretsScannerType   = "secrets-scan"
+	secretsScanCommand        = "sec"
+	secretsScannersNames      = "tokens, entropy"
+	secretsScannerType        = "secrets-scan"
+	secretsScanFailureMessage = "failed to run secrets scan. Cause: %s"
 )
 
 type Secret struct {
@@ -37,29 +37,36 @@ type SecretScanManager struct {
 }
 
 func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Secret, bool, error) {
-	secretScanManager, err := NewSecretsScanManager(serverDetails, analyzerManager)
+	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
 	if err != nil {
-		log.Info("failed to run secrets scan: " + err.Error())
-		return nil, false, err
+		return nil, false, fmt.Errorf(secretsScanFailureMessage, err.Error())
 	}
-	err = secretScanManager.Run()
+	defer func() {
+		if cleanupFunc != nil {
+			e := cleanupFunc()
+			if err == nil {
+				err = e
+			}
+		}
+	}()
+	err = secretScanManager.run()
 	if err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
-		log.Info("failed to run secrets scan: " + err.Error())
-		return nil, true, err
+		return nil, true, fmt.Errorf(secretsScanFailureMessage, err.Error())
 	}
 	return secretScanManager.secretsScannerResults, true, nil
 }
 
-func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (*SecretScanManager, error) {
-	if serverDetails == nil {
-		return nil, errors.New("cant get xray server details")
-	}
+func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *SecretScanManager,
+	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return
+	}
+	cleanup = func() error {
+		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &SecretScanManager{
 		secretsScannerResults: []Secret{},
@@ -67,10 +74,10 @@ func NewSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager 
 		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
 		serverDetails:         serverDetails,
-	}, nil
+	}, cleanup, nil
 }
 
-func (s *SecretScanManager) Run() error {
+func (s *SecretScanManager) run() error {
 	var err error
 	defer func() {
 		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
@@ -86,10 +93,8 @@ func (s *SecretScanManager) Run() error {
 	if err = s.runAnalyzerManager(); err != nil {
 		return err
 	}
-	if err = s.parseResults(); err != nil {
-		return err
-	}
-	return nil
+	err = s.parseResults()
+	return err
 }
 
 type secretsScanConfig struct {
@@ -124,19 +129,14 @@ func (s *SecretScanManager) createConfigFile() error {
 		return err
 	}
 	err = os.WriteFile(s.configFileName, yamlData, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	err := utils.SetAnalyzerManagerEnvVariables(s.serverDetails)
-	if err != nil {
+	if err := utils.SetAnalyzerManagerEnvVariables(s.serverDetails); err != nil {
 		return err
 	}
-	err = s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
-	return err
+	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
 }
 
 func (s *SecretScanManager) parseResults() error {
@@ -156,7 +156,7 @@ func (s *SecretScanManager) parseResults() error {
 			Severity:   utils.GetResultSeverity(secret),
 			File:       utils.GetResultFileName(secret),
 			LineColumn: utils.GetResultLocationInFile(secret),
-			Text:       s.getHiddenSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
+			Text:       s.hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,
 		}
 		finalSecretsList = append(finalSecretsList, newSecret)
@@ -165,25 +165,20 @@ func (s *SecretScanManager) parseResults() error {
 	return nil
 }
 
-func (s *SecretScanManager) getHiddenSecret(secret string) string {
-	if secret == "" {
-		return ""
+func (s *SecretScanManager) hideSecret(secret string) string {
+	if len(secret) <= 3 {
+		return "***"
 	}
 	hiddenSecret := ""
-	if len(secret) <= 3 {
-		for i := 0; i < len(secret); i++ {
-			hiddenSecret += "*"
-		}
-	} else { // show first 7 digits
-		i := 0
-		for i < 3 {
-			hiddenSecret += string(secret[i])
-			i++
-		}
-		for i < 15 {
-			hiddenSecret += "*"
-			i++
-		}
+	// Show first 3 digits
+	i := 0
+	for i < 3 {
+		hiddenSecret += string(secret[i])
+		i++
+	}
+	for i < 15 {
+		hiddenSecret += "*"
+		i++
 	}
 	return hiddenSecret
 }

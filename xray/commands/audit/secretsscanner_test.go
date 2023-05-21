@@ -12,7 +12,7 @@ import (
 
 func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 	// Act
-	secretScanManager, err := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, err := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NoError(t, err)
@@ -23,7 +23,7 @@ func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 
 func TestNewSecretsScanManager_ServerNotValid(t *testing.T) {
 	// Act
-	secretScanManager, err := NewSecretsScanManager(nil, &analyzerManagerMock{})
+	secretScanManager, err := newSecretsScanManager(nil, &analyzerManagerMock{})
 
 	// Assert
 	assert.Nil(t, secretScanManager)
@@ -32,7 +32,7 @@ func TestNewSecretsScanManager_ServerNotValid(t *testing.T) {
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.createConfigFile()
@@ -52,7 +52,7 @@ func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	// Arrange
 	analyzerManagerExecutionError = errors.New("analyzer manager error")
-	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.runAnalyzerManager()
@@ -68,7 +68,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
@@ -81,7 +81,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
@@ -186,10 +186,10 @@ func TestGetSecretLocation_InputIsValid(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	hiddenSecret := secretScanner.getHiddenSecret("")
+	hiddenSecret := secretScanner.hideSecret("")
 
 	// Assert
 	assert.Equal(t, "", hiddenSecret)
@@ -197,10 +197,10 @@ func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	hiddenSecret := secretScanner.getHiddenSecret("123")
+	hiddenSecret := secretScanner.hideSecret("123")
 
 	// Assert
 	assert.Equal(t, "***", hiddenSecret)
@@ -208,10 +208,10 @@ func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := NewSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
-	hiddenSecret := secretScanner.getHiddenSecret("long_secret")
+	hiddenSecret := secretScanner.hideSecret("long_secret")
 
 	// Assert
 	assert.Equal(t, "lon************", hiddenSecret)

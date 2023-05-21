@@ -27,7 +27,7 @@ var (
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
-func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
@@ -88,7 +88,7 @@ type ApplicabilityScanManager struct {
 	serverDetails            *config.ServerDetails
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesList(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()

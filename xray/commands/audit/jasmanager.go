@@ -8,12 +8,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 )
 
 var analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
 
-func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*services.GraphNode,
+func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil {
 		return nil, errors.New("cant get xray server details")

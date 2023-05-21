@@ -283,22 +283,22 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []IacOrSecretResult) []formats.SecretsRow {
+func PrepareSecrets(secrets []IacOrSecretResult) []formats.IacSecretsRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.SecretsRow {
-	var secretsRows []formats.SecretsRow
+func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+	var secretsRows []formats.IacSecretsRow
 	for _, secret := range secrets {
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
 		secretsRows = append(secretsRows,
-			formats.SecretsRow{
+			formats.IacSecretsRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
 				File:             secret.File,
 				LineColumn:       secret.LineColumn,
 				Text:             secret.Text,
-				SecretType:       secret.Type,
+				Type:             secret.Type,
 			},
 		)
 	}
@@ -320,22 +320,22 @@ func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool)
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []IacOrSecretResult) []formats.IacRow {
+func PrepareIacs(iacs []IacOrSecretResult) []formats.IacSecretsRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacRow {
-	var iacRows []formats.IacRow
+func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+	var iacRows []formats.IacSecretsRow
 	for _, iac := range iacs {
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
 		iacRows = append(iacRows,
-			formats.IacRow{
+			formats.IacSecretsRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
 				File:             iac.File,
 				LineColumn:       iac.LineColumn,
 				Text:             iac.Text,
-				IacType:          iac.Type,
+				Type:             iac.Type,
 			},
 		)
 	}

@@ -28,7 +28,7 @@ const (
 // targetPath: The local download path (without the file name).
 // downloadPath: Artifactory download path.
 func DownloadExtractor(targetPath, downloadPath string) error {
-	artDetails, remotePath, err := getExtractorsRemoteDetails(downloadPath)
+	artDetails, remotePath, err := GetExtractorsRemoteDetails(downloadPath)
 	if err != nil {
 		return err
 	}
@@ -105,9 +105,9 @@ func createChecksumFile(targetPath, checksum string) (err error) {
 	return
 }
 
-// The getExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
+// The GetExtractorsRemoteDetails function is responsible for retrieving the server details necessary to download the build-info extractors.
 // downloadPath - specifies the path in the remote repository from which the extractors will be downloaded.
-func getExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
+func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = getRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
 		return

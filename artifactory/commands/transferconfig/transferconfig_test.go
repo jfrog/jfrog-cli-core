@@ -218,7 +218,7 @@ func TestValidateMinVersion(t *testing.T) {
 		t.Run(testCase.testName, func(t *testing.T) {
 			sourceRtVersion = testCase.sourceVersion
 			targetRtVersion = testCase.targetVersion
-			err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).ValidateMinVersion()
+			err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).validateMinVersion()
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
 			} else {

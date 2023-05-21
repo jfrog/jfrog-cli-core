@@ -86,10 +86,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	tcc.LogTitle("Phase 1/5 - Preparations")
-	if err = tcc.runPreparations(); err != nil {
+	err = tcc.printWarnings()
+	if err != nil {
 		return err
 	}
-
+	err = tcc.validateServerPrerequisites()
+	if err != nil {
+		return err
+	}
 	// Run export on the source Artifactory
 	tcc.LogTitle("Phase 2/5 - Export configuration from the source Artifactory")
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory()
@@ -157,39 +161,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	return
 }
 
-func (tcc *TransferConfigCommand) runPreparations() error {
-	err := tcc.printWarnings()
-	if err != nil {
-		return err
-	}
-	// Make sure that the source Artifactory version is sufficient.
-	if err = tcc.ValidateMinVersion(); err != nil {
-		return err
-	}
-	// Make sure source and target Artifactory URLs are different
-	if err = tcc.ValidateDifferentServers(); err != nil {
-		return err
-	}
-	// Make sure that the target Artifactory is empty and the config-import plugin is installed
-	return tcc.validateTargetServer()
-}
-
 func (tcc *TransferConfigCommand) runPreChecks() error {
 	// Warn if default admin:password credentials are exist in the source server
 	_, err := tcc.IsDefaultCredentials()
 	if err != nil {
 		return err
 	}
-	// Make sure that the source Artifactory version is sufficient.
-	if err = tcc.ValidateMinVersion(); err != nil {
-		return err
-	}
-	// Make sure source and target Artifactory URLs are different
-	if err = tcc.ValidateDifferentServers(); err != nil {
-		return err
-	}
-	// Make sure that the target Artifactory is empty and the config-import plugin is installed
-	if err = tcc.validateTargetServer(); err != nil {
+
+	if err = tcc.validateServerPrerequisites(); err != nil {
 		return err
 	}
 
@@ -291,7 +270,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
 func (tcc *TransferConfigCommand) NewPreChecksRunner(remoteRepositories []interface{}) (runner *commandsUtils.PreCheckRunner) {
 	runner = commandsUtils.NewPreChecksRunner()
 
-	// Add pre checks here
+	// Add pre-checks here
 	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
 
 	return
@@ -546,7 +525,7 @@ func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos ma
 
 // Make sure that the source Artifactory version is sufficient.
 // Returns the source Artifactory version.
-func (tcc *TransferConfigCommand) ValidateMinVersion() error {
+func (tcc *TransferConfigCommand) validateMinVersion() error {
 	log.Info("Verifying minimum version of the source server...")
 	sourceArtifactoryVersion, err := tcc.SourceArtifactoryManager.GetVersion()
 	if err != nil {
@@ -569,4 +548,17 @@ func (tcc *TransferConfigCommand) ValidateMinVersion() error {
 	}
 
 	return nil
+}
+
+func (tcc *TransferConfigCommand) validateServerPrerequisites() error {
+	// Make sure that the source Artifactory version is sufficient.
+	if err := tcc.validateMinVersion(); err != nil {
+		return err
+	}
+	// Make sure source and target Artifactory URLs are different
+	if err := tcc.ValidateDifferentServers(); err != nil {
+		return err
+	}
+	// Make sure that the target Artifactory is empty and the config-import plugin is installed
+	return tcc.validateTargetServer()
 }

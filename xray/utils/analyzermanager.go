@@ -70,7 +70,9 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 }
 
 func (am *AnalyzerManager) Exec(configFile string) error {
-	return exec.Command(am.analyzerManagerFullPath, applicabilityScanCommand, configFile).Run()
+	cmd := exec.Command(am.analyzerManagerFullPath, applicabilityScanCommand, configFile)
+	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
+	return cmd.Run()
 }
 
 func CreateAnalyzerManagerLogDir() error {

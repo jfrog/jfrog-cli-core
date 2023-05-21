@@ -121,6 +121,10 @@ func (ca *NpmCommand) ServerDetails() (*config.ServerDetails, error) {
 	return ca.serverDetails, nil
 }
 
+func (ca *NpmCommand) RestoreNpmrcFunc() func() error {
+	return ca.restoreNpmrcFunc
+}
+
 func (ca *NpmCommand) PreparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites...")
 	var err error

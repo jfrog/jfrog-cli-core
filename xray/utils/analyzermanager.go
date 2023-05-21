@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	audit2 "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -37,11 +36,19 @@ const (
 	ApplicabilityUndeterminedStringValue = "Undetermined"
 )
 
+type IacOrSecretResult struct {
+	Severity   string
+	File       string
+	LineColumn string
+	Type       string
+	Text       string
+}
+
 type ExtendedScanResults struct {
 	XrayResults                  []services.ScanResponse
 	ApplicabilityScanResults     map[string]string
-	SecretsScanResults           []audit2.Secret
-	IacScanResults               []audit2.Iac
+	SecretsScanResults           []IacOrSecretResult
+	IacScanResults               []IacOrSecretResult
 	EntitledForJas               bool
 	EligibleForApplicabilityScan bool
 	EligibleForSecretScan        bool
@@ -142,7 +149,7 @@ func IsNotEntitledError(err error) bool {
 		exitCode := exitError.ExitCode()
 		// User not entitled error
 		if exitCode == 31 {
-			log.Info("got not entitled error from analyzer manager")
+			log.Debug("got not entitled error from analyzer manager")
 			return true
 		}
 	}
@@ -154,7 +161,7 @@ func IsUnsupportedCommandError(err error) bool {
 		exitCode := exitError.ExitCode()
 		// Analyzer manager doesnt support the requested scan command
 		if exitCode == 13 {
-			log.Info("got unsupported scan command error from analyzer manager")
+			log.Debug("got unsupported scan command error from analyzer manager")
 			return true
 		}
 	}
@@ -174,10 +181,6 @@ func GetResultLocationInFile(secret *sarif.Result) string {
 	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
 	if startLine != "" && startColumn != "" {
 		return startLine + ":" + startColumn
-	} else if startLine == "" && startColumn != "" {
-		return "startLine:" + startColumn
-	} else if startLine != "" && startColumn == "" {
-		return startLine + ":startColumn"
 	}
 	return ""
 }
@@ -192,6 +195,6 @@ func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
 		return *result.Level
 	}
-	return "Medium" // Default value for severity
+	return "Medium" // Default value for jas severity
 
 }

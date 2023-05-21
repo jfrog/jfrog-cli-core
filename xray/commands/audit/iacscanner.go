@@ -18,16 +18,8 @@ const (
 	iacScanCommand        = "iac"
 )
 
-type Iac struct {
-	Severity   string
-	File       string
-	LineColumn string
-	Type       string
-	Text       string
-}
-
 type IacScanManager struct {
-	iacScannerResults []Iac
+	iacScannerResults []utils.IacOrSecretResult
 	configFileName    string
 	resultsFileName   string
 	analyzerManager   utils.AnalyzerManagerInterface
@@ -35,7 +27,8 @@ type IacScanManager struct {
 	projectRootPath   string
 }
 
-func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Iac, bool, error) {
+func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
+	bool, error) {
 	iacScanManager, cleanupFunc, err := newsIacScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(iacScanFailureMessage, err.Error())
@@ -68,7 +61,7 @@ func newsIacScanManager(serverDetails *config.ServerDetails, analyzerManager uti
 		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &IacScanManager{
-		iacScannerResults: []Iac{},
+		iacScannerResults: []utils.IacOrSecretResult{},
 		configFileName:    filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:   filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:   analyzerManager,
@@ -146,10 +139,10 @@ func (iac *IacScanManager) parseResults() error {
 		iacResults = report.Runs[0].Results
 	}
 
-	finalIacList := []Iac{}
+	finalIacList := []utils.IacOrSecretResult{}
 
 	for _, result := range iacResults {
-		newIac := Iac{
+		newIac := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(result),
 			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), iac.projectRootPath),
 			LineColumn: utils.GetResultLocationInFile(result),

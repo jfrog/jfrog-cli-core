@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-	audit2 "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -284,11 +283,11 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []audit2.Secret) []formats.SecretsRow {
+func PrepareSecrets(secrets []IacOrSecretResult) []formats.SecretsRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []audit2.Secret, isTable bool) []formats.SecretsRow {
+func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.SecretsRow {
 	var secretsRows []formats.SecretsRow
 	for _, secret := range secrets {
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
@@ -311,7 +310,7 @@ func prepareSecrets(secrets []audit2.Secret, isTable bool) []formats.SecretsRow 
 	return secretsRows
 }
 
-func PrintSecretsTable(secrets []audit2.Secret, entitledForSecretsScan bool) error {
+func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
 		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
@@ -321,11 +320,11 @@ func PrintSecretsTable(secrets []audit2.Secret, entitledForSecretsScan bool) err
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []audit2.Iac) []formats.IacRow {
+func PrepareIacs(iacs []IacOrSecretResult) []formats.IacRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []audit2.Iac, isTable bool) []formats.IacRow {
+func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacRow {
 	var iacRows []formats.IacRow
 	for _, iac := range iacs {
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
@@ -348,7 +347,7 @@ func prepareIacs(iacs []audit2.Iac, isTable bool) []formats.IacRow {
 	return iacRows
 }
 
-func PrintIacTable(iacs []audit2.Iac, entitledForIacScan bool) error {
+func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Iac Violations",

@@ -3,7 +3,6 @@ package audit
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -17,7 +16,7 @@ var (
 type analyzerManagerMock struct {
 }
 
-func (am *analyzerManagerMock) Exec(string) error {
+func (am *analyzerManagerMock) Exec(string, string) error {
 	return analyzerManagerExecutionError
 }
 
@@ -63,14 +62,24 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
-	extendedResults, err := jas.GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.False(t, extendedResults.EntitledForJas)
 	assert.Equal(t, 1, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScannerResults)
+	assert.Nil(t, extendedResults.ApplicabilityScanResults)
 
 	// Cleanup
 	analyzerManagerExist = true
+}
+
+func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
+	// Act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil)
+
+	// Assert
+	assert.Nil(t, extendedResults)
+	assert.Error(t, err)
+	assert.Equal(t, "cant get xray server details", err.Error())
 }

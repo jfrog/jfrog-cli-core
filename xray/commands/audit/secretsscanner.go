@@ -19,16 +19,8 @@ const (
 	secretsScanFailureMessage = "failed to run secrets scan. Cause: %s"
 )
 
-type Secret struct {
-	Severity   string
-	File       string
-	LineColumn string
-	Type       string
-	Text       string
-}
-
 type SecretScanManager struct {
-	secretsScannerResults []Secret
+	secretsScannerResults []utils.IacOrSecretResult
 	configFileName        string
 	resultsFileName       string
 	analyzerManager       utils.AnalyzerManagerInterface
@@ -36,7 +28,8 @@ type SecretScanManager struct {
 	projectRootPath       string
 }
 
-func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]Secret, bool, error) {
+func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
+	bool, error) {
 	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(secretsScanFailureMessage, err.Error())
@@ -69,7 +62,7 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager 
 		return fileutils.RemoveTempDir(tempDir)
 	}
 	return &SecretScanManager{
-		secretsScannerResults: []Secret{},
+		secretsScannerResults: []utils.IacOrSecretResult{},
 		configFileName:        filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
@@ -149,10 +142,10 @@ func (s *SecretScanManager) parseResults() error {
 		secretsResults = report.Runs[0].Results
 	}
 
-	finalSecretsList := []Secret{}
+	finalSecretsList := []utils.IacOrSecretResult{}
 
 	for _, secret := range secretsResults {
-		newSecret := Secret{
+		newSecret := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(secret),
 			File:       utils.GetResultFileName(secret),
 			LineColumn: utils.GetResultLocationInFile(secret),

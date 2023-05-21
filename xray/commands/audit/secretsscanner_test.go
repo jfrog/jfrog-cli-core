@@ -2,8 +2,7 @@ package audit
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/generic/jas"
-	"github.com/owenrumney/go-sarif/v2/sarif"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -12,7 +11,7 @@ import (
 
 func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 	// Act
-	secretScanManager, err := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _, err := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Assert
 	assert.NoError(t, err)
@@ -21,18 +20,9 @@ func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 	assert.NotEmpty(t, secretScanManager.resultsFileName)
 }
 
-func TestNewSecretsScanManager_ServerNotValid(t *testing.T) {
-	// Act
-	secretScanManager, err := newSecretsScanManager(nil, &analyzerManagerMock{})
-
-	// Assert
-	assert.Nil(t, secretScanManager)
-	assert.Error(t, err)
-}
-
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.createConfigFile()
@@ -52,7 +42,7 @@ func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	// Arrange
 	analyzerManagerExecutionError = errors.New("analyzer manager error")
-	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	err := secretScanManager.runAnalyzerManager()
@@ -68,8 +58,8 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "no-secrets.sarif")
+	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager.resultsFileName = filepath.Join("..", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
 	err := secretScanManager.parseResults()
@@ -81,8 +71,8 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	secretScanManager, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanManager.resultsFileName = filepath.Join("..", "..", "..", "testdata", "secrets-scan", "contain-secrets.sarif")
+	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanManager.resultsFileName = filepath.Join("..", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
 	err := secretScanManager.parseResults()
@@ -103,7 +93,7 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, analyzerManagerErrorMessage, err.Error())
+	assert.Equal(t, fmt.Sprintf(secretsScanFailureMessage, analyzerManagerErrorMessage), err.Error())
 	assert.Nil(t, secretsResults)
 	assert.True(t, entitledForSecrets)
 
@@ -111,93 +101,20 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 	analyzerManagerExecutionError = nil
 }
 
-func TestGetSecretFileName_InputIsValid(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner/"
-
-	// Arrange
-	input := "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &input}}},
-		},
-	}
-
-	// Act
-	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, "/tests/req.nodejs/file.js", fileName)
-}
-
-func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner"
-
-	input := "invalid_input"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &input}}},
-		},
-	}
-
-	// Act
-	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, input, fileName)
-}
-
-func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: nil}}},
-		},
-	}
-
-	// Act
-	fileName := jas.extractRelativePath(jas.getResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, "", fileName)
-}
-
-func TestGetSecretLocation_InputIsValid(t *testing.T) {
-	// Arrange
-	startLine := 19
-	startColumn := 25
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{
-				StartLine:   &startLine,
-				StartColumn: &startColumn,
-			}}},
-		},
-	}
-
-	// Act
-	fileName := jas.getResultLocationInFile(secret)
-
-	// Assert
-	assert.Equal(t, "19:25", fileName)
-}
-
 func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
 	// Arrange
-	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.hideSecret("")
 
 	// Assert
-	assert.Equal(t, "", hiddenSecret)
+	assert.Equal(t, "***", hiddenSecret)
 }
 
 func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.hideSecret("123")
@@ -208,43 +125,11 @@ func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
 
 func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
 	// Arrange
-	secretScanner, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
 	// Act
 	hiddenSecret := secretScanner.hideSecret("long_secret")
 
 	// Assert
 	assert.Equal(t, "lon************", hiddenSecret)
-}
-
-func TestGetSeverity_LevelFieldExist(t *testing.T) {
-	// Arrange
-	levelValue := "High"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
-		},
-		Level: &levelValue,
-	}
-
-	// Act
-	severity := jas.getResultSeverity(secret)
-
-	// Assert
-	assert.Equal(t, levelValue, severity)
-}
-
-func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
-	// Arrange
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
-		},
-	}
-
-	// Act
-	severity := jas.getResultSeverity(secret)
-
-	// Assert
-	assert.Equal(t, "Medium", severity)
 }

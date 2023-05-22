@@ -65,12 +65,14 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	am.analyzerManagerFullPath = analyzerManagerFilePath
+	am.analyzerManagerFullPath = analyzerManagerPath
 	return fileutils.IsFileExists(analyzerManagerPath, false)
 }
 
 func (am *AnalyzerManager) Exec(configFile string) error {
-	return exec.Command(am.analyzerManagerFullPath, applicabilityScanCommand, configFile).Run()
+	cmd := exec.Command(am.analyzerManagerFullPath, applicabilityScanCommand, configFile)
+	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
+	return cmd.Run()
 }
 
 func CreateAnalyzerManagerLogDir() error {

@@ -260,6 +260,8 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	return err
 }
 
+// Runs the analyzerManager app and returns a boolean indicates if the user is entitled for
+// advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
 	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
 		return true, err

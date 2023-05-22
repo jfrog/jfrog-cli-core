@@ -108,14 +108,13 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.dependencyTrees, serverDetails)
+	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 	if err != nil {
 		return err
 	}
 
-	if auditCmd.Progress != nil {
-		err = auditCmd.Progress.Quit()
-		if err != nil {
+	if auditCmd.Progress() != nil {
+		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
 	}
@@ -124,7 +123,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if printScanResults {
 		err = xrutils.PrintScanResults(extendedScanResults,
 			nil,
-			auditCmd.OutputFormat,
+			auditCmd.OutputFormat(),
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
 			isMultipleRootProject,

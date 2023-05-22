@@ -8,22 +8,35 @@ import (
 
 type GraphBasicParams struct {
 	serverDetails           *config.ServerDetails
-	OutputFormat            OutputFormat
-	Progress                ioUtils.ProgressMgr
-	DependencyTrees         []*xrayUtils.GraphNode
-	ReleasesRepo            string
-	ExcludeTestDependencies bool
-	UseWrapper              bool
-	InsecureTls             bool
-	RequirementsFile        string
-	Technologies            []string
-	Args                    []string
+	outputFormat            OutputFormat
+	progress                ioUtils.ProgressMgr
+	fullDependenciesTree    []*xrayUtils.GraphNode
+	releasesRepo            string
+	excludeTestDependencies bool
+	useWrapper              bool
+	insecureTls             bool
+	pipRequirementsFile     string
+	technologies            []string
+	args                    []string
 	depsRepo                string
-	IgnoreConfigFile        bool
+	ignoreConfigFile        bool
 }
 
-func (gbp *GraphBasicParams) SetServerDetails(serverDetails *config.ServerDetails) *GraphBasicParams {
-	gbp.serverDetails = serverDetails
+func (gbp *GraphBasicParams) ReleasesRepo() string {
+	return gbp.releasesRepo
+}
+
+func (gbp *GraphBasicParams) SetReleasesRepo(releasesRepo string) *GraphBasicParams {
+	gbp.releasesRepo = releasesRepo
+	return gbp
+}
+
+func (gbp *GraphBasicParams) FullDependenciesTree() []*xrayUtils.GraphNode {
+	return gbp.fullDependenciesTree
+}
+
+func (gbp *GraphBasicParams) SetFullDependenciesTree(fullDependenciesTree []*xrayUtils.GraphNode) *GraphBasicParams {
+	gbp.fullDependenciesTree = fullDependenciesTree
 	return gbp
 }
 
@@ -31,52 +44,84 @@ func (gbp *GraphBasicParams) ServerDetails() (*config.ServerDetails, error) {
 	return gbp.serverDetails, nil
 }
 
-func (gbp *GraphBasicParams) SetPipRequirementsFile(requirementsFile string) *GraphBasicParams {
-	gbp.RequirementsFile = requirementsFile
+func (gbp *GraphBasicParams) SetServerDetails(serverDetails *config.ServerDetails) *GraphBasicParams {
+	gbp.serverDetails = serverDetails
 	return gbp
+}
+
+func (gbp *GraphBasicParams) PipRequirementsFile() string {
+	return gbp.pipRequirementsFile
+}
+
+func (gbp *GraphBasicParams) SetPipRequirementsFile(requirementsFile string) *GraphBasicParams {
+	gbp.pipRequirementsFile = requirementsFile
+	return gbp
+}
+
+func (gbp *GraphBasicParams) ExcludeTestDependencies() bool {
+	return gbp.excludeTestDependencies
 }
 
 func (gbp *GraphBasicParams) SetExcludeTestDependencies(excludeTestDependencies bool) *GraphBasicParams {
-	gbp.ExcludeTestDependencies = excludeTestDependencies
+	gbp.excludeTestDependencies = excludeTestDependencies
 	return gbp
+}
+
+func (gbp *GraphBasicParams) UseWrapper() bool {
+	return gbp.useWrapper
 }
 
 func (gbp *GraphBasicParams) SetUseWrapper(useWrapper bool) *GraphBasicParams {
-	gbp.UseWrapper = useWrapper
+	gbp.useWrapper = useWrapper
 	return gbp
+}
+
+func (gbp *GraphBasicParams) InsecureTls() bool {
+	return gbp.insecureTls
 }
 
 func (gbp *GraphBasicParams) SetInsecureTls(insecureTls bool) *GraphBasicParams {
-	gbp.InsecureTls = insecureTls
+	gbp.insecureTls = insecureTls
 	return gbp
+}
+
+func (gbp *GraphBasicParams) Technologies() []string {
+	return gbp.technologies
 }
 
 func (gbp *GraphBasicParams) SetTechnologies(technologies []string) *GraphBasicParams {
-	gbp.Technologies = technologies
+	gbp.technologies = technologies
 	return gbp
 }
 
+func (gbp *GraphBasicParams) Progress() ioUtils.ProgressMgr {
+	return gbp.progress
+}
+
 func (gbp *GraphBasicParams) SetProgress(progress ioUtils.ProgressMgr) {
-	gbp.Progress = progress
+	gbp.progress = progress
+}
+
+func (gbp *GraphBasicParams) Args() []string {
+	return gbp.args
 }
 
 func (gbp *GraphBasicParams) SetNpmScope(depType string) *GraphBasicParams {
 	switch depType {
 	case "devOnly":
-		gbp.Args = []string{"--dev"}
+		gbp.args = []string{"--dev"}
 	case "prodOnly":
-		gbp.Args = []string{"--prod"}
+		gbp.args = []string{"--prod"}
 	}
 	return gbp
 }
 
-func (gbp *GraphBasicParams) SetOutputFormat(format OutputFormat) *GraphBasicParams {
-	gbp.OutputFormat = format
-	return gbp
+func (gbp *GraphBasicParams) OutputFormat() OutputFormat {
+	return gbp.outputFormat
 }
 
-func (gbp *GraphBasicParams) SetDepsRepo(depsRepo string) *GraphBasicParams {
-	gbp.depsRepo = depsRepo
+func (gbp *GraphBasicParams) SetOutputFormat(format OutputFormat) *GraphBasicParams {
+	gbp.outputFormat = format
 	return gbp
 }
 
@@ -84,7 +129,16 @@ func (gbp *GraphBasicParams) DepsRepo() string {
 	return gbp.depsRepo
 }
 
+func (gbp *GraphBasicParams) SetDepsRepo(depsRepo string) *GraphBasicParams {
+	gbp.depsRepo = depsRepo
+	return gbp
+}
+
+func (gbp *GraphBasicParams) IgnoreConfigFile() bool {
+	return gbp.ignoreConfigFile
+}
+
 func (gbp *GraphBasicParams) SetIgnoreConfigFile(ignoreConfigFile bool) *GraphBasicParams {
-	gbp.IgnoreConfigFile = ignoreConfigFile
+	gbp.ignoreConfigFile = ignoreConfigFile
 	return gbp
 }

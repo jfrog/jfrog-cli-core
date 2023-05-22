@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -17,9 +16,8 @@ import (
 )
 
 const (
-	defaultAdminUsername                = "admin"
-	defaultAdminPassword                = "password"
-	minTransferConfigArtifactoryVersion = "6.23.21"
+	defaultAdminUsername = "admin"
+	defaultAdminPassword = "password"
 )
 
 type TransferConfigBase struct {
@@ -66,37 +64,14 @@ func (tcb *TransferConfigBase) CreateServiceManagers(dryRun bool) (err error) {
 }
 
 // Make sure source and target Artifactory URLs are different.
-// Also make sure that the source Artifactory version is sufficient.
-// Returns the source Artifactory version.
-func (tcb *TransferConfigBase) ValidateMinVersionAndDifferentServers() (string, error) {
-	log.Info("Verifying minimum version of the source server...")
-	sourceArtifactoryVersion, err := tcb.SourceArtifactoryManager.GetVersion()
-	if err != nil {
-		return "", err
-	}
-	targetArtifactoryVersion, err := tcb.TargetArtifactoryManager.GetVersion()
-	if err != nil {
-		return "", err
-	}
-
-	// Validate minimal Artifactory version in the source server
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
-	if err != nil {
-		return "", err
-	}
-
-	// Validate that the target Artifactory server version is >= than the source Artifactory server version
-	if !version.NewVersion(targetArtifactoryVersion).AtLeast(sourceArtifactoryVersion) {
-		return "", errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
-	}
-
+func (tcb *TransferConfigBase) ValidateDifferentServers() error {
 	// Avoid exporting and importing to the same server
 	log.Info("Verifying source and target servers are different...")
 	if tcb.SourceServerDetails.GetArtifactoryUrl() == tcb.TargetServerDetails.GetArtifactoryUrl() {
-		return "", errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
+		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
 
-	return sourceArtifactoryVersion, nil
+	return nil
 }
 
 // Create a map between the repository types to the list of repositories to transfer.

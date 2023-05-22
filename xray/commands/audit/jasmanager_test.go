@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -40,11 +41,11 @@ var fakeBasicXrayResults = []services.ScanResponse{
 	},
 }
 
-var fakeBasicDependencyGraph = []*services.GraphNode{
+var fakeBasicDependencyGraph = []*xrayUtils.GraphNode{
 	{
 		Id: "parent_node_id",
-		Nodes: []*services.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*services.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
+		Nodes: []*xrayUtils.GraphNode{
+			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
 			{Id: "issueId_2_direct_dependency", Nodes: nil},
 		},
 	},

@@ -1040,7 +1040,6 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Vagrant:   federatedVagrantHandler,
 	Gitlfs:    federatedGitlfsHandler,
 	Go:        federatedGoHandler,
-	Yum:       federatedYumHandler,
 	Conan:     federatedConanHandler,
 	Chef:      federatedChefHandler,
 	Puppet:    federatedPuppetHandler,
@@ -1055,11 +1054,9 @@ func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManage
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Maven(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Maven(params)
+		return servicesManager.UpdateFederatedRepository().Maven(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Maven(params)
 }
 
 func federatedGradleHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1069,11 +1066,9 @@ func federatedGradleHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Gradle(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Gradle(params)
+		return servicesManager.UpdateFederatedRepository().Gradle(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Gradle(params)
 }
 
 func federatedIvyHandles(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1083,11 +1078,9 @@ func federatedIvyHandles(servicesManager artifactory.ArtifactoryServicesManager,
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Ivy(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Ivy(params)
+		return servicesManager.UpdateFederatedRepository().Ivy(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Ivy(params)
 }
 
 func federatedSbtHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1097,11 +1090,9 @@ func federatedSbtHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Sbt(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Sbt(params)
+		return servicesManager.UpdateFederatedRepository().Sbt(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Sbt(params)
 }
 
 func federatedHelmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1111,11 +1102,10 @@ func federatedHelmHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Helm(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Helm(params)
+		return servicesManager.UpdateFederatedRepository().Helm(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Helm(params)
+
 }
 
 func federatedCocoapodsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1125,11 +1115,9 @@ func federatedCocoapodsHandler(servicesManager artifactory.ArtifactoryServicesMa
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Cocoapods(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Cocoapods(params)
+		return servicesManager.UpdateFederatedRepository().Cocoapods(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Cocoapods(params)
 }
 
 func federatedOpkgHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1139,11 +1127,9 @@ func federatedOpkgHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Opkg(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Opkg(params)
+		return servicesManager.UpdateFederatedRepository().Opkg(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Opkg(params)
 }
 
 func federatedRpmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1153,11 +1139,9 @@ func federatedRpmHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Rpm(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Rpm(params)
+		return servicesManager.UpdateFederatedRepository().Rpm(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Rpm(params)
 }
 
 func federatedNugetHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1167,11 +1151,9 @@ func federatedNugetHandler(servicesManager artifactory.ArtifactoryServicesManage
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Nuget(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Nuget(params)
+		return servicesManager.UpdateFederatedRepository().Nuget(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Nuget(params)
 }
 
 func federatedCranHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1181,11 +1163,9 @@ func federatedCranHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Cran(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Cran(params)
+		return servicesManager.UpdateFederatedRepository().Cran(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Cran(params)
 }
 
 func federatedGemsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1195,11 +1175,9 @@ func federatedGemsHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Gems(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Gems(params)
+		return servicesManager.UpdateFederatedRepository().Gems(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Gems(params)
 }
 
 func federatedNpmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1209,11 +1187,9 @@ func federatedNpmHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Npm(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Npm(params)
+		return servicesManager.UpdateFederatedRepository().Npm(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Npm(params)
 }
 
 func federatedBowerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1223,11 +1199,9 @@ func federatedBowerHandler(servicesManager artifactory.ArtifactoryServicesManage
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Bower(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Bower(params)
+		return servicesManager.UpdateFederatedRepository().Bower(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Bower(params)
 }
 
 func federatedDebianHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1237,11 +1211,9 @@ func federatedDebianHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Debian(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Debian(params)
+		return servicesManager.UpdateFederatedRepository().Debian(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Debian(params)
 }
 
 func federatedComposerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1251,11 +1223,9 @@ func federatedComposerHandler(servicesManager artifactory.ArtifactoryServicesMan
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Composer(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Composer(params)
+		return servicesManager.UpdateFederatedRepository().Composer(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Composer(params)
 }
 
 func federatedPypiHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1265,11 +1235,9 @@ func federatedPypiHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Pypi(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Pypi(params)
+		return servicesManager.UpdateFederatedRepository().Pypi(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Pypi(params)
 }
 
 func federatedDockerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1279,11 +1247,9 @@ func federatedDockerHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Docker(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Docker(params)
+		return servicesManager.UpdateFederatedRepository().Docker(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Docker(params)
 }
 
 func federatedVagrantHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1293,11 +1259,9 @@ func federatedVagrantHandler(servicesManager artifactory.ArtifactoryServicesMana
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Vagrant(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Vagrant(params)
+		return servicesManager.UpdateFederatedRepository().Vagrant(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Vagrant(params)
 }
 
 func federatedGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1307,11 +1271,9 @@ func federatedGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Gitlfs(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Gitlfs(params)
+		return servicesManager.UpdateFederatedRepository().Gitlfs(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Gitlfs(params)
 }
 
 func federatedGoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1321,25 +1283,9 @@ func federatedGoHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Go(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Go(params)
+		return servicesManager.UpdateFederatedRepository().Go(params)
 	}
-	return err
-}
-
-func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
-	params := services.NewYumFederatedRepositoryParams()
-	err := json.Unmarshal(jsonConfig, &params)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Yum(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Yum(params)
-	}
-	return err
+	return servicesManager.CreateFederatedRepository().Go(params)
 }
 
 func federatedConanHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1349,11 +1295,9 @@ func federatedConanHandler(servicesManager artifactory.ArtifactoryServicesManage
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Conan(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Conan(params)
+		return servicesManager.UpdateFederatedRepository().Conan(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Conan(params)
 }
 
 func federatedChefHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1363,11 +1307,9 @@ func federatedChefHandler(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Chef(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Chef(params)
+		return servicesManager.UpdateFederatedRepository().Chef(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Chef(params)
 }
 
 func federatedPuppetHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1377,11 +1319,9 @@ func federatedPuppetHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Puppet(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Puppet(params)
+		return servicesManager.UpdateFederatedRepository().Puppet(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Puppet(params)
 }
 
 func federatedAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1391,11 +1331,9 @@ func federatedAlpineHandler(servicesManager artifactory.ArtifactoryServicesManag
 		return err
 	}
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Alpine(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Alpine(params)
+		return servicesManager.UpdateFederatedRepository().Alpine(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Alpine(params)
 }
 
 func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1406,11 +1344,9 @@ func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesMana
 	}
 
 	if isUpdate {
-		err = servicesManager.UpdateFederatedRepository().Generic(params)
-	} else {
-		err = servicesManager.CreateFederatedRepository().Generic(params)
+		return servicesManager.UpdateFederatedRepository().Generic(params)
 	}
-	return err
+	return servicesManager.CreateFederatedRepository().Generic(params)
 }
 
 var virtualRepoHandlers = map[string]repoHandler{

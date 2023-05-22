@@ -65,6 +65,8 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 		handlerFunc = remoteRepoHandlers[packageType]
 	case Virtual:
 		handlerFunc = virtualRepoHandlers[packageType]
+	case Federated:
+		handlerFunc = federatedRepoHandlers[packageType]
 	default:
 		return errorutils.CheckErrorf("unsupported rclass: %s", repoConfigMap[Rclass])
 	}
@@ -1013,6 +1015,400 @@ func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager
 		err = servicesManager.UpdateRemoteRepository().Generic(params)
 	} else {
 		err = servicesManager.CreateRemoteRepository().Generic(params)
+	}
+	return err
+}
+
+var federatedRepoHandlers = map[string]repoHandler{
+	Maven:     federatedMavenHandler,
+	Gradle:    federatedGradleHandler,
+	Ivy:       federatedIvyHandles,
+	Sbt:       federatedSbtHandler,
+	Helm:      federatedHelmHandler,
+	Cocoapods: federatedCocoapodsHandler,
+	Opkg:      federatedOpkgHandler,
+	Rpm:       federatedRpmHandler,
+	Nuget:     federatedNugetHandler,
+	Cran:      federatedCranHandler,
+	Gems:      federatedGemsHandler,
+	Npm:       federatedNpmHandler,
+	Bower:     federatedBowerHandler,
+	Debian:    federatedDebianHandler,
+	Composer:  federatedComposerHandler,
+	Pypi:      federatedPypiHandler,
+	Docker:    federatedDockerHandler,
+	Vagrant:   federatedVagrantHandler,
+	Gitlfs:    federatedGitlfsHandler,
+	Go:        federatedGoHandler,
+	Yum:       federatedYumHandler,
+	Conan:     federatedConanHandler,
+	Chef:      federatedChefHandler,
+	Puppet:    federatedPuppetHandler,
+	Alpine:    federatedAlpineHandler,
+	Generic:   federatedGenericHandler,
+}
+
+func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewMavenFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Maven(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Maven(params)
+	}
+	return err
+}
+
+func federatedGradleHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewGradleFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Gradle(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Gradle(params)
+	}
+	return err
+}
+
+func federatedIvyHandles(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewIvyFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Ivy(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Ivy(params)
+	}
+	return err
+}
+
+func federatedSbtHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSbtFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Sbt(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Sbt(params)
+	}
+	return err
+}
+
+func federatedHelmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewHelmFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Helm(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Helm(params)
+	}
+	return err
+}
+
+func federatedCocoapodsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCocoapodsFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Cocoapods(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Cocoapods(params)
+	}
+	return err
+}
+
+func federatedOpkgHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewOpkgFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Opkg(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Opkg(params)
+	}
+	return err
+}
+
+func federatedRpmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewRpmFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Rpm(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Rpm(params)
+	}
+	return err
+}
+
+func federatedNugetHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewNugetFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Nuget(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Nuget(params)
+	}
+	return err
+}
+
+func federatedCranHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCranFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Cran(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Cran(params)
+	}
+	return err
+}
+
+func federatedGemsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewGemsFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Gems(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Gems(params)
+	}
+	return err
+}
+
+func federatedNpmHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewNpmFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Npm(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Npm(params)
+	}
+	return err
+}
+
+func federatedBowerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewBowerFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Bower(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Bower(params)
+	}
+	return err
+}
+
+func federatedDebianHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewDebianFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Debian(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Debian(params)
+	}
+	return err
+}
+
+func federatedComposerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewComposerFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Composer(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Composer(params)
+	}
+	return err
+}
+
+func federatedPypiHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewPypiFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Pypi(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Pypi(params)
+	}
+	return err
+}
+
+func federatedDockerHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewDockerFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Docker(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Docker(params)
+	}
+	return err
+}
+
+func federatedVagrantHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewVagrantFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Vagrant(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Vagrant(params)
+	}
+	return err
+}
+
+func federatedGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewGitlfsFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Gitlfs(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Gitlfs(params)
+	}
+	return err
+}
+
+func federatedGoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewGoFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Go(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Go(params)
+	}
+	return err
+}
+
+func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewYumFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Yum(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Yum(params)
+	}
+	return err
+}
+
+func federatedConanHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewConanFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Conan(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Conan(params)
+	}
+	return err
+}
+
+func federatedChefHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewChefFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Chef(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Chef(params)
+	}
+	return err
+}
+
+func federatedPuppetHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewPuppetFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Puppet(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Puppet(params)
+	}
+	return err
+}
+
+func federatedAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewAlpineFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Alpine(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Alpine(params)
+	}
+	return err
+}
+
+func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewGenericFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateFederatedRepository().Generic(params)
+	} else {
+		err = servicesManager.CreateFederatedRepository().Generic(params)
 	}
 	return err
 }

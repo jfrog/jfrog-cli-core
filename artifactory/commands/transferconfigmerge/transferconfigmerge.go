@@ -348,10 +348,14 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 	if err != nil {
 		return
 	}
+	log.Info("###########################first:")
+	log.Info(firstMap)
 	secondMap, err := commandsUtils.InterfaceToMap(second)
 	if err != nil {
 		return
 	}
+	log.Info("###########################second:")
+	log.Info(secondMap)
 	diffList := []string{}
 	for key, firstValue := range firstMap {
 		if slices.Contains(filteredKeys, strings.ToLower(key)) {

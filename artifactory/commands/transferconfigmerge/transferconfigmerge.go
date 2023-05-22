@@ -27,7 +27,8 @@ const (
 	minJFrogProjectsArtifactoryVersion              = "7.0.0"
 )
 
-var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks", "description", "gitRegistryUrl", "cargoInternalIndex"}
+// Repository key that should be filtered when comparing repositories (all must be lowercase)
+var filteredRepoKeys = []string{"url", "password", "suppresspomconsistencychecks", "description", "gitregistryurl", "cargointernalindex"}
 
 type TransferConfigMergeCommand struct {
 	commandsUtils.TransferConfigBase

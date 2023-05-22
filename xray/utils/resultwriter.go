@@ -75,7 +75,7 @@ func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonE
 		}
 		return PrintJson(jsonTable)
 	case Json:
-		return PrintJson(results)
+		return PrintJson(xrayScanResults)
 	case Sarif:
 		sarifFile, err := GenerateSarifFileFromScan(xrayScanResults, results, isMultipleRoots, false)
 		if err != nil {

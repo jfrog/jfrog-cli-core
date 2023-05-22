@@ -23,6 +23,7 @@ const (
 	ApplicabilityFeatureId          = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
+	noEntitledExitCode              = 31
 )
 
 var (
@@ -57,7 +58,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		if len(serverDetails.Url) > 0 {
 			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
 		}
-		log.Debug("conditions to run applicability scan are not met, didn't exec analyzer manager")
+		log.Debug("The conditions required for running 'Contextual Analysis' as part of the audit are not met.")
 		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
 	entitledForJas, err := applicabilityScanManager.Run()
@@ -260,21 +261,20 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 }
 
 func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
-	err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails)
-	if err != nil {
+	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
 		return true, err
 	}
-	err = a.analyzerManager.Exec(a.configFileName)
-	if err != nil {
+
+	if err := a.analyzerManager.Exec(a.configFileName); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode := exitError.ExitCode()
 			// User not entitled error
-			if exitCode == 31 {
+			if exitCode == noEntitledExitCode {
 				return false, err
 			}
 		}
 	}
-	return true, err
+	return true, nil
 }
 
 func (a *ApplicabilityScanManager) parseResults() error {

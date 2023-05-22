@@ -99,17 +99,16 @@ func DownloadAnalyzerManagerIfNeeded() error {
 
 func createChecksumFile(targetPath, checksum string) (err error) {
 	out, err := os.Create(targetPath)
+	defer func() {
+		e := errorutils.CheckError(out.Close())
+		err = errors.Join(err, e)
+	}()
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	if _, err = out.Write([]byte(checksum)); err != nil {
 		return errorutils.CheckError(err)
 	}
-
-	defer func() {
-		e := errorutils.CheckError(out.Close())
-		err = errors.Join(err, e)
-	}()
 	return
 }
 

@@ -111,7 +111,7 @@ func (s *SecretScanManager) createConfigFile() error {
 		Scans: []secretsScanConfiguration{
 			{
 				Roots:    []string{currentDir},
-				Output:   filepath.Join(currentDir, s.resultsFileName),
+				Output:   s.resultsFileName,
 				Type:     secretsScannerType,
 				Scanners: secretsScannersNames,
 			},

@@ -109,7 +109,7 @@ func (iac *IacScanManager) createConfigFile() error {
 		Scans: []iacScanConfiguration{
 			{
 				Roots:  []string{currentDir},
-				Output: filepath.Join(currentDir, iac.resultsFileName),
+				Output: iac.resultsFileName,
 				Type:   iacScannerType,
 			},
 		},

@@ -83,9 +83,17 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	if err = downloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}
-	if err = os.Chmod(analyzerManagerDir, 0777); err != nil {
-		return errorutils.CheckError(err)
+	// Add permission for all unzipped files
+	filesList, err := fileutils.ListFilesRecursiveWalkIntoDirSymlink(analyzerManagerDir, false)
+	if err != nil {
+		return err
 	}
+	for _, file := range filesList {
+		if err = os.Chmod(file, 0777); err != nil {
+			return errorutils.CheckError(err)
+		}
+	}
+
 	return createChecksumFile(checksumFilePath, remoteFileDetails.Checksum.Sha256)
 }
 

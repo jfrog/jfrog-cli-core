@@ -54,7 +54,10 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	if !shouldRun {
-		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
+		if len(serverDetails.Url) > 0 {
+			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
+		}
+		log.Debug("conditions to run applicability scan are not met, didn't exec analyzer manager")
 		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
 	entitledForJas, err := applicabilityScanManager.Run()
@@ -76,7 +79,7 @@ func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
 		return false, err
 	}
 	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0, nil
+		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0 && len(a.serverDetails.Url) > 0, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:

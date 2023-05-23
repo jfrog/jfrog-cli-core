@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -122,8 +123,8 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 	// Fallback to the deprecated JFROG_CLI_EXTRACTORS_REMOTE environment variable
 	server, remoteRepo, err = getLegacyRemoteDetailsFromEnv(downloadPath)
 	if remoteRepo != "" || err != nil {
-		log.Warn("You are using the deprecated %q environment variable. Use %q instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
-			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, coreutils.JFrogHelpUrl)
+		log.Warn(fmt.Sprintf("You are using the deprecated %q environment variable. Use %q instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
+			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, coreutils.JFrogHelpUrl))
 		return
 	}
 
@@ -189,9 +190,12 @@ func downloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	if err != nil {
 		return err
 	}
+	expectedSha1 := ""
 	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
-	if err != nil {
-		return err
+	if err == nil {
+		expectedSha1 = remoteFileDetails.Checksum.Sha1
+	} else {
+		log.Warn(fmt.Sprintf("Failed to get remote file details.\n Got: %s", err))
 	}
 	// Download the file
 	downloadFileDetails := &httpclient.DownloadFileDetails{
@@ -199,7 +203,7 @@ func downloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 		DownloadPath:  downloadUrl,
 		LocalPath:     tempDirPath,
 		LocalFileName: filename,
-		ExpectedSha1:  remoteFileDetails.Checksum.Sha1,
+		ExpectedSha1:  expectedSha1,
 	}
 	client, httpClientDetails, err = createHttpClient(artDetails)
 	if err != nil {

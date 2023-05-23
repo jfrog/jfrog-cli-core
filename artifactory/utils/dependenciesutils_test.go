@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGetFullRemoteRepoPath(t *testing.T) {
@@ -16,7 +17,7 @@ func TestGetFullRemoteRepoPath(t *testing.T) {
 	}{
 		{
 			repoName:     "my-repo",
-			remoteEnv:    coreutils.ExtractorsRemoteEnv,
+			remoteEnv:    coreutils.DeprecatedExtractorsRemoteEnv,
 			downloadPath: "path/to/file",
 			expectedPath: "my-repo/path/to/file",
 		},

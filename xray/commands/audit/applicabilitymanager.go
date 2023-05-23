@@ -2,6 +2,11 @@ package audit
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,15 +17,13 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 )
 
 const (
+	ApplicabilityFeatureId          = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
+	noEntitledExitCode              = 31
 )
 
 var (
@@ -31,10 +34,9 @@ var (
 )
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
-	err := utils.CreateAnalyzerManagerLogDir()
-	if err != nil {
-		return nil, err
+	serverDetails *config.ServerDetails) (extendedResults *utils.ExtendedScanResults, err error) {
+	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
+		return
 	}
 	applicabilityScanManager, cleanupFunc, err := NewApplicabilityScanManager(results, dependencyTrees, serverDetails)
 	if err != nil {
@@ -53,7 +55,10 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	if !shouldRun {
-		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
+		if len(serverDetails.Url) == 0 {
+			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
+		}
+		log.Debug("The conditions required for running 'Contextual Analysis' as part of the audit are not met.")
 		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
 	}
 	entitledForJas, err := applicabilityScanManager.Run()
@@ -75,7 +80,7 @@ func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
 		return false, err
 	}
 	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0, nil
+		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0 && len(a.serverDetails.Url) > 0, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:
@@ -255,25 +260,23 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	return err
 }
 
+// Runs the analyzerManager app and returns a boolean indicates if the user is entitled for
+// advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() (bool, error) {
-	err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails)
-	if err != nil {
+	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
 		return true, err
 	}
-	if err != nil {
-		return true, err
-	}
-	err = a.analyzerManager.Exec(a.configFileName)
-	if err != nil {
+
+	if err := a.analyzerManager.Exec(a.configFileName); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode := exitError.ExitCode()
 			// User not entitled error
-			if exitCode == 31 {
+			if exitCode == noEntitledExitCode {
 				return false, err
 			}
 		}
 	}
-	return true, err
+	return true, nil
 }
 
 func (a *ApplicabilityScanManager) parseResults() error {

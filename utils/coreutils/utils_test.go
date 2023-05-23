@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSpecVarsStringToMap(t *testing.T) {
@@ -185,10 +186,10 @@ func TestSplitRepoAndServerId(t *testing.T) {
 		},
 		{
 			serverAndRepo: "/myRepo",
-			remoteEnv:     ExtractorsRemoteEnv,
+			remoteEnv:     DeprecatedExtractorsRemoteEnv,
 			serverID:      "",
 			repoName:      "",
-			err:           fmt.Errorf("'%s' environment variable is '/myRepo' but should be '<server ID>/<repo name>'", ExtractorsRemoteEnv),
+			err:           fmt.Errorf("'%s' environment variable is '/myRepo' but should be '<server ID>/<repo name>'", DeprecatedExtractorsRemoteEnv),
 		},
 		{
 			serverAndRepo: "myServer/",

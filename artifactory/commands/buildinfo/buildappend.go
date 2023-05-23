@@ -2,7 +2,6 @@ package buildinfo
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"time"
@@ -151,9 +150,6 @@ func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (buildinfo.Ch
 	buildInfoPath := fmt.Sprintf("%v%v/%v/%v-%v.json", serviceDetails.GetUrl(), buildInfoRepo, url.PathEscape(bac.buildNameToAppend), url.PathEscape(bac.buildNumberToAppend), strconv.FormatInt(timestamp, 10))
 	details, resp, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
 	if err != nil {
-		return buildinfo.Checksum{}, err
-	}
-	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		return buildinfo.Checksum{}, err
 	}
 	log.Debug("Artifactory response:", resp.Status)

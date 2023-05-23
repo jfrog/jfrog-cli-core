@@ -3,18 +3,19 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -34,14 +35,16 @@ const (
 )
 
 const (
-	// ReleasesRemoteEnv should be used for downloading the extractor jars through an Artifactory remote
+	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager and etc.) through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
 	ReleasesRemoteEnv = "JFROG_CLI_RELEASES_REPO"
-	// ExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
+	// DeprecatedExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
-	ExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	// JFrog releases URL
+	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -212,6 +215,42 @@ func IsWindows() bool {
 
 func IsLinux() bool {
 	return runtime.GOOS == "linux"
+}
+
+func IsMac() bool {
+	return runtime.GOOS == "darwin"
+}
+
+func GetOSAndArc() (string, error) {
+	arch := runtime.GOARCH
+	// Windows
+	if IsWindows() {
+		return "windows-amd64", nil
+	}
+	// Mac
+	if IsMac() {
+		if arch == "arm64" {
+			return "mac-arm64", nil
+		} else {
+			return "mac-amd64", nil
+		}
+	}
+	// Linux
+	if IsLinux() {
+		switch arch {
+		case "i386", "i486", "i586", "i686", "i786", "x86":
+			return "linux-386", nil
+		case "amd64", "x86_64", "x64":
+			return "linux-amd64", nil
+		case "arm", "armv7l":
+			return "linux-arm", nil
+		case "aarch64":
+			return "linux-arm64", nil
+		case "ppc64", "ppc64le":
+			return "linux-" + arch, nil
+		}
+	}
+	return "", errorutils.CheckErrorf("unsupported OS: %s-%s", runtime.GOOS, arch)
 }
 
 // Return the path of CLI temp dir.

@@ -106,7 +106,7 @@ func RunMvn(mu *MvnUtils) error {
 	mavenModule.SetExtractorDetails(dependencyLocalPath,
 		filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath),
 		mu.goals,
-		utils.DownloadExtractorIfNeeded,
+		utils.DownloadExtractor,
 		props,
 		useWrapper).
 		SetOutputWriter(mu.outputWriter)

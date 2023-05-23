@@ -1,11 +1,17 @@
 package audit
 
 import (
+	"os"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
+	"golang.org/x/sync/errgroup"
 )
 
 type GenericAuditCommand struct {
@@ -93,21 +99,42 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayG
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	if err != nil {
-		return
-	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly)
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {
 		return err
 	}
+	xrayManager, err := commandsutils.CreateXrayServiceManager(serverDetails)
+	if err != nil {
+		return err
+	}
+	errGroup := new(errgroup.Group)
+	entitled, err := xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+	if err != nil {
+		return err
+	}
+	if entitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
+	} else {
+		log.Info(`The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature,
+		which is included as part of the ‘Advanced Security’ package.
+		This package isn't enabled on your system.
+		Read more - https://jfrog.com/security-and-compliance/`)
+	}
+	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
+
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return err
+	}
+
 	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 	if err != nil {
 		return err

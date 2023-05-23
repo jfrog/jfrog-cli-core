@@ -55,7 +55,7 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	if !shouldRun {
-		if len(serverDetails.Url) > 0 {
+		if len(serverDetails.Url) == 0 {
 			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
 		}
 		log.Debug("The conditions required for running 'Contextual Analysis' as part of the audit are not met.")

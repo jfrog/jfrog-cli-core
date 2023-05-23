@@ -316,7 +316,7 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() erro
 		return "", func() error { return nil }, err
 	}
 
-	if err = os.Chmod(tempDir, 0755); err != nil {
+	if err = os.Chmod(tempDir, 0777); err != nil {
 		return "", func() error { return nil }, errorutils.CheckError(err)
 	}
 

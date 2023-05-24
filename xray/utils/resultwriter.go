@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -12,8 +15,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"strconv"
-	"strings"
 )
 
 type OutputFormat string
@@ -54,7 +55,7 @@ func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonE
 			if err != nil {
 				return err
 			}
-			log.Output("The full scan results are available here: " + resultsPath)
+			log.Output("* The full scan results are available here: " + resultsPath)
 		}
 		if includeVulnerabilities {
 			err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)

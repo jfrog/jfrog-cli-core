@@ -122,11 +122,6 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if entitled {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
-	} else {
-		log.Info(`The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature,
-		which is included as part of the ‘Advanced Security’ package.
-		This package isn't enabled on your system.
-		Read more - https://jfrog.com/security-and-compliance/`)
 	}
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
@@ -134,16 +129,21 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err = errGroup.Wait(); err != nil {
 		return err
 	}
-
-	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
-	if err != nil {
-		return err
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
+	// Try to run contextual analysis only if the user is entitled for advance security
+	if entitled {
+		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
+		if err != nil {
+			return err
+		}
 	}
-
 	if auditCmd.Progress() != nil {
 		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
+	}
+	if !entitled {
+		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))

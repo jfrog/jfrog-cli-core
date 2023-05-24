@@ -318,11 +318,11 @@ func filterColor(color Color, windows bool) (filter string) {
 		return
 	}
 	switch color {
-	default:
-		filter = "⬜"
 	case GREEN:
 		filter = "🟩"
 	case WHITE:
+		fallthrough
+	default:
 		filter = "⬜"
 	}
 	return

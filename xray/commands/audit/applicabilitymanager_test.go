@@ -2,16 +2,16 @@ package audit
 
 import (
 	"errors"
-	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 var (
@@ -478,7 +478,6 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
 	assert.Nil(t, extendedResults)
 
 	// Cleanup

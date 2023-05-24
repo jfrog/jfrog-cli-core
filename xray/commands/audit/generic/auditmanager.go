@@ -2,29 +2,27 @@ package audit
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/auth"
-	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
-
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 type Params struct {

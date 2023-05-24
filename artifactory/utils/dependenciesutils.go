@@ -229,6 +229,7 @@ func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 		return
 	}
 
+	httpClientDetails = auth.CreateHttpClientDetails()
 	rtHttpClient, err = jfroghttpclient.JfrogClientBuilder().
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(artDetails.InsecureTls).

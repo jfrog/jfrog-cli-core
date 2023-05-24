@@ -23,7 +23,7 @@ const (
 	ChecksumFileName = "checksum.sha2"
 )
 
-// Download the relevant build-info-extractor jar if it does not already exist locally.
+// Download the relevant build-info-extractor jar.
 // By default, the jar is downloaded directly from jfrog releases.
 //
 // targetPath: The local download path (without the file name).
@@ -34,7 +34,7 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 		return err
 	}
 
-	return downloadDependency(artDetails, remotePath, targetPath, false)
+	return DownloadDependency(artDetails, remotePath, targetPath, false)
 }
 
 // Download the latest AnalyzerManager executable if not cached locally.
@@ -81,7 +81,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	}
 	// Download & unzip the analyzer manager files
 	log.Info("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
-	if err = downloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
+	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}
 	// Add permission for all unzipped files
@@ -173,7 +173,12 @@ func getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath string
 	return path.Join(repoName, downloadPath)
 }
 
-func downloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
+// Downloads the requested resource.
+//
+// artDetails: The artifactory server details to download the resource from.
+// downloadPath: Artifactory download path.
+// targetPath: The local download path (without the file name).
+func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
 	downloadUrl := artDetails.ArtifactoryUrl + downloadPath
 	log.Info("Downloading JFrog's Dependency from ", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)

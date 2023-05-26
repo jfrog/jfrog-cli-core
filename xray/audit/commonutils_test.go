@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+func TestContainsNode(t *testing.T) {
+	node1 := &xrayUtils.GraphNode{Id: "n1"}
+	node2 := &xrayUtils.GraphNode{Id: "n2"}
+	node3 := &xrayUtils.GraphNode{Id: "n3"}
+
+	assert.True(t, containsNode([]*xrayUtils.GraphNode{node1, node2}, node1))
+	assert.True(t, containsNode([]*xrayUtils.GraphNode{node1}, node1))
+	assert.False(t, containsNode([]*xrayUtils.GraphNode{node1, node2}, node3))
+	assert.False(t, containsNode([]*xrayUtils.GraphNode{node1}, node3))
+}
+
 func TestSetPathsForIssues(t *testing.T) {
 	// Create a test dependency tree
 	rootNode := &xrayUtils.GraphNode{Id: "root"}
@@ -26,7 +37,7 @@ func TestSetPathsForIssues(t *testing.T) {
 	issuesMap["child5"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
 
 	// Call setPathsForIssues with the test data
-	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
+	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{}, nil)
 
 	// Check the results
 	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][0].ComponentId, "root")
@@ -52,7 +63,7 @@ func TestSetPathsForIssuesAvoidsDuplicates_RemovePath(t *testing.T) {
 	issuesMap := make(map[string]*services.Component)
 	issuesMap["child4"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
 
-	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
+	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{}, nil)
 
 	assert.Equal(t, "root", issuesMap["child4"].ImpactPaths[0][0].ComponentId)
 	assert.Equal(t, "child4", issuesMap["child4"].ImpactPaths[0][1].ComponentId)
@@ -77,7 +88,7 @@ func TestSetPathsForIssuesAvoidsDuplicates_AppendPath(t *testing.T) {
 	issuesMap := make(map[string]*services.Component)
 	issuesMap["child5"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
 
-	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
+	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{}, nil)
 
 	assert.Equal(t, "root", issuesMap["child5"].ImpactPaths[0][0].ComponentId)
 	assert.Equal(t, "child1", issuesMap["child5"].ImpactPaths[0][1].ComponentId)

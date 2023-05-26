@@ -24,28 +24,67 @@ import (
 )
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	return buildXrayDependencyTree(treeHelper, []string{nodeId})
+	return buildXrayDependencyTree(treeHelper, []string{nodeId}, nil)
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *xrayUtils.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, grapgNodes map[string]*xrayUtils.GraphNode) *xrayUtils.GraphNode {
+	// The purpose of the 'grapgNodes' map is to reuse the GraphNode structs being created,
+	// and by that reducing the memory consumption.
+	if grapgNodes == nil {
+		grapgNodes = make(map[string]*xrayUtils.GraphNode)
+	}
+
 	nodeId := impactPath[len(impactPath)-1]
-	// Initialize the new node
-	xrDependencyTree := &xrayUtils.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
+
+	// Try reusing a GraphNode if it has already been created,
+	// instead of creating a new one.
+	xrDependencyTree := grapgNodes[nodeId]
+	if xrDependencyTree == nil {
+		// Create a new GraphNode, since the map doesn't include one.
+		xrDependencyTree = newGraphNode(nodeId)
+		// Store it in the map for future reuse.
+		grapgNodes[nodeId] = xrDependencyTree
+	}
+
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
 		log.Debug("buildXrayDependencyTree exceeded max tree depth")
 		return xrDependencyTree
 	}
+
 	// Recursively create & append all node's dependencies.
 	for _, dependency := range treeHelper[nodeId] {
 		// Prevent circular dependencies parsing
 		if slices.Contains(impactPath, dependency) {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency)))
+
+		node := buildXrayDependencyTree(treeHelper, append(impactPath, dependency), grapgNodes)
+		// If we are reusing a node created in a previous iteration,
+		// we'd like to merge the new child nodes and not just append them,
+		// to avoid duplicates.
+		if !containsNode(xrDependencyTree.Nodes, node) {
+			xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, node)
+		}
 	}
 	return xrDependencyTree
+}
+
+// Create a new GraphNode with the provided ID.
+func newGraphNode(nodeId string) *xrayUtils.GraphNode {
+	node := xrayUtils.GraphNode{}
+	node.Id = nodeId
+	node.Nodes = []*xrayUtils.GraphNode{}
+	return &node
+}
+
+// Returns true if the nodes slice contains the node struct.
+func containsNode(nodes []*xrayUtils.GraphNode, node *xrayUtils.GraphNode) bool {
+	for _, n := range nodes {
+		if n.Id == node.Id {
+			return true
+		}
+	}
+	return false
 }
 
 func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
@@ -159,7 +198,7 @@ func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Comp
 // Set the impact paths for each issue in the map
 func buildImpactPaths(issuesImpactPathsMap map[string]*services.Component, dependencyTrees []*xrayUtils.GraphNode) {
 	for _, dependency := range dependencyTrees {
-		setPathsForIssues(dependency, issuesImpactPathsMap, []services.ImpactPathNode{})
+		setPathsForIssues(dependency, issuesImpactPathsMap, []services.ImpactPathNode{}, nil)
 	}
 }
 
@@ -202,13 +241,19 @@ func updateComponentsWithImpactPaths(components map[string]services.Component, i
 	}
 }
 
-func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
+func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode, preventCircularDeps []string) {
+	// Prevent circular dependencies parsing
+	if preventCircularDeps == nil {
+		preventCircularDeps = make([]string, 0)
+	} else if slices.Contains(preventCircularDeps, dependency.Id) {
+		return
+	}
 	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
 		appendPath(issuesImpactPathsMap, dependency, pathFromRoot)
 	}
 	for _, depChild := range dependency.Nodes {
-		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot)
+		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot, append(preventCircularDeps, dependency.Id))
 	}
 }
 

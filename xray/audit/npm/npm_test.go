@@ -48,7 +48,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 							{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 							{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
 							{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens}}},
-						{Id: "npm://styled-jsx:5.0.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens}}},
+						{Id: "npm://styled-jsx:5.0.0"},
 						{Id: "npm://@next/swc-darwin-arm64:12.0.10"},
 						{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 						{Id: "npm://@next/env:12.0.10"},
@@ -59,7 +59,6 @@ func TestParseNpmDependenciesList(t *testing.T) {
 							{Id: "npm://nanoid:3.3.6"},
 						}},
 						{Id: "npm://use-subscription:1.5.1", Nodes: []*xrayUtils.GraphNode{
-							{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 							{Id: "npm://object-assign:4.1.1"},
 						}},
 					}},
@@ -80,7 +79,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 					{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 					{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
 					{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens}}},
-				{Id: "npm://styled-jsx:5.0.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens}}},
+				{Id: "npm://styled-jsx:5.0.0"},
 				{Id: "npm://@next/swc-darwin-arm64:12.0.10"},
 				{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 				{Id: "npm://@next/env:12.0.10"},
@@ -91,7 +90,6 @@ func TestParseNpmDependenciesList(t *testing.T) {
 					{Id: "npm://nanoid:3.3.6"},
 				}},
 				{Id: "npm://use-subscription:1.5.1", Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
 					{Id: "npm://object-assign:4.1.1"},
 				}},
 			}},

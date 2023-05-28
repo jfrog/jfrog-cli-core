@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	secretsScanCommand        = "sec"
-	secretsScannersNames      = "tokens, entropy"
-	secretsScannerType        = "secrets-scan"
-	secretsScanFailureMessage = "failed to run secrets scan. Cause: %s"
+	secretsScanCommand    = "sec"
+	secretsScannersNames  = "tokens, entropy"
+	secretsScannerType    = "secrets-scan"
+	secScanFailureMessage = "failed to run secrets scan. Cause: %s"
 )
 
 type SecretScanManager struct {
@@ -32,7 +32,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	bool, error) {
 	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
 	if err != nil {
-		return nil, false, fmt.Errorf(secretsScanFailureMessage, err.Error())
+		return nil, false, fmt.Errorf(secScanFailureMessage, err.Error())
 	}
 	defer func() {
 		if cleanupFunc != nil {
@@ -47,7 +47,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
-		return nil, true, fmt.Errorf(secretsScanFailureMessage, err.Error())
+		return nil, true, fmt.Errorf(secScanFailureMessage, err.Error())
 	}
 	return secretScanManager.secretsScannerResults, true, nil
 }

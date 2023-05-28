@@ -149,7 +149,7 @@ func (s *SecretScanManager) parseResults() error {
 			Severity:   utils.GetResultSeverity(secret),
 			File:       utils.GetResultFileName(secret),
 			LineColumn: utils.GetResultLocationInFile(secret),
-			Text:       s.hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
+			Text:       hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,
 		}
 		finalSecretsList = append(finalSecretsList, newSecret)
@@ -158,14 +158,13 @@ func (s *SecretScanManager) parseResults() error {
 	return nil
 }
 
-func (s *SecretScanManager) hideSecret(secret string) string {
+func hideSecret(secret string) string {
 	if len(secret) <= 3 {
 		return "***"
 	}
 	hiddenSecret := ""
-	// Show first 3 digits
 	i := 0
-	for i < 3 {
+	for i < 3 { // Show first 3 digits
 		hiddenSecret += string(secret[i])
 		i++
 	}

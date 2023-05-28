@@ -12,12 +12,14 @@ import (
 	"os"
 )
 
+const serverDetailsErrorMessage = "cant get xray server details"
+
 var analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil {
-		return nil, errors.New("cant get xray server details")
+		return nil, errors.New(serverDetailsErrorMessage)
 	}
 	analyzerManagerExist, err := analyzerManagerExecuter.ExistLocally()
 	if err != nil {

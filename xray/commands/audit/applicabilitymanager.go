@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -41,10 +42,10 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 			}
 		}
 	}()
-	//if !applicabilityScanManager.eligibleForApplicabilityScan() {
-	//	log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
-	//	return nil, false, nil
-	//}
+	if !applicabilityScanManager.eligibleForApplicabilityScan() {
+		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
+		return nil, false, nil
+	}
 	err = applicabilityScanManager.run()
 	if err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {

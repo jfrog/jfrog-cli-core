@@ -804,7 +804,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	cveExistsInResult := false
 	finalApplicableValue := NotApplicableStringValue
 	for _, cve := range xrayCves {
-		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScannerResults[cve.Id]; exists {
+		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
 			cveExistsInResult = true
 			if currentCveApplicableValue == ApplicableStringValue {
 				return currentCveApplicableValue

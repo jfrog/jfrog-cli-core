@@ -22,107 +22,114 @@ func TestRemoveDuplicateValues(t *testing.T) {
 	}
 }
 
-func TestGetSecretFileName_InputIsValid(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner/"
-
-	// Arrange
-	input := "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &input}}},
-		},
+func TestGetResultFileName(t *testing.T) {
+	fileNameValue := "fileNameValue"
+	tests := []struct {
+		result         *sarif.Result
+		expectedOutput string
+	}{
+		{result: &sarif.Result{
+			Locations: []*sarif.Location{
+				{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: nil}}},
+			}},
+			expectedOutput: ""},
+		{result: &sarif.Result{
+			Locations: []*sarif.Location{
+				{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &fileNameValue}}},
+			}},
+			expectedOutput: fileNameValue},
+		{result: &sarif.Result{},
+			expectedOutput: ""},
 	}
 
-	// Act
-	fileName := ExtractRelativePath(GetResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, "/tests/req.nodejs/file.js", fileName)
-}
-
-func TestGetSecretFileName_FileNameIsInvalid(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner"
-
-	input := "invalid_input"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &input}}},
-		},
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetResultFileName(test.result))
 	}
 
-	// Act
-	fileName := ExtractRelativePath(GetResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, input, fileName)
 }
 
-func TestGetSecretFileName_FileNameIsMissing(t *testing.T) {
-	// Arrange
-	projectRootPath := "Users/user/Desktop/secrets_scanner"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: nil}}},
-		},
-	}
-
-	// Act
-	fileName := ExtractRelativePath(GetResultFileName(secret), projectRootPath)
-
-	// Assert
-	assert.Equal(t, "", fileName)
-}
-
-func TestGetSecretLocation_InputIsValid(t *testing.T) {
-	// Arrange
+func TestGetResultLocationInFile(t *testing.T) {
 	startLine := 19
 	startColumn := 25
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
+
+	tests := []struct {
+		result         *sarif.Result
+		expectedOutput string
+	}{
+		{result: &sarif.Result{Locations: []*sarif.Location{
 			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{
 				StartLine:   &startLine,
 				StartColumn: &startColumn,
-			}}},
-		},
+			}}}}},
+			expectedOutput: "19:25"},
+		{result: &sarif.Result{Locations: []*sarif.Location{
+			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{
+				StartLine:   nil,
+				StartColumn: &startColumn,
+			}}}}},
+			expectedOutput: ""},
+		{result: &sarif.Result{Locations: []*sarif.Location{
+			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{
+				StartLine:   &startLine,
+				StartColumn: nil,
+			}}}}},
+			expectedOutput: ""},
+		{result: &sarif.Result{Locations: []*sarif.Location{
+			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{
+				StartLine:   nil,
+				StartColumn: nil,
+			}}}}},
+			expectedOutput: ""},
+		{result: &sarif.Result{},
+			expectedOutput: ""},
 	}
 
-	// Act
-	fileName := GetResultLocationInFile(secret)
-
-	// Assert
-	assert.Equal(t, "19:25", fileName)
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetResultLocationInFile(test.result))
+	}
 }
 
-func TestGetSeverity_LevelFieldExist(t *testing.T) {
-	// Arrange
-	levelValue := "High"
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
-		},
-		Level: &levelValue,
+func TestExtractRelativePath(t *testing.T) {
+	tests := []struct {
+		secretPath     string
+		projectPath    string
+		expectedResult string
+	}{
+		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "/tests/req.nodejs/file.js"},
+		{secretPath: "invalidSecretPath",
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "invalidSecretPath"},
+		{secretPath: "",
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: ""},
+		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
+			projectPath: "invalidProjectPath", expectedResult: "/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
 	}
 
-	// Act
-	severity := GetResultSeverity(secret)
-
-	// Assert
-	assert.Equal(t, levelValue, severity)
+	for _, test := range tests {
+		assert.Equal(t, test.expectedResult, ExtractRelativePath(test.secretPath, test.projectPath))
+	}
 }
 
-func TestGetSeverity_LevelFieldMissing_ShouldReturnDefaultValue(t *testing.T) {
-	// Arrange
-	secret := &sarif.Result{
-		Locations: []*sarif.Location{
-			{PhysicalLocation: &sarif.PhysicalLocation{Region: &sarif.Region{}}},
-		},
+func TestGetResultSeverity(t *testing.T) {
+	levelValueHigh := "High"
+	levelValueMedium := "Medium"
+	levelValueLow := "Low"
+
+	tests := []struct {
+		result           *sarif.Result
+		expectedSeverity string
+	}{
+		{result: &sarif.Result{},
+			expectedSeverity: "Medium"},
+		{result: &sarif.Result{Level: &levelValueHigh},
+			expectedSeverity: levelValueHigh},
+		{result: &sarif.Result{Level: &levelValueMedium},
+			expectedSeverity: levelValueMedium},
+		{result: &sarif.Result{Level: &levelValueLow},
+			expectedSeverity: levelValueLow},
 	}
 
-	// Act
-	severity := GetResultSeverity(secret)
-
-	// Assert
-	assert.Equal(t, "Medium", severity)
+	for _, test := range tests {
+		assert.Equal(t, test.expectedSeverity, GetResultSeverity(test.result))
+	}
 }

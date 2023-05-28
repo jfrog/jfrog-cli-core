@@ -112,18 +112,6 @@ func getAnalyzerManagerAbsolutePath() (string, error) {
 	return filepath.Join(jfrogDir, analyzerManager), nil
 }
 
-func RemoveDuplicateValues(stringSlice []string) []string {
-	keys := make(map[string]bool)
-	finalSlice := []string{}
-	for _, entry := range stringSlice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			finalSlice = append(finalSlice, entry)
-		}
-	}
-	return finalSlice
-}
-
 func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if serverDetails == nil {
 		return errors.New("cant get xray server details")
@@ -161,7 +149,7 @@ func IsNotEntitledError(err error) bool {
 func IsUnsupportedCommandError(err error) bool {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
-		// Analyzer manager doesnt support the requested scan command
+		// Analyzer manager doesn't support the requested scan command
 		if exitCode == 13 {
 			log.Debug("got unsupported scan command error from analyzer manager")
 			return true
@@ -170,26 +158,42 @@ func IsUnsupportedCommandError(err error) bool {
 	return false
 }
 
-func GetResultFileName(secret *sarif.Result) string {
-	filePath := secret.Locations[0].PhysicalLocation.ArtifactLocation.URI
-	if filePath == nil {
-		return ""
+func RemoveDuplicateValues(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	finalSlice := []string{}
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			finalSlice = append(finalSlice, entry)
+		}
 	}
-	return *filePath
+	return finalSlice
 }
 
-func GetResultLocationInFile(secret *sarif.Result) string {
-	startLine := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartLine)
-	startColumn := strconv.Itoa(*secret.Locations[0].PhysicalLocation.Region.StartColumn)
-	if startLine != "" && startColumn != "" {
-		return startLine + ":" + startColumn
+func GetResultFileName(result *sarif.Result) string {
+	if len(result.Locations) > 0 {
+		filePath := result.Locations[0].PhysicalLocation.ArtifactLocation.URI
+		if filePath != nil {
+			return *filePath
+		}
 	}
 	return ""
 }
 
-func ExtractRelativePath(secretPath string, projectRoot string) string {
+func GetResultLocationInFile(result *sarif.Result) string {
+	if len(result.Locations) > 0 {
+		startLine := result.Locations[0].PhysicalLocation.Region.StartLine
+		startColumn := result.Locations[0].PhysicalLocation.Region.StartColumn
+		if startLine != nil && startColumn != nil {
+			return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
+		}
+	}
+	return ""
+}
+
+func ExtractRelativePath(resultPath string, projectRoot string) string {
 	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(secretPath, projectRoot, ""), filePrefix, "")
+	relativePath := strings.ReplaceAll(strings.ReplaceAll(resultPath, projectRoot, ""), filePrefix, "")
 	return relativePath
 }
 

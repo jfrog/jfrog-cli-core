@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
+func TestNewSecretsScanManager(t *testing.T) {
 	// Act
 	secretScanManager, _, err := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
 
@@ -18,6 +18,7 @@ func TestNewSecretsScanManager_InputIsValid(t *testing.T) {
 	assert.NotEmpty(t, secretScanManager)
 	assert.NotEmpty(t, secretScanManager.configFileName)
 	assert.NotEmpty(t, secretScanManager.resultsFileName)
+	assert.Equal(t, &fakeServerDetails, secretScanManager.serverDetails)
 }
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
@@ -83,7 +84,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.Equal(t, 8, len(secretScanManager.secretsScannerResults))
 }
 
-func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
+func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	// Arrange
 	analyzerManagerErrorMessage := "analyzer manager failure message"
 	analyzerManagerExecutionError = errors.New(analyzerManagerErrorMessage)
@@ -101,35 +102,19 @@ func TestGetSecretsScan_ExtendedScanResults_AnalyzerManagerReturnsError(t *testi
 	analyzerManagerExecutionError = nil
 }
 
-func TestPartiallyHideSecret_SecretIsEmpty(t *testing.T) {
-	// Arrange
-	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
+func TestHideSecret(t *testing.T) {
+	tests := []struct {
+		secret         string
+		expectedOutput string
+	}{
+		{secret: "", expectedOutput: "***"},
+		{secret: "12", expectedOutput: "***"},
+		{secret: "123", expectedOutput: "***"},
+		{secret: "123456789", expectedOutput: "123************"},
+		{secret: "3478hfnkjhvd848446gghgfh", expectedOutput: "347************"},
+	}
 
-	// Act
-	hiddenSecret := secretScanner.hideSecret("")
-
-	// Assert
-	assert.Equal(t, "***", hiddenSecret)
-}
-
-func TestPartiallyHideSecret_SecretIsShorterThanSevenDigits(t *testing.T) {
-	// Arrange
-	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-
-	// Act
-	hiddenSecret := secretScanner.hideSecret("123")
-
-	// Assert
-	assert.Equal(t, "***", hiddenSecret)
-}
-
-func TestPartiallyHideSecret_SecretIsLongerThanSevenDigits(t *testing.T) {
-	// Arrange
-	secretScanner, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-
-	// Act
-	hiddenSecret := secretScanner.hideSecret("long_secret")
-
-	// Assert
-	assert.Equal(t, "lon************", hiddenSecret)
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, hideSecret(test.secret))
+	}
 }

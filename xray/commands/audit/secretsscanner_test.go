@@ -94,7 +94,7 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf(secretsScanFailureMessage, analyzerManagerErrorMessage), err.Error())
+	assert.Equal(t, fmt.Sprintf(secScanFailureMessage, analyzerManagerErrorMessage), err.Error())
 	assert.Nil(t, secretsResults)
 	assert.True(t, entitledForSecrets)
 

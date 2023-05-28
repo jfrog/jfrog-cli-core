@@ -184,35 +184,35 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	assert.Empty(t, applicabilityManager.xrayVulnerabilities)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AllConditionsMet(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_AllConditionsMet(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.True(t, shouldRun)
+	assert.True(t, eligible)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AnalyzerManagerDoesntExist(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_AnalyzerManagerDoesntExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExist = false
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, eligible)
 
 	// Cleanup
 	analyzerManagerExist = true
 }
 
-func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_TechnologiesNotEligibleForScan(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Nuget.ToString()
@@ -221,26 +221,14 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 		&fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, eligible)
 
 	// Cleanup
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Pipenv.ToString()
 	fakeBasicXrayResults[0].Violations[0].Technology = coreutils.Pipenv.ToString()
-}
-
-func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
-	// Arrange
-	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityManager, _, _ := NewApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails)
-
-	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
-
-	// Assert
-	assert.False(t, shouldRun)
 }
 
 func TestResultsIncludeEligibleTechnologies(t *testing.T) {

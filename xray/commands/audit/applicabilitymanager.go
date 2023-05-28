@@ -50,11 +50,11 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 			}
 		}
 	}()
-	shouldRun, err := applicabilityScanManager.shouldRun()
+	eligibleForApplicabilityScan, err := applicabilityScanManager.eligibleForApplicabilityScan()
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
-	if !shouldRun {
+	if !eligibleForApplicabilityScan {
 		if len(serverDetails.Url) == 0 {
 			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
 		}
@@ -74,13 +74,13 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	return &extendedScanResults, nil
 }
 
-func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
+func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() (bool, error) {
 	analyzerManagerExist, err := a.analyzerManager.ExistLocally()
 	if err != nil {
 		return false, err
 	}
 	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0 && len(a.serverDetails.Url) > 0, nil
+		len(a.serverDetails.Url) > 0, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:
@@ -209,6 +209,9 @@ func (a *ApplicabilityScanManager) Run() (bool, error) {
 			}
 		}
 	}()
+	if !a.directDependenciesExist() {
+		return true, nil
+	}
 	if err = a.createConfigFile(); err != nil {
 		return true, err
 	}
@@ -232,6 +235,10 @@ type scanConfiguration struct {
 	GrepDisable  bool     `yaml:"grep-disable"`
 	CveWhitelist []string `yaml:"cve-whitelist"`
 	SkippedDirs  []string `yaml:"skipped-folders"`
+}
+
+func (a *ApplicabilityScanManager) directDependenciesExist() bool {
+	return len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0
 }
 
 func (a *ApplicabilityScanManager) createConfigFile() error {

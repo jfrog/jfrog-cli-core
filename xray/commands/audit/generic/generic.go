@@ -129,7 +129,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err = errGroup.Wait(); err != nil {
 		return err
 	}
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScanResults: nil, EntitledForJas: false}
 	// Try to run contextual analysis only if the user is entitled for advance security
 	if entitled {
 		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)

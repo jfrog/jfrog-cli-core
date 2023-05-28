@@ -20,10 +20,25 @@ import (
 	"testing"
 )
 
-func Test_extractPoliciesFromMsg(t *testing.T) {
+func TestExtractPoliciesFromMsg(t *testing.T) {
 	var err error
 	extractPoliciesRegex := regexp.MustCompile(extractPoliciesRegexTemplate)
 	require.NoError(t, err)
+	tests := getTestCasesForExtractPoliciesFromMsg()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ta := treeAnalyzer{extractPoliciesRegex: extractPoliciesRegex}
+			got := ta.extractPoliciesFromMsg(tt.errResp)
+			assert.Equal(t, tt.expect, got)
+		})
+	}
+}
+
+func getTestCasesForExtractPoliciesFromMsg() []struct {
+	name    string
+	errResp *ErrorsResp
+	expect  []Policy
+} {
 	tests := []struct {
 		name    string
 		errResp *ErrorsResp
@@ -98,16 +113,10 @@ func Test_extractPoliciesFromMsg(t *testing.T) {
 			expect: nil,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ta := treeAnalyzer{extractPoliciesRegex: extractPoliciesRegex}
-			got := ta.extractPoliciesFromMsg(tt.errResp)
-			assert.Equal(t, tt.expect, got)
-		})
-	}
+	return tests
 }
 
-func Test_getNameScopeAndVersion(t *testing.T) {
+func TestGetNameScopeAndVersion(t *testing.T) {
 	tests := []struct {
 		name            string
 		componentId     string
@@ -155,7 +164,29 @@ func Test_getNameScopeAndVersion(t *testing.T) {
 	}
 }
 
-func Test_treeAnalyzer_fillGraphRelations(t *testing.T) {
+func TestTreeAnalyzerFillGraphRelations(t *testing.T) {
+	tests := getTestCasesForFillGraphRelations()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nc := &treeAnalyzer{
+				url:  "http://localhost:8046/artifactory",
+				repo: "npm-repo",
+				tech: "npm",
+			}
+			packageStatus := &[]*PackageStatus{}
+			preProcessedMap := fillSyncedMap(tt.givenMap)
+			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, packageStatus, "", "", true)
+			assert.Equal(t, *tt.expectedPackagesStatus, *packageStatus)
+		})
+	}
+}
+
+func getTestCasesForFillGraphRelations() []struct {
+	name                   string
+	givenGraph             *xrayUtils.GraphNode
+	givenMap               []*PackageStatus
+	expectedPackagesStatus *[]*PackageStatus
+} {
 	tests := []struct {
 		name                   string
 		givenGraph             *xrayUtils.GraphNode
@@ -220,19 +251,7 @@ func Test_treeAnalyzer_fillGraphRelations(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			nc := &treeAnalyzer{
-				url:  "http://localhost:8046/artifactory",
-				repo: "npm-repo",
-				tech: "npm",
-			}
-			packageStatus := &[]*PackageStatus{}
-			preProcessedMap := fillSyncedMap(tt.givenMap)
-			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, packageStatus, "", "", true)
-			assert.Equal(t, *tt.expectedPackagesStatus, *packageStatus)
-		})
-	}
+	return tests
 }
 
 func fillSyncedMap(pkgStatus []*PackageStatus) *sync.Map {
@@ -243,7 +262,66 @@ func fillSyncedMap(pkgStatus []*PackageStatus) *sync.Map {
 	return &syncMap
 }
 
-func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
+func TestDoCurationAudit(t *testing.T) {
+	tests := getTestCasesForDoCurationAudit()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cliHomeDirBefore := os.Getenv(coreutils.HomeDir)
+			defer os.Setenv(coreutils.HomeDir, cliHomeDirBefore)
+			currentDir, err := os.Getwd()
+			require.NoError(t, err)
+			configurationDir := filepath.Join("..", "testdata", "npm-project", ".jfrog")
+			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, configurationDir)))
+
+			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
+			defer mockServer.Close()
+			configFilePath := WriteServerDetailsConfigFileBytes(t, config.ArtifactoryUrl, configurationDir)
+			defer func() {
+				require.NoError(t, os.Remove(configFilePath))
+				require.NoError(t, os.RemoveAll(filepath.Join(configFilePath, "backup")))
+			}()
+			curationCmd := NewCurationAuditCommand()
+			curationCmd.parallelRequests = 3
+			rootDir, err := os.Getwd()
+			require.NoError(t, err)
+			defer func() {
+				require.NoError(t, os.Chdir(rootDir))
+			}()
+			// Set the working dir for npm project.
+			require.NoError(t, os.Chdir("../testdata/npm-project"))
+			results := map[string][]*PackageStatus{}
+			if tt.requestToError == nil {
+				require.NoError(t, curationCmd.doCurateAudit(results))
+			} else {
+				gotError := curationCmd.doCurateAudit(results)
+				require.Error(t, gotError)
+				startUrl := strings.Index(tt.expectedError, "/")
+				require.GreaterOrEqual(t, startUrl, 0)
+				errMsgExpected := tt.expectedError[:startUrl] + config.ArtifactoryUrl +
+					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
+				assert.Equal(t, errMsgExpected, gotError.Error())
+			}
+			// Add the mock server to the expected blocked message url
+			for index := range tt.expectedResp {
+				tt.expectedResp[index].BlockedPackageUrl = fmt.Sprintf("%s%s", strings.TrimSuffix(config.GetArtifactoryUrl(), "/"), tt.expectedResp[index].BlockedPackageUrl)
+			}
+			gotResults := results["npm_test:1.0.0"]
+			assert.Equal(t, tt.expectedResp, gotResults)
+			for _, requestDone := range tt.expectedRequest {
+				assert.True(t, requestDone)
+			}
+		})
+	}
+}
+
+func getTestCasesForDoCurationAudit() []struct {
+	name            string
+	expectedRequest map[string]bool
+	requestToFail   map[string]bool
+	expectedResp    []*PackageStatus
+	requestToError  map[string]bool
+	expectedError   string
+} {
 	tests := []struct {
 		name            string
 		expectedRequest map[string]bool
@@ -317,56 +395,12 @@ func Test_treeAnalyzer_getNodesStatusInParallel(t *testing.T) {
 				"/api/npm/npms/lightweight/-/lightweight-0.1.0.tgz", "lightweight:0.1.0", http.StatusInternalServerError),
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cliHomeDirBefore := os.Getenv(coreutils.HomeDir)
-			defer os.Setenv(coreutils.HomeDir, cliHomeDirBefore)
-			currentDir, err := os.Getwd()
-			require.NoError(t, err)
-			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, "../testdata/npm-project/.jfrog")))
-
-			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
-			defer mockServer.Close()
-			configFilePath := WriteServerDetailsConfigFileBytes(t, config.ArtifactoryUrl, "../testdata/npm-project/.jfrog")
-			defer func() {
-				require.NoError(t, os.Remove(configFilePath))
-			}()
-			curationCmd := NewCurationAuditCommand()
-			curationCmd.parallelRequests = 3
-			rootDir, err := os.Getwd()
-			require.NoError(t, err)
-			defer func() {
-				require.NoError(t, os.Chdir(rootDir))
-			}()
-			// Set the working dir for npm project.
-			require.NoError(t, os.Chdir("../testdata/npm-project"))
-			results := map[string][]*PackageStatus{}
-			if tt.requestToError == nil {
-				require.NoError(t, curationCmd.doCurateAudit(results))
-			} else {
-				gotError := curationCmd.doCurateAudit(results)
-				require.Error(t, gotError)
-				startUrl := strings.Index(tt.expectedError, "/")
-				require.GreaterOrEqual(t, startUrl, 0)
-				errMsgExpected := tt.expectedError[:startUrl] + config.ArtifactoryUrl +
-					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
-				assert.Equal(t, errMsgExpected, gotError.Error())
-			}
-			for index := range tt.expectedResp {
-				tt.expectedResp[index].BlockedPackageUrl = fmt.Sprintf("%s%s", strings.TrimSuffix(config.GetArtifactoryUrl(), "/"), tt.expectedResp[index].BlockedPackageUrl)
-			}
-			gotResults := results["npm_test:1.0.0"]
-			assert.Equal(t, tt.expectedResp, gotResults)
-			for _, requestDone := range tt.expectedRequest {
-				assert.True(t, requestDone)
-			}
-		})
-	}
+	return tests
 }
 
 func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail map[string]bool, requestToError map[string]bool) (*httptest.Server, *config.ServerDetails) {
+	mapLockReadWrite := sync.Mutex{}
 	serverMock, config, _ := tests2.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		mapLockReadWrite := sync.Mutex{}
 		if r.Method == http.MethodHead {
 			mapLockReadWrite.Lock()
 			if _, exist := expectedRequest[r.RequestURI]; exist {

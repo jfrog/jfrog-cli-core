@@ -24,6 +24,7 @@ const (
 var (
 	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
+	skippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
 func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
@@ -196,12 +197,12 @@ type applicabilityScanConfig struct {
 }
 
 type scanConfiguration struct {
-	Roots          []string `yaml:"roots"`
-	Output         string   `yaml:"output"`
-	Type           string   `yaml:"type"`
-	GrepDisable    bool     `yaml:"grep-disable"`
-	CveWhitelist   []string `yaml:"cve-whitelist"`
-	SkippedFolders []string `yaml:"skipped-folders"`
+	Roots        []string `yaml:"roots"`
+	Output       string   `yaml:"output"`
+	Type         string   `yaml:"type"`
+	GrepDisable  bool     `yaml:"grep-disable"`
+	CveWhitelist []string `yaml:"cve-whitelist"`
+	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
 func (a *ApplicabilityScanManager) createConfigFile() error {
@@ -213,12 +214,12 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:          []string{currentDir},
-				Output:         a.resultsFileName,
-				Type:           applicabilityScanType,
-				GrepDisable:    false,
-				CveWhitelist:   cveWhiteList,
-				SkippedFolders: []string{},
+				Roots:        []string{currentDir},
+				Output:       a.resultsFileName,
+				Type:         applicabilityScanType,
+				GrepDisable:  false,
+				CveWhitelist: cveWhiteList,
+				SkippedDirs:  skippedDirs,
 			},
 		},
 	}

@@ -54,11 +54,13 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		dependencyId := npmPackageTypeIdentifier + dependency.Id
-		parent := npmPackageTypeIdentifier + dependency.RequestedBy[0][0]
-		if children, ok := treeMap[parent]; ok {
-			treeMap[parent] = append(children, dependencyId)
-		} else {
-			treeMap[parent] = []string{dependencyId}
+		for _, requestedByNode := range dependency.RequestedBy {
+			parent := npmPackageTypeIdentifier + requestedByNode[0]
+			if children, ok := treeMap[parent]; ok {
+				treeMap[parent] = append(children, dependencyId)
+			} else {
+				treeMap[parent] = []string{dependencyId}
+			}
 		}
 	}
 	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())

@@ -50,11 +50,11 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 			}
 		}
 	}()
-	shouldRun, err := applicabilityScanManager.shouldRun()
+	eligibleForApplicabilityScan, err := applicabilityScanManager.eligibleForApplicabilityScan()
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
-	if !shouldRun {
+	if !eligibleForApplicabilityScan {
 		if len(serverDetails.Url) == 0 {
 			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
 		}
@@ -74,13 +74,13 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	return &extendedScanResults, nil
 }
 
-func (a *ApplicabilityScanManager) shouldRun() (bool, error) {
+func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() (bool, error) {
 	analyzerManagerExist, err := a.analyzerManager.ExistLocally()
 	if err != nil {
 		return false, err
 	}
-	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0 && len(a.serverDetails.Url) > 0, nil
+	return analyzerManagerExist && resultsIncludeEligibleTechnologies(getXrayVulnerabilities(a.xrayResults),
+		getXrayViolations(a.xrayResults)) && len(a.serverDetails.Url) > 0, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:
@@ -108,8 +108,9 @@ func resultsIncludeEligibleTechnologies(xrayVulnerabilities []services.Vulnerabi
 
 type ApplicabilityScanManager struct {
 	applicabilityScannerResults map[string]string
-	xrayVulnerabilities         []services.Vulnerability
-	xrayViolations              []services.Violation
+	xrayResults                 []services.ScanResponse
+	xrayDirectVulnerabilities   []services.Vulnerability
+	xrayDirectViolations        []services.Violation
 	configFileName              string
 	resultsFileName             string
 	analyzerManager             utils.AnalyzerManagerInterface
@@ -128,8 +129,9 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 	}
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
-		xrayVulnerabilities:         extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
-		xrayViolations:              extractXrayDirectViolations(xrayScanResults, directDependencies),
+		xrayDirectVulnerabilities:   extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
+		xrayDirectViolations:        extractXrayDirectViolations(xrayScanResults, directDependencies),
+		xrayResults:                 xrayScanResults,
 		configFileName:              filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:             filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:             analyzerManagerExecuter,
@@ -209,6 +211,9 @@ func (a *ApplicabilityScanManager) Run() (bool, error) {
 			}
 		}
 	}()
+	if !a.directDependenciesExist() {
+		return true, nil
+	}
 	if err = a.createConfigFile(); err != nil {
 		return true, err
 	}
@@ -234,12 +239,16 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
+func (a *ApplicabilityScanManager) directDependenciesExist() bool {
+	return len(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations)) > 0
+}
+
 func (a *ApplicabilityScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
-	cveWhiteList := utils.RemoveDuplicateValues(createCveList(a.xrayVulnerabilities, a.xrayViolations))
+	cveWhiteList := utils.RemoveDuplicateValues(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations))
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -289,7 +298,7 @@ func (a *ApplicabilityScanManager) parseResults() error {
 		fullVulnerabilitiesList = report.Runs[0].Results
 	}
 
-	xrayCves := utils.RemoveDuplicateValues(createCveList(a.xrayVulnerabilities, a.xrayViolations))
+	xrayCves := utils.RemoveDuplicateValues(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations))
 	for _, xrayCve := range xrayCves {
 		a.applicabilityScannerResults[xrayCve] = utils.ApplicabilityUndeterminedStringValue
 	}

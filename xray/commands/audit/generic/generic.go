@@ -1,11 +1,17 @@
 package audit
 
 import (
+	"os"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"os"
+	"golang.org/x/sync/errgroup"
 )
 
 type GenericAuditCommand struct {
@@ -93,30 +99,51 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayG
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	if err != nil {
-		return
-	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly)
 	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {
 		return err
 	}
-	extendedScanResults, err := audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
+	xrayManager, err := commandsutils.CreateXrayServiceManager(serverDetails)
 	if err != nil {
 		return err
 	}
+	errGroup := new(errgroup.Group)
+	entitled, err := xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+	if err != nil {
+		return err
+	}
+	if entitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
+	}
+	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return err
+	}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
+	// Try to run contextual analysis only if the user is entitled for advance security
+	if entitled {
+		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
+		if err != nil {
+			return err
+		}
+	}
 	if auditCmd.Progress() != nil {
 		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
+	}
+	if !entitled {
+		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))

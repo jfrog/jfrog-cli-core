@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -17,17 +18,22 @@ import (
 )
 
 var (
-	analyzerManagerFilePath  = filepath.Join("analyzerManager", "analyzerManager")
-	analyzerManagerLogFolder = ""
+	analyzerManagerLogFolder      = ""
+	analyzerManagerExecutableName = "analyzerManager"
 )
 
 const (
-	analyzerManagerLogDirName = "analyzerManagerLogs"
-	jfUserEnvVariable         = "JF_USER"
-	jfPasswordEnvVariable     = "JF_PASS"
-	jfTokenEnvVariable        = "JF_TOKEN"
-	jfPlatformUrlEnvVariable  = "JF_PLATFORM_URL"
-	logDirEnvVariable         = "AM_LOG_DIRECTORY"
+	ApplicabilityFeatureId      = "contextual_analysis"
+	AnalyzerManagerZipName      = "analyzerManager.zip"
+	analyzerManagerDownloadPath = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
+	analyzerManagerDirName      = "analyzerManager"
+	analyzerManagerLogDirName   = "analyzerManagerLogs"
+	jfUserEnvVariable           = "JF_USER"
+	jfPasswordEnvVariable       = "JF_PASS"
+	jfTokenEnvVariable          = "JF_TOKEN"
+	jfPlatformUrlEnvVariable    = "JF_PLATFORM_URL"
+	logDirEnvVariable           = "AM_LOG_DIRECTORY"
+	applicabilityScanCommand    = "ca"
 )
 
 const (
@@ -77,7 +83,7 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) ExistLocally() (bool, error) {
-	analyzerManagerPath, err := getAnalyzerManagerAbsolutePath()
+	analyzerManagerPath, err := getAnalyzerManagerExecutable()
 	if err != nil {
 		return false, err
 	}
@@ -100,16 +106,36 @@ func CreateAnalyzerManagerLogDir() error {
 	return nil
 }
 
-func getAnalyzerManagerAbsolutePath() (string, error) {
+func GetAnalyzerManagerDownloadPath() (string, error) {
+	osAndArc, err := coreutils.GetOSAndArc()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s/%s", analyzerManagerDownloadPath, osAndArc, AnalyzerManagerZipName), nil
+}
+
+func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	jfrogDir, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err
 	}
-	analyzerManager := analyzerManagerFilePath
-	if coreutils.IsWindows() {
-		analyzerManagerFilePath += ".exe"
+	return filepath.Join(jfrogDir, analyzerManagerDirName), nil
+}
+
+func getAnalyzerManagerExecutable() (string, error) {
+	analyzerManagerDir, err := GetAnalyzerManagerDirAbsolutePath()
+	if err != nil {
+		return "", err
 	}
-	return filepath.Join(jfrogDir, analyzerManager), nil
+	return filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName()), nil
+}
+
+func GetAnalyzerManagerExecutableName() string {
+	analyzerManager := analyzerManagerExecutableName
+	if coreutils.IsWindows() {
+		return analyzerManager + ".exe"
+	}
+	return analyzerManager
 }
 
 func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {

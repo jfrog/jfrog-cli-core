@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGetFullRemoteRepoPath(t *testing.T) {
@@ -16,7 +18,7 @@ func TestGetFullRemoteRepoPath(t *testing.T) {
 	}{
 		{
 			repoName:     "my-repo",
-			remoteEnv:    coreutils.ExtractorsRemoteEnv,
+			remoteEnv:    coreutils.DeprecatedExtractorsRemoteEnv,
 			downloadPath: "path/to/file",
 			expectedPath: "my-repo/path/to/file",
 		},
@@ -33,4 +35,19 @@ func TestGetFullRemoteRepoPath(t *testing.T) {
 		actualPath := getFullExtractorsPathInArtifactory(test.repoName, test.remoteEnv, test.downloadPath)
 		assert.Equal(t, test.expectedPath, actualPath)
 	}
+}
+
+func TestCreateHttpClient(t *testing.T) {
+	serverDetails := &config.ServerDetails{
+		Url:      "https://acme.jfrog.io",
+		User:     "elmar",
+		Password: "Egghead",
+	}
+	httpClient, httpClientDetails, err := createHttpClient(serverDetails)
+	assert.NoError(t, err)
+	assert.NotNil(t, httpClient)
+	assert.NotNil(t, httpClientDetails)
+
+	assert.Equal(t, "elmar", httpClientDetails.User)
+	assert.Equal(t, "Egghead", httpClientDetails.Password)
 }

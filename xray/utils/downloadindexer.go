@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,10 +11,10 @@ import (
 	"strings"
 
 	gofrogio "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -41,7 +40,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 	if err != nil {
 		return
 	}
-	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
+	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, indexerDirName))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
 		e := unlockFunc()

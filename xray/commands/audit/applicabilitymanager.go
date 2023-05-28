@@ -2,6 +2,9 @@ package audit
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -11,14 +14,14 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-	"os"
-	"path/filepath"
-	"strings"
+
 )
 
 const (
+	ApplicabilityFeatureId          = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
+	noEntitledExitCode              = 31
 	applicabilityScanCommand        = "ca"
 )
 
@@ -232,6 +235,8 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	return err
 }
 
+// Runs the analyzerManager app and returns a boolean indicates if the user is entitled for
+// advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
 		return err

@@ -2,9 +2,6 @@ package audit
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -14,14 +11,15 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 const (
 	ApplicabilityFeatureId          = "contextual_analysis"
 	applicabilityScanType           = "analyze-applicability"
 	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
-	noEntitledExitCode              = 31
 	applicabilityScanCommand        = "ca"
 )
 

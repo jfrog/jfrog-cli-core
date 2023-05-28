@@ -1,6 +1,7 @@
 package utils
 
 import (
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -20,6 +21,16 @@ const (
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
 	TotalConcurrentRequests           = 10
 )
+
+var techToProjectType = map[coreutils.Technology]rtutils.ProjectType{
+	coreutils.Npm:  rtutils.Npm,
+	coreutils.Yarn: rtutils.Yarn,
+}
+
+var techToPackageType = map[coreutils.Technology]coreutils.Technology{
+	coreutils.Npm:  coreutils.Npm,
+	coreutils.Yarn: coreutils.Npm,
+}
 
 func getLevelOfSeverity(s string) int {
 	severity := utils.GetSeverity(cases.Title(language.Und).String(s), utils.ApplicabilityUndeterminedStringValue)
@@ -207,4 +218,18 @@ func DetectNumOfThreads(threadsCount int) (int, error) {
 		return 0, errorutils.CheckErrorf("number of threads crossed the maximum, the maximum threads allowed is %v", TotalConcurrentRequests)
 	}
 	return threadsCount, nil
+}
+
+func TechToProjectType(tech coreutils.Technology) rtutils.ProjectType {
+	if projType, ok := techToProjectType[tech]; ok {
+		return projType
+	}
+	return -1
+}
+
+func GetPackageTypeByTech(tech coreutils.Technology) coreutils.Technology {
+	if pkgType, ok := techToPackageType[tech]; ok {
+		return pkgType
+	}
+	return ""
 }

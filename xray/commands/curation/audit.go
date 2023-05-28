@@ -48,7 +48,8 @@ const (
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
-	coreutils.Npm: {},
+	coreutils.Npm:  {},
+	coreutils.Yarn: {},
 }
 
 type ErrorsResp struct {
@@ -305,28 +306,36 @@ func (ca *CurationAuditCommand) CommandName() string {
 }
 
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
-	switch tech {
-	case coreutils.Npm:
-		configFilePath, exists, err := rtUtils.GetProjectConfFilePath(rtUtils.Npm)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			return errorutils.CheckError(errors.New("no config file was found! Before running the npm command on a " +
-				"project for the first time, the project should be configured using the 'jf npmc' command"))
-		}
-		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
-		if err != nil {
-			return err
-		}
-		resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
-		if err != nil {
-			return err
-		}
-		ca.setPackageManagerConfig(resolverParams)
+	projType := cmdUtils.TechToProjectType(tech)
+	if projType == -1 {
+		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.ToString())
+	}
+	switch projType {
+	case rtUtils.Npm, rtUtils.Yarn:
+		return ca.setRepoByProjectType(projType)
 	default:
 		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.ToString())
 	}
+}
+
+func (ca *CurationAuditCommand) setRepoByProjectType(projectType rtUtils.ProjectType) error {
+	configFilePath, exists, err := rtUtils.GetProjectConfFilePath(projectType)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errorutils.CheckError(errors.New("no config file was found! Before running the npm command on a " +
+			"project for the first time, the project should be configured using the 'jf npmc' command"))
+	}
+	vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
+	if err != nil {
+		return err
+	}
+	resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
+	if err != nil {
+		return err
+	}
+	ca.setPackageManagerConfig(resolverParams)
 	return nil
 }
 
@@ -442,7 +451,7 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 				Action:            blocked,
 				Policy:            policies,
 				BlockingReason:    blockingReason,
-				PkgType:           string(nc.tech),
+				PkgType:           cmdUtils.GetPackageTypeByTech(nc.tech).ToString(),
 			}, nil
 		}
 	}
@@ -468,7 +477,7 @@ func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 }
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, version string) {
-	if tech == coreutils.Npm {
+	if tech == coreutils.Npm || tech == coreutils.Yarn {
 		return getNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
 	}
 	return

@@ -70,8 +70,8 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities))
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))
 }
 
 func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
@@ -82,8 +82,8 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Empty(t, applicabilityManager.xrayVulnerabilities)
-	assert.Empty(t, applicabilityManager.xrayViolations)
+	assert.Empty(t, applicabilityManager.xrayDirectVulnerabilities)
+	assert.Empty(t, applicabilityManager.xrayDirectViolations)
 }
 
 func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
@@ -117,8 +117,8 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities)) // non-direct dependency should not be added
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))      // non-direct dependency should not be added
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities)) // non-direct dependency should not be added
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))      // non-direct dependency should not be added
 }
 
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
@@ -132,8 +132,8 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 2, len(applicabilityManager.xrayVulnerabilities))
-	assert.Equal(t, 2, len(applicabilityManager.xrayViolations))
+	assert.Equal(t, 2, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Equal(t, 2, len(applicabilityManager.xrayDirectViolations))
 }
 
 func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) {
@@ -156,8 +156,8 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities))
-	assert.Empty(t, applicabilityManager.xrayViolations)
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Empty(t, applicabilityManager.xrayDirectViolations)
 }
 
 func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
@@ -180,8 +180,8 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))
-	assert.Empty(t, applicabilityManager.xrayVulnerabilities)
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))
+	assert.Empty(t, applicabilityManager.xrayDirectVulnerabilities)
 }
 
 func TestApplicabilityScanManager_EligibleForApplicabilityScan_AllConditionsMet(t *testing.T) {

@@ -79,8 +79,8 @@ func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	return analyzerManagerExist && resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(a.serverDetails.Url) > 0, nil
+	return analyzerManagerExist && resultsIncludeEligibleTechnologies(getXrayVulnerabilities(a.xrayResults),
+		getXrayViolations(a.xrayResults)) && len(a.serverDetails.Url) > 0, nil
 }
 
 // Applicability scan is relevant only to specific programming languages (the languages in this list:
@@ -108,8 +108,9 @@ func resultsIncludeEligibleTechnologies(xrayVulnerabilities []services.Vulnerabi
 
 type ApplicabilityScanManager struct {
 	applicabilityScannerResults map[string]string
-	xrayVulnerabilities         []services.Vulnerability
-	xrayViolations              []services.Violation
+	xrayResults                 []services.ScanResponse
+	xrayDirectVulnerabilities   []services.Vulnerability
+	xrayDirectViolations        []services.Violation
 	configFileName              string
 	resultsFileName             string
 	analyzerManager             utils.AnalyzerManagerInterface
@@ -128,8 +129,9 @@ func NewApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 	}
 	return &ApplicabilityScanManager{
 		applicabilityScannerResults: map[string]string{},
-		xrayVulnerabilities:         extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
-		xrayViolations:              extractXrayDirectViolations(xrayScanResults, directDependencies),
+		xrayDirectVulnerabilities:   extractXrayDirectVulnerabilities(xrayScanResults, directDependencies),
+		xrayDirectViolations:        extractXrayDirectViolations(xrayScanResults, directDependencies),
+		xrayResults:                 xrayScanResults,
 		configFileName:              filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:             filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:             analyzerManagerExecuter,
@@ -238,7 +240,7 @@ type scanConfiguration struct {
 }
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
-	return len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0
+	return len(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations)) > 0
 }
 
 func (a *ApplicabilityScanManager) createConfigFile() error {
@@ -246,7 +248,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	if err != nil {
 		return err
 	}
-	cveWhiteList := utils.RemoveDuplicateValues(createCveList(a.xrayVulnerabilities, a.xrayViolations))
+	cveWhiteList := utils.RemoveDuplicateValues(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations))
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -296,7 +298,7 @@ func (a *ApplicabilityScanManager) parseResults() error {
 		fullVulnerabilitiesList = report.Runs[0].Results
 	}
 
-	xrayCves := utils.RemoveDuplicateValues(createCveList(a.xrayVulnerabilities, a.xrayViolations))
+	xrayCves := utils.RemoveDuplicateValues(createCveList(a.xrayDirectVulnerabilities, a.xrayDirectViolations))
 	for _, xrayCve := range xrayCves {
 		a.applicabilityScannerResults[xrayCve] = utils.ApplicabilityUndeterminedStringValue
 	}

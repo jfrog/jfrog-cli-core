@@ -147,7 +147,7 @@ func (s *SecretScanManager) parseResults() error {
 	for _, secret := range secretsResults {
 		newSecret := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(secret),
-			File:       utils.GetResultFileName(secret),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(secret), s.projectRootPath),
 			LineColumn: utils.GetResultLocationInFile(secret),
 			Text:       hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,

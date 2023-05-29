@@ -44,7 +44,7 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractorIfNeeded, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 

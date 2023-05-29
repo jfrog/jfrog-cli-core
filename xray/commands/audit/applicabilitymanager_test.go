@@ -2,16 +2,16 @@ package audit
 
 import (
 	"errors"
-	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 var (
@@ -70,8 +70,8 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities))
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))
 }
 
 func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
@@ -82,8 +82,8 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Empty(t, applicabilityManager.xrayVulnerabilities)
-	assert.Empty(t, applicabilityManager.xrayViolations)
+	assert.Empty(t, applicabilityManager.xrayDirectVulnerabilities)
+	assert.Empty(t, applicabilityManager.xrayDirectViolations)
 }
 
 func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
@@ -117,8 +117,8 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities)) // non-direct dependency should not be added
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))      // non-direct dependency should not be added
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities)) // non-direct dependency should not be added
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))      // non-direct dependency should not be added
 }
 
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
@@ -132,8 +132,8 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 2, len(applicabilityManager.xrayVulnerabilities))
-	assert.Equal(t, 2, len(applicabilityManager.xrayViolations))
+	assert.Equal(t, 2, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Equal(t, 2, len(applicabilityManager.xrayDirectViolations))
 }
 
 func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) {
@@ -156,8 +156,8 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities))
-	assert.Empty(t, applicabilityManager.xrayViolations)
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectVulnerabilities))
+	assert.Empty(t, applicabilityManager.xrayDirectViolations)
 }
 
 func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
@@ -180,39 +180,39 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))
-	assert.Empty(t, applicabilityManager.xrayVulnerabilities)
+	assert.Equal(t, 1, len(applicabilityManager.xrayDirectViolations))
+	assert.Empty(t, applicabilityManager.xrayDirectVulnerabilities)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AllConditionsMet(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_AllConditionsMet(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.True(t, shouldRun)
+	assert.True(t, eligible)
 }
 
-func TestApplicabilityScanManager_ShouldRun_AnalyzerManagerDoesntExist(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_AnalyzerManagerDoesntExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExist = false
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := NewApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, eligible)
 
 	// Cleanup
 	analyzerManagerExist = true
 }
 
-func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *testing.T) {
+func TestApplicabilityScanManager_EligibleForApplicabilityScan_TechnologiesNotEligibleForScan(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Nuget.ToString()
@@ -221,26 +221,14 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 		&fakeServerDetails)
 
 	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
+	eligible, _ := applicabilityManager.eligibleForApplicabilityScan()
 
 	// Assert
-	assert.False(t, shouldRun)
+	assert.False(t, eligible)
 
 	// Cleanup
 	fakeBasicXrayResults[0].Vulnerabilities[0].Technology = coreutils.Pipenv.ToString()
 	fakeBasicXrayResults[0].Violations[0].Technology = coreutils.Pipenv.ToString()
-}
-
-func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
-	// Arrange
-	analyzerManagerExecuter = &analyzerManagerMock{}
-	applicabilityManager, _, _ := NewApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails)
-
-	// Act
-	shouldRun, _ := applicabilityManager.shouldRun()
-
-	// Assert
-	assert.False(t, shouldRun)
 }
 
 func TestResultsIncludeEligibleTechnologies(t *testing.T) {
@@ -478,7 +466,6 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
 	assert.Nil(t, extendedResults)
 
 	// Cleanup

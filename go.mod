@@ -12,7 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/jfrog/build-info-go v1.9.6
 	github.com/jfrog/gofrog v1.3.0
-	github.com/jfrog/jfrog-client-go v1.28.6
+	github.com/jfrog/jfrog-client-go v1.29.1
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.1.3
@@ -24,6 +24,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/mod v0.10.0
+	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.8.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -40,7 +41,7 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/cloudflare/circl v1.1.0 // indirect
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
@@ -94,6 +95,6 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/sarao1310/jfrog-client-go v0.0.0-20230522094814-cf55d9d1142f
 
-//replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230518114837-fe6a826d5001
+// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230518114837-fe6a826d5001
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.6-0.20230418122323-2bf299dd6d27

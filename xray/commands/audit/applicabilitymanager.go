@@ -84,6 +84,7 @@ type ApplicabilityScanManager struct {
 	applicabilityScanResults map[string]string
 	xrayVulnerabilities      []services.Vulnerability
 	xrayViolations           []services.Violation
+	xrayResults              []services.ScanResponse
 	configFileName           string
 	resultsFileName          string
 	analyzerManager          utils.AnalyzerManagerInterface
@@ -106,14 +107,14 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 		xrayViolations:           extractXrayDirectViolations(xrayScanResults, directDependencies),
 		configFileName:           filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:          filepath.Join(tempDir, "results.sarif"),
+		xrayResults:              xrayScanResults,
 		analyzerManager:          analyzerManager,
 		serverDetails:            serverDetails,
 	}, cleanup, nil
 }
 
 func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() bool {
-	return resultsIncludeEligibleTechnologies(a.xrayVulnerabilities, a.xrayViolations) &&
-		len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0
+	return resultsIncludeEligibleTechnologies(getXrayVulnerabilities(a.xrayResults), getXrayViolations(a.xrayResults))
 }
 
 // This function gets a liat of xray scan responses that contains direct and indirect violations, and returns only direct
@@ -184,6 +185,9 @@ func (a *ApplicabilityScanManager) run() error {
 			}
 		}
 	}()
+	if !a.directDependenciesExist() {
+		return nil
+	}
 	if err = a.createConfigFile(); err != nil {
 		return err
 	}
@@ -192,6 +196,10 @@ func (a *ApplicabilityScanManager) run() error {
 	}
 	err = a.parseResults()
 	return err
+}
+
+func (a *ApplicabilityScanManager) directDependenciesExist() bool {
+	return len(createCveList(a.xrayVulnerabilities, a.xrayViolations)) > 0
 }
 
 type applicabilityScanConfig struct {

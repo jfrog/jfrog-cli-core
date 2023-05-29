@@ -16,7 +16,7 @@ type GenericCommand struct {
 	quiet                  bool
 	retries                int
 	retryWaitTimeMilliSecs int
-	includedQueryPart      []string
+	aqlInclude             []string
 }
 
 func NewGenericCommand() *GenericCommand {
@@ -95,11 +95,11 @@ func (gc *GenericCommand) SetDetailedSummary(detailedSummary bool) *GenericComma
 	return gc
 }
 
-func (gc *GenericCommand) GetInclude() []string {
-	return gc.includedQueryPart
+func (gc *GenericCommand) AqlInclue() []string {
+	return gc.aqlInclude
 }
 
-func (gc *GenericCommand) SetInclude(include []string) *GenericCommand {
-	gc.includedQueryPart = include
+func (gc *GenericCommand) SetAqlInclude(include []string) *GenericCommand {
+	gc.aqlInclude = include
 	return gc
 }

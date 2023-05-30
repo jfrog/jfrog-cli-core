@@ -13,6 +13,8 @@ import (
 const (
 	npmPackageTypeIdentifier = "npm://"
 	ignoreScriptsFlag        = "--ignore-scripts"
+	// When parsing the npm depth tree, ensure that the requested paths are checked up to a certain depth to prevent an infinite loop.
+	MaxNpmRequestedByDepth = 2
 )
 
 func BuildDependencyTree(npmArgs []string) (dependencyTree []*xrayUtils.GraphNode, err error) {
@@ -54,7 +56,10 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		dependencyId := npmPackageTypeIdentifier + dependency.Id
-		for _, requestedByNode := range dependency.RequestedBy {
+		for depth, requestedByNode := range dependency.RequestedBy {
+			if depth > MaxNpmRequestedByDepth {
+				continue
+			}
 			parent := npmPackageTypeIdentifier + requestedByNode[0]
 			if children, ok := treeMap[parent]; ok {
 				treeMap[parent] = append(children, dependencyId)

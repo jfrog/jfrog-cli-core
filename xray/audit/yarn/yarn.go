@@ -38,8 +38,6 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if err != nil {
 		return
 	}
-	// In some versions of Yarn, the version of the root package is '0.0.0-use.local', instead of the version in the package.json file.
-	root.Details.Version = packageInfo.Version
 	// Parse the dependencies into Xray dependency tree format
 	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, getXrayDependencyId(root))}
 	return

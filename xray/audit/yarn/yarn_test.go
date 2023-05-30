@@ -2,6 +2,7 @@ package yarn
 
 import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	biutils "github.com/jfrog/build-info-go/build/utils"
@@ -38,8 +39,5 @@ func TestParseYarnDependenciesList(t *testing.T) {
 
 	xrayDependenciesTree := parseYarnDependenciesMap(yarnDependencies, rootXrayId)
 
-	equals := tests.CompareTree(expectedTree, xrayDependenciesTree)
-	if !equals {
-		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
-	}
+	assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 }

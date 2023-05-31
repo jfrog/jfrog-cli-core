@@ -3,13 +3,12 @@ package audit
 import (
 	"os"
 
-	"github.com/jfrog/jfrog-client-go/utils/log"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/sync/errgroup"
 )
@@ -110,14 +109,21 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	xrayManager, err := commandsutils.CreateXrayServiceManager(serverDetails)
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return err
 	}
+	auditParams.xrayVersion = xrayVersion
+	var entitled bool
 	errGroup := new(errgroup.Group)
-	entitled, err := xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
-	if err != nil {
-		return err
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrutils.EntitlementsMinVersion); err == nil {
+		entitled, err = xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+		if err != nil {
+			return err
+		}
+	} else {
+		entitled = false
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
 	}
 	if entitled {
 		// Download (if needed) the analyzer manager in a background routine.

@@ -90,20 +90,10 @@ func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
 
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
-	// Get Xray version
-	serverDetails, err := params.ServerDetails()
-	if err != nil {
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, utils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
-	_, xrayVersion, err := utils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
-		return
-	}
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion); err != nil {
-		return
-	}
-	params.xrayVersion = xrayVersion
-	log.Info("JFrog Xray version is:", xrayVersion)
+	log.Info("JFrog Xray version is:", params.xrayVersion)
 
 	if len(params.workingDirs) == 0 {
 		log.Info("Auditing project...")

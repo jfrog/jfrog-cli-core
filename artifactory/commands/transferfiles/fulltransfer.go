@@ -176,7 +176,7 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			return
 		}
 
-		// Add the folder as a candidate to transfer. The reason is to transfer folders with properties or empty folders.
+		// Add the folder as a candidate to transfer. The reason is that we'd like to transfer only folders with properties or empty folders.
 		curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
 
 		// Empty folder

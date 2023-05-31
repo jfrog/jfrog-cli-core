@@ -121,7 +121,7 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 	}
 	defer func() {
 		if reader != nil {
-			err = errors.Join(err, reader.Close())
+			err = errors.Join(err, errorutils.CheckError(reader.Close()))
 		}
 	}()
 

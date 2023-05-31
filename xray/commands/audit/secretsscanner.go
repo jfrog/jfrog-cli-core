@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
@@ -117,10 +118,14 @@ func (s *SecretScanManager) createConfigFile() error {
 		},
 	}
 	yamlData, err := yaml.Marshal(&configFileContent)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	return os.WriteFile(s.configFileName, yamlData, 0644)
+	err = os.WriteFile(s.configFileName, yamlData, 0644)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
@@ -132,7 +137,7 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 
 func (s *SecretScanManager) parseResults() error {
 	report, err := sarif.Open(s.resultsFileName)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	var secretsResults []*sarif.Result

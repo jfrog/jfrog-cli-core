@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
@@ -114,10 +115,14 @@ func (iac *IacScanManager) createConfigFile() error {
 		},
 	}
 	yamlData, err := yaml.Marshal(&configFileContent)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	return os.WriteFile(iac.configFileName, yamlData, 0644)
+	err = os.WriteFile(iac.configFileName, yamlData, 0644)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	return nil
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
@@ -129,7 +134,7 @@ func (iac *IacScanManager) runAnalyzerManager() error {
 
 func (iac *IacScanManager) parseResults() error {
 	report, err := sarif.Open(iac.resultsFileName)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	var iacResults []*sarif.Result

@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -233,10 +234,14 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 		},
 	}
 	yamlData, err := yaml.Marshal(&configFileContent)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	return os.WriteFile(a.configFileName, yamlData, 0644)
+	err = os.WriteFile(a.configFileName, yamlData, 0644)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	return nil
 }
 
 // Runs the analyzerManager app and returns a boolean indicates if the user is entitled for
@@ -250,7 +255,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 
 func (a *ApplicabilityScanManager) parseResults() error {
 	report, err := sarif.Open(a.resultsFileName)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return err
 	}
 	var fullVulnerabilitiesList []*sarif.Result

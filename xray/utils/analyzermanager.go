@@ -95,7 +95,11 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 func (am *AnalyzerManager) Exec(configFile string, scanCommand string) error {
 	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
 	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
-	return cmd.Run()
+	err := cmd.Run()
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateAnalyzerManagerLogDir() error {

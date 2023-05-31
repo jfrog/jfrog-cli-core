@@ -29,8 +29,8 @@ const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 1000
-	retriesWaitMilliSecs         = 1000
+	retries                      = 10000
+	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
 )
 
@@ -452,9 +452,7 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		// We do not return the error returned from the phase's run function,
-		// because the phase is expected to recover from some errors, such as HTTP connection errors.
-		log.Error(err.Error())
+		return err
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()

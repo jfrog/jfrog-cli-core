@@ -194,8 +194,7 @@ func (a *ApplicabilityScanManager) run() error {
 	if err = a.runAnalyzerManager(); err != nil {
 		return err
 	}
-	err = a.parseResults()
-	return err
+	return a.parseResults()
 }
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
@@ -237,8 +236,7 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(a.configFileName, yamlData, 0644)
-	return err
+	return os.WriteFile(a.configFileName, yamlData, 0644)
 }
 
 // Runs the analyzerManager app and returns a boolean indicates if the user is entitled for

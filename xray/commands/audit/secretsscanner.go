@@ -86,8 +86,7 @@ func (s *SecretScanManager) run() error {
 	if err = s.runAnalyzerManager(); err != nil {
 		return err
 	}
-	err = s.parseResults()
-	return err
+	return s.parseResults()
 }
 
 type secretsScanConfig struct {
@@ -121,8 +120,7 @@ func (s *SecretScanManager) createConfigFile() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(s.configFileName, yamlData, 0644)
-	return err
+	return os.WriteFile(s.configFileName, yamlData, 0644)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {

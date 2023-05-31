@@ -85,8 +85,7 @@ func (iac *IacScanManager) run() error {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return err
 	}
-	err = iac.parseResults()
-	return err
+	return iac.parseResults()
 }
 
 type iacScanConfig struct {
@@ -118,8 +117,7 @@ func (iac *IacScanManager) createConfigFile() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(iac.configFileName, yamlData, 0644)
-	return err
+	return os.WriteFile(iac.configFileName, yamlData, 0644)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {

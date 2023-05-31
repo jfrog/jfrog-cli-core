@@ -18,22 +18,23 @@ import (
 )
 
 var (
-	analyzerManagerLogFolder      = ""
-	analyzerManagerExecutableName = "analyzerManager"
+	analyzerManagerLogFolder = ""
+	levelToSeverity          = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
 )
 
 const (
-	ApplicabilityFeatureId      = "contextual_analysis"
-	AnalyzerManagerZipName      = "analyzerManager.zip"
-	analyzerManagerDownloadPath = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
-	analyzerManagerDirName      = "analyzerManager"
-	analyzerManagerLogDirName   = "analyzerManagerLogs"
-	jfUserEnvVariable           = "JF_USER"
-	jfPasswordEnvVariable       = "JF_PASS"
-	jfTokenEnvVariable          = "JF_TOKEN"
-	jfPlatformUrlEnvVariable    = "JF_PLATFORM_URL"
-	logDirEnvVariable           = "AM_LOG_DIRECTORY"
-	applicabilityScanCommand    = "ca"
+	ApplicabilityFeatureId        = "contextual_analysis"
+	AnalyzerManagerZipName        = "analyzerManager.zip"
+	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
+	analyzerManagerDirName        = "analyzerManager"
+	analyzerManagerExecutableName = "analyzerManager"
+	analyzerManagerLogDirName     = "analyzerManagerLogs"
+	jfUserEnvVariable             = "JF_USER"
+	jfPasswordEnvVariable         = "JF_PASS"
+	jfTokenEnvVariable            = "JF_TOKEN"
+	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
+	logDirEnvVariable             = "AM_LOG_DIRECTORY"
+	SeverityDefaultValue          = "Medium"
 )
 
 const (
@@ -225,8 +226,9 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
-		return *result.Level
+		if severity, ok := levelToSeverity[*result.Level]; ok {
+			return severity
+		}
 	}
-	return "Medium" // Default value for jas severity
-
+	return SeverityDefaultValue
 }

@@ -166,12 +166,10 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	}
 
 	var result []servicesUtils.ResultItem
+	var lastPage bool
 	paginationI := 0
-	for {
-		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-			return
-		}
-		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+	for !lastPage && !ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+		result, lastPage, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
 		if err != nil {
 			return
 		}
@@ -204,9 +202,6 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			}
 		}
 
-		if len(result) < AqlPaginationLimit {
-			break
-		}
 		paginationI++
 	}
 	return
@@ -261,13 +256,16 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
+func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
 	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
-		return []servicesUtils.ResultItem{}, err
+		return []servicesUtils.ResultItem{}, false, err
 	}
-	return m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+
+	lastPage = len(aqlResults.Results) < AqlPaginationLimit
+	result, err = m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+	return
 }
 
 func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {

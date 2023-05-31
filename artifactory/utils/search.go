@@ -105,7 +105,7 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (contentReader *c
 			}
 			writer.Write(*tempResult)
 		}
-		if err := reader.GetError(); err != nil {
+		if err = reader.GetError(); err != nil {
 			return nil, err
 		}
 		reader.Reset()

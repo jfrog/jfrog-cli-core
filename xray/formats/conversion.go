@@ -9,6 +9,7 @@ func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRo
 		tableRows = append(tableRows, vulnerabilityTableRow{
 			severity:                  rows[i].Severity,
 			severityNumValue:          rows[i].SeverityNumValue,
+			applicable:                rows[i].Applicable,
 			impactedDependencyName:    rows[i].ImpactedDependencyName,
 			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
 			impactedDependencyType:    rows[i].ImpactedDependencyType,
@@ -43,6 +44,7 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 		tableRows = append(tableRows, licenseViolationTableRow{
 			licenseKey:                rows[i].LicenseKey,
 			severity:                  rows[i].Severity,
+			applicable:                rows[i].Applicable,
 			severityNumValue:          rows[i].SeverityNumValue,
 			impactedDependencyName:    rows[i].ImpactedDependencyName,
 			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,

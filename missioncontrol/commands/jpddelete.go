@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/http"
 )
 
 func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
@@ -19,7 +20,7 @@ func JpdDelete(jpdId string, serverDetails *config.ServerDetails) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != 204 {
+	if resp.StatusCode != http.StatusNoContent {
 		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)

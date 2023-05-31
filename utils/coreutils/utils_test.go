@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/magiconair/properties/assert"
+	"fmt"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSpecVarsStringToMap(t *testing.T) {
@@ -33,8 +36,10 @@ func TestSpecVarsStringToMap(t *testing.T) {
 
 func assertSpecVars(expected, actual map[string]string, t *testing.T) {
 	if !reflect.DeepEqual(expected, actual) {
-		expectedMap, _ := json.Marshal(expected)
-		actualMap, _ := json.Marshal(actual)
+		expectedMap, err := json.Marshal(expected)
+		assert.NoError(t, err)
+		actualMap, err := json.Marshal(actual)
+		assert.NoError(t, err)
 		t.Error("Wrong matching expected: `" + string(expectedMap) + "` Got `" + string(actualMap) + "`")
 	}
 }
@@ -161,4 +166,59 @@ func TestListToText(t *testing.T) {
 	assert.Equal(t, ListToText([]string{"one"}), "one")
 	assert.Equal(t, ListToText([]string{"one", "two"}), "one and two")
 	assert.Equal(t, ListToText([]string{"one", "two", "three"}), "one, two and three")
+}
+
+func TestSplitRepoAndServerId(t *testing.T) {
+	// Test cases
+	tests := []struct {
+		serverAndRepo string
+		remoteEnv     string
+		serverID      string
+		repoName      string
+		err           error
+	}{
+		{
+			serverAndRepo: "myServer/myRepo",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "myServer",
+			repoName:      "myRepo",
+			err:           nil,
+		},
+		{
+			serverAndRepo: "/myRepo",
+			remoteEnv:     DeprecatedExtractorsRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           fmt.Errorf("'%s' environment variable is '/myRepo' but should be '<server ID>/<repo name>'", DeprecatedExtractorsRemoteEnv),
+		},
+		{
+			serverAndRepo: "myServer/",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           fmt.Errorf("'%s' environment variable is 'myServer/' but should be '<server ID>/<repo name>'", ReleasesRemoteEnv),
+		},
+		{
+			serverAndRepo: "",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "",
+			repoName:      "",
+			err:           nil,
+		},
+	}
+	for _, test := range tests {
+		func() {
+			assert.NoError(t, os.Setenv(test.remoteEnv, test.serverAndRepo))
+			defer func() {
+				assert.NoError(t, os.Unsetenv(test.remoteEnv))
+			}()
+			serverID, repoName, err := GetServerIdAndRepo(test.remoteEnv)
+			if err != nil {
+				assert.Equal(t, test.err.Error(), err.Error())
+			}
+			// Assert the results
+			assert.Equal(t, test.serverID, serverID)
+			assert.Equal(t, test.repoName, repoName)
+		}()
+	}
 }

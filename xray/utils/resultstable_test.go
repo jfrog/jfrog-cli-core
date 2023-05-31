@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"testing"
@@ -22,7 +23,7 @@ func TestPrintViolationsTable(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := PrintViolationsTable(test.violations, false, true, false)
+		err := PrintViolationsTable(test.violations, &ExtendedScanResults{}, false, true, true)
 		assert.NoError(t, err)
 		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
 			err = NewFailBuildError()
@@ -397,6 +398,71 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 			result := appendUniqueImpactPaths(tc.target, tc.source, tc.multipleRoots)
 			assert.Equal(t, tc.expected, result)
 		})
+	}
+}
+
+func TestGetSeveritiesFormat(t *testing.T) {
+	testCases := []struct {
+		input          string
+		expectedOutput string
+		expectedError  error
+	}{
+		// Test supported severity
+		{input: "critical", expectedOutput: "Critical", expectedError: nil},
+		{input: "hiGH", expectedOutput: "High", expectedError: nil},
+		{input: "Low", expectedOutput: "Low", expectedError: nil},
+		{input: "MedIum", expectedOutput: "Medium", expectedError: nil},
+		{input: "", expectedOutput: "", expectedError: nil},
+		// Test unsupported severity
+		{input: "invalid_severity", expectedOutput: "", expectedError: errors.New("only the following severities are supported")},
+	}
+
+	for _, tc := range testCases {
+		output, err := GetSeveritiesFormat(tc.input)
+		if err != nil {
+			assert.Contains(t, err.Error(), tc.expectedError.Error())
+		} else {
+			assert.Equal(t, tc.expectedError, err)
+		}
+		assert.Equal(t, tc.expectedOutput, output)
+	}
+}
+
+func TestGetApplicableCveValue(t *testing.T) {
+	testCases := []struct {
+		scanResults    *ExtendedScanResults
+		cves           []formats.CveRow
+		expectedResult string
+	}{
+		{scanResults: &ExtendedScanResults{EntitledForJas: false}, expectedResult: ""},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
+			EntitledForJas:              true},
+			cves: nil, expectedResult: ApplicabilityUndeterminedStringValue},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:              true},
+			cves: []formats.CveRow{{Id: "testCve2"}}, expectedResult: ApplicableStringValue},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:              true},
+			cves: []formats.CveRow{{Id: "testCve3"}}, expectedResult: ApplicabilityUndeterminedStringValue},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
+			EntitledForJas:              true},
+			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: NotApplicableStringValue},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:              true},
+			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicableStringValue},
+		{scanResults: &ExtendedScanResults{
+			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
+			EntitledForJas:              true},
+			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
+	}
+
+	for _, testCase := range testCases {
+		assert.Equal(t, testCase.expectedResult, getApplicableCveValue(testCase.scanResults, testCase.cves))
 	}
 }
 

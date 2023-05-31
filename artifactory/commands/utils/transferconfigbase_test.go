@@ -21,15 +21,16 @@ var transferConfigTestDir = filepath.Join("testdata", "transferconfig")
 func TestIsDefaultCredentialsDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("OK"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -47,15 +48,16 @@ func TestIsDefaultCredentialsDefault(t *testing.T) {
 func TestIsDefaultCredentialsNotDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -74,16 +76,17 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	pingCounter := 0
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[ \"admin\" ]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
 			pingCounter++
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -99,53 +102,18 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	assert.Equal(t, 0, unlockCounter)
 }
 
-var validateMinVersionAndDifferentServersCases = []struct {
-	testName      string
-	sourceVersion string
-	targetVersion string
-	expectedError string
-}{
-	{testName: "Same version", sourceVersion: minTransferConfigArtifactoryVersion, targetVersion: minTransferConfigArtifactoryVersion, expectedError: ""},
-	{testName: "Different versions", sourceVersion: "7.0.0", targetVersion: "7.0.1", expectedError: ""},
-	{testName: "Low Artifactory version", sourceVersion: "6.0.0", targetVersion: "7.0.0", expectedError: "while this operation requires version"},
-	{testName: "Source newer than target", sourceVersion: "7.0.1", targetVersion: "7.0.0", expectedError: "can't be higher than the target Artifactory version"},
-}
-
-func TestValidateMinVersionAndDifferentServers(t *testing.T) {
-	var sourceRtVersion, targetRtVersion string
+func TestValidateDifferentServers(t *testing.T) {
+	var sourceRtVersion string
 	// Create transfer config command
-	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+	_, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		content, err := json.Marshal(VersionResponse{Version: sourceRtVersion})
 		assert.NoError(t, err)
 		_, err = w.Write(content)
 		assert.NoError(t, err)
 	})
-	defer sourceTestServer.Close()
-	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
-		content, err := json.Marshal(VersionResponse{Version: targetRtVersion})
-		assert.NoError(t, err)
-		_, err = w.Write(content)
-		assert.NoError(t, err)
-	})
-	defer targetTestServer.Close()
-
-	for _, testCase := range validateMinVersionAndDifferentServersCases {
-		t.Run(testCase.testName, func(t *testing.T) {
-			sourceRtVersion = testCase.sourceVersion
-			targetRtVersion = testCase.targetVersion
-			actualSourceVersion, err := createTransferConfigBase(t, sourceServerDetails, targetServerDetails).ValidateMinVersionAndDifferentServers()
-			if testCase.expectedError == "" {
-				assert.NoError(t, err)
-				assert.Equal(t, testCase.sourceVersion, actualSourceVersion)
-			} else {
-				assert.ErrorContains(t, err, testCase.expectedError)
-			}
-		})
-	}
 
 	t.Run("Same source and target servers", func(t *testing.T) {
-		sourceRtVersion = minTransferConfigArtifactoryVersion
-		_, err := createTransferConfigBase(t, sourceServerDetails, sourceServerDetails).ValidateMinVersionAndDifferentServers()
+		err := createTransferConfigBase(t, sourceServerDetails, sourceServerDetails).ValidateDifferentServers()
 		assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
 	})
 }
@@ -185,7 +153,7 @@ func TestTransferRepositoryToTarget(t *testing.T) {
 
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if r.Method == "GET" {
+		if r.Method == http.MethodGet {
 			if r.RequestURI == "/api/repositories/federated-local" {
 				_, err := w.Write(federatedRepo)
 				assert.NoError(t, err)
@@ -193,7 +161,7 @@ func TestTransferRepositoryToTarget(t *testing.T) {
 				_, err := w.Write(federatedRepoWithoutMembers)
 				assert.NoError(t, err)
 			}
-		} else if r.Method == "POST" {
+		} else if r.Method == http.MethodPost {
 			body, err := io.ReadAll(r.Body)
 			assert.NoError(t, err)
 

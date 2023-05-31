@@ -107,11 +107,9 @@ func (t *TransferProgressMng) Quit() error {
 		// Wait for all go routines to finish before quiting
 		t.transferMng.WaitForReposGoRoutineToFinish()
 		t.barsMng.GetBarsWg().Wait()
-	} else {
-		if t.stopLine != nil {
-			t.stopLine.Abort(true)
-			t.stopLine = nil
-		}
+	} else if t.stopLine != nil {
+		t.stopLine.Abort(true)
+		t.stopLine = nil
 	}
 
 	// Close log file
@@ -184,7 +182,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 
 func (t *TransferProgressMng) AddPhase1(skip bool) {
 	if skip {
-		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProgressBar(0, phase1HeadLine, false, progressbar.GREEN, t.windows, ""))
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProgressBar(0, phase1HeadLine, false, t.windows, ""))
 	} else {
 		bar2 := t.transferMng.NewPhase1ProgressBar()
 		t.phases = append(t.phases, bar2)
@@ -249,7 +247,6 @@ func (t *TransferProgressMng) abortMetricsBars() {
 	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.errorNote, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
-			barPtr = nil
 		}
 	}
 }

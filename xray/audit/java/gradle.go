@@ -13,7 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	remoteDepTreePath = "artifactory/oss-releases"
+	remoteDepTreePath = "artifactory/oss-release-local"
 	gradlew           = "gradlew"
 	depTreeInitFile   = "gradledeptree.init"
 	depTreeOutputFile = "gradledeptree.out"
@@ -102,7 +102,7 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	return nil
 }
 
-func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*services.GraphNode, err error) {
+func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if (server != nil && server.IsEmpty()) || depsRepo == "" {
 		depsRepo, server, err = getGradleConfig()
 		if err != nil {
@@ -126,7 +126,7 @@ func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, de
 
 func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err error) {
 	// Create the script file in the repository
-	depTreeDir, err := dtp.createDepTreeScript()
+	depTreeDir, err := dtp.createDepTreeScriptAndGetDir()
 	if err != nil {
 		return
 	}
@@ -147,25 +147,51 @@ func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err err
 	return dtp.execGradleDepTree(depTreeDir)
 }
 
-func (dtp *depTreeManager) createDepTreeScript() (tmpDir string, err error) {
+func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err error) {
 	tmpDir, err = fileutils.CreateTempDir()
 	if err != nil {
 		return
 	}
-	depsRepo := ""
-	releasesRepo := ""
 	if dtp.server != nil {
-		releasesRepo, err = getDepTreeArtifactoryRepository(fmt.Sprintf("%s/%s", dtp.releasesRepo, remoteDepTreePath), dtp.server)
-		if err != nil {
-			return
-		}
-		depsRepo, err = getDepTreeArtifactoryRepository(dtp.depsRepo, dtp.server)
+		dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.releasesRepo, dtp.depsRepo, dtp.server)
 		if err != nil {
 			return
 		}
 	}
-	depTreeInitScript := fmt.Sprintf(depTreeInitScript, releasesRepo, depsRepo)
+	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, dtp.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
+}
+
+// getRemoteRepos constructs the sections of Artifactory's remote repositories in the gradle-dep-tree init script.
+// releasesRepoName - name of the remote repository that proxies https://releases.jfrog.io
+// depsRemoteRepo - name of the remote repository that proxies the dependencies server, e.g. maven central.
+// server - the Artifactory server details on which the repositories reside in.
+// Returns the constructed sections.
+func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
+	constructedReleasesRepo, err := constructReleasesRemoteRepo(releasesRepo, server)
+	if err != nil {
+		return "", "", err
+	}
+
+	constructedDepsRepo, err := getDepTreeArtifactoryRepository(depsRepo, server)
+	if err != nil {
+		return "", "", err
+	}
+	return constructedReleasesRepo, constructedDepsRepo, nil
+}
+
+func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
+	if releasesRepo == "" {
+		// Try to get releases repository from the environment variable
+		_, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
+		if err != nil || repoName == "" {
+			return repoName, err
+		}
+		releasesRepo = repoName
+	}
+
+	releasesPath := fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath)
+	return getDepTreeArtifactoryRepository(releasesPath, server)
 }
 
 func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {
@@ -182,7 +208,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		"-q",
 		fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFilePath),
 		"-Dcom.jfrog.includeAllBuildFiles=true"}
-	log.Info("Running gradle dep tree command:", gradleExecPath, tasks)
+	log.Info("Running gradle deps tree command:", gradleExecPath, strings.Join(tasks, " "))
 	if output, err := exec.Command(gradleExecPath, tasks...).CombinedOutput(); err != nil {
 		return nil, errorutils.CheckErrorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
 	}
@@ -199,15 +225,15 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 }
 
 // Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input
-func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*services.GraphNode, error) {
+func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*xrayUtils.GraphNode, error) {
 	if err := dtp.parseDepTreeFiles(outputFileContent); err != nil {
 		return nil, err
 	}
-	var depsGraph []*services.GraphNode
+	var depsGraph []*xrayUtils.GraphNode
 	for dependency, children := range dtp.tree {
-		directDependency := &services.GraphNode{
+		directDependency := &xrayUtils.GraphNode{
 			Id:    GavPackageTypeIdentifier + dependency,
-			Nodes: []*services.GraphNode{},
+			Nodes: []*xrayUtils.GraphNode{},
 		}
 		for _, childPath := range children {
 			populateGradleDependencyTree(directDependency, childPath)
@@ -217,11 +243,11 @@ func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*ser
 	return depsGraph, nil
 }
 
-func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren dependenciesPaths) {
+func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildren dependenciesPaths) {
 	for gav, children := range currNodeChildren.Paths {
-		childNode := &services.GraphNode{
+		childNode := &xrayUtils.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
-			Nodes:  []*services.GraphNode{},
+			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
 		if currNode.NodeHasLoop() {
@@ -233,6 +259,9 @@ func populateGradleDependencyTree(currNode *services.GraphNode, currNodeChildren
 }
 
 func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDetails) (string, error) {
+	if remoteRepo == "" {
+		return "", nil
+	}
 	pass := server.Password
 	user := server.User
 	if server.AccessToken != "" {
@@ -271,7 +300,7 @@ func getGradleConfig() (string, *config.ServerDetails, error) {
 	}
 	var repository string
 	if configContent.IsSet("resolver.repo") {
-		repository = configContent.Get("resolver.repo").(string)
+		repository = fmt.Sprint(configContent.Get("resolver.repo"))
 	}
 	server, err := utils.GetServerDetails(configContent)
 	return repository, server, err

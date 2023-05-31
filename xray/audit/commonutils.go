@@ -3,6 +3,8 @@ package audit
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,9 +12,7 @@ import (
 	"testing"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -23,16 +23,16 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *services.GraphNode {
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
 	return buildXrayDependencyTree(treeHelper, []string{nodeId})
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *services.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *xrayUtils.GraphNode {
 	nodeId := impactPath[len(impactPath)-1]
 	// Initialize the new node
-	xrDependencyTree := &services.GraphNode{}
+	xrDependencyTree := &xrayUtils.GraphNode{}
 	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*services.GraphNode{}
+	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
 		log.Debug("buildXrayDependencyTree exceeded max tree depth")
 		return xrDependencyTree
@@ -48,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams services.XrayGraphScanParams, serverDetails *config.ServerDetails, progress ioUtils.ProgressMgr, technology coreutils.Technology, xrayVersion string) (results []services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -59,14 +59,14 @@ func Audit(modulesDependencyTrees []*services.GraphNode, xrayGraphScanPrams serv
 	}
 
 	for _, moduleDependencyTree := range modulesDependencyTrees {
-		xrayGraphScanPrams.Graph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(xrayGraphScanPrams.Graph.Nodes), technology)
+		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
+		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)
 		if progress != nil {
 			progress.SetHeadlineMsg(scanMessage)
 		}
-		log.Info(scanMessage)
+		log.Info(scanMessage, "...")
 		var scanResults *services.ScanResponse
-		scanResults, err = xraycommands.RunScanGraphAndGetResults(serverDetails, xrayGraphScanPrams, xrayGraphScanPrams.IncludeVulnerabilities, xrayGraphScanPrams.IncludeLicenses, xrayVersion)
+		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
 		if err != nil {
 			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
 			return
@@ -94,14 +94,14 @@ func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 	}
 }
 
-func GetAndAssertNode(t *testing.T, modules []*services.GraphNode, moduleId string) *services.GraphNode {
+func GetAndAssertNode(t *testing.T, modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
 	module := GetModule(modules, moduleId)
 	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
 	return module
 }
 
-// Get a specific module from the provided modules list
-func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNode {
+// GetModule gets a specific module from the provided modules list
+func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
 	for _, module := range modules {
 		splitIdentifier := strings.Split(module.Id, "//")
 		id := splitIdentifier[0]
@@ -115,7 +115,7 @@ func GetModule(modules []*services.GraphNode, moduleId string) *services.GraphNo
 	return nil
 }
 
-// Gets executable version and prints to the debug log if possible.
+// GetExecutableVersion gets an executable version and prints to the debug log if possible.
 // Only supported for package managers that use "--version".
 func GetExecutableVersion(executable string) (version string, err error) {
 	verBytes, err := exec.Command(executable, "--version").CombinedOutput()
@@ -129,22 +129,22 @@ func GetExecutableVersion(executable string) (version string, err error) {
 
 // BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
 // Returns the updated services.ScanResponse slice.
-func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTrees []*services.GraphNode) []services.ScanResponse {
+func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTree []*xrayUtils.GraphNode) []services.ScanResponse {
 	for _, result := range scanResult {
 		if len(result.Vulnerabilities) > 0 {
-			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTrees)
+			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTree)
 		}
 		if len(result.Violations) > 0 {
-			buildViolationsImpactPaths(result.Violations, dependencyTrees)
+			buildViolationsImpactPaths(result.Violations, dependencyTree)
 		}
 		if len(result.Licenses) > 0 {
-			buildLicensesImpactPaths(result.Licenses, dependencyTrees)
+			buildLicensesImpactPaths(result.Licenses, dependencyTree)
 		}
 	}
 	return scanResult
 }
 
-// Initialize map of issues to their components with empty impact paths
+// Initialize a map of issues to their components with empty impact paths
 func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Component, components map[string]services.Component) {
 	for dependencyName := range components {
 		emptyPathsComponent := &services.Component{
@@ -157,13 +157,13 @@ func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Comp
 }
 
 // Set the impact paths for each issue in the map
-func buildImpactPaths(issuesImpactPathsMap map[string]*services.Component, dependencyTrees []*services.GraphNode) {
+func buildImpactPaths(issuesImpactPathsMap map[string]*services.Component, dependencyTrees []*xrayUtils.GraphNode) {
 	for _, dependency := range dependencyTrees {
 		setPathsForIssues(dependency, issuesImpactPathsMap, []services.ImpactPathNode{})
 	}
 }
 
-func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*services.GraphNode) {
+func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string]*services.Component)
 	for _, vulnerability := range vulnerabilities {
 		fillImpactPathsMapWithIssues(issuesMap, vulnerability.Components)
@@ -174,7 +174,7 @@ func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, d
 	}
 }
 
-func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*services.GraphNode) {
+func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string]*services.Component)
 	for _, violation := range violations {
 		fillImpactPathsMapWithIssues(issuesMap, violation.Components)
@@ -185,7 +185,7 @@ func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees
 	}
 }
 
-func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*services.GraphNode) {
+func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string]*services.Component)
 	for _, license := range licenses {
 		fillImpactPathsMapWithIssues(issuesMap, license.Components)
@@ -202,12 +202,44 @@ func updateComponentsWithImpactPaths(components map[string]services.Component, i
 	}
 }
 
-func setPathsForIssues(dependency *services.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
+func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
 	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
-		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
+		appendPath(issuesImpactPathsMap, dependency, pathFromRoot)
 	}
 	for _, depChild := range dependency.Nodes {
 		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot)
 	}
+}
+
+// Appends paths to impact paths tree.
+// When we have multiple paths to the same CVE, the following logic applies:
+// If we have a direct path for the vulnerable dependency, show only the direct paths, as fixing it will resolve all the vulnerabilities.
+// If we have multiple different paths to an indirect dependency, show all possible paths.
+func appendPath(currentTree map[string]*services.Component, dependency *xrayUtils.GraphNode, pathFromRoot []services.ImpactPathNode) {
+	if len(currentTree[dependency.Id].ImpactPaths) == 0 {
+		currentTree[dependency.Id].ImpactPaths = append(currentTree[dependency.Id].ImpactPaths, pathFromRoot)
+		return
+	}
+	currentHasDirectPath := atLeastOneDirectPath(currentTree[dependency.Id].ImpactPaths)
+	suggestHasDirectPath := atLeastOneDirectPath([][]services.ImpactPathNode{pathFromRoot})
+	// If neither the current path nor the suggested path is direct, append the suggested path.
+	if !currentHasDirectPath && !suggestHasDirectPath {
+		currentTree[dependency.Id].ImpactPaths = append(currentTree[dependency.Id].ImpactPaths, pathFromRoot)
+		return
+	}
+	// If the current path is not direct but a direct path is found, overwrite the existing path.
+	if !currentHasDirectPath && suggestHasDirectPath {
+		currentTree[dependency.Id].ImpactPaths[0] = pathFromRoot
+		return
+	}
+}
+
+func atLeastOneDirectPath(nodes [][]services.ImpactPathNode) bool {
+	for index := range nodes {
+		if len(nodes[index]) == 2 {
+			return true
+		}
+	}
+	return false
 }

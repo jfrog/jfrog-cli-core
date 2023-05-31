@@ -94,9 +94,10 @@ type iacScanConfig struct {
 }
 
 type iacScanConfiguration struct {
-	Roots  []string `yaml:"roots"`
-	Output string   `yaml:"output"`
-	Type   string   `yaml:"type"`
+	Roots       []string `yaml:"roots"`
+	Output      string   `yaml:"output"`
+	Type        string   `yaml:"type"`
+	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
 func (iac *IacScanManager) createConfigFile() error {
@@ -108,9 +109,10 @@ func (iac *IacScanManager) createConfigFile() error {
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:  []string{currentDir},
-				Output: iac.resultsFileName,
-				Type:   iacScannerType,
+				Roots:       []string{currentDir},
+				Output:      iac.resultsFileName,
+				Type:        iacScannerType,
+				SkippedDirs: skippedDirs,
 			},
 		},
 	}

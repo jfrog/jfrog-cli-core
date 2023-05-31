@@ -95,10 +95,11 @@ type secretsScanConfig struct {
 }
 
 type secretsScanConfiguration struct {
-	Roots    []string `yaml:"roots"`
-	Output   string   `yaml:"output"`
-	Type     string   `yaml:"type"`
-	Scanners string   `yaml:"scanners"`
+	Roots       []string `yaml:"roots"`
+	Output      string   `yaml:"output"`
+	Type        string   `yaml:"type"`
+	Scanners    string   `yaml:"scanners"`
+	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
 func (s *SecretScanManager) createConfigFile() error {
@@ -110,10 +111,11 @@ func (s *SecretScanManager) createConfigFile() error {
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:    []string{currentDir},
-				Output:   s.resultsFileName,
-				Type:     secretsScannerType,
-				Scanners: secretsScannersNames,
+				Roots:       []string{currentDir},
+				Output:      s.resultsFileName,
+				Type:        secretsScannerType,
+				Scanners:    secretsScannersNames,
+				SkippedDirs: skippedDirs,
 			},
 		},
 	}

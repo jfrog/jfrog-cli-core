@@ -14,7 +14,10 @@ import (
 
 const serverDetailsErrorMessage = "cant get xray server details"
 
-var analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
+var (
+	analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
+	skippedDirs                                            = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+)
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {

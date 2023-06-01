@@ -3,50 +3,32 @@ package audit
 import (
 	"os"
 
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"golang.org/x/sync/errgroup"
 )
 
 type GenericAuditCommand struct {
-	serverDetails           *config.ServerDetails
-	OutputFormat            xrutils.OutputFormat
-	watches                 []string
-	workingDirs             []string
-	projectKey              string
-	targetRepoPath          string
-	IncludeVulnerabilities  bool
-	IncludeLicenses         bool
-	Fail                    bool
-	PrintExtendedTable      bool
-	excludeTestDependencies bool
-	useWrapper              bool
-	insecureTls             bool
-	args                    []string
-	technologies            []string
-	requirementsFile        string
-	progress                ioUtils.ProgressMgr
+	watches                []string
+	workingDirs            []string
+	projectKey             string
+	targetRepoPath         string
+	minSeverityFilter      string
+	fixableOnly            bool
+	IncludeVulnerabilities bool
+	IncludeLicenses        bool
+	Fail                   bool
+	PrintExtendedTable     bool
+	*xrutils.GraphBasicParams
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
-	return &GenericAuditCommand{}
-}
-
-func (auditCmd *GenericAuditCommand) SetServerDetails(server *config.ServerDetails) *GenericAuditCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetOutputFormat(format xrutils.OutputFormat) *GenericAuditCommand {
-	auditCmd.OutputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
+	return &GenericAuditCommand{GraphBasicParams: &xrutils.GraphBasicParams{}}
 }
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {
@@ -89,8 +71,18 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
-	params := services.XrayGraphScanParams{
+func (auditCmd *GenericAuditCommand) SetMinSeverityFilter(minSeverityFilter string) *GenericAuditCommand {
+	auditCmd.minSeverityFilter = minSeverityFilter
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditCommand {
+	auditCmd.fixableOnly = fixable
+	return auditCmd
+}
+
+func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
+	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
 		Watches:  auditCmd.watches,
 		ScanType: services.Dependency,
@@ -106,35 +98,65 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGr
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	server, err := auditCmd.ServerDetails()
-	if err != nil {
-		return
-	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
-		SetServerDetails(server).
-		SetExcludeTestDeps(auditCmd.excludeTestDependencies).
-		SetUseWrapper(auditCmd.useWrapper).
-		SetInsecureTLS(auditCmd.insecureTls).
-		SetArgs(auditCmd.args).
-		SetProgressBar(auditCmd.progress).
-		SetRequirementsFile(auditCmd.requirementsFile).
 		SetWorkingDirs(auditCmd.workingDirs).
-		SetTechnologies(auditCmd.technologies...)
+		SetMinSeverityFilter(auditCmd.minSeverityFilter).
+		SetFixableOnly(auditCmd.fixableOnly)
+	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
+
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return err
+	}
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
+		return err
+	}
+	auditParams.xrayVersion = xrayVersion
+	var entitled bool
+	errGroup := new(errgroup.Group)
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrutils.EntitlementsMinVersion); err == nil {
+		entitled, err = xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+		if err != nil {
+			return err
+		}
+	} else {
+		entitled = false
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
+	}
+	if entitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
+	}
 	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
 
-	if auditCmd.progress != nil {
-		err = auditCmd.progress.Quit()
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return err
+	}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
+	// Try to run contextual analysis only if the user is entitled for advance security
+	if entitled {
+		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 		if err != nil {
+			return err
+		}
+	}
+	if auditCmd.Progress() != nil {
+		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
+	}
+	if !entitled {
+		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
 	if printScanResults {
-		err = xrutils.PrintScanResults(results,
+		err = xrutils.PrintScanResults(extendedScanResults,
 			nil,
-			auditCmd.OutputFormat,
+			auditCmd.OutputFormat(),
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
 			isMultipleRootProject,
@@ -158,43 +180,4 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 
 func (auditCmd *GenericAuditCommand) CommandName() string {
 	return "generic_audit"
-}
-
-func (auditCmd *GenericAuditCommand) SetNpmScope(depType string) *GenericAuditCommand {
-	switch depType {
-	case "devOnly":
-		auditCmd.args = []string{"--dev"}
-	case "prodOnly":
-		auditCmd.args = []string{"--prod"}
-	}
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetPipRequirementsFile(requirementsFile string) *GenericAuditCommand {
-	auditCmd.requirementsFile = requirementsFile
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetExcludeTestDependencies(excludeTestDependencies bool) *GenericAuditCommand {
-	auditCmd.excludeTestDependencies = excludeTestDependencies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetUseWrapper(useWrapper bool) *GenericAuditCommand {
-	auditCmd.useWrapper = useWrapper
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetInsecureTls(insecureTls bool) *GenericAuditCommand {
-	auditCmd.insecureTls = insecureTls
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetTechnologies(technologies []string) *GenericAuditCommand {
-	auditCmd.technologies = technologies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetProgress(progress ioUtils.ProgressMgr) {
-	auditCmd.progress = progress
 }

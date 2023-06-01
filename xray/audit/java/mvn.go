@@ -7,10 +7,10 @@ import (
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (modules []*services.GraphNode, err error) {
+func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (modules []*xrayUtils.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer func() {
 		e := cleanBuild()
@@ -56,7 +56,13 @@ func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreCon
 	if err != nil {
 		return err
 	}
-	return mvnutils.RunMvn(vConfig, "", buildConfiguration, goals, 0, insecureTls, true)
+	mvnParams := mvnutils.NewMvnUtils().
+		SetConfig(vConfig).
+		SetBuildConf(buildConfiguration).
+		SetGoals(goals).
+		SetInsecureTls(insecureTls).
+		SetDisableDeploy(true)
+	return mvnutils.RunMvn(mvnParams)
 }
 
 func isMavenWrapperExist() (bool, error) {

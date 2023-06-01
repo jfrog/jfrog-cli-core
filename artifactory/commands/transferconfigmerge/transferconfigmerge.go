@@ -27,7 +27,8 @@ const (
 	minJFrogProjectsArtifactoryVersion              = "7.0.0"
 )
 
-var filteredRepoKeys = []string{"Url", "password", "suppressPomConsistencyChecks", "description"}
+// Repository key that should be filtered when comparing repositories (all must be lowercase)
+var filteredRepoKeys = []string{"url", "password", "suppresspomconsistencychecks", "description", "gitregistryurl", "cargointernalindex"}
 
 type TransferConfigMergeCommand struct {
 	commandsUtils.TransferConfigBase
@@ -94,11 +95,14 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		return
 	}
 	// Make sure source and target Artifactory URLs are different and the source Artifactory version is sufficient.
-	sourceArtifactoryVersion, err := tcmc.ValidateMinVersionAndDifferentServers()
+	err = tcmc.ValidateDifferentServers()
 	if err != nil {
 		return
 	}
-
+	sourceArtifactoryVersion, err := tcmc.SourceArtifactoryManager.GetVersion()
+	if err != nil {
+		return
+	}
 	// Check if JFrog Projects supported by Source Artifactory version
 	versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
 	if versionErr != nil {
@@ -295,7 +299,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 		}
 		if targetRepo, exists := targetReposMap[sourceRepo.Key]; exists {
 			// The repository exists on target. We need to compare the repositories.
-			diff := ""
+			var diff string
 			diff, err = tcmc.compareRepositories(sourceRepo, targetRepo)
 			if err != nil {
 				return

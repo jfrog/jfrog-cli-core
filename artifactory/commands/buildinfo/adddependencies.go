@@ -50,7 +50,8 @@ func (badc *BuildAddDependenciesCommand) ServerDetails() (*config.ServerDetails,
 
 func (badc *BuildAddDependenciesCommand) Run() error {
 	log.Info("Running Build Add Dependencies command...")
-	success, fail := 0, 0
+	var success int
+	var fail int
 	var err error
 	if !badc.dryRun {
 		buildName, err := badc.buildConfiguration.GetBuildName()

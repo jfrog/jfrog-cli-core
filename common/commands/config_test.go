@@ -220,7 +220,9 @@ func TestExportEmptyConfig(t *testing.T) {
 	}()
 	tempDirPath, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	defer assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	}()
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tempDirPath))
 	assert.Error(t, Export(""))
 }
@@ -272,13 +274,13 @@ func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
 	assert.NoError(t, err)
 	outputDetails, err := config.Import(configToken)
 	assert.NoError(t, err)
-	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputDetails), "unexpected configuration was saved to file")
+	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputDetails), "unexpected configuration was saved to file")
 }
 
 func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive bool) {
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, interactive)
 	assert.NoError(t, err)
-	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputConfig), "unexpected configuration was saved to file")
+	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputConfig), "unexpected configuration was saved to file")
 	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 	testExportImport(t, inputDetails)
 }
@@ -290,8 +292,9 @@ func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, ba
 	return GetConfig("test", false)
 }
 
-func configStructToString(artConfig *config.ServerDetails) string {
+func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
-	marshaledStruct, _ := json.Marshal(*artConfig)
+	marshaledStruct, err := json.Marshal(*artConfig)
+	assert.NoError(t, err)
 	return string(marshaledStruct)
 }

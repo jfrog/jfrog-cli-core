@@ -104,19 +104,20 @@ func TestValidateTargetServer(t *testing.T) {
 	var users []services.User
 	// Create transfer config command
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"checkPermissions" {
+		switch r.RequestURI {
+		case "/" + commandUtils.PluginsExecuteRestApi + "checkPermissions":
 			w.WriteHeader(http.StatusOK)
-		} else if r.RequestURI == "/"+commandUtils.PluginsExecuteRestApi+"configImportVersion" {
+		case "/" + commandUtils.PluginsExecuteRestApi + "configImportVersion":
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "1.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/version" {
+		case "/api/system/version":
 			content, err := json.Marshal(commandUtils.VersionResponse{Version: "7.0.0"})
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)
-		} else {
+		default:
 			content, err := json.Marshal(users)
 			assert.NoError(t, err)
 			_, err = w.Write(content)
@@ -217,4 +218,48 @@ func createTransferConfigCommand(t *testing.T, sourceServerDetails, targetServer
 		assert.NoError(t, err)
 	}
 	return transferConfigBase
+}
+
+var validateMinVersionAndDifferentServersCases = []struct {
+	testName      string
+	sourceVersion string
+	targetVersion string
+	expectedError string
+}{
+	{testName: "Same version", sourceVersion: minTransferConfigArtifactoryVersion, targetVersion: minTransferConfigArtifactoryVersion, expectedError: ""},
+	{testName: "Different versions", sourceVersion: "7.0.0", targetVersion: "7.0.1", expectedError: ""},
+	{testName: "Low Artifactory version", sourceVersion: "6.0.0", targetVersion: "7.0.0", expectedError: "while this operation requires version"},
+	{testName: "Source newer than target", sourceVersion: "7.0.1", targetVersion: "7.0.0", expectedError: "can't be higher than the target Artifactory version"},
+}
+
+func TestValidateMinVersion(t *testing.T) {
+	var sourceRtVersion, targetRtVersion string
+	// Create transfer config command
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		content, err := json.Marshal(commandUtils.VersionResponse{Version: sourceRtVersion})
+		assert.NoError(t, err)
+		_, err = w.Write(content)
+		assert.NoError(t, err)
+	})
+	defer sourceTestServer.Close()
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		content, err := json.Marshal(commandUtils.VersionResponse{Version: targetRtVersion})
+		assert.NoError(t, err)
+		_, err = w.Write(content)
+		assert.NoError(t, err)
+	})
+	defer targetTestServer.Close()
+
+	for _, testCase := range validateMinVersionAndDifferentServersCases {
+		t.Run(testCase.testName, func(t *testing.T) {
+			sourceRtVersion = testCase.sourceVersion
+			targetRtVersion = testCase.targetVersion
+			err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).validateMinVersion()
+			if testCase.expectedError == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, testCase.expectedError)
+			}
+		})
+	}
 }

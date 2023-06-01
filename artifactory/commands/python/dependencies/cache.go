@@ -89,16 +89,12 @@ func (cache DependenciesCache) GetDependency(dependencyName string) (dependency 
 
 // Cache file will be located in the ./.jfrog/projects/deps.cache.json
 func getCacheFilePath(cacheDir string) (cacheFilePath string, exists bool, err error) {
-	if errorutils.CheckError(err) != nil {
-		return "", false, err
-	}
 	projectsDirPath := filepath.Join(cacheDir, ".jfrog", "projects")
 	err = fileutils.CreateDirIfNotExist(projectsDirPath)
 	if err != nil {
-		return "", false, err
+		return
 	}
 	cacheFilePath = filepath.Join(projectsDirPath, "deps.cache.json")
 	exists, err = fileutils.IsFileExists(cacheFilePath, false)
-
 	return
 }

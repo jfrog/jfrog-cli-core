@@ -174,8 +174,8 @@ func generateEnvironments(buildType coreutils.Technology) string {
 }
 
 func generateRtConfigSteps(techInfo *TechnologyInfo, rtUrl string) string {
-	deployerRepos := ""
-	resolverRepos := ""
+	var deployerRepos string
+	var resolverRepos string
 	switch techInfo.Type {
 	case coreutils.Maven:
 		deployerRepos = fmt.Sprintf(mavenRepoTemplate, techInfo.LocalReleasesRepo, techInfo.LocalSnapshotsRepo)

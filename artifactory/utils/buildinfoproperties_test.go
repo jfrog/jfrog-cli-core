@@ -14,14 +14,21 @@ import (
 )
 
 const (
-	host  = "localhost"
-	port  = "8888"
-	proxy = "http://" + host + ":" + port
+	host              = "proxy.mydomain"
+	port              = "8888"
+	username          = "login"
+	password          = "password"
+	httpProxyForTest  = "http://" + username + ":" + password + "@" + host + ":" + port
+	httpsHost         = "proxy.mydomains"
+	httpsPort         = "8889"
+	httpsUsername     = "logins"
+	httpsPassword     = "passwords"
+	httpsProxyForTest = "http://" + httpsUsername + ":" + httpsPassword + "@" + httpsHost + ":" + httpsPort
 )
 
 func TestCreateDefaultPropertiesFile(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
-	setProxy("", t)
+	setAndAssertProxy("", t)
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
 	data := []struct {
@@ -34,7 +41,7 @@ func TestCreateDefaultPropertiesFile(t *testing.T) {
 	for _, d := range data {
 		testCreateDefaultPropertiesFile(d.projectType, d.expectedProps, t)
 	}
-	setProxy(proxyOrg, t)
+	setAndAssertProxy(proxyOrg, t)
 }
 
 func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFilePath string, t *testing.T) {
@@ -49,36 +56,83 @@ func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFileP
 	assert.True(t, fmt.Sprint(expectedProps) == fmt.Sprint(props), "unexpected "+projectType.String()+" props. got:\n"+fmt.Sprint(props)+"\nwant: "+fmt.Sprint(expectedProps)+"\n")
 }
 
-func TestCreateSimplePropertiesFileWithProxy(t *testing.T) {
+func TestCreateSimplePropertiesFileWithHttpProxy(t *testing.T) {
+	// Save old configuration
 	proxyOrg := getOriginalProxyValue()
-	setProxy(proxy, t)
-	var propertiesFileConfig = map[string]string{
-		"resolve.contextUrl": "http://some.url.com",
-		"publish.contextUrl": "http://some.other.url.com",
-		"proxy.host":         host,
-		"proxy.port":         port,
-	}
+
+	// Prepare
+	setAndAssertProxy(httpProxyForTest, t)
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_proxy.json"), propertiesFileConfig)
-	setProxy(proxyOrg, t)
+
+	// Run
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_proxy.json"))
+
+	// Cleanup
+	setAndAssertProxy(proxyOrg, t)
+}
+
+func TestCreateSimplePropertiesFileWithNoProxy(t *testing.T) {
+	// Save old configuration
+	proxyOrg := getOriginalNoProxyValue()
+
+	// Prepare
+	setAndAssertNoProxy(httpProxyForTest, t)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+
+	// Run
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_no_proxy.json"))
+
+	// Cleanup
+	setAndAssertNoProxy(proxyOrg, t)
+}
+
+func TestCreateSimplePropertiesFileWithHttpsProxy(t *testing.T) {
+	// Save old configuration
+	oldProxy := getOriginalHttpsProxyValue()
+
+	// Prepare
+	setAndAssertHttpsProxy(httpsProxyForTest, t)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+
+	// Run
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_https_proxy.json"))
+
+	// Cleanup
+	setAndAssertHttpsProxy(oldProxy, t)
+}
+
+func TestCreateSimplePropertiesFileWithHttpAndHttpsProxy(t *testing.T) {
+	// Save old configuration
+	oldProxy := getOriginalProxyValue()
+	oldHttpsProxy := getOriginalHttpsProxyValue()
+
+	// Prepare
+	setAndAssertProxy(httpProxyForTest, t)
+	setAndAssertHttpsProxy(httpsProxyForTest, t)
+	testdataPath, err := GetTestDataPath()
+	assert.NoError(t, err)
+
+	// Run
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_with_http_https_proxy.json"))
+
+	// Cleanup
+	setAndAssertProxy(oldProxy, t)
+	setAndAssertHttpsProxy(oldHttpsProxy, t)
 }
 
 func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
-	setProxy("", t)
-	var propertiesFileConfig = map[string]string{
-		"resolve.contextUrl": "http://some.url.com",
-		"publish.contextUrl": "http://some.other.url.com",
-	}
+	setAndAssertProxy("", t)
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
-	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"), propertiesFileConfig)
-	setProxy(proxyOrg, t)
-
+	createSimplePropertiesFile(t, filepath.Join(testdataPath, "expected_test_create_simple_properties_file_without_proxy.json"))
+	setAndAssertProxy(proxyOrg, t)
 }
 
-func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string, propertiesFileConfig map[string]string) {
+func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var yamlConfig = map[string]string{
 		ResolverPrefix + Url: "http://some.url.com",
 		DeployerPrefix + Url: "http://some.other.url.com",
@@ -117,30 +171,79 @@ func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectTyp
 	}
 }
 
-func TestSetProxyIfNeeded(t *testing.T) {
+func TestSetHttpProxy(t *testing.T) {
+	// Save old configuration
 	proxyOrg := getOriginalProxyValue()
-	setProxy(proxy, t)
+	backupProxyPass := os.Getenv(httpProxy + Password)
+
+	// Prepare
+	setAndAssertProxy(httpProxyForTest, t)
 	vConfig := viper.New()
-
-	err := setProxyIfDefined(vConfig)
-	if err != nil {
-		t.Error(err)
-	}
-
 	expectedConfig := viper.New()
-	expectedConfig.Set(Proxy+Host, host)
-	expectedConfig.Set(Proxy+Port, port)
-	compareViperConfigs(t, vConfig, expectedConfig, Maven)
+	expectedConfig.Set(httpProxy+Host, host)
+	expectedConfig.Set(httpProxy+Port, port)
+	expectedConfig.Set(httpProxy+Username, username)
 
-	setProxy(proxyOrg, t)
+	// Run
+	err := setProxyIfDefined(vConfig)
+	assert.NoError(t, err)
+
+	// Assert
+	compareViperConfigs(t, vConfig, expectedConfig, Maven)
+	assert.Equal(t, password, os.Getenv(httpProxy+Password))
+
+	// Cleanup
+	setAndAssertProxy(proxyOrg, t)
+	assert.NoError(t, os.Setenv(httpProxy+Password, backupProxyPass))
+}
+
+func TestSetHttpsProxy(t *testing.T) {
+	// Save old configuration
+	oldHttpsProxy := getOriginalHttpsProxyValue()
+	backupProxyPass := os.Getenv(httpsProxy + Password)
+
+	// Prepare
+	setAndAssertHttpsProxy(httpsProxyForTest, t)
+	vConfig := viper.New()
+	expectedConfig := viper.New()
+	expectedConfig.Set(httpsProxy+Host, httpsHost)
+	expectedConfig.Set(httpsProxy+Port, httpsPort)
+	expectedConfig.Set(httpsProxy+Username, httpsUsername)
+
+	// Run
+	assert.NoError(t, setProxyIfDefined(vConfig))
+
+	// Assert
+	compareViperConfigs(t, vConfig, expectedConfig, Maven)
+	assert.Equal(t, httpsPassword, os.Getenv(httpsProxy+Password))
+
+	// Cleanup
+	setAndAssertHttpsProxy(oldHttpsProxy, t)
+	assert.NoError(t, os.Setenv(httpsProxy+Password, backupProxyPass))
 }
 
 func getOriginalProxyValue() string {
-	return os.Getenv(HttpProxy)
+	return os.Getenv(HttpProxyEnvKey)
 }
 
-func setProxy(proxy string, t *testing.T) {
-	testsutils.SetEnvAndAssert(t, HttpProxy, proxy)
+func getOriginalNoProxyValue() string {
+	return os.Getenv(NoProxyEnvKey)
+}
+
+func getOriginalHttpsProxyValue() string {
+	return os.Getenv(HttpsProxyEnvKey)
+}
+
+func setAndAssertProxy(proxy string, t *testing.T) {
+	testsutils.SetEnvAndAssert(t, HttpProxyEnvKey, proxy)
+}
+
+func setAndAssertHttpsProxy(proxy string, t *testing.T) {
+	testsutils.SetEnvAndAssert(t, HttpsProxyEnvKey, proxy)
+}
+
+func setAndAssertNoProxy(proxy string, t *testing.T) {
+	testsutils.SetEnvAndAssert(t, NoProxyEnvKey, proxy)
 }
 
 func TestCreateDefaultConfigWithParams(t *testing.T) {

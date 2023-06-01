@@ -3,6 +3,7 @@ package java
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"path/filepath"
@@ -201,7 +202,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 		assert.NoError(t, os.Chdir(currDir))
 	}()
 	manager := &depTreeManager{}
-	tmpDir, err = manager.createDepTreeScript()
+	tmpDir, err = manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
@@ -215,12 +216,12 @@ func TestCreateDepTreeScript(t *testing.T) {
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}
-	tmpDir, err = manager.createDepTreeScript()
+	tmpDir, err = manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	expectedInitScript := `initscript {
     repositories { 
 		maven {
-			url "https://myartifactory.com/artifactory/release-repo/artifactory/oss-releases"
+			url "https://myartifactory.com/artifactory/release-repo/artifactory/oss-release-local"
 			credentials {
 				username = ''
 				password = 'my-access-token'
@@ -248,4 +249,36 @@ allprojects {
 	content, err = os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
 	assert.Equal(t, expectedInitScript, string(content))
+}
+
+func TestConstructReleasesRemoteRepo(t *testing.T) {
+	server := &config.ServerDetails{
+		ArtifactoryUrl: "https://myartifactory.com/artifactory",
+		User:           "myuser",
+		Password:       "mypass",
+	}
+	testCases := []struct {
+		releasesRepo string
+		envVar       string
+		expectedRepo string
+		expectedErr  error
+	}{
+		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: nil},
+		{releasesRepo: "", envVar: "server/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+		{releasesRepo: "repo2", envVar: "", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo2/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+	}
+
+	for _, tc := range testCases {
+		// Set the environment variable for this test case
+		func() {
+			assert.NoError(t, os.Setenv(coreutils.ReleasesRemoteEnv, tc.envVar))
+			defer func() {
+				// Reset the environment variable after each test case
+				assert.NoError(t, os.Unsetenv(coreutils.ReleasesRemoteEnv))
+			}()
+			actualRepo, actualErr := constructReleasesRemoteRepo(tc.releasesRepo, server)
+			assert.Equal(t, tc.expectedRepo, actualRepo)
+			assert.Equal(t, tc.expectedErr, actualErr)
+		}()
+	}
 }

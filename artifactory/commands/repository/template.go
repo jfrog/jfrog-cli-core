@@ -506,7 +506,7 @@ func (rtc *RepoTemplateCommand) CommandName() string {
 }
 
 func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, error) {
-	var pkgTypes []string
+	var pkgTypes = commonPkgTypes
 	switch rclass {
 	case Remote:
 		// For create template url is mandatory, for update we will allow url as an optional key
@@ -519,11 +519,11 @@ func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, 
 				return "", err
 			}
 		}
-		pkgTypes = append(commonPkgTypes, remoteRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, remoteRepoAdditionalPkgTypes...)
 	case Local:
-		pkgTypes = append(commonPkgTypes, localRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, localRepoAdditionalPkgTypes...)
 	case Virtual:
-		pkgTypes = append(commonPkgTypes, virtualRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, virtualRepoAdditionalPkgTypes...)
 	default:
 		return "", errors.New("unsupported rclass")
 	}
@@ -554,7 +554,7 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 		if _, ok := iq.AnswersMap[TemplateType]; !ok {
 			return "", errors.New("package type is missing in configuration map")
 		}
-		iq.OptionalKeysSuggests = getRemoteRepoConfKeys(pkgType, iq.AnswersMap[TemplateType].(string))
+		iq.OptionalKeysSuggests = getRemoteRepoConfKeys(pkgType, fmt.Sprint(iq.AnswersMap[TemplateType]))
 	case Virtual:
 		iq.OptionalKeysSuggests = getVirtualRepoConfKeys(pkgType)
 	default:
@@ -671,17 +671,17 @@ func contentSynchronisationCallBack(iq *utils.InteractiveQuestionnaire, answer s
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for statistic.enable >", false, utils.GetBoolSuggests(), "")
-	//cs.Statistics.Enabled, err = strconv.ParseBool(enabled)
+	// cs.Statistics.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for properties.enable >", false, utils.GetBoolSuggests(), "")
-	//cs.Properties.Enabled, err = strconv.ParseBool(enabled)
+	// cs.Properties.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for source.originAbsenceDetection >", false, utils.GetBoolSuggests(), "")
-	//cs.Source.OriginAbsenceDetection, err = strconv.ParseBool(enabled)
+	// cs.Source.OriginAbsenceDetection, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}

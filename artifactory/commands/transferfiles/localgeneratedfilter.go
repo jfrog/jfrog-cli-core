@@ -53,7 +53,7 @@ func (lg *LocallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.
 		return aqlResultItems, nil
 	}
 	content, err := lg.createPayload(aqlResultItems)
-	if err != nil {
+	if err != nil || len(content) == 0 {
 		return []utils.ResultItem{}, err
 	}
 
@@ -83,8 +83,14 @@ func (lg *LocallyGeneratedFilter) createPayload(aqlResultItems []utils.ResultIte
 		RepoKey: aqlResultItems[0].Repo,
 		Paths:   make([]string, 0, len(aqlResultItems)),
 	}
-	for i := range aqlResultItems {
-		payload.Paths = append(payload.Paths, getPathInRepo(&aqlResultItems[i]))
+	for i, aqlResultItem := range aqlResultItems {
+		// Filter out the root folder in the repository
+		if aqlResultItem.Repo != "." || aqlResultItem.Name != "." {
+			payload.Paths = append(payload.Paths, getPathInRepo(&aqlResultItems[i]))
+		}
+	}
+	if len(payload.Paths) == 0 {
+		return []byte{}, nil
 	}
 
 	content, err := json.Marshal(payload)

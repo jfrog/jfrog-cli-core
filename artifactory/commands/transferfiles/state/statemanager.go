@@ -368,7 +368,8 @@ func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStat
 	var chunkTotalSizeInBytes int64 = 0
 	var chunkTotalFiles int64 = 0
 	for _, file := range chunk.Files {
-		if file.Status != api.Fail {
+		if file.Status != api.Fail && file.Name != "" {
+			// Count only successfully transferred files
 			chunkTotalSizeInBytes += file.SizeBytes
 			chunkTotalFiles++
 		}

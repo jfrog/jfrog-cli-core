@@ -166,19 +166,19 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	}
 
 	var result []servicesUtils.ResultItem
+	var lastPage bool
 	paginationI := 0
-	for {
-		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-			return
-		}
-		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+	for !lastPage && !ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+		result, lastPage, err = m.getDirectoryContentAql(params.relativePath, paginationI)
 		if err != nil {
 			return
 		}
 
-		// Empty folder. Add it as candidate.
+		// Add the folder as a candidate to transfer. The reason is that we'd like to transfer only folders with properties or empty folders.
+		curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
+
+		// Empty folder
 		if paginationI == 0 && len(result) == 0 {
-			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
 			return
 		}
 
@@ -204,9 +204,6 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			}
 		}
 
-		if len(result) < AqlPaginationLimit {
-			break
-		}
 		paginationI++
 	}
 	return
@@ -261,16 +258,19 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
-	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
+func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
-		return []servicesUtils.ResultItem{}, err
+		return []servicesUtils.ResultItem{}, false, err
 	}
-	return m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+
+	lastPage = len(aqlResults.Results) < AqlPaginationLimit
+	result, err = m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+	return
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)

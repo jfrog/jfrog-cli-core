@@ -167,8 +167,12 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	return
 }
 
-func (tcc *TransferConfigCommand) createExportPath() (string, func(), error) {
-	unsetTempDir := func() {}
+// Create the directory containing the Artifactory export content
+// Return values:
+// exportPath - The export path
+// unsetTempDir - Clean up function
+// err - Error if any
+func (tcc *TransferConfigCommand) createExportPath() (exportPath string, unsetTempDir func(), err error) {
 	if tcc.sourceWorkingDir != "" {
 		// Set the base temp dir according to the value of the --source-working-dir flag
 		oldTempDir := fileutils.GetTempDirBase()
@@ -176,15 +180,17 @@ func (tcc *TransferConfigCommand) createExportPath() (string, func(), error) {
 		unsetTempDir = func() {
 			fileutils.SetTempDirBase(oldTempDir)
 		}
+	} else {
+		unsetTempDir = func() {}
 	}
 
 	// Create temp directory that will contain the export directory
-	tempDir, err := fileutils.CreateTempDir()
+	exportPath, err = fileutils.CreateTempDir()
 	if err != nil {
 		return "", unsetTempDir, err
 	}
 
-	return tempDir, unsetTempDir, errorutils.CheckError(os.Chmod(tempDir, 0777))
+	return exportPath, unsetTempDir, errorutils.CheckError(os.Chmod(exportPath, 0777))
 }
 
 func (tcc *TransferConfigCommand) runPreChecks() error {

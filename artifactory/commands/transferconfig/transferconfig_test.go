@@ -178,7 +178,7 @@ func TestVerifyConfigImportPluginForbidden(t *testing.T) {
 	assert.ErrorContains(t, err, "Response from Artifactory: 403 Forbidden.")
 }
 
-func TestSetExportPath(t *testing.T) {
+func TestCreateExportPath(t *testing.T) {
 	transferConfigBase := NewTransferConfigCommand(nil, nil)
 
 	// Create export path and check results
@@ -189,9 +189,10 @@ func TestSetExportPath(t *testing.T) {
 	assert.DirExists(t, exportPath)
 
 	// Create working dir
+	const testExportDir = "test-export-dir"
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
-	tmpDir = filepath.Join(tmpDir, "test-export-dir")
+	tmpDir = filepath.Join(tmpDir, testExportDir)
 	assert.NoError(t, os.MkdirAll(tmpDir, 0700))
 	transferConfigBase.sourceWorkingDir = tmpDir
 
@@ -203,7 +204,7 @@ func TestSetExportPath(t *testing.T) {
 	assert.DirExists(t, exportPath)
 
 	// Ensure unsetTempDir did work
-	assert.NotContains(t, fileutils.GetTempDirBase(), "test-export-dir")
+	assert.NotContains(t, fileutils.GetTempDirBase(), testExportDir)
 }
 
 func createTransferConfigCommand(t *testing.T, sourceServerDetails, targetServerDetails *config.ServerDetails) *TransferConfigCommand {

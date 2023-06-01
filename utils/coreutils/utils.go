@@ -244,7 +244,7 @@ func GetOSAndArc() (string, error) {
 			return "linux-amd64", nil
 		case "arm", "armv7l":
 			return "linux-arm", nil
-		case "aarch64":
+		case "arm64", "aarch64":
 			return "linux-arm64", nil
 		case "ppc64", "ppc64le":
 			return "linux-" + arch, nil

@@ -169,7 +169,7 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	var lastPage bool
 	paginationI := 0
 	for !lastPage && !ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-		result, lastPage, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+		result, lastPage, err = m.getDirectoryContentAql(params.relativePath, paginationI)
 		if err != nil {
 			return
 		}
@@ -256,8 +256,8 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
-	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
+func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
 		return []servicesUtils.ResultItem{}, false, err
@@ -268,7 +268,7 @@ func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginat
 	return
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)

@@ -57,7 +57,7 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 		for _, requestedByNode := range dependency.RequestedBy {
 			parent := npmPackageTypeIdentifier + requestedByNode[0]
 			if children, ok := treeMap[parent]; ok {
-				treeMap[parent] = appendUnique(children, dependencyId)
+				treeMap[parent] = appendUniqueChild(children, dependencyId)
 			} else {
 				treeMap[parent] = []string{dependencyId}
 			}
@@ -66,11 +66,11 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
-func appendUnique(children []string, dependencyId string) []string {
-	for _, existing := range children {
-		if existing == dependencyId {
+func appendUniqueChild(children []string, candidateDependency string) []string {
+	for _, existingChild := range children {
+		if existingChild == candidateDependency {
 			return children
 		}
 	}
-	return append(children, dependencyId)
+	return append(children, candidateDependency)
 }

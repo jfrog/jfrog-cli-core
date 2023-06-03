@@ -103,10 +103,8 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 }
 
 func printMessages(messages []string) {
-	if messages != nil {
-		for _, m := range messages {
-			printMessage(m)
-		}
+	for _, m := range messages {
+		printMessage(m)
 	}
 }
 

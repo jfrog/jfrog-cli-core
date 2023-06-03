@@ -109,7 +109,7 @@ func printMessages(messages []string) {
 }
 
 func printMessage(message string) {
-	log.Output(coreutils.RemoveEmojisIfNonSupportedTerminal("💬 " + message))
+	log.Output(coreutils.RemoveEmojisIfNonSupportedTerminal("💬"), message)
 }
 
 func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) (string, error) {

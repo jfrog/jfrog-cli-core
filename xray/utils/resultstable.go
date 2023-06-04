@@ -719,7 +719,7 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
-// Else (case when all cves are not applicable) -> final value is not applicable
+// Else (case when all cves aren't applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""

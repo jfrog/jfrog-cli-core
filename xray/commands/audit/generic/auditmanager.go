@@ -2,6 +2,9 @@ package audit
 
 import (
 	"fmt"
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	auditcmd "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +19,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -36,7 +39,10 @@ type Params struct {
 }
 
 func NewAuditParams() *Params {
-	return &Params{}
+	return &Params{
+		xrayGraphScanParams: &services.XrayGraphScanParams{},
+		GraphBasicParams:    &clientUtils.GraphBasicParams{},
+	}
 }
 
 func (params *Params) InstallFunc() func(tech string) error {
@@ -57,6 +63,11 @@ func (params *Params) XrayVersion() string {
 
 func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
+	return params
+}
+
+func (params *Params) SetGraphBasicParams(gbp *clientUtils.GraphBasicParams) *Params {
+	params.GraphBasicParams = gbp
 	return params
 }
 
@@ -88,9 +99,74 @@ func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
 	return params
 }
 
+func (params *Params) SetXrayVersion(version string) *Params {
+	params.xrayVersion = version
+	return params
+}
+
+// Runs an audit scan based on the provided auditParams.
+// Returns an audit Results object containing all the scan results.
+// If the current server is entitled for JAS (Just Another Security), the contextual analysis results will be included in the scan results.
+func RunAudit(auditParams *Params) (results *Results, err error) {
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return
+	}
+	isEntitled, xrayVersion, err := isEntitledForJas(serverDetails)
+	if err != nil {
+		return
+	}
+	auditParams.SetXrayVersion(xrayVersion)
+
+	errGroup := new(errgroup.Group)
+	if isEntitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
+	}
+
+	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
+	scanResults, isMultipleRootProject, auditError := GenericAudit(auditParams)
+
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return
+	}
+
+	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
+	// Try to run contextual analysis only if the user is entitled for advance security
+	if isEntitled {
+		extendedScanResults, err = auditcmd.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
+		if err != nil {
+			return
+		}
+	}
+	results = &Results{
+		isEntitled:            isEntitled,
+		isMultipleRootProject: isMultipleRootProject,
+		auditError:            auditError,
+		extendedScanResults:   extendedScanResults,
+	}
+	return
+}
+
+func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayVersion string, err error) {
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
+		return
+	}
+	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
+	if err == nil {
+		entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
+	} else {
+		entitled = false
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
+	}
+	return
+}
+
 // GenericAudit audits all the projects found in the given workingDirs
 func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, utils.GraphScanMinXrayVersion); err != nil {
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
@@ -151,7 +227,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	// Otherwise, run audit for requested technologies only.
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
-		technologies, err = utils.DetectedTechnologies()
+		technologies, err = commandsutils.DetectedTechnologies()
 		if err != nil {
 			return
 		}
@@ -171,7 +247,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			continue
 		}
 
-		scanGraphParams := utils.NewScanGraphParams().
+		scanGraphParams := commandsutils.NewScanGraphParams().
 			SetServerDetails(serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).
@@ -198,7 +274,7 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 	}
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		return nil, err
+		return
 	}
 	var dependencyTrees []*xrayCmdUtils.GraphNode
 	switch tech {

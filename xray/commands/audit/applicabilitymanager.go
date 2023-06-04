@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,9 +29,8 @@ const (
 
 var (
 	analyzerManagerExecuter                  utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
-	technologiesEligibleForApplicabilityScan                                = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
-		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
-	skippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	technologiesEligibleForApplicabilityScan                                = []coreutils.Technology{coreutils.Npm, coreutils.Pip, coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
+	skippedDirs                                                             = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
 func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
@@ -44,31 +44,31 @@ func GetExtendedScanResults(results []services.ScanResponse, dependencyTrees []*
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			e := cleanupFunc()
-			if err == nil {
-				err = e
-			}
+			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+
 	eligibleForApplicabilityScan, err := applicabilityScanManager.eligibleForApplicabilityScan()
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	if !eligibleForApplicabilityScan {
 		if len(serverDetails.Url) == 0 {
-			log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
+			log.Warn("To include 'Contextual Analysis' information as a part of the audit output, please run the 'jf c add' command before running this command.")
 		}
-		log.Debug("The conditions required for running 'Contextual Analysis' as part of the audit are not met.")
-		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+		log.Debug("The conditions required for running 'Contextual Analysis' as a part of the audit are not met.")
+		return &utils.ExtendedScanResults{XrayResults: results}, nil
 	}
+
 	entitledForJas, err := applicabilityScanManager.Run()
 	if err != nil {
 		return nil, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
 	if !entitledForJas {
 		log.Debug("the current user is not entitled for the Advanced Security package")
-		return &utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}, nil
+		return &utils.ExtendedScanResults{XrayResults: results}, nil
 	}
+
 	applicabilityScanResults := applicabilityScanManager.getApplicabilityScanResults()
 	extendedScanResults := utils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: applicabilityScanResults, EntitledForJas: true}
 	return &extendedScanResults, nil

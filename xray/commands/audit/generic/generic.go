@@ -3,41 +3,36 @@ package audit
 import (
 	"os"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"golang.org/x/sync/errgroup"
 )
 
 type GenericAuditCommand struct {
 	watches                []string
-	workingDirs            []string
 	projectKey             string
 	targetRepoPath         string
-	minSeverityFilter      string
-	fixableOnly            bool
 	IncludeVulnerabilities bool
 	IncludeLicenses        bool
 	Fail                   bool
 	PrintExtendedTable     bool
-	*xrutils.GraphBasicParams
+	Params
+}
+
+type Results struct {
+	isEntitled            bool
+	isMultipleRootProject bool
+	auditError            error
+	extendedScanResults   *xrutils.ExtendedScanResults
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
-	return &GenericAuditCommand{GraphBasicParams: &xrutils.GraphBasicParams{}}
+	return &GenericAuditCommand{Params: *NewAuditParams()}
 }
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {
 	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetWorkingDirs(dirs []string) *GenericAuditCommand {
-	auditCmd.workingDirs = dirs
 	return auditCmd
 }
 
@@ -71,16 +66,6 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) SetMinSeverityFilter(minSeverityFilter string) *GenericAuditCommand {
-	auditCmd.minSeverityFilter = minSeverityFilter
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditCommand {
-	auditCmd.fixableOnly = fixable
-	return auditCmd
-}
-
 func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
 	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
@@ -102,77 +87,42 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
-		SetFixableOnly(auditCmd.fixableOnly)
-	auditParams.GraphBasicParams = auditCmd.GraphBasicParams
-
-	serverDetails, err := auditParams.ServerDetails()
+		SetFixableOnly(auditCmd.fixableOnly).
+		SetGraphBasicParams(auditCmd.GraphBasicParams)
+	auditResults, err := RunAudit(auditParams)
 	if err != nil {
 		return err
-	}
-	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
-		return err
-	}
-	auditParams.xrayVersion = xrayVersion
-	var entitled bool
-	errGroup := new(errgroup.Group)
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrutils.EntitlementsMinVersion); err == nil {
-		entitled, err = xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
-		if err != nil {
-			return err
-		}
-	} else {
-		entitled = false
-		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
-	}
-	if entitled {
-		// Download (if needed) the analyzer manager in a background routine.
-		errGroup.Go(utils.DownloadAnalyzerManagerIfNeeded)
-	}
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
-
-	// Wait for the Download of the AnalyzerManager to complete.
-	if err = errGroup.Wait(); err != nil {
-		return err
-	}
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
-	// Try to run contextual analysis only if the user is entitled for advance security
-	if entitled {
-		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
-		if err != nil {
-			return err
-		}
 	}
 	if auditCmd.Progress() != nil {
 		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
 	}
-	if !entitled {
+	if !auditResults.isEntitled {
 		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
-	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
+	printScanResults := !(auditResults.auditError != nil && xrutils.IsEmptyScanResponse(auditResults.extendedScanResults.XrayResults))
 	if printScanResults {
-		err = xrutils.PrintScanResults(extendedScanResults,
+		err = xrutils.PrintScanResults(auditResults.extendedScanResults,
 			nil,
 			auditCmd.OutputFormat(),
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
-			isMultipleRootProject,
+			auditResults.isMultipleRootProject,
 			auditCmd.PrintExtendedTable, false,
 		)
 		if err != nil {
 			return
 		}
 	}
-	if auditErr != nil {
-		err = auditErr
+	if auditResults.auditError != nil {
+		err = auditResults.auditError
 		return
 	}
 
-	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities) and the user asked to fail the build accordingly, do so.
-	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(results) {
+	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities), and the user asked to fail the build accordingly, do so.
+	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(auditResults.extendedScanResults.XrayResults) {
 		err = xrutils.NewFailBuildError()
 	}
 	return

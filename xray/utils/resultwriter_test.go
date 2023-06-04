@@ -30,9 +30,8 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 		},
 		ScannedPackageType: "Go",
 	}
-	var scanResults []services.ScanResponse
+	var scanResults = []services.ScanResponse{currentScan}
 	extendedResults := &ExtendedScanResults{XrayResults: scanResults}
-	scanResults = append(scanResults, currentScan)
 	sarif, err := GenerateSarifFileFromScan(extendedResults, false, false)
 	assert.NoError(t, err)
 	expected := "{\"version\":\"2.1.0\",\"$schema\":\"https://json.schemastore.org/sarif-2.1.0-rtm.5.json\",\"runs\":[{\"tool\":{\"driver\":{\"informationUri\":\"https://jfrog.com/xray/\",\"name\":\"JFrog Xray\",\"rules\":[{\"id\":\"XRAY-1\",\"shortDescription\":null,\"help\":{\"markdown\":\"summary-1\"},\"properties\":{\"security-severity\":\"9.0\"}}]}},\"results\":[{\"ruleId\":\"XRAY-1\",\"ruleIndex\":0,\"message\":{\"text\":\"[CVE-2022-0000] Upgrade component-G: to [2.1.3]\"},\"locations\":[{\"physicalLocation\":{\"artifactLocation\":{\"uri\":\"go.mod\"}}}]}]}]}"

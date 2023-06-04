@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -8,6 +9,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
+
+const UnentitledComment = "* %s also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/"
 
 type GenericAuditCommand struct {
 	watches                []string
@@ -21,10 +24,9 @@ type GenericAuditCommand struct {
 }
 
 type Results struct {
-	isEntitled            bool
-	isMultipleRootProject bool
+	IsMultipleRootProject bool
 	auditError            error
-	extendedScanResults   *xrutils.ExtendedScanResults
+	ExtendedScanResults   *xrutils.ExtendedScanResults
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
@@ -98,18 +100,18 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
-	if !auditResults.isEntitled {
-		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
+	if !auditResults.ExtendedScanResults.EntitledForJas {
+		log.Output(fmt.Sprintf(UnentitledComment, "‘jf audit‘"))
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
-	printScanResults := !(auditResults.auditError != nil && xrutils.IsEmptyScanResponse(auditResults.extendedScanResults.XrayResults))
+	printScanResults := !(auditResults.auditError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
-		err = xrutils.PrintScanResults(auditResults.extendedScanResults,
+		err = xrutils.PrintScanResults(auditResults.ExtendedScanResults,
 			nil,
 			auditCmd.OutputFormat(),
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
-			auditResults.isMultipleRootProject,
+			auditResults.IsMultipleRootProject,
 			auditCmd.PrintExtendedTable, false,
 		)
 		if err != nil {
@@ -122,7 +124,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	}
 
 	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities), and the user asked to fail the build accordingly, do so.
-	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(auditResults.extendedScanResults.XrayResults) {
+	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(auditResults.ExtendedScanResults.XrayResults) {
 		err = xrutils.NewFailBuildError()
 	}
 	return

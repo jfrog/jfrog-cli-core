@@ -141,10 +141,9 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 		}
 	}
 	results = &Results{
-		isEntitled:            isEntitled,
-		isMultipleRootProject: isMultipleRootProject,
+		IsMultipleRootProject: isMultipleRootProject,
 		auditError:            auditError,
-		extendedScanResults:   extendedScanResults,
+		ExtendedScanResults:   extendedScanResults,
 	}
 	return
 }

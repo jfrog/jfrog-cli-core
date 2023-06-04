@@ -110,9 +110,7 @@ func convertBuildCmd(data *CiSetupData) (buildCmd string, err error) {
 		if err != nil {
 			return "", err
 		}
-	case coreutils.Maven:
-		fallthrough
-	case coreutils.Gradle:
+	case coreutils.Maven, coreutils.Gradle:
 		buildCmd, err = replaceCmdWithRegexp(data.BuiltTechnology.BuildCmd, mvnGradleRegexp, mvnGradleRegexpReplacement)
 		if err != nil {
 			return "", err

@@ -85,9 +85,8 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 	pb := TasksProgressBar{}
 	windows := coreutils.IsWindows()
 	padding, filler := paddingAndFiller(windows)
-	filter := filterColor(GREEN, windows)
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+firstValueLine+": "),
@@ -216,12 +215,11 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, taskType string) *TasksProgressBar {
 	padding, filler := paddingAndFiller(windows)
 	pb := &TasksProgressBar{}
-	filter := filterColor(GREEN, windows)
 	if taskType == "" {
 		taskType = "Tasks"
 	}
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+taskType+": "),
@@ -235,10 +233,9 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64), headLine string) *TasksProgressBar {
 	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
-	filter := filterColor(GREEN, coreutils.IsWindows())
 	numerator, denominator := getVal()
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Filler(filter).Tip(filter).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+headLine+": "),
@@ -310,22 +307,6 @@ func (bm *ProgressBarMng) GetBarsWg() *sync.WaitGroup {
 
 func (bm *ProgressBarMng) GetLogFile() *os.File {
 	return bm.logFile
-}
-
-func filterColor(color Color, windows bool) (filter string) {
-	if windows {
-		filter = "●"
-		return
-	}
-	switch color {
-	default:
-		filter = "⬜"
-	case GREEN:
-		filter = "🟩"
-	case WHITE:
-		filter = "⬜"
-	}
-	return
 }
 
 func paddingAndFiller(windows bool) (padding, filler string) {

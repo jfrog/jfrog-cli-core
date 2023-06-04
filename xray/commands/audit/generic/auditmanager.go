@@ -106,7 +106,7 @@ func (params *Params) SetXrayVersion(version string) *Params {
 
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
-// If the current server is entitled for JAS (Just Another Security), the contextual analysis results will be included in the scan results.
+// If the current server is entitled for JAS, the contextual analysis results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {

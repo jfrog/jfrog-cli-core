@@ -94,6 +94,11 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 
 func (am *AnalyzerManager) Exec(configFile string, scanCommand string) error {
 	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
+	defer func() {
+		if err := cmd.Process.Kill(); errorutils.CheckError(err) != nil {
+			log.Info(fmt.Sprintf("failed to kill analyzer manager process: %s", err.Error()))
+		}
+	}()
 	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
 	err := cmd.Run()
 	if errorutils.CheckError(err) != nil {

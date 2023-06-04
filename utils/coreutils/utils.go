@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager and etc.) through an Artifactory remote
+	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager etc.) through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'

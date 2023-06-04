@@ -1,16 +1,11 @@
 package audit
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"os"
 )
-
-const UnentitledComment = "* %s also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/"
 
 type GenericAuditCommand struct {
 	watches                []string
@@ -102,7 +97,6 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	}
 	var messages []string
 	if !auditResults.ExtendedScanResults.EntitledForJas {
-		//log.Output(fmt.Sprintf(UnentitledComment, "‘jf audit‘"))
 		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package. This package isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/security-and-compliance")}
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.

@@ -24,22 +24,22 @@ import (
 )
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	counterPointer := 0
-	graph := buildXrayDependencyTree(treeHelper, []string{nodeId}, &counterPointer)
-	if counterPointer > 0 {
-		log.Debug("buildXrayDependencyTree exceeded max tree depth", counterPointer, "times")
+	exceededDepthCounter := 0
+	xrayDependencyTree := buildXrayDependencyTree(treeHelper, []string{nodeId}, &exceededDepthCounter)
+	if exceededDepthCounter > 0 {
+		log.Debug("buildXrayDependencyTree exceeded max tree depth", exceededDepthCounter, "times")
 	}
-	return graph
+	return xrayDependencyTree
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, counterPointer *int) *xrayUtils.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, exceededDepthCounter *int) *xrayUtils.GraphNode {
 	nodeId := impactPath[len(impactPath)-1]
 	// Initialize the new node
 	xrDependencyTree := &xrayUtils.GraphNode{}
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		*counterPointer += 1
+		*exceededDepthCounter += 1
 		return xrDependencyTree
 	}
 	// Recursively create & append all node's dependencies.
@@ -48,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 		if slices.Contains(impactPath, dependency) {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), counterPointer))
+		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), exceededDepthCounter))
 	}
 	return xrDependencyTree
 }

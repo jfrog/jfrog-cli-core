@@ -18,6 +18,7 @@ const (
 	Fail                ChunkFileStatusType = "FAIL"
 	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
 	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
+	SkippedNonEmptyDir  ChunkFileStatusType = "SKIPPED_NON_EMPTY_DIR"
 
 	Phase1 int = 0
 	Phase2 int = 1
@@ -44,10 +45,11 @@ type UploadChunk struct {
 }
 
 type FileRepresentation struct {
-	Repo string `json:"repo,omitempty"`
-	Path string `json:"path,omitempty"`
-	Name string `json:"name,omitempty"`
-	Size int64  `json:"size,omitempty"`
+	Repo        string `json:"repo,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Size        int64  `json:"size,omitempty"`
+	NonEmptyDir bool   `json:"non_empty_dir,omitempty"`
 }
 
 type UploadChunkResponse struct {

@@ -41,50 +41,75 @@ type sarifProperties struct {
 	Description string
 }
 
-// PrintScanResults prints Xray scan results in the given format.
-// Note that errors are printed only on SimpleJson format.
-// If the scan argument is set to true, print the scan tables.
-func PrintScanResults(results *ExtendedScanResults, errors []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool) error {
-	xrayScanResults := results.getXrayScanResults()
+// PrintScanResults prints the scan results in the specified format.
+// Note that errors are printed only with SimpleJson format.
+//
+// results - The scan results.
+// simpleJsonError - Errors to be added to output of the SimpleJson format.
+// format - The output format.
+// includeVulnerabilities - If trie, include all vulnerabilities as part of the output. Else, include violations only.
+// includeLicenses - If true, also include license violations as part of the output.
+// isMultipleRoots - multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
+// printExtended -If true, show extended results.
+// scan - If true, use an output layout suitable for `jf scan` or `jf docker scan` results. Otherwise, use a layout compatible for `jf audit` .
+// messages - Option array of messages, to be displayed if the format is Table
+func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool, messages []string) error {
 	switch format {
 	case Table:
-		var err error
-		violations, vulnerabilities, licenses := SplitScanResults(xrayScanResults)
-		if len(xrayScanResults) > 0 {
-			resultsPath, err := writeJsonResults(results)
-			if err != nil {
-				return err
-			}
-			log.Output("* The full scan results are available here: " + resultsPath)
-		}
-		if includeVulnerabilities {
-			err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)
-		} else {
-			err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, scan)
-		}
-		if err != nil {
-			return err
-		}
-		if includeLicenses {
-			err = PrintLicensesTable(licenses, printExtended, scan)
-		}
-		return err
+		return printScanResultsTables(results, scan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, messages)
 	case SimpleJson:
-		jsonTable, err := convertScanToSimpleJson(xrayScanResults, results, errors, isMultipleRoots, includeLicenses, false)
+		jsonTable, err := convertScanToSimpleJson(results.getXrayScanResults(), results, simpleJsonError, isMultipleRoots, includeLicenses, false)
 		if err != nil {
 			return err
 		}
 		return PrintJson(jsonTable)
 	case Json:
-		return PrintJson(xrayScanResults)
+		return PrintJson(results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifFileFromScan(xrayScanResults, results, isMultipleRoots, false)
+		sarifFile, err := GenerateSarifFileFromScan(results.getXrayScanResults(), results, isMultipleRoots, false)
 		if err != nil {
 			return err
 		}
 		log.Output(sarifFile)
 	}
 	return nil
+}
+
+func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
+	log.Output()
+	printMessages(messages)
+	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
+	if len(results.getXrayScanResults()) > 0 {
+		var resultsPath string
+		if resultsPath, err = writeJsonResults(results); err != nil {
+			return
+		}
+		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
+	}
+
+	log.Output()
+	if includeVulnerabilities {
+		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)
+	} else {
+		err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, scan)
+	}
+	if err != nil {
+		return
+	}
+	if includeLicenses {
+		err = PrintLicensesTable(licenses, printExtended, scan)
+	}
+	return
+}
+
+func printMessages(messages []string) {
+	for _, m := range messages {
+		printMessage(m)
+	}
+}
+
+func printMessage(message string) {
+	log.Output("💬", message)
 }
 
 func GenerateSarifFileFromScan(currentScan []services.ScanResponse, extendedResults *ExtendedScanResults, isMultipleRoots, simplifiedOutput bool) (string, error) {

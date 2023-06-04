@@ -148,8 +148,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
+	var messages []string
 	if !entitled {
-		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
+		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package. This package isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/security-and-compliance")}
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
@@ -160,7 +161,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
 			isMultipleRootProject,
-			auditCmd.PrintExtendedTable, false,
+			auditCmd.PrintExtendedTable, false, messages,
 		)
 		if err != nil {
 			return

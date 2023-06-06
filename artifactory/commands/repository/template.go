@@ -597,8 +597,7 @@ func getLocalRepoConfKeys(pkgType string) []prompt.Suggest {
 	optionalKeys := []string{utils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseLocalRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleLocalRepoConfKeys...)
 	case Rpm:
 		optionalKeys = append(optionalKeys, rpmLocalRepoConfKeys...)
@@ -619,8 +618,7 @@ func getRemoteRepoConfKeys(pkgType, templateType string) []prompt.Suggest {
 	}
 	optionalKeys = append(optionalKeys, baseRemoteRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleRemoteRepoConfKeys...)
 	case Cocoapods:
 		optionalKeys = append(optionalKeys, cocoapodsRemoteRepoConfKeys...)
@@ -656,8 +654,7 @@ func getVirtualRepoConfKeys(pkgType string) []prompt.Suggest {
 	optionalKeys := []string{utils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseVirtualRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleVirtualRepoConfKeys...)
 	case Nuget:
 		optionalKeys = append(optionalKeys, nugetVirtualRepoConfKeys...)

@@ -86,7 +86,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		switch violation.ViolationType {
 		case "security":
 			cves := convertCves(violation.Cves)
-			applicableValue := getApplicableCveValue(extendedResults, cves[0])
+			applicableValue := getApplicableCveValue(extendedResults, cves)
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -205,7 +205,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
-		applicableValue := getApplicableCveValue(extendedResults, cves[0])
+		applicableValue := getApplicableCveValue(extendedResults, cves)
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -717,15 +717,32 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
 }
 
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCve formats.CveRow) string {
+// If at least one cve is applicable - final value is applicable
+// Else if at least one cve is undetermined - final value is undetermined
+// Else (case when all cves are not applicable) -> final value is not applicable
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""
 	}
-	applicableCveValue, ok := extendedResults.ApplicabilityScannerResults[xrayCve.Id]
-	if !ok {
+	if len(xrayCves) == 0 {
 		return ApplicabilityUndeterminedStringValue
 	}
-	return applicableCveValue
+	cveExistsInResult := false
+	finalApplicableValue := NotApplicableStringValue
+	for _, cve := range xrayCves {
+		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScannerResults[cve.Id]; exists {
+			cveExistsInResult = true
+			if currentCveApplicableValue == ApplicableStringValue {
+				return currentCveApplicableValue
+			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
+				finalApplicableValue = currentCveApplicableValue
+			}
+		}
+	}
+	if cveExistsInResult {
+		return finalApplicableValue
+	}
+	return ApplicabilityUndeterminedStringValue
 }
 
 func getApplicableCveNumValue(stringValue string) int {

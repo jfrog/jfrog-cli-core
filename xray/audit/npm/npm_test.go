@@ -19,56 +19,84 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	defer cleanUp()
 	dependenciesJson, err := os.ReadFile("dependencies.json")
 	assert.NoError(t, err)
-
 	var dependencies []buildinfo.Dependency
 	err = json.Unmarshal(dependenciesJson, &dependencies)
 	assert.NoError(t, err)
-
-	packageInfo := &biutils.PackageInfo{Name: "root", Version: "0.0.0"}
+	packageInfo := &biutils.PackageInfo{Name: "npmexmaple", Version: "0.1.0"}
+	looseEnvifyJsTokens := []*xrayUtils.GraphNode{{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}}}
 	expectedTree := &xrayUtils.GraphNode{
-		Id: "npm://root:0.0.0",
+		Id: "npm://npmexmaple:0.1.0",
 		Nodes: []*xrayUtils.GraphNode{
-			{Id: "npm://find:0.2.7",
+			{Id: "npm://next-auth:4.22.1",
 				Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://nub:1.0.0",
-						Nodes: []*xrayUtils.GraphNode{}},
-				}},
-			{Id: "npm://xml:1.0.1",
-				Nodes: []*xrayUtils.GraphNode{}},
-			{Id: "npm://jquery:3.2.0",
-				Nodes: []*xrayUtils.GraphNode{}},
-			{Id: "npm://@jfrog/npm_scoped:1.0.0",
-				Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://xpm:0.1.1",
-						Nodes: []*xrayUtils.GraphNode{
-							{Id: "npm://@ilg/cli-start-options:0.1.19",
-								Nodes: []*xrayUtils.GraphNode{
-									{Id: "npm://@ilg/es6-promisifier:0.1.9",
-										Nodes: []*xrayUtils.GraphNode{}},
-									{Id: "npm://wscript-avoider:3.0.2",
-										Nodes: []*xrayUtils.GraphNode{}},
-								}},
-							{Id: "npm://shopify-liquid:1.d7.9",
-								Nodes: []*xrayUtils.GraphNode{}},
+					{Id: "npm://react-dom:18.2.0", Nodes: []*xrayUtils.GraphNode{
+						{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+						{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
+						{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens},
+					}},
+					{Id: "npm://jose:4.14.4", Nodes: []*xrayUtils.GraphNode{}},
+					{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+					{Id: "npm://uuid:8.3.2", Nodes: []*xrayUtils.GraphNode{}},
+					{Id: "npm://openid-client:5.4.2", Nodes: []*xrayUtils.GraphNode{
+						{Id: "npm://jose:4.14.4"},
+						{Id: "npm://lru-cache:6.0.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://yallist:4.0.0"}}},
+						{Id: "npm://oidc-token-hash:5.0.3", Nodes: []*xrayUtils.GraphNode{}},
+						{Id: "npm://object-hash:2.2.0", Nodes: []*xrayUtils.GraphNode{}},
+					}},
+					{Id: "npm://next:12.0.10", Nodes: []*xrayUtils.GraphNode{
+						{Id: "npm://react-dom:18.2.0", Nodes: []*xrayUtils.GraphNode{
+							{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+							{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
+							{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens}}},
+						{Id: "npm://styled-jsx:5.0.0"},
+						{Id: "npm://@next/swc-darwin-arm64:12.0.10"},
+						{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+						{Id: "npm://@next/env:12.0.10"},
+						{Id: "npm://caniuse-lite:1.0.30001486"},
+						{Id: "npm://postcss:8.4.5", Nodes: []*xrayUtils.GraphNode{
+							{Id: "npm://picocolors:1.0.0"},
+							{Id: "npm://source-map-js:1.0.2"},
+							{Id: "npm://nanoid:3.3.6"},
 						}},
-				}},
-			{Id: "npm://yaml:0.2.3",
-				Nodes: []*xrayUtils.GraphNode{}},
-			{Id: "npm://nedb:1.0.2",
-				Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://async:0.2.10",
-						Nodes: []*xrayUtils.GraphNode{}},
-					{Id: "npm://binary-search-tree:0.2.4",
-						Nodes: []*xrayUtils.GraphNode{
-							{Id: "npm://underscore:1.4.4",
-								Nodes: []*xrayUtils.GraphNode{}},
+						{Id: "npm://use-subscription:1.5.1", Nodes: []*xrayUtils.GraphNode{
+							{Id: "npm://object-assign:4.1.1"},
 						}},
+					}},
+					{Id: "npm://@panva/hkdf:1.1.1"},
+					{Id: "npm://preact-render-to-string:5.2.6", Nodes: []*xrayUtils.GraphNode{
+						{Id: "npm://pretty-format:3.8.0"},
+						{Id: "npm://preact:10.13.2"},
+					}},
+					{Id: "npm://preact:10.13.2"},
+					{Id: "npm://@babel/runtime:7.21.5", Nodes: []*xrayUtils.GraphNode{
+						{Id: "npm://regenerator-runtime:0.13.11"},
+					}},
+					{Id: "npm://cookie:0.5.0"},
+					{Id: "npm://oauth:0.9.15"},
 				}},
+			{Id: "npm://next:12.0.10", Nodes: []*xrayUtils.GraphNode{
+				{Id: "npm://react-dom:18.2.0", Nodes: []*xrayUtils.GraphNode{
+					{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+					{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
+					{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens}}},
+				{Id: "npm://styled-jsx:5.0.0"},
+				{Id: "npm://@next/swc-darwin-arm64:12.0.10"},
+				{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+				{Id: "npm://@next/env:12.0.10"},
+				{Id: "npm://caniuse-lite:1.0.30001486"},
+				{Id: "npm://postcss:8.4.5", Nodes: []*xrayUtils.GraphNode{
+					{Id: "npm://picocolors:1.0.0"},
+					{Id: "npm://source-map-js:1.0.2"},
+					{Id: "npm://nanoid:3.3.6"},
+				}},
+				{Id: "npm://use-subscription:1.5.1", Nodes: []*xrayUtils.GraphNode{
+					{Id: "npm://object-assign:4.1.1"},
+				}},
+			}},
 		},
 	}
 
 	xrayDependenciesTree := parseNpmDependenciesList(dependencies, packageInfo)
-
 	equals := tests.CompareTree(expectedTree, xrayDependenciesTree)
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)

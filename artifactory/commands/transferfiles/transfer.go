@@ -569,7 +569,7 @@ func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
 	if err != nil {
 		return err
 	}
-	tdc.locallyGeneratedFilter = NewLocallyGenerated(servicesManager, targetArtifactoryVersion)
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(tdc.context, servicesManager, targetArtifactoryVersion)
 	return err
 }
 

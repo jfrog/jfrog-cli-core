@@ -1,8 +1,11 @@
 package transferfiles
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	"golang.org/x/sync/semaphore"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/version"
@@ -17,6 +20,7 @@ import (
 const (
 	locallyGeneratedApi                      = "api/localgenerated/filter/paths"
 	minArtifactoryVersionForLocallyGenerated = "7.55.0"
+	maxConcurrentLocallyGeneratedRequests    = 2
 )
 
 // The request and response payload of POST '/api/localgenerated/filter/paths'
@@ -28,10 +32,12 @@ type LocallyGeneratedPayload struct {
 type LocallyGeneratedFilter struct {
 	httpDetails          *httputils.HttpClientDetails
 	targetServiceDetails auth.ServiceDetails
+	context              context.Context
+	sem                  semaphore.Weighted
 	enabled              bool
 }
 
-func NewLocallyGenerated(serviceManager artifactory.ArtifactoryServicesManager, artifactoryVersion string) *LocallyGeneratedFilter {
+func NewLocallyGenerated(context context.Context, serviceManager artifactory.ArtifactoryServicesManager, artifactoryVersion string) *LocallyGeneratedFilter {
 	serviceDetails := serviceManager.GetConfig().GetServiceDetails()
 	httpDetails := serviceDetails.CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
@@ -42,6 +48,8 @@ func NewLocallyGenerated(serviceManager artifactory.ArtifactoryServicesManager, 
 		enabled:              enabled,
 		targetServiceDetails: serviceDetails,
 		httpDetails:          &httpDetails,
+		context:              context,
+		sem:                  *semaphore.NewWeighted(maxConcurrentLocallyGeneratedRequests),
 	}
 }
 
@@ -57,7 +65,7 @@ func (lg *LocallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.
 		return []utils.ResultItem{}, err
 	}
 
-	resp, body, err := lg.targetServiceDetails.GetClient().SendPost(lg.targetServiceDetails.GetUrl()+locallyGeneratedApi, content, lg.httpDetails)
+	resp, body, err := lg.doFilterLocallyGenerated(content)
 	if err != nil {
 		return []utils.ResultItem{}, err
 	}
@@ -68,6 +76,17 @@ func (lg *LocallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.
 	}
 
 	return lg.getNonLocallyGeneratedResults(aqlResultItems, nonLocallyGeneratedPaths), err
+}
+
+// Send 'POST /localgenerated/filter/paths' request under Semaphore restriction to prevent more than 2 requests in parallel.
+// We limit the number of request by 2 to prevent excessive load on the target server.
+// content - The rest API body which is a byte array of LocallyGeneratedPayload.
+func (lg *LocallyGeneratedFilter) doFilterLocallyGenerated(content []byte) (resp *http.Response, body []byte, err error) {
+	if err := lg.sem.Acquire(lg.context, 1); err != nil {
+		return nil, []byte{}, errorutils.CheckError(err)
+	}
+	defer lg.sem.Release(1)
+	return lg.targetServiceDetails.GetClient().SendPost(lg.targetServiceDetails.GetUrl()+locallyGeneratedApi, content, lg.httpDetails)
 }
 
 // Return true if should filter Artifactory locally generated files in the JFrog CLI

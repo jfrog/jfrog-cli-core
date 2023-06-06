@@ -35,6 +35,8 @@ const (
 	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
 	logDirEnvVariable             = "AM_LOG_DIRECTORY"
 	SeverityDefaultValue          = "Medium"
+	notEntitledExitCode           = 31
+	unsupportedCommandExitCode    = 13
 )
 
 const (
@@ -176,7 +178,7 @@ func IsNotEntitledError(err error) bool {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
 		// User not entitled error
-		if exitCode == 31 {
+		if exitCode == notEntitledExitCode {
 			log.Debug("got not entitled error from analyzer manager")
 			return true
 		}
@@ -188,7 +190,7 @@ func IsUnsupportedCommandError(err error) bool {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
 		// Analyzer manager doesn't support the requested scan command
-		if exitCode == 13 {
+		if exitCode == unsupportedCommandExitCode {
 			log.Debug("got unsupported scan command error from analyzer manager")
 			return true
 		}

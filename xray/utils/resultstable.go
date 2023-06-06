@@ -481,6 +481,10 @@ func (s *Severity) NumValue() int {
 	return s.numValue
 }
 
+func (s *Severity) Emoji() string {
+	return s.emoji
+}
+
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
 	if formattedSeverity != "" && Severities[formattedSeverity][ApplicableStringValue] == nil {
@@ -561,11 +565,13 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 				continue
 			}
 			uniqueVulnerabilities[packageKey] = &services.Vulnerability{
-				Cves:       vulnerability.Cves,
-				Severity:   vulnerability.Severity,
-				Components: map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
-				IssueId:    vulnerability.IssueId,
-				Technology: vulnerability.Technology,
+				Cves:                vulnerability.Cves,
+				Severity:            vulnerability.Severity,
+				Components:          map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
+				IssueId:             vulnerability.IssueId,
+				Technology:          vulnerability.Technology,
+				ExtendedInformation: vulnerability.ExtendedInformation,
+				Summary:             vulnerability.Summary,
 			}
 		}
 	}

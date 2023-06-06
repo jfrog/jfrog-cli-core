@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	auditcmd "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
@@ -125,7 +126,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	scanResults, isMultipleRootProject, auditError := GenericAudit(auditParams)
+	scanResults, isMultipleRootProject, auditError := genericAudit(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
@@ -142,7 +143,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 	results = &Results{
 		IsMultipleRootProject: isMultipleRootProject,
-		auditError:            auditError,
+		AuditError:            auditError,
 		ExtendedScanResults:   extendedScanResults,
 	}
 	return
@@ -163,8 +164,8 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 	return
 }
 
-// GenericAudit audits all the projects found in the given workingDirs
-func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+// genericAudit audits all the projects found in the given workingDirs
+func genericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
@@ -184,10 +185,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 		return
 	}
 	defer func() {
-		e := os.Chdir(projectDir)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, os.Chdir(projectDir))
 	}()
 	var errorList strings.Builder
 	for _, wd := range params.workingDirs {

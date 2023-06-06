@@ -20,7 +20,7 @@ type GenericAuditCommand struct {
 
 type Results struct {
 	IsMultipleRootProject bool
-	auditError            error
+	AuditError            error
 	ExtendedScanResults   *xrutils.ExtendedScanResults
 }
 
@@ -100,7 +100,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package. This package isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/security-and-compliance")}
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
-	printScanResults := !(auditResults.auditError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
+	printScanResults := !(auditResults.AuditError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
 		err = xrutils.PrintScanResults(auditResults.ExtendedScanResults,
 			nil,
@@ -114,8 +114,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
-	if auditResults.auditError != nil {
-		err = auditResults.auditError
+	if auditResults.AuditError != nil {
+		err = auditResults.AuditError
 		return
 	}
 

@@ -50,8 +50,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 			err = errors.Join(err, cleanupError)
 		}
 	}()
-	err = secretScanManager.run()
-	if err != nil {
+	if err = secretScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}

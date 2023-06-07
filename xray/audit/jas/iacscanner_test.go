@@ -41,7 +41,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestIacParseResults_EmptyResults(t *testing.T) {
 	// Arrange
 	iacScanManager, _, _ := newsIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	iacScanManager.resultsFileName = filepath.Join("..", "testdata", "iac-scan", "no-violations.sarif")
+	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
 	err := iacScanManager.parseResults()
@@ -54,7 +54,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
 	iacScanManager, _, _ := newsIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	iacScanManager.resultsFileName = filepath.Join("..", "testdata", "iac-scan", "contains-iac-violations.sarif")
+	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
 	err := iacScanManager.parseResults()

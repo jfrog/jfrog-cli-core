@@ -60,7 +60,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
 	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanManager.resultsFileName = filepath.Join("..", "testdata", "secrets-scan", "no-secrets.sarif")
+	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
 	err := secretScanManager.parseResults()
@@ -73,7 +73,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
 	secretScanManager, _, _ := newSecretsScanManager(&fakeServerDetails, &analyzerManagerMock{})
-	secretScanManager.resultsFileName = filepath.Join("..", "testdata", "secrets-scan", "contain-secrets.sarif")
+	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
 	err := secretScanManager.parseResults()

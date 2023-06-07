@@ -336,7 +336,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
-	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "empty-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "empty-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()
@@ -354,7 +354,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
-	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "applicable-cve-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()
@@ -372,7 +372,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
 	applicabilityManager, _, _ := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
-	applicabilityManager.resultsFileName = filepath.Join("..", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
+	applicabilityManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
 	err := applicabilityManager.parseResults()

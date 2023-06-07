@@ -1,6 +1,7 @@
-package audit
+package jas
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -29,6 +30,14 @@ type SecretScanManager struct {
 	projectRootPath       string
 }
 
+// The getSecretsScanResults function runs the secrets scan flow, which includes the following steps:
+// Creating an SecretScanManager object.
+// Running the analyzer manager executable.
+// Parsing the analyzer manager results.
+// Return values:
+// []utils.IacOrSecretResult: a list of the secrets that were found.
+// bool: true if the user is entitled to secrets scan, false otherwise.
+// error: An error object (if any).
 func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
 	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
@@ -37,10 +46,8 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			e := cleanupFunc()
-			if err == nil {
-				err = e
-			}
+			cleanupError := cleanupFunc()
+			err = errors.Join(err, cleanupError)
 		}
 	}()
 	err = secretScanManager.run()
@@ -124,10 +131,7 @@ func (s *SecretScanManager) createConfigFile() error {
 		return err
 	}
 	err = os.WriteFile(s.configFileName, yamlData, 0644)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	return nil
+	return errorutils.CheckError(err)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {

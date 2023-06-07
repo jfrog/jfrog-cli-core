@@ -1,6 +1,7 @@
-package audit
+package jas
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -28,6 +29,14 @@ type IacScanManager struct {
 	projectRootPath   string
 }
 
+// The getIacScanResults function runs the iac scan flow, which includes the following steps:
+// Creating an IacScanManager object.
+// Running the analyzer manager executable.
+// Parsing the analyzer manager results.
+// Return values:
+// []utils.IacOrSecretResult: a list of the iac violations that were found.
+// bool: true if the user is entitled to iac scan, false otherwise.
+// error: An error object (if any).
 func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
 	iacScanManager, cleanupFunc, err := newsIacScanManager(serverDetails, analyzerManager)
@@ -36,10 +45,8 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			e := cleanupFunc()
-			if err == nil {
-				err = e
-			}
+			cleanupError := cleanupFunc()
+			err = errors.Join(err, cleanupError)
 		}
 	}()
 	err = iacScanManager.run()
@@ -121,10 +128,7 @@ func (iac *IacScanManager) createConfigFile() error {
 		return err
 	}
 	err = os.WriteFile(iac.configFileName, yamlData, 0644)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	return nil
+	return errorutils.CheckError(err)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {

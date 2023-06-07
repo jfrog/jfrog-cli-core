@@ -1,4 +1,4 @@
-package audit
+package jas
 
 import (
 	"errors"
@@ -68,8 +68,9 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInTree(t *testing.T) {
 	assert.NotEmpty(t, applicabilityManager)
 	assert.NotEmpty(t, applicabilityManager.configFileName)
 	assert.NotEmpty(t, applicabilityManager.resultsFileName)
-	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities)) // non-direct dependency should not be added
-	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))      // non-direct dependency should not be added
+	// Non-direct dependencies should not be added
+	assert.Equal(t, 1, len(applicabilityManager.xrayVulnerabilities))
+	assert.Equal(t, 1, len(applicabilityManager.xrayViolations))
 }
 
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
@@ -221,7 +222,8 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 			},
 		},
-		{directDependencies: []string{"issueId_1_direct_dependency"}, // vulnerability dependency, should be ignored by function
+		// Vulnerability dependency, should be ignored by function
+		{directDependencies: []string{"issueId_1_direct_dependency"},
 			expectedResult: []services.Violation{},
 		},
 		{directDependencies: []string{},

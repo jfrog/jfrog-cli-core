@@ -1,6 +1,7 @@
-package audit
+package jas
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -29,6 +30,15 @@ var (
 		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
 )
 
+// The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
+// Creating an ApplicabilityScanManager object.
+// Checking if the scanned project is eligible for applicability scan.
+// Running the analyzer manager executable.
+// Parsing the analyzer manager results.
+// Return values:
+// map[string]string: A map containing the applicability result of each XRAY CVE.
+// bool: true if the user is entitled to the applicability scan, false otherwise.
+// error: An error object (if any).
 func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
@@ -37,18 +47,15 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			e := cleanupFunc()
-			if err == nil {
-				err = e
-			}
+			cleanupError := cleanupFunc()
+			err = errors.Join(err, cleanupError)
 		}
 	}()
 	if !applicabilityScanManager.eligibleForApplicabilityScan() {
-		log.Debug("conditions to run applicability scan are not met, didnt exec analyzer manager")
+		log.Debug("The conditions for running the applicability scan are not met. Skipping the execution of the Analyzer Manager")
 		return nil, false, nil
 	}
-	err = applicabilityScanManager.run()
-	if err != nil {
+	if err = applicabilityScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
@@ -237,13 +244,10 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 		return err
 	}
 	err = os.WriteFile(a.configFileName, yamlData, 0644)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	return nil
+	return errorutils.CheckError(err)
 }
 
-// Runs the analyzerManager app and returns a boolean indicates if the user is entitled for
+// Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
 // advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {

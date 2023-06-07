@@ -23,6 +23,7 @@ var (
 )
 
 const (
+	EntitlementsMinVersion      = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"

@@ -4,12 +4,11 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
 	"os"
 
-	"github.com/jfrog/jfrog-client-go/utils/log"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/sync/errgroup"
 )
@@ -110,14 +109,21 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	xrayManager, err := commandsutils.CreateXrayServiceManager(serverDetails)
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return err
 	}
+	auditParams.xrayVersion = xrayVersion
+	var entitled bool
 	errGroup := new(errgroup.Group)
-	entitled, err := xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
-	if err != nil {
-		return err
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrutils.EntitlementsMinVersion); err == nil {
+		entitled, err = xrayManager.IsEntitled(xrutils.ApplicabilityFeatureId)
+		if err != nil {
+			return err
+		}
+	} else {
+		entitled = false
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
 	}
 	if entitled {
 		// Download (if needed) the analyzer manager in a background routine.
@@ -142,8 +148,9 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
+	var messages []string
 	if !entitled {
-		log.Output("* The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package.\n  This package isn't enabled on your system. Read more - https://jfrog.com/security-and-compliance/")
+		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package. This package isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/security-and-compliance")}
 	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
 	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
@@ -154,7 +161,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
 			isMultipleRootProject,
-			auditCmd.PrintExtendedTable, false,
+			auditCmd.PrintExtendedTable, false, messages,
 		)
 		if err != nil {
 			return

@@ -34,12 +34,12 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 		return
 	}
 	// Calculate Yarn dependencies
-	dependenciesMap, _, err := biUtils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
+	dependenciesMap, root, err := biUtils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
 	if err != nil {
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, packageInfo)}
+	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, getXrayDependencyId(root))}
 	return
 }
 
@@ -57,7 +57,7 @@ func logAndValidateYarnVersion(executablePath string) error {
 }
 
 // Parse the dependencies into a Xray dependency tree format
-func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, packageInfo *biUtils.PackageInfo) (xrDependencyTree *xrayUtils.GraphNode) {
+func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, rootXrayId string) (xrDependencyTree *xrayUtils.GraphNode) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		xrayDepId := getXrayDependencyId(dependency)
@@ -69,7 +69,7 @@ func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, p
 			treeMap[xrayDepId] = subDeps
 		}
 	}
-	return audit.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
+	return audit.BuildXrayDependencyTree(treeMap, rootXrayId)
 }
 
 func getXrayDependencyId(yarnDependency *biUtils.YarnDependency) string {

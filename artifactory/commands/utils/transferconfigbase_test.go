@@ -146,39 +146,86 @@ func TestGetSelectedRepositories(t *testing.T) {
 }
 
 func TestTransferRepositoryToTarget(t *testing.T) {
-	federatedRepo, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, "federated_repo.json"))
-	assert.NoError(t, err)
-	federatedRepoWithoutMembers, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, "federated_repo_without_members.json"))
-	assert.NoError(t, err)
+	federatedRepo := readRepoConfig(t, "federated_repo")
+	federatedRepoWithoutMembers := readRepoConfig(t, "federated_repo_without_members")
 
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if r.Method == http.MethodGet {
-			if r.RequestURI == "/api/repositories/federated-local" {
+		switch r.Method {
+		case http.MethodGet:
+			switch r.RequestURI {
+			case "/api/repositories/federated-local":
 				_, err := w.Write(federatedRepo)
 				assert.NoError(t, err)
-			} else if r.RequestURI == "/api/repositories/federated-local-no-members" {
+			case "/api/repositories/federated-local-no-members":
 				_, err := w.Write(federatedRepoWithoutMembers)
 				assert.NoError(t, err)
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
 			}
-		} else if r.Method == http.MethodPost {
+		case http.MethodPut:
 			body, err := io.ReadAll(r.Body)
 			assert.NoError(t, err)
-
-			var repoParams interface{}
-			assert.NoError(t, json.Unmarshal(body, &repoParams))
-			repoParamsMap, err := InterfaceToMap(repoParams)
-			assert.NoError(t, err)
-			assert.Equal(t, getExpectedFederatedRepoParamsMap(t, federatedRepoWithoutMembers), repoParamsMap)
+			assert.Equal(t, getRepoParamsMap(t, federatedRepoWithoutMembers), getRepoParamsMap(t, body))
+		default:
+			assert.Fail(t, "Unexpected method "+r.Method)
 		}
 	})
 	defer testServer.Close()
 
 	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
 	assert.False(t, transferConfigBase.FederatedMembersRemoved)
-	err = transferConfigBase.transferSpecificRepositoriesToTarget([]string{"federated-local", "federated-local-no-members"}, utils.Federated)
+	err := transferConfigBase.transferSpecificRepositoriesToTarget([]string{"federated-local", "federated-local-no-members"}, utils.Federated)
 	assert.NoError(t, err)
 	assert.True(t, transferConfigBase.FederatedMembersRemoved)
+}
+
+func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
+	virtualRepoA := readRepoConfig(t, "virtual_repo_a")
+	virtualRepoB := readRepoConfig(t, "virtual_repo_b")
+
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		switch r.Method {
+		case http.MethodGet:
+			switch r.RequestURI {
+			case "/api/repositories/a-virtual":
+				_, err := w.Write(virtualRepoA)
+				assert.NoError(t, err)
+			case "/api/repositories/b-virtual":
+				_, err := w.Write(virtualRepoB)
+				assert.NoError(t, err)
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
+			}
+		case http.MethodPut:
+			fallthrough
+		case http.MethodPost:
+			body, err := io.ReadAll(r.Body)
+			assert.NoError(t, err)
+
+			virtualRepoAParamsMap := getRepoParamsMap(t, virtualRepoA)
+			virtualRepoBParamsMap := getRepoParamsMap(t, virtualRepoB)
+
+			if r.Method == http.MethodPut {
+				delete(virtualRepoAParamsMap, "repositories")
+				delete(virtualRepoBParamsMap, "repositories")
+			}
+
+			switch r.RequestURI {
+			case "/api/repositories/a-virtual":
+				assert.Equal(t, virtualRepoAParamsMap, getRepoParamsMap(t, body))
+			case "/api/repositories/b-virtual":
+				assert.Equal(t, virtualRepoBParamsMap, getRepoParamsMap(t, body))
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
+			}
+		}
+	})
+	defer testServer.Close()
+
+	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
+	assert.NoError(t, transferConfigBase.transferVirtualRepositoriesToTarget([]string{"a-virtual", "b-virtual"}))
 }
 
 func TestDeactivateKeyEncryption(t *testing.T) {
@@ -223,10 +270,16 @@ func createTransferConfigBase(t *testing.T, sourceServerDetails, targetServerDet
 	return transferConfigBase
 }
 
-func getExpectedFederatedRepoParamsMap(t *testing.T, federatedRepoWithoutMembers []byte) map[string]interface{} {
-	var expectedRepoParams interface{}
-	assert.NoError(t, json.Unmarshal(federatedRepoWithoutMembers, &expectedRepoParams))
-	expectedRepoParamsMap, err := InterfaceToMap(expectedRepoParams)
+func getRepoParamsMap(t *testing.T, body []byte) map[string]interface{} {
+	var repoParams interface{}
+	assert.NoError(t, json.Unmarshal(body, &repoParams))
+	repoParamsMap, err := InterfaceToMap(repoParams)
 	assert.NoError(t, err)
-	return expectedRepoParamsMap
+	return repoParamsMap
+}
+
+func readRepoConfig(t *testing.T, fileName string) []byte {
+	repoConfig, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, fileName+".json"))
+	assert.NoError(t, err)
+	return repoConfig
 }

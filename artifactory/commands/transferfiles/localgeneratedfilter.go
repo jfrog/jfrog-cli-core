@@ -29,22 +29,23 @@ type LocallyGeneratedPayload struct {
 	Paths   []string `json:"paths,omitempty"`
 }
 
-type LocallyGeneratedFilter struct {
+type locallyGeneratedFilter struct {
 	httpDetails          *httputils.HttpClientDetails
 	targetServiceDetails auth.ServiceDetails
 	context              context.Context
-	sem                  semaphore.Weighted
-	enabled              bool
+	// Semaphore to limit the max concurrent Locally Generated requests to 2
+	sem     semaphore.Weighted
+	enabled bool
 }
 
-func NewLocallyGenerated(context context.Context, serviceManager artifactory.ArtifactoryServicesManager, artifactoryVersion string) *LocallyGeneratedFilter {
+func NewLocallyGenerated(context context.Context, serviceManager artifactory.ArtifactoryServicesManager, artifactoryVersion string) *locallyGeneratedFilter {
 	serviceDetails := serviceManager.GetConfig().GetServiceDetails()
 	httpDetails := serviceDetails.CreateHttpClientDetails()
 	utils.SetContentType("application/json", &httpDetails.Headers)
 
 	enabled := version.NewVersion(artifactoryVersion).AtLeast(minArtifactoryVersionForLocallyGenerated)
 	log.Debug("Locally generated filter enabled:", enabled)
-	return &LocallyGeneratedFilter{
+	return &locallyGeneratedFilter{
 		enabled:              enabled,
 		targetServiceDetails: serviceDetails,
 		httpDetails:          &httpDetails,
@@ -56,7 +57,7 @@ func NewLocallyGenerated(context context.Context, serviceManager artifactory.Art
 // Filters out locally generated files.
 // Files that are generated automatically by Artifactory on the target instance (also known as "locally generated files") should not be transferred.
 // aqlResults - Directory content in phase 1 or 15 minutes interval results in phase 2.
-func (lg *LocallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.ResultItem) ([]utils.ResultItem, error) {
+func (lg *locallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.ResultItem) ([]utils.ResultItem, error) {
 	if !lg.enabled || len(aqlResultItems) == 0 {
 		return aqlResultItems, nil
 	}
@@ -81,7 +82,7 @@ func (lg *LocallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.
 // Send 'POST /localgenerated/filter/paths' request under Semaphore restriction to prevent more than 2 requests in parallel.
 // We limit the number of request by 2 to prevent excessive load on the target server.
 // content - The rest API body which is a byte array of LocallyGeneratedPayload.
-func (lg *LocallyGeneratedFilter) doFilterLocallyGenerated(content []byte) (resp *http.Response, body []byte, err error) {
+func (lg *locallyGeneratedFilter) doFilterLocallyGenerated(content []byte) (resp *http.Response, body []byte, err error) {
 	if err := lg.sem.Acquire(lg.context, 1); err != nil {
 		return nil, []byte{}, errorutils.CheckError(err)
 	}
@@ -91,13 +92,13 @@ func (lg *LocallyGeneratedFilter) doFilterLocallyGenerated(content []byte) (resp
 
 // Return true if should filter Artifactory locally generated files in the JFrog CLI
 // False if should filter Artifactory locally generated files in the Data Transfer plugin
-func (lg *LocallyGeneratedFilter) IsEnabled() bool {
+func (lg *locallyGeneratedFilter) IsEnabled() bool {
 	return lg.enabled
 }
 
 // Create payload for the POST '/api/localgenerated/filter/paths' REST API
 // aqlResultItems - Directory content in phase 1 or 15 minutes interval results in phase 2
-func (lg *LocallyGeneratedFilter) createPayload(aqlResultItems []utils.ResultItem) ([]byte, error) {
+func (lg *locallyGeneratedFilter) createPayload(aqlResultItems []utils.ResultItem) ([]byte, error) {
 	payload := &LocallyGeneratedPayload{
 		RepoKey: aqlResultItems[0].Repo,
 		Paths:   make([]string, 0, len(aqlResultItems)),
@@ -123,7 +124,7 @@ func (lg *LocallyGeneratedFilter) createPayload(aqlResultItems []utils.ResultIte
 // resp - Response status from Artifactory
 // body - Response body from Artifactory
 // Return a set of non locally generated paths - the files and directories to transfer.
-func (lg *LocallyGeneratedFilter) parseResponse(resp *http.Response, body []byte) (*datastructures.Set[string], error) {
+func (lg *locallyGeneratedFilter) parseResponse(resp *http.Response, body []byte) (*datastructures.Set[string], error) {
 	if err := errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK); err != nil {
 		return nil, err
 	}
@@ -145,7 +146,7 @@ func (lg *LocallyGeneratedFilter) parseResponse(resp *http.Response, body []byte
 // Get the non-locally-generated AQL results.
 // aqlResultItems - Directory content in phase 1 or 15 minutes interval results in phase 2
 // nonLocallyGeneratedPaths - Non locally generated paths
-func (lg *LocallyGeneratedFilter) getNonLocallyGeneratedResults(aqlResultItems []utils.ResultItem, nonLocallyGeneratedPaths *datastructures.Set[string]) (nonLocallyGeneratedAqlResults []utils.ResultItem) {
+func (lg *locallyGeneratedFilter) getNonLocallyGeneratedResults(aqlResultItems []utils.ResultItem, nonLocallyGeneratedPaths *datastructures.Set[string]) (nonLocallyGeneratedAqlResults []utils.ResultItem) {
 	nonLocallyGeneratedAqlResults = make([]utils.ResultItem, 0, nonLocallyGeneratedPaths.Size())
 	for i := range aqlResultItems {
 		pathInRepo := getPathInRepo(&aqlResultItems[i])

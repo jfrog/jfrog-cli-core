@@ -53,7 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
-	locallyGeneratedFilter    *LocallyGeneratedFilter
+	locallyGeneratedFilter    *locallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {

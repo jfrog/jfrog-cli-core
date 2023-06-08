@@ -82,9 +82,9 @@ func TestFilterLocallyGeneratedMaxRequests(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			_, err := locallyGenerated.FilterLocallyGenerated([]utils.ResultItem{{Path: "a", Name: "b"}})
 			assert.NoError(t, err)
-			wg.Done()
 		}()
 	}
 	wg.Wait()

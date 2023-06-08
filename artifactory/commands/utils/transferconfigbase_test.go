@@ -198,25 +198,23 @@ func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
 			default:
 				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
 			}
-		case http.MethodPut:
-			fallthrough
-		case http.MethodPost:
+		case http.MethodPut, http.MethodPost:
 			body, err := io.ReadAll(r.Body)
 			assert.NoError(t, err)
 
-			virtualRepoAParamsMap := getRepoParamsMap(t, virtualRepoA)
-			virtualRepoBParamsMap := getRepoParamsMap(t, virtualRepoB)
+			expectedVirtualRepoAParamsMap := getRepoParamsMap(t, virtualRepoA)
+			expectedVirtualRepoBParamsMap := getRepoParamsMap(t, virtualRepoB)
 
 			if r.Method == http.MethodPut {
-				delete(virtualRepoAParamsMap, "repositories")
-				delete(virtualRepoBParamsMap, "repositories")
+				delete(expectedVirtualRepoAParamsMap, "repositories")
+				delete(expectedVirtualRepoBParamsMap, "repositories")
 			}
 
 			switch r.RequestURI {
 			case "/api/repositories/a-virtual":
-				assert.Equal(t, virtualRepoAParamsMap, getRepoParamsMap(t, body))
+				assert.Equal(t, expectedVirtualRepoAParamsMap, getRepoParamsMap(t, body))
 			case "/api/repositories/b-virtual":
-				assert.Equal(t, virtualRepoBParamsMap, getRepoParamsMap(t, body))
+				assert.Equal(t, expectedVirtualRepoBParamsMap, getRepoParamsMap(t, body))
 			default:
 				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
 			}

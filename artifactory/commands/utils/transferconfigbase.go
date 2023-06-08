@@ -133,7 +133,7 @@ func (tcb *TransferConfigBase) TransferRepositoriesToTarget(reposToTransfer map[
 }
 
 // Transfer local, federated, unknown, or virtual repositories
-// reposToTransfer - Repository names to transfer
+// reposToTransfer - Repositories names to transfer
 // repoType - Repository type
 func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTransfer []string, repoType utils.RepoType) (err error) {
 	for _, repoKey := range reposToTransfer {
@@ -154,38 +154,38 @@ func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTrans
 }
 
 // Transfer virtual repositories
-// reposToTransfer - Repository names to transfer
+// reposToTransfer - Repositories names to transfer
 func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransfer []string) (err error) {
-	reposParams := make(map[string]interface{})
-	var repoParamsMap map[string]interface{}
-	var repoParams interface{}
-	// Step 1 - Get and create all virtual repositories with the included virtual repositories removed
+	allReposParams := make(map[string]interface{})
+	var singleRepoParamsMap map[string]interface{}
+	var singleRepoParams interface{}
+	// Step 1 - Get and create all virtual repositories with the included repositories removed
 	for _, repoKey := range reposToTransfer {
 		// Get repository params
-		if err = tcb.SourceArtifactoryManager.GetRepository(repoKey, &repoParams); err != nil {
+		if err = tcb.SourceArtifactoryManager.GetRepository(repoKey, &singleRepoParams); err != nil {
 			return
 		}
-		reposParams[repoKey] = repoParams
-		repoParamsMap, err = InterfaceToMap(repoParams)
+		allReposParams[repoKey] = singleRepoParams
+		singleRepoParamsMap, err = InterfaceToMap(singleRepoParams)
 		if err != nil {
 			return
 		}
 
 		// Create virtual repository without included repositories
-		repositories := repoParamsMap["repositories"]
-		delete(repoParamsMap, "repositories")
-		if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(repoParamsMap, repoKey); err != nil {
+		repositories := singleRepoParamsMap["repositories"]
+		delete(singleRepoParamsMap, "repositories")
+		if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(singleRepoParamsMap, repoKey); err != nil {
 			return
 		}
 
 		// Restore included repositories to set them later on
 		if repositories != nil {
-			repoParamsMap["repositories"] = repositories
+			singleRepoParamsMap["repositories"] = repositories
 		}
 	}
 
 	// Step 2 - Update all virtual repositories with the included repositories
-	for repoKey, repoParams := range reposParams {
+	for repoKey, repoParams := range allReposParams {
 		if err = tcb.TargetArtifactoryManager.UpdateRepositoryWithParams(repoParams, repoKey); err != nil {
 			return
 		}

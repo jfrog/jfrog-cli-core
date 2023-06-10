@@ -123,9 +123,10 @@ const (
 	ExternalDependenciesRemoteRepo                = "externalDependenciesRemoteRepo"
 
 	// rclasses
-	Local   = "local"
-	Remote  = "remote"
-	Virtual = "virtual"
+	Local     = "local"
+	Remote    = "remote"
+	Virtual   = "virtual"
+	Federated = "federated"
 
 	// PackageTypes
 	Generic   = "generic"
@@ -414,20 +415,24 @@ var goVirtualRepoConfKeys = []string{
 }
 
 var commonPkgTypes = []string{
-	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Yum, Conan,
+	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Conan,
 	Chef, Puppet, Alpine, Generic,
 }
 
 var localRepoAdditionalPkgTypes = []string{
-	Cocoapods, Opkg, Composer, Vagrant,
+	Cocoapods, Opkg, Composer, Vagrant, Yum,
 }
 
 var remoteRepoAdditionalPkgTypes = []string{
-	Cocoapods, Opkg, Composer, Conda, P2, Vcs,
+	Cocoapods, Opkg, Composer, Conda, P2, Vcs, Yum,
 }
 
 var virtualRepoAdditionalPkgTypes = []string{
-	Conda, P2,
+	Conda, P2, Yum,
+}
+
+var federatedRepoAdditionalPkgTypes = []string{
+	Vagrant, Opkg, Conda, Composer, Cocoapods,
 }
 
 var pkgTypeSuggestsMap = map[string]prompt.Suggest{
@@ -524,6 +529,8 @@ func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, 
 		pkgTypes = append(pkgTypes, localRepoAdditionalPkgTypes...)
 	case Virtual:
 		pkgTypes = append(pkgTypes, virtualRepoAdditionalPkgTypes...)
+	case Federated:
+		pkgTypes = append(pkgTypes, federatedRepoAdditionalPkgTypes...)
 	default:
 		return "", errors.New("unsupported rclass")
 	}
@@ -557,6 +564,8 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 		iq.OptionalKeysSuggests = getRemoteRepoConfKeys(pkgType, fmt.Sprint(iq.AnswersMap[TemplateType]))
 	case Virtual:
 		iq.OptionalKeysSuggests = getVirtualRepoConfKeys(pkgType)
+	case Federated:
+		iq.OptionalKeysSuggests = getLocalRepoConfKeys(pkgType)
 	default:
 		return "", errors.New("unsupported rclass was configured")
 	}
@@ -740,6 +749,7 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: Local, Description: "A physical, locally-managed repository into which you can deploy artifacts"},
 			{Text: Remote, Description: "A caching proxy for a repository managed at a remote URL"},
 			{Text: Virtual, Description: "An Aggregation of several repositories with the same package type under a common URL."},
+			{Text: Federated, Description: "A Federation is a collection of repositories of Federated type in different JPDs that are automatically configured for full bi-directional mirroring."},
 		},
 		Msg:          "",
 		PromptPrefix: "Select the repository class" + utils.PressTabMsg,

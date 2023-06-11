@@ -1,8 +1,10 @@
 package java
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
@@ -252,6 +254,16 @@ allprojects {
 }
 
 func TestConstructReleasesRemoteRepo(t *testing.T) {
+	cleanUp := testsutils.CreateTempEnv(t, false)
+	serverDetails := &config.ServerDetails{
+		ServerId:       "test",
+		ArtifactoryUrl: "https://domain.com/artifactory",
+		User:           "user",
+		Password:       "pass",
+	}
+	err := config.SaveServersConf([]*config.ServerDetails{serverDetails})
+	assert.NoError(t, err)
+	defer cleanUp()
 	server := &config.ServerDetails{
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		User:           "myuser",
@@ -264,7 +276,8 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 		expectedErr  error
 	}{
 		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: nil},
-		{releasesRepo: "", envVar: "server/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+		{releasesRepo: "", envVar: "test/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://domain.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'user'\n\t\t\t\tpassword = 'pass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+		{releasesRepo: "", envVar: "notexist/repo1", expectedRepo: "", expectedErr: errors.New("Server ID 'notexist' does not exist.")},
 		{releasesRepo: "repo2", envVar: "", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo2/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
 	}
 

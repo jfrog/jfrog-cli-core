@@ -181,17 +181,21 @@ func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails)
 }
 
 func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
+	releasesServer := server
 	if releasesRepo == "" {
 		// Try to get releases repository from the environment variable
-		_, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
-		if err != nil || repoName == "" {
-			return repoName, err
+		serverId, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
+		if err != nil || serverId == "" || repoName == "" {
+			return "", err
+		}
+		releasesServer, err = config.GetSpecificConfig(serverId, false, true)
+		if err != nil {
+			return "", err
 		}
 		releasesRepo = repoName
 	}
-
 	releasesPath := fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath)
-	return getDepTreeArtifactoryRepository(releasesPath, server)
+	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }
 
 func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {

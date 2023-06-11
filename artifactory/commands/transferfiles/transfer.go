@@ -53,7 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
-	locallyGeneratedFilter    *LocallyGeneratedFilter
+	locallyGeneratedFilter    *locallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -569,7 +569,7 @@ func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
 	if err != nil {
 		return err
 	}
-	tdc.locallyGeneratedFilter = NewLocallyGenerated(servicesManager, targetArtifactoryVersion)
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(tdc.context, servicesManager, targetArtifactoryVersion)
 	return err
 }
 

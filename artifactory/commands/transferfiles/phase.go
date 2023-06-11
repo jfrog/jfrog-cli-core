@@ -31,7 +31,7 @@ type transferPhase interface {
 	getPhaseName() string
 	setProgressBar(*TransferProgressMng)
 	setStateManager(stateManager *state.TransferStateManager)
-	setLocallyGeneratedFilter(locallyGeneratedFilter *LocallyGeneratedFilter)
+	setLocallyGeneratedFilter(locallyGeneratedFilter *locallyGeneratedFilter)
 	initProgressBar() error
 	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
@@ -57,7 +57,7 @@ type phaseBase struct {
 	pcDetails                 *producerConsumerWrapper
 	transferManager           *transferManager
 	stateManager              *state.TransferStateManager
-	locallyGeneratedFilter    *LocallyGeneratedFilter
+	locallyGeneratedFilter    *locallyGeneratedFilter
 	stopSignal                chan os.Signal
 }
 
@@ -128,7 +128,7 @@ func (pb *phaseBase) setStateManager(stateManager *state.TransferStateManager) {
 	pb.stateManager = stateManager
 }
 
-func (pb *phaseBase) setLocallyGeneratedFilter(locallyGeneratedFilter *LocallyGeneratedFilter) {
+func (pb *phaseBase) setLocallyGeneratedFilter(locallyGeneratedFilter *locallyGeneratedFilter) {
 	pb.locallyGeneratedFilter = locallyGeneratedFilter
 }
 

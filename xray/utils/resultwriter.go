@@ -190,11 +190,8 @@ func getCves(cvesRow []formats.CveRow, issueId string) string {
 	return cvesStr
 }
 
-func getHeadline(impactedPackage, version, key, fixVersion string) string {
-	if fixVersion != "" {
-		return fmt.Sprintf("[%s] Upgrade %s:%s to %s", key, impactedPackage, version, fixVersion)
-	}
-	return fmt.Sprintf("[%s] %s:%s", key, impactedPackage, version)
+func getHeadline(impactedPackage, version, key string) string {
+	return fmt.Sprintf("[%s] %s %s", key, impactedPackage, version)
 }
 
 func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run, simplifiedOutput bool) error {
@@ -209,8 +206,8 @@ func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run, simp
 		}
 	}
 	for _, license := range jsonTable.LicensesViolations {
-		impactedPackageFull := getHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, "")
-		err := addScanResultsToSarifRun(run, "", license.ImpactedDependencyVersion, impactedPackageFull, license.LicenseKey, coreutils.Technology(strings.ToLower(license.ImpactedDependencyType)))
+		headline := getHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey)
+		err := addScanResultsToSarifRun(run, "", license.ImpactedDependencyVersion, headline, license.LicenseKey, coreutils.Technology(strings.ToLower(license.ImpactedDependencyType)))
 		if err != nil {
 			return err
 		}
@@ -221,17 +218,17 @@ func convertViolations(jsonTable formats.SimpleJsonResults, run *sarif.Run, simp
 
 func getSarifProperties(vulnerabilityRow formats.VulnerabilityOrViolationRow, simplifiedOutput bool) (sarifProperties, error) {
 	cves := getCves(vulnerabilityRow.Cves, vulnerabilityRow.IssueId)
-	fixVersion := getMinimalFixVersion(vulnerabilityRow.FixedVersions)
-	headline := getHeadline(vulnerabilityRow.ImpactedDependencyName, vulnerabilityRow.ImpactedDependencyVersion, cves, fixVersion)
+	headline := getHeadline(vulnerabilityRow.ImpactedDependencyName, vulnerabilityRow.ImpactedDependencyVersion, cves)
 	maxCveScore, err := findMaxCVEScore(vulnerabilityRow.Cves)
 	if err != nil {
 		return sarifProperties{}, err
 	}
 	formattedDirectDependecies := getDirectDependenciesFormatted(vulnerabilityRow.Components)
-	description := vulnerabilityRow.Summary
+	description := ""
 	if simplifiedOutput {
 		description = getDescription(formattedDirectDependecies, maxCveScore, vulnerabilityRow.FixedVersions)
 	}
+	description += "\n" + vulnerabilityRow.Summary
 	return sarifProperties{
 		Cves:        cves,
 		Headline:    headline,
@@ -268,15 +265,8 @@ func getDescription(formattedDirectDependencies, maxCveScore string, fixedVersio
 	if len(fixedVersions) > 0 {
 		descriptionFixVersions = strings.Join(fixedVersions, ", ")
 	}
-	return fmt.Sprintf("| Severity Score | Direct Dependencies | Fixed Versions     |\n| :---        |    :----:   |          ---: |\n| %s      | %s       | %s   |",
+	return fmt.Sprintf("| Severity Score | Direct Dependencies | Fixed Versions     |\n| :---:        |    :----:   |          :---: |\n| %s      | %s       | %s   |",
 		maxCveScore, formattedDirectDependencies, descriptionFixVersions)
-}
-
-func getMinimalFixVersion(fixVersions []string) string {
-	if len(fixVersions) > 0 {
-		return fixVersions[0]
-	}
-	return ""
 }
 
 // Adding the Xray scan results details to the sarif struct, for each issue found in the scan

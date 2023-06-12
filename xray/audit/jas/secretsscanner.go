@@ -46,8 +46,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			cleanupError := cleanupFunc()
-			err = errors.Join(err, cleanupError)
+			err = errors.Join(err, cleanupFunc())
 		}
 	}()
 	if err = secretScanManager.run(); err != nil {
@@ -77,23 +76,20 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager 
 	}, cleanup, nil
 }
 
-func (s *SecretScanManager) run() error {
-	var err error
+func (s *SecretScanManager) run() (err error) {
 	defer func() {
 		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
-			e := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
-			if err == nil {
-				err = e
-			}
+			deleteFilesError := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
+			err = errors.Join(err, deleteFilesError)
 		}
 	}()
 	if err = s.createConfigFile(); err != nil {
-		return err
+		return
 	}
 	if err = s.runAnalyzerManager(); err != nil {
-		return err
+		return
 	}
-	return s.parseResults()
+	return s.setScanResults()
 }
 
 type secretsScanConfig struct {
@@ -110,10 +106,10 @@ type secretsScanConfiguration struct {
 
 func (s *SecretScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
-	s.projectRootPath = currentDir
 	if err != nil {
 		return err
 	}
+	s.projectRootPath = currentDir
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
@@ -140,7 +136,7 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
 }
 
-func (s *SecretScanManager) parseResults() error {
+func (s *SecretScanManager) setScanResults() error {
 	report, err := sarif.Open(s.resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return err

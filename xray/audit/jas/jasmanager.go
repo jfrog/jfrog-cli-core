@@ -33,7 +33,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		return nil, err
 	}
 	if !analyzerManagerExist {
-		log.Debug("analyzer manager doesnt exist, didnt execute analyzer manager")
+		log.Debug("Since the 'Analyzer Manager' doesn't exist locally, its execution is skipped.")
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
 	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
@@ -70,9 +70,8 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 		return err
 	}
 	if exist {
-		err = os.Remove(configFile)
-		if errorutils.CheckError(err) != nil {
-			return err
+		if err = os.Remove(configFile); err != nil {
+			return errorutils.CheckError(err)
 		}
 	}
 	exist, err = fileutils.IsFileExists(resultFile, false)
@@ -81,9 +80,6 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	}
 	if exist {
 		err = os.Remove(resultFile)
-		if errorutils.CheckError(err) != nil {
-			return err
-		}
 	}
-	return nil
+	return errorutils.CheckError(err)
 }

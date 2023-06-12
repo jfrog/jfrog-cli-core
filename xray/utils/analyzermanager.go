@@ -23,7 +23,7 @@ var (
 )
 
 const (
-	EntitlementsMinVersion      = "3.66.5"
+	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
@@ -95,13 +95,11 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 	return fileutils.IsFileExists(analyzerManagerPath, false)
 }
 
-func (am *AnalyzerManager) Exec(configFile string, scanCommand string) error {
-	var err error
+func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err error) {
 	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
-				log.Info(fmt.Sprintf("failed to kill analyzer manager process: %s", killProcessError.Error()))
 				err = errors.Join(err, killProcessError)
 			}
 		}

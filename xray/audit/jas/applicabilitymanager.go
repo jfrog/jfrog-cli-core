@@ -47,8 +47,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			cleanupError := cleanupFunc()
-			err = errors.Join(err, cleanupError)
+			err = errors.Join(err, cleanupFunc())
 		}
 	}()
 	if !applicabilityScanManager.eligibleForApplicabilityScan() {
@@ -182,26 +181,23 @@ func getXrayViolations(xrayScanResults []services.ScanResponse) []services.Viola
 	return xrayViolations
 }
 
-func (a *ApplicabilityScanManager) run() error {
-	var err error
+func (a *ApplicabilityScanManager) run() (err error) {
 	defer func() {
 		if deleteJasProcessFiles(a.configFileName, a.resultsFileName) != nil {
-			e := deleteJasProcessFiles(a.configFileName, a.resultsFileName)
-			if err == nil {
-				err = e
-			}
+			deleteFilesError := deleteJasProcessFiles(a.configFileName, a.resultsFileName)
+			err = errors.Join(err, deleteFilesError)
 		}
 	}()
 	if !a.directDependenciesExist() {
 		return nil
 	}
 	if err = a.createConfigFile(); err != nil {
-		return err
+		return
 	}
 	if err = a.runAnalyzerManager(); err != nil {
-		return err
+		return
 	}
-	return a.parseResults()
+	return a.setScanResults()
 }
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
@@ -256,7 +252,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	return a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
 }
 
-func (a *ApplicabilityScanManager) parseResults() error {
+func (a *ApplicabilityScanManager) setScanResults() error {
 	report, err := sarif.Open(a.resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return err

@@ -11,7 +11,7 @@ import (
 
 var (
 	analyzerManagerExecutionError error = nil
-	analyzerManagerExist                = true
+	analyzerManagerExists               = true
 )
 
 type analyzerManagerMock struct {
@@ -22,7 +22,7 @@ func (am *analyzerManagerMock) Exec(string, string) error {
 }
 
 func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExist, nil
+	return analyzerManagerExists, nil
 }
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -59,7 +59,7 @@ var fakeServerDetails = config.ServerDetails{
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	// Arrange
-	analyzerManagerExist = false
+	analyzerManagerExists = false
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
@@ -70,9 +70,6 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	assert.False(t, extendedResults.EntitledForJas)
 	assert.Equal(t, 1, len(extendedResults.XrayResults))
 	assert.Nil(t, extendedResults.ApplicabilityScanResults)
-
-	// Cleanup
-	analyzerManagerExist = true
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 
 const (
 	iacScannerType        = "iac-scan-modules"
-	iacScanFailureMessage = "failed to run iac scan. Cause: %s"
+	iacScanFailureMessage = "failed to run Infrastructure as Code scan. Cause: %s"
 	iacScanCommand        = "iac"
 )
 
@@ -39,14 +39,13 @@ type IacScanManager struct {
 // error: An error object (if any).
 func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
-	iacScanManager, cleanupFunc, err := newsIacScanManager(serverDetails, analyzerManager)
+	iacScanManager, cleanupFunc, err := newIacScanManager(serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(iacScanFailureMessage, err.Error())
 	}
 	defer func() {
 		if cleanupFunc != nil {
-			cleanupError := cleanupFunc()
-			err = errors.Join(err, cleanupError)
+			err = errors.Join(err, cleanupFunc())
 		}
 	}()
 	if err = iacScanManager.run(); err != nil {
@@ -58,7 +57,7 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	return iacScanManager.iacScannerResults, true, nil
 }
 
-func newsIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
+func newIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
 	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -76,23 +75,20 @@ func newsIacScanManager(serverDetails *config.ServerDetails, analyzerManager uti
 	}, cleanup, nil
 }
 
-func (iac *IacScanManager) run() error {
-	var err error
+func (iac *IacScanManager) run() (err error) {
 	defer func() {
 		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
-			e := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
-			if err == nil {
-				err = e
-			}
+			deleteFilesError := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
+			err = errors.Join(err, deleteFilesError)
 		}
 	}()
 	if err = iac.createConfigFile(); err != nil {
-		return err
+		return
 	}
 	if err = iac.runAnalyzerManager(); err != nil {
-		return err
+		return
 	}
-	return iac.parseResults()
+	return iac.setScanResults()
 }
 
 type iacScanConfig struct {
@@ -108,10 +104,10 @@ type iacScanConfiguration struct {
 
 func (iac *IacScanManager) createConfigFile() error {
 	currentDir, err := coreutils.GetWorkingDirectory()
-	iac.projectRootPath = currentDir
 	if err != nil {
 		return err
 	}
+	iac.projectRootPath = currentDir
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
@@ -137,7 +133,7 @@ func (iac *IacScanManager) runAnalyzerManager() error {
 	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
 }
 
-func (iac *IacScanManager) parseResults() error {
+func (iac *IacScanManager) setScanResults() error {
 	report, err := sarif.Open(iac.resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return err

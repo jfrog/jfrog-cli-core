@@ -97,17 +97,14 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 		return
 	}
 	if includeLicenses {
-		err = PrintLicensesTable(licenses, printExtended, scan)
+		if err = PrintLicensesTable(licenses, printExtended, scan); err != nil {
+			return
+		}
 	}
-	if err != nil {
+	if err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan); err != nil {
 		return
 	}
-	err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan)
-	if err != nil {
-		return
-	}
-	err = PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
-	return
+	return PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
 }
 
 func printMessages(messages []string) {

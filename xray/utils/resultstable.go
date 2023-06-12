@@ -460,19 +460,19 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[string]*Severity{
 	"Critical": {
-		ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 8, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
 		NotApplicableStringValue: {emoji: "👌", title: "Critical", numValue: 4},
 	},
 	"High": {
-		ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 7, style: color.New(color.Red)},
+		ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
 		NotApplicableStringValue: {emoji: "👌", title: "High", numValue: 3},
 	},
 	"Medium": {
-		ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 6, style: color.New(color.Yellow)},
+		ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
 		NotApplicableStringValue: {emoji: "👌", title: "Medium", numValue: 2},
 	},
 	"Low": {
-		ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 5},
+		ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 1},
 		NotApplicableStringValue: {emoji: "👌", title: "Low", numValue: 1},
 	},
 }

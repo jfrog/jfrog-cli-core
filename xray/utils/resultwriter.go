@@ -97,9 +97,14 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 		return
 	}
 	if includeLicenses {
-		err = PrintLicensesTable(licenses, printExtended, scan)
+		if err = PrintLicensesTable(licenses, printExtended, scan); err != nil {
+			return
+		}
 	}
-	return
+	if err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan); err != nil {
+		return
+	}
+	return PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
 }
 
 func printMessages(messages []string) {
@@ -149,7 +154,14 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-
+	if len(extendedResults.SecretsScanResults) > 0 {
+		secretsRows := PrepareSecrets(extendedResults.SecretsScanResults)
+		jsonTable.Secrets = secretsRows
+	}
+	if len(extendedResults.IacScanResults) > 0 {
+		iacRows := PrepareIacs(extendedResults.IacScanResults)
+		jsonTable.Iacs = iacRows
+	}
 	if includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)
 		if err != nil {

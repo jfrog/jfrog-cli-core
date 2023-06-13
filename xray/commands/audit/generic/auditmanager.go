@@ -160,6 +160,8 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 	} else {
 		entitled = false
 		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
+		// We don't want to return an error if the Xray version is lower than the EntitlementsMinVersion.
+		err = nil
 	}
 	return
 }

@@ -1,11 +1,11 @@
 package audit
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -135,10 +135,10 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if err = errGroup.Wait(); err != nil {
 		return err
 	}
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScannerResults: nil, EntitledForJas: false}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScanResults: nil, EntitledForJas: false}
 	// Try to run contextual analysis only if the user is entitled for advance security
 	if entitled {
-		extendedScanResults, err = audit.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
+		extendedScanResults, err = jas.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
 		if err != nil {
 			return err
 		}

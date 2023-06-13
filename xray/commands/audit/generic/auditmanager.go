@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	auditcmd "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
@@ -136,7 +136,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
 	// Try to run contextual analysis only if the user is entitled for advance security
 	if isEntitled {
-		extendedScanResults, err = auditcmd.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
+		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
 		if err != nil {
 			return
 		}

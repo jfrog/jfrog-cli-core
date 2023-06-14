@@ -205,6 +205,13 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			repoName:      "",
 			err:           nil,
 		},
+		{
+			serverAndRepo: "myServer/my/Repo",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "myServer",
+			repoName:      "my/Repo",
+			err:           nil,
+		},
 	}
 	for _, test := range tests {
 		func() {
@@ -215,6 +222,7 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			serverID, repoName, err := GetServerIdAndRepo(test.remoteEnv)
 			if err != nil {
 				assert.Equal(t, test.err.Error(), err.Error())
+				return
 			}
 			// Assert the results
 			assert.Equal(t, test.serverID, serverID)

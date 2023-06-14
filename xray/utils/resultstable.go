@@ -282,6 +282,80 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
+// Prepare secrets for all non-table formats (without style or emoji)
+func PrepareSecrets(secrets []IacOrSecretResult) []formats.IacSecretsRow {
+	return prepareSecrets(secrets, false)
+}
+
+func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+	var secretsRows []formats.IacSecretsRow
+	for _, secret := range secrets {
+		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
+		secretsRows = append(secretsRows,
+			formats.IacSecretsRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				File:             secret.File,
+				LineColumn:       secret.LineColumn,
+				Text:             secret.Text,
+				Type:             secret.Type,
+			},
+		)
+	}
+
+	sort.Slice(secretsRows, func(i, j int) bool {
+		return secretsRows[i].SeverityNumValue > secretsRows[j].SeverityNumValue
+	})
+
+	return secretsRows
+}
+
+func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
+	if entitledForSecretsScan {
+		secretsRows := prepareSecrets(secrets, true)
+		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
+			"✨ No secrets were found ✨", false)
+	}
+	return nil
+}
+
+// Prepare iacs for all non-table formats (without style or emoji)
+func PrepareIacs(iacs []IacOrSecretResult) []formats.IacSecretsRow {
+	return prepareIacs(iacs, false)
+}
+
+func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+	var iacRows []formats.IacSecretsRow
+	for _, iac := range iacs {
+		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
+		iacRows = append(iacRows,
+			formats.IacSecretsRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				File:             iac.File,
+				LineColumn:       iac.LineColumn,
+				Text:             iac.Text,
+				Type:             iac.Type,
+			},
+		)
+	}
+
+	sort.Slice(iacRows, func(i, j int) bool {
+		return iacRows[i].SeverityNumValue > iacRows[j].SeverityNumValue
+	})
+
+	return iacRows
+}
+
+func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
+	if entitledForIacScan {
+		iacRows := prepareIacs(iacs, true)
+		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Iac Violations",
+			"✨ No Iac violations were found ✨", false)
+	}
+	return nil
+}
+
 func convertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
@@ -730,7 +804,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	cveExistsInResult := false
 	finalApplicableValue := NotApplicableStringValue
 	for _, cve := range xrayCves {
-		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScannerResults[cve.Id]; exists {
+		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
 			cveExistsInResult = true
 			if currentCveApplicableValue == ApplicableStringValue {
 				return currentCveApplicableValue

@@ -140,6 +140,32 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 	return
 }
 
+func ConvertToSecretsTableRow(rows []IacSecretsRow) (tableRows []secretsTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, secretsTableRow{
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: rows[i].LineColumn,
+			text:       rows[i].Text,
+			secretType: rows[i].Type,
+		})
+	}
+	return
+}
+
+func ConvertToIacTableRow(rows []IacSecretsRow) (tableRows []iacTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, iacTableRow{
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: rows[i].LineColumn,
+			text:       rows[i].Text,
+			iacType:    rows[i].Type,
+		})
+	}
+	return
+}
+
 func convertToComponentTableRow(rows []ComponentRow) (tableRows []directDependenciesTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, directDependenciesTableRow{

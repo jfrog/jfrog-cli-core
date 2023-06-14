@@ -29,7 +29,7 @@ const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 10000
+	retries                      = 600
 	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
 )

@@ -436,28 +436,28 @@ func TestGetApplicableCveValue(t *testing.T) {
 	}{
 		{scanResults: &ExtendedScanResults{EntitledForJas: false}, expectedResult: ""},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
+			EntitledForJas:           true},
 			cves: nil, expectedResult: ApplicabilityUndeterminedStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve2"}}, expectedResult: ApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve3"}}, expectedResult: ApplicabilityUndeterminedStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
+			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: NotApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScannerResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
-			EntitledForJas:              true},
+			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
+			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
 	}
 

@@ -576,7 +576,7 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
 	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	if !seperatorExists {
+	if !seperatorExists || repoName == "" || serverID == "" {
 		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
 	return

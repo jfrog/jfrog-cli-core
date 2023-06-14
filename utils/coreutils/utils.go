@@ -574,7 +574,7 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		return "", "", nil
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
+	lastSlashIndex := strings.Index(serverAndRepo, "/")
 	// Check that the format is valid
 	invalidFormat := lastSlashIndex == -1 || lastSlashIndex == len(serverAndRepo)-1 || lastSlashIndex == 0
 	if invalidFormat {

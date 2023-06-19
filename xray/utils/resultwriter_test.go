@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
+	"path"
 	"testing"
 )
 
@@ -115,7 +117,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 			name: "Infrastructure as Code vulnerability without markdown output",
 			secretOrIac: formats.IacSecretsRow{
 				Severity:   "high",
-				File:       "/path/to/file",
+				File:       path.Join("path", "to", "file"),
 				LineColumn: "10:5",
 				Text:       "Vulnerable code",
 				Type:       "Terraform",
@@ -130,7 +132,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 				Description:         "Vulnerable code",
 				MarkdownDescription: "",
 				XrayID:              "",
-				File:                "path/to/file",
+				File:                path.Join("path", "to", "file"),
 				LineColumn:          "10:5",
 				SecretsOrIacType:    "Terraform",
 			},
@@ -139,7 +141,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 			name: "Potential secret exposed with markdown output",
 			secretOrIac: formats.IacSecretsRow{
 				Severity:   "medium",
-				File:       "/path/to/file",
+				File:       path.Join("path", "to", "file"),
 				LineColumn: "5:3",
 				Text:       "Potential secret",
 				Type:       "AWS Secret Manager",
@@ -152,9 +154,9 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 				Headline:            "Potential Secret Exposed",
 				Severity:            "6.9",
 				Description:         "Potential secret",
-				MarkdownDescription: "| Severity | File | Line:Column | Secret | Type |\n| :---: | :---: | :---: | :---: | :---: |\n| medium | path/to/file | 5:3 | Potential secret | AWS Secret Manager |",
+				MarkdownDescription: fmt.Sprintf("| Severity | File | Line:Column | Secret | Type |\n| :---: | :---: | :---: | :---: | :---: |\n| medium | %s | 5:3 | Potential secret | AWS Secret Manager |", path.Join("path", "to", "file")),
 				XrayID:              "",
-				File:                "path/to/file",
+				File:                path.Join("path", "to", "file"),
 				LineColumn:          "5:3",
 				SecretsOrIacType:    "AWS Secret Manager",
 			},

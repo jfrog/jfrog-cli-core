@@ -39,11 +39,11 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
 		return nil, err
 	}
-	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
-		dependencyTrees, serverDetails, analyzerManagerExecuter)
-	if err != nil {
-		return nil, err
-	}
+	//applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
+	//	dependencyTrees, serverDetails, analyzerManagerExecuter)
+	//if err != nil {
+	//	return nil, err
+	//}
 	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
@@ -53,14 +53,13 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		return nil, err
 	}
 	return &utils.ExtendedScanResults{
-		XrayResults:                  xrayResults,
-		ApplicabilityScanResults:     applicabilityScanResults,
-		SecretsScanResults:           secretsScanResults,
-		IacScanResults:               iacScanResults,
-		EntitledForJas:               true,
-		EligibleForApplicabilityScan: eligibleForApplicabilityScan,
-		EligibleForSecretScan:        eligibleForSecretsScan,
-		EligibleForIacScan:           eligibleForIacScan,
+		XrayResults:              xrayResults,
+		ApplicabilityScanResults: nil,
+		SecretsScanResults:       secretsScanResults,
+		IacScanResults:           iacScanResults,
+		EntitledForJas:           true,
+		EligibleForSecretScan:    eligibleForSecretsScan,
+		EligibleForIacScan:       eligibleForIacScan,
 	}, nil
 }
 

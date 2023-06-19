@@ -350,8 +350,8 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
-		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Iac Violations",
-			"✨ No Iac violations were found ✨", false)
+		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
+			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}
 	return nil
 }

@@ -18,7 +18,7 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
+func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {

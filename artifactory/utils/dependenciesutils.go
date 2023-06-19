@@ -179,7 +179,7 @@ func getFullExtractorsPathInArtifactory(repoName, remoteEnv, downloadPath string
 // targetPath: The local download path (without the file name).
 func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPath string, shouldExplode bool) (err error) {
 	downloadUrl := artDetails.ArtifactoryUrl + downloadPath
-	log.Info("Downloading JFrog's Dependency from ", downloadUrl)
+	log.Info("Downloading JFrog's Dependency from", downloadUrl)
 	filename, localDir := fileutils.GetFileAndDirFromPath(targetPath)
 	tempDirPath, err := fileutils.CreateTempDir()
 	if err != nil {

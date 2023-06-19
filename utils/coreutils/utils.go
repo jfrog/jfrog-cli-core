@@ -574,13 +574,10 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		return "", "", nil
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
+	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	invalidFormat := lastSlashIndex == -1 || lastSlashIndex == len(serverAndRepo)-1 || lastSlashIndex == 0
-	if invalidFormat {
-		return "", "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
+	if !seperatorExists || repoName == "" || serverID == "" {
+		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
-	serverID = serverAndRepo[:lastSlashIndex]
-	repoName = serverAndRepo[lastSlashIndex+1:]
 	return
 }

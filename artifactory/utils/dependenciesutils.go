@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 const (
@@ -38,50 +39,50 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 // Download the latest AnalyzerManager executable if not cached locally.
 // By default, the zip is downloaded directly from jfrog releases.
 func DownloadAnalyzerManagerIfNeeded() error {
-	//downloadPath, err := xrayutils.GetAnalyzerManagerDownloadPath()
-	//if err != nil {
-	//	return err
-	//}
-	//artDetails, remotePath, err := getAnalyzerManagerRemoteDetails(downloadPath)
-	//if err != nil {
-	//	return err
-	//}
-	//// Check if the AnalyzerManager should be downloaded.
-	//// First get the latest AnalyzerManager checksum from Artifactory.
-	//client, httpClientDetails, err := createHttpClient(artDetails)
-	//if err != nil {
-	//	return err
-	//}
-	//downloadUrl := artDetails.ArtifactoryUrl + remotePath
-	//remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
-	//if err != nil {
-	//	return err
-	//}
+	downloadPath, err := xrayutils.GetAnalyzerManagerDownloadPath()
+	if err != nil {
+		return err
+	}
+	artDetails, remotePath, err := getAnalyzerManagerRemoteDetails(downloadPath)
+	if err != nil {
+		return err
+	}
+	// Check if the AnalyzerManager should be downloaded.
+	// First get the latest AnalyzerManager checksum from Artifactory.
+	client, httpClientDetails, err := createHttpClient(artDetails)
+	if err != nil {
+		return err
+	}
+	downloadUrl := artDetails.ArtifactoryUrl + remotePath
+	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
+	if err != nil {
+		return err
+	}
 	analyzerManagerDir, err := xrayutils.GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return err
 	}
-	//// Find current AnalyzerManager checksum.
-	//checksumFilePath := filepath.Join(analyzerManagerDir, ChecksumFileName)
-	//exist, err := fileutils.IsFileExists(checksumFilePath, false)
-	//if err != nil {
-	//	return err
-	//}
-	//if exist {
-	//	sha2, err := fileutils.ReadFile(checksumFilePath)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// If the checksums are identical, there's no need to download.
-	//	if remoteFileDetails.Checksum.Sha256 == string(sha2) {
-	//		return nil
-	//	}
-	//}
+	// Find current AnalyzerManager checksum.
+	checksumFilePath := filepath.Join(analyzerManagerDir, ChecksumFileName)
+	exist, err := fileutils.IsFileExists(checksumFilePath, false)
+	if err != nil {
+		return err
+	}
+	if exist {
+		sha2, err := fileutils.ReadFile(checksumFilePath)
+		if err != nil {
+			return err
+		}
+		// If the checksums are identical, there's no need to download.
+		if remoteFileDetails.Checksum.Sha256 == string(sha2) {
+			return nil
+		}
+	}
 	// Download & unzip the analyzer manager files
-	//log.Info("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
-	//if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
-	//	return err
-	//}
+	log.Info("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
+	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
+		return err
+	}
 	// Add permission for all unzipped files
 	filesList, err := fileutils.ListFilesRecursiveWalkIntoDirSymlink(analyzerManagerDir, false)
 	if err != nil {
@@ -93,8 +94,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 		}
 	}
 
-	return nil
-	//return createChecksumFile(checksumFilePath, remoteFileDetails.Checksum.Sha256)
+	return createChecksumFile(checksumFilePath, remoteFileDetails.Checksum.Sha256)
 }
 
 func createChecksumFile(targetPath, checksum string) (err error) {

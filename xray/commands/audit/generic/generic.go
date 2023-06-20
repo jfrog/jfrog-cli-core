@@ -19,6 +19,7 @@ type GenericAuditCommand struct {
 	projectKey             string
 	targetRepoPath         string
 	minSeverityFilter      string
+	jasSkipFolders         string
 	fixableOnly            bool
 	IncludeVulnerabilities bool
 	IncludeLicenses        bool
@@ -81,6 +82,11 @@ func (auditCmd *GenericAuditCommand) SetFixableOnly(fixable bool) *GenericAuditC
 	return auditCmd
 }
 
+func (auditCmd *GenericAuditCommand) SetJasSkipFolders(skippedFolders string) *GenericAuditCommand {
+	auditCmd.jasSkipFolders = skippedFolders
+	return auditCmd
+}
+
 func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
 	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
@@ -138,7 +144,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: results, ApplicabilityScanResults: nil, EntitledForJas: false}
 	// Try to run contextual analysis only if the user is entitled for advance security
 	if entitled {
-		extendedScanResults, err = jas.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails)
+		extendedScanResults, err = jas.GetExtendedScanResults(results, auditParams.FullDependenciesTree(), serverDetails, auditCmd.jasSkipFolders)
 		if err != nil {
 			return err
 		}

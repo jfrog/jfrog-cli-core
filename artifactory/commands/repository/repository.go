@@ -88,6 +88,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	ExcludePatterns:                   utils.WriteStringAnswer,
 	RepoLayoutRef:                     utils.WriteStringAnswer,
 	ProjectKey:                        utils.WriteStringAnswer,
+	Environments:                      utils.WriteStringArrayAnswer,
 	HandleReleases:                    utils.WriteBoolAnswer,
 	HandleSnapshots:                   utils.WriteBoolAnswer,
 	MaxUniqueSnapshots:                utils.WriteIntAnswer,
@@ -221,7 +222,7 @@ var localRepoHandlers = map[string]repoHandler{
 	Pypi:      localPypiHandler,
 	Docker:    localDockerHandler,
 	Vagrant:   localVagrantHandler,
-	Gitlfs:    localGitlfsHandler,
+	Gitlfs:    localGitLfsHandler,
 	Go:        localGoHandler,
 	Yum:       localYumHandler,
 	Conan:     localConanHandler,
@@ -483,7 +484,7 @@ func localVagrantHandler(servicesManager artifactory.ArtifactoryServicesManager,
 	return err
 }
 
-func localGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+func localGitLfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGitlfsLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
 	if errorutils.CheckError(err) != nil {
@@ -612,9 +613,9 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Bower:     remoteBowerHandler,
 	Debian:    remoteDebianHandler,
 	Composer:  remoteComposerHandler,
-	Pypi:      remotelPypiHandler,
+	Pypi:      remotePypiHandler,
 	Docker:    remoteDockerHandler,
-	Gitlfs:    remoteGitlfsHandler,
+	Gitlfs:    remoteGitLfsHandler,
 	Go:        remoteGoHandler,
 	Yum:       remoteYumHandler,
 	Conan:     remoteConanHandler,
@@ -837,7 +838,7 @@ func remoteComposerHandler(servicesManager artifactory.ArtifactoryServicesManage
 	return err
 }
 
-func remotelPypiHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+func remotePypiHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewPypiRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
 	if errorutils.CheckError(err) != nil {
@@ -865,7 +866,7 @@ func remoteDockerHandler(servicesManager artifactory.ArtifactoryServicesManager,
 	return err
 }
 
-func remoteGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+func remoteGitLfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGitlfsRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
 	if errorutils.CheckError(err) != nil {
@@ -1038,7 +1039,7 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Pypi:      federatedPypiHandler,
 	Docker:    federatedDockerHandler,
 	Vagrant:   federatedVagrantHandler,
-	Gitlfs:    federatedGitlfsHandler,
+	Gitlfs:    federatedGitLfsHandler,
 	Go:        federatedGoHandler,
 	Conan:     federatedConanHandler,
 	Chef:      federatedChefHandler,
@@ -1264,7 +1265,7 @@ func federatedVagrantHandler(servicesManager artifactory.ArtifactoryServicesMana
 	return servicesManager.CreateFederatedRepository().Vagrant(params)
 }
 
-func federatedGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+func federatedGitLfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGitlfsFederatedRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
 	if errorutils.CheckError(err) != nil {
@@ -1364,7 +1365,7 @@ var virtualRepoHandlers = map[string]repoHandler{
 	Debian:  virtualDebianHandler,
 	Pypi:    virtualPypiHandler,
 	Docker:  virtualDockerHandler,
-	Gitlfs:  virtualGitlfsHandler,
+	Gitlfs:  virtualGitLfsHandler,
 	Go:      virtualGoHandler,
 	Yum:     virtualYumHandler,
 	Conan:   virtualConanHandler,
@@ -1572,7 +1573,7 @@ func virtualDockerHandler(servicesManager artifactory.ArtifactoryServicesManager
 	return err
 }
 
-func virtualGitlfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+func virtualGitLfsHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGitlfsVirtualRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
 	if errorutils.CheckError(err) != nil {

@@ -555,6 +555,10 @@ func (s *Severity) NumValue() int {
 	return s.numValue
 }
 
+func (s *Severity) Emoji() string {
+	return s.emoji
+}
+
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
 	if formattedSeverity != "" && Severities[formattedSeverity][ApplicableStringValue] == nil {
@@ -635,11 +639,13 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 				continue
 			}
 			uniqueVulnerabilities[packageKey] = &services.Vulnerability{
-				Cves:       vulnerability.Cves,
-				Severity:   vulnerability.Severity,
-				Components: map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
-				IssueId:    vulnerability.IssueId,
-				Technology: vulnerability.Technology,
+				Cves:                vulnerability.Cves,
+				Severity:            vulnerability.Severity,
+				Components:          map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
+				IssueId:             vulnerability.IssueId,
+				Technology:          vulnerability.Technology,
+				ExtendedInformation: vulnerability.ExtendedInformation,
+				Summary:             vulnerability.Summary,
 			}
 		}
 	}
@@ -793,7 +799,7 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
-// Else (case when all cves are not applicable) -> final value is not applicable
+// Else (case when all cves aren't applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
 	if !extendedResults.EntitledForJas {
 		return ""

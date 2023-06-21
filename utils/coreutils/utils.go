@@ -44,7 +44,8 @@ const (
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 	// JFrog releases URL
-	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
+	JfrogReleasesUrl  = "https://releases.jfrog.io/artifactory/"
+	MinimumVersionMsg = "You are using %s version %s, while this operation requires version %s or higher."
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -560,9 +561,7 @@ func GetJfrogTransferDir() (string, error) {
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {
 	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
-		return errorutils.CheckErrorf(fmt.Sprintf("You are using %s version %s,"+
-			" while this operation requires version %s or higher.",
-			product, currentVersion, minimumVersion))
+		return errorutils.CheckErrorf(MinimumVersionMsg, product, currentVersion, minimumVersion)
 	}
 	return nil
 }

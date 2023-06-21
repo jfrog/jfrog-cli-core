@@ -3,6 +3,7 @@ package audit
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
 	"golang.org/x/sync/errgroup"
@@ -154,15 +155,12 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 	if err != nil {
 		return
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
-	if err == nil {
-		entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
-	} else {
-		entitled = false
-		log.Debug("Entitlements check for ‘Advanced Security’ package failed:\n" + err.Error())
-		// We don't want to return an error if the Xray version is lower than the EntitlementsMinVersion.
-		err = nil
+	if !version.NewVersion(xrayVersion).AtLeast(clientUtils.EntitlementsMinVersion) {
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
+		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
+		return
 	}
+	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
 	return
 }
 

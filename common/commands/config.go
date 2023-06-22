@@ -37,7 +37,7 @@ const (
 	AccessToken AuthenticationMethod = "Access Token"
 	BasicAuth   AuthenticationMethod = "Username and Password / API Key"
 	MTLS        AuthenticationMethod = "Mutual TLS"
-	WebLogin    AuthenticationMethod = "Web Login (Available for Artifactory 7.57.0 and above)"
+	WebLogin    AuthenticationMethod = "Web Login"
 )
 
 // Internal golang locking for the same process.

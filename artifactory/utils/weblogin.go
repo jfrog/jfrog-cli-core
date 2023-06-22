@@ -36,10 +36,14 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	time.Sleep(1 * time.Second)
 	log.Info("Attempting to get the authentication token...")
 	token, err = accessManager.GetLoginAuthenticationToken(uuidStr)
-	if err != nil || token.AccessToken != "" {
+	if err != nil {
 		return
 	}
-	return token, errorutils.CheckErrorf("failed getting authentication token after web log")
+	if token.AccessToken == "" {
+		return token, errorutils.CheckErrorf("failed getting authentication token after web log")
+	}
+	log.Info("Received token from platform!")
+	return
 }
 
 func sendUnauthenticatedPing(serverDetails *config.ServerDetails) error {

@@ -113,7 +113,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 
 	paginationI := 0
 	for {
-		result, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
+		result, lastPage, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			return err
 		}
 
-		if len(result) < AqlPaginationLimit {
+		if lastPage {
 			break
 		}
 		paginationI++
@@ -177,7 +177,7 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 // fromTimestamp - Time in RFC3339 represents the start time
 // toTimestamp - Time in RFC3339 represents the end time
 // paginationOffset - Requested page
-func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
+func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
 	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {
 		// Handle Docker repositories.
@@ -187,9 +187,11 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string
 		timeFrameFilesDiff, err = f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 	}
 	if err != nil {
-		return []servicesUtils.ResultItem{}, err
+		return []servicesUtils.ResultItem{}, true, err
 	}
-	return f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
+	lastPage = len(timeFrameFilesDiff.Results) < AqlPaginationLimit
+	result, err = f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
+	return
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {

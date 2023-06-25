@@ -282,17 +282,15 @@ func convertViolationsToSarif(jsonTable *formats.SimpleJsonResults, run *sarif.R
 		if err != nil {
 			return err
 		}
-		err = addPropertiesToSarifRun(run, &properties)
-		if err != nil {
+		if err = addPropertiesToSarifRun(run, &properties); err != nil {
 			return err
 		}
 	}
 	for _, license := range jsonTable.LicensesViolations {
-		err := addPropertiesToSarifRun(run,
+		if err := addPropertiesToSarifRun(run,
 			&sarifProperties{
 				Severity: license.Severity,
-				Headline: getVulnerabilityOrViolationSarifHeadline(license.LicenseKey, license.ImpactedDependencyName, license.ImpactedDependencyVersion)})
-		if err != nil {
+				Headline: getVulnerabilityOrViolationSarifHeadline(license.LicenseKey, license.ImpactedDependencyName, license.ImpactedDependencyVersion)}); err != nil {
 			return err
 		}
 	}
@@ -307,7 +305,10 @@ func getViolatedDepsSarifProps(vulnerabilityRow formats.VulnerabilityOrViolation
 	if err != nil {
 		return sarifProperties{}, err
 	}
-	formattedDirectDependencies := getDirectDependenciesFormatted(vulnerabilityRow.Components)
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(vulnerabilityRow.Components)
+	if err != nil {
+		return sarifProperties{}, err
+	}
 	markdownDescription := ""
 	if markdownOutput {
 		markdownDescription = getSarifTableDescription(formattedDirectDependencies, maxCveScore, vulnerabilityRow.Applicable, vulnerabilityRow.FixedVersions) + "\n"
@@ -329,8 +330,7 @@ func convertVulnerabilitiesToSarif(jsonTable *formats.SimpleJsonResults, run *sa
 		if err != nil {
 			return err
 		}
-		err = addPropertiesToSarifRun(run, &properties)
-		if err != nil {
+		if err = addPropertiesToSarifRun(run, &properties); err != nil {
 			return err
 		}
 	}
@@ -338,12 +338,14 @@ func convertVulnerabilitiesToSarif(jsonTable *formats.SimpleJsonResults, run *sa
 	return nil
 }
 
-func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) string {
+func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) (string, error) {
 	var formattedDirectDependencies strings.Builder
 	for _, dependency := range directDependencies {
-		formattedDirectDependencies.WriteString(fmt.Sprintf("`%s %s`<br/>", dependency.Name, dependency.Version))
+		if _, err := formattedDirectDependencies.WriteString(fmt.Sprintf("`%s %s`<br/>", dependency.Name, dependency.Version)); err != nil {
+			return "", err
+		}
 	}
-	return strings.TrimSuffix(formattedDirectDependencies.String(), "<br/>")
+	return strings.TrimSuffix(formattedDirectDependencies.String(), "<br/>"), nil
 }
 
 func getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable string, fixedVersions []string) string {

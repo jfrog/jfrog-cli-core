@@ -153,14 +153,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 	}
 
 	// Sort the rows by severity and whether the row contains fixed versions
-	sort.Slice(securityViolationsRows, func(i, j int) bool {
-		if securityViolationsRows[i].SeverityNumValue != securityViolationsRows[j].SeverityNumValue {
-			return securityViolationsRows[i].SeverityNumValue > securityViolationsRows[j].SeverityNumValue
-		} else if securityViolationsRows[i].Applicable != securityViolationsRows[j].Applicable {
-			return sortByApplicableValue(i, j, securityViolationsRows)
-		}
-		return len(securityViolationsRows[i].FixedVersions) > 0 && len(securityViolationsRows[j].FixedVersions) > 0
-	})
+	sortVulnerabilityOrViolationRows(securityViolationsRows)
 	sort.Slice(licenseViolationsRows, func(i, j int) bool {
 		return licenseViolationsRows[i].SeverityNumValue > licenseViolationsRows[j].SeverityNumValue
 	})
@@ -231,15 +224,17 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 	}
 
-	sort.Slice(vulnerabilitiesRows, func(i, j int) bool {
-		if vulnerabilitiesRows[i].SeverityNumValue != vulnerabilitiesRows[j].SeverityNumValue {
-			return vulnerabilitiesRows[i].SeverityNumValue > vulnerabilitiesRows[j].SeverityNumValue
-		} else if vulnerabilitiesRows[i].Applicable != vulnerabilitiesRows[j].Applicable {
-			sortByApplicableValue(i, j, vulnerabilitiesRows)
-		}
-		return len(vulnerabilitiesRows[i].FixedVersions) > 0 && len(vulnerabilitiesRows[j].FixedVersions) > 0
-	})
+	sortVulnerabilityOrViolationRows(vulnerabilitiesRows)
 	return vulnerabilitiesRows, nil
+}
+
+func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow) {
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].SeverityNumValue != rows[j].SeverityNumValue {
+			return rows[i].SeverityNumValue > rows[j].SeverityNumValue
+		}
+		return len(rows[i].FixedVersions) > 0 && len(rows[j].FixedVersions) > 0
+	})
 }
 
 // PrintLicensesTable prints the licenses in a table.
@@ -534,20 +529,24 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[string]*Severity{
 	"Critical": {
-		ApplicableStringValue:    {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue: {emoji: "👌", title: "Critical", numValue: 4},
+		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicableStringValue:             {emoji: "👌", title: "Critical", numValue: 10},
 	},
 	"High": {
-		ApplicableStringValue:    {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Red)},
-		NotApplicableStringValue: {emoji: "👌", title: "High", numValue: 3},
+		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 8, style: color.New(color.Red)},
+		NotApplicableStringValue:             {emoji: "👌", title: "High", numValue: 7},
 	},
 	"Medium": {
-		ApplicableStringValue:    {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Yellow)},
-		NotApplicableStringValue: {emoji: "👌", title: "Medium", numValue: 2},
+		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 6, style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 5, style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {emoji: "👌", title: "Medium", numValue: 4},
 	},
 	"Low": {
-		ApplicableStringValue:    {emoji: "👻", title: "Low", numValue: 1},
-		NotApplicableStringValue: {emoji: "👌", title: "Low", numValue: 1},
+		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 3},
+		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 2},
+		NotApplicableStringValue:             {emoji: "👌", title: "Low", numValue: 1},
 	},
 }
 
@@ -572,10 +571,15 @@ func GetSeverity(severityTitle string, applicable string) *Severity {
 	if Severities[severityTitle] == nil {
 		return &Severity{title: severityTitle}
 	}
-	if applicable == NotApplicableStringValue {
+
+	switch applicable {
+	case NotApplicableStringValue:
 		return Severities[severityTitle][NotApplicableStringValue]
+	case ApplicableStringValue:
+		return Severities[severityTitle][ApplicableStringValue]
+	default:
+		return Severities[severityTitle][ApplicabilityUndeterminedStringValue]
 	}
-	return Severities[severityTitle][ApplicableStringValue]
 }
 
 type operationalRiskViolationReadableData struct {
@@ -825,24 +829,10 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndeterminedStringValue
 }
 
-func getApplicableCveNumValue(stringValue string) int {
-	if stringValue == ApplicableStringValue {
-		return 3
-	} else if stringValue == ApplicabilityUndeterminedStringValue {
-		return 2
-	}
-	return 1
-}
-
 func printApplicableCveValue(applicableValue string, isTable bool) string {
 	if applicableValue == ApplicableStringValue && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() ||
 		os.Getenv("GITLAB_CI") != "") {
 		return color.New(color.Red).Render(ApplicableStringValue)
 	}
 	return applicableValue
-}
-
-func sortByApplicableValue(i int, j int, securityViolationsRows []formats.VulnerabilityOrViolationRow) bool {
-	return getApplicableCveNumValue(securityViolationsRows[i].Applicable) >
-		getApplicableCveNumValue(securityViolationsRows[j].Applicable)
 }

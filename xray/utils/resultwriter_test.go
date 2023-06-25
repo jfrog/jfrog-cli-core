@@ -286,7 +286,8 @@ func TestGetDirectDependenciesFormatted(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output := getDirectDependenciesFormatted(tc.directDeps)
+			output, err := getDirectDependenciesFormatted(tc.directDeps)
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedOutput, output)
 		})
 	}

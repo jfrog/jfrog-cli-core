@@ -1,6 +1,7 @@
 package mvnutils
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,17 +15,72 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *utils.BuildConfiguration, goals []string, threads int, insecureTls, disableDeploy bool) error {
+type MvnUtils struct {
+	vConfig                   *viper.Viper
+	buildConf                 *utils.BuildConfiguration
+	buildArtifactsDetailsFile string
+	goals                     []string
+	threads                   int
+	insecureTls               bool
+	disableDeploy             bool
+	outputWriter              io.Writer
+}
+
+func NewMvnUtils() *MvnUtils {
+	return &MvnUtils{buildConf: &utils.BuildConfiguration{}}
+}
+
+func (mu *MvnUtils) SetBuildConf(buildConf *utils.BuildConfiguration) *MvnUtils {
+	mu.buildConf = buildConf
+	return mu
+}
+
+func (mu *MvnUtils) SetBuildArtifactsDetailsFile(buildArtifactsDetailsFile string) *MvnUtils {
+	mu.buildArtifactsDetailsFile = buildArtifactsDetailsFile
+	return mu
+}
+
+func (mu *MvnUtils) SetGoals(goals []string) *MvnUtils {
+	mu.goals = goals
+	return mu
+}
+
+func (mu *MvnUtils) SetThreads(threads int) *MvnUtils {
+	mu.threads = threads
+	return mu
+}
+
+func (mu *MvnUtils) SetInsecureTls(insecureTls bool) *MvnUtils {
+	mu.insecureTls = insecureTls
+	return mu
+}
+
+func (mu *MvnUtils) SetDisableDeploy(disableDeploy bool) *MvnUtils {
+	mu.disableDeploy = disableDeploy
+	return mu
+}
+
+func (mu *MvnUtils) SetConfig(vConfig *viper.Viper) *MvnUtils {
+	mu.vConfig = vConfig
+	return mu
+}
+
+func (mu *MvnUtils) SetOutputWriter(writer io.Writer) *MvnUtils {
+	mu.outputWriter = writer
+	return mu
+}
+
+func RunMvn(mu *MvnUtils) error {
 	buildInfoService := utils.CreateBuildInfoService()
-	buildName, err := buildConf.GetBuildName()
+	buildName, err := mu.buildConf.GetBuildName()
 	if err != nil {
 		return err
 	}
-	buildNumber, err := buildConf.GetBuildNumber()
+	buildNumber, err := mu.buildConf.GetBuildNumber()
 	if err != nil {
 		return err
 	}
-	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, buildConf.GetProject())
+	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, mu.buildConf.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -32,7 +88,7 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	props, useWrapper, err := createMvnRunProps(vConfig, buildArtifactsDetailsFile, threads, insecureTls, disableDeploy)
+	props, useWrapper, err := createMvnRunProps(mu.vConfig, mu.buildArtifactsDetailsFile, mu.threads, mu.insecureTls, mu.disableDeploy)
 	if err != nil {
 		return err
 	}
@@ -47,7 +103,14 @@ func RunMvn(vConfig *viper.Viper, buildArtifactsDetailsFile string, buildConf *u
 	if err != nil {
 		return err
 	}
-	mavenModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), goals, utils.DownloadExtractorIfNeeded, props, useWrapper).SetMavenOpts(mvnOpts...)
+	mavenModule.SetExtractorDetails(dependencyLocalPath,
+		filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath),
+		mu.goals,
+		utils.DownloadExtractor,
+		props,
+		useWrapper).
+		SetOutputWriter(mu.outputWriter)
+	mavenModule.SetMavenOpts(mvnOpts...)
 	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
 }
 
@@ -67,7 +130,7 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, t
 	}
 
 	if disableDeploy {
-		setEmptyDeployer(vConfig)
+		setDeployFalse(vConfig)
 	}
 
 	if vConfig.IsSet("resolver") {
@@ -78,9 +141,15 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, t
 	return buildInfoProps, useWrapper, err
 }
 
-func setEmptyDeployer(vConfig *viper.Viper) {
+func setDeployFalse(vConfig *viper.Viper) {
 	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
-	vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
-	vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.ReleaseRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
+	}
+	if vConfig.GetString(utils.DeployerPrefix+utils.SnapshotRepo) == "" {
+		vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	}
 }

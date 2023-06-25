@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func TestArchiveConfig(t *testing.T) {
 	zipReader, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 	assert.NoError(t, err)
 
-	expectedFiles := append(neededFiles, "artifactory.config.xml")
+	expectedFiles := append(slices.Clone(neededFiles), "artifactory.config.xml")
 	assert.Len(t, zipReader.File, len(expectedFiles))
 	for _, zipFile := range zipReader.File {
 		assert.Contains(t, expectedFiles, zipFile.Name)

@@ -301,7 +301,7 @@ type PackageVersionResponseContent struct {
 func getFileSystemPackagePath(packageCachePath, name, version string) (string, error) {
 	separator := string(filepath.Separator)
 	// For Windows OS
-	path := filepath.Join(name)
+	path := filepath.Clean(name)
 	for path != "" {
 		packagePath := filepath.Join(packageCachePath, path+"@"+version)
 		exists, err := fileutils.IsDirExists(packagePath, false)

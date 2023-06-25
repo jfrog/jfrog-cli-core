@@ -95,10 +95,12 @@ const (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string) error {
 	m := module.Version{Version: version, Path: mod}
-	//ignore, gitIgnoreErr := gitignore.NewFromFile(sourcePath + "/.gitignore") ??
 	var files []File
 
 	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		relPath, err := filepath.Rel(dir, filePath)
 		if err != nil {
 			return err
@@ -131,7 +133,6 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 			if goModInfo, err := os.Lstat(filepath.Join(filePath, "go.mod")); err == nil && !goModInfo.IsDir() {
 				return filepath.SkipDir
 			}
-			return nil
 		}
 		if info.Mode().IsRegular() {
 			if !isVendoredPackage(slashPath) {

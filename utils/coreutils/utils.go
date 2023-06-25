@@ -3,22 +3,25 @@ package coreutils
 import (
 	"bytes"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/errors"
 )
 
 const (
 	GettingStartedGuideUrl = "https://github.com/jfrog/jfrog-cli/blob/v2/guides/getting-started-with-jfrog-using-the-cli.md"
+	JFrogComUrl            = "https://jfrog.com/"
+	JFrogHelpUrl           = JFrogComUrl + "help/r/"
 )
 
 type MinVersionProduct string
@@ -29,6 +32,20 @@ const (
 	DataTransfer MinVersionProduct = "Data Transfer"
 	DockerApi    MinVersionProduct = "Docker API"
 	Projects     MinVersionProduct = "JFrog Projects"
+)
+
+const (
+	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager etc.) through an Artifactory remote
+	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
+	// configured to proxy releases.jfrog.io.
+	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
+	ReleasesRemoteEnv = "JFROG_CLI_RELEASES_REPO"
+	// DeprecatedExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
+	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
+	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	// JFrog releases URL
+	JfrogReleasesUrl  = "https://releases.jfrog.io/artifactory/"
+	MinimumVersionMsg = "You are using %s version %s, while this operation requires version %s or higher."
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -201,6 +218,42 @@ func IsLinux() bool {
 	return runtime.GOOS == "linux"
 }
 
+func IsMac() bool {
+	return runtime.GOOS == "darwin"
+}
+
+func GetOSAndArc() (string, error) {
+	arch := runtime.GOARCH
+	// Windows
+	if IsWindows() {
+		return "windows-amd64", nil
+	}
+	// Mac
+	if IsMac() {
+		if arch == "arm64" {
+			return "mac-arm64", nil
+		} else {
+			return "mac-amd64", nil
+		}
+	}
+	// Linux
+	if IsLinux() {
+		switch arch {
+		case "i386", "i486", "i586", "i686", "i786", "x86":
+			return "linux-386", nil
+		case "amd64", "x86_64", "x64":
+			return "linux-amd64", nil
+		case "arm", "armv7l":
+			return "linux-arm", nil
+		case "arm64", "aarch64":
+			return "linux-arm64", nil
+		case "ppc64", "ppc64le":
+			return "linux-" + arch, nil
+		}
+	}
+	return "", errorutils.CheckErrorf("unsupported OS: %s-%s", runtime.GOOS, arch)
+}
+
 // Return the path of CLI temp dir.
 // This path should be persistent, meaning - should not be cleared at the end of a CLI run.
 func GetCliPersistentTempDirPath() string {
@@ -232,7 +285,7 @@ func ReplaceVars(content []byte, specVars map[string]string) []byte {
 	for key, val := range specVars {
 		key = "${" + key + "}"
 		log.Debug(fmt.Sprintf("Replacing '%s' with '%s'", key, val))
-		content = bytes.Replace(content, []byte(key), []byte(val), -1)
+		content = bytes.ReplaceAll(content, []byte(key), []byte(val))
 	}
 	log.Debug("The reformatted content is: \n" + string(content))
 	return content
@@ -508,9 +561,22 @@ func GetJfrogTransferDir() (string, error) {
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {
 	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
-		return errorutils.CheckErrorf(fmt.Sprintf("You are using %s version %s,"+
-			" while this operation requires version %s or higher.",
-			product, currentVersion, minimumVersion))
+		return errorutils.CheckErrorf(MinimumVersionMsg, product, currentVersion, minimumVersion)
 	}
 	return nil
+}
+
+func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err error) {
+	serverAndRepo := os.Getenv(remoteEnv)
+	if serverAndRepo == "" {
+		log.Debug(remoteEnv, "is not set")
+		return "", "", nil
+	}
+	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
+	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
+	// Check that the format is valid
+	if !seperatorExists || repoName == "" || serverID == "" {
+		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
+	}
+	return
 }

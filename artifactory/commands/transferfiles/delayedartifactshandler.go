@@ -3,15 +3,16 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 var maxDelayedArtifactsInFile = 50000
@@ -119,7 +120,7 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	if len(addedDelayFiles) > 0 && phase.progressBar != nil {
 		phaseTaskProgressBar := phase.progressBar.phases[phase.phaseId].GetTasksProgressBar()
 		oldTotal := phaseTaskProgressBar.GetTotal()
-		delayCount, _, err := countDelayFilesContent(addedDelayFiles)
+		delayCount, err := countDelayFilesContent(addedDelayFiles)
 		if err != nil {
 			return err
 		}
@@ -128,20 +129,16 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	return nil
 }
 
-func countDelayFilesContent(filePaths []string) (int, int64, error) {
+func countDelayFilesContent(filePaths []string) (int, error) {
 	count := 0
-	var storage int64 = 0
 	for _, file := range filePaths {
 		delayFile, err := readDelayFile(file)
 		if err != nil {
-			return 0, storage, err
+			return 0, err
 		}
 		count += len(delayFile.DelayedArtifacts)
-		for _, delay := range delayFile.DelayedArtifacts {
-			storage += delay.Size
-		}
 	}
-	return count, storage, nil
+	return count, nil
 }
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
@@ -221,11 +218,7 @@ type shouldDelayUpload func(string) bool
 // Returns an array of functions to control the order of deployment.
 func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
-	case maven:
-		fallthrough
-	case gradle:
-		fallthrough
-	case ivy:
+	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
 			return filepath.Ext(fileName) == ".pom"
 		}}
@@ -347,7 +340,7 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			fullPath := filepath.Join(w.dirPath, fmt.Sprintf("%s-%d.json", w.filePrefix, w.fileIndex))
 			log.Debug(fmt.Sprintf("Saving split content JSON file to: %s.", fullPath))
 			if err := fileutils.MoveFile(w.writer.GetFilePath(), fullPath); err != nil {
-				return fmt.Errorf(fmt.Sprintf("Saving file failed! failed moving %s to %s", w.writer.GetFilePath(), fullPath), err)
+				return fmt.Errorf("saving file failed! failed moving %s to %s: %w", w.writer.GetFilePath(), fullPath, err)
 			}
 			w.contentFiles = append(w.contentFiles, fullPath)
 			w.fileIndex++

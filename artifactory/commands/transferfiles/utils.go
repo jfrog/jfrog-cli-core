@@ -121,10 +121,7 @@ func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query st
 	}
 	defer func() {
 		if reader != nil {
-			e := reader.Close()
-			if err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, errorutils.CheckError(reader.Close()))
 		}
 	}()
 
@@ -376,6 +373,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	curUploadChunk := api.UploadChunk{
 		TargetAuth:                createTargetAuth(base.targetRtDetails, base.proxyKey),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
+		SkipFileFiltering:         base.locallyGeneratedFilter.IsEnabled(),
 	}
 
 	for _, item := range files {

@@ -2,13 +2,14 @@ package transferfiles
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"time"
 )
 
 // When handling files diff, we split the whole time range being handled by searchTimeFramesMinutes in order to receive smaller results from the AQLs.
@@ -112,17 +113,17 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 
 	paginationI := 0
 	for {
-		result, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
+		result, lastPage, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
 		if err != nil {
 			return err
 		}
-		if len(result.Results) == 0 {
+		if len(result) == 0 {
 			if paginationI == 0 {
 				log.Debug("No diffs were found in time frame: '" + fromTimestamp + "' to '" + toTimestamp + "'")
 			}
 			break
 		}
-		files := convertResultsToFileRepresentation(result.Results)
+		files := convertResultsToFileRepresentation(result)
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)
@@ -144,7 +145,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			return err
 		}
 
-		if len(result.Results) < AqlPaginationLimit {
+		if lastPage {
 			break
 		}
 		paginationI++
@@ -172,13 +173,29 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 	return
 }
 
-func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
-	// Handle Docker repositories.
+// Get a list of changed files and folders between the input timestamps.
+// fromTimestamp - Time in RFC3339 represents the start time
+// toTimestamp - Time in RFC3339 represents the end time
+// paginationOffset - Requested page
+// Return values:
+// result - The list of changed files and folders between the input timestamps
+// lastPage - True if we are in the last AQL page and it is not needed to run another AQL requests
+// err - The error, if any occurred
+func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {
-		return f.getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+		// Handle Docker repositories.
+		timeFrameFilesDiff, err = f.getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+	} else {
+		// Handle all other (non docker) repository types.
+		timeFrameFilesDiff, err = f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 	}
-	// Handle all other (non docker) repository types.
-	return f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, true, err
+	}
+	lastPage = len(timeFrameFilesDiff.Results) < AqlPaginationLimit
+	result, err = f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
+	return
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
@@ -203,11 +220,11 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 		var manifestPaths []string
 		// Add the "list.manifest.json" files to the result, skip "manifest.json" files and save their paths separately.
 		for _, file := range manifestFilesResult.Results {
-			if file.Name == "manifest.json" {
+			switch file.Name {
+			case "manifest.json":
 				manifestPaths = append(manifestPaths, file.Path)
-			} else if file.Name == "list.manifest.json" {
-				result = append(result, file)
-			} else {
+			case "list.manifest.json":
+			default:
 				err = errorutils.CheckErrorf("unexpected file name returned from AQL query. Expecting either 'manifest.json' or 'list.manifest.json'. Received '%s'.", file.Name)
 				return
 			}
@@ -230,7 +247,7 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 }
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
-	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","path":{"$match":"*"},"name":{"$match":"*"}}]})`, fromTimestamp, toTimestamp, repoKey)
+	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","modified","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query

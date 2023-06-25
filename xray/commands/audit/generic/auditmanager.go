@@ -3,142 +3,73 @@ package audit
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
-	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/gofrog/version"
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
-
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
+	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 type Params struct {
-	xrayGraphScanParams services.XrayGraphScanParams
-	serverDetails       *config.ServerDetails
-	progress            ioUtils.ProgressMgr
-	ignoreConfigFile    bool
-	excludeTestDeps     bool
-	insecureTls         bool
-	useWrapper          bool
-	depsRepo            string
-	requirementsFile    string
-	technologies        []string
+	xrayGraphScanParams *services.XrayGraphScanParams
 	workingDirs         []string
-	args                []string
 	installFunc         func(tech string) error
+	fixableOnly         bool
+	minSeverityFilter   string
+	*clientUtils.GraphBasicParams
+	xrayVersion string
 }
 
 func NewAuditParams() *Params {
-	return &Params{}
+	return &Params{
+		xrayGraphScanParams: &services.XrayGraphScanParams{},
+		GraphBasicParams:    &clientUtils.GraphBasicParams{},
+	}
 }
 
 func (params *Params) InstallFunc() func(tech string) error {
 	return params.installFunc
 }
 
-func (params *Params) XrayGraphScanParams() services.XrayGraphScanParams {
+func (params *Params) XrayGraphScanParams() *services.XrayGraphScanParams {
 	return params.xrayGraphScanParams
-}
-
-func (params *Params) ServerDetails() *config.ServerDetails {
-	return params.serverDetails
-}
-
-func (params *Params) Progress() ioUtils.ProgressMgr {
-	return params.progress
-}
-
-func (params *Params) IgnoreConfigFile() bool {
-	return params.ignoreConfigFile
-}
-
-func (params *Params) ExcludeTestDeps() bool {
-	return params.excludeTestDeps
-}
-
-func (params *Params) InsecureTls() bool {
-	return params.insecureTls
-}
-
-func (params *Params) UseWrapper() bool {
-	return params.useWrapper
-}
-
-func (params *Params) DepsRepo() string {
-	return params.depsRepo
-}
-
-func (params *Params) RequirementsFile() string {
-	return params.requirementsFile
-}
-
-func (params *Params) Technologies() []string {
-	return params.technologies
 }
 
 func (params *Params) WorkingDirs() []string {
 	return params.workingDirs
 }
 
-func (params *Params) Args() []string {
-	return params.args
+func (params *Params) XrayVersion() string {
+	return params.xrayVersion
 }
 
-func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams services.XrayGraphScanParams) *Params {
+func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params
 }
 
-func (params *Params) SetServerDetails(serverDetails *config.ServerDetails) *Params {
-	params.serverDetails = serverDetails
-	return params
-}
-
-func (params *Params) SetExcludeTestDeps(excludeTestDeps bool) *Params {
-	params.excludeTestDeps = excludeTestDeps
-	return params
-}
-
-func (params *Params) SetUseWrapper(useWrapper bool) *Params {
-	params.useWrapper = useWrapper
-	return params
-}
-
-func (params *Params) SetInsecureTLS(insecureTls bool) *Params {
-	params.insecureTls = insecureTls
-	return params
-}
-
-func (params *Params) SetArgs(args []string) *Params {
-	params.args = args
-	return params
-}
-
-func (params *Params) SetProgressBar(progress ioUtils.ProgressMgr) *Params {
-	params.progress = progress
-	return params
-}
-
-func (params *Params) SetRequirementsFile(requirementsFile string) *Params {
-	params.requirementsFile = requirementsFile
-	return params
-}
-
-func (params *Params) SetIgnoreConfigFile(ignoreConfigFile bool) *Params {
-	params.ignoreConfigFile = ignoreConfigFile
+func (params *Params) SetGraphBasicParams(gbp *clientUtils.GraphBasicParams) *Params {
+	params.GraphBasicParams = gbp
 	return params
 }
 
@@ -147,25 +78,101 @@ func (params *Params) SetWorkingDirs(workingDirs []string) *Params {
 	return params
 }
 
-func (params *Params) SetTechnologies(technologies ...string) *Params {
-	params.technologies = append(params.technologies, technologies...)
-	return params
-}
-
-func (params *Params) SetDepsRepo(depsRepo string) *Params {
-	params.depsRepo = depsRepo
-	return params
-}
-
 func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
 	params.installFunc = installFunc
 	return params
 }
 
-// GenericAudit audits all the projects found in the given workingDirs
-func GenericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+func (params *Params) FixableOnly() bool {
+	return params.fixableOnly
+}
+
+func (params *Params) SetFixableOnly(fixable bool) *Params {
+	params.fixableOnly = fixable
+	return params
+}
+
+func (params *Params) MinSeverityFilter() string {
+	return params.minSeverityFilter
+}
+
+func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
+	params.minSeverityFilter = minSeverityFilter
+	return params
+}
+
+func (params *Params) SetXrayVersion(version string) *Params {
+	params.xrayVersion = version
+	return params
+}
+
+// Runs an audit scan based on the provided auditParams.
+// Returns an audit Results object containing all the scan results.
+// If the current server is entitled for JAS, the advanced security results will be included in the scan results.
+func RunAudit(auditParams *Params) (results *Results, err error) {
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return
+	}
+	isEntitled, xrayVersion, err := isEntitledForJas(serverDetails)
+	if err != nil {
+		return
+	}
+	auditParams.SetXrayVersion(xrayVersion)
+
+	errGroup := new(errgroup.Group)
+	if isEntitled {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
+	}
+
+	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
+	scanResults, isMultipleRootProject, auditError := genericAudit(auditParams)
+
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		return
+	}
+
+	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
+	// Try to run contextual analysis only if the user is entitled for advance security
+	if isEntitled {
+		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
+		if err != nil {
+			return
+		}
+	}
+	results = &Results{
+		IsMultipleRootProject: isMultipleRootProject,
+		AuditError:            auditError,
+		ExtendedScanResults:   extendedScanResults,
+	}
+	return
+}
+
+func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayVersion string, err error) {
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
+		return
+	}
+	if !version.NewVersion(xrayVersion).AtLeast(clientUtils.EntitlementsMinVersion) {
+		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
+		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
+		return
+	}
+	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
+	return
+}
+
+// genericAudit audits all the projects found in the given workingDirs
+func genericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+		return
+	}
+	log.Info("JFrog Xray version is:", params.xrayVersion)
+
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project: ")
+		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -178,10 +185,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 		return
 	}
 	defer func() {
-		e := os.Chdir(projectDir)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, os.Chdir(projectDir))
 	}()
 	var errorList strings.Builder
 	for _, wd := range params.workingDirs {
@@ -190,7 +194,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd)
+		log.Info("Auditing project:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
@@ -208,7 +212,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 	}
 
 	if errorList.Len() > 0 {
-		err = errorutils.CheckError(errors.New(errorList.String()))
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 
 	return
@@ -218,81 +222,111 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	technologies := params.technologies
+	technologies := params.Technologies()
 	if len(technologies) == 0 {
-		technologies, err = detectedTechnologies()
+		technologies, err = commandsutils.DetectedTechnologies()
 		if err != nil {
 			return
 		}
 	}
 	var errorList strings.Builder
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		dependencyTrees, e := getTechDependencyTree(params, tech)
+		flattenTree, e := GetTechDependencyTree(params.GraphBasicParams, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit failed when building dependency tree:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
-		techResults, e := audit.Audit(dependencyTrees, params.xrayGraphScanParams, params.serverDetails, params.progress, tech)
+
+		scanGraphParams := commandsutils.NewScanGraphParams().
+			SetServerDetails(serverDetails).
+			SetXrayGraphScanParams(params.xrayGraphScanParams).
+			SetXrayVersion(params.xrayVersion).
+			SetFixableOnly(params.fixableOnly).
+			SetSeverityLevel(params.minSeverityFilter)
+		techResults, e := audit.Audit(flattenTree, params.Progress(), tech, scanGraphParams)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit command failed:\n%s\n", tech, e.Error()))
+			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
+		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.FullDependenciesTree())
 		results = append(results, techResults...)
-		isMultipleRoot = len(dependencyTrees) > 1
+		isMultipleRoot = len(flattenTree) > 1
 	}
 	if errorList.Len() > 0 {
-		err = errors.New(errorList.String())
+		err = errorutils.CheckErrorf(errorList.String())
 	}
 	return
 }
 
-func getTechDependencyTree(params *Params, tech coreutils.Technology) (dependencyTrees []*services.GraphNode, e error) {
-	if params.progress != nil {
-		params.progress.SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
+	if params.Progress() != nil {
+		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
+	var dependencyTrees []*xrayCmdUtils.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
-		dependencyTrees, e = getJavaDependencyTree(params, tech)
+		dependencyTrees, err = getJavaDependencyTree(params, tech)
 	case coreutils.Npm:
-		dependencyTrees, e = npm.BuildDependencyTree(params.args)
+		dependencyTrees, err = npm.BuildDependencyTree(params.Args())
 	case coreutils.Yarn:
-		dependencyTrees, e = yarn.BuildDependencyTree()
+		dependencyTrees, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		dependencyTrees, e = _go.BuildDependencyTree(params.serverDetails, params.depsRepo)
+		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		dependencyTrees, e = python.BuildDependencyTree(&python.AuditPython{
-			Server:              params.serverDetails,
+		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
+			Server:              serverDetails,
 			Tool:                pythonutils.PythonTool(tech),
-			RemotePypiRepo:      params.depsRepo,
-			PipRequirementsFile: params.requirementsFile})
+			RemotePypiRepo:      params.DepsRepo(),
+			PipRequirementsFile: params.PipRequirementsFile()})
 	case coreutils.Nuget:
-		dependencyTrees, e = nuget.BuildDependencyTree()
+		dependencyTrees, err = nuget.BuildDependencyTree()
 	default:
-		e = errorutils.CheckError(fmt.Errorf("%s is currently not supported", string(tech)))
+		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
+	if err != nil {
+		return nil, err
+	}
+	// Save the full dependencyTree to build impact paths for vulnerable dependencies
+	params.SetFullDependenciesTree(dependencyTrees)
 
-	return dependencyTrees, e
+	// Flatten the graph to speed up the ScanGraph request
+	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *Params, tech coreutils.Technology) ([]*services.GraphNode, error) {
+func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
 	var javaProps map[string]any
-	if params.DepsRepo() != "" {
-		javaProps = createJavaProps(params.DepsRepo(), params.ServerDetails())
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, err
+	}
+	if params.DepsRepo() != "" && tech == coreutils.Maven {
+		javaProps = CreateJavaProps(params.DepsRepo(), serverDetails)
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
-		InsecureTls:      params.insecureTls,
-		IgnoreConfigFile: params.ignoreConfigFile,
-		ExcludeTestDeps:  params.excludeTestDeps,
-		UseWrapper:       params.useWrapper,
+		InsecureTls:      params.InsecureTls(),
+		IgnoreConfigFile: params.IgnoreConfigFile(),
+		ExcludeTestDeps:  params.ExcludeTestDependencies(),
+		UseWrapper:       params.UseWrapper(),
 		JavaProps:        javaProps,
+		Server:           serverDetails,
+		DepsRepo:         params.DepsRepo(),
+		ReleasesRepo:     params.ReleasesRepo(),
 	})
 }
 
-func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
+func CreateJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
 	authPass := serverDetails.Password
 	if serverDetails.AccessToken != "" {
 		authPass = serverDetails.AccessToken
@@ -310,21 +344,4 @@ func createJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[s
 		"resolver.snapshotRepo": depsRepo,
 		"buildInfoConfig.artifactoryResolutionEnabled": true,
 	}
-}
-
-func detectedTechnologies() (technologies []string, err error) {
-	wd, err := os.Getwd()
-	if errorutils.CheckError(err) != nil {
-		return
-	}
-	detectedTechnologies, err := coreutils.DetectTechnologies(wd, false, false)
-	if err != nil {
-		return
-	}
-	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
-	if detectedTechnologiesString == "" {
-		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
-	}
-	log.Info("Detected: " + detectedTechnologiesString)
-	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
 }

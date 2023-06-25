@@ -308,6 +308,8 @@ func createFileUploadStatusResponse(repoKey string, sizeBytes int64, checksumDep
 	return api.FileUploadStatusResponse{
 		FileRepresentation: api.FileRepresentation{
 			Repo: repoKey,
+			Path: "path",
+			Name: "name",
 		},
 		SizeBytes:        sizeBytes,
 		ChecksumDeployed: checksumDeployed,

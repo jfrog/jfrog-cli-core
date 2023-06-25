@@ -244,7 +244,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		err = commands.Exec(pingCmd)
 		if err == nil {
 			// No error while encrypting password => correct password.
-			return
+			return nil
 		}
 		log.Output(err.Error())
 	}

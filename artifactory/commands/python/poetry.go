@@ -13,6 +13,7 @@ import (
 	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/slices"
 	"io"
 	"os/exec"
 )
@@ -91,7 +92,7 @@ func (pc *PoetryCommand) install(buildConfiguration *utils.BuildConfiguration, p
 }
 
 func (pc *PoetryCommand) publish(buildConfiguration *utils.BuildConfiguration, pythonBuildInfo *build.Build) error {
-	publishCmdArgs := append(pc.args, "-r "+pc.poetryConfigRepoName)
+	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.poetryConfigRepoName)
 	// Collect build info by running the jf poetry install cmd
 	pc.args = []string{}
 	err := pc.install(buildConfiguration, pythonBuildInfo)

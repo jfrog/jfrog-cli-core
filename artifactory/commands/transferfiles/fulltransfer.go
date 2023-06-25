@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -10,8 +13,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -78,15 +79,15 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 	if err != nil || !repoTransferred {
 		return false, err
 	}
-	return true, m.skipPhase()
+	m.skipPhase()
+	return true, nil
 }
 
-func (m *fullTransferPhase) skipPhase() error {
+func (m *fullTransferPhase) skipPhase() {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
 		m.progressBar.AddPhase1(true)
 	}
-	return nil
 }
 
 func (m *fullTransferPhase) run() error {
@@ -99,7 +100,14 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	delayAction := consumeDelayFilesIfNoErrors
+	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
+		// Disable repo transfer snapshot as it is not used for delayed files.
+		if err := m.stateManager.SaveStateAndSnapshots(); err != nil {
+			return err
+		}
+		m.stateManager.DisableRepoTransferSnapshot()
+		return consumeDelayFilesIfNoErrors(phase, addedDelayFiles)
+	}
 	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
 }
 
@@ -159,26 +167,31 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 	curUploadChunk = api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
+		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI.
+		// The local generated filter is enabled in the JFrog CLI for target Artifactory servers >= 7.55.
+		SkipFileFiltering: m.locallyGeneratedFilter.IsEnabled(),
 	}
 
-	var result *servicesUtils.AqlSearchResult
+	var result []servicesUtils.ResultItem
+	var lastPage bool
 	paginationI := 0
-	for {
-		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-			return
-		}
-		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+	for !lastPage && !ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+		result, lastPage, err = m.getDirectoryContentAql(params.relativePath, paginationI)
 		if err != nil {
 			return
 		}
 
-		// Empty folder. Add it as candidate.
-		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
+		// Add the folder as a candidate to transfer. The reason is that we'd like to transfer only folders with properties or empty folders.
+		if params.relativePath != "." {
+			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
+		}
+
+		// Empty folder
+		if paginationI == 0 && len(result) == 0 {
 			return
 		}
 
-		for _, item := range result.Results {
+		for _, item := range result {
 			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 				return
 			}
@@ -200,9 +213,6 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			}
 		}
 
-		if len(result.Results) < AqlPaginationLimit {
-			break
-		}
 		paginationI++
 	}
 	return
@@ -227,15 +237,13 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
 	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
-	if stopped {
+	if delayed || stopped {
+		// If delayed, do not increment files count to allow tree collapsing during this phase.
 		return
 	}
 	// Increment the files count in the directory's node in the snapshot manager, to track its progress.
 	err = node.IncrementFilesCount()
 	if err != nil {
-		return
-	}
-	if delayed {
 		return
 	}
 	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
@@ -257,12 +265,19 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
-	return runAql(m.context, m.srcRtDetails, query)
+func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset)
+	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, false, err
+	}
+
+	lastPage = len(aqlResults.Results) < AqlPaginationLimit
+	result, err = m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+	return
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
@@ -290,7 +305,7 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 		return
 	}
 	if completed {
-		log.Debug(logMsgPrefix+"Skipping completed folder: ", path.Join(m.repoKey, params.relativePath))
+		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
 		return nil, true, nil, nil
 	}
 	// If the node was not completed, we will start exploring it from the beginning.

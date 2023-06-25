@@ -2,6 +2,7 @@ package nuget
 
 import (
 	"encoding/json"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"testing"
 
@@ -9,8 +10,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 func TestBuildNugetDependencyTree(t *testing.T) {
@@ -28,7 +27,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	expectedTreeJson, err := os.ReadFile("expectedTree.json")
 	assert.NoError(t, err)
 
-	var expectedTrees *[]services.GraphNode
+	var expectedTrees *[]xrayUtils.GraphNode
 	err = json.Unmarshal(expectedTreeJson, &expectedTrees)
 	assert.NoError(t, err)
 

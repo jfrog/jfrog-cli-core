@@ -352,6 +352,15 @@ func TestValidateConfigResolver(t *testing.T) {
 	configFile.Resolver.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
+
+	// Set Server Id with environment variable
+	configFile.Resolver.ServerId = ""
+	configFile.Resolver.Repo = "repo"
+	setEnvCallBack := testsutils.SetEnvWithCallbackAndAssert(t, coreutils.ServerID, "serverId")
+	err = configFile.validateConfig()
+	assert.NoError(t, err)
+	setEnvCallBack()
+
 	configFile.Resolver.ServerId = ""
 	err = configFile.validateConfig()
 	assert.EqualError(t, err, resolutionErrorPrefix+setServerIdError)
@@ -384,6 +393,15 @@ func TestValidateConfigDeployer(t *testing.T) {
 	configFile.Deployer.Repo = "repo"
 	err = configFile.validateConfig()
 	assert.NoError(t, err)
+
+	// Set Server Id with environment variable
+	configFile.Deployer.ServerId = ""
+	configFile.Deployer.Repo = "repo"
+	setEnvCallBack := testsutils.SetEnvWithCallbackAndAssert(t, coreutils.ServerID, "serverId")
+	err = configFile.validateConfig()
+	assert.NoError(t, err)
+	setEnvCallBack()
+
 	configFile.Deployer.ServerId = ""
 	err = configFile.validateConfig()
 	assert.EqualError(t, err, deploymentErrorPrefix+setServerIdError)

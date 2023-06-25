@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	utilsTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -206,7 +207,6 @@ func TestAssertUrlsSafe(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestExportEmptyConfig(t *testing.T) {
@@ -220,9 +220,53 @@ func TestExportEmptyConfig(t *testing.T) {
 	}()
 	tempDirPath, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	defer assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDirPath), "Couldn't remove temp dir")
+	}()
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tempDirPath))
 	assert.Error(t, Export(""))
+}
+
+func TestKeyEncryption(t *testing.T) {
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+
+	configAndTest(t, inputDetails, true)
+	configAndTest(t, inputDetails, false)
+}
+
+func TestKeyDecryptionError(t *testing.T) {
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	assert.NoError(t, os.Setenv(coreutils.EncryptionKey, "p3aNuTbUtt3rJ3lly&ChEEsEPlEasE!!"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	}()
+
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+
+	// Configure server with JFROG_CLI_ENCRYPTION_KEY set
+	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
+	configCmd.disablePrompts = true
+	assert.NoError(t, configCmd.Run())
+
+	// Get the server details when JFROG_CLI_ENCRYPTION_KEY is not set and expect an error
+	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
+	_, err = GetConfig("test", false)
+	assert.ErrorContains(t, err, "cannot decrypt config")
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
@@ -230,13 +274,13 @@ func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
 	assert.NoError(t, err)
 	outputDetails, err := config.Import(configToken)
 	assert.NoError(t, err)
-	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputDetails), "unexpected configuration was saved to file")
+	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputDetails), "unexpected configuration was saved to file")
 }
 
 func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive bool) {
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, interactive)
 	assert.NoError(t, err)
-	assert.Equal(t, configStructToString(inputDetails), configStructToString(outputConfig), "unexpected configuration was saved to file")
+	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputConfig), "unexpected configuration was saved to file")
 	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
 	testExportImport(t, inputDetails)
 }
@@ -248,8 +292,9 @@ func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, ba
 	return GetConfig("test", false)
 }
 
-func configStructToString(artConfig *config.ServerDetails) string {
+func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
-	marshaledStruct, _ := json.Marshal(*artConfig)
+	marshaledStruct, err := json.Marshal(*artConfig)
+	assert.NoError(t, err)
 	return string(marshaledStruct)
 }

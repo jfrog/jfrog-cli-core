@@ -69,7 +69,7 @@ const (
 )
 
 // Var can be inserted in the form of ${key}
-var VarPattern = regexp.MustCompile(`^\$\{\w+\}+$`)
+var VarPattern = regexp.MustCompile(`^\$\{\w+}+$`)
 
 func prefixCompleter(options []prompt.Suggest) prompt.Completer {
 	return func(document prompt.Document) []prompt.Suggest {
@@ -256,25 +256,6 @@ func GetBoolSuggests() []prompt.Suggest {
 	}
 }
 
-var BoolQuestionInfo = QuestionInfo{
-	Options:   GetBoolSuggests(),
-	AllowVars: true,
-	Writer:    WriteBoolAnswer,
-}
-
-var IntQuestionInfo = QuestionInfo{
-	Options:   nil,
-	AllowVars: true,
-	Writer:    WriteIntAnswer,
-}
-
-var StringListQuestionInfo = QuestionInfo{
-	Msg:       CommaSeparatedListMsg,
-	Options:   nil,
-	AllowVars: true,
-	Writer:    WriteStringArrayAnswer,
-}
-
 // Common writers
 func WriteStringAnswer(resultMap *map[string]interface{}, key, value string) error {
 	(*resultMap)[key] = value
@@ -314,10 +295,10 @@ func WriteStringArrayAnswer(resultMap *map[string]interface{}, key, value string
 	return nil
 }
 
-func GetSuggestsFromKeys(keys []string, SuggestionMap map[string]prompt.Suggest) []prompt.Suggest {
+func GetSuggestsFromKeys(keys []string, suggestionMap map[string]prompt.Suggest) []prompt.Suggest {
 	var suggests []prompt.Suggest
 	for _, key := range keys {
-		suggests = append(suggests, SuggestionMap[key])
+		suggests = append(suggests, suggestionMap[key])
 	}
 	return suggests
 }

@@ -2,9 +2,11 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/status"
@@ -33,10 +35,10 @@ type WorkspaceCommand struct {
 
 type StepStatus struct {
 	Name             string `col-name:"Name"`
-	StatusCode       int
-	TriggeredAt      string                `col-name:"Triggered At"`
-	ExternalBuildUrl string                `col-name:"Build URL"`
-	StatusString     status.PipelineStatus `col-name:"Status Code"`
+	StatusCode       int    `col-name:"StatusCode"`
+	TriggeredAt      string `col-name:"Triggered At"`
+	ExternalBuildUrl string
+	StatusString     string `col-name:"Status"`
 	Id               int
 }
 
@@ -47,8 +49,10 @@ type PipelineDefinition struct {
 }
 
 type WorkSpaceValidation struct {
-	ProjectId string               `json:"projectId,omitempty"`
-	Files     []PipelineDefinition `json:"files,omitempty"`
+	ProjectId   string               `json:"-"`
+	Files       []PipelineDefinition `json:"files,omitempty"`
+	ProjectName string               `json:"projectName,omitempty"`
+	Name        string               `json:"name,omitempty"`
 }
 
 func NewWorkspaceCommand() *WorkspaceCommand {
@@ -89,17 +93,30 @@ func (wc *WorkspaceCommand) Run() error {
 		return err
 	}
 	pipelineFiles := wc.pathToFile
-	pipelines := strings.Split(pipelineFiles, ",")
-	payload, err := wc.getWorkspaceRunPayload(pipelines)
+	pipelineDefinitions := strings.Split(pipelineFiles, ",")
+	payload, err := wc.getWorkspaceRunPayload(pipelineDefinitions, wc.project)
 	if err != nil {
 		return err
 	}
 	log.Info("Performing validation on pipeline resources")
+	fmt.Printf("%+v \n", string(payload))
 	err = serviceManager.ValidateWorkspace(payload)
 	if err != nil {
 		return err
 	}
 	log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
+	err = wc.pollSyncStatusAndTriggerRun(serviceManager)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (wc *WorkspaceCommand) pollSyncStatusAndTriggerRun(serviceManager *pipelines.PipelinesServicesManager) error {
+	err := wc.WorkspaceActions(SyncStatus)
+	if err != nil {
+		return err
+	}
 	pipelinesBranch, err := serviceManager.WorkspacePipelines()
 	if err != nil {
 		return err
@@ -121,11 +138,12 @@ func (wc *WorkspaceCommand) Run() error {
 
 	for _, runId := range pipeRunIDs {
 		log.Debug(coreutils.PrintTitle("Fetching run status for run id "), runId.LatestRunID)
+		time.Sleep(5 * time.Second)
 		_, err := serviceManager.WorkspaceRunStatus(runId.LatestRunID)
 		if err != nil {
 			return err
 		}
-		_, err = wc.getStepStatus(runId, serviceManager)
+		err = wc.getStepStatus(runId, serviceManager)
 		if err != nil {
 			return err
 		}
@@ -142,7 +160,7 @@ func (wc *WorkspaceCommand) WorkspaceActions(action string) error {
 	case Validate:
 		pipelineFiles := wc.pathToFile
 		pipelines := strings.Split(pipelineFiles, ",")
-		payload, err := wc.getWorkspaceRunPayload(pipelines)
+		payload, err := wc.getWorkspaceRunPayload(pipelines, wc.project)
 		if err != nil {
 			return err
 		}
@@ -153,7 +171,7 @@ func (wc *WorkspaceCommand) WorkspaceActions(action string) error {
 		}
 		log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
 	case Sync:
-		err := serviceManager.WorkspaceSync()
+		err := serviceManager.WorkspaceSync(wc.project)
 		if err != nil {
 			return err
 		}
@@ -163,7 +181,7 @@ func (wc *WorkspaceCommand) WorkspaceActions(action string) error {
 		if err != nil {
 			return err
 		}
-		data, err := json.Marshal(response)
+		data, err := json.MarshalIndent(response, "-->", "  ")
 		if err != nil {
 			return err
 		}
@@ -187,7 +205,7 @@ func (wc *WorkspaceCommand) WorkspaceActions(action string) error {
 			if err != nil {
 				return err
 			}
-			_, err = wc.getStepStatus(runId, serviceManager)
+			err = wc.getStepStatus(runId, serviceManager)
 			if err != nil {
 				return err
 			}
@@ -198,7 +216,7 @@ func (wc *WorkspaceCommand) WorkspaceActions(action string) error {
 }
 
 // getWorkspaceRunPayload prepares request body for workspace validation
-func (wc *WorkspaceCommand) getWorkspaceRunPayload(resources []string) ([]byte, error) {
+func (wc *WorkspaceCommand) getWorkspaceRunPayload(resources []string, project string) ([]byte, error) {
 	var pipelineDefinitions []PipelineDefinition
 	for _, pathToFile := range resources {
 		fileContent, fileInfo, err := getFileContentAndBaseName(pathToFile)
@@ -224,9 +242,13 @@ func (wc *WorkspaceCommand) getWorkspaceRunPayload(resources []string) ([]byte, 
 		}
 		pipelineDefinitions = append(pipelineDefinitions, pipeDefinition)
 	}
+	if len(project) == 0 {
+		project = "default"
+	}
 	workSpaceValidation := WorkSpaceValidation{
-		ProjectId: "1",
-		Files:     pipelineDefinitions,
+		Files:       pipelineDefinitions,
+		ProjectName: project,
+		Name:        project,
 	}
 	return json.Marshal(workSpaceValidation)
 }
@@ -245,51 +267,65 @@ func getFileContentAndBaseName(pathToFile string) ([]byte, os.FileInfo, error) {
 
 // getStepStatus for the given pipeline run fetch associated steps
 // and print status in table format
-func (wc *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, serviceManager *pipelines.PipelinesServicesManager) (string, error) {
+func (wc *WorkspaceCommand) getStepStatus(runId services.PipelinesRunID, serviceManager *pipelines.PipelinesServicesManager) error {
+	log.Info("Fetching step status for pipeline ", runId.Name)
 	for {
+		time.Sleep(5 * time.Second)
 		stopCapturingStepStatus := true
 		log.Debug("Fetching step status for run id ", runId.LatestRunID)
 		stepStatus, err := serviceManager.WorkspaceStepStatus(runId.LatestRunID)
 		if err != nil {
-			return "", err
+			return err
 		}
 		stepTable := make([]StepStatus, 0)
 		err = json.Unmarshal(stepStatus, &stepTable)
 		if err != nil {
-			return "", err
+			return err
 		}
 		// Cloning to preserve original response when deletes are performed
 		endState := slices.Clone(stepTable)
 		for i := 0; i < len(stepTable); i++ {
-			stepTable[i].StatusString = status.GetPipelineStatus(stepTable[i].StatusCode)
-			stopCapturingStepStatus = stopCapturingStepStatus && isStepCompleted(stepTable[i].StatusString)
-			if !slices.Contains(status.GetWaitingForRunAndRunningSteps(), stepTable[i].StatusString) {
+			stepTable[i].StatusString = string(status.GetPipelineStatus(stepTable[i].StatusCode))
+			endState[i].StatusString = string(status.GetPipelineStatus(stepTable[i].StatusCode))
+			stopCapturingStepStatus = stopCapturingStepStatus && isStepCompleted(status.PipelineStatus(stepTable[i].StatusString))
+			log.Debug(stepTable[i].Name, " step status ", stepTable[i].StatusString)
+			/*if !slices.Contains(status.GetWaitingForRunAndRunningSteps(), status.PipelineStatus(stepTable[i].StatusString)) {
 				stepTable = slices.Delete(stepTable, i, i+1)
 				i--
+			}*/
+			switch stepTable[i].StatusCode {
+			case 4002, 4003, 4004, 4008:
+				log.Info("step " + stepTable[i].Name + " completed with status " + stepTable[i].StatusString)
 			}
+
 		}
-		err = coreutils.PrintTable(stepTable, coreutils.PrintTitle(runId.Name+" Step Status"), "All steps reached end state", true)
+		/*err = coreutils.PrintTable(stepTable, coreutils.PrintTitle(runId.Name+" Step Status"), "All steps reached end state", true)
 		if err != nil {
-			return "", err
-		}
+			return err
+		}*/
 		if !stopCapturingStepStatus {
 			// Keep polling for steps status until all steps are processed
 			continue
 		}
+		fmt.Printf("%+v \n", stepTable)
 		err = coreutils.PrintTable(endState, coreutils.PrintTitle(runId.Name+" Step Status"), "No Pipeline steps available", true)
 		if err != nil {
-			return "", err
+			return err
 		}
 		// Get Step Logs and print
 		for i := 0; i < len(endState); i++ {
-			endState[i].StatusString = status.GetPipelineStatus(endState[i].StatusCode)
-			log.Output(coreutils.PrintTitle("Fetching logs for step " + endState[i].Name))
+			endState[i].StatusString = string(status.GetPipelineStatus(endState[i].StatusCode))
+			log.Output(coreutils.PrintTitle("Logs for step: " + endState[i].Name))
 			err := wc.getPipelineStepLogs(strconv.Itoa(endState[i].Id), serviceManager)
 			if err != nil {
-				return "", err
+				return err
+			}
+			err = wc.getPipelineStepletLogs(strconv.Itoa(endState[i].Id), serviceManager)
+			if err != nil {
+				return err
 			}
 		}
-		return "", nil
+		return nil
 	}
 }
 
@@ -301,8 +337,23 @@ func (wc *WorkspaceCommand) getPipelineStepLogs(stepID string, serviceManager *p
 	}
 	for _, v := range consoles {
 		for _, console := range v {
-			if console.IsShown {
-				log.Output(console.CreatedAt, "  ", console.Message)
+			if console.Message != "" && console.IsSuccess != nil {
+				log.Output(time.UnixMicro(console.Timestamp).Format("15:04:05.00000"), "  ", console.Message, " ", *console.IsSuccess)
+			}
+		}
+	}
+	return nil
+}
+
+func (wc *WorkspaceCommand) getPipelineStepletLogs(stepID string, serviceManager *pipelines.PipelinesServicesManager) error {
+	consoles, err := serviceManager.GetStepletConsoles(stepID)
+	if err != nil {
+		return err
+	}
+	for _, v := range consoles {
+		for _, console := range v {
+			if console.Message != "" && console.IsSuccess != nil {
+				log.Output(time.UnixMicro(console.Timestamp).Format("15:04:05.00000"), "  ", console.Message, " ", *console.IsSuccess)
 			}
 		}
 	}
@@ -323,10 +374,11 @@ func (wc *WorkspaceCommand) ListWorkspaces() error {
 	if err != nil {
 		return err
 	}
-	data, err := json.Marshal(workspaces)
+	data, err := json.MarshalIndent(workspaces, "-->", "  ")
 	if err != nil {
 		return err
 	}
+	log.Output(coreutils.PrintTitle("Workspaces List:"))
 	log.Output(string(data))
 	return nil
 }
@@ -337,12 +389,12 @@ func (wc *WorkspaceCommand) DeleteWorkspace() error {
 	if err != nil {
 		return err
 	}
-	projectKey := wc.project
-	err = serviceManager.DeleteWorkspace(projectKey)
+	log.Info("Project name received is ", wc.project)
+	err = serviceManager.DeleteWorkspace(wc.project)
 	if err != nil {
 		return err
 	}
-	log.Info("Deleted workspace for ", projectKey)
+	log.Info("Deleted workspace for ", wc.project)
 	return nil
 }
 
@@ -352,4 +404,17 @@ func (wc *WorkspaceCommand) WorkspaceLastRunStatus() error {
 
 func (wc *WorkspaceCommand) WorkspaceLastSyncStatus() error {
 	return wc.WorkspaceActions(SyncStatus)
+}
+
+func (wc *WorkspaceCommand) WorkspaceSync() error {
+	err := wc.WorkspaceActions(Sync)
+	if err != nil {
+		return err
+	}
+	serviceManager, err := manager.CreateServiceManager(wc.serverDetails)
+	if err != nil {
+		return err
+	}
+	err = wc.pollSyncStatusAndTriggerRun(serviceManager)
+	return err
 }

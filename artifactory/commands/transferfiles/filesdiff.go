@@ -165,7 +165,8 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []api.FileRepresentation) {
 	var pathInRepo string
 	for _, result := range results {
-		if result.Type == "folder" {
+		switch result.Type {
+		case "folder":
 			if result.Path == "." {
 				pathInRepo = result.Name
 			} else {
@@ -175,7 +176,7 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 				Repo: result.Repo,
 				Path: pathInRepo,
 			})
-		} else {
+		default:
 			files = append(files, api.FileRepresentation{
 				Repo: result.Repo,
 				Path: result.Path,

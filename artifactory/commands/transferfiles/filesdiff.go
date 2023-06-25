@@ -177,6 +177,10 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 // fromTimestamp - Time in RFC3339 represents the start time
 // toTimestamp - Time in RFC3339 represents the end time
 // paginationOffset - Requested page
+// Return values:
+// result - The list of changed files and folders between the input timestamps
+// lastPage - True if we are in the last AQL page and it is not needed to run another AQL requests
+// err - The error, if any occurred
 func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
 	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {

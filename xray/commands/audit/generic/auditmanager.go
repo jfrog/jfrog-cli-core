@@ -36,6 +36,7 @@ type Params struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
+	excludeJasScan      string
 	*clientUtils.GraphBasicParams
 	xrayVersion string
 }
@@ -106,6 +107,11 @@ func (params *Params) SetXrayVersion(version string) *Params {
 	return params
 }
 
+func (params *Params) SetExcludeJasScan(excludeScan string) *Params {
+	params.excludeJasScan = excludeScan
+	return params
+}
+
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
@@ -137,7 +143,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
 	// Try to run contextual analysis only if the user is entitled for advance security
 	if isEntitled {
-		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
+		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.excludeJasScan)
 		if err != nil {
 			return
 		}

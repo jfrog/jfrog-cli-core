@@ -120,7 +120,8 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 }
 
 func (a *ApplicabilityScanManager) eligibleForApplicabilityScan() bool {
-	return resultsIncludeEligibleTechnologies(getXrayVulnerabilities(a.xrayResults), getXrayViolations(a.xrayResults))
+	return resultsIncludeEligibleTechnologies(getXrayVulnerabilities(a.xrayResults), getXrayViolations(a.xrayResults)) &&
+		!utils.ExcludeScan(scannersToExclude, ApplicabilityFeatureId)
 }
 
 // This function gets a liat of xray scan responses that contains direct and indirect violations, and returns only direct

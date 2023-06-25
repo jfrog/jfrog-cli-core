@@ -243,3 +243,12 @@ func GetResultSeverity(result *sarif.Result) string {
 	}
 	return SeverityDefaultValue
 }
+
+func ExcludeScan(scansToBeExcluded []string, scan string) bool {
+	for _, s := range scansToBeExcluded {
+		if s == scan {
+			return true
+		}
+	}
+	return false
+}

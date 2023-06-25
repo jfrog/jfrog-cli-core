@@ -48,6 +48,9 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	if utils.ExcludeScan(scannersToExclude, iacScanCommand) {
+		return nil, false, nil
+	}
 	if err = iacScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil

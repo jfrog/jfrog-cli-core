@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
+	"strings"
 )
 
 const serverDetailsErrorMessage = "cant get xray server details"
@@ -17,10 +18,11 @@ const serverDetailsErrorMessage = "cant get xray server details"
 var (
 	analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
 	skippedDirs                                            = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	scannersToExclude                                      = []string{}
 )
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
+	serverDetails *config.ServerDetails, excludeScan string) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil {
 		return nil, errors.New(serverDetailsErrorMessage)
 	}
@@ -39,6 +41,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
 		return nil, err
 	}
+	scannersToExclude = strings.Split(excludeScan, ";")
 	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
 		dependencyTrees, serverDetails, analyzerManagerExecuter)
 	if err != nil {

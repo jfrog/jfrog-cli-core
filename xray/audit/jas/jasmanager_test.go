@@ -63,7 +63,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, "")
 
 	// Assert
 	assert.NoError(t, err)
@@ -74,10 +74,24 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil)
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, "")
 
 	// Assert
 	assert.Nil(t, extendedResults)
 	assert.Error(t, err)
 	assert.Equal(t, "cant get xray server details", err.Error())
+}
+
+func TestGetExtendedScanResults_ExcludeScanners(t *testing.T) {
+	// Arrange
+	excludeScansInput := "contextual_analysis;secrets;iac"
+
+	// Act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, excludeScansInput)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.False(t, extendedResults.EligibleForSecretScan)
+	assert.False(t, extendedResults.EligibleForApplicabilityScan)
+	assert.False(t, extendedResults.EligibleForIacScan)
 }

@@ -272,6 +272,9 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
 		fillChunkDataBatch(&chunksLifeCycleManager, uploadChunkChan)
+		if err := chunksLifeCycleManager.StoreStaleChunks(phaseBase.stateManager); err != nil {
+			log.Error("Couldn't store the stale chunks:", err.Error())
+		}
 		// When totalChunks size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
 		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,

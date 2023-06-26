@@ -55,6 +55,7 @@ const (
 
 	// Mutual local and virtual repository configuration JSON keys
 	DebianTrivialLayout = "debianTrivialLayout"
+	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
 
 	// Mutual remote and virtual repository configuration JSON keys
 	ExternalDependenciesEnabled  = "externalDependenciesEnabled"
@@ -69,7 +70,6 @@ const (
 	YumRootDepth                    = "yumRootDepth"
 	DockerApiVersion                = "dockerApiVersion"
 	EnableFileListsIndexing         = "enableFileListsIndexing"
-	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
 	ForceNugetAuthentication        = "forceNugetAuthentication"
 
 	// Unique remote repository configuration JSON keys

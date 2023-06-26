@@ -3,11 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	"os"
-	"path"
-	"path/filepath"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -17,6 +12,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 )
 
 const (

@@ -682,3 +682,21 @@ func getErrorOrDelayFiles(repoKeys []string, getDirPathFunc func(string) (string
 	}
 	return
 }
+
+// Increments index until the file path is unique.
+func getErrorOrDelayUniqueFilePath(dirPath string, getFileNamePrefix func() string) (delayFilePath string, err error) {
+	var exists bool
+	index := 0
+	for {
+		delayFilePath = filepath.Join(dirPath, fmt.Sprintf("%s-%d.json", getFileNamePrefix(), index))
+		exists, err = fileutils.IsFileExists(delayFilePath, false)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			break
+		}
+		index++
+	}
+	return
+}

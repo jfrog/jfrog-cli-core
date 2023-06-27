@@ -259,19 +259,25 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	if phaseBase != nil {
 		timeEstMng = &phaseBase.stateManager.TimeEstimationManager
 	}
-	for {
+	for i := 0; ; i++ {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 
-		// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-		if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
-			log.Error("Couldn't set the current number of working threads:", err.Error())
+		// Run once per 3 minutes
+		if i%60 == 0 {
+			// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
+			if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
+				log.Error("Couldn't set the current number of working threads:", err.Error())
+			}
 		}
 
-		// Each uploading thread receive a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
+		// Each uploading thread receives a token and a node id from the source via the uploadChunkChan, so this go routine can poll on its status.
 		fillChunkDataBatch(&chunksLifeCycleManager, uploadChunkChan)
+		if err := chunksLifeCycleManager.StoreStaleChunks(phaseBase.stateManager); err != nil {
+			log.Error("Couldn't store the stale chunks:", err.Error())
+		}
 		// When totalChunks size is zero, it means that all the tokens are uploaded,
 		// we received 'DONE' for all of them, and we notified the source that they can be deleted from the memory.
 		// If during the polling some chunks data were lost due to network issues, either on the client or on the source,

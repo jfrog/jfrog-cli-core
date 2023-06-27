@@ -266,7 +266,7 @@ func TestStoreStaleChunksEmpty(t *testing.T) {
 	}
 	assert.NoError(t, chunksLifeCycleManager.StoreStaleChunks(stateManager))
 
-	// Make sure no empty chunks
+	// Make sure no chunks
 	staleChunks, err := stateManager.GetStaleChunks()
 	assert.NoError(t, err)
 	assert.Empty(t, staleChunks)

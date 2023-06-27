@@ -164,6 +164,6 @@ func writeEmptyErrorsFile(t *testing.T, repoKey string, retryable bool, phase, c
 	assert.NoError(t, err)
 	assert.NoError(t, fileutils.CreateDirIfNotExist(errorsDirPath))
 
-	fileName := getErrorsFileName(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now()), counter)
+	fileName := fmt.Sprintf("%s-%d.json", getErrorsFileNamePrefix(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now())), counter)
 	assert.NoError(t, os.WriteFile(filepath.Join(errorsDirPath, fileName), nil, 0644))
 }

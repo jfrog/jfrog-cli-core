@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -368,4 +369,25 @@ func createMockServer(t *testing.T, testHandler transferFilesHandler) (*httptest
 	serviceManager, err := createSrcRtUserPluginServiceManager(context.Background(), serverDetails)
 	assert.NoError(t, err)
 	return testServer, serverDetails, serviceManager
+}
+
+func TestGetUniqueErrorOrDelayFilePath(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "unique_file_path_test")
+	assert.NoError(t, err)
+
+	createUniqueFileAndAssertCounter(t, tmpDir, "prefix", 0)
+	// A file with 0 already exists, so new counter should be 1.
+	createUniqueFileAndAssertCounter(t, tmpDir, "prefix", 1)
+	// Unique prefix, so counter should be 0.
+	createUniqueFileAndAssertCounter(t, tmpDir, "new", 0)
+
+}
+
+func createUniqueFileAndAssertCounter(t *testing.T, tmpDir, prefix string, expectedCounter int) {
+	filePath, err := getUniqueErrorOrDelayFilePath(tmpDir, func() string {
+		return prefix
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(filePath, nil, 0644))
+	assert.True(t, strings.HasSuffix(filePath, strconv.Itoa(expectedCounter)+".json"))
 }

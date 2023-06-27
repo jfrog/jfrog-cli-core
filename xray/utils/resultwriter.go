@@ -233,17 +233,15 @@ func getIacOrSecretsProperties(secretOrIac formats.IacSecretsRow, markdownOutput
 	markdownDescription := ""
 	headline := "Infrastructure as Code Vulnerability"
 	secretOrFinding := "Finding"
-	typeOrScanner := "Scanner"
 	if isSecret {
 		secretOrFinding = "Secret"
-		typeOrScanner = "Type"
 		headline = "Potential Secret Exposed"
 	}
 	if markdownOutput {
-		headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s | %s |\n", secretOrFinding, typeOrScanner)
-		separatorRow := "| :---: | :---: | :---: | :---: | :---: |\n"
+		headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", secretOrFinding)
+		separatorRow := "| :---: | :---: | :---: | :---: |\n"
 		tableHeader := headerRow + separatorRow
-		markdownDescription = tableHeader + fmt.Sprintf("| %s | %s | %s | %s | %s |", secretOrIac.Severity, file, secretOrIac.LineColumn, secretOrIac.Text, secretOrIac.Type)
+		markdownDescription = tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", secretOrIac.Severity, file, secretOrIac.LineColumn, secretOrIac.Text)
 	}
 	return sarifProperties{
 		Headline:            headline,

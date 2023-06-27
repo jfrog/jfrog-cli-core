@@ -128,7 +128,6 @@ type secretsTableRow struct {
 	file       string `col-name:"File"`
 	lineColumn string `col-name:"Line:Column"`
 	text       string `col-name:"Secret"`
-	secretType string `col-name:"Type"`
 }
 
 type iacTableRow struct {
@@ -136,5 +135,4 @@ type iacTableRow struct {
 	file       string `col-name:"File"`
 	lineColumn string `col-name:"Line:Column"`
 	text       string `col-name:"Finding"`
-	iacType    string `col-name:"Scanner"`
 }

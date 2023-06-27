@@ -387,7 +387,7 @@ var vcsRemoteRepoConfKeys = []string{
 
 var baseVirtualRepoConfKeys = []string{
 	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
-	DefaultDeploymentRepo,
+	DefaultDeploymentRepo, OptionalIndexCompressionFormats,
 }
 
 var mavenGradleVirtualRepoConfKeys = []string{
@@ -844,7 +844,7 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:       "Enter a comma separated list of values from " + strings.Join([]string{Bz2Compression, LzmaCompression, XzCompression}, ","),
 		Options:   nil,
 		AllowVars: true,
-		Writer:    utils.WriteStringArrayAnswer,
+		Writer:    utils.WriteStringAnswer,
 	},
 	Username: utils.FreeStringQuestionInfo,
 	Password: utils.FreeStringQuestionInfo,

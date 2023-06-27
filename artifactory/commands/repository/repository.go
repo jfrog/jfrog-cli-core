@@ -108,7 +108,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	YumRootDepth:                      utils.WriteIntAnswer,
 	DockerApiVersion:                  utils.WriteStringAnswer,
 	EnableFileListsIndexing:           utils.WriteBoolAnswer,
-	OptionalIndexCompressionFormats:   utils.WriteStringAnswer,
+	OptionalIndexCompressionFormats:   utils.WriteStringArrayAnswer,
 	Username:                          utils.WriteStringAnswer,
 	Password:                          utils.WriteStringAnswer,
 	Proxy:                             utils.WriteStringAnswer,

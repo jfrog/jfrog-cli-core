@@ -251,7 +251,10 @@ func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 func getAnalyzerManagerRemoteDetails(downloadPath string) (server *config.ServerDetails, fullRemotePath string, err error) {
 	var remoteRepo string
 	server, remoteRepo, err = getRemoteDetails(coreutils.ReleasesRemoteEnv)
-	if remoteRepo != "" || err != nil {
+	if err != nil {
+		return
+	}
+	if remoteRepo != "" {
 		fullRemotePath = path.Join(remoteRepo, "artifactory", downloadPath)
 		return
 	}

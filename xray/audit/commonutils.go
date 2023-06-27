@@ -39,7 +39,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		*exceededDepthCounter += 1
+		*exceededDepthCounter++
 		return xrDependencyTree
 	}
 	// Recursively create & append all node's dependencies.

@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager and etc.) through an Artifactory remote
+	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager etc.) through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
 	// configured to proxy releases.jfrog.io.
 	// This env var should store a server ID and a remote repository in form of '<ServerID>/<RemoteRepo>'
@@ -44,7 +44,8 @@ const (
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 	// JFrog releases URL
-	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
+	JfrogReleasesUrl  = "https://releases.jfrog.io/artifactory/"
+	MinimumVersionMsg = "You are using %s version %s, while this operation requires version %s or higher."
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -560,9 +561,7 @@ func GetJfrogTransferDir() (string, error) {
 
 func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {
 	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
-		return errorutils.CheckErrorf(fmt.Sprintf("You are using %s version %s,"+
-			" while this operation requires version %s or higher.",
-			product, currentVersion, minimumVersion))
+		return errorutils.CheckErrorf(MinimumVersionMsg, product, currentVersion, minimumVersion)
 	}
 	return nil
 }
@@ -571,16 +570,13 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 	serverAndRepo := os.Getenv(remoteEnv)
 	if serverAndRepo == "" {
 		log.Debug(remoteEnv, "is not set")
-		return "", "", nil
+		return
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	lastSlashIndex := strings.LastIndex(serverAndRepo, "/")
+	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	invalidFormat := lastSlashIndex == -1 || lastSlashIndex == len(serverAndRepo)-1 || lastSlashIndex == 0
-	if invalidFormat {
-		return "", "", errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
+	if !seperatorExists || repoName == "" || serverID == "" {
+		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
-	serverID = serverAndRepo[:lastSlashIndex]
-	repoName = serverAndRepo[lastSlashIndex+1:]
 	return
 }

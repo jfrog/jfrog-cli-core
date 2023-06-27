@@ -100,7 +100,14 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	delayAction := consumeDelayFilesIfNoErrors
+	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
+		// Disable repo transfer snapshot as it is not used for delayed files.
+		if err := m.stateManager.SaveStateAndSnapshots(); err != nil {
+			return err
+		}
+		m.stateManager.DisableRepoTransferSnapshot()
+		return consumeDelayFilesIfNoErrors(phase, addedDelayFiles)
+	}
 	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
 }
 
@@ -175,7 +182,9 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 		}
 
 		// Add the folder as a candidate to transfer. The reason is that we'd like to transfer only folders with properties or empty folders.
-		curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
+		if params.relativePath != "." {
+			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
+		}
 
 		// Empty folder
 		if paginationI == 0 && len(result) == 0 {
@@ -228,15 +237,13 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
 	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
-	if stopped {
+	if delayed || stopped {
+		// If delayed, do not increment files count to allow tree collapsing during this phase.
 		return
 	}
 	// Increment the files count in the directory's node in the snapshot manager, to track its progress.
 	err = node.IncrementFilesCount()
 	if err != nil {
-		return
-	}
-	if delayed {
 		return
 	}
 	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)

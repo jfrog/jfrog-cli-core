@@ -3,7 +3,6 @@ package gradleutils
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"

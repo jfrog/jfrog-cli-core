@@ -147,7 +147,6 @@ func ConvertToSecretsTableRow(rows []IacSecretsRow) (tableRows []secretsTableRow
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
 			text:       rows[i].Text,
-			secretType: rows[i].Type,
 		})
 	}
 	return
@@ -160,7 +159,6 @@ func ConvertToIacTableRow(rows []IacSecretsRow) (tableRows []iacTableRow) {
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
 			text:       rows[i].Text,
-			iacType:    rows[i].Type,
 		})
 	}
 	return

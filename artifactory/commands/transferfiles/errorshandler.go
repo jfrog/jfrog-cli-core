@@ -158,7 +158,7 @@ func (mng *TransferErrorsMng) newUniqueContentWriter(dirPath string) (*content.C
 	if err != nil {
 		return nil, "", err
 	}
-	errorsFilePath, err := getErrorOrDelayUniqueFilePath(dirPath, func() string {
+	errorsFilePath, err := getUniqueErrorOrDelayFilePath(dirPath, func() string {
 		return getErrorsFileNamePrefix(mng.repoKey, mng.phaseId, mng.phaseStartTime)
 	})
 	if err != nil {

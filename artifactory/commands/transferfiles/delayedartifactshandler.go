@@ -337,7 +337,7 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			return err
 		}
 		if w.writer.GetFilePath() != "" {
-			fullPath, err := getErrorOrDelayUniqueFilePath(w.dirPath, func() string {
+			fullPath, err := getUniqueErrorOrDelayFilePath(w.dirPath, func() string {
 				return w.filePrefix
 			})
 			if err != nil {

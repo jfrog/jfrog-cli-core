@@ -684,7 +684,7 @@ func getErrorOrDelayFiles(repoKeys []string, getDirPathFunc func(string) (string
 }
 
 // Increments index until the file path is unique.
-func getErrorOrDelayUniqueFilePath(dirPath string, getFileNamePrefix func() string) (delayFilePath string, err error) {
+func getUniqueErrorOrDelayFilePath(dirPath string, getFileNamePrefix func() string) (delayFilePath string, err error) {
 	var exists bool
 	index := 0
 	for {

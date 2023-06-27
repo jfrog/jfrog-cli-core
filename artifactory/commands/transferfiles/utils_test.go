@@ -257,7 +257,7 @@ func createMockServer(t *testing.T, testHandler transferFilesHandler) (*httptest
 	return testServer, serverDetails, serviceManager
 }
 
-func TestGetErrorOrDelayUniqueFilePath(t *testing.T) {
+func TestGetUniqueErrorOrDelayFilePath(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "unique_file_path_test")
 	assert.NoError(t, err)
 
@@ -270,7 +270,7 @@ func TestGetErrorOrDelayUniqueFilePath(t *testing.T) {
 }
 
 func createUniqueFileAndAssertCounter(t *testing.T, tmpDir, prefix string, expectedCounter int) {
-	filePath, err := getErrorOrDelayUniqueFilePath(tmpDir, func() string {
+	filePath, err := getUniqueErrorOrDelayFilePath(tmpDir, func() string {
 		return prefix
 	})
 	assert.NoError(t, err)

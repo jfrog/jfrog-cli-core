@@ -570,7 +570,7 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 	serverAndRepo := os.Getenv(remoteEnv)
 	if serverAndRepo == "" {
 		log.Debug(remoteEnv, "is not set")
-		return "", "", nil
+		return
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
 	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")

@@ -218,7 +218,6 @@ func getConfigFile() (content []byte, err error) {
 	if exists {
 		content, err = fileutils.ReadFile(confFilePath)
 		return
-
 	}
 	// Try to look for older config files
 	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {

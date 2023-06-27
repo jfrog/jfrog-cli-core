@@ -154,7 +154,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 				Headline:            "Potential Secret Exposed",
 				Severity:            "6.9",
 				Description:         "Potential secret",
-				MarkdownDescription: fmt.Sprintf("| Severity | File | Line:Column | Secret | Type |\n| :---: | :---: | :---: | :---: | :---: |\n| medium | %s | 5:3 | Potential secret | AWS Secret Manager |", path.Join("path", "to", "file")),
+				MarkdownDescription: fmt.Sprintf("| Severity | File | Line:Column | Secret |\n| :---: | :---: | :---: | :---: |\n| medium | %s | 5:3 | Potential secret |", path.Join("path", "to", "file")),
 				XrayID:              "",
 				File:                path.Join("path", "to", "file"),
 				LineColumn:          "5:3",

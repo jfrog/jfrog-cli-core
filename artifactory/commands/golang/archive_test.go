@@ -30,7 +30,7 @@ func TestArchiveProject(t *testing.T) {
 	}
 	originalFolder := "test_.git_suffix"
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalFolder, "testdata")
-	err = archiveProject(buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0")
+	err = archiveProject(buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0", nil)
 	if err != nil {
 		t.Error(err)
 	}

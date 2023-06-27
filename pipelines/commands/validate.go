@@ -90,19 +90,20 @@ func (vc *ValidateCommand) ValidateResources() ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	fileInfo, err := os.Stat(vc.pathToFile)
+	var fileInfo os.FileInfo
+	fileInfo, err = os.Stat(vc.pathToFile)
 	if err != nil {
 		return []byte{}, err
 	}
-	/*toJSON, err := convertYAMLToJSON(err, fileContent)
-	if err != nil {
-		return []byte{}, err
-	}*/
-	vsc, err := convertJSONDataToMap(fileInfo, fileContent)
+
+	var pipelinesDefinitionMap map[string][]interface{}
+	pipelinesDefinitionMap, err = convertJSONDataToMap(fileInfo, fileContent)
 	if err != nil {
 		return []byte{}, err
 	}
-	resMap, err, done := splitDataToPipelinesAndResourcesMap(vsc, ymlType)
+	var done bool
+	var resMap map[string]string
+	resMap, err, done = splitDataToPipelinesAndResourcesMap(pipelinesDefinitionMap, ymlType)
 	if done {
 		return []byte{}, err
 	}

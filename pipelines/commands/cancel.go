@@ -25,7 +25,7 @@ func (cc *CancelCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 }
 
 func (cc *CancelCommand) CommandName() string {
-	return "sync"
+	return "cancel"
 }
 
 func (cc *CancelCommand) SetBranch(br string) *CancelCommand {

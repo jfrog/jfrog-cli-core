@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -12,6 +11,7 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -26,7 +26,8 @@ const (
 	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1/[RELEASE]"
+	analyzerManagerVersion        = "1.1.9.1786834"
+	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName        = "analyzerManager"
 	analyzerManagerExecutableName = "analyzerManager"
 	analyzerManagerLogDirName     = "analyzerManagerLogs"
@@ -123,7 +124,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s/%s", analyzerManagerDownloadPath, osAndArc, AnalyzerManagerZipName), nil
+	return path.Join(analyzerManagerDownloadPath, analyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {

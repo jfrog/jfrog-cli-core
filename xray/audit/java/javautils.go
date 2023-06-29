@@ -26,7 +26,6 @@ type DependencyTreeParams struct {
 	JavaProps        map[string]any
 	Server           *config.ServerDetails
 	DepsRepo         string
-	ReleasesRepo     string
 }
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
@@ -137,13 +136,11 @@ func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.Gra
 	}
 	server := &config.ServerDetails{}
 	depsRepo := ""
-	releaseRepo := ""
 	if params.IgnoreConfigFile {
 		server = params.Server
 		depsRepo = params.DepsRepo
-		releaseRepo = params.ReleasesRepo
 	}
-	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo, releaseRepo)
+	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo)
 }
 
 type dependencyMultimap struct {

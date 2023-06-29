@@ -322,7 +322,6 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 		JavaProps:        javaProps,
 		Server:           serverDetails,
 		DepsRepo:         params.DepsRepo(),
-		ReleasesRepo:     params.ReleasesRepo(),
 	})
 }
 

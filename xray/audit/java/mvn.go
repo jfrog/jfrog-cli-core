@@ -1,6 +1,7 @@
 package java
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -13,10 +14,7 @@ import (
 func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (modules []*xrayUtils.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer func() {
-		e := cleanBuild()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, cleanBuild())
 	}()
 
 	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile, useWrapper, mvnProps)

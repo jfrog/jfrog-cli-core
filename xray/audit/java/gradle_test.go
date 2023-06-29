@@ -23,7 +23,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(false, nil, "", "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(false, nil, "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
@@ -46,7 +46,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 
@@ -70,7 +70,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "", "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "")
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 
@@ -213,7 +213,6 @@ func TestCreateDepTreeScript(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", ""), string(content))
 	manager.depsRepo = "deps-repo"
-	manager.releasesRepo = "release-repo"
 	manager.server = &config.ServerDetails{
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
@@ -270,15 +269,13 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 		Password:       "mypass",
 	}
 	testCases := []struct {
-		releasesRepo string
 		envVar       string
 		expectedRepo string
 		expectedErr  error
 	}{
-		{releasesRepo: "", envVar: "", expectedRepo: "", expectedErr: nil},
-		{releasesRepo: "", envVar: "test/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://domain.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'user'\n\t\t\t\tpassword = 'pass'\n\t\t\t}\n\t\t}", expectedErr: nil},
-		{releasesRepo: "", envVar: "notexist/repo1", expectedRepo: "", expectedErr: errors.New("Server ID 'notexist' does not exist.")},
-		{releasesRepo: "repo2", envVar: "", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://myartifactory.com/artifactory/repo2/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'myuser'\n\t\t\t\tpassword = 'mypass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+		{envVar: "", expectedRepo: "", expectedErr: nil},
+		{envVar: "test/repo1", expectedRepo: "\n\t\tmaven {\n\t\t\turl \"https://domain.com/artifactory/repo1/artifactory/oss-release-local\"\n\t\t\tcredentials {\n\t\t\t\tusername = 'user'\n\t\t\t\tpassword = 'pass'\n\t\t\t}\n\t\t}", expectedErr: nil},
+		{envVar: "notexist/repo1", expectedRepo: "", expectedErr: errors.New("Server ID 'notexist' does not exist.")},
 	}
 
 	for _, tc := range testCases {
@@ -289,7 +286,7 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 				// Reset the environment variable after each test case
 				assert.NoError(t, os.Unsetenv(coreutils.ReleasesRemoteEnv))
 			}()
-			actualRepo, actualErr := constructReleasesRemoteRepo(tc.releasesRepo, server)
+			actualRepo, actualErr := constructReleasesRemoteRepo(server)
 			assert.Equal(t, tc.expectedRepo, actualRepo)
 			assert.Equal(t, tc.expectedErr, actualErr)
 		}()

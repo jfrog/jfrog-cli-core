@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
@@ -53,7 +54,7 @@ func TestShowStatus(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase1, false)
+	createStateManager(t, api.Phase1, false, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -83,7 +84,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase2, false)
+	createStateManager(t, api.Phase2, false, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -113,7 +114,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase3, true)
+	createStateManager(t, api.Phase3, true, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -138,10 +139,30 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.Contains(t, results, "Files:		500 / 10000 (5.0%)")
 }
 
+func TestShowStaleChunks(t *testing.T) {
+	buffer, cleanUp := initStatusTest(t)
+	defer cleanUp()
+
+	// Create state manager and persist to file system
+	createStateManager(t, api.Phase1, false, true)
+
+	// Run show status and check output
+	assert.NoError(t, ShowStatus())
+	results := buffer.String()
+
+	// Check stale chunks
+	assert.Contains(t, results, "File Chunks in Transit for More than 30 Minutes")
+	assert.Contains(t, results, "Node ID:\tnode-id-1")
+	assert.Contains(t, results, "Sent:\t")
+	assert.Contains(t, results, "(31 minutes)")
+	assert.Contains(t, results, "a/b/c")
+	assert.Contains(t, results, "d/e/f")
+}
+
 // Create state manager and persist in the file system.
 // t     - The testing object
 // phase - Phase ID
-func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
+func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks bool) {
 	stateManager, err := state.NewTransferStateManager(false)
 	assert.NoError(t, err)
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
@@ -158,6 +179,19 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
 	stateManager.TimeEstimationManager.LastSpeeds = []float64{12}
 	stateManager.TimeEstimationManager.LastSpeedsSum = 12
 	stateManager.TimeEstimationManager.SpeedsAverage = 12
+
+	if staleChunks {
+		stateManager.StaleChunks = append(stateManager.StaleChunks, state.StaleChunks{
+			NodeID: staleChunksNodeIdOne,
+			Chunks: []state.StaleChunk{
+				{
+					ChunkID: staleChunksChunkId,
+					Sent:    time.Now().Add(-time.Minute * 31).Unix(),
+					Files:   []string{"a/b/c", "d/e/f"},
+				},
+			},
+		})
+	}
 
 	// Increment transferred size and files. This action also persists the run status.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(500, 5000))

@@ -34,8 +34,8 @@ func (rbc *ReleaseBundleCreate) SetSigningKeyName(signingKeyName string) *Releas
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetAsync(async bool) *ReleaseBundleCreate {
-	rbc.async = async
+func (rbc *ReleaseBundleCreate) SetSync(sync bool) *ReleaseBundleCreate {
+	rbc.sync = sync
 	return rbc
 }
 

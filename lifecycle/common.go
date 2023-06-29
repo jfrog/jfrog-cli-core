@@ -12,7 +12,7 @@ type releaseBundleCmd struct {
 	releaseBundleName    string
 	releaseBundleVersion string
 	signingKeyName       string
-	async                bool
+	sync                 bool
 	rbProjectKey         string
 }
 
@@ -28,7 +28,7 @@ func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.Life
 	params = services.CreateOrPromoteReleaseBundleParams{
 		ReleaseBundleQueryParams: services.ReleaseBundleQueryParams{
 			ProjectKey: rbc.rbProjectKey,
-			Async:      rbc.async,
+			Async:      !rbc.sync,
 		},
 		SigningKeyName: rbc.signingKeyName,
 	}

@@ -37,8 +37,8 @@ func (rbp *ReleaseBundlePromote) SetSigningKeyName(signingKeyName string) *Relea
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetAsync(async bool) *ReleaseBundlePromote {
-	rbp.async = async
+func (rbp *ReleaseBundlePromote) SetSync(sync bool) *ReleaseBundlePromote {
+	rbp.sync = sync
 	return rbp
 }
 

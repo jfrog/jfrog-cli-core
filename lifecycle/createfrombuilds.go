@@ -70,7 +70,7 @@ func (rbc *ReleaseBundleCreate) getLatestBuildNumberIfEmpty(buildName, buildNumb
 }
 
 func (rbc *ReleaseBundleCreate) getAqlService() (*rtServices.AqlService, error) {
-	rtServiceManager, err := rtUtils.CreateServiceManager(rbc.serverDetails, -1, 0, false)
+	rtServiceManager, err := rtUtils.CreateServiceManager(rbc.serverDetails, 3, 0, false)
 	if err != nil {
 		return nil, err
 	}

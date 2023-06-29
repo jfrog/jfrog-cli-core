@@ -77,10 +77,13 @@ import (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns []string) error {
 	m := module.Version{Version: version, Path: mod}
-	excludePathPattern := prepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}))
+	excludePathPattern, err := prepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}))
+	if err != nil {
+		return err
+	}
 	var files []gozip.File
 
-	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+	err = filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -154,10 +157,14 @@ func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, 
 	return
 }
 
-func prepareExcludePathPattern(exclusions []string, patternType utils.PatternType) string {
+func prepareExcludePathPattern(exclusions []string, patternType utils.PatternType) (string, error) {
 	excludePathPattern := ""
 	for _, singleExclusion := range exclusions {
 		if len(singleExclusion) > 0 {
+			singleExclusion, err := filepath.Abs(singleExclusion)
+			if err != nil {
+				return "", err
+			}
 			singleExclusion = utils.ReplaceTildeWithUserHome(singleExclusion)
 			singleExclusion = utils.ConvertLocalPatternToRegexp(singleExclusion, patternType)
 			if strings.HasSuffix(singleExclusion, fileutils.GetFileSeparator()) {
@@ -169,7 +176,7 @@ func prepareExcludePathPattern(exclusions []string, patternType utils.PatternTyp
 	if len(excludePathPattern) > 0 {
 		excludePathPattern = excludePathPattern[:len(excludePathPattern)-1]
 	}
-	return excludePathPattern
+	return excludePathPattern, nil
 }
 
 func isVendoredPackage(name string) bool {

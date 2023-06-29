@@ -263,11 +263,6 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 	err := config.SaveServersConf([]*config.ServerDetails{serverDetails})
 	assert.NoError(t, err)
 	defer cleanUp()
-	server := &config.ServerDetails{
-		ArtifactoryUrl: "https://myartifactory.com/artifactory",
-		User:           "myuser",
-		Password:       "mypass",
-	}
 	testCases := []struct {
 		envVar       string
 		expectedRepo string
@@ -286,7 +281,7 @@ func TestConstructReleasesRemoteRepo(t *testing.T) {
 				// Reset the environment variable after each test case
 				assert.NoError(t, os.Unsetenv(coreutils.ReleasesRemoteEnv))
 			}()
-			actualRepo, actualErr := constructReleasesRemoteRepo(server)
+			actualRepo, actualErr := constructReleasesRemoteRepo()
 			assert.Equal(t, tc.expectedRepo, actualRepo)
 			assert.Equal(t, tc.expectedErr, actualErr)
 		}()

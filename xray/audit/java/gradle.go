@@ -167,7 +167,7 @@ func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err er
 // server - the Artifactory server details on which the repositories reside in.
 // Returns the constructed sections.
 func getRemoteRepos(depsRepo string, server *config.ServerDetails) (string, string, error) {
-	constructedReleasesRepo, err := constructReleasesRemoteRepo(server)
+	constructedReleasesRepo, err := constructReleasesRemoteRepo()
 	if err != nil {
 		return "", "", err
 	}
@@ -179,17 +179,18 @@ func getRemoteRepos(depsRepo string, server *config.ServerDetails) (string, stri
 	return constructedReleasesRepo, constructedDepsRepo, nil
 }
 
-func constructReleasesRemoteRepo(server *config.ServerDetails) (string, error) {
-	releasesServer := server
-	// Try to retrieve the remote repository that proxies https://releases.jfrog.io, from the environment variable
+func constructReleasesRemoteRepo() (string, error) {
+	// Try to retrieve the serverID and remote repository that proxies https://releases.jfrog.io, from the environment variable
 	serverId, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
 	if err != nil || serverId == "" || repoName == "" {
 		return "", err
 	}
-	releasesServer, err = config.GetSpecificConfig(serverId, false, true)
+
+	releasesServer, err := config.GetSpecificConfig(serverId, false, true)
 	if err != nil {
 		return "", err
 	}
+
 	releasesPath := fmt.Sprintf("%s/%s", repoName, remoteDepTreePath)
 	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }

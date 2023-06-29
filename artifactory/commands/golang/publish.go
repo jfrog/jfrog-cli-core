@@ -197,8 +197,7 @@ func archive(moduleName, version, projectPath, tempDir string, excludedPatterns 
 			}
 		}
 	}()
-	err = archiveProject(tempFile, projectPath, moduleName, version, excludedPatterns)
-	if err != nil {
+	if err = archiveProject(tempFile, projectPath, moduleName, version, excludedPatterns); err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
 	// Double-check that the paths within the zip file are well-formed.

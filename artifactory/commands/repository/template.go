@@ -56,6 +56,7 @@ const (
 	// Mutual local and virtual repository configuration JSON keys
 	DebianTrivialLayout = "debianTrivialLayout"
 	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
+        PrimaryKeyPairRef = "primaryKeyPairRef"
 
 	// Mutual remote and virtual repository configuration JSON keys
 	ExternalDependenciesEnabled  = "externalDependenciesEnabled"
@@ -250,6 +251,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	Username:                          {Text: Username},
 	Password:                          {Text: Password},
 	Proxy:                             {Text: Proxy},
+        PrimaryKeyPairRef:                 {Text: PrimaryKeyPairRef},
 	RemoteRepoChecksumPolicyType:      {Text: RemoteRepoChecksumPolicyType},
 	HardFail:                          {Text: HardFail},
 	Offline:                           {Text: Offline},
@@ -305,7 +307,7 @@ var mavenGradleLocalRepoConfKeys = []string{
 }
 
 var rpmLocalRepoConfKeys = []string{
-	YumRootDepth, CalculateYumMetadata, EnableFileListsIndexing,
+	YumRootDepth, CalculateYumMetadata, EnableFileListsIndexing, PrimaryKeyPairRef,
 }
 
 var nugetLocalRepoConfKeys = []string{
@@ -313,7 +315,7 @@ var nugetLocalRepoConfKeys = []string{
 }
 
 var debianLocalRepoConfKeys = []string{
-	DebianTrivialLayout,
+	DebianTrivialLayout, PrimaryKeyPairRef,
 }
 
 var dockerLocalRepoConfKeys = []string{
@@ -387,7 +389,7 @@ var vcsRemoteRepoConfKeys = []string{
 
 var baseVirtualRepoConfKeys = []string{
 	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
-	DefaultDeploymentRepo, OptionalIndexCompressionFormats,
+	DefaultDeploymentRepo, OptionalIndexCompressionFormats, PrimaryKeyPairRef,
 }
 
 var mavenGradleVirtualRepoConfKeys = []string{
@@ -407,7 +409,7 @@ var bowerVirtualRepoConfKeys = []string{
 }
 
 var debianVirtualRepoConfKeys = []string{
-	DebianTrivialLayout,
+	DebianTrivialLayout, 
 }
 
 var goVirtualRepoConfKeys = []string{
@@ -846,6 +848,7 @@ var questionMap = map[string]utils.QuestionInfo{
 		AllowVars: true,
 		Writer:    utils.WriteStringAnswer,
 	},
+        PrimaryKeyPairRef: utils.FreeStringQuestionInfo,
 	Username: utils.FreeStringQuestionInfo,
 	Password: utils.FreeStringQuestionInfo,
 	Proxy:    utils.FreeStringQuestionInfo,

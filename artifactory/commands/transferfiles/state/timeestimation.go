@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 
@@ -185,7 +186,7 @@ func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() string {
 		return err.Error()
 	}
 
-	return secondsToLiteralTime(remainingTimeSec, "About ")
+	return SecondsToLiteralTime(remainingTimeSec, "About ")
 }
 
 func (tem *TimeEstimationManager) isTimeEstimationAvailable() bool {

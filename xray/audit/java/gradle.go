@@ -30,7 +30,7 @@ const (
 		mavenCentral()
     }
     dependencies {
-        classpath 'com.jfrog:gradle-dep-tree:2.2.0'
+        classpath 'com.jfrog:gradle-dep-tree:3.0.0'
     }
 }
 

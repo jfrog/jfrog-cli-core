@@ -56,9 +56,6 @@ func TestArchiveProjectWithExclusions(t *testing.T) {
 	}
 
 	buff := &bytes.Buffer{}
-	if err != nil {
-		t.Error(err)
-	}
 	originalFolder := "test_.git_suffix"
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalFolder, "testdata")
 	if err = archiveProject(buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0", []string{"testdata/dir2/*"}); err != nil {

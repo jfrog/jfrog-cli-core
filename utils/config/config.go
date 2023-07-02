@@ -11,6 +11,7 @@ import (
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
+	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -566,6 +567,7 @@ type ServerDetails struct {
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
+	LifecycleUrl                    string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -651,6 +653,10 @@ func (serverDetails *ServerDetails) GetAccessUrl() string {
 	return serverDetails.AccessUrl
 }
 
+func (serverDetails *ServerDetails) GetLifecycleUrl() string {
+	return serverDetails.LifecycleUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -703,6 +709,12 @@ func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetail
 	pAuth := accessAuth.NewAccessDetails()
 	pAuth.SetUrl(utils.AddTrailingSlashIfNeeded(serverDetails.Url) + "access/")
 	return serverDetails.createAuthConfig(pAuth)
+}
+
+func (serverDetails *ServerDetails) CreateLifecycleAuthConfig() (auth.ServiceDetails, error) {
+	lcAuth := lifecycleAuth.NewLifecycleDetails()
+	lcAuth.SetUrl(serverDetails.LifecycleUrl)
+	return serverDetails.createAuthConfig(lcAuth)
 }
 
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {

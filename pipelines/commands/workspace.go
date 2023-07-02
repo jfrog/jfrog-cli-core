@@ -2,11 +2,9 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/utils"
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
-	"os"
 	"strings"
 	"time"
 
@@ -26,16 +24,10 @@ const (
 
 type WorkspaceRunCommand struct {
 	serverDetails *config.ServerDetails
-	pathToFile    string
+	pathToFiles   string
 	data          []byte
 	project       string
 	values        string
-}
-
-type PipelineDefinition struct {
-	FileName string `json:"fileName,omitempty"`
-	Content  string `json:"content,omitempty"`
-	YmlType  string `json:"ymlType,omitempty"`
 }
 
 type WorkSpaceValidation struct {
@@ -59,7 +51,7 @@ func (wc *WorkspaceRunCommand) SetServerDetails(serverDetails *config.ServerDeta
 }
 
 func (wc *WorkspaceRunCommand) SetPipeResourceFiles(f string) *WorkspaceRunCommand {
-	wc.pathToFile = f
+	wc.pathToFiles = f
 	return wc
 }
 
@@ -82,19 +74,10 @@ func (wc *WorkspaceRunCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	pipelineFiles := wc.pathToFile
-	pipelineDefinitions := strings.Split(pipelineFiles, ",")
-	payload, err := wc.getWorkspaceRunPayload(pipelineDefinitions, wc.project)
+	err = wc.workspaceActions(Validate)
 	if err != nil {
 		return err
 	}
-	log.Info("Performing validation on pipeline resources")
-	fmt.Printf("%+v \n", string(payload))
-	err = serviceManager.ValidateWorkspace(payload)
-	if err != nil {
-		return err
-	}
-	log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
 	err = wc.pollSyncStatusAndTriggerRun(serviceManager)
 	if err != nil {
 		return err
@@ -102,32 +85,48 @@ func (wc *WorkspaceRunCommand) Run() error {
 	return nil
 }
 
-// getWorkspaceRunPayload prepares request body for workspace validation
-func (wc *WorkspaceRunCommand) getWorkspaceRunPayload(resources []string, project string) ([]byte, error) {
-	var pipelineDefinitions []PipelineDefinition
-	for _, pathToFile := range resources {
-		fileContent, fileInfo, err := getFileContentAndBaseName(pathToFile)
-		if err != nil {
-			return nil, err
-		}
-		pipeDefinition := PipelineDefinition{
-			FileName: fileInfo.Name(),
-			Content:  string(fileContent),
-			YmlType:  "",
-		}
-		pipelineDefinitions = append(pipelineDefinitions, pipeDefinition)
+func (wc *WorkspaceRunCommand) workspaceActions(action string) error {
+	serviceManager, err := manager.CreateServiceManager(wc.serverDetails)
+	if err != nil {
+		return err
 	}
-	if wc.values != "" {
-		fileContent, fileInfo, err := getFileContentAndBaseName(wc.values)
+	switch action {
+	case Validate:
+		pathToFiles := strings.Split(wc.pathToFiles, ",")
+		payload, err := wc.getWorkspaceRunPayload(pathToFiles, wc.project)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		pipeDefinition := PipelineDefinition{
-			FileName: fileInfo.Name(),
-			Content:  string(fileContent),
-			YmlType:  "values",
+		log.Info("Performing validation on pipelines defined")
+		err = serviceManager.ValidateWorkspace(payload)
+		if err != nil {
+			return err
 		}
-		pipelineDefinitions = append(pipelineDefinitions, pipeDefinition)
+		log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
+	case Sync:
+		ws := NewWorkspaceSyncCommand()
+		ws.SetServerDetails(wc.serverDetails).
+			SetProject(wc.project)
+		return commands.Exec(ws)
+	case SyncStatus:
+		wss := NewWorkspaceSyncStatusCommand()
+		wss.SetServerDetails(wc.serverDetails).
+			SetProject(wc.project)
+		return commands.Exec(wss)
+	case RunStatus:
+		wrs := NewWorkspaceRunStatusCommand()
+		wrs.SetServerDetails(wc.serverDetails).
+			SetProject(wc.project)
+		return commands.Exec(wrs)
+	}
+	return nil
+}
+
+// getWorkspaceRunPayload prepares request body for workspace validation
+func (wc *WorkspaceRunCommand) getWorkspaceRunPayload(pipelineFiles []string, project string) ([]byte, error) {
+	pipelineDefinitions, err := structureFileContentAsPipelineDefinition(pipelineFiles, wc.values)
+	if err != nil {
+		return []byte{}, err
 	}
 	if len(project) == 0 {
 		project = "default"
@@ -140,41 +139,8 @@ func (wc *WorkspaceRunCommand) getWorkspaceRunPayload(resources []string, projec
 	return json.Marshal(workSpaceValidation)
 }
 
-func getFileContentAndBaseName(pathToFile string) ([]byte, os.FileInfo, error) {
-	fileContent, err := os.ReadFile(pathToFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	fileInfo, err := os.Stat(pathToFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	return fileContent, fileInfo, nil
-}
-
-func (wc *WorkspaceRunCommand) WorkspaceLastRunStatus() error {
-	return wc.WorkspaceActions(RunStatus)
-}
-
-func (wc *WorkspaceRunCommand) WorkspaceLastSyncStatus() error {
-	return wc.WorkspaceActions(SyncStatus)
-}
-
-func (wc *WorkspaceRunCommand) WorkspaceSync() error {
-	err := wc.WorkspaceActions(Sync)
-	if err != nil {
-		return err
-	}
-	serviceManager, err := manager.CreateServiceManager(wc.serverDetails)
-	if err != nil {
-		return err
-	}
-	err = wc.pollSyncStatusAndTriggerRun(serviceManager)
-	return err
-}
-
 func (wc *WorkspaceRunCommand) pollSyncStatusAndTriggerRun(serviceManager *pipelines.PipelinesServicesManager) error {
-	err := wc.WorkspaceActions(SyncStatus)
+	err := wc.workspaceActions(SyncStatus)
 	if err != nil {
 		return err
 	}
@@ -210,44 +176,6 @@ func (wc *WorkspaceRunCommand) pollSyncStatusAndTriggerRun(serviceManager *pipel
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (wc *WorkspaceRunCommand) WorkspaceActions(action string) error {
-	serviceManager, err := manager.CreateServiceManager(wc.serverDetails)
-	if err != nil {
-		return err
-	}
-	switch action {
-	case Validate:
-		pipelineFiles := wc.pathToFile
-		pipelineDefinitions := strings.Split(pipelineFiles, ",")
-		payload, err := wc.getWorkspaceRunPayload(pipelineDefinitions, wc.project)
-		if err != nil {
-			return err
-		}
-		log.Info("Performing validation on pipelines defined")
-		err = serviceManager.ValidateWorkspace(payload)
-		if err != nil {
-			return err
-		}
-		log.Info(coreutils.PrintTitle("Pipeline resources validation completed successfully"))
-	case Sync:
-		ws := NewWorkspaceSyncCommand()
-		ws.SetServerDetails(wc.serverDetails).
-			SetProject(wc.project)
-		return commands.Exec(ws)
-	case SyncStatus:
-		wss := NewWorkspaceSyncStatusCommand()
-		wss.SetServerDetails(wc.serverDetails).
-			SetProject(wc.project)
-		return commands.Exec(wss)
-	case RunStatus:
-		wrs := NewWorkspaceRunStatusCommand()
-		wrs.SetServerDetails(wc.serverDetails).
-			SetProject(wc.project)
-		return commands.Exec(wrs)
 	}
 	return nil
 }

@@ -9,7 +9,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/pipelines/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -114,47 +117,39 @@ func isStepCompleted(stepStatus status.PipelineStatus) bool {
 	return slices.Contains(status.GetRunCompletedStatusList(), stepStatus)
 }
 
-func PollSyncStatusAndTriggerRun(serviceManager *pipelines.PipelinesServicesManager) error {
-	response, err := serviceManager.WorkspacePollSyncStatus()
+func GetFileContentAndBaseName(pathToFile string) ([]byte, os.FileInfo, error) {
+	fileContent, err := os.ReadFile(pathToFile)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	data, err := json.MarshalIndent(response, "", "  ")
+	fileInfo, err := os.Stat(pathToFile)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	log.Info("Workspace sync status : \n", string(data))
-	var pipelinesBranch map[string]string
-	pipelinesBranch, err = serviceManager.WorkspacePipelines()
-	if err != nil {
-		return err
-	}
-	pipelineNames := make([]string, len(pipelinesBranch))
-	for pipName, branch := range pipelinesBranch {
-		log.Info(coreutils.PrintTitle("Triggering pipeline run for: "), pipName)
-		pipelineNames = append(pipelineNames, pipName)
-		err := serviceManager.TriggerPipelineRun(branch, pipName, false)
-		if err != nil {
-			return err
-		}
-	}
-	log.Debug("Collecting run ids from pipelines defined in workspace")
-	pipeRunIDs, err := serviceManager.WorkspaceRunIDs(pipelineNames)
-	if err != nil {
-		return err
-	}
+	return fileContent, fileInfo, nil
+}
 
-	for _, runId := range pipeRunIDs {
-		log.Debug("Fetching run status for run id: ", runId.LatestRunID)
-		time.Sleep(5 * time.Second)
-		_, err := serviceManager.WorkspaceRunStatus(runId.LatestRunID)
+func GetAllFilesFromDirectory(relativePathToPipelineDefinitions string) ([]string, error) {
+	var files []string
+	if len(relativePathToPipelineDefinitions) > 0 {
+		pwd, err := os.Getwd()
 		if err != nil {
-			return err
+			return files, err
 		}
-		err = GetStepStatus(runId, serviceManager)
+		log.Info("Running in ", pwd, " reading files from ", pwd+"/"+relativePathToPipelineDefinitions)
+		err = filepath.Walk(pwd+"/"+relativePathToPipelineDefinitions, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && (strings.EqualFold(filepath.Ext(path), ".yml") || strings.EqualFold(filepath.Ext(path), ".yaml")) {
+				files = append(files, path)
+			}
+			return nil
+		})
 		if err != nil {
-			return err
+			return files, err
 		}
 	}
-	return nil
+	log.Debug("files collected from directory ", files)
+	return files, nil
 }

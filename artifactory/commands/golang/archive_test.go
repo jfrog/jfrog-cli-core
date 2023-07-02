@@ -30,8 +30,7 @@ func TestArchiveProject(t *testing.T) {
 	}
 	originalFolder := "test_.git_suffix"
 	baseDir, dotGitPath := tests.PrepareDotGitDir(t, originalFolder, "testdata")
-	err = archiveProject(buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0", nil)
-	if err != nil {
+	if err = archiveProject(buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0", nil); err != nil {
 		t.Error(err)
 	}
 	expected := map[utils.Algorithm]string{utils.MD5: "c2a2dd6a7af84c2d88a48caf0c3aec34", utils.SHA1: "193d761317a602d18566561678b7bddc4773385c", utils.SHA256: "3efcd8b0d88081ec64333ff98b43616d283c4d52ed26cd7c8df646d9ea452c31"}

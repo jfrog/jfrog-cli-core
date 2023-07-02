@@ -76,7 +76,7 @@ import (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns []string) error {
 	m := module.Version{Version: version, Path: mod}
-	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true)
+	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true, true)
 	if err != nil {
 		return err
 	}

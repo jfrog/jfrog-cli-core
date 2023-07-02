@@ -30,9 +30,8 @@ package golang
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import (
-	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"golang.org/x/mod/module"
 	gozip "golang.org/x/mod/zip"
 	"io"
@@ -77,12 +76,11 @@ import (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns []string) error {
 	m := module.Version{Version: version, Path: mod}
-	excludePathPattern, err := prepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}))
+	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true)
 	if err != nil {
 		return err
 	}
 	var files []gozip.File
-
 	err = filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -155,28 +153,6 @@ func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, 
 		excludedPath, err = regexp.MatchString(path, excludePathPattern)
 	}
 	return
-}
-
-func prepareExcludePathPattern(exclusions []string, patternType utils.PatternType) (string, error) {
-	excludePathPattern := ""
-	for _, singleExclusion := range exclusions {
-		if len(singleExclusion) > 0 {
-			singleExclusion, err := filepath.Abs(singleExclusion)
-			if err != nil {
-				return "", err
-			}
-			singleExclusion = utils.ReplaceTildeWithUserHome(singleExclusion)
-			singleExclusion = utils.ConvertLocalPatternToRegexp(singleExclusion, patternType)
-			if strings.HasSuffix(singleExclusion, fileutils.GetFileSeparator()) {
-				singleExclusion += "*"
-			}
-			excludePathPattern += fmt.Sprintf(`(%s)|`, singleExclusion)
-		}
-	}
-	if len(excludePathPattern) > 0 {
-		excludePathPattern = excludePathPattern[:len(excludePathPattern)-1]
-	}
-	return excludePathPattern, nil
 }
 
 func isVendoredPackage(name string) bool {

@@ -140,6 +140,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
+		_, autoMergeExist := field.Tag.Lookup("auto-merge")
 		_, omitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
@@ -161,7 +162,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		} else {
 			columnsNames = append(columnsNames, columnName)
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i})
-			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
+			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, AutoMerge: autoMergeExist})
 		}
 	}
 	tableWriter.AppendHeader(columnsNames)

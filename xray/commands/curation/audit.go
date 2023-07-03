@@ -74,25 +74,32 @@ type PackageStatus struct {
 }
 
 type Policy struct {
-	Policy    string `json:"policy"`
-	Condition string `json:"condition"`
+	Policy         string `json:"policy"`
+	Condition      string `json:"condition"`
+	Explanation    string `json:"explanation"`
+	Recommendation string `json:"recommendation"`
 }
 
 type PackageStatusTable struct {
-	Status            string        `col-name:"Action"`
-	ParentName        string        `col-name:"Direct Dependency\nPackage Name"`
-	ParentVersion     string        `col-name:"Direct Dependency\nPackage Version"`
-	BlockedPackageUrl string        `col-name:"Blocked Package URL"`
-	PackageName       string        `col-name:"Blocked Package\nName"`
-	PackageVersion    string        `col-name:"Blocked Package\nVersion"`
-	BlockingReason    string        `col-name:"Blocking Reason"`
-	PkgType           string        `col-name:"Package Type"`
-	Policy            []policyTable `embed-table:"true"`
+	ParentName    string `col-name:"Direct\nDependency\nPackage\nName" auto-merge:"true"`
+	ParentVersion string `col-name:"Direct\nDependency\nPackage\nVersion" auto-merge:"true"`
+	//	BlockedPackageUrl string        `col-name:"Blocked\nPackage \nURL"`
+	PackageName    string `col-name:"Blocked\nPackage\nName" auto-merge:"true"`
+	PackageVersion string `col-name:"Blocked\nPackage\nVersion" auto-merge:"true"`
+	BlockingReason string `col-name:"Blocking Reason" auto-merge:"true"`
+	PkgType        string `col-name:"Package\nType" auto-merge:"true"`
+	Policy         string `col-name:"Violated\nPolicy\nName"`
+	Condition      string `col-name:"Violated Condition\nName"`
+	Explanation    string `col-name:"Explanation Name"`
+	Recommendation string `col-name:"Recommendation Name"`
+	//policyTable
 }
 
 type policyTable struct {
-	Policy    string `col-name:"Violated Policy\nName"`
-	Condition string `col-name:"Violated Condition\nName"`
+	Policy         string `col-name:"Violated\nPolicy\nName"`
+	Condition      string `col-name:"Violated\nCondition\nName"`
+	Explanation    string `col-name:"Explanation\nName"`
+	Recommendation string `col-name:"Recommendation\nName"`
 }
 
 type treeAnalyzer struct {
@@ -279,23 +286,30 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 
 func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatusTable {
 	var pkgStatusTable []PackageStatusTable
-	for _, pkgStatus := range packagesStatus {
+	for index, pkgStatus := range packagesStatus {
+		// The "go-pretty" library doesn't have an option to merge lines by group of uniq fields.
+		// we make an uniq of group by adding space to a group of lines we want to merge.
+		uniqLineSep := ""
+		if index%2 == 0 {
+			uniqLineSep = " "
+		}
 		pkgTable := PackageStatusTable{
-			Status:            pkgStatus.Action,
-			ParentName:        pkgStatus.ParentName,
-			ParentVersion:     pkgStatus.ParentVersion,
-			BlockedPackageUrl: pkgStatus.BlockedPackageUrl,
-			PackageName:       pkgStatus.PackageName,
-			PackageVersion:    pkgStatus.PackageVersion,
-			BlockingReason:    pkgStatus.BlockingReason,
-			PkgType:           pkgStatus.PkgType,
+			ParentName:     pkgStatus.ParentName + uniqLineSep,
+			ParentVersion:  pkgStatus.ParentVersion + uniqLineSep,
+			PackageName:    pkgStatus.PackageName + uniqLineSep,
+			PackageVersion: pkgStatus.PackageVersion + uniqLineSep,
+			BlockingReason: pkgStatus.BlockingReason + uniqLineSep,
+			PkgType:        pkgStatus.PkgType + uniqLineSep,
 		}
-		var policiesCondTable []policyTable
 		for _, policyCond := range pkgStatus.Policy {
-			policiesCondTable = append(policiesCondTable, policyTable(policyCond))
+			pkgTable.Policy = policyCond.Policy
+			pkgTable.Explanation = policyCond.Explanation
+			pkgTable.Recommendation = policyCond.Recommendation
+			pkgTable.Condition = policyCond.Condition
+			pkgStatusTable = append(pkgStatusTable, pkgTable)
 		}
-		pkgTable.Policy = policiesCondTable
-		pkgStatusTable = append(pkgStatusTable, pkgTable)
+		//pkgTable.Policy = policiesCondTable
+
 	}
 	return pkgStatusTable
 }
@@ -450,7 +464,7 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 }
 
 // Return policies and conditions names from the FORBIDDEN HTTP error message.
-// Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s},{%s, %s}.
+// Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s, %s, %s},{%s, %s, %s, %s}.
 func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	var policies []Policy
 	msg := respError.Errors[0].Message
@@ -462,6 +476,14 @@ func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 			pol := polCond[0]
 			cond := polCond[1]
 			policies = append(policies, Policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
+		}
+		if len(polCond) == 4 {
+			pol := polCond[0]
+			cond := polCond[1]
+			exp := strings.Replace(strings.Replace(polCond[2], ": ", ":\n", 1), " | ", "\n", -1)
+			rec := strings.Replace(strings.Replace(polCond[3], ": ", ":\n", 1), " | ", "\n", -1)
+			policies = append(policies, Policy{Policy: strings.TrimSpace(pol),
+				Condition: strings.TrimSpace(cond), Explanation: strings.TrimSpace(exp), Recommendation: strings.TrimSpace(rec)})
 		}
 	}
 	return policies

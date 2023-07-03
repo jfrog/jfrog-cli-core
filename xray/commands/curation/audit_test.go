@@ -67,14 +67,16 @@ func getTestCasesForExtractPoliciesFromMsg() []struct {
 				Errors: []ErrorResp{
 					{
 						Status:  403,
-						Message: "Package test:1.0.0 download was blocked by JFrog Packages Curation service due to the following policies violated {policy1, condition1}.",
+						Message: "Package test:1.0.0 download was blocked by JFrog Packages Curation service due to the following policies violated {policy1, condition1, Package is 3339 days old, Upgrade to version 0.2.4 (latest)}.",
 					},
 				},
 			},
 			expect: []Policy{
 				{
-					Policy:    "policy1",
-					Condition: "condition1",
+					Policy:         "policy1",
+					Condition:      "condition1",
+					Explanation:    "Package is 3339 days old",
+					Recommendation: "Upgrade to version 0.2.4 (latest)",
 				},
 			},
 		},

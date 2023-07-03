@@ -393,7 +393,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	if err != nil {
 		return err
 	}
-	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(fileParams.Exclusions, fileParams.GetPatternType(), fileParams.IsRecursive(), false)
+	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(fileParams.Exclusions, fileParams.GetPatternType(), fileParams.IsRecursive())
 	if err != nil {
 		return err
 	}

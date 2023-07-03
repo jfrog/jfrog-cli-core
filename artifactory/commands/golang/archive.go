@@ -76,7 +76,11 @@ import (
 // Archive project files according to the go project standard
 func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns []string) error {
 	m := module.Version{Version: version, Path: mod}
-	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true, true)
+	excludedPatterns, err := getAbsolutePaths(excludedPatterns)
+	if err != nil {
+		return err
+	}
+	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true)
 	if err != nil {
 		return err
 	}
@@ -146,6 +150,18 @@ func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns
 	}
 
 	return gozip.Create(writer, m, files)
+}
+
+func getAbsolutePaths(exclusionPatterns []string) ([]string, error) {
+	var absolutedPaths []string
+	for _, singleExclusion := range exclusionPatterns {
+		singleExclusion, err := filepath.Abs(singleExclusion)
+		if err != nil {
+			return nil, err
+		}
+		absolutedPaths = append(absolutedPaths, singleExclusion)
+	}
+	return absolutedPaths, nil
 }
 
 func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, err error) {

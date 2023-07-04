@@ -119,10 +119,10 @@ func TestValidateDifferentServers(t *testing.T) {
 }
 
 func TestGetSelectedRepositories(t *testing.T) {
-	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		repositories := &[]services.RepositoryDetails{
-			{Key: "generic-local", Type: "local"}, {Key: "generic-local-filter", Type: "local"},
+			{Key: "generic-local", Type: "local"}, {Key: "generic-local-filter", Type: "local"}, {Key: "generic-local-existed", Type: "local"},
 			{Key: "generic-remote", Type: "remote"}, {Key: "generic-filter-remote", Type: "remote"},
 			{Key: "generic-virtual", Type: "virtual"}, {Key: "filter-generic-virtual", Type: "virtual"},
 			{Key: "generic-federated", Type: "federated"}, {Key: "generic-federated-filter", Type: "federated"},
@@ -132,9 +132,18 @@ func TestGetSelectedRepositories(t *testing.T) {
 		_, err = w.Write(reposBytes)
 		assert.NoError(t, err)
 	})
-	defer testServer.Close()
+	defer sourceTestServer.Close()
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		repositories := &[]services.RepositoryDetails{{Key: "generic-local-existed", Type: "local"}}
+		reposBytes, err := json.Marshal(repositories)
+		assert.NoError(t, err)
+		_, err = w.Write(reposBytes)
+		assert.NoError(t, err)
+	})
+	defer targetTestServer.Close()
 
-	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
+	transferConfigBase := createTransferConfigBase(t, sourceServerDetails, targetServerDetails)
 	transferConfigBase.SetExcludeReposPatterns([]string{"*filter*"})
 	selectedRepos, err := transferConfigBase.GetSelectedRepositories()
 	assert.NoError(t, err)

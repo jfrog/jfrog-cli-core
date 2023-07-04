@@ -81,9 +81,8 @@ type Policy struct {
 }
 
 type PackageStatusTable struct {
-	ParentName    string `col-name:"Direct\nDependency\nPackage\nName" auto-merge:"true"`
-	ParentVersion string `col-name:"Direct\nDependency\nPackage\nVersion" auto-merge:"true"`
-	//	BlockedPackageUrl string        `col-name:"Blocked\nPackage \nURL"`
+	ParentName     string `col-name:"Direct\nDependency\nPackage\nName" auto-merge:"true"`
+	ParentVersion  string `col-name:"Direct\nDependency\nPackage\nVersion" auto-merge:"true"`
 	PackageName    string `col-name:"Blocked\nPackage\nName" auto-merge:"true"`
 	PackageVersion string `col-name:"Blocked\nPackage\nVersion" auto-merge:"true"`
 	BlockingReason string `col-name:"Blocking Reason" auto-merge:"true"`
@@ -92,14 +91,6 @@ type PackageStatusTable struct {
 	Condition      string `col-name:"Violated Condition\nName"`
 	Explanation    string `col-name:"Explanation Name"`
 	Recommendation string `col-name:"Recommendation Name"`
-	//policyTable
-}
-
-type policyTable struct {
-	Policy         string `col-name:"Violated\nPolicy\nName"`
-	Condition      string `col-name:"Violated\nCondition\nName"`
-	Explanation    string `col-name:"Explanation\nName"`
-	Recommendation string `col-name:"Recommendation\nName"`
 }
 
 type treeAnalyzer struct {
@@ -288,7 +279,7 @@ func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatu
 	var pkgStatusTable []PackageStatusTable
 	for index, pkgStatus := range packagesStatus {
 		// The "go-pretty" library doesn't have an option to merge lines by group of uniq fields.
-		// we make an uniq of group by adding space to a group of lines we want to merge.
+		// we make an uniq group by adding space to a group of lines we want to merge.
 		uniqLineSep := ""
 		if index%2 == 0 {
 			uniqLineSep = " "
@@ -301,6 +292,10 @@ func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatu
 			BlockingReason: pkgStatus.BlockingReason + uniqLineSep,
 			PkgType:        pkgStatus.PkgType + uniqLineSep,
 		}
+		if len(pkgStatus.Policy) == 0 {
+			pkgStatusTable = append(pkgStatusTable, pkgTable)
+			continue
+		}
 		for _, policyCond := range pkgStatus.Policy {
 			pkgTable.Policy = policyCond.Policy
 			pkgTable.Explanation = policyCond.Explanation
@@ -308,9 +303,8 @@ func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatu
 			pkgTable.Condition = policyCond.Condition
 			pkgStatusTable = append(pkgStatusTable, pkgTable)
 		}
-		//pkgTable.Policy = policiesCondTable
-
 	}
+
 	return pkgStatusTable
 }
 
@@ -480,8 +474,8 @@ func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 		if len(polCond) == 4 {
 			pol := polCond[0]
 			cond := polCond[1]
-			exp := strings.Replace(strings.Replace(polCond[2], ": ", ":\n", 1), " | ", "\n", -1)
-			rec := strings.Replace(strings.Replace(polCond[3], ": ", ":\n", 1), " | ", "\n", -1)
+			exp := strings.ReplaceAll(strings.Replace(polCond[2], ": ", ":\n", 1), " | ", "\n")
+			rec := strings.ReplaceAll(strings.Replace(polCond[3], ": ", ":\n", 1), " | ", "\n")
 			policies = append(policies, Policy{Policy: strings.TrimSpace(pol),
 				Condition: strings.TrimSpace(cond), Explanation: strings.TrimSpace(exp), Recommendation: strings.TrimSpace(rec)})
 		}

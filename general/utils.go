@@ -4,9 +4,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"net"
 	"net/url"
 	"strings"
 )
+
+const defaultServerId = "default-server"
 
 // Deduce the server ID from the URL and add server details to config.
 func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLogin bool) error {
@@ -14,8 +17,14 @@ func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLog
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	// Take the server name from host name: https://myjfrog.jfrog.com/ -> myjfrog
-	serverId := strings.Split(u.Host, ".")[0]
+
+	// If the host is an IP address, use a default server ID.
+	serverId := defaultServerId
+	if net.ParseIP(u.Hostname()) == nil {
+		// Otherwise, take the server name from host name: https://myjfrog.jfrog.com/ -> myjfrog
+		serverId = strings.Split(u.Hostname(), ".")[0]
+	}
+
 	return ConfigServerAsDefault(server, serverId, interactive, webLogin)
 }
 

@@ -17,7 +17,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	}
 
 	uuidToken, err := uuid.NewRandom()
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		return
 	}
 	uuidStr := uuidToken.String()
@@ -26,6 +26,8 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	if err = accessManager.SendLoginAuthenticationRequest(uuidStr); err != nil {
+		log.Info("web login is only supported for Artifactory version 7.63.1 and above. " +
+			"Make sure the details you entered are correct and that Artifactory stands in the version requirement.")
 		return
 	}
 	log.Info("Please log in to the JFrog platform using the opened browser.")
@@ -47,7 +49,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 }
 
 func sendUnauthenticatedPing(serverDetails *config.ServerDetails) error {
-	artifactoryManager, err := CreateServiceManager(serverDetails, -1, 0, false)
+	artifactoryManager, err := CreateServiceManager(serverDetails, 3, 0, false)
 	if err != nil {
 		return err
 	}

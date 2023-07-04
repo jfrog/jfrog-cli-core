@@ -25,12 +25,12 @@ func (lc *LoginCommand) Run() error {
 		return err
 	}
 	if len(configurations) == 0 {
-		return cleanConfLogin()
+		return newConfLogin()
 	}
 	return existingConfLogin(configurations)
 }
 
-func cleanConfLogin() error {
+func newConfLogin() error {
 	platformUrl, err := promptPlatformUrl()
 	if err != nil {
 		return err

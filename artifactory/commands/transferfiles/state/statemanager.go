@@ -302,6 +302,20 @@ func (ts *TransferStateManager) GetWorkingThreads() (workingThreads int, err err
 	})
 }
 
+func (ts *TransferStateManager) SetStaleChunks(staleChunks []StaleChunks) error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.StaleChunks = staleChunks
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) GetStaleChunks() (staleChunks []StaleChunks, err error) {
+	return staleChunks, ts.action(func(transferRunStatus *TransferRunStatus) error {
+		staleChunks = transferRunStatus.StaleChunks
+		return nil
+	})
+}
+
 func (ts *TransferStateManager) SaveStateAndSnapshots() error {
 	ts.TransferState.lastSaveTimestamp = time.Now()
 	if err := ts.persistTransferState(false); err != nil {
@@ -361,7 +375,7 @@ func GetRunningTime() (runningTime string, isRunning bool, err error) {
 		return
 	}
 	runningSecs := int64(time.Since(time.Unix(0, startTimestamp)).Seconds())
-	return secondsToLiteralTime(runningSecs, ""), true, nil
+	return SecondsToLiteralTime(runningSecs, ""), true, nil
 }
 
 func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (err error) {

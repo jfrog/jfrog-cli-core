@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/jfrog/gofrog/parallel"
@@ -113,7 +114,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 
 	paginationI := 0
 	for {
-		result, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
+		result, lastPage, err := f.getTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationI)
 		if err != nil {
 			return err
 		}
@@ -145,7 +146,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			return err
 		}
 
-		if len(result) < AqlPaginationLimit {
+		if lastPage {
 			break
 		}
 		paginationI++
@@ -163,12 +164,26 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 
 func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (files []api.FileRepresentation) {
 	for _, result := range results {
-		files = append(files, api.FileRepresentation{
-			Repo: result.Repo,
-			Path: result.Path,
-			Name: result.Name,
-			Size: result.Size,
-		})
+		switch result.Type {
+		case "folder":
+			var pathInRepo string
+			if result.Path == "." {
+				pathInRepo = result.Name
+			} else {
+				pathInRepo = path.Join(result.Path, result.Name)
+			}
+			files = append(files, api.FileRepresentation{
+				Repo: result.Repo,
+				Path: pathInRepo,
+			})
+		default:
+			files = append(files, api.FileRepresentation{
+				Repo: result.Repo,
+				Path: result.Path,
+				Name: result.Name,
+				Size: result.Size,
+			})
+		}
 	}
 	return
 }
@@ -177,7 +192,11 @@ func convertResultsToFileRepresentation(results []servicesUtils.ResultItem) (fil
 // fromTimestamp - Time in RFC3339 represents the start time
 // toTimestamp - Time in RFC3339 represents the end time
 // paginationOffset - Requested page
-func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, err error) {
+// Return values:
+// result - The list of changed files and folders between the input timestamps
+// lastPage - True if we are in the last AQL page and it is not needed to run another AQL requests
+// err - The error, if any occurred
+func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
 	var timeFrameFilesDiff *servicesUtils.AqlSearchResult
 	if f.packageType == docker {
 		// Handle Docker repositories.
@@ -187,9 +206,11 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string
 		timeFrameFilesDiff, err = f.getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp, paginationOffset)
 	}
 	if err != nil {
-		return []servicesUtils.ResultItem{}, err
+		return []servicesUtils.ResultItem{}, true, err
 	}
-	return f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
+	lastPage = len(timeFrameFilesDiff.Results) < AqlPaginationLimit
+	result, err = f.locallyGeneratedFilter.FilterLocallyGenerated(timeFrameFilesDiff.Results)
+	return
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
@@ -242,7 +263,7 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 
 func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}]})`, fromTimestamp, toTimestamp, repoKey)
-	query += `.include("repo","path","name","modified","size")`
+	query += `.include("repo","path","name","type","modified","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }
@@ -265,7 +286,7 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
 	query := `items.find({"$and":`
 	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}`, repoKey, fromTimestamp, toTimestamp)
-	query += `]}).include("repo","path","name","modified")`
+	query += `]}).include("repo","path","name","type","modified")`
 	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }

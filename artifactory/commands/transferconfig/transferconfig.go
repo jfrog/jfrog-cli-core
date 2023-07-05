@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/gofrog/version"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -152,9 +152,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	tcc.LogTitle("Phase 5/5 - Import repositories to the target Artifactory")
-	if err = tcc.deleteConflictingRepositories(selectedRepos); err != nil {
-		return
-	}
 	if err = tcc.TransferRepositoriesToTarget(selectedRepos, remoteRepos); err != nil {
 		return
 	}
@@ -526,30 +523,6 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 		return "?params=workingDir=" + tcc.targetWorkingDir
 	}
 	return ""
-}
-
-func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos map[utils.RepoType][]string) error {
-	log.Info("Deleting conflicting repositories in the target Artifactory server, if any exist...")
-	targetRepos, err := tcc.TargetArtifactoryManager.GetAllRepositories()
-	if err != nil {
-		return err
-	}
-	allSourceRepos := datastructures.MakeSet[string]()
-	for _, selectedReposWithType := range selectedRepos {
-		for _, selectedRepo := range selectedReposWithType {
-			allSourceRepos.Add(selectedRepo)
-		}
-	}
-
-	for _, targetRepo := range *targetRepos {
-		if allSourceRepos.Exists(targetRepo.Key) {
-			if err = tcc.TargetArtifactoryManager.DeleteRepository(targetRepo.Key); err != nil {
-				return err
-			}
-		}
-	}
-	log.Info("Done deleting conflicting repositories")
-	return nil
 }
 
 // Make sure that the source Artifactory version is sufficient.

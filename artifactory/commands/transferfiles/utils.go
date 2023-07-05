@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -90,6 +91,37 @@ func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId node
 	}
 
 	return inProgressTokens
+}
+
+// Save in the TransferRunStatus the chunks that have been in transit for more than 30 minutes.
+// This allows them to be displayed using the '--status' option.
+// stateManager - Transfer state manager
+func (clcm *ChunksLifeCycleManager) StoreStaleChunks(stateManager *state.TransferStateManager) error {
+	var staleChunks []state.StaleChunks
+	for nodeId, chunkIdToData := range clcm.nodeToChunksMap {
+		staleNodeChunks := state.StaleChunks{NodeID: string(nodeId)}
+		for chunkId, uploadedChunkData := range chunkIdToData {
+			if time.Since(uploadedChunkData.TimeSent).Hours() < 0.5 {
+				continue
+			}
+			staleNodeChunk := state.StaleChunk{
+				ChunkID: string(chunkId),
+				Sent:    uploadedChunkData.TimeSent.Unix(),
+			}
+			for _, file := range uploadedChunkData.ChunkFiles {
+				var sizeStr string
+				if file.Size > 0 {
+					sizeStr = " (" + utils.ConvertIntToStorageSizeString(file.Size) + ")"
+				}
+				staleNodeChunk.Files = append(staleNodeChunk.Files, path.Join(file.Repo, file.Path, file.Name)+sizeStr)
+			}
+			staleNodeChunks.Chunks = append(staleNodeChunks.Chunks, staleNodeChunk)
+		}
+		if len(staleNodeChunks.Chunks) > 0 {
+			staleChunks = append(staleChunks, staleNodeChunks)
+		}
+	}
+	return stateManager.SetStaleChunks(staleChunks)
 }
 
 type InterruptionErr struct{}
@@ -679,6 +711,24 @@ func getErrorOrDelayFiles(repoKeys []string, getDirPathFunc func(string) (string
 			return nil, err
 		}
 		filesPaths = append(filesPaths, files...)
+	}
+	return
+}
+
+// Increments index until the file path is unique.
+func getUniqueErrorOrDelayFilePath(dirPath string, getFileNamePrefix func() string) (delayFilePath string, err error) {
+	var exists bool
+	index := 0
+	for {
+		delayFilePath = filepath.Join(dirPath, fmt.Sprintf("%s-%d.json", getFileNamePrefix(), index))
+		exists, err = fileutils.IsFileExists(delayFilePath, false)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			break
+		}
+		index++
 	}
 	return
 }

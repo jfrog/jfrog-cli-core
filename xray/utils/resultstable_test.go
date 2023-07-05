@@ -466,6 +466,108 @@ func TestGetApplicableCveValue(t *testing.T) {
 	}
 }
 
+func TestSortVulnerabilityOrViolationRows(t *testing.T) {
+	testCases := []struct {
+		name          string
+		rows          []formats.VulnerabilityOrViolationRow
+		expectedOrder []string
+	}{
+		{
+			name: "Sort by severity with different severity values",
+			rows: []formats.VulnerabilityOrViolationRow{
+				{
+					Summary:                   "Summary 1",
+					Severity:                  "High",
+					SeverityNumValue:          9,
+					FixedVersions:             []string{},
+					ImpactedDependencyName:    "Dependency 1",
+					ImpactedDependencyVersion: "1.0.0",
+				},
+				{
+					Summary:                   "Summary 2",
+					Severity:                  "Critical",
+					SeverityNumValue:          12,
+					FixedVersions:             []string{"1.0.0"},
+					ImpactedDependencyName:    "Dependency 2",
+					ImpactedDependencyVersion: "2.0.0",
+				},
+				{
+					Summary:                   "Summary 3",
+					Severity:                  "Medium",
+					SeverityNumValue:          6,
+					FixedVersions:             []string{},
+					ImpactedDependencyName:    "Dependency 3",
+					ImpactedDependencyVersion: "3.0.0",
+				},
+			},
+			expectedOrder: []string{"Dependency 2", "Dependency 1", "Dependency 3"},
+		},
+		{
+			name: "Sort by severity with same severity values, but different fixed versions",
+			rows: []formats.VulnerabilityOrViolationRow{
+				{
+					Summary:                   "Summary 1",
+					Severity:                  "Critical",
+					SeverityNumValue:          12,
+					FixedVersions:             []string{"1.0.0"},
+					ImpactedDependencyName:    "Dependency 1",
+					ImpactedDependencyVersion: "1.0.0",
+				},
+				{
+					Summary:                   "Summary 2",
+					Severity:                  "Critical",
+					SeverityNumValue:          12,
+					FixedVersions:             []string{},
+					ImpactedDependencyName:    "Dependency 2",
+					ImpactedDependencyVersion: "2.0.0",
+				},
+			},
+			expectedOrder: []string{"Dependency 1", "Dependency 2"},
+		},
+		{
+			name: "Sort by severity with same severity values different applicability",
+			rows: []formats.VulnerabilityOrViolationRow{
+				{
+					Summary:                   "Summary 1",
+					Severity:                  "Critical",
+					Applicable:                ApplicableStringValue,
+					SeverityNumValue:          13,
+					FixedVersions:             []string{"1.0.0"},
+					ImpactedDependencyName:    "Dependency 1",
+					ImpactedDependencyVersion: "1.0.0",
+				},
+				{
+					Summary:                   "Summary 2",
+					Applicable:                NotApplicableStringValue,
+					Severity:                  "Critical",
+					SeverityNumValue:          11,
+					ImpactedDependencyName:    "Dependency 2",
+					ImpactedDependencyVersion: "2.0.0",
+				},
+				{
+					Summary:                   "Summary 3",
+					Applicable:                ApplicabilityUndeterminedStringValue,
+					Severity:                  "Critical",
+					SeverityNumValue:          12,
+					ImpactedDependencyName:    "Dependency 3",
+					ImpactedDependencyVersion: "2.0.0",
+				},
+			},
+			expectedOrder: []string{"Dependency 1", "Dependency 3", "Dependency 2"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sortVulnerabilityOrViolationRows(tc.rows)
+
+			for i, row := range tc.rows {
+				assert.Equal(t, tc.expectedOrder[i], row.ImpactedDependencyName)
+			}
+		})
+	}
+}
+
 func newBoolPtr(v bool) *bool {
 	return &v
 }

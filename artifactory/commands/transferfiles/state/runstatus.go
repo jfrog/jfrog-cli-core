@@ -38,6 +38,19 @@ type TransferRunStatus struct {
 	WorkingThreads        int  `json:"working_threads,omitempty"`
 	TransferFailures      uint `json:"transfer_failures,omitempty"`
 	TimeEstimationManager `json:"time_estimation,omitempty"`
+	StaleChunks           []StaleChunks `json:"stale_chunks,omitempty"`
+}
+
+// This structure contains a collection of chunks that have been undergoing processing for over 30 minutes
+type StaleChunks struct {
+	NodeID string       `json:"node_id,omitempty"`
+	Chunks []StaleChunk `json:"stale_node_chunks,omitempty"`
+}
+
+type StaleChunk struct {
+	ChunkID string   `json:"chunk_id,omitempty"`
+	Files   []string `json:"files,omitempty"`
+	Sent    int64    `json:"sent,omitempty"`
 }
 
 func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {

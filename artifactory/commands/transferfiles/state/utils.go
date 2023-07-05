@@ -2,14 +2,15 @@ package state
 
 import (
 	"fmt"
-	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 const (
@@ -36,9 +37,9 @@ func ConvertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
 }
 
-// secondsToLiteralTime converts a number of seconds to an easy-to-read string.
+// SecondsToLiteralTime converts a number of seconds to an easy-to-read string.
 // Prefix is not taken into account if the time is less than a minute.
-func secondsToLiteralTime(secondsToConvert int64, prefix string) string {
+func SecondsToLiteralTime(secondsToConvert int64, prefix string) string {
 	daysTime := secondsToConvert / secondsInDay
 	daysTimeInSecs := daysTime * secondsInDay
 	hoursTime := (secondsToConvert - daysTimeInSecs) / secondsInHour

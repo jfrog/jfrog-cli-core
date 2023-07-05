@@ -121,11 +121,11 @@ func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns
 		}
 
 		if info.Mode().IsRegular() {
-			excludedPath, err := isPathExcluded(filePath, excludePathPattern)
+			excluded, err := isPathExcluded(filePath, excludePathPattern)
 			if err != nil {
 				return err
 			}
-			if !isVendoredPackage(slashPath) && !excludedPath {
+			if !isVendoredPackage(slashPath) && !excluded {
 				files = append(files, dirFile{
 					filePath:  filePath,
 					slashPath: slashPath,
@@ -157,14 +157,14 @@ func getAbsolutePaths(exclusionPatterns []string) ([]string, error) {
 	return absolutedPaths, nil
 }
 
-func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, err error) {
+func isPathExcluded(path string, excludePathPattern string) (excluded bool, err error) {
+	var fullPath string
 	if len(excludePathPattern) > 0 {
-		var fullPath string
 		fullPath, err = filepath.Abs(path)
 		if err != nil {
 			return
 		}
-		excludedPath, err = regexp.MatchString(excludePathPattern, fullPath)
+		excluded, err = regexp.MatchString(excludePathPattern, fullPath)
 	}
 	return
 }

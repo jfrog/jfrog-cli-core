@@ -2,6 +2,7 @@ package golang
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,13 +44,10 @@ func TestArchiveProject(t *testing.T) {
 		{buff, filepath.Join(pwd, "testdata"), "myproject.com/module/name", "v1.0.0", []string{"*.txt"}, map[utils.Algorithm]string{utils.MD5: "e93953b4be84d7753e0f33589b7dc4ba", utils.SHA1: "280c7492f57262b6e0af56b06c9db6a128e32ab9", utils.SHA256: "e7357986c59bf670af1e2f4868edb1406a87d328b7681b15cf038491cdc7e88c"}},
 	}
 	for _, testData := range archiveWithExclusion {
-		if err = archiveProject(testData.buff, testData.filePath, testData.mod, testData.version, testData.excludedPatterns); err != nil {
-			t.Error(err)
-		}
+		err = archiveProject(testData.buff, testData.filePath, testData.mod, testData.version, testData.excludedPatterns)
+		assert.NoError(t, err)
 		actual, err := utils.CalcChecksums(buff)
-		if err != nil {
-			t.Error(err)
-		}
+		assert.NoError(t, err)
 
 		if !reflect.DeepEqual(testData.expected, actual) {
 			t.Errorf("Expecting: %v, Got: %v", testData.expected, actual)

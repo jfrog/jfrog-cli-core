@@ -159,7 +159,8 @@ func getAbsolutePaths(exclusionPatterns []string) ([]string, error) {
 
 func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, err error) {
 	if len(excludePathPattern) > 0 {
-		fullPath, err := filepath.Abs(path)
+		var fullPath string
+		fullPath, err = filepath.Abs(path)
 		if err != nil {
 			return
 		}

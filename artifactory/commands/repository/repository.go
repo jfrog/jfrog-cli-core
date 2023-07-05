@@ -15,6 +15,12 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+const (
+	// The actual field in the repository configuration is an array (plural) but in practice only one environment is allowed.
+	// This is why the question differs from the repository configuration.
+	environmentsKey = "environments"
+)
+
 type RepoCommand struct {
 	serverDetails *config.ServerDetails
 	templatePath  string
@@ -88,7 +94,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	ExcludePatterns:                   utils.WriteStringAnswer,
 	RepoLayoutRef:                     utils.WriteStringAnswer,
 	ProjectKey:                        utils.WriteStringAnswer,
-	Environments:                      utils.WriteStringArrayAnswer,
+	environmentsKey:                   utils.WriteStringArrayAnswer,
 	HandleReleases:                    utils.WriteBoolAnswer,
 	HandleSnapshots:                   utils.WriteBoolAnswer,
 	MaxUniqueSnapshots:                utils.WriteIntAnswer,

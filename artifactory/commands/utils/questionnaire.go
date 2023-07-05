@@ -316,7 +316,9 @@ func OptionalKeyCallback(iq *InteractiveQuestionnaire, key string) (value string
 	if key != SaveAndExit {
 		valueQuestion := iq.QuestionsMap[key]
 		// Since we are using default question in most of the cases we set the map key here.
-		valueQuestion.MapKey = key
+		if valueQuestion.MapKey == "" {
+			valueQuestion.MapKey = key
+		}
 		editOptionalQuestionPromptPrefix(&valueQuestion, key)
 		value, err = iq.AskQuestion(valueQuestion)
 	}

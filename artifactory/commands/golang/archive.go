@@ -161,7 +161,7 @@ func isPathExcluded(path string, excludePathPattern string) (excludedPath bool, 
 	if len(excludePathPattern) > 0 {
 		fullPath, err := filepath.Abs(path)
 		if err != nil {
-			return false, err
+			return
 		}
 		excludedPath, err = regexp.MatchString(excludePathPattern, fullPath)
 	}

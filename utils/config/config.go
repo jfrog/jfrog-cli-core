@@ -581,6 +581,7 @@ type ServerDetails struct {
 	ServerId                        string `json:"serverId,omitempty"`
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
+	WebLogin                        bool   `json:"webLogin,omitempty"`
 }
 
 // Deprecated

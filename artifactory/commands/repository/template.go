@@ -19,11 +19,8 @@ type RepoTemplateCommand struct {
 }
 
 const (
-	PathErrorSuffixMsg = " please enter a path, in which the new template file will be created"
-
 	// Strings for prompt questions
-	SelectConfigKeyMsg   = "Select the next configuration key" + utils.PressTabMsg
-	InsertValuePromptMsg = "Insert the value for "
+	SelectConfigKeyMsg = "Select the next configuration key" + utils.PressTabMsg
 
 	TemplateType = "templateType"
 	Create       = "create"
@@ -41,6 +38,7 @@ const (
 	ExcludePatterns = "excludesPattern"
 	RepoLayoutRef   = "repoLayoutRef"
 	ProjectKey      = "projectKey"
+	Environment     = "environment"
 
 	// Mutual local and remote repository configuration JSON keys
 	HandleReleases               = "handleReleases"
@@ -225,6 +223,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	ExcludePatterns:                   {Text: ExcludePatterns},
 	RepoLayoutRef:                     {Text: RepoLayoutRef},
 	ProjectKey:                        {Text: ProjectKey},
+	Environment:                       {Text: Environment},
 	HandleReleases:                    {Text: HandleReleases},
 	HandleSnapshots:                   {Text: HandleSnapshots},
 	MaxUniqueSnapshots:                {Text: MaxUniqueSnapshots},
@@ -296,7 +295,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 }
 
 var baseLocalRepoConfKeys = []string{
-	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, BlackedOut, XrayIndex,
+	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, BlackedOut, XrayIndex,
 	PropertySets, ArchiveBrowsingEnabled, OptionalIndexCompressionFormats, DownloadRedirect, BlockPushingSchema1,
 }
 
@@ -321,7 +320,7 @@ var dockerLocalRepoConfKeys = []string{
 }
 
 var baseRemoteRepoConfKeys = []string{
-	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, HardFail, Offline,
+	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, HardFail, Offline,
 	BlackedOut, XrayIndex, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
 	MissedRetrievalCachePeriodSecs, UnusedArtifactsCleanupEnabled, UnusedArtifactsCleanupPeriodHours, AssumedOfflinePeriodSecs,
 	ShareConfiguration, SynchronizeProperties, BlockMismatchingMimeTypes, PropertySets, AllowAnyHostAuth, EnableCookieManagement,
@@ -386,7 +385,7 @@ var vcsRemoteRepoConfKeys = []string{
 }
 
 var baseVirtualRepoConfKeys = []string{
-	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
+	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
 	DefaultDeploymentRepo,
 }
 
@@ -797,6 +796,12 @@ var questionMap = map[string]utils.QuestionInfo{
 		AllowVars: false,
 		Writer:    utils.WriteStringAnswer,
 		Callback:  projectKeyCallback,
+	},
+	Environment: {
+		PromptPrefix: "Insert the name of the environment to assign to >",
+		AllowVars:    true,
+		MapKey:       environmentsKey,
+		Writer:       utils.WriteStringAnswer,
 	},
 	HandleReleases:               BoolToStringQuestionInfo,
 	HandleSnapshots:              BoolToStringQuestionInfo,

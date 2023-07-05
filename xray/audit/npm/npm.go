@@ -31,11 +31,16 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*xrayUtils.GraphNod
 	npmArgs = addIgnoreScriptsFlag(npmArgs)
 
 	// Calculate npm dependencies
-	dependenciesList, err := biutils.CalculateNpmDependenciesList(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, false, log.Logger)
+	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, log.Logger)
 	if err != nil {
 		log.Info("Used npm version:", npmVersion.GetVersion())
 		return
 	}
+	var dependenciesList []buildinfo.Dependency
+	for _, dependency := range dependenciesMap {
+		dependenciesList = append(dependenciesList, dependency.Dependency)
+	}
+
 	// Parse the dependencies into Xray dependency tree format
 	dependencyTree = []*xrayUtils.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
 	return

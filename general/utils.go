@@ -13,9 +13,17 @@ const defaultServerId = "default-server"
 
 // Deduce the server ID from the URL and add server details to config.
 func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLogin bool) error {
-	u, err := url.Parse(server.Url)
-	if errorutils.CheckError(err) != nil {
+	serverId, err := deduceServerId(server.Url)
+	if err != nil {
 		return err
+	}
+	return ConfigServerAsDefault(server, serverId, interactive, webLogin)
+}
+
+func deduceServerId(platformUrl string) (string, error) {
+	u, err := url.Parse(platformUrl)
+	if errorutils.CheckError(err) != nil {
+		return "", err
 	}
 
 	// If the host is an IP address, use a default server ID.
@@ -24,8 +32,7 @@ func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLog
 		// Otherwise, take the server name from host name: https://myjfrog.jfrog.com/ -> myjfrog
 		serverId = strings.Split(u.Hostname(), ".")[0]
 	}
-
-	return ConfigServerAsDefault(server, serverId, interactive, webLogin)
+	return serverId, nil
 }
 
 // Add the given server details to the CLI's config by running a 'jf config' command, and make it the default server.

@@ -256,10 +256,7 @@ func getLocalDependencies(addDepsParams *specutils.CommonParams) ([]string, erro
 
 func collectPatternMatchingFiles(addDepsParams *specutils.CommonParams, rootPath string) ([]string, error) {
 	addDepsParams.SetPattern(clientutils.ConvertLocalPatternToRegexp(addDepsParams.Pattern, addDepsParams.GetPatternType()))
-	excludePathPattern, err := fspatterns.PrepareExcludePathPattern(addDepsParams.Exclusions, addDepsParams.GetPatternType(), addDepsParams.IsRecursive())
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
+	excludePathPattern := fspatterns.PrepareExcludePathPattern(addDepsParams.Exclusions, addDepsParams.GetPatternType(), addDepsParams.IsRecursive())
 	patternRegex, err := regxp.Compile(addDepsParams.Pattern)
 	if errorutils.CheckError(err) != nil {
 		return nil, err

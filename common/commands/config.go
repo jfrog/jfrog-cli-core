@@ -383,7 +383,7 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 		BasicAuth,
 		AccessToken,
 		MTLS,
-		WebLogin,
+		// WebLogin, // TODO uncomment when Artifactory 7.63.1 is released to self-hosted
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {

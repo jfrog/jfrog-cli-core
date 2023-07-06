@@ -81,6 +81,7 @@ func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns
 		return err
 	}
 	excludePathPattern := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true)
+	//regexpPattern, err := regexp.Compile(excludePathPattern)
 	var files []gozip.File
 	err = filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -122,6 +123,7 @@ func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns
 
 		if info.Mode().IsRegular() {
 			excluded, err := isPathExcluded(filePath, excludePathPattern)
+			//excluded := regexpPattern.MatchString(filePath)
 			if err != nil {
 				return err
 			}

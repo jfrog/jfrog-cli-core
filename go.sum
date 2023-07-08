@@ -276,8 +276,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/sarao1310/jfrog-client-go v0.0.0-20230705142729-63bee8e30c88 h1:wqsFysat1zZT8q+atxRNIxTw3jG4sYcTGqAitt3ZckE=
-github.com/sarao1310/jfrog-client-go v0.0.0-20230705142729-63bee8e30c88/go.mod h1:qEJxoe68sUtqHJ1YhXv/7pKYP/9p1D5tJrruzJKYeoI=
+github.com/sarao1310/jfrog-client-go v0.0.0-20230708214639-f1bb7f0cd085 h1:Qc2mxuR90U8G5C7BZnWfcZ5hUxDEX/grPmbCHfqg8iU=
+github.com/sarao1310/jfrog-client-go v0.0.0-20230708214639-f1bb7f0cd085/go.mod h1:qEJxoe68sUtqHJ1YhXv/7pKYP/9p1D5tJrruzJKYeoI=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
 github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=

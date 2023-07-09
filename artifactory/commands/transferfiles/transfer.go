@@ -29,8 +29,8 @@ const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 1000
-	retriesWaitMilliSecs         = 1000
+	retries                      = 600
+	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
 )
 
@@ -53,7 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
-	locallyGeneratedFilter    *LocallyGeneratedFilter
+	locallyGeneratedFilter    *locallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -452,9 +452,7 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		// We do not return the error returned from the phase's run function,
-		// because the phase is expected to recover from some errors, such as HTTP connection errors.
-		log.Error(err.Error())
+		return err
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()
@@ -571,7 +569,7 @@ func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
 	if err != nil {
 		return err
 	}
-	tdc.locallyGeneratedFilter = NewLocallyGenerated(servicesManager, targetArtifactoryVersion)
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(tdc.context, servicesManager, targetArtifactoryVersion)
 	return err
 }
 

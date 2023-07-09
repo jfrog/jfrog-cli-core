@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	InsertValuePromptMsg = "Insert the value for "
+	insertValuePromptMsg = "Insert the value for "
 	DummyDefaultAnswer   = "-"
 )
 
@@ -22,7 +22,7 @@ const (
 //		* We will ask all the questions in MandatoryQuestionsKeys list one after the other.
 //	2. Optional questions:
 //		* We have to provide a slice of prompt.Suggest, in which each suggest.Text is a key of a question in the map.
-//		* After a suggest was chosen from the list, the corresponding question from the map will be asked.
+//		* After a suggestion was chosen from the list, the corresponding question from the map will be asked.
 //		* Each answer is written to the configMap using its writer, under the MapKey specified in the questionInfo.
 //		* We will execute the previous step until the SaveAndExit string was inserted.
 type InteractiveQuestionnaire struct {
@@ -316,13 +316,23 @@ func OptionalKeyCallback(iq *InteractiveQuestionnaire, key string) (value string
 	if key != SaveAndExit {
 		valueQuestion := iq.QuestionsMap[key]
 		// Since we are using default question in most of the cases we set the map key here.
-		valueQuestion.MapKey = key
-		valueQuestion.PromptPrefix = InsertValuePromptMsg + key
-		if valueQuestion.Options != nil {
-			valueQuestion.PromptPrefix += PressTabMsg
+		if valueQuestion.MapKey == "" {
+			valueQuestion.MapKey = key
 		}
-		valueQuestion.PromptPrefix += " >"
+		editOptionalQuestionPromptPrefix(&valueQuestion, key)
 		value, err = iq.AskQuestion(valueQuestion)
 	}
 	return value, err
+}
+
+func editOptionalQuestionPromptPrefix(question *QuestionInfo, key string) {
+	if question.PromptPrefix == "" {
+		question.PromptPrefix = insertValuePromptMsg + key
+	}
+	if question.Options != nil {
+		question.PromptPrefix += PressTabMsg
+	}
+	if !strings.HasSuffix(question.PromptPrefix, " >") {
+		question.PromptPrefix += " >"
+	}
 }

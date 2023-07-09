@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/gofrog/version"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -37,11 +37,12 @@ const (
 
 type TransferConfigCommand struct {
 	commandsUtils.TransferConfigBase
-	dryRun     bool
-	force      bool
-	verbose    bool
-	preChecks  bool
-	workingDir string
+	dryRun           bool
+	force            bool
+	verbose          bool
+	preChecks        bool
+	sourceWorkingDir string
+	targetWorkingDir string
 }
 
 func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigCommand {
@@ -72,8 +73,13 @@ func (tcc *TransferConfigCommand) SetPreChecks(preChecks bool) *TransferConfigCo
 	return tcc
 }
 
-func (tcc *TransferConfigCommand) SetWorkingDir(workingDir string) *TransferConfigCommand {
-	tcc.workingDir = workingDir
+func (tcc *TransferConfigCommand) SetSourceWorkingDir(workingDir string) *TransferConfigCommand {
+	tcc.sourceWorkingDir = workingDir
+	return tcc
+}
+
+func (tcc *TransferConfigCommand) SetTargetWorkingDir(workingDir string) *TransferConfigCommand {
+	tcc.targetWorkingDir = workingDir
 	return tcc
 }
 
@@ -146,9 +152,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	tcc.LogTitle("Phase 5/5 - Import repositories to the target Artifactory")
-	if err = tcc.deleteConflictingRepositories(selectedRepos); err != nil {
-		return
-	}
 	if err = tcc.TransferRepositoriesToTarget(selectedRepos, remoteRepos); err != nil {
 		return
 	}
@@ -159,6 +162,32 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	tcc.LogIfFederatedMemberRemoved()
 	log.Info("☝️  Please make sure to disable configuration transfer in MyJFrog before running the 'jf transfer-files' command.")
 	return
+}
+
+// Create the directory containing the Artifactory export content
+// Return values:
+// exportPath - The export path
+// unsetTempDir - Clean up function
+// err - Error if any
+func (tcc *TransferConfigCommand) createExportPath() (exportPath string, unsetTempDir func(), err error) {
+	if tcc.sourceWorkingDir != "" {
+		// Set the base temp dir according to the value of the --source-working-dir flag
+		oldTempDir := fileutils.GetTempDirBase()
+		fileutils.SetTempDirBase(tcc.sourceWorkingDir)
+		unsetTempDir = func() {
+			fileutils.SetTempDirBase(oldTempDir)
+		}
+	} else {
+		unsetTempDir = func() {}
+	}
+
+	// Create temp directory that will contain the export directory
+	exportPath, err = fileutils.CreateTempDir()
+	if err != nil {
+		return "", unsetTempDir, err
+	}
+
+	return exportPath, unsetTempDir, errorutils.CheckError(os.Chmod(exportPath, 0777))
 }
 
 func (tcc *TransferConfigCommand) runPreChecks() error {
@@ -311,39 +340,36 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 // Return the path to the export directory, a cleanup function and an error.
 func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() error, error) {
 	// Create temp directory that will contain the export directory
-	tempDir, err := fileutils.CreateTempDir()
+	exportPath, unsetTempDir, err := tcc.createExportPath()
+	defer unsetTempDir()
 	if err != nil {
 		return "", func() error { return nil }, err
-	}
-
-	if err = os.Chmod(tempDir, 0777); err != nil {
-		return "", func() error { return nil }, errorutils.CheckError(err)
 	}
 
 	// Do export
 	trueValue := true
 	falseValue := false
 	exportParams := services.ExportParams{
-		ExportPath:      tempDir,
+		ExportPath:      exportPath,
 		IncludeMetadata: &falseValue,
 		Verbose:         &tcc.verbose,
 		ExcludeContent:  &trueValue,
 	}
-	cleanUp := func() error { return fileutils.RemoveTempDir(tempDir) }
+	cleanUp := func() error { return fileutils.RemoveTempDir(exportPath) }
 	if err = tcc.SourceArtifactoryManager.Export(exportParams); err != nil {
 		return "", cleanUp, err
 	}
 
 	// Make sure only the export directory contained in the temp directory
-	files, err := fileutils.ListFiles(tempDir, true)
+	files, err := fileutils.ListFiles(exportPath, true)
 	if err != nil {
 		return "", cleanUp, err
 	}
 	if len(files) == 0 {
-		return "", cleanUp, errorutils.CheckErrorf("couldn't find the export directory in '%s'. Please make sure to run this command inside the source Artifactory machine", tempDir)
+		return "", cleanUp, errorutils.CheckErrorf("couldn't find the export directory in '%s'. Please make sure to run this command inside the source Artifactory machine", exportPath)
 	}
 	if len(files) > 1 {
-		return "", cleanUp, errorutils.CheckErrorf("only the exported directory is expected to be in the export directory %s, but found %q", tempDir, files)
+		return "", cleanUp, errorutils.CheckErrorf("only the exported directory is expected to be in the export directory %s, but found %q", exportPath, files)
 	}
 
 	// Return the export directory and the cleanup function
@@ -493,34 +519,10 @@ func (tcc *TransferConfigCommand) updateServerDetails() error {
 }
 
 func (tcc *TransferConfigCommand) getWorkingDirParam() string {
-	if tcc.workingDir != "" {
-		return "?params=workingDir=" + tcc.workingDir
+	if tcc.targetWorkingDir != "" {
+		return "?params=workingDir=" + tcc.targetWorkingDir
 	}
 	return ""
-}
-
-func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos map[utils.RepoType][]string) error {
-	log.Info("Deleting conflicting repositories in the target Artifactory server, if any exist...")
-	targetRepos, err := tcc.TargetArtifactoryManager.GetAllRepositories()
-	if err != nil {
-		return err
-	}
-	allSourceRepos := datastructures.MakeSet[string]()
-	for _, selectedReposWithType := range selectedRepos {
-		for _, selectedRepo := range selectedReposWithType {
-			allSourceRepos.Add(selectedRepo)
-		}
-	}
-
-	for _, targetRepo := range *targetRepos {
-		if allSourceRepos.Exists(targetRepo.Key) {
-			if err = tcc.TargetArtifactoryManager.DeleteRepository(targetRepo.Key); err != nil {
-				return err
-			}
-		}
-	}
-	log.Info("Done deleting conflicting repositories")
-	return nil
 }
 
 // Make sure that the source Artifactory version is sufficient.

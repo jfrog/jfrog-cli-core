@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -76,6 +77,11 @@ func (tcb *TransferConfigBase) ValidateDifferentServers() error {
 
 // Create a map between the repository types to the list of repositories to transfer.
 func (tcb *TransferConfigBase) GetSelectedRepositories() (map[utils.RepoType][]string, error) {
+	allTargetRepos, err := tcb.getAllTargetRepositories()
+	if err != nil {
+		return nil, err
+	}
+
 	result := make(map[utils.RepoType][]string, len(utils.RepoTypes)+1)
 	sourceRepos, err := tcb.SourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
@@ -87,6 +93,10 @@ func (tcb *TransferConfigBase) GetSelectedRepositories() (map[utils.RepoType][]s
 		if shouldIncludeRepo, err := includeExcludeFilter.ShouldIncludeRepository(sourceRepo.Key); err != nil {
 			return nil, err
 		} else if shouldIncludeRepo {
+			if allTargetRepos.Exists(sourceRepo.Key) {
+				log.Info("Repository '" + sourceRepo.Key + "' already exists in the target Artifactory server. Skipping.")
+				continue
+			}
 			repoType := utils.RepoTypeFromString(sourceRepo.Type)
 			result[repoType] = append(result[repoType], sourceRepo.Key)
 		}
@@ -116,9 +126,8 @@ func (tcb *TransferConfigBase) TransferRepositoriesToTarget(reposToTransfer map[
 			return
 		}
 	}
-	// Transfer local, federated, unknown and virtual repositories.
-	// Important - virtual repositories must be transferred after all.
-	for _, repoType := range []utils.RepoType{utils.Local, utils.Federated, utils.Unknown, utils.Virtual} {
+	// Transfer local, federated and unknown repositories.
+	for _, repoType := range []utils.RepoType{utils.Local, utils.Federated, utils.Unknown} {
 		if len(reposToTransfer[repoType]) == 0 {
 			continue
 		}
@@ -127,11 +136,27 @@ func (tcb *TransferConfigBase) TransferRepositoriesToTarget(reposToTransfer map[
 			return
 		}
 	}
-	return
+	if len(reposToTransfer[utils.Virtual]) == 0 {
+		return
+	}
+	return tcb.transferVirtualRepositoriesToTarget(reposToTransfer[utils.Virtual])
+}
+
+// Get a set of all repositories in the target Artifactory server.
+func (tcb *TransferConfigBase) getAllTargetRepositories() (*datastructures.Set[string], error) {
+	targetRepos, err := tcb.TargetArtifactoryManager.GetAllRepositories()
+	if err != nil {
+		return nil, err
+	}
+	allTargetRepos := datastructures.MakeSet[string]()
+	for _, targetRepo := range *targetRepos {
+		allTargetRepos.Add(targetRepo.Key)
+	}
+	return allTargetRepos, nil
 }
 
 // Transfer local, federated, unknown, or virtual repositories
-// reposToTransfer - Repository names to transfer
+// reposToTransfer - Repositories names to transfer
 // repoType - Repository type
 func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTransfer []string, repoType utils.RepoType) (err error) {
 	for _, repoKey := range reposToTransfer {
@@ -145,6 +170,46 @@ func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTrans
 			}
 		}
 		if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(params, repoKey); err != nil {
+			return
+		}
+	}
+	return
+}
+
+// Transfer virtual repositories
+// reposToTransfer - Repositories names to transfer
+func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransfer []string) (err error) {
+	allReposParams := make(map[string]interface{})
+	var singleRepoParamsMap map[string]interface{}
+	var singleRepoParams interface{}
+	// Step 1 - Get and create all virtual repositories with the included repositories removed
+	for _, repoKey := range reposToTransfer {
+		// Get repository params
+		if err = tcb.SourceArtifactoryManager.GetRepository(repoKey, &singleRepoParams); err != nil {
+			return
+		}
+		allReposParams[repoKey] = singleRepoParams
+		singleRepoParamsMap, err = InterfaceToMap(singleRepoParams)
+		if err != nil {
+			return
+		}
+
+		// Create virtual repository without included repositories
+		repositories := singleRepoParamsMap["repositories"]
+		delete(singleRepoParamsMap, "repositories")
+		if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(singleRepoParamsMap, repoKey); err != nil {
+			return
+		}
+
+		// Restore included repositories to set them later on
+		if repositories != nil {
+			singleRepoParamsMap["repositories"] = repositories
+		}
+	}
+
+	// Step 2 - Update all virtual repositories with the included repositories
+	for repoKey, repoParams := range allReposParams {
+		if err = tcb.TargetArtifactoryManager.UpdateRepositoryWithParams(repoParams, repoKey); err != nil {
 			return
 		}
 	}

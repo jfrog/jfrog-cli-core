@@ -1,0 +1,30 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "JFrog Terraform scanner",
+                    "rules": [],
+                    "version": ""
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "./tf_scanner",
+                        "scan",
+                        "scan.yaml"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/ilya/Downloads/tf-scanner-main/src/dist/tf_scanner"
+                    }
+                }
+            ],
+            "results": [
+            ]
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

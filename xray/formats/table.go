@@ -122,3 +122,17 @@ type cveTableRow struct {
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
+
+type secretsTableRow struct {
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	text       string `col-name:"Secret"`
+}
+
+type iacTableRow struct {
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	text       string `col-name:"Finding"`
+}

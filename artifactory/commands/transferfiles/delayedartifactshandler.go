@@ -3,15 +3,16 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 var maxDelayedArtifactsInFile = 50000
@@ -217,11 +218,7 @@ type shouldDelayUpload func(string) bool
 // Returns an array of functions to control the order of deployment.
 func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
-	case maven:
-		fallthrough
-	case gradle:
-		fallthrough
-	case ivy:
+	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
 			return filepath.Ext(fileName) == ".pom"
 		}}
@@ -340,7 +337,12 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			return err
 		}
 		if w.writer.GetFilePath() != "" {
-			fullPath := filepath.Join(w.dirPath, fmt.Sprintf("%s-%d.json", w.filePrefix, w.fileIndex))
+			fullPath, err := getUniqueErrorOrDelayFilePath(w.dirPath, func() string {
+				return w.filePrefix
+			})
+			if err != nil {
+				return err
+			}
 			log.Debug(fmt.Sprintf("Saving split content JSON file to: %s.", fullPath))
 			if err := fileutils.MoveFile(w.writer.GetFilePath(), fullPath); err != nil {
 				return fmt.Errorf("saving file failed! failed moving %s to %s: %w", w.writer.GetFilePath(), fullPath, err)

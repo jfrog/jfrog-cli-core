@@ -58,7 +58,7 @@ func TestArchiveProject(t *testing.T) {
 }
 
 func TestGetAbsolutePaths(t *testing.T) {
-	testData := []string{"./dir1/*", "*.txt", "./*/dir2/*"}
+	testData := []string{filepath.Join(".", "dir1", "*"), "*.txt", filepath.Join("*", "dir2", "*")}
 	result, err := getAbsolutePaths(testData)
 	assert.NoError(t, err)
 	wd, err := os.Getwd()

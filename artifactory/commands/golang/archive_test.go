@@ -56,3 +56,13 @@ func TestArchiveProject(t *testing.T) {
 	}
 	tests.RenamePath(dotGitPath, filepath.Join(baseDir, originalFolder), t)
 }
+
+func TestGetAbsolutePaths(t *testing.T) {
+	testData := []string{"./dir1/*", "*.txt", "./*/dir2/*"}
+	result, err := getAbsolutePaths(testData)
+	assert.NoError(t, err)
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	expectedResults := []string{wd + "/dir1/*", wd + "/*.txt", wd + "/*/dir2/*"}
+	assert.ElementsMatch(t, result, expectedResults)
+}

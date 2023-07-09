@@ -103,6 +103,7 @@ var DefaultMaxColWidth = 25
 //	    CatNumber string   `col-name:"Product\nCatalog #" auto-merge:"true"`
 //	    Color     string   `col-name:"Color" extended:"true" auto-merge:"true"`
 //	}
+//
 //  customersSlice := []Customer{
 //	    {name: "Gai", age: "350", title: "SpiderFrog Shirt - Medium", CatNumber: "123456", Color: "Green"},
 //      {name: "Gai", age: "350", title: "Floral Bottle", CatNumber: "147585", Color: "Blue"},
@@ -172,7 +173,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
-		_, autoMergeExist := field.Tag.Lookup("auto-merge")
+		_, autoMerge := field.Tag.Lookup("auto-merge")
 		_, omitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
@@ -194,7 +195,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		} else {
 			columnsNames = append(columnsNames, columnName)
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i})
-			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, AutoMerge: autoMergeExist})
+			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, AutoMerge: autoMerge})
 		}
 	}
 	tableWriter.AppendHeader(columnsNames)

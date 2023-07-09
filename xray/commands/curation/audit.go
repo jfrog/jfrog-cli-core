@@ -278,8 +278,8 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatusTable {
 	var pkgStatusTable []PackageStatusTable
 	for index, pkgStatus := range packagesStatus {
-		// We use auto-merge supported by "go-pretty" library. It doesn't have an option to merge lines by group of uniq fields.
-		// we make each group to be merged only with itself by adding/not adding space, this way it won't be merged with the next group.
+		// We use auto-merge supported by the 'go-pretty' library. It doesn't have an option to merge lines by a group of unique fields.
+		// In order to so, we make each group merge only with itself by adding or not adding space. This way, it won't be merged with the next group.
 		uniqLineSep := ""
 		if index%2 == 0 {
 			uniqLineSep = " "

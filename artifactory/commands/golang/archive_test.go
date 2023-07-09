@@ -63,6 +63,6 @@ func TestGetAbsolutePaths(t *testing.T) {
 	assert.NoError(t, err)
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
-	expectedResults := []string{wd + "/dir1/*", wd + "/*.txt", wd + "/*/dir2/*"}
+	expectedResults := []string{filepath.Join(wd, "dir1", "*"), filepath.Join(wd, "*.txt"), filepath.Join(wd, "*", "dir2", "*")}
 	assert.ElementsMatch(t, result, expectedResults)
 }

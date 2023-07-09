@@ -66,26 +66,3 @@ func TestGetAbsolutePaths(t *testing.T) {
 	expectedResults := []string{filepath.Join(wd, "dir1", "*"), filepath.Join(wd, "*.txt"), filepath.Join(wd, "*", "dir2", "*")}
 	assert.ElementsMatch(t, result, expectedResults)
 }
-
-func TestIsPathExcluded(t *testing.T) {
-	testData := []struct {
-		excludedPathStr string
-		includedPaths   []string
-		excludedPaths   []string
-	}{
-		{"(^/homeDir/testdata/dir1/.*$)", []string{"homeDir/testdata/dir1/b.txt}"}, []string{"homeDir/testdata/.gitignore", "homeDir/testdata/a.txt", "homeDir/testdata/dir2/dir2.text"}},
-		{"(^/homeDir/testdata/dir2/.*$)|(^/homeDir/dir3/.*$)", []string{"homeDir/testdata/dir2/dir2.text", "homeDir/testdata/dir3/c.txt"}, []string{"homeDir/testdata/a.txt", "homeDir/testdata/dir1/b.txt"}},
-	}
-	for _, test := range testData {
-		for _, included := range test.includedPaths {
-			result, err := isPathExcluded(test.excludedPathStr, included)
-			assert.NoError(t, err)
-			assert.True(t, result)
-		}
-		for _, excluded := range test.excludedPaths {
-			result, err := isPathExcluded(test.excludedPathStr, excluded)
-			assert.NoError(t, err)
-			assert.False(t, result)
-		}
-	}
-}

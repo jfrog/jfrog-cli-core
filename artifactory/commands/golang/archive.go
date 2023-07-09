@@ -119,18 +119,19 @@ func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns
 				return filepath.SkipDir
 			}
 		}
-
 		if info.Mode().IsRegular() {
-			excluded, err := isPathExcluded(filePath, excludePatternsStr)
-			if err != nil {
-				return err
-			}
-			if !isVendoredPackage(slashPath) && !excluded {
-				files = append(files, dirFile{
-					filePath:  filePath,
-					slashPath: slashPath,
-					info:      info,
-				})
+			if !isVendoredPackage(slashPath) {
+				excluded, err := isPathExcluded(filePath, excludePatternsStr)
+				if err != nil {
+					return err
+				}
+				if !excluded {
+					files = append(files, dirFile{
+						filePath:  filePath,
+						slashPath: slashPath,
+						info:      info,
+					})
+				}
 			}
 			return nil
 		}

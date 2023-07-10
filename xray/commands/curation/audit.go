@@ -466,21 +466,27 @@ func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	for _, match := range allMatches {
 		match = strings.TrimSuffix(strings.TrimPrefix(match, "{"), "}")
 		polCond := strings.Split(match, ",")
-		if len(polCond) == 2 {
+		if len(polCond) >= 2 {
 			pol := polCond[0]
 			cond := polCond[1]
+
+			if len(polCond) == 4 {
+				exp, rec := makeLegiblePolicyDetails(polCond[2], polCond[3])
+				policies = append(policies, Policy{Policy: strings.TrimSpace(pol),
+					Condition: strings.TrimSpace(cond), Explanation: strings.TrimSpace(exp), Recommendation: strings.TrimSpace(rec)})
+				continue
+			}
 			policies = append(policies, Policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
-		}
-		if len(polCond) == 4 {
-			pol := polCond[0]
-			cond := polCond[1]
-			exp := strings.ReplaceAll(strings.Replace(polCond[2], ": ", ":\n", 1), " | ", "\n")
-			rec := strings.ReplaceAll(strings.Replace(polCond[3], ": ", ":\n", 1), " | ", "\n")
-			policies = append(policies, Policy{Policy: strings.TrimSpace(pol),
-				Condition: strings.TrimSpace(cond), Explanation: strings.TrimSpace(exp), Recommendation: strings.TrimSpace(rec)})
 		}
 	}
 	return policies
+}
+
+// Adding a new line after the headline and replace every "|" with a new line.
+func makeLegiblePolicyDetails(explanation, recommendation string) (string, string) {
+	explanation = strings.ReplaceAll(strings.Replace(explanation, ": ", ":\n", 1), " | ", "\n")
+	recommendation = strings.ReplaceAll(strings.Replace(recommendation, ": ", ":\n", 1), " | ", "\n")
+	return explanation, recommendation
 }
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, version string) {

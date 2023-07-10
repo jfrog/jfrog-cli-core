@@ -121,8 +121,6 @@ var DefaultMaxColWidth = 25
 // ├──────┼─────┼───────────────────────────┼───────────┤
 // │ Noah │ 21  │ Pouch                     │ 456789    │
 // └──────┴─────┴───────────────────────────┴───────────┘
-//
-//
 
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) (err error) {
 	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)

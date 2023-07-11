@@ -64,13 +64,13 @@ type PackageStatus struct {
 	Action            string   `json:"action"`
 	ParentName        string   `json:"direct_dependency_package_name"`
 	ParentVersion     string   `json:"direct_dependency_package_version"`
-	BlockedPackageUrl string   `json:"blocked_package_url"`
+	BlockedPackageUrl string   `json:"blocked_package_url,omitempty"`
 	PackageName       string   `json:"blocked_package_name"`
 	PackageVersion    string   `json:"blocked_package_version"`
 	BlockingReason    string   `json:"blocking_reason"`
 	DepRelation       string   `json:"dependency_relation"`
 	PkgType           string   `json:"type"`
-	Policy            []Policy `json:"policies"`
+	Policy            []Policy `json:"policies,omitempty"`
 }
 
 type Policy struct {

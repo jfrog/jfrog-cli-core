@@ -214,6 +214,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", ""), string(content))
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
+		Url:            "https://myartifactory.com/",
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}

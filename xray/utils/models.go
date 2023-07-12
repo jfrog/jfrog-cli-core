@@ -106,13 +106,14 @@ func (gbp *GraphBasicParams) Args() []string {
 	return gbp.args
 }
 
-func (gbp *GraphBasicParams) SetNpmScope(depType string) *GraphBasicParams {
-	switch depType {
-	case "devOnly":
-		gbp.args = []string{"--dev"}
-	case "prodOnly":
+// Adds arguments to exclude development dependencies during scanning.
+// Supports NPM only for now.
+func (gbp *GraphBasicParams) SetExcludeDevDependencies(exclude bool) *GraphBasicParams {
+	if exclude {
 		gbp.args = []string{"--prod"}
+		return gbp
 	}
+	gbp.args = []string{"--dev"}
 	return gbp
 }
 

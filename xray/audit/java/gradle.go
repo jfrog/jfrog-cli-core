@@ -102,8 +102,11 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	return nil
 }
 
-func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
-	if (server != nil && server.IsEmpty()) || depsRepo == "" {
+func buildGradleDependencyTree(javaParams *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, err error) {
+	server := javaParams.Server
+	depsRepo := javaParams.DepsRepo
+	// In case we need to use the config file, override the server and depsRepo values
+	if !javaParams.IgnoreConfigFile {
 		var artDetails *config.ServerDetails
 		depsRepo, artDetails, err = getGradleConfig()
 		if err != nil {
@@ -117,7 +120,7 @@ func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, de
 	manager := &depTreeManager{
 		server:     server,
 		depsRepo:   depsRepo,
-		useWrapper: useWrapper,
+		useWrapper: javaParams.UseWrapper,
 	}
 
 	outputFileContent, err := manager.runGradleDepTree()
@@ -192,6 +195,7 @@ func constructReleasesRemoteRepo() (string, error) {
 	}
 
 	releasesPath := fmt.Sprintf("%s/%s", repoName, remoteDepTreePath)
+	log.Debug("The `gradledeptree` will be resolved from", releasesPath)
 	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }
 
@@ -280,6 +284,7 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 		}
 		return "", errors.New(errString)
 	}
+	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,

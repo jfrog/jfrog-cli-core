@@ -134,13 +134,7 @@ func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.Gra
 	if params.Tool == coreutils.Maven {
 		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
 	}
-	server := &config.ServerDetails{}
-	depsRepo := ""
-	if params.IgnoreConfigFile {
-		server = params.Server
-		depsRepo = params.DepsRepo
-	}
-	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo)
+	return buildGradleDependencyTree(params)
 }
 
 type dependencyMultimap struct {

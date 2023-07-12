@@ -305,13 +305,9 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 }
 
 func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
-	var javaProps map[string]any
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, err
-	}
-	if params.DepsRepo() != "" && tech == coreutils.Maven {
-		javaProps = CreateJavaProps(params.DepsRepo(), serverDetails)
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
@@ -319,10 +315,8 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 		IgnoreConfigFile: params.IgnoreConfigFile(),
 		ExcludeTestDeps:  params.ExcludeTestDependencies(),
 		UseWrapper:       params.UseWrapper(),
-		JavaProps:        javaProps,
 		Server:           serverDetails,
 		DepsRepo:         params.DepsRepo(),
-		ReleasesRepo:     params.ReleasesRepo(),
 	})
 }
 

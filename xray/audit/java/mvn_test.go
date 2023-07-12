@@ -15,7 +15,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	defer cleanUp()
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildMvnDependencyTree(false, true, false, nil)
+	modulesDependencyTrees, err := buildMvnDependencyTree(&DependencyTreeParams{IgnoreConfigFile: true})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		// Check root module
 		multi := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
@@ -42,7 +42,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 	err := os.Chmod("mvnw", 0700)
 	defer cleanUp()
 	assert.NoError(t, err)
-	modulesDependencyTrees, err := buildMvnDependencyTree(false, true, true, nil)
+	modulesDependencyTrees, err := buildMvnDependencyTree(&DependencyTreeParams{IgnoreConfigFile: true, UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		// Check root module
 		multi := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")

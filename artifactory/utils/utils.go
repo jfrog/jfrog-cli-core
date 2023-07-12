@@ -4,19 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
-
 	"github.com/jfrog/build-info-go/build"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-
-	clientio "github.com/jfrog/jfrog-client-go/utils/io"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
@@ -25,7 +13,17 @@ import (
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/distribution"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
+	"github.com/jfrog/jfrog-client-go/lifecycle"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 )
 
 func GetProjectDir(global bool) (string, error) {
@@ -82,7 +80,7 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 		return "", errorutils.CheckErrorf(message)
 	}
 
-	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientutils.IndentJson(body))
+	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientUtils.IndentJson(body))
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
@@ -104,27 +102,27 @@ func CreateServiceManagerWithContext(context context.Context, serverDetails *con
 	if err != nil {
 		return nil, err
 	}
-	config := clientConfig.NewConfigBuilder().
+	configBuilder := clientConfig.NewConfigBuilder().
 		SetServiceDetails(artAuth).
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetDryRun(isDryRun).
 		SetContext(context)
 	if httpRetries >= 0 {
-		config.SetHttpRetries(httpRetries)
-		config.SetHttpRetryWaitMilliSecs(httpRetryWaitMilliSecs)
+		configBuilder.SetHttpRetries(httpRetries)
+		configBuilder.SetHttpRetryWaitMilliSecs(httpRetryWaitMilliSecs)
 	}
 	if threads > 0 {
-		config.SetThreads(threads)
+		configBuilder.SetThreads(threads)
 	}
-	serviceConfig, err := config.Build()
+	serviceConfig, err := configBuilder.Build()
 	if err != nil {
 		return nil, err
 	}
 	return artifactory.New(serviceConfig)
 }
 
-func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool, progressBar clientio.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithProgressBar(serverDetails *config.ServerDetails, threads, httpRetries, httpRetryWaitMilliSecs int, dryRun bool, progressBar ioUtils.ProgressMgr) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -191,6 +189,27 @@ func CreateAccessServiceManager(serviceDetails *config.ServerDetails, isDryRun b
 	return access.New(serviceConfig)
 }
 
+func CreateLifecycleServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*lifecycle.LifecycleServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	lcAuth, err := serviceDetails.CreateLifecycleAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(lcAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return lifecycle.New(serviceConfig)
+}
+
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.
 // If Xray failed to scan the build, for example due to a networking issue, a regular error should be returned.
 var errBuildScan = errors.New("issues found during xray build scan")
@@ -246,11 +265,11 @@ func createServiceManager(serviceDetails auth.ServiceDetails) (artifactory.Artif
 	if err != nil {
 		return nil, err
 	}
-	config := clientConfig.NewConfigBuilder().
+	serviceConfig, err := clientConfig.NewConfigBuilder().
 		SetServiceDetails(serviceDetails).
 		SetCertificatesPath(certsPath).
-		SetDryRun(false)
-	serviceConfig, err := config.Build()
+		SetDryRun(false).
+		Build()
 	if err != nil {
 		return nil, err
 	}

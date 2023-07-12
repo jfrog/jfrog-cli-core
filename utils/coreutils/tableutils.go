@@ -28,6 +28,7 @@ var DefaultMaxColWidth = 25
 // In case the struct you want to print contains a field that is a slice of other structs,
 // you can print it in the table too with the 'embed-table' tag which can be set on slices of structs only.
 // Fields with the 'extended' tag will be printed iff the 'printExtended' bool input is true.
+// You can merge cells horizontally with the 'auto-merge' tag, it will merge cells with the same value.
 //
 // Example:
 // These are the structs Customer and Product:
@@ -91,6 +92,36 @@ var DefaultMaxColWidth = 25
 // ┌─────────────────────────┐
 // │ No customers were found │
 // └─────────────────────────┘
+//
+// Example(auto-merge):
+// These are the structs Customer:
+//
+//	type Customer struct {
+//	    name     string    `col-name:"Name" auto-merge:"true"`
+//	    age       string   `col-name:"Age" auto-merge:"true"`
+//	    title     string   `col-name:"Product Title" auto-merge:"true"`
+//	    CatNumber string   `col-name:"Product\nCatalog #" auto-merge:"true"`
+//	    Color     string   `col-name:"Color" extended:"true" auto-merge:"true"`
+//	}
+//
+//  customersSlice := []Customer{
+//	    {name: "Gai", age: "350", title: "SpiderFrog Shirt - Medium", CatNumber: "123456", Color: "Green"},
+//      {name: "Gai", age: "350", title: "Floral Bottle", CatNumber: "147585", Color: "Blue"},
+//	    {name: "Noah", age: "21", title: "Pouch", CatNumber: "456789", Color: "Red"},
+// }
+//
+// Customers
+// ┌──────┬─────┬───────────────────────────┬───────────┐
+// │ NAME │ AGE │ PRODUCT TITLE             │ PRODUCT   │
+// │      │     │                           │ CATALOG # │
+// ├──────┼─────┼───────────────────────────┼───────────┤
+// │ Gai  │ 350 │ SpiderFrog Shirt - Medium │ 123456    │
+// │      │     ├───────────────────────────┼───────────┤
+// │      │     │ Floral Bottle             │ 147585    │
+// ├──────┼─────┼───────────────────────────┼───────────┤
+// │ Noah │ 21  │ Pouch                     │ 456789    │
+// └──────┴─────┴───────────────────────────┴───────────┘
+
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) (err error) {
 	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)
 	if err != nil || tableWriter == nil {
@@ -140,6 +171,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		columnName, columnNameExist := field.Tag.Lookup("col-name")
 		embedTable, embedTableExist := field.Tag.Lookup("embed-table")
 		extended, extendedExist := field.Tag.Lookup("extended")
+		_, autoMerge := field.Tag.Lookup("auto-merge")
 		_, omitEmptyColumn := field.Tag.Lookup("omitempty")
 		if !printExtended && extendedExist && extended == "true" {
 			continue
@@ -161,7 +193,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 		} else {
 			columnsNames = append(columnsNames, columnName)
 			fieldsProperties = append(fieldsProperties, fieldProperties{index: i})
-			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName})
+			columnConfigs = append(columnConfigs, table.ColumnConfig{Name: columnName, AutoMerge: autoMerge})
 		}
 	}
 	tableWriter.AppendHeader(columnsNames)

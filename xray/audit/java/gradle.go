@@ -102,22 +102,18 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	return nil
 }
 
-func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
-	if (server != nil && server.IsEmpty()) || depsRepo == "" {
-		var artDetails *config.ServerDetails
-		depsRepo, artDetails, err = getGradleConfig()
+func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, err error) {
+	manager := &depTreeManager{useWrapper: params.UseWrapper}
+	if params.IgnoreConfigFile {
+		// In case we don't need to use the gradle config file,
+		// use the server and depsRepo values that were usually given from Frogbot
+		manager.depsRepo = params.DepsRepo
+		manager.server = params.Server
+	} else {
+		manager.depsRepo, manager.server, err = getGradleConfig()
 		if err != nil {
 			return
 		}
-		if artDetails != nil {
-			server = artDetails
-		}
-	}
-
-	manager := &depTreeManager{
-		server:     server,
-		depsRepo:   depsRepo,
-		useWrapper: useWrapper,
 	}
 
 	outputFileContent, err := manager.runGradleDepTree()
@@ -152,11 +148,9 @@ func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err er
 	if err != nil {
 		return
 	}
-	if dtp.server != nil {
-		dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.depsRepo, dtp.server)
-		if err != nil {
-			return
-		}
+	dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.depsRepo, dtp.server)
+	if err != nil {
+		return
 	}
 	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, dtp.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
@@ -192,6 +186,7 @@ func constructReleasesRemoteRepo() (string, error) {
 	}
 
 	releasesPath := fmt.Sprintf("%s/%s", repoName, remoteDepTreePath)
+	log.Debug("The `gradledeptree` will be resolved from", repoName)
 	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }
 
@@ -260,7 +255,7 @@ func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildre
 }
 
 func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDetails) (string, error) {
-	if remoteRepo == "" {
+	if remoteRepo == "" || server.IsEmpty() {
 		return "", nil
 	}
 	pass := server.Password
@@ -280,6 +275,7 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 		}
 		return "", errors.New(errString)
 	}
+	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,

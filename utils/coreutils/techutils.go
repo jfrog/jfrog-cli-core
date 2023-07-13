@@ -38,6 +38,8 @@ type TechData struct {
 	exclude []string
 	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
+	// Whether Contextual Analysis supports this technology.
+	contextualAnalysisSupport bool
 	// The file that handles the project's dependencies.
 	packageDescriptor string
 	// Formal name of the technology
@@ -70,12 +72,14 @@ var technologiesData = map[Technology]TechData{
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
+		contextualAnalysisSupport:  true,
 	},
 	Yarn: {
 		indicators:                 []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptor:          "package.json",
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "up",
+		contextualAnalysisSupport:  true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
@@ -84,9 +88,10 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "get",
 	},
 	Pip: {
-		packageType: Pypi,
-		indicators:  []string{"setup.py", "requirements.txt"},
-		exclude:     []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
+		packageType:               Pypi,
+		indicators:                []string{"setup.py", "requirements.txt"},
+		exclude:                   []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
+		contextualAnalysisSupport: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
@@ -94,12 +99,14 @@ var technologiesData = map[Technology]TechData{
 		packageDescriptor:          "Pipfile",
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
+		contextualAnalysisSupport:  true,
 	},
 	Poetry: {
 		packageType:                Pypi,
 		indicators:                 []string{"pyproject.toml", "poetry.lock"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
+		contextualAnalysisSupport:  true,
 	},
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
@@ -153,6 +160,10 @@ func (tech Technology) GetPackageOperator() string {
 
 func (tech Technology) GetPackageInstallOperator() string {
 	return technologiesData[tech].packageInstallationCommand
+}
+
+func (tech Technology) ContextualAnalysisSupport() bool {
+	return technologiesData[tech].contextualAnalysisSupport
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
@@ -230,13 +241,6 @@ func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
 func ToTechnologies(args []string) (technologies []Technology) {
 	for _, argument := range args {
 		technologies = append(technologies, Technology(argument))
-	}
-	return
-}
-
-func GetAllTechnologiesList() (technologies []Technology) {
-	for tech := range technologiesData {
-		technologies = append(technologies, tech)
 	}
 	return
 }

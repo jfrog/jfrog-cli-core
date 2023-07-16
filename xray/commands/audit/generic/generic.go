@@ -12,6 +12,7 @@ type GenericAuditCommand struct {
 	watches                []string
 	projectKey             string
 	targetRepoPath         string
+	excludeJasScan         string
 	IncludeVulnerabilities bool
 	IncludeLicenses        bool
 	Fail                   bool
@@ -64,6 +65,11 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
+func (auditCmd *GenericAuditCommand) SetExcludeJasScan(excludeScan string) *GenericAuditCommand {
+	auditCmd.excludeJasScan = excludeScan
+	return auditCmd
+}
+
 func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
 	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
@@ -86,7 +92,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetWorkingDirs(auditCmd.workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly).
-		SetGraphBasicParams(auditCmd.GraphBasicParams)
+		SetGraphBasicParams(auditCmd.GraphBasicParams).
+		SetExcludeJasScan(auditCmd.excludeJasScan)
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {
 		return err

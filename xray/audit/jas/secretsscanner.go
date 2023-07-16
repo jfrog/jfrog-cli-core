@@ -19,6 +19,7 @@ const (
 	secretsScannersNames  = "tokens, entropy"
 	secretsScannerType    = "secrets-scan"
 	secScanFailureMessage = "failed to run secrets scan. Cause: %s"
+	secretsFeatureName    = "secrets"
 )
 
 type SecretScanManager struct {
@@ -49,6 +50,9 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	if utils.ExcludeScan(scannersToExclude, secretsFeatureName) {
+		return nil, false, nil
+	}
 	if err = secretScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil

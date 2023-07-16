@@ -133,3 +133,20 @@ func TestGetResultSeverity(t *testing.T) {
 		assert.Equal(t, test.expectedSeverity, GetResultSeverity(test.result))
 	}
 }
+
+func TestExcludeScan(t *testing.T) {
+	tests := []struct {
+		excludedScanList []string
+		scanToCheck      string
+		expectedResult   bool
+	}{
+		{excludedScanList: []string{"secrets", "iac", "contextual_analysis"}, scanToCheck: "contextual_analysis", expectedResult: true},
+		{excludedScanList: []string{"secrets", "iac"}, scanToCheck: "contextual_analysis", expectedResult: false},
+		{excludedScanList: []string{}, scanToCheck: "contextual_analysis", expectedResult: false},
+		{excludedScanList: []string{"", "unsupported_Scan_type", "contextual_analysis"}, scanToCheck: "contextual_analysis", expectedResult: true},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedResult, ExcludeScan(test.excludedScanList, test.scanToCheck))
+	}
+}

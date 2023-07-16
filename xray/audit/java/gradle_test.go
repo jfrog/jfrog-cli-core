@@ -23,7 +23,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(false, nil, "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
@@ -46,7 +46,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 
@@ -70,7 +70,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(true, nil, "")
+	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 
@@ -214,6 +214,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", ""), string(content))
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
+		Url:            "https://myartifactory.com/",
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}

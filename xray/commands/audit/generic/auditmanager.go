@@ -193,7 +193,7 @@ func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, 
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd, "...")
+		log.Info("Scanning directory:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))

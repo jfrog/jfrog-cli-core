@@ -158,14 +158,17 @@ func getAbsolutePaths(exclusionPatterns []string) ([]string, error) {
 	return absolutedPaths, nil
 }
 
-func isPathExcluded(path string, excludePathPattern string) (excluded bool, err error) {
+// This function receives a path and a regexp.
+// It returns trUe is the path received matches the regexp.
+// Before the match, thw path is turned into an absolute.
+func isPathExcluded(path string, excludePatternsRegexp string) (excluded bool, err error) {
 	var fullPath string
-	if len(excludePathPattern) > 0 {
+	if len(excludePatternsRegexp) > 0 {
 		fullPath, err = filepath.Abs(path)
 		if err != nil {
 			return
 		}
-		excluded, err = regexp.MatchString(excludePathPattern, fullPath)
+		excluded, err = regexp.MatchString(excludePatternsRegexp, fullPath)
 	}
 	return
 }

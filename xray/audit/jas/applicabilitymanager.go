@@ -25,11 +25,6 @@ const (
 	applicabilityScanCommand        = "ca"
 )
 
-var (
-	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
-		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
-)
-
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
 // Creating an ApplicabilityScanManager object.
 // Checking if the scanned project is eligible for applicability scan.

@@ -135,7 +135,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
-	// Try to run contextual analysis only if the user is entitled for advance security
+	// Run scanners only if the user is entitled for Advanced Security
 	if isEntitled {
 		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
 		if err != nil {
@@ -170,9 +170,8 @@ func genericAudit(params *Params) (results []services.ScanResponse, isMultipleRo
 		return
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
-
+	log.Info("Scanning for vulnerable dependencies...")
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -224,8 +223,9 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 	// Otherwise, run audit for requested technologies only.
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
-		technologies, err = commandsutils.DetectedTechnologies()
-		if err != nil {
+		technologies = commandsutils.DetectedTechnologies()
+		if len(technologies) == 0 {
+			log.Info("Skipping vulnerable dependencies scanning...")
 			return
 		}
 	}

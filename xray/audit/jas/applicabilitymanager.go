@@ -41,6 +41,16 @@ var (
 // error: An error object (if any).
 func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
+	var vulnerabilitiesExists bool
+	for _, result := range results {
+		if len(result.Vulnerabilities) > 0 || len(result.Violations) > 0 {
+			vulnerabilitiesExists = true
+			break
+		}
+	}
+	if !vulnerabilitiesExists {
+		return nil, false, nil
+	}
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
@@ -54,6 +64,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		log.Debug("The conditions for running the applicability scan are not met. Skipping the execution of the Analyzer Manager")
 		return nil, false, nil
 	}
+	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
 	if err = applicabilityScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil

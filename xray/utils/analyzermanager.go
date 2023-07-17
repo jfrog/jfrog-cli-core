@@ -18,8 +18,7 @@ import (
 )
 
 var (
-	analyzerManagerLogFolder = ""
-	levelToSeverity          = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
+	levelToSeverity = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
 )
 
 const (
@@ -57,6 +56,7 @@ type IacOrSecretResult struct {
 
 type ExtendedScanResults struct {
 	XrayResults                  []services.ScanResponse
+	ScannedTechnologies          []coreutils.Technology
 	ApplicabilityScanResults     map[string]string
 	SecretsScanResults           []IacOrSecretResult
 	IacScanResults               []IacOrSecretResult
@@ -85,6 +85,7 @@ type AnalyzerManagerInterface interface {
 
 type AnalyzerManager struct {
 	analyzerManagerFullPath string
+	analyzerManagerLogsDir  string
 }
 
 func (am *AnalyzerManager) ExistLocally() (bool, error) {
@@ -108,15 +109,6 @@ func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err erro
 	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
 	err = cmd.Run()
 	return errorutils.CheckError(err)
-}
-
-func CreateAnalyzerManagerLogDir() error {
-	logDir, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerLogDirName))
-	if err != nil {
-		return err
-	}
-	analyzerManagerLogFolder = logDir
-	return nil
 }
 
 func GetAnalyzerManagerDownloadPath() (string, error) {
@@ -167,7 +159,11 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); errorutils.CheckError(err) != nil {
 		return err
 	}
-	if err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
+	analyzerManagerLogFolder, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerLogDirName))
+	if err != nil {
+		return err
+	}
+	if err = os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
 		return err
 	}
 	return nil

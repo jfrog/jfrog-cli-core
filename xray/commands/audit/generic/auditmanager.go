@@ -125,20 +125,18 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	auditResults := genericAudit(auditParams)
+	results = genericAudit(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
 		return
 	}
 
-	// Try to run contextual analysis only if the user is entitled for advance security
+	// Run scanners only if the user is entitled for Advanced Security
 	if isEntitled {
-		xrayScanResults := auditResults.ExtendedScanResults.XrayResults
-		auditResults.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails)
-		if err != nil {
-			return
-		}
+		xrayScanResults := results.ExtendedScanResults.XrayResults
+		scannedTechnologies := results.ScannedTechnologies
+		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies)
 	}
 	return
 }
@@ -163,9 +161,8 @@ func genericAudit(params *Params) *Results {
 		return &Results{AuditError: err}
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
-
+	log.Info("Scanning for vulnerable dependencies...")
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
@@ -187,7 +184,7 @@ func auditMultipleWorkingDirs(params *Params) *Results {
 			err = errors.Join(err, fmt.Errorf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd, "...")
+		log.Info("Scanning directory:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
 			err = errors.Join(err, fmt.Errorf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
@@ -217,13 +214,14 @@ func doAudit(params *Params) *Results {
 	var err error
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
-		technologies, err = commandsutils.DetectedTechnologies()
-		if err != nil {
+		technologies = commandsutils.DetectedTechnologies()
+		if len(technologies) == 0 {
+			log.Info("Skipping vulnerable dependencies scanning...")
 			return &Results{AuditError: err}
 		}
 	}
 	serverDetails, err := params.ServerDetails()
-	var results *Results
+	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
 	if err != nil {
 		return &Results{AuditError: err}
 	}
@@ -255,6 +253,7 @@ func doAudit(params *Params) *Results {
 		}
 		results.ScannedTechnologies = append(results.ScannedTechnologies, tech)
 	}
+	results.AuditError = err
 	return results
 }
 

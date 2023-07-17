@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -49,11 +50,15 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	log.Info("Running secrets scanning...")
 	if err = secretScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
 		return nil, true, fmt.Errorf(secScanFailureMessage, err.Error())
+	}
+	if len(secretScanManager.secretsScannerResults) > 0 {
+		log.Info(len(secretScanManager.secretsScannerResults), "secrets were found")
 	}
 	return secretScanManager.secretsScannerResults, true, nil
 }

@@ -54,7 +54,6 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		log.Debug("The conditions for running the applicability scan are not met. Skipping...")
 		return nil, false, nil
 	}
-	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
 	if err = applicabilityScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
@@ -192,6 +191,7 @@ func (a *ApplicabilityScanManager) run() (err error) {
 	if !a.directDependenciesExist() {
 		return nil
 	}
+	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
 	if err = a.createConfigFile(); err != nil {
 		return
 	}

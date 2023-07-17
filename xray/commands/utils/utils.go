@@ -196,7 +196,7 @@ func DetectedTechnologies() (technologies []string) {
 	}
 	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
 	if detectedTechnologiesString == "" {
-		log.Info("Couldn't determine the package manager or build tool used by this project in the current path:", wd)
+		log.Info("Couldn't determine a package manager or build tool used by this project in the current path:", wd)
 		return
 	}
 	log.Info("Detected: " + detectedTechnologiesString)

@@ -27,7 +27,7 @@ const (
 
 var (
 	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
-		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
+		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi, coreutils.Maven}
 )
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:

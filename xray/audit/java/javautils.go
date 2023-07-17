@@ -23,10 +23,8 @@ type DependencyTreeParams struct {
 	IgnoreConfigFile bool
 	ExcludeTestDeps  bool
 	UseWrapper       bool
-	JavaProps        map[string]any
 	Server           *config.ServerDetails
 	DepsRepo         string
-	ReleasesRepo     string
 }
 
 func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
@@ -133,17 +131,9 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 
 func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, err error) {
 	if params.Tool == coreutils.Maven {
-		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
+		return buildMvnDependencyTree(params)
 	}
-	server := &config.ServerDetails{}
-	depsRepo := ""
-	releaseRepo := ""
-	if params.IgnoreConfigFile {
-		server = params.Server
-		depsRepo = params.DepsRepo
-		releaseRepo = params.ReleasesRepo
-	}
-	return buildGradleDependencyTree(params.UseWrapper, server, depsRepo, releaseRepo)
+	return buildGradleDependencyTree(params)
 }
 
 type dependencyMultimap struct {

@@ -57,7 +57,9 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 		}
 		return nil, true, fmt.Errorf(secScanFailureMessage, err.Error())
 	}
-	log.Info(len(secretScanManager.secretsScannerResults), "secrets were found")
+	if len(secretScanManager.secretsScannerResults) > 0 {
+		log.Info(len(secretScanManager.secretsScannerResults), "secrets were found")
+	}
 	return secretScanManager.secretsScannerResults, true, nil
 }
 

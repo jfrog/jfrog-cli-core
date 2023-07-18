@@ -17,6 +17,7 @@ type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
 	version            string
 	detailedSummary    bool
+	excludedPatterns   []string
 	result             *commandutils.Result
 	utils.RepositoryConfig
 }
@@ -37,6 +38,15 @@ func (gpc *GoPublishCommand) CommandName() string {
 
 func (gpc *GoPublishCommand) SetConfigFilePath(configFilePath string) *GoPublishCommand {
 	gpc.configFilePath = configFilePath
+	return gpc
+}
+
+func (gpc *GoPublishCommand) GetExcludedPatterns() []string {
+	return gpc.excludedPatterns
+}
+
+func (gpc *GoPublishCommandArgs) SetExcludedPatterns(excludedPatterns []string) *GoPublishCommandArgs {
+	gpc.excludedPatterns = excludedPatterns
 	return gpc
 }
 
@@ -100,7 +110,7 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	// Publish the package to Artifactory.
-	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, serviceManager)
+	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, gpc.GetExcludedPatterns(), serviceManager)
 	if err != nil {
 		return err
 	}

@@ -89,8 +89,8 @@ type PackageStatusTable struct {
 	PkgType        string `col-name:"Package\nType" auto-merge:"true"`
 	Policy         string `col-name:"Violated\nPolicy\nName"`
 	Condition      string `col-name:"Violated Condition\nName"`
-	Explanation    string `col-name:"Explanation Name"`
-	Recommendation string `col-name:"Recommendation Name"`
+	Explanation    string `col-name:"Explanation"`
+	Recommendation string `col-name:"Recommendation"`
 }
 
 type treeAnalyzer struct {
@@ -178,16 +178,13 @@ func (ca *CurationAuditCommand) Run() (err error) {
 }
 
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
-	techs, err := cmdUtils.DetectedTechnologies()
-	if err != nil {
-		return err
-	}
+	techs := cmdUtils.DetectedTechnologies()
 	for _, tech := range techs {
 		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
 			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
 			continue
 		}
-		if err = ca.auditTree(coreutils.Technology(tech), results); err != nil {
+		if err := ca.auditTree(coreutils.Technology(tech), results); err != nil {
 			return err
 		}
 	}

@@ -27,7 +27,7 @@ const (
 
 var (
 	technologiesEligibleForApplicabilityScan = []coreutils.Technology{coreutils.Npm, coreutils.Pip,
-		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi}
+		coreutils.Poetry, coreutils.Pipenv, coreutils.Pypi, coreutils.Maven, coreutils.Gradle, coreutils.Yarn}
 )
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -51,7 +51,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		}
 	}()
 	if !applicabilityScanManager.eligibleForApplicabilityScan() {
-		log.Debug("The conditions for running the applicability scan are not met. Skipping the execution of the Analyzer Manager")
+		log.Debug("The conditions for running the applicability scan are not met. Skipping...")
 		return nil, false, nil
 	}
 	if err = applicabilityScanManager.run(); err != nil {
@@ -191,6 +191,7 @@ func (a *ApplicabilityScanManager) run() (err error) {
 	if !a.directDependenciesExist() {
 		return nil
 	}
+	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
 	if err = a.createConfigFile(); err != nil {
 		return
 	}

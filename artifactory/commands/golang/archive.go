@@ -30,19 +30,15 @@ package golang
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import (
-	"archive/zip"
-	"bytes"
-	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"golang.org/x/mod/module"
+	gozip "golang.org/x/mod/zip"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
-	"unicode"
-	"unicode/utf8"
-
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"golang.org/x/mod/module"
 )
 
 // Package zip provides functions for creating and extracting module zip files.
@@ -77,27 +73,16 @@ import (
 // Note that this package does not provide hashing functionality. See
 // golang.org/x/mod/sumdb/dirhash.
 
-const (
-	// MaxZipFile is the maximum size in bytes of a module zip file. The
-	// go command will report an error if either the zip file or its extracted
-	// content is larger than this.
-	MaxZipFile = 500 << 20
-
-	// MaxGoMod is the maximum size in bytes of a go.mod file within a
-	// module zip file.
-	MaxGoMod = 16 << 20
-
-	// MaxLICENSE is the maximum size in bytes of a LICENSE file within a
-	// module zip file.
-	MaxLICENSE = 16 << 20
-)
-
 // Archive project files according to the go project standard
-func archiveProject(writer io.Writer, dir, mod, version string) error {
+func archiveProject(writer io.Writer, dir, mod, version string, excludedPatterns []string) error {
 	m := module.Version{Version: version, Path: mod}
-	var files []File
-
-	err := filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+	excludedPatterns, err := getAbsolutePaths(excludedPatterns)
+	if err != nil {
+		return err
+	}
+	excludePatternsStr := fspatterns.PrepareExcludePathPattern(excludedPatterns, utils.GetPatternType(utils.PatternTypes{RegExp: false, Ant: false}), true)
+	var files []gozip.File
+	err = filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -136,11 +121,17 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 		}
 		if info.Mode().IsRegular() {
 			if !isVendoredPackage(slashPath) {
-				files = append(files, dirFile{
-					filePath:  filePath,
-					slashPath: slashPath,
-					info:      info,
-				})
+				excluded, err := isPathExcluded(filePath, excludePatternsStr)
+				if err != nil {
+					return err
+				}
+				if !excluded {
+					files = append(files, dirFile{
+						filePath:  filePath,
+						slashPath: slashPath,
+						info:      info,
+					})
+				}
 			}
 			return nil
 		}
@@ -152,7 +143,34 @@ func archiveProject(writer io.Writer, dir, mod, version string) error {
 		return err
 	}
 
-	return Create(writer, m, files)
+	return gozip.Create(writer, m, files)
+}
+
+func getAbsolutePaths(exclusionPatterns []string) ([]string, error) {
+	var absolutedPaths []string
+	for _, singleExclusion := range exclusionPatterns {
+		singleExclusion, err := filepath.Abs(singleExclusion)
+		if err != nil {
+			return nil, err
+		}
+		absolutedPaths = append(absolutedPaths, singleExclusion)
+	}
+	return absolutedPaths, nil
+}
+
+// This function receives a path and a regexp.
+// It returns trUe is the path received matches the regexp.
+// Before the match, thw path is turned into an absolute.
+func isPathExcluded(path string, excludePatternsRegexp string) (excluded bool, err error) {
+	var fullPath string
+	if len(excludePatternsRegexp) > 0 {
+		fullPath, err = filepath.Abs(path)
+		if err != nil {
+			return
+		}
+		excluded, err = regexp.MatchString(excludePatternsRegexp, fullPath)
+	}
+	return
 }
 
 func isVendoredPackage(name string) bool {
@@ -178,146 +196,6 @@ func isVendoredPackage(name string) bool {
 	return strings.Contains(name[i:], "/")
 }
 
-// Create builds a zip archive for module m from an abstract list of files
-// and writes it to w.
-//
-// Create verifies the restrictions described in the package documentation
-// and should not produce an archive that Unzip cannot extract. Create does not
-// include files in the output archive if they don't belong in the module zip.
-// In particular, Create will not include files in modules found in
-// subdirectories, most files in vendor directories, or irregular files (such
-// as symbolic links) in the output archive.
-func Create(w io.Writer, m module.Version, files []File) (err error) {
-
-	// Check that the version is canonical, the module path is well-formed, and
-	// the major version suffix matches the major version.
-	if vers := module.CanonicalVersion(m.Version); vers != m.Version {
-		if vers == "" {
-			vers = "the version structure to be vX.Y.Z"
-		}
-		return fmt.Errorf("version %q is not canonical (expected %s)", m.Version, vers)
-	}
-	if err := module.Check(m.Path, m.Version); err != nil {
-		return err
-	}
-
-	// Find directories containing go.mod files (other than the root).
-	// These directories will not be included in the output zip.
-	haveGoMod := make(map[string]bool)
-	for _, f := range files {
-		dir, base := path.Split(f.Path())
-		if strings.EqualFold(base, "go.mod") {
-			info, err := f.Lstat()
-			if err != nil {
-				return err
-			}
-			if info.Mode().IsRegular() {
-				haveGoMod[dir] = true
-			}
-		}
-	}
-
-	inSubmodule := func(p string) bool {
-		for {
-			dir, _ := path.Split(p)
-			if dir == "" {
-				return false
-			}
-			if haveGoMod[dir] {
-				return true
-			}
-			p = dir[:len(dir)-1]
-		}
-	}
-
-	// Create the module zip file.
-	zw := zip.NewWriter(w)
-	prefix := fmt.Sprintf("%s@%s/", m.Path, m.Version)
-
-	addFile := func(f File, path string, size int64) (addFileErr error) {
-		var rc io.ReadCloser
-		var w io.Writer
-		rc, addFileErr = f.Open()
-		if addFileErr != nil {
-			return errorutils.CheckError(addFileErr)
-		}
-		defer func() {
-			closeErr := errorutils.CheckError(rc.Close())
-			if addFileErr != nil {
-				addFileErr = closeErr
-			}
-		}()
-		w, addFileErr = zw.Create(prefix + path)
-		if addFileErr != nil {
-			return errorutils.CheckError(addFileErr)
-		}
-		lr := &io.LimitedReader{R: rc, N: size + 1}
-		if _, addFileErr = io.Copy(w, lr); addFileErr != nil {
-			return addFileErr
-		}
-		if lr.N <= 0 {
-			return errorutils.CheckErrorf("file %q is larger than declared size", path)
-		}
-		return nil
-	}
-
-	collisions := make(collisionChecker)
-	maxSize := int64(MaxZipFile)
-	for _, f := range files {
-		p := f.Path()
-		if p != path.Clean(p) {
-			return fmt.Errorf("file path %s is not clean", p)
-		}
-		if path.IsAbs(p) {
-			return fmt.Errorf("file path %s is not relative", p)
-		}
-		if isVendoredPackage(p) || inSubmodule(p) {
-			continue
-		}
-		if p == ".hg_archival.txt" {
-			// Inserted by hg archive.
-			// The go command drops this regardless of the VCS being used.
-			continue
-		}
-		if err := module.CheckFilePath(p); err != nil {
-			return err
-		}
-		if strings.ToLower(p) == "go.mod" && p != "go.mod" {
-			return fmt.Errorf("found file named %s, want all lower-case go.mod", p)
-		}
-		info, err := f.Lstat()
-		if err != nil {
-			return err
-		}
-		if err := collisions.check(p, info.IsDir()); err != nil {
-			return err
-		}
-		if !info.Mode().IsRegular() {
-			// Skip symbolic links (golang.org/issue/27093).
-			continue
-		}
-		size := info.Size()
-		if size < 0 || maxSize < size {
-			return fmt.Errorf("module source tree too large (max size is %d bytes)", MaxZipFile)
-		}
-		maxSize -= size
-		if p == "go.mod" && size > MaxGoMod {
-			return fmt.Errorf("go.mod file too large (max size is %d bytes)", MaxGoMod)
-		}
-		if p == "LICENSE" && size > MaxLICENSE {
-			return fmt.Errorf("LICENSE file too large (max size is %d bytes)", MaxLICENSE)
-		}
-
-		if err := addFile(f, p, size); err != nil {
-			return err
-		}
-	}
-	if err := zw.Close(); err != nil {
-		return err
-	}
-	return
-}
-
 type dirFile struct {
 	filePath, slashPath string
 	info                os.FileInfo
@@ -326,18 +204,6 @@ type dirFile struct {
 func (f dirFile) Path() string                 { return f.slashPath }
 func (f dirFile) Lstat() (os.FileInfo, error)  { return f.info, nil }
 func (f dirFile) Open() (io.ReadCloser, error) { return os.Open(f.filePath) }
-
-// collisionChecker finds case-insensitive name collisions and paths that
-// are listed as both files and directories.
-//
-// The keys of this map are processed with strToFold. pathInfo has the original
-// path for each folded path.
-type collisionChecker map[string]pathInfo
-
-type pathInfo struct {
-	path  string
-	isDir bool
-}
 
 // File provides an abstraction for a file in a directory, zip, or anything
 // else that looks like a file.
@@ -353,68 +219,4 @@ type File interface {
 	// Open provides access to the data within a regular file. Open may return
 	// an error if called on a directory or symbolic link.
 	Open() (io.ReadCloser, error)
-}
-
-func (cc collisionChecker) check(p string, isDir bool) error {
-	fold := strToFold(p)
-	if other, ok := cc[fold]; ok {
-		if p != other.path {
-			return fmt.Errorf("case-insensitive file name collision: %q and %q", other.path, p)
-		}
-		if isDir != other.isDir {
-			return fmt.Errorf("entry %q is both a file and a directory", p)
-		}
-		if !isDir {
-			return fmt.Errorf("multiple entries for file %q", p)
-		}
-		// It's not an error if check is called with the same directory multiple
-		// times. check is called recursively on parent directories, so check
-		// may be called on the same directory many times.
-	} else {
-		cc[fold] = pathInfo{path: p, isDir: isDir}
-	}
-
-	if parent := path.Dir(p); parent != "." {
-		return cc.check(parent, true)
-	}
-	return nil
-}
-
-// strToFold returns a string with the property that
-// strings.EqualFold(s, t) iff strToFold(s) == strToFold(t)
-// This lets us test a large set of strings for fold-equivalent
-// duplicates without making a quadratic number of calls
-// to EqualFold. Note that strings.ToUpper and strings.ToLower
-// do not have the desired property in some corner cases.
-func strToFold(s string) string {
-	// Fast path: all ASCII, no upper case.
-	// Most paths look like this already.
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= utf8.RuneSelf || 'A' <= c && c <= 'Z' {
-			goto Slow
-		}
-	}
-	return s
-
-Slow:
-	var buf bytes.Buffer
-	for _, r := range s {
-		// SimpleFold(x) cycles to the next equivalent rune > x
-		// or wraps around to smaller values. Iterate until it wraps,
-		// and we've found the minimum value.
-		for {
-			r0 := r
-			r = unicode.SimpleFold(r0)
-			if r <= r0 {
-				break
-			}
-		}
-		// Exception to allow fast path above: A-Z => a-z
-		if 'A' <= r && r <= 'Z' {
-			r += 'a' - 'A'
-		}
-		buf.WriteRune(r)
-	}
-	return buf.String()
 }

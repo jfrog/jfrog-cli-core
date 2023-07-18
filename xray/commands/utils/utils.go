@@ -185,7 +185,7 @@ func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails)
 	return xrayManager, xrayVersion, nil
 }
 
-func DetectedTechnologies() (technologies []string, err error) {
+func DetectedTechnologies() (technologies []string) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -196,10 +196,11 @@ func DetectedTechnologies() (technologies []string, err error) {
 	}
 	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
 	if detectedTechnologiesString == "" {
-		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
+		log.Info("Couldn't determine a package manager or build tool used by this project in the current path:", wd)
+		return
 	}
 	log.Info("Detected: " + detectedTechnologiesString)
-	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
+	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies)
 }
 
 func DetectNumOfThreads(threadsCount int) (int, error) {

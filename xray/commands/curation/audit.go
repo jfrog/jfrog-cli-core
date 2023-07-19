@@ -89,8 +89,8 @@ type PackageStatusTable struct {
 	PkgType        string `col-name:"Package\nType" auto-merge:"true"`
 	Policy         string `col-name:"Violated\nPolicy\nName"`
 	Condition      string `col-name:"Violated Condition\nName"`
-	Explanation    string `col-name:"Explanation Name"`
-	Recommendation string `col-name:"Recommendation Name"`
+	Explanation    string `col-name:"Explanation"`
+	Recommendation string `col-name:"Recommendation"`
 }
 
 type treeAnalyzer struct {

@@ -22,7 +22,7 @@ func (am *analyzerManagerMock) Exec(string, string) error {
 }
 
 func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return true, nil
+	return analyzerManagerExists, nil
 }
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -95,6 +95,5 @@ func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, extendedResults)
-	assert.Error(t, err)
-	assert.Equal(t, "cant get xray server details", err.Error())
+	assert.NoError(t, err)
 }

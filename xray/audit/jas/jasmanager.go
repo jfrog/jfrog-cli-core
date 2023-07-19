@@ -19,13 +19,13 @@ var (
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology) (*utils.ExtendedScanResults, error) {
-	if len(serverDetails.Url) == 0 {
+	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
-		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
+		return nil, nil
 	}
 	analyzerManagerExist, err := analyzerManagerExecuter.ExistLocally()
 	if err != nil {
-		return nil, err
+		return &utils.ExtendedScanResults{XrayResults: xrayResults}, err
 	}
 	if !analyzerManagerExist {
 		log.Debug("Since the 'Analyzer Manager' doesn't exist locally, its execution is skipped.")

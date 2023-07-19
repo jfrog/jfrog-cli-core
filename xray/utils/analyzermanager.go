@@ -106,6 +106,7 @@ func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err erro
 		}
 	}()
 	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
+	err = cmd.Run()
 	return errorutils.CheckError(err)
 }
 

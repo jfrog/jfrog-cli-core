@@ -42,14 +42,14 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	if err != nil {
 		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
 	}
-	if !applicabilityScanManager.eligibleForApplicabilityScan(scannedTechnologies) {
-		return nil, false, nil
-	}
 	defer func() {
 		if cleanupFunc != nil {
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	if !applicabilityScanManager.eligibleForApplicabilityScan(scannedTechnologies) {
+		return nil, false, nil
+	}
 	if err = applicabilityScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil

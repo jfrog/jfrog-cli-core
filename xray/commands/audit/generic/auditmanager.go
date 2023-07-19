@@ -177,7 +177,7 @@ func auditMultipleWorkingDirs(params *Params) *Results {
 	defer func() {
 		err = errors.Join(err, os.Chdir(projectDir))
 	}()
-	var results *Results
+	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
 	for _, wd := range params.workingDirs {
 		absWd, e := filepath.Abs(wd)
 		if e != nil {

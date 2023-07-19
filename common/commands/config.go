@@ -3,26 +3,23 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/url"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
-
-	"github.com/jfrog/jfrog-client-go/auth"
-
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type ConfigAction string
@@ -40,6 +37,7 @@ const (
 	AccessToken AuthenticationMethod = "Access Token"
 	BasicAuth   AuthenticationMethod = "Username and Password / API Key"
 	MTLS        AuthenticationMethod = "Mutual TLS"
+	WebLogin    AuthenticationMethod = "Web Login"
 )
 
 // Internal golang locking for the same process.
@@ -52,6 +50,10 @@ type ConfigCommand struct {
 	encPassword      bool
 	useBasicAuthOnly bool
 	serverId         string
+	// Preselected web login authentication method, supported on an interactive command only.
+	useWebLogin bool
+	// Forcibly make the configured server default.
+	makeDefault bool
 	// For unit tests
 	disablePrompts bool
 	cmdType        ConfigAction
@@ -73,6 +75,16 @@ func (cc *ConfigCommand) SetEncPassword(encPassword bool) *ConfigCommand {
 
 func (cc *ConfigCommand) SetUseBasicAuthOnly(useBasicAuthOnly bool) *ConfigCommand {
 	cc.useBasicAuthOnly = useBasicAuthOnly
+	return cc
+}
+
+func (cc *ConfigCommand) SetUseWebLogin(useWebLogin bool) *ConfigCommand {
+	cc.useWebLogin = useWebLogin
+	return cc
+}
+
+func (cc *ConfigCommand) SetMakeDefault(makeDefault bool) *ConfigCommand {
+	cc.makeDefault = makeDefault
 	return cc
 }
 
@@ -153,77 +165,94 @@ func (cc *ConfigCommand) config() error {
 	}
 	if cc.interactive {
 		err = cc.getConfigurationFromUser()
-		if err != nil {
-			return err
-		}
 	} else {
-		// Non-interactive config
-
-		if cc.details.Url != "" {
-			if fileutils.IsSshUrl(cc.details.Url) {
-				coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
-			} else {
-				cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-				// Derive JFrog services URLs from platform URL
-				coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
-				coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
-				coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
-				coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
-				coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
-			}
-		}
-
-		// Some package managers support basic authentication only.
-		// To support them we try to extract the username from the access token
-		if cc.details.AccessToken != "" && cc.details.User == "" {
-			err = cc.validateTokenIsNotApiKey()
-			if err != nil {
-				return err
-			}
-
-			// Try extracting username from Access Token (non-possible on reference token)
-			cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
-		}
+		err = cc.getConfigurationNonInteractively()
 	}
-	cc.details.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
-	cc.details.DistributionUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
-	cc.details.XrayUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.XrayUrl)
-	cc.details.MissionControlUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.MissionControlUrl)
-	cc.details.PipelinesUrl = clientutils.AddTrailingSlashIfNeeded(cc.details.PipelinesUrl)
-
-	// Artifactory expects the username to be lower-cased. In case it is not,
-	// Artifactory will silently save it lower-cased, but the token creation
-	// REST API will fail with a non-lower-cased username.
-	cc.details.User = strings.ToLower(cc.details.User)
-
-	if len(configurations) == 1 {
-		cc.details.IsDefault = true
-	}
-
-	err = checkSingleAuthMethod(cc.details)
 	if err != nil {
 		return err
 	}
-
+	cc.addTrailingSlashes()
+	cc.lowerUsername()
+	cc.setDefaultIfNeeded(configurations)
+	if err = checkSingleAuthMethod(cc.details); err != nil {
+		return err
+	}
 	if err = cc.assertUrlsSafe(); err != nil {
 		return err
 	}
+	if err = cc.encPasswordIfNeeded(); err != nil {
+		return err
+	}
+	cc.configRefreshableTokenIfPossible()
+	return config.SaveServersConf(configurations)
+}
 
+func (cc *ConfigCommand) getConfigurationNonInteractively() error {
+	if cc.details.Url != "" {
+		if fileutils.IsSshUrl(cc.details.Url) {
+			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+		} else {
+			cc.details.Url = clientUtils.AddTrailingSlashIfNeeded(cc.details.Url)
+			// Derive JFrog services URLs from platform URL
+			coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/")
+			coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/")
+			coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/")
+			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
+			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
+		}
+	}
+
+	if cc.details.AccessToken != "" && cc.details.User == "" {
+		if err := cc.validateTokenIsNotApiKey(); err != nil {
+			return err
+		}
+		cc.tryExtractingUsernameFromAccessToken()
+	}
+	return nil
+}
+
+func (cc *ConfigCommand) addTrailingSlashes() {
+	cc.details.ArtifactoryUrl = clientUtils.AddTrailingSlashIfNeeded(cc.details.ArtifactoryUrl)
+	cc.details.DistributionUrl = clientUtils.AddTrailingSlashIfNeeded(cc.details.DistributionUrl)
+	cc.details.XrayUrl = clientUtils.AddTrailingSlashIfNeeded(cc.details.XrayUrl)
+	cc.details.MissionControlUrl = clientUtils.AddTrailingSlashIfNeeded(cc.details.MissionControlUrl)
+	cc.details.PipelinesUrl = clientUtils.AddTrailingSlashIfNeeded(cc.details.PipelinesUrl)
+}
+
+// Artifactory expects the username to be lower-cased. In case it is not,
+// Artifactory will silently save it lower-cased, but the token creation
+// REST API will fail with a non-lower-cased username.
+func (cc *ConfigCommand) lowerUsername() {
+	cc.details.User = strings.ToLower(cc.details.User)
+}
+
+func (cc *ConfigCommand) setDefaultIfNeeded(configurations []*config.ServerDetails) {
+	if len(configurations) == 1 {
+		cc.details.IsDefault = true
+		return
+	}
+	if cc.makeDefault {
+		for i := range configurations {
+			configurations[i].IsDefault = false
+		}
+		cc.details.IsDefault = true
+	}
+}
+
+func (cc *ConfigCommand) encPasswordIfNeeded() error {
 	if cc.encPassword && cc.details.ArtifactoryUrl != "" {
-		err = cc.encryptPassword()
+		err := cc.encryptPassword()
 		if err != nil {
 			return errorutils.CheckErrorf("The following error was received while trying to encrypt your password: %s ", err)
 		}
 	}
-
-	if !cc.useBasicAuthOnly {
-		cc.configRefreshableToken()
-	}
-
-	return config.SaveServersConf(configurations)
+	return nil
 }
 
-func (cc *ConfigCommand) configRefreshableToken() {
+func (cc *ConfigCommand) configRefreshableTokenIfPossible() {
+	if cc.useBasicAuthOnly {
+		return
+	}
 	// If username and password weren't provided, then the artifactoryToken refresh mechanism isn't set.
 	if cc.details.User == "" || cc.details.Password == "" {
 		return
@@ -294,21 +323,15 @@ func (cc *ConfigCommand) resolveServerId() string {
 }
 
 func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
-	disallowUsingSavedPassword := false
-
 	if cc.details.Url == "" {
 		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
+	var disallowUsingSavedPassword bool
 	if fileutils.IsSshUrl(cc.details.Url) {
 		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
 	} else {
-		cc.details.Url = clientutils.AddTrailingSlashIfNeeded(cc.details.Url)
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
-		disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
+		disallowUsingSavedPassword = cc.fillUrlsPrePrompting()
 	}
 
 	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
@@ -319,69 +342,56 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 		if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
 			return
 		}
-		// Password/Access-Token/MTLS Certificate
+		var clientCertChecked bool
 		if cc.details.Password == "" && cc.details.AccessToken == "" {
-			var authMethod AuthenticationMethod
-			authMethod, err = promptAuthMethods()
+			clientCertChecked, err = cc.promptForCredentials(disallowUsingSavedPassword)
 			if err != nil {
-				return
-			}
-			switch authMethod {
-			case BasicAuth:
-				err = ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
-				if err != nil {
-					return
-				}
-			case AccessToken:
-				err = readAccessTokenFromConsole(cc.details)
-				if err != nil {
-					return
-				}
-				err = cc.validateTokenIsNotApiKey()
-				if err != nil {
-					return err
-				}
-				if cc.details.User == "" {
-					// Try extracting username from Access Token (non-possible on reference token)
-					cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
-					if cc.details.User == "" {
-						ioutils.ScanFromConsole("JFrog username (optional)", &cc.details.User, "")
-					}
-				}
-
-			case MTLS:
-				checkCertificateForMTLS(cc)
-				log.Warn("Please notice that authentication using client certificates (mTLS) is not supported by commands which integrate with package managers.")
+				return err
 			}
 		}
-
-		checkClientCertForReverseProxy(cc)
+		if !clientCertChecked {
+			cc.checkClientCertForReverseProxy()
+		}
 	}
-
 	return
 }
 
-func checkCertificateForMTLS(cc *ConfigCommand) {
+func (cc *ConfigCommand) fillUrlsPrePrompting() (disallowUsingSavedPassword bool) {
+	cc.details.Url = clientUtils.AddTrailingSlashIfNeeded(cc.details.Url)
+	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
+	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
+	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.XrayUrl, cc.details.Url+"xray/") || disallowUsingSavedPassword
+	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/") || disallowUsingSavedPassword
+	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/") || disallowUsingSavedPassword
+	return
+}
+
+func (cc *ConfigCommand) checkCertificateForMTLS() {
 	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
 		return
 	}
 	cc.readClientCertInfoFromConsole()
 }
 
-func promptAuthMethods() (method AuthenticationMethod, err error) {
+func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMethod, err error) {
+	if cc.useWebLogin {
+		return WebLogin, nil
+	}
+
 	var selected string
-	authMethod := []AuthenticationMethod{
+	authMethods := []AuthenticationMethod{
 		BasicAuth,
 		AccessToken,
 		MTLS,
+		// WebLogin, // TODO uncomment when Artifactory 7.63.1 is released to self-hosted
 	}
 	var selectableItems []ioutils.PromptItem
-	for _, method := range authMethod {
-		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(method), TargetValue: &selected})
+	for _, curMethod := range authMethods {
+		selectableItems = append(selectableItems, ioutils.PromptItem{Option: string(curMethod), TargetValue: &selected})
 	}
 	err = ioutils.SelectString(selectableItems, "Select one of the following authentication methods:", false, func(item ioutils.PromptItem) {
 		*item.TargetValue = item.Option
-		method = AuthenticationMethod(*item.TargetValue)
+		selectedMethod = AuthenticationMethod(*item.TargetValue)
 	})
 	return
 }
@@ -400,6 +410,52 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 	})
 }
 
+func (cc *ConfigCommand) promptForCredentials(disallowUsingSavedPassword bool) (clientCertChecked bool, err error) {
+	var authMethod AuthenticationMethod
+	authMethod, err = cc.promptAuthMethods()
+	if err != nil {
+		return
+	}
+	switch authMethod {
+	case BasicAuth:
+		return false, ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+	case AccessToken:
+		return false, cc.promptForAccessToken()
+	case MTLS:
+		cc.checkCertificateForMTLS()
+		log.Warn("Please notice that authentication using client certificates (mTLS) is not supported by commands which integrate with package managers.")
+		return true, nil
+	case WebLogin:
+		// Web login sends requests, so certificates must be obtained first if they are required.
+		cc.checkClientCertForReverseProxy()
+		return true, cc.handleWebLogin()
+	default:
+		return false, errorutils.CheckErrorf("unexpected authentication method")
+	}
+}
+
+func (cc *ConfigCommand) promptForAccessToken() error {
+	if err := readAccessTokenFromConsole(cc.details); err != nil {
+		return err
+	}
+	if err := cc.validateTokenIsNotApiKey(); err != nil {
+		return err
+	}
+	if cc.details.User == "" {
+		cc.tryExtractingUsernameFromAccessToken()
+		if cc.details.User == "" {
+			ioutils.ScanFromConsole("JFrog username (optional)", &cc.details.User, "")
+		}
+	}
+	return nil
+}
+
+// Some package managers support basic authentication only. To support them, we try to extract the username from the access token.
+// This is not feasible with reference token.
+func (cc *ConfigCommand) tryExtractingUsernameFromAccessToken() {
+	cc.details.User = auth.ExtractUsernameFromAccessToken(cc.details.AccessToken)
+}
+
 func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	if cc.details.ClientCertPath == "" {
 		ioutils.ScanFromConsole("Client certificate file path", &cc.details.ClientCertPath, cc.defaultDetails.ClientCertPath)
@@ -409,7 +465,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	}
 }
 
-func checkClientCertForReverseProxy(cc *ConfigCommand) {
+func (cc *ConfigCommand) checkClientCertForReverseProxy() {
 	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
 		return
 	}
@@ -439,7 +495,7 @@ func getSshKeyPath(details *config.ServerDetails) error {
 	}
 
 	// If SSH key path provided, check if exists:
-	details.SshKeyPath = clientutils.ReplaceTildeWithUserHome(details.SshKeyPath)
+	details.SshKeyPath = clientUtils.ReplaceTildeWithUserHome(details.SshKeyPath)
 	exists, err := fileutils.IsFileExists(details.SshKeyPath, false)
 	if err != nil {
 		return err
@@ -689,9 +745,9 @@ func (cc *ConfigCommand) encryptPassword() error {
 
 // Assert all services URLs are safe
 func (cc *ConfigCommand) assertUrlsSafe() error {
-	for _, url := range []string{cc.details.Url, cc.details.AccessUrl, cc.details.ArtifactoryUrl,
+	for _, curUrl := range []string{cc.details.Url, cc.details.AccessUrl, cc.details.ArtifactoryUrl,
 		cc.details.DistributionUrl, cc.details.MissionControlUrl, cc.details.PipelinesUrl, cc.details.XrayUrl} {
-		if isUrlSafe(url) {
+		if isUrlSafe(curUrl) {
 			continue
 		}
 		if cc.interactive {
@@ -713,21 +769,33 @@ func (cc *ConfigCommand) validateTokenIsNotApiKey() error {
 	return nil
 }
 
+func (cc *ConfigCommand) handleWebLogin() error {
+	token, err := utils.DoWebLogin(cc.details)
+	if err != nil {
+		return err
+	}
+	cc.details.AccessToken = token.AccessToken
+	cc.details.RefreshToken = token.RefreshToken
+	cc.details.WebLogin = true
+	cc.tryExtractingUsernameFromAccessToken()
+	return nil
+}
+
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:
 // 1. The URL uses an http:// scheme
 // 2. The URL leads to a URL outside the local machine
 func isUrlSafe(urlToCheck string) bool {
-	url, err := url.Parse(urlToCheck)
+	parsedUrl, err := url.Parse(urlToCheck)
 	if err != nil {
-		// Unparseable URL is not unsafe
+		// If the URL cannot be parsed, we treat it as safe.
 		return true
 	}
 
-	if url.Scheme != "http" {
+	if parsedUrl.Scheme != "http" {
 		return true
 	}
 
-	hostName := url.Hostname()
+	hostName := parsedUrl.Hostname()
 	if hostName == "127.0.0.1" || hostName == "localhost" {
 		return true
 	}

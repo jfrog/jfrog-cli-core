@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testServerId = "test"
+
 func init() {
 	log.SetDefaultLogger()
 }
@@ -71,7 +73,7 @@ func TestApiKeyInAccessToken(t *testing.T) {
 	inputDetails.AccessToken = apiKey
 
 	// Should throw error if access token is API key and no username
-	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
+	configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
 	configCmd.disablePrompts = true
 	assert.ErrorContains(t, configCmd.Run(), "the provided Access Token is an API key")
 
@@ -120,7 +122,7 @@ func TestUrls(t *testing.T) {
 func testUrls(t *testing.T, interactive bool) {
 	inputDetails := config.ServerDetails{
 		Url: "http://localhost:8080", User: "admin", Password: "password",
-		ServerId: "test", ClientCertPath: "test/cert/path", ClientCertKeyPath: "test/cert/key/path",
+		ServerId: testServerId, ClientCertPath: "test/cert/path", ClientCertKeyPath: "test/cert/key/path",
 		IsDefault: false}
 
 	outputConfig, err := configAndGetTestServer(t, &inputDetails, false, interactive)
@@ -160,13 +162,42 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be disabled")
-	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
 
 	// Verify setting the option enables refreshable tokens.
 	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be enabled")
-	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
+}
+
+func TestMakeDefaultOption(t *testing.T) {
+	originalDefault := tests.CreateTestServerDetails()
+	originalDefault.ServerId = "originalDefault"
+	originalDefault.IsDefault = false
+	newDefault := tests.CreateTestServerDetails()
+	newDefault.ServerId = "newDefault"
+	newDefault.IsDefault = false
+
+	// Config the first server, and expect it to be default because it is the only server.
+	configAndAssertDefault(t, originalDefault, false)
+	defer deleteServer(t, originalDefault.ServerId)
+
+	// Config a second server and pass the makeDefault option.
+	configAndAssertDefault(t, newDefault, true)
+	defer deleteServer(t, newDefault.ServerId)
+
+}
+
+func configAndAssertDefault(t *testing.T, inputDetails *config.ServerDetails, makeDefault bool) {
+	outputConfig, err := configAndGetServer(t, inputDetails.ServerId, inputDetails, false, false, makeDefault)
+	assert.NoError(t, err)
+	assert.Equal(t, inputDetails.ServerId, outputConfig.ServerId)
+	assert.True(t, outputConfig.IsDefault)
+}
+
+func deleteServer(t *testing.T, serverId string) {
+	assert.NoError(t, NewConfigCommand(Delete, serverId).Run())
 }
 
 type unsafeUrlTest struct {
@@ -193,11 +224,11 @@ func TestAssertUrlsSafe(t *testing.T) {
 	for _, testCase := range unsafeUrlTestCases {
 		t.Run(testCase.url, func(t *testing.T) {
 			// Test non-interactive - should pass with a warning message
-			inputDetails := &config.ServerDetails{Url: testCase.url, ServerId: "test"}
+			inputDetails := &config.ServerDetails{Url: testCase.url, ServerId: testServerId}
 			configAndTest(t, inputDetails, false)
 
 			// Test interactive - should fail with an error
-			configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetInteractive(true)
+			configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetInteractive(true)
 			configCmd.disablePrompts = true
 			err := configCmd.Run()
 			if testCase.isSafe {
@@ -259,13 +290,13 @@ func TestKeyDecryptionError(t *testing.T) {
 	inputDetails.Password = "password"
 
 	// Configure server with JFROG_CLI_ENCRYPTION_KEY set
-	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
+	configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
 	configCmd.disablePrompts = true
 	assert.NoError(t, configCmd.Run())
 
 	// Get the server details when JFROG_CLI_ENCRYPTION_KEY is not set and expect an error
 	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
-	_, err = GetConfig("test", false)
+	_, err = GetConfig(testServerId, false)
 	assert.ErrorContains(t, err, "cannot decrypt config")
 }
 
@@ -281,15 +312,20 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, interactive)
 	assert.NoError(t, err)
 	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputConfig), "unexpected configuration was saved to file")
-	assert.NoError(t, NewConfigCommand(Delete, "test").Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
 	testExportImport(t, inputDetails)
 }
 
 func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, basicAuthOnly, interactive bool) (*config.ServerDetails, error) {
-	configCmd := NewConfigCommand(AddOrEdit, "test").SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).SetInteractive(interactive)
+	return configAndGetServer(t, testServerId, inputDetails, basicAuthOnly, interactive, false)
+}
+
+func configAndGetServer(t *testing.T, serverId string, inputDetails *config.ServerDetails, basicAuthOnly, interactive, makeDefault bool) (*config.ServerDetails, error) {
+	configCmd := NewConfigCommand(AddOrEdit, serverId).SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).
+		SetInteractive(interactive).SetMakeDefault(makeDefault)
 	configCmd.disablePrompts = true
 	assert.NoError(t, configCmd.Run())
-	return GetConfig("test", false)
+	return GetConfig(serverId, false)
 }
 
 func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {

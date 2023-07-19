@@ -1,8 +1,9 @@
 package state
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSecondsToLiteralTime(t *testing.T) {
@@ -32,7 +33,7 @@ func TestSecondsToLiteralTime(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			assert.Equal(t, testCase.expected, secondsToLiteralTime(testCase.secsToConvert, testCase.prefix))
+			assert.Equal(t, testCase.expected, SecondsToLiteralTime(testCase.secsToConvert, testCase.prefix))
 		})
 	}
 }

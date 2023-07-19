@@ -140,7 +140,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 	applicabilityManager, eligible, err := getApplicabilityScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph,
 		&fakeServerDetails, []coreutils.Technology{coreutils.Nuget, coreutils.Go}, &analyzerManagerMock{})
 
-	//Assert
+	// Assert
 	assert.Nil(t, applicabilityManager)
 	assert.NoError(t, err)
 	assert.False(t, eligible)

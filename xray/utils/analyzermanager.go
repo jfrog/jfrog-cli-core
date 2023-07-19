@@ -85,7 +85,6 @@ type AnalyzerManagerInterface interface {
 
 type AnalyzerManager struct {
 	analyzerManagerFullPath string
-	analyzerManagerLogsDir  string
 }
 
 func (am *AnalyzerManager) ExistLocally() (bool, error) {

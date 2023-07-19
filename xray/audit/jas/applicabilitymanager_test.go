@@ -1,6 +1,9 @@
 package jas
 
 import (
+	"errors"
+	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -146,111 +149,92 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	// Arrange
 	analyzerManagerExecuter = &analyzerManagerMock{}
-	// Act
-	applicabilityManager, eligible, err := getApplicabilityScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph,
-		&fakeServerDetails, []coreutils.Technology{coreutils.Nuget, coreutils.Go}, &analyzerManagerMock{})
-
-	// Assert
+	applicabilityManager, _, err := newApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 	assert.NoError(t, err)
+	// Assert
+	eligible := applicabilityManager.eligibleForApplicabilityScan([]coreutils.Technology{coreutils.Npm})
 	assert.False(t, eligible)
 }
 
-//func TestResultsIncludeEligibleTechnologies(t *testing.T) {
-//	tests := []struct {
-//		vulnerabilities []services.Vulnerability
-//		violations      []services.Violation
-//		expectedResult  bool
-//	}{
-//		{vulnerabilities: []services.Vulnerability{{Technology: "npm"}}, violations: []services.Violation{{Technology: "go"}}, expectedResult: true},
-//		{vulnerabilities: []services.Vulnerability{{Technology: "go"}}, violations: []services.Violation{{Technology: "npm"}}, expectedResult: true},
-//		{vulnerabilities: []services.Vulnerability{{Technology: "npm"}}, violations: []services.Violation{{Technology: "npm"}}, expectedResult: true},
-//		{vulnerabilities: []services.Vulnerability{{Technology: "go"}}, violations: []services.Violation{{Technology: "go"}}, expectedResult: false},
-//	}
-//	for _, test := range tests {
-//		assert.Equal(t, test.expectedResult, resultsIncludeEligibleTechnologies(test.vulnerabilities, test.violations))
-//	}
-//}
+func TestExtractXrayDirectViolations(t *testing.T) {
+	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
+		{
+			Violations: []services.Violation{
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+			},
+		},
+	}
+	tests := []struct {
+		directDependencies []string
+		cvesCount          int
+	}{
+		{directDependencies: []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"},
+			cvesCount: 2,
+		},
+		// Vulnerability dependency, should be ignored by function
+		{directDependencies: []string{"issueId_1_direct_dependency"},
+			cvesCount: 0,
+		},
+		{directDependencies: []string{},
+			cvesCount: 0,
+		},
+	}
 
-//func TestExtractXrayDirectViolations(t *testing.T) {
-//	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
-//		{
-//			ScanId: "scanId_1",
-//			Vulnerabilities: []services.Vulnerability{
-//				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-//					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
-//			},
-//			Violations: []services.Violation{
-//				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-//					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
-//			},
-//		},
-//	}
-//	tests := []struct {
-//		directDependencies []string
-//		expectedResult     []services.Violation
-//	}{
-//		{directDependencies: []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"},
-//			expectedResult: []services.Violation{
-//				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-//					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
-//			},
-//		},
-//		// Vulnerability dependency, should be ignored by function
-//		{directDependencies: []string{"issueId_1_direct_dependency"},
-//			expectedResult: []services.Violation{},
-//		},
-//		{directDependencies: []string{},
-//			expectedResult: []services.Violation{},
-//		},
-//	}
-//
-//	for _, test := range tests {
-//		assert.Equal(t, test.expectedResult, extractXrayDirectViolations(xrayResponseForDirectViolationsTest, test.directDependencies))
-//	}
-//}
+	for _, test := range tests {
+		directDependenciesSet := datastructures.MakeSet[string]()
+		for _, direct := range test.directDependencies {
+			directDependenciesSet.Add(direct)
+		}
+		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, directDependenciesSet)
+		assert.Equal(t, test.cvesCount, cves.Size())
+	}
+}
 
-//func TestExtractXrayDirectVulnerabilities(t *testing.T) {
-//	var xrayResponseForDirectVulnerabilitiesTest = []services.ScanResponse{
-//		{
-//			ScanId: "scanId_1",
-//			Vulnerabilities: []services.Vulnerability{
-//				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-//					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
-//			},
-//			Violations: []services.Violation{
-//				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-//					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
-//			},
-//		},
-//	}
-//	tests := []struct {
-//		directDependencies []string
-//		expectedResult     []services.Vulnerability
-//	}{
-//		{directDependencies: []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"},
-//			expectedResult: []services.Vulnerability{
-//				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-//					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-//					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
-//			},
-//		},
-//		{directDependencies: []string{"issueId_2_direct_dependency"}, // violation dependency, should be ignored by function
-//			expectedResult: []services.Vulnerability{},
-//		},
-//		{directDependencies: []string{},
-//			expectedResult: []services.Vulnerability{},
-//		},
-//	}
-//
-//	for _, test := range tests {
-//		assert.Equal(t, test.expectedResult, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies))
-//	}
-//}
+func TestExtractXrayDirectVulnerabilities(t *testing.T) {
+	var xrayResponseForDirectVulnerabilitiesTest = []services.ScanResponse{
+		{
+			ScanId: "scanId_1",
+			Vulnerabilities: []services.Vulnerability{
+				{
+					IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]services.Component{"issueId_1_direct_dependency": {}},
+				},
+				{
+					IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]services.Component{"issueId_2_direct_dependency": {}},
+				},
+			},
+		},
+	}
+	tests := []struct {
+		directDependencies []string
+		cvesCount          int
+	}{
+		{
+			directDependencies: []string{"issueId_1_direct_dependency"},
+			cvesCount:          3,
+		},
+		{
+			directDependencies: []string{"issueId_2_direct_dependency"},
+			cvesCount:          2,
+		},
+		{directDependencies: []string{},
+			cvesCount: 0,
+		},
+	}
+
+	for _, test := range tests {
+		directDependenciesSet := datastructures.MakeSet[string]()
+		for _, direct := range test.directDependencies {
+			directDependenciesSet.Add(direct)
+		}
+		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, directDependenciesSet).Size())
+	}
+}
 
 func TestGetDirectDependenciesList(t *testing.T) {
 	tests := []struct {
@@ -368,20 +352,20 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	}
 }
 
-//func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-//	defer func() {
-//		analyzerManagerExecutionError = nil
-//	}()
-//	// Arrange
-//	analyzerManagerErrorMessage := "analyzer manager failure message"
-//	analyzerManagerExecutionError = errors.New(analyzerManagerErrorMessage)
-//	analyzerManagerExecuter = &analyzerManagerMock{}
-//
-//	// Act
-//	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-//
-//	// Assert
-//	assert.Error(t, err)
-//	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
-//	assert.Nil(t, extendedResults)
-//}
+func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
+	defer func() {
+		analyzerManagerExecutionError = nil
+	}()
+	// Arrange
+	analyzerManagerErrorMessage := "analyzer manager failure message"
+	analyzerManagerExecutionError = errors.New(analyzerManagerErrorMessage)
+	analyzerManagerExecuter = &analyzerManagerMock{}
+
+	// Act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Npm})
+
+	// Assert
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
+	assert.Nil(t, extendedResults)
+}

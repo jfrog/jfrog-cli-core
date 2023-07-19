@@ -38,13 +38,12 @@ const (
 // error: An error object (if any).
 func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
-	if !coreutils.ContainsApplicabilityScannableTech(scannedTechnologies) {
-		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning. Skipping...")
-		return nil, false, nil
-	}
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+	}
+	if !applicabilityScanManager.eligibleForApplicabilityScan(scannedTechnologies) {
+		return nil, false, nil
 	}
 	defer func() {
 		if cleanupFunc != nil {
@@ -143,9 +142,6 @@ func (a *ApplicabilityScanManager) run() (err error) {
 			err = errors.Join(err, deleteFilesError)
 		}
 	}()
-	if !a.directDependenciesExist() {
-		return nil
-	}
 	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
 	if err = a.createConfigFile(); err != nil {
 		return
@@ -158,6 +154,14 @@ func (a *ApplicabilityScanManager) run() (err error) {
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
 	return a.directDependenciesCves.Size() > 0
+}
+
+func (a *ApplicabilityScanManager) eligibleForApplicabilityScan(technologies []coreutils.Technology) bool {
+	if !a.directDependenciesExist() || !coreutils.ContainsApplicabilityScannableTech(technologies) {
+		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning. Skipping...")
+		return false
+	}
+	return true
 }
 
 type applicabilityScanConfig struct {
@@ -231,27 +235,6 @@ func (a *ApplicabilityScanManager) setScanResults() error {
 		}
 	}
 	return nil
-}
-
-// This function iterate the direct vulnerabilities and violations of the scanned projects, and creates a string list
-// of the CVEs ids. This list will be sent as input to analyzer manager.
-func createCveList(xrayVulnerabilities []services.Vulnerability, xrayViolations []services.Violation) []string {
-	cveWhiteList := []string{}
-	for _, vulnerability := range xrayVulnerabilities {
-		for _, cve := range vulnerability.Cves {
-			if cve.Id != "" {
-				cveWhiteList = append(cveWhiteList, cve.Id)
-			}
-		}
-	}
-	for _, violation := range xrayViolations {
-		for _, cve := range violation.Cves {
-			if cve.Id != "" {
-				cveWhiteList = append(cveWhiteList, cve.Id)
-			}
-		}
-	}
-	return cveWhiteList
 }
 
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise

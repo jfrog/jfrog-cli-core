@@ -3,6 +3,9 @@ package jas
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -11,13 +14,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-	"os"
-	"path/filepath"
 )
 
 const (
 	secretsScanCommand    = "sec"
-	secretsScannersNames  = "tokens, entropy"
 	secretsScannerType    = "secrets-scan"
 	secScanFailureMessage = "failed to run secrets scan. Cause: %s"
 )
@@ -105,7 +105,6 @@ type secretsScanConfiguration struct {
 	Roots       []string `yaml:"roots"`
 	Output      string   `yaml:"output"`
 	Type        string   `yaml:"type"`
-	Scanners    string   `yaml:"scanners"`
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
@@ -121,7 +120,6 @@ func (s *SecretScanManager) createConfigFile() error {
 				Roots:       []string{currentDir},
 				Output:      s.resultsFileName,
 				Type:        secretsScannerType,
-				Scanners:    secretsScannersNames,
 				SkippedDirs: skippedDirs,
 			},
 		},

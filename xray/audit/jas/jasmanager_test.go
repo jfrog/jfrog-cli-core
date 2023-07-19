@@ -5,6 +5,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 var (
@@ -20,7 +22,7 @@ func (am *analyzerManagerMock) Exec(string, string) error {
 }
 
 func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExists, nil
+	return true, nil
 }
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -72,27 +74,27 @@ var fakeServerDetails = config.ServerDetails{
 	User:     "user",
 }
 
-//func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-//	// Arrange
-//	analyzerManagerExists = false
-//	analyzerManagerExecuter = &analyzerManagerMock{}
-//
-//	// Act
-//	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
-//
-//	// Assert
-//	assert.NoError(t, err)
-//	assert.False(t, extendedResults.EntitledForJas)
-//	assert.Equal(t, 1, len(extendedResults.XrayResults))
-//	assert.Nil(t, extendedResults.ApplicabilityScanResults)
-//}
-//
-//func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
-//	// Act
-//	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil)
-//
-//	// Assert
-//	assert.Nil(t, extendedResults)
-//	assert.Error(t, err)
-//	assert.Equal(t, "cant get xray server details", err.Error())
-//}
+func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
+	// Arrange
+	analyzerManagerExists = false
+	analyzerManagerExecuter = &analyzerManagerMock{}
+
+	// Act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn})
+
+	// Assert
+	assert.NoError(t, err)
+	assert.False(t, extendedResults.EntitledForJas)
+	assert.Equal(t, 1, len(extendedResults.XrayResults))
+	assert.Nil(t, extendedResults.ApplicabilityScanResults)
+}
+
+func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
+	// Act
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip})
+
+	// Assert
+	assert.Nil(t, extendedResults)
+	assert.Error(t, err)
+	assert.Equal(t, "cant get xray server details", err.Error())
+}

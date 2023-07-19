@@ -106,8 +106,6 @@ func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err erro
 		}
 	}()
 	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
-	output, err := cmd.CombinedOutput()
-	log.Info(string(output))
 	return errorutils.CheckError(err)
 }
 
@@ -168,9 +166,9 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); errorutils.CheckError(err) != nil {
 		return err
 	}
-	//if err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
-	//	return err
-	//}
+	if err := os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
+		return err
+	}
 	return nil
 }
 

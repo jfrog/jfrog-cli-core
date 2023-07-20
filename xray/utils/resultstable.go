@@ -531,21 +531,21 @@ var Severities = map[string]map[string]*Severity{
 	"Critical": {
 		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
 		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "👌", title: "Critical", numValue: 10},
+		NotApplicableStringValue:             {emoji: "👌", title: "Critical", numValue: 4},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 8, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "👌", title: "High", numValue: 7},
+		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
+		NotApplicableStringValue:             {emoji: "👌", title: "High", numValue: 3},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 6, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 5, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "👌", title: "Medium", numValue: 4},
+		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {emoji: "👌", title: "Medium", numValue: 2},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 3},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 2},
+		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
+		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
 		NotApplicableStringValue:             {emoji: "👌", title: "Low", numValue: 1},
 	},
 }
@@ -805,7 +805,7 @@ func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []service
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
-	if !extendedResults.EntitledForJas {
+	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
 		return ""
 	}
 	if len(xrayCves) == 0 {

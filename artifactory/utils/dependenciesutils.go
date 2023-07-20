@@ -79,7 +79,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 		}
 	}
 	// Download & unzip the analyzer manager files
-	log.Info("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
+	log.Debug("The 'Analyzer Manager' app is not cached locally. Downloading it now...")
 	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}

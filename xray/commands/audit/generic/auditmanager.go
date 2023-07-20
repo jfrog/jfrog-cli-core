@@ -3,19 +3,14 @@ package audit
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/version"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
-	"golang.org/x/sync/errgroup"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/java"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/nuget"
@@ -28,6 +23,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/sync/errgroup"
+	"os"
+	"path/filepath"
 )
 
 type Params struct {
@@ -127,25 +125,18 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	scanResults, isMultipleRootProject, auditError := genericAudit(auditParams)
+	results = genericAudit(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
 		return
 	}
 
-	extendedScanResults := &clientUtils.ExtendedScanResults{XrayResults: scanResults}
-	// Try to run contextual analysis only if the user is entitled for advance security
+	// Run scanners only if the user is entitled for Advanced Security
 	if isEntitled {
-		extendedScanResults, err = jas.GetExtendedScanResults(scanResults, auditParams.FullDependenciesTree(), serverDetails)
-		if err != nil {
-			return
-		}
-	}
-	results = &Results{
-		IsMultipleRootProject: isMultipleRootProject,
-		AuditError:            auditError,
-		ExtendedScanResults:   extendedScanResults,
+		xrayScanResults := results.ExtendedScanResults.XrayResults
+		scannedTechnologies := results.ScannedTechnologies
+		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies)
 	}
 	return
 }
@@ -165,74 +156,74 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 }
 
 // genericAudit audits all the projects found in the given workingDirs
-func genericAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
-		return
+func genericAudit(params *Params) *Results {
+	if err := coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+		return &Results{AuditError: err}
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
-
+	log.Info("Scanning for vulnerable dependencies...")
 	if len(params.workingDirs) == 0 {
-		log.Info("Auditing project...")
 		return doAudit(params)
 	}
 
 	return auditMultipleWorkingDirs(params)
 }
 
-func auditMultipleWorkingDirs(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+func auditMultipleWorkingDirs(params *Params) *Results {
 	projectDir, err := os.Getwd()
-	if errorutils.CheckError(err) != nil {
-		return
+	if err != nil {
+		return &Results{AuditError: errorutils.CheckError(err)}
 	}
 	defer func() {
 		err = errors.Join(err, os.Chdir(projectDir))
 	}()
-	var errorList strings.Builder
+	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
 	for _, wd := range params.workingDirs {
 		absWd, e := filepath.Abs(wd)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
+			err = errors.Join(err, fmt.Errorf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
 			continue
 		}
-		log.Info("Auditing project:", absWd, "...")
+		log.Info("Scanning directory:", absWd, "...")
 		e = os.Chdir(absWd)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
+			err = errors.Join(err, fmt.Errorf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
 			continue
 		}
 
-		techResults, isMultipleRootProject, e := doAudit(params)
-		if e != nil {
-			errorList.WriteString(fmt.Sprintf("audit command in %s failed:\n%s\n", absWd, e.Error()))
+		auditResults := doAudit(params)
+		if auditResults.AuditError != nil {
+			err = errors.Join(err, fmt.Errorf("audit command in %s failed:\n%s\n", absWd, auditResults.AuditError.Error()))
 			continue
 		}
 
-		results = append(results, techResults...)
-		isMultipleRoot = isMultipleRootProject
+		results.ExtendedScanResults.XrayResults =
+			append(results.ExtendedScanResults.XrayResults, auditResults.ExtendedScanResults.XrayResults...)
+		if !results.IsMultipleRootProject {
+			results.IsMultipleRootProject = auditResults.IsMultipleRootProject
+		}
+		results.ScannedTechnologies = append(results.ScannedTechnologies, auditResults.ScannedTechnologies...)
 	}
-
-	if errorList.Len() > 0 {
-		err = errorutils.CheckErrorf(errorList.String())
-	}
-
-	return
+	return results
 }
 
 // Audits the project found in the current directory using Xray.
-func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bool, err error) {
+func doAudit(params *Params) *Results {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
+	var err error
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
-		technologies, err = commandsutils.DetectedTechnologies()
-		if err != nil {
-			return
+		technologies = commandsutils.DetectedTechnologies()
+		if len(technologies) == 0 {
+			log.Info("Skipping vulnerable dependencies scanning...")
+			return &Results{AuditError: err}
 		}
 	}
-	var errorList strings.Builder
 	serverDetails, err := params.ServerDetails()
+	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
 	if err != nil {
-		return
+		return &Results{AuditError: err}
 	}
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
@@ -240,7 +231,7 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 		}
 		flattenTree, e := GetTechDependencyTree(params.GraphBasicParams, tech)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
+			err = errors.Join(err, fmt.Errorf("audit failed while building %s dependency tree:\n%s\n", tech, e.Error()))
 			continue
 		}
 
@@ -252,17 +243,18 @@ func doAudit(params *Params) (results []services.ScanResponse, isMultipleRoot bo
 			SetSeverityLevel(params.minSeverityFilter)
 		techResults, e := audit.Audit(flattenTree, params.Progress(), tech, scanGraphParams)
 		if e != nil {
-			errorList.WriteString(fmt.Sprintf("'%s' audit request failed:\n%s\n", tech, e.Error()))
+			err = errors.Join(err, fmt.Errorf("'%s' audit request failed:\n%s\n", tech, e.Error()))
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.FullDependenciesTree())
-		results = append(results, techResults...)
-		isMultipleRoot = len(flattenTree) > 1
+		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
+		if !results.IsMultipleRootProject {
+			results.IsMultipleRootProject = len(flattenTree) > 1
+		}
+		results.ScannedTechnologies = append(results.ScannedTechnologies, tech)
 	}
-	if errorList.Len() > 0 {
-		err = errorutils.CheckErrorf(errorList.String())
-	}
-	return
+	results.AuditError = err
+	return results
 }
 
 func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
@@ -305,13 +297,9 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 }
 
 func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
-	var javaProps map[string]any
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, err
-	}
-	if params.DepsRepo() != "" && tech == coreutils.Maven {
-		javaProps = CreateJavaProps(params.DepsRepo(), serverDetails)
 	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
@@ -319,10 +307,8 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 		IgnoreConfigFile: params.IgnoreConfigFile(),
 		ExcludeTestDeps:  params.ExcludeTestDependencies(),
 		UseWrapper:       params.UseWrapper(),
-		JavaProps:        javaProps,
 		Server:           serverDetails,
 		DepsRepo:         params.DepsRepo(),
-		ReleasesRepo:     params.ReleasesRepo(),
 	})
 }
 

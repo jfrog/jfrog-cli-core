@@ -102,19 +102,18 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	return nil
 }
 
-func buildGradleDependencyTree(useWrapper bool, server *config.ServerDetails, depsRepo, releasesRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
-	if (server != nil && server.IsEmpty()) || depsRepo == "" {
-		depsRepo, server, err = getGradleConfig()
+func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, err error) {
+	manager := &depTreeManager{useWrapper: params.UseWrapper}
+	if params.IgnoreConfigFile {
+		// In case we don't need to use the gradle config file,
+		// use the server and depsRepo values that were usually given from Frogbot
+		manager.depsRepo = params.DepsRepo
+		manager.server = params.Server
+	} else {
+		manager.depsRepo, manager.server, err = getGradleConfig()
 		if err != nil {
 			return
 		}
-	}
-
-	manager := &depTreeManager{
-		server:       server,
-		releasesRepo: releasesRepo,
-		depsRepo:     depsRepo,
-		useWrapper:   useWrapper,
 	}
 
 	outputFileContent, err := manager.runGradleDepTree()
@@ -131,10 +130,7 @@ func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err err
 		return
 	}
 	defer func() {
-		e := fileutils.RemoveTempDir(depTreeDir)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, fileutils.RemoveTempDir(depTreeDir))
 	}()
 
 	if dtp.useWrapper {
@@ -152,23 +148,20 @@ func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err er
 	if err != nil {
 		return
 	}
-	if dtp.server != nil {
-		dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.releasesRepo, dtp.depsRepo, dtp.server)
-		if err != nil {
-			return
-		}
+	dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.depsRepo, dtp.server)
+	if err != nil {
+		return
 	}
 	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, dtp.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 
 // getRemoteRepos constructs the sections of Artifactory's remote repositories in the gradle-dep-tree init script.
-// releasesRepoName - name of the remote repository that proxies https://releases.jfrog.io
 // depsRemoteRepo - name of the remote repository that proxies the dependencies server, e.g. maven central.
 // server - the Artifactory server details on which the repositories reside in.
 // Returns the constructed sections.
-func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails) (string, string, error) {
-	constructedReleasesRepo, err := constructReleasesRemoteRepo(releasesRepo, server)
+func getRemoteRepos(depsRepo string, server *config.ServerDetails) (string, string, error) {
+	constructedReleasesRepo, err := constructReleasesRemoteRepo()
 	if err != nil {
 		return "", "", err
 	}
@@ -180,21 +173,20 @@ func getRemoteRepos(releasesRepo, depsRepo string, server *config.ServerDetails)
 	return constructedReleasesRepo, constructedDepsRepo, nil
 }
 
-func constructReleasesRemoteRepo(releasesRepo string, server *config.ServerDetails) (string, error) {
-	releasesServer := server
-	if releasesRepo == "" {
-		// Try to get releases repository from the environment variable
-		serverId, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
-		if err != nil || serverId == "" || repoName == "" {
-			return "", err
-		}
-		releasesServer, err = config.GetSpecificConfig(serverId, false, true)
-		if err != nil {
-			return "", err
-		}
-		releasesRepo = repoName
+func constructReleasesRemoteRepo() (string, error) {
+	// Try to retrieve the serverID and remote repository that proxies https://releases.jfrog.io, from the environment variable
+	serverId, repoName, err := coreutils.GetServerIdAndRepo(coreutils.ReleasesRemoteEnv)
+	if err != nil || serverId == "" || repoName == "" {
+		return "", err
 	}
-	releasesPath := fmt.Sprintf("%s/%s", releasesRepo, remoteDepTreePath)
+
+	releasesServer, err := config.GetSpecificConfig(serverId, false, true)
+	if err != nil {
+		return "", err
+	}
+
+	releasesPath := fmt.Sprintf("%s/%s", repoName, remoteDepTreePath)
+	log.Debug("The `gradledeptree` will be resolved from", repoName)
 	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }
 
@@ -263,7 +255,7 @@ func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildre
 }
 
 func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDetails) (string, error) {
-	if remoteRepo == "" {
+	if remoteRepo == "" || server.IsEmpty() {
 		return "", nil
 	}
 	pass := server.Password
@@ -283,6 +275,7 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 		}
 		return "", errors.New(errString)
 	}
+	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,

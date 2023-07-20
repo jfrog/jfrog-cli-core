@@ -51,8 +51,7 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	}()
 	log.Info("Running IaC scanning...")
 	if err = iacScanManager.run(); err != nil {
-		eligible, err := utils.ParseAnalyzerManagerError(utils.IaC, err)
-		return nil, eligible, err
+		return nil, false, utils.ParseAnalyzerManagerError(utils.IaC, err)
 	}
 	if len(iacScanManager.iacScannerResults) > 0 {
 		log.Info("Found", len(iacScanManager.iacScannerResults), "IaC vulnerabilities")

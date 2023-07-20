@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -39,7 +38,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
-		return nil, false, fmt.Errorf(utils.Applicability.ErrorMsg(err))
+		return nil, false, utils.Applicability.FormattedError(err)
 	}
 	defer func() {
 		if cleanupFunc != nil {
@@ -51,8 +50,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		return nil, false, nil
 	}
 	if err = applicabilityScanManager.run(); err != nil {
-		eligible, err := utils.ParseAnalyzerManagerError(utils.Applicability, err)
-		return nil, eligible, err
+		return nil, false, utils.ParseAnalyzerManagerError(utils.Applicability, err)
 	}
 	return applicabilityScanManager.applicabilityScanResults, true, nil
 }

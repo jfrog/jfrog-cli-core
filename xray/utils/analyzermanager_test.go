@@ -176,7 +176,7 @@ func TestScanTypeErrorMsg(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Scanner: %s", test.scanner), func(t *testing.T) {
-			gotMsg := test.scanner.ErrorMsg(test.err)
+			gotMsg := test.scanner.FormattedError(test.err)
 			assert.Equal(t, test.wantMsg, gotMsg)
 		})
 	}

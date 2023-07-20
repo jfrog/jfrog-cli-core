@@ -57,12 +57,11 @@ const (
 	IaC           ScanType = "IaC"
 )
 
-func (st ScanType) ErrorMsg(err error) string {
-	msg := ""
+func (st ScanType) FormattedError(err error) error {
 	if err != nil {
-		msg = fmt.Sprintf(ErrFailedScannerRun, st, err.Error())
+		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
 	}
-	return msg
+	return nil
 }
 
 var exitCodeErrorsMap = map[int]string{
@@ -193,15 +192,15 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	return nil
 }
 
-func ParseAnalyzerManagerError(scanner ScanType, err error) (bool, error) {
+func ParseAnalyzerManagerError(scanner ScanType, err error) error {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
 		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
 			log.Debug(exitCodeDescription)
-			return true, nil
+			return nil
 		}
 	}
-	return false, fmt.Errorf(scanner.ErrorMsg(err))
+	return scanner.FormattedError(err)
 }
 
 func RemoveDuplicateValues(stringSlice []string) []string {

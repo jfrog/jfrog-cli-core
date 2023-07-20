@@ -31,12 +31,12 @@ var fakeBasicXrayResults = []services.ScanResponse{
 		Vulnerabilities: []services.Vulnerability{
 			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
 				Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-				Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
+				Components: map[string]services.Component{"issueId_1_direct_dependency": {}, "issueId_3_direct_dependency": {}}},
 		},
 		Violations: []services.Violation{
 			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
 				Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-				Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+				Components: map[string]services.Component{"issueId_2_direct_dependency": {}, "issueId_4_direct_dependency": {}}},
 		},
 	},
 }
@@ -47,6 +47,23 @@ var fakeBasicDependencyGraph = []*xrayUtils.GraphNode{
 		Nodes: []*xrayUtils.GraphNode{
 			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
 			{Id: "issueId_2_direct_dependency", Nodes: nil},
+		},
+	},
+}
+
+var multipleFakeBasicDependencyGraph = []*xrayUtils.GraphNode{
+	{
+		Id: "parent_node_id",
+		Nodes: []*xrayUtils.GraphNode{
+			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
+			{Id: "issueId_2_direct_dependency", Nodes: nil},
+		},
+	},
+	{
+		Id: "parent_node_id",
+		Nodes: []*xrayUtils.GraphNode{
+			{Id: "issueId_3_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_2_non_direct_dependency"}}},
+			{Id: "issueId_4_direct_dependency", Nodes: nil},
 		},
 	},
 }
@@ -63,7 +80,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails)
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn})
 
 	// Assert
 	assert.NoError(t, err)
@@ -74,10 +91,9 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil)
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip})
 
 	// Assert
 	assert.Nil(t, extendedResults)
-	assert.Error(t, err)
-	assert.Equal(t, "cant get xray server details", err.Error())
+	assert.NoError(t, err)
 }

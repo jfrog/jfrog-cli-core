@@ -30,3 +30,20 @@ func TestDetectTechnologiesByFilePaths(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsApplicabilityScannableTech(t *testing.T) {
+	tests := []struct {
+		name         string
+		technologies []Technology
+		want         bool
+	}{
+		{name: "contains supported and unsupported techs", technologies: []Technology{Nuget, Go, Npm}, want: true},
+		{name: "contains supported techs only", technologies: []Technology{Maven, Yarn, Npm}, want: true},
+		{name: "contains unsupported techs only", technologies: []Technology{Dotnet, Nuget, Go}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ContainsApplicabilityScannableTech(tt.technologies))
+		})
+	}
+}

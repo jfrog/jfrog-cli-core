@@ -48,6 +48,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		}
 	}()
 	if !applicabilityScanManager.eligibleForApplicabilityScan(scannedTechnologies) {
+		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return nil, false, nil
 	}
 	if err = applicabilityScanManager.run(); err != nil {
@@ -91,7 +92,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 	}, cleanup, nil
 }
 
-// This function gets a liat of xray scan responses that contains direct and indirect vulnerabilities, and returns only direct
+// This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
 // vulnerabilities of the scanned project, ignoring indirect vulnerabilities
 func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies *datastructures.Set[string]) *datastructures.Set[string] {
 	directsCves := datastructures.MakeSet[string]()
@@ -157,11 +158,7 @@ func (a *ApplicabilityScanManager) directDependenciesExist() bool {
 }
 
 func (a *ApplicabilityScanManager) eligibleForApplicabilityScan(technologies []coreutils.Technology) bool {
-	if !a.directDependenciesExist() || !coreutils.ContainsApplicabilityScannableTech(technologies) {
-		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning. Skipping...")
-		return false
-	}
-	return true
+	return a.directDependenciesExist() && coreutils.ContainsApplicabilityScannableTech(technologies)
 }
 
 type applicabilityScanConfig struct {

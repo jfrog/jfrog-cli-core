@@ -12,7 +12,6 @@ import (
 
 const (
 	npmPackageTypeIdentifier = "npm://"
-	yarnV2Version            = "2.0.0"
 	YarnV1ErrorPrefix        = "jf audit is only supported for yarn v2 and above."
 )
 
@@ -25,7 +24,9 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	if err = logAndValidateYarnVersion(executablePath); err != nil {
+
+	executableVersion, err := audit.GetExecutableVersion(executablePath)
+	if err != nil {
 		return
 	}
 
@@ -33,8 +34,8 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	// Calculate Yarn dependencies
-	dependenciesMap, root, err := biUtils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
+	//TODO changed here from GetYarnDependencies2
+	dependenciesMap, root, err := biUtils.GetYarnDependencies2(executablePath, currentDir, packageInfo, log.Logger, executableVersion)
 	if err != nil {
 		return
 	}
@@ -43,6 +44,7 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	return
 }
 
+// TODO delete
 // Yarn audit is only supported from yarn v2.
 func logAndValidateYarnVersion(executablePath string) error {
 	versionStr, err := audit.GetExecutableVersion(executablePath)
@@ -50,7 +52,7 @@ func logAndValidateYarnVersion(executablePath string) error {
 		return err
 	}
 	yarnVer := version.NewVersion(versionStr)
-	if yarnVer.Compare(yarnV2Version) > 0 {
+	if yarnVer.Compare(biUtils.YarnV2Version) > 0 {
 		return errorutils.CheckErrorf(YarnV1ErrorPrefix + "The current version is: " + versionStr)
 	}
 	return nil

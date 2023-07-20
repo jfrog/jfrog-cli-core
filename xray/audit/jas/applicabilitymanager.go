@@ -47,7 +47,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
-	if !applicabilityScanManager.eligibleForApplicabilityScan(scannedTechnologies) {
+	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return nil, false, nil
 	}
@@ -157,7 +157,7 @@ func (a *ApplicabilityScanManager) directDependenciesExist() bool {
 	return a.directDependenciesCves.Size() > 0
 }
 
-func (a *ApplicabilityScanManager) eligibleForApplicabilityScan(technologies []coreutils.Technology) bool {
+func (a *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
 	return a.directDependenciesExist() && coreutils.ContainsApplicabilityScannableTech(technologies)
 }
 

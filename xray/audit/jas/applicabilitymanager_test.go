@@ -152,7 +152,7 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	applicabilityManager, _, err := newApplicabilityScanManager(nil, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
 	assert.NoError(t, err)
 	// Assert
-	eligible := applicabilityManager.eligibleForApplicabilityScan([]coreutils.Technology{coreutils.Npm})
+	eligible := applicabilityManager.shouldRunApplicabilityScan([]coreutils.Technology{coreutils.Npm})
 	assert.False(t, eligible)
 }
 

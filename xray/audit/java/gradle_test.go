@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 
@@ -222,7 +223,8 @@ func TestCreateDepTreeScript(t *testing.T) {
 	}()
 	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", filepath.Join(tmpDir, gradleDepTreeJarFile), ""), string(content))
+	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
+	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", gradleDepTreeJarPath, ""), string(content))
 }
 
 func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
@@ -241,7 +243,8 @@ func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf(expectedInitScriptWithRepos, filepath.Join(tmpDir, gradleDepTreeJarFile)), string(content))
+	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
+	assert.Equal(t, fmt.Sprintf(expectedInitScriptWithRepos, gradleDepTreeJarPath), string(content))
 }
 
 func TestConstructReleasesRemoteRepo(t *testing.T) {

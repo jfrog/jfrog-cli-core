@@ -1,8 +1,8 @@
 package jas
 
 import (
-	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -12,35 +12,27 @@ import (
 	"os"
 )
 
-const serverDetailsErrorMessage = "cant get xray server details"
-
 var (
 	analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
 	skippedDirs                                            = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails) (*utils.ExtendedScanResults, error) {
-	if serverDetails == nil {
-		return nil, errors.New(serverDetailsErrorMessage)
-	}
-	if len(serverDetails.Url) == 0 {
-		log.Warn("To include 'Contextual Analysis' information as part of the audit output, please run the 'jf c add' command before running this command.")
+	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology) (*utils.ExtendedScanResults, error) {
+	if serverDetails == nil || len(serverDetails.Url) == 0 {
+		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
 	analyzerManagerExist, err := analyzerManagerExecuter.ExistLocally()
 	if err != nil {
-		return nil, err
+		return &utils.ExtendedScanResults{XrayResults: xrayResults}, err
 	}
 	if !analyzerManagerExist {
 		log.Debug("Since the 'Analyzer Manager' doesn't exist locally, its execution is skipped.")
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
-	if err = utils.CreateAnalyzerManagerLogDir(); err != nil {
-		return nil, err
-	}
 	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
-		dependencyTrees, serverDetails, analyzerManagerExecuter)
+		dependencyTrees, serverDetails, scannedTechnologies, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
@@ -53,13 +45,14 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		return nil, err
 	}
 	return &utils.ExtendedScanResults{
-		XrayResults:                  xrayResults,
-		ApplicabilityScanResults:     applicabilityScanResults,
-		SecretsScanResults:           secretsScanResults,
-		IacScanResults:               iacScanResults,
 		EntitledForJas:               true,
+		XrayResults:                  xrayResults,
+		ScannedTechnologies:          scannedTechnologies,
+		ApplicabilityScanResults:     applicabilityScanResults,
 		EligibleForApplicabilityScan: eligibleForApplicabilityScan,
+		SecretsScanResults:           secretsScanResults,
 		EligibleForSecretScan:        eligibleForSecretsScan,
+		IacScanResults:               iacScanResults,
 		EligibleForIacScan:           eligibleForIacScan,
 	}, nil
 }

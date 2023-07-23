@@ -3,20 +3,21 @@ package jas
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
-	"os"
-	"path/filepath"
 )
 
 const (
 	secretsScanCommand    = "sec"
-	secretsScannersNames  = "tokens, entropy"
 	secretsScannerType    = "secrets-scan"
 	secScanFailureMessage = "failed to run secrets scan. Cause: %s"
 )
@@ -49,11 +50,15 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	log.Info("Running secrets scanning...")
 	if err = secretScanManager.run(); err != nil {
 		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
 			return nil, false, nil
 		}
 		return nil, true, fmt.Errorf(secScanFailureMessage, err.Error())
+	}
+	if len(secretScanManager.secretsScannerResults) > 0 {
+		log.Info(len(secretScanManager.secretsScannerResults), "secrets were found")
 	}
 	return secretScanManager.secretsScannerResults, true, nil
 }
@@ -100,7 +105,6 @@ type secretsScanConfiguration struct {
 	Roots       []string `yaml:"roots"`
 	Output      string   `yaml:"output"`
 	Type        string   `yaml:"type"`
-	Scanners    string   `yaml:"scanners"`
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
@@ -116,7 +120,6 @@ func (s *SecretScanManager) createConfigFile() error {
 				Roots:       []string{currentDir},
 				Output:      s.resultsFileName,
 				Type:        secretsScannerType,
-				Scanners:    secretsScannersNames,
 				SkippedDirs: skippedDirs,
 			},
 		},

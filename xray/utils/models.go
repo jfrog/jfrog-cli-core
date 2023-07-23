@@ -11,7 +11,6 @@ type GraphBasicParams struct {
 	outputFormat            OutputFormat
 	progress                ioUtils.ProgressMgr
 	fullDependenciesTree    []*xrayUtils.GraphNode
-	releasesRepo            string
 	excludeTestDependencies bool
 	useWrapper              bool
 	insecureTls             bool
@@ -20,15 +19,6 @@ type GraphBasicParams struct {
 	args                    []string
 	depsRepo                string
 	ignoreConfigFile        bool
-}
-
-func (gbp *GraphBasicParams) ReleasesRepo() string {
-	return gbp.releasesRepo
-}
-
-func (gbp *GraphBasicParams) SetReleasesRepo(releasesRepo string) *GraphBasicParams {
-	gbp.releasesRepo = releasesRepo
-	return gbp
 }
 
 func (gbp *GraphBasicParams) FullDependenciesTree() []*xrayUtils.GraphNode {

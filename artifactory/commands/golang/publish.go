@@ -25,7 +25,7 @@ import (
 )
 
 // Publish go project to Artifactory.
-func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectKey string, servicesManager artifactory.ArtifactoryServicesManager) (summary *servicesutils.OperationSummary, artifacts []buildinfo.Artifact, err error) {
+func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectKey string, excludedPatterns []string, servicesManager artifactory.ArtifactoryServicesManager) (summary *servicesutils.OperationSummary, artifacts []buildinfo.Artifact, err error) {
 	projectPath, err := goutils.GetProjectRoot()
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
@@ -71,7 +71,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	params.ModuleId = moduleName
 	params.ModContent = modContent
 	params.ModPath = filepath.Join(projectPath, "go.mod")
-	params.ZipPath, zipArtifact, err = archive(moduleName, packageVersion, projectPath, tempDirPath)
+	params.ZipPath, zipArtifact, err = archive(moduleName, packageVersion, projectPath, tempDirPath, excludedPatterns)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -182,7 +182,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 
 // Archive the go project.
 // Returns the path of the temp archived project file.
-func archive(moduleName, version, projectPath, tempDir string) (name string, zipArtifact *buildinfo.Artifact, err error) {
+func archive(moduleName, version, projectPath, tempDir string, excludedPatterns []string) (name string, zipArtifact *buildinfo.Artifact, err error) {
 	openedFile := false
 	tempFile, err := os.CreateTemp(tempDir, "project.zip")
 	if err != nil {
@@ -197,8 +197,7 @@ func archive(moduleName, version, projectPath, tempDir string) (name string, zip
 			}
 		}
 	}()
-	err = archiveProject(tempFile, projectPath, moduleName, version)
-	if err != nil {
+	if err = archiveProject(tempFile, projectPath, moduleName, version, excludedPatterns); err != nil {
 		return "", nil, errorutils.CheckError(err)
 	}
 	// Double-check that the paths within the zip file are well-formed.

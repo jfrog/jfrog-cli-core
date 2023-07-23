@@ -24,17 +24,22 @@ import (
 )
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	return buildXrayDependencyTree(treeHelper, []string{nodeId})
+	exceededDepthCounter := 0
+	xrayDependencyTree := buildXrayDependencyTree(treeHelper, []string{nodeId}, &exceededDepthCounter)
+	if exceededDepthCounter > 0 {
+		log.Debug("buildXrayDependencyTree exceeded max tree depth", exceededDepthCounter, "times")
+	}
+	return xrayDependencyTree
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string) *xrayUtils.GraphNode {
+func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, exceededDepthCounter *int) *xrayUtils.GraphNode {
 	nodeId := impactPath[len(impactPath)-1]
 	// Initialize the new node
 	xrDependencyTree := &xrayUtils.GraphNode{}
 	xrDependencyTree.Id = nodeId
 	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
 	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		log.Debug("buildXrayDependencyTree exceeded max tree depth")
+		*exceededDepthCounter++
 		return xrDependencyTree
 	}
 	// Recursively create & append all node's dependencies.
@@ -43,7 +48,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 		if slices.Contains(impactPath, dependency) {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency)))
+		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), exceededDepthCounter))
 	}
 	return xrDependencyTree
 }
@@ -205,41 +210,9 @@ func updateComponentsWithImpactPaths(components map[string]services.Component, i
 func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
 	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
-		appendPath(issuesImpactPathsMap, dependency, pathFromRoot)
+		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
 	}
 	for _, depChild := range dependency.Nodes {
 		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot)
 	}
-}
-
-// Appends paths to impact paths tree.
-// When we have multiple paths to the same CVE, the following logic applies:
-// If we have a direct path for the vulnerable dependency, show only the direct paths, as fixing it will resolve all the vulnerabilities.
-// If we have multiple different paths to an indirect dependency, show all possible paths.
-func appendPath(currentTree map[string]*services.Component, dependency *xrayUtils.GraphNode, pathFromRoot []services.ImpactPathNode) {
-	if len(currentTree[dependency.Id].ImpactPaths) == 0 {
-		currentTree[dependency.Id].ImpactPaths = append(currentTree[dependency.Id].ImpactPaths, pathFromRoot)
-		return
-	}
-	currentHasDirectPath := atLeastOneDirectPath(currentTree[dependency.Id].ImpactPaths)
-	suggestHasDirectPath := atLeastOneDirectPath([][]services.ImpactPathNode{pathFromRoot})
-	// If neither the current path nor the suggested path is direct, append the suggested path.
-	if !currentHasDirectPath && !suggestHasDirectPath {
-		currentTree[dependency.Id].ImpactPaths = append(currentTree[dependency.Id].ImpactPaths, pathFromRoot)
-		return
-	}
-	// If the current path is not direct but a direct path is found, overwrite the existing path.
-	if !currentHasDirectPath && suggestHasDirectPath {
-		currentTree[dependency.Id].ImpactPaths[0] = pathFromRoot
-		return
-	}
-}
-
-func atLeastOneDirectPath(nodes [][]services.ImpactPathNode) bool {
-	for index := range nodes {
-		if len(nodes[index]) == 2 {
-			return true
-		}
-	}
-	return false
 }

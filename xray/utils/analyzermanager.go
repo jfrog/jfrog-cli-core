@@ -195,11 +195,13 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 func ParseAnalyzerManagerError(scanner ScanType, err error) error {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
+		log.Debug("Exit code:", exitCode)
 		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
 			log.Debug(exitCodeDescription)
 			return nil
 		}
 	}
+	log.Debug("Exit code:", 111)
 	return scanner.FormattedError(err)
 }
 

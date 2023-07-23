@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -105,9 +104,9 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf(secScanFailureMessage, analyzerManagerErrorMessage), err.Error())
+	assert.Equal(t, "failed to run Secrets scan. Exit code received: analyzer manager failure message", err.Error())
 	assert.Nil(t, secretsResults)
-	assert.True(t, entitledForSecrets)
+	assert.False(t, entitledForSecrets)
 }
 
 func TestHideSecret(t *testing.T) {

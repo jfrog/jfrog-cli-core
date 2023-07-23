@@ -18,7 +18,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -104,6 +103,22 @@ func (params *Params) SetXrayVersion(version string) *Params {
 	return params
 }
 
+type Results struct {
+	IsMultipleRootProject bool
+	AuditError            error
+	ExtendedScanResults   *clientUtils.ExtendedScanResults
+	ScannedTechnologies   []coreutils.Technology
+}
+
+func NewAuditResults() *Results {
+	return &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
+}
+
+func (r *Results) SetAuditError(err error) *Results {
+	r.AuditError = err
+	return r
+}
+
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
@@ -158,7 +173,7 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 // genericAudit audits all the projects found in the given workingDirs
 func genericAudit(params *Params) *Results {
 	if err := coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
-		return &Results{AuditError: err}
+		return NewAuditResults().SetAuditError(err)
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
 	log.Info("Scanning for vulnerable dependencies...")
@@ -172,12 +187,12 @@ func genericAudit(params *Params) *Results {
 func auditMultipleWorkingDirs(params *Params) *Results {
 	projectDir, err := os.Getwd()
 	if err != nil {
-		return &Results{AuditError: errorutils.CheckError(err)}
+		return NewAuditResults().SetAuditError(errorutils.CheckError(err))
 	}
 	defer func() {
 		err = errors.Join(err, os.Chdir(projectDir))
 	}()
-	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
+	results := NewAuditResults()
 	for _, wd := range params.workingDirs {
 		absWd, e := filepath.Abs(wd)
 		if e != nil {
@@ -217,13 +232,13 @@ func doAudit(params *Params) *Results {
 		technologies = commandsutils.DetectedTechnologies()
 		if len(technologies) == 0 {
 			log.Info("Skipping vulnerable dependencies scanning...")
-			return &Results{AuditError: err}
+			return NewAuditResults().SetAuditError(err)
 		}
 	}
 	serverDetails, err := params.ServerDetails()
-	results := &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
+	results := NewAuditResults()
 	if err != nil {
-		return &Results{AuditError: err}
+		return NewAuditResults().SetAuditError(err)
 	}
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
@@ -253,8 +268,7 @@ func doAudit(params *Params) *Results {
 		}
 		results.ScannedTechnologies = append(results.ScannedTechnologies, tech)
 	}
-	results.AuditError = err
-	return results
+	return results.SetAuditError(err)
 }
 
 func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
@@ -310,24 +324,4 @@ func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 		Server:           serverDetails,
 		DepsRepo:         params.DepsRepo(),
 	})
-}
-
-func CreateJavaProps(depsRepo string, serverDetails *config.ServerDetails) map[string]any {
-	authPass := serverDetails.Password
-	if serverDetails.AccessToken != "" {
-		authPass = serverDetails.AccessToken
-	}
-	authUser := serverDetails.User
-	if authUser == "" {
-		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
-	}
-	return map[string]any{
-		"resolver.username":     authUser,
-		"resolver.password":     authPass,
-		"resolver.url":          serverDetails.ArtifactoryUrl,
-		"resolver.releaseRepo":  depsRepo,
-		"resolver.repo":         depsRepo,
-		"resolver.snapshotRepo": depsRepo,
-		"buildInfoConfig.artifactoryResolutionEnabled": true,
-	}
 }

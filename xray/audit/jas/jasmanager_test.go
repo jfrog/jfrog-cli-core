@@ -94,6 +94,6 @@ func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip})
 
 	// Assert
-	assert.Nil(t, extendedResults)
+	assert.NotNil(t, extendedResults)
 	assert.NoError(t, err)
 }

@@ -19,13 +19,6 @@ type GenericAuditCommand struct {
 	Params
 }
 
-type Results struct {
-	IsMultipleRootProject bool
-	AuditError            error
-	ExtendedScanResults   *xrutils.ExtendedScanResults
-	ScannedTechnologies   []coreutils.Technology
-}
-
 func NewGenericAuditCommand() *GenericAuditCommand {
 	return &GenericAuditCommand{Params: *NewAuditParams()}
 }

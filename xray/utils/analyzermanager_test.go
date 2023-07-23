@@ -177,7 +177,11 @@ func TestScanTypeErrorMsg(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Scanner: %s", test.scanner), func(t *testing.T) {
 			gotMsg := test.scanner.FormattedError(test.err)
-			assert.Equal(t, test.wantMsg, gotMsg)
+			if gotMsg == nil {
+				assert.Nil(t, test.err)
+				return
+			}
+			assert.Equal(t, test.wantMsg, gotMsg.Error())
 		})
 	}
 }

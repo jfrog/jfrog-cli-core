@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -25,7 +26,7 @@ const (
 	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.3.1851039"
+	analyzerManagerVersion        = "1.2.4.1858388"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName        = "analyzerManager"
 	analyzerManagerExecutableName = "analyzerManager"
@@ -38,6 +39,8 @@ const (
 	SeverityDefaultValue          = "Medium"
 	notEntitledExitCode           = 31
 	unsupportedCommandExitCode    = 13
+	unsupportedOsExitCode         = 55
+	ErrFailedScannerRun           = "failed to run %s scan. Exit code received: %s"
 )
 
 const (
@@ -45,6 +48,27 @@ const (
 	NotApplicableStringValue             = "Not Applicable"
 	ApplicabilityUndeterminedStringValue = "Undetermined"
 )
+
+type ScanType string
+
+const (
+	Applicability ScanType = "Applicability"
+	Secrets       ScanType = "Secrets"
+	IaC           ScanType = "IaC"
+)
+
+func (st ScanType) FormattedError(err error) error {
+	if err != nil {
+		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
+	}
+	return nil
+}
+
+var exitCodeErrorsMap = map[int]string{
+	notEntitledExitCode:        "got not entitled error from analyzer manager",
+	unsupportedCommandExitCode: "got unsupported scan command error from analyzer manager",
+	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
+}
 
 type IacOrSecretResult struct {
 	Severity   string
@@ -168,28 +192,15 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	return nil
 }
 
-func IsNotEntitledError(err error) bool {
+func ParseAnalyzerManagerError(scanner ScanType, err error) error {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
-		// User not entitled error
-		if exitCode == notEntitledExitCode {
-			log.Debug("got not entitled error from analyzer manager")
-			return true
+		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
+			log.Warn(exitCodeDescription)
+			return nil
 		}
 	}
-	return false
-}
-
-func IsUnsupportedCommandError(err error) bool {
-	if exitError, ok := err.(*exec.ExitError); ok {
-		exitCode := exitError.ExitCode()
-		// Analyzer manager doesn't support the requested scan command
-		if exitCode == unsupportedCommandExitCode {
-			log.Debug("got unsupported scan command error from analyzer manager")
-			return true
-		}
-	}
-	return false
+	return scanner.FormattedError(err)
 }
 
 func RemoveDuplicateValues(stringSlice []string) []string {

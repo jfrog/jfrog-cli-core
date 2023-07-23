@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -21,10 +20,9 @@ import (
 )
 
 const (
-	ApplicabilityFeatureId          = "contextual_analysis"
-	applicabilityScanType           = "analyze-applicability"
-	applicabilityScanFailureMessage = "failed to run applicability scan. Cause: %s"
-	applicabilityScanCommand        = "ca"
+	ApplicabilityFeatureId   = "contextual_analysis"
+	applicabilityScanType    = "analyze-applicability"
+	applicabilityScanCommand = "ca"
 )
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -40,7 +38,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
-		return nil, false, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+		return nil, false, utils.Applicability.FormattedError(err)
 	}
 	defer func() {
 		if cleanupFunc != nil {
@@ -52,10 +50,7 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 		return nil, false, nil
 	}
 	if err = applicabilityScanManager.run(); err != nil {
-		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
-			return nil, false, nil
-		}
-		return nil, true, fmt.Errorf(applicabilityScanFailureMessage, err.Error())
+		return nil, false, utils.ParseAnalyzerManagerError(utils.Applicability, err)
 	}
 	return applicabilityScanManager.applicabilityScanResults, true, nil
 }

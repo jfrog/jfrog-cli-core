@@ -196,7 +196,7 @@ func ParseAnalyzerManagerError(scanner ScanType, err error) error {
 	if exitError, ok := err.(*exec.ExitError); ok {
 		exitCode := exitError.ExitCode()
 		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
-			log.Debug(exitCodeDescription)
+			log.Warn(exitCodeDescription)
 			return nil
 		}
 	}

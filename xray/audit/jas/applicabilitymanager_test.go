@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -366,6 +365,6 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf(applicabilityScanFailureMessage, analyzerManagerErrorMessage), err.Error())
+	assert.Equal(t, "failed to run Applicability scan. Exit code received: analyzer manager failure message", err.Error())
 	assert.Nil(t, extendedResults)
 }

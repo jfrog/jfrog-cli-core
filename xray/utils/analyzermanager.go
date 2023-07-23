@@ -26,7 +26,7 @@ const (
 	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.3.1851039"
+	analyzerManagerVersion        = "1.2.4.1858388"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName        = "analyzerManager"
 	analyzerManagerExecutableName = "analyzerManager"

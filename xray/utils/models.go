@@ -99,8 +99,7 @@ func (gbp *GraphBasicParams) Args() []string {
 
 // Adds arguments to exclude development dependencies during scanning.
 func (gbp *GraphBasicParams) SetExcludeDevDependencies(technology coreutils.Technology) *GraphBasicParams {
-	switch technology {
-	case coreutils.Npm:
+	if technology == coreutils.Npm {
 		gbp.args = []string{"--dev"}
 	}
 	return gbp

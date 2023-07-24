@@ -3,18 +3,41 @@ package java
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 
 	"github.com/stretchr/testify/assert"
 )
+
+const expectedInitScriptWithRepos = `initscript {
+	repositories { 
+		mavenCentral()
+	}
+	dependencies {
+		classpath files('%s')
+	}
+}
+
+allprojects {
+	repositories { 
+		maven {
+			url "https://myartifactory.com/artifactory/deps-repo"
+			credentials {
+				username = ''
+				password = 'my-access-token'
+			}
+		}
+	}
+	apply plugin: com.jfrog.GradleDepTree
+}`
 
 func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Create and change directory to test workspace
@@ -192,58 +215,36 @@ func TestGetGraphFromDepTree(t *testing.T) {
 }
 
 func TestCreateDepTreeScript(t *testing.T) {
-	tmpDir, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}()
-	currDir, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(tmpDir))
-	defer func() {
-		assert.NoError(t, os.Chdir(currDir))
-	}()
 	manager := &depTreeManager{}
-	tmpDir, err = manager.createDepTreeScriptAndGetDir()
+	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
 	}()
 	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", ""), string(content))
+	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
+	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", gradleDepTreeJarPath, ""), string(content))
+}
+
+func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
+	manager := &depTreeManager{}
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
 		Url:            "https://myartifactory.com/",
 		ArtifactoryUrl: "https://myartifactory.com/artifactory",
 		AccessToken:    "my-access-token",
 	}
-	tmpDir, err = manager.createDepTreeScriptAndGetDir()
+	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
-	expectedInitScript := `initscript {
-    repositories { 
-		mavenCentral()
-    }
-    dependencies {
-        classpath 'com.jfrog:gradle-dep-tree:2.2.0'
-    }
-}
+	defer func() {
+		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
+	}()
 
-allprojects {
-	repositories { 
-		maven {
-			url "https://myartifactory.com/artifactory/deps-repo"
-			credentials {
-				username = ''
-				password = 'my-access-token'
-			}
-		}
-	}
-    apply plugin: com.jfrog.GradleDepTree
-}`
-	content, err = os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
+	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
 	assert.NoError(t, err)
-	assert.Equal(t, expectedInitScript, string(content))
+	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
+	assert.Equal(t, fmt.Sprintf(expectedInitScriptWithRepos, gradleDepTreeJarPath), string(content))
 }
 
 func TestConstructReleasesRemoteRepo(t *testing.T) {

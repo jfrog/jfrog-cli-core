@@ -21,7 +21,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
-		return nil, nil
+		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
 	analyzerManagerExist, err := analyzerManagerExecuter.ExistLocally()
 	if err != nil {

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
@@ -97,13 +98,11 @@ func (gbp *GraphBasicParams) Args() []string {
 }
 
 // Adds arguments to exclude development dependencies during scanning.
-// Supports NPM only for now.
-func (gbp *GraphBasicParams) SetExcludeDevDependencies(exclude bool) *GraphBasicParams {
-	if exclude {
-		gbp.args = []string{"--prod"}
-		return gbp
+func (gbp *GraphBasicParams) SetExcludeDevDependencies(technology coreutils.Technology) *GraphBasicParams {
+	switch technology {
+	case coreutils.Npm:
+		gbp.args = []string{"--dev"}
 	}
-	gbp.args = []string{"--dev"}
 	return gbp
 }
 

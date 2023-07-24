@@ -1,43 +1,47 @@
 package java
 
 import (
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 )
 
 const (
-	remoteDepTreePath = "artifactory/oss-release-local"
-	gradlew           = "gradlew"
-	depTreeInitFile   = "gradledeptree.init"
-	depTreeOutputFile = "gradledeptree.out"
-	depTreeInitScript = `initscript {
-    repositories { %s
+	remoteDepTreePath    = "artifactory/oss-release-local"
+	gradlew              = "gradlew"
+	gradleDepTreeJarFile = "gradle-dep-tree.jar"
+	depTreeInitFile      = "gradledeptree.init"
+	depTreeOutputFile    = "gradledeptree.out"
+	depTreeInitScript    = `initscript {
+	repositories { %s
 		mavenCentral()
-    }
-    dependencies {
-        classpath 'com.jfrog:gradle-dep-tree:2.2.0'
-    }
+	}
+	dependencies {
+		classpath files('%s')
+	}
 }
 
 allprojects {
 	repositories { %s
 	}
-    apply plugin: com.jfrog.GradleDepTree
+	apply plugin: com.jfrog.GradleDepTree
 }`
 	artifactoryRepository = `
 		maven {
@@ -48,6 +52,9 @@ allprojects {
 			}
 		}`
 )
+
+//go:embed gradle-dep-tree.jar
+var gradleDepTreeJar []byte
 
 type depTreeManager struct {
 	dependenciesTree
@@ -152,7 +159,13 @@ func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err er
 	if err != nil {
 		return
 	}
-	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, dtp.depsRepo)
+	gradleDepTreeJarPath := filepath.Join(tmpDir, string(gradleDepTreeJarFile))
+	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0666)); err != nil {
+		return
+	}
+	gradleDepTreeJarPath = ioutils.DoubleWinPathSeparator(gradleDepTreeJarPath)
+
+	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, gradleDepTreeJarPath, dtp.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 

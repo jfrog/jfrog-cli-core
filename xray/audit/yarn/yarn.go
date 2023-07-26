@@ -25,9 +25,6 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	if err = logAndValidateYarnVersion(executablePath); err != nil {
-		return
-	}
 
 	packageInfo, err := biUtils.ReadPackageInfoFromPackageJson(currentDir, nil)
 	if errorutils.CheckError(err) != nil {

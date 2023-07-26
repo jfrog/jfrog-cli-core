@@ -11,7 +11,6 @@ import (
 
 const (
 	npmPackageTypeIdentifier = "npm://"
-	YarnV1ErrorPrefix        = "jf audit is only supported for yarn v2 and above." // TODO delete after fixing integration tests in jfrog-cli
 )
 
 func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {

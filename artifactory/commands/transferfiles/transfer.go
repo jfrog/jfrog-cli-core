@@ -520,11 +520,12 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 	if err != nil {
 		return []string{}, []string{}, err
 	}
-	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	repoExclusionPatternsWithBuildInfo := append(tdc.excludeReposPatterns, "*-build-info")
+	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, repoExclusionPatternsWithBuildInfo, utils.Local)
 	if err != nil {
 		return []string{}, []string{}, err
 	}
-	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, repoExclusionPatternsWithBuildInfo, utils.Federated)
 	if err != nil {
 		return []string{}, []string{}, err
 	}

@@ -157,6 +157,14 @@ func (node *Node) DecrementFilesCount() error {
 	})
 }
 
+// Adds a new child node to children map.
+func (node *Node) AddChildNode(dirName string) error {
+	return node.action(func(node *Node) error {
+		node.children = append(node.children, CreateNewNode(dirName, node))
+		return nil
+	})
+}
+
 func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 	wrapper, err := node.convertToWrapper()
 	if err != nil {

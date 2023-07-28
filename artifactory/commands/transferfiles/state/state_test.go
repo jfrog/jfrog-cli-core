@@ -153,9 +153,6 @@ func getRootAndAddSnapshotData(t *testing.T, stateManager *TransferStateManager)
 	root, err := stateManager.LookUpNode(".")
 	assert.NoError(t, err)
 	assert.NoError(t, root.IncrementFilesCount())
-	children, err := root.GetChildren()
-	assert.NoError(t, err)
-	childNode := reposnapshot.CreateNewNode("child", root)
-	children = append(children, childNode)
-	return
+	assert.NoError(t, root.AddChildNode("child"))
+	return root
 }

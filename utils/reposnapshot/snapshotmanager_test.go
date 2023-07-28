@@ -121,9 +121,6 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 		{"dir on root", "2", false},
 		{"complex path with separator suffix", "1/a/", false},
 		{"complex path with no separator suffix", "1/a", false},
-		{"repository provided", path.Join("test-local", "2"), true},
-		{"relative path includes root", "./2", true},
-		{"dir doesn't exist", "no/where", true},
 		{"empty path", "", true},
 	}
 

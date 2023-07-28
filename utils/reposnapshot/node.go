@@ -157,22 +157,6 @@ func (node *Node) DecrementFilesCount() error {
 	})
 }
 
-// Adds a new child node to children map.
-// childrenPool - [Optional] Children array to check existence of a dirName in before creating a new node.
-func (node *Node) AddChildNode(dirName string, childrenPool []*Node) error {
-	return node.action(func(node *Node) error {
-		for i := range childrenPool {
-			if childrenPool[i].name == dirName {
-				childrenPool[i].parent = node
-				node.children = append(node.children, childrenPool[i])
-				return nil
-			}
-		}
-		node.children = append(node.children, CreateNewNode(dirName, node))
-		return nil
-	})
-}
-
 func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 	wrapper, err := node.convertToWrapper()
 	if err != nil {
@@ -228,23 +212,32 @@ func (node *Node) RestartExploring() error {
 
 // Recursively find the node matching the path represented by the dirs array.
 // The search is done by comparing the children of each node path, till reaching the final node in the array.
-// If the node is not found, nil is returned.
+// If the node is not found, it is added and then returned.
 // For example:
 // For a structure such as repo->dir1->dir2->dir3
 // The initial call will be to the root, and for an input of ({"dir1","dir2"}), and the final output will be a pointer to dir2.
 func (node *Node) findMatchingNode(childrenDirs []string) (matchingNode *Node, err error) {
 	err = node.action(func(node *Node) error {
+		// The node was found in the cache. Let's return it.
 		if len(childrenDirs) == 0 {
 			matchingNode = node
 			return nil
 		}
+
+		// Check if any of the current node's children are parents of the current node.
 		for i := range node.children {
 			if node.children[i].name == childrenDirs[0] {
 				matchingNode, err = node.children[i].findMatchingNode(childrenDirs[1:])
 				return err
 			}
 		}
-		return nil
+
+		// None of the the current node's children are parents of the current node.
+		// This means we need to start creating the searched node parents.
+		newNode := CreateNewNode(childrenDirs[0], node)
+		node.children = append(node.children, newNode)
+		matchingNode, err = newNode.findMatchingNode(childrenDirs[1:])
+		return err
 	})
 	return
 }

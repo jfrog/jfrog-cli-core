@@ -187,22 +187,6 @@ func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *No
 	return node
 }
 
-func TestAddChildNode(t *testing.T) {
-	root := CreateNewNode(".", nil)
-	// Add child with no children pool.
-	addAndAssertChild(t, nil, root, CreateNewNode("no-pool", root))
-	// Add child with empty children pool.
-	addAndAssertChild(t, []*Node{}, root, CreateNewNode("empty-pool", root))
-	// Add child with pool.
-	exists := CreateNewNode("exists", root)
-	addAndAssertChild(t, []*Node{exists}, root, exists)
-}
-
-func addAndAssertChild(t *testing.T, childrenPool []*Node, root, expectedChild *Node) {
-	assert.NoError(t, root.AddChildNode(expectedChild.name, childrenPool))
-	assert.Equal(t, expectedChild, getChild(root, expectedChild.name))
-}
-
 func getChild(node *Node, childName string) *Node {
 	for _, child := range node.children {
 		if child.name == childName {

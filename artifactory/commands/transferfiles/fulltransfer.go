@@ -201,8 +201,7 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			switch item.Type {
 			case "folder":
 				err = m.handleFoundChildFolder(params, pcWrapper,
-					uploadChunkChan, delayHelper, errorsChannelMng,
-					node, previousChildren, item)
+					uploadChunkChan, delayHelper, errorsChannelMng, item)
 			case "file":
 				err = m.handleFoundFile(pcWrapper,
 					uploadChunkChan, delayHelper, errorsChannelMng,
@@ -220,13 +219,9 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 
 func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
-	node *reposnapshot.Node, previousChildren []*reposnapshot.Node, item servicesUtils.ResultItem) (err error) {
+	item servicesUtils.ResultItem) (err error) {
 	newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
-	// Add a node for the found folder, as a child for the current folder in the snapshot manager.
-	err = node.AddChildNode(item.Name, previousChildren)
-	if err != nil {
-		return
-	}
+
 	folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 	_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
 	return
@@ -294,6 +289,7 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 	if err != nil {
 		return
 	}
+
 	// If data was not loaded from snapshot, we know that the node is visited for the first time and was not explored.
 	loadedFromSnapshot, err := m.stateManager.WasSnapshotLoaded()
 	if err != nil || !loadedFromSnapshot {

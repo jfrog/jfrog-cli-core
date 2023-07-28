@@ -132,28 +132,25 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	log.Debug(logMsgPrefix+"Handling folder:", path.Join(m.repoKey, params.relativePath))
 
 	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
-	node, done, previousChildren, err := m.getAndHandleDirectoryNode(params, logMsgPrefix)
+	node, done, err := m.getAndHandleDirectoryNode(params, logMsgPrefix)
 	if err != nil || done {
 		return err
 	}
 
 	curUploadChunk, err := m.searchAndHandleFolderContents(params, pcWrapper,
-		uploadChunkChan, delayHelper, errorsChannelMng,
-		node, previousChildren)
+		uploadChunkChan, delayHelper, errorsChannelMng, node)
 	if err != nil {
 		return
 	}
 
 	// Mark that no more results are expected for the current folder.
-	err = node.MarkDoneExploring()
-	if err != nil {
+	if err = node.MarkDoneExploring(); err != nil {
 		return err
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
-		if err != nil {
+		if _, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError); err != nil {
 			return
 		}
 	}
@@ -163,7 +160,7 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
-	node *reposnapshot.Node, previousChildren []*reposnapshot.Node) (curUploadChunk api.UploadChunk, err error) {
+	node *reposnapshot.Node) (curUploadChunk api.UploadChunk, err error) {
 	curUploadChunk = api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
@@ -284,7 +281,7 @@ func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffse
 // node - A node in the repository snapshot tree, which represents the current directory.
 // completed - Whether handling the node directory was completed. If it wasn't fully transferred, we start exploring and transferring it from scratch.
 // previousChildren - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
-func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string) (node *reposnapshot.Node, completed bool, previousChildren []*reposnapshot.Node, err error) {
+func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string) (node *reposnapshot.Node, completed bool, err error) {
 	node, err = m.stateManager.LookUpNode(params.relativePath)
 	if err != nil {
 		return
@@ -302,19 +299,10 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 	}
 	if completed {
 		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
-		return nil, true, nil, nil
-	}
-	// If the node was not completed, we will start exploring it from the beginning.
-	previousChildren, err = m.handleNodeRequiresExploring(node)
-	return
-}
-
-func (m *fullTransferPhase) handleNodeRequiresExploring(node *reposnapshot.Node) (previousChildren []*reposnapshot.Node, err error) {
-	// Return old children map to add every found child with its previous data and references.
-	previousChildren, err = node.GetChildren()
-	if err != nil {
+		completed = true
 		return
 	}
+	// If the node was not completed, we will start exploring it from the beginning.
 	// Remove all files names because we will begin exploring from the beginning.
 	// Clear children map to avoid handling directories that may have been deleted.
 	err = node.RestartExploring()

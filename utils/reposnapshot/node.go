@@ -240,9 +240,10 @@ func (node *Node) findMatchingNode(childrenDirs []string) (matchingNode *Node, e
 			}
 		}
 
-		// None of the the current node's children are parents of the current node.
+		// None of the current node's children are parents of the current node.
 		// This means we need to start creating the searched node parents.
 		newNode := CreateNewNode(childrenDirs[0], node)
+		newNode.parent = node
 		node.children = append(node.children, newNode)
 		matchingNode, err = newNode.findMatchingNode(childrenDirs[1:])
 		return err

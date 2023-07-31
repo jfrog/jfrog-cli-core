@@ -161,4 +161,5 @@ var writersMap = map[string]utils.AnswerWriter{
 	PathPrefix:               utils.WriteStringAnswer,
 	IncludePathPrefixPattern: utils.WriteStringAnswer,
 	SocketTimeoutMillis:      utils.WriteIntAnswer,
+	DisableProxy:             utils.WriteBoolAnswer,
 }

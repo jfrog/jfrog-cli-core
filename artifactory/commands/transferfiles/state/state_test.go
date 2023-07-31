@@ -154,5 +154,5 @@ func getRootAndAddSnapshotData(t *testing.T, stateManager *TransferStateManager)
 	assert.NoError(t, err)
 	assert.NoError(t, root.IncrementFilesCount())
 	assert.NoError(t, root.AddChildNode("child", nil))
-	return root
+	return
 }

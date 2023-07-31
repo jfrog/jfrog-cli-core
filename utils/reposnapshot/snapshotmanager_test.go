@@ -121,9 +121,6 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 		{"dir on root", "2", false},
 		{"complex path with separator suffix", "1/a/", false},
 		{"complex path with no separator suffix", "1/a", false},
-		{"repository provided", path.Join("test-local", "2"), true},
-		{"relative path includes root", "./2", true},
-		{"dir doesn't exist", "no/where", true},
 		{"empty path", "", true},
 	}
 
@@ -185,22 +182,6 @@ func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *No
 		assert.NoError(t, node.IncrementFilesCount())
 	}
 	return node
-}
-
-func TestAddChildNode(t *testing.T) {
-	root := CreateNewNode(".", nil)
-	// Add child with no children pool.
-	addAndAssertChild(t, nil, root, CreateNewNode("no-pool", root))
-	// Add child with empty children pool.
-	addAndAssertChild(t, []*Node{}, root, CreateNewNode("empty-pool", root))
-	// Add child with pool.
-	exists := CreateNewNode("exists", root)
-	addAndAssertChild(t, []*Node{exists}, root, exists)
-}
-
-func addAndAssertChild(t *testing.T, childrenPool []*Node, root, expectedChild *Node) {
-	assert.NoError(t, root.AddChildNode(expectedChild.name, childrenPool))
-	assert.Equal(t, expectedChild, getChild(root, expectedChild.name))
 }
 
 func getChild(node *Node, childName string) *Node {

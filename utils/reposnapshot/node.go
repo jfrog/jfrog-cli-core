@@ -2,10 +2,11 @@ package reposnapshot
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 // Represents a directory in the repo state snapshot.
@@ -158,8 +159,16 @@ func (node *Node) DecrementFilesCount() error {
 }
 
 // Adds a new child node to children map.
-func (node *Node) AddChildNode(dirName string) error {
+// childrenPool - [Optional] Children array to check existence of a dirName in before creating a new node.
+func (node *Node) AddChildNode(dirName string, childrenPool []*Node) error {
 	return node.action(func(node *Node) error {
+		for i := range childrenPool {
+			if childrenPool[i].name == dirName {
+				childrenPool[i].parent = node
+				node.children = append(node.children, childrenPool[i])
+				return nil
+			}
+		}
 		node.children = append(node.children, CreateNewNode(dirName, node))
 		return nil
 	})
@@ -212,7 +221,6 @@ func (node *Node) IsDoneExploring() (doneExploring bool, err error) {
 func (node *Node) RestartExploring() error {
 	return node.action(func(node *Node) error {
 		node.NodeStatus = Exploring
-		node.children = nil
 		node.filesCount = 0
 		return nil
 	})

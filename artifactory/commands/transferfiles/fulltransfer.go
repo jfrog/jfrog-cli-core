@@ -299,12 +299,10 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 	}
 	if completed {
 		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
-		completed = true
 		return
 	}
 	// If the node was not completed, we will start exploring it from the beginning.
 	// Remove all files names because we will begin exploring from the beginning.
-	// Clear children map to avoid handling directories that may have been deleted.
 	err = node.RestartExploring()
 	return
 }

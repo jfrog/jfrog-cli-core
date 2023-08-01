@@ -173,11 +173,11 @@ func TestGetUniqueKey(t *testing.T) {
 	vulnerableDependency := "test-dependency"
 	vulnerableVersion := "1.0"
 	expectedKey := "test-dependency:1.0:XRAY-12234:true"
-	key := getUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12234", true)
+	key := GetUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12234", true)
 	assert.Equal(t, expectedKey, key)
 
 	expectedKey = "test-dependency:1.0:XRAY-12143:false"
-	key = getUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12143", false)
+	key = GetUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12143", false)
 	assert.Equal(t, expectedKey, key)
 }
 

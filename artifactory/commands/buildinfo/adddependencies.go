@@ -286,6 +286,7 @@ func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []bui
 	populateFunc := func(partial *buildinfo.Partial) {
 		partial.ModuleType = buildinfo.Generic
 		partial.Dependencies = dependencies
+		partial.ModuleId = badc.buildConfiguration.GetModule()
 	}
 	buildName, err := badc.buildConfiguration.GetBuildName()
 	if err != nil {

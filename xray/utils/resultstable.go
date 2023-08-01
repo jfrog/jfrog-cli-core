@@ -632,7 +632,7 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 	for _, vulnerability := range scanVulnerabilities {
 		for vulnerableComponentId := range vulnerability.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
-			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, vulnerability.Cves, len(vulnerability.Components[vulnerableComponentId].FixedVersions) > 0)
+			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, vulnerability.IssueId, len(vulnerability.Components[vulnerableComponentId].FixedVersions) > 0)
 			if uniqueVulnerability, exist := uniqueVulnerabilities[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, vulnerability.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, vulnerability.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
@@ -668,7 +668,7 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 	for _, violation := range scanViolations {
 		for vulnerableComponentId := range violation.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
-			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, violation.Cves, len(violation.Components[vulnerableComponentId].FixedVersions) > 0)
+			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, violation.IssueId, len(violation.Components[vulnerableComponentId].FixedVersions) > 0)
 			if uniqueVulnerability, exist := uniqueViolations[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, violation.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, violation.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
@@ -792,13 +792,9 @@ func appendUniqueFixVersions(targetFixVersions []string, sourceFixVersions ...st
 	return result
 }
 
-// getUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:cveId:fixVersionExist"
-func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []services.Cve, fixVersionExist bool) string {
-	var cveId string
-	if len(cves) != 0 {
-		cveId = cves[0].Id
-	}
-	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
+// getUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:xrayID:fixVersionExist"
+func getUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVersionExist bool) string {
+	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, xrayID, fixVersionExist)
 }
 
 // If at least one cve is applicable - final value is applicable

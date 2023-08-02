@@ -3,11 +3,11 @@ package jas
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 	"path/filepath"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -28,7 +28,7 @@ type SecretScanManager struct {
 	resultsFileName       string
 	analyzerManager       utils.AnalyzerManagerInterface
 	serverDetails         *config.ServerDetails
-	projectRootPath       string
+	workingDirs           []string
 }
 
 // The getSecretsScanResults function runs the secrets scan flow, which includes the following steps:
@@ -39,9 +39,9 @@ type SecretScanManager struct {
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // bool: true if the user is entitled to secrets scan, false otherwise.
 // error: An error object (if any).
-func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
+func getSecretsScanResults(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
-	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
+	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, workingDirs, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(secScanFailureMessage, err.Error())
 	}
@@ -60,7 +60,7 @@ func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager 
 	return secretScanManager.secretsScannerResults, true, nil
 }
 
-func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *SecretScanManager,
+func newSecretsScanManager(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) (manager *SecretScanManager,
 	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -75,6 +75,7 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager 
 		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
 		serverDetails:         serverDetails,
+		workingDirs:           workingDirs,
 	}, cleanup, nil
 }
 
@@ -106,15 +107,14 @@ type secretsScanConfiguration struct {
 }
 
 func (s *SecretScanManager) createConfigFile() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
+	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(s.workingDirs)
 	if err != nil {
 		return err
 	}
-	s.projectRootPath = currentDir
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       []string{currentDir},
+				Roots:       fullPathWorkingDirs,
 				Output:      s.resultsFileName,
 				Type:        secretsScannerType,
 				SkippedDirs: skippedDirs,
@@ -144,14 +144,18 @@ func (s *SecretScanManager) setScanResults() error {
 	var secretsResults []*sarif.Result
 	if len(report.Runs) > 0 {
 		secretsResults = report.Runs[0].Results
+
+	}
+	currWd, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return err
 	}
 
-	finalSecretsList := []utils.IacOrSecretResult{}
-
+	var finalSecretsList []utils.IacOrSecretResult
 	for _, secret := range secretsResults {
 		newSecret := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(secret),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(secret), s.projectRootPath),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(secret), currWd),
 			LineColumn: utils.GetResultLocationInFile(secret),
 			Text:       hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
 			Type:       *secret.RuleID,

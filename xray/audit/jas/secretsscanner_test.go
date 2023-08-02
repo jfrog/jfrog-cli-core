@@ -93,7 +93,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
 	// Arrange
 	secretScanManager, _, secretsManagerError := newSecretsScanManager(&fakeServerDetails, []string{"secret_generic", "more_secrets"}, &analyzerManagerMock{})
-	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contains-secrets-multi-wd.sarif")
+	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets-multi-wd.sarif")
 
 	// Act
 	err := secretScanManager.setScanResults()

@@ -9,19 +9,20 @@ import (
 
 func TestNewIacScanManager(t *testing.T) {
 	// Act
-	iacScanManager, _, err := newIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	iacScanManager, _, err := newIacScanManager(&fakeServerDetails, []string{"currentDir"}, &analyzerManagerMock{})
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotEmpty(t, iacScanManager)
 	assert.NotEmpty(t, iacScanManager.configFileName)
 	assert.NotEmpty(t, iacScanManager.resultsFileName)
+	assert.NotEmpty(t, iacScanManager.workingDirs)
 	assert.Equal(t, &fakeServerDetails, iacScanManager.serverDetails)
 }
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
-	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, []string{"currentDir"}, &analyzerManagerMock{})
 
 	// Act
 	err := iacScanManager.createConfigFile()
@@ -43,7 +44,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 func TestIacParseResults_EmptyResults(t *testing.T) {
 	// Arrange
-	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, nil, &analyzerManagerMock{})
 	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
@@ -57,7 +58,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, &analyzerManagerMock{})
+	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, nil, &analyzerManagerMock{})
 	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
@@ -68,4 +69,20 @@ func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, iacScanManager.iacScannerResults)
 	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
+}
+
+func TestIacParseResults_ResultsContainSecretsWithWorkingDir(t *testing.T) {
+	// Arrange
+	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, []string{"aws", "azure"}, &analyzerManagerMock{})
+	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations-working-dir.sarif")
+
+	// Act
+	err := iacScanManager.setScanResults()
+
+	// Assert
+	assert.NoError(t, iacManagerError)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, iacScanManager.iacScannerResults)
+	assert.Equal(t, 22, len(iacScanManager.iacScannerResults))
+	assert.Contains(t, iacScanManager.iacScannerResults[0].File, "aws")
 }

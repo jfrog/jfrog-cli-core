@@ -27,7 +27,7 @@ type IacScanManager struct {
 	resultsFileName   string
 	analyzerManager   utils.AnalyzerManagerInterface
 	serverDetails     *config.ServerDetails
-	projectRootPath   string
+	workingDirs       []string
 }
 
 // The getIacScanResults function runs the iac scan flow, which includes the following steps:
@@ -38,9 +38,9 @@ type IacScanManager struct {
 // []utils.IacOrSecretResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
+func getIacScanResults(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
-	iacScanManager, cleanupFunc, err := newIacScanManager(serverDetails, analyzerManager)
+	iacScanManager, cleanupFunc, err := newIacScanManager(serverDetails, workingDirs, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(iacScanFailureMessage, err.Error())
 	}
@@ -59,7 +59,7 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	return iacScanManager.iacScannerResults, true, nil
 }
 
-func newIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
+func newIacScanManager(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
 	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -74,6 +74,7 @@ func newIacScanManager(serverDetails *config.ServerDetails, analyzerManager util
 		resultsFileName:   filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:   analyzerManager,
 		serverDetails:     serverDetails,
+		workingDirs:       workingDirs,
 	}, cleanup, nil
 }
 
@@ -105,15 +106,18 @@ type iacScanConfiguration struct {
 }
 
 func (iac *IacScanManager) createConfigFile() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
+	// Currently, IaC supports only one directory scan at a time.
+	// If the user didn't specify any working directory, we'll use the current working directory.
+	// If the user specified one working directory, we'll use it.
+	// However, if the user specified more than one working directory, due to the current limitation, we'll only take the first one.
+	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(iac.workingDirs)
 	if err != nil {
 		return err
 	}
-	iac.projectRootPath = currentDir
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       []string{currentDir},
+				Roots:       []string{fullPathWorkingDirs[0]},
 				Output:      iac.resultsFileName,
 				Type:        iacScannerType,
 				SkippedDirs: skippedDirs,
@@ -134,7 +138,6 @@ func (iac *IacScanManager) runAnalyzerManager() error {
 	}
 	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
 }
-
 func (iac *IacScanManager) setScanResults() error {
 	report, err := sarif.Open(iac.resultsFileName)
 	if errorutils.CheckError(err) != nil {
@@ -144,13 +147,16 @@ func (iac *IacScanManager) setScanResults() error {
 	if len(report.Runs) > 0 {
 		iacResults = report.Runs[0].Results
 	}
+	currWd, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return err
+	}
 
-	finalIacList := []utils.IacOrSecretResult{}
-
+	var finalIacList []utils.IacOrSecretResult
 	for _, result := range iacResults {
 		newIac := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), iac.projectRootPath),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), currWd),
 			LineColumn: utils.GetResultLocationInFile(result),
 			Text:       *result.Message.Text,
 			Type:       *result.RuleID,

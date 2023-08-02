@@ -96,6 +96,6 @@ require (
 
 //replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20230718091417-c761a2d17c6c
 
-replace github.com/jfrog/build-info-go => github.com/eranturgeman/build-info-go v0.0.0-20230801162602-c629dbb1dbd7
+replace github.com/jfrog/build-info-go => github.com/eranturgeman/build-info-go v0.0.0-20230801170650-1a85fba1d6f8
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.6-0.20230418122323-2bf299dd6d27

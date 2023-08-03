@@ -26,7 +26,6 @@ require (
 	golang.org/x/sync v0.2.0
 	golang.org/x/term v0.10.0
 	golang.org/x/text v0.11.0
-
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -97,6 +96,6 @@ require (
 
 // replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20230718091417-c761a2d17c6c
 
-replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230802162944-bbeb4808928e
+replace github.com/jfrog/build-info-go => github.com/eranturgeman/build-info-go v0.0.0-20230803081218-64da880d2f8a
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.6-0.20230418122323-2bf299dd6d27

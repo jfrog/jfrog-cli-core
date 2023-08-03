@@ -22,8 +22,8 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.12
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	golang.org/x/mod v0.10.0
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
+	golang.org/x/mod v0.11.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.8.0
 	golang.org/x/text v0.9.0
@@ -33,7 +33,7 @@ require (
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
 require (
-	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/CycloneDX/cyclonedx-go v0.7.1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230528122434-6f98819771a1 // indirect
@@ -65,7 +65,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mholt/archiver/v3 v3.5.1 // indirect
-	github.com/minio/sha256-simd v1.0.1-0.20230222114820-6096f891a77b // indirect
+	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nwaples/rardecode v1.1.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
@@ -94,9 +94,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-
 // replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20230718091417-c761a2d17c6c
 
-replace github.com/jfrog/build-info-go => github.com/eranturgeman/build-info-go v0.0.0-20230801170650-1a85fba1d6f8
+replace github.com/jfrog/build-info-go => github.com/eranturgeman/build-info-go v0.0.0-20230803081218-64da880d2f8a
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.2.6-0.20230418122323-2bf299dd6d27

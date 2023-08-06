@@ -78,6 +78,10 @@ func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus
 		tem.LastSpeedsSum -= tem.LastSpeeds[0]
 		tem.LastSpeeds = tem.LastSpeeds[1:]
 	}
+	if len(tem.LastSpeeds) == 0 {
+		tem.SpeedsAverage = 0
+		return
+	}
 	// Calculate speed in bytes/ms
 	tem.SpeedsAverage = tem.LastSpeedsSum / float64(len(tem.LastSpeeds))
 }

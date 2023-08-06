@@ -37,6 +37,7 @@ const (
 	PathPrefix               = "pathPrefix"
 	IncludePathPrefixPattern = "includePathPrefixPattern"
 	SocketTimeoutMillis      = "socketTimeoutMillis"
+	DisableProxy             = "disableProxy"
 )
 
 type ReplicationTemplateCommand struct {
@@ -218,4 +219,5 @@ var suggestionMap = map[string]prompt.Suggest{
 	PathPrefix:               {Text: PathPrefix},
 	IncludePathPrefixPattern: {Text: IncludePathPrefixPattern},
 	SocketTimeoutMillis:      {Text: SocketTimeoutMillis},
+	DisableProxy:             {Text: DisableProxy},
 }

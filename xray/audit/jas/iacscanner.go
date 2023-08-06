@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -48,11 +49,12 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 			err = errors.Join(err, cleanupFunc())
 		}
 	}()
+	log.Info("Running IaC scanning...")
 	if err = iacScanManager.run(); err != nil {
-		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
-			return nil, false, nil
-		}
-		return nil, true, fmt.Errorf(iacScanFailureMessage, err.Error())
+		return nil, false, utils.ParseAnalyzerManagerError(utils.IaC, err)
+	}
+	if len(iacScanManager.iacScannerResults) > 0 {
+		log.Info("Found", len(iacScanManager.iacScannerResults), "IaC vulnerabilities")
 	}
 	return iacScanManager.iacScannerResults, true, nil
 }

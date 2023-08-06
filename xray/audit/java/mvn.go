@@ -1,30 +1,54 @@
 package java
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-func buildMvnDependencyTree(insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (modules []*xrayUtils.GraphNode, err error) {
+func buildMvnDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer func() {
-		e := cleanBuild()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, cleanBuild())
 	}()
 
-	err = runMvn(buildConfiguration, insecureTls, ignoreConfigFile, useWrapper, mvnProps)
+	mvnProps := CreateMvnProps(params.DepsRepo, params.Server)
+	err = runMvn(buildConfiguration, params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, mvnProps)
 	if err != nil {
 		return
 	}
 
 	return createGavDependencyTree(buildConfiguration)
+}
+
+func CreateMvnProps(resolverRepo string, serverDetails *config.ServerDetails) map[string]any {
+	if serverDetails == nil || serverDetails.IsEmpty() {
+		return nil
+	}
+	authPass := serverDetails.Password
+	if serverDetails.AccessToken != "" {
+		authPass = serverDetails.AccessToken
+	}
+	authUser := serverDetails.User
+	if authUser == "" {
+		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+	}
+	return map[string]any{
+		"resolver.username":     authUser,
+		"resolver.password":     authPass,
+		"resolver.url":          serverDetails.ArtifactoryUrl,
+		"resolver.releaseRepo":  resolverRepo,
+		"resolver.repo":         resolverRepo,
+		"resolver.snapshotRepo": resolverRepo,
+		"buildInfoConfig.artifactoryResolutionEnabled": true,
+	}
 }
 
 func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (err error) {

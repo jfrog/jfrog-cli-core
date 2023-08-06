@@ -2,7 +2,9 @@ package gradleutils
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -39,11 +41,25 @@ func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile str
 	if err != nil {
 		return err
 	}
+	var gradleOpts []string
+	if v := os.Getenv("GRADLE_OPTS"); v!=""{
+		gradleOpts = strings.Fields(v)
+	}
+	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
+		gradleOpts = append(gradleOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
+	}
 	dependencyLocalPath, err := getGradleDependencyLocalPath()
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), tasks, wrapper, plugin, utils.DownloadExtractor, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath,
+		filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath),
+		tasks,
+		wrapper,
+		plugin,
+		utils.DownloadExtractor,
+		props)
+	gradleModule.SetGradleOpts(gradleOpts...)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 

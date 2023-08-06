@@ -2,7 +2,6 @@ package yarn
 
 import (
 	biUtils "github.com/jfrog/build-info-go/build/utils"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -12,8 +11,6 @@ import (
 
 const (
 	npmPackageTypeIdentifier = "npm://"
-	yarnV2Version            = "2.0.0"
-	YarnV1ErrorPrefix        = "jf audit is only supported for yarn v2 and above."
 )
 
 func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
@@ -23,9 +20,6 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	}
 	executablePath, err := biUtils.GetYarnExecutable()
 	if errorutils.CheckError(err) != nil {
-		return
-	}
-	if err = logAndValidateYarnVersion(executablePath); err != nil {
 		return
 	}
 
@@ -41,19 +35,6 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	// Parse the dependencies into Xray dependency tree format
 	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, getXrayDependencyId(root))}
 	return
-}
-
-// Yarn audit is only supported from yarn v2.
-func logAndValidateYarnVersion(executablePath string) error {
-	versionStr, err := audit.GetExecutableVersion(executablePath)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	yarnVer := version.NewVersion(versionStr)
-	if yarnVer.Compare(yarnV2Version) > 0 {
-		return errorutils.CheckErrorf(YarnV1ErrorPrefix + "The current version is: " + versionStr)
-	}
-	return nil
 }
 
 // Parse the dependencies into a Xray dependency tree format

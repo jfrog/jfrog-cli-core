@@ -3,7 +3,6 @@ package jas
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 	"path/filepath"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 )
 
@@ -92,7 +90,8 @@ func (s *SecretScanManager) run() (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	return s.setScanResults()
+	s.secretsScannerResults, err = setIacOrSecretsScanResults(s.resultsFileName, true)
+	return
 }
 
 type secretsScanConfig struct {
@@ -134,36 +133,6 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 		return err
 	}
 	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
-}
-
-func (s *SecretScanManager) setScanResults() error {
-	report, err := sarif.Open(s.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	var secretsResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		secretsResults = report.Runs[0].Results
-
-	}
-	currWd, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-
-	var finalSecretsList []utils.IacOrSecretResult
-	for _, secret := range secretsResults {
-		newSecret := utils.IacOrSecretResult{
-			Severity:   utils.GetResultSeverity(secret),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(secret), currWd),
-			LineColumn: utils.GetResultLocationInFile(secret),
-			Text:       hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
-			Type:       *secret.RuleID,
-		}
-		finalSecretsList = append(finalSecretsList, newSecret)
-	}
-	s.secretsScannerResults = finalSecretsList
-	return nil
 }
 
 func hideSecret(secret string) string {

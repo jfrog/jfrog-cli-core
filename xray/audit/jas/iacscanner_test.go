@@ -48,7 +48,8 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
-	err := iacScanManager.setScanResults()
+	var err error
+	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)
@@ -62,7 +63,8 @@ func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
-	err := iacScanManager.setScanResults()
+	var err error
+	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)
@@ -77,7 +79,8 @@ func TestIacParseResults_ResultsContainSecretsWithWorkingDir(t *testing.T) {
 	iacScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations-working-dir.sarif")
 
 	// Act
-	err := iacScanManager.setScanResults()
+	var err error
+	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)

@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"os"
 )
 
@@ -75,4 +76,37 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 		err = os.Remove(resultFile)
 	}
 	return errorutils.CheckError(err)
+}
+
+func setIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+	report, err := sarif.Open(resultsFileName)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	var results []*sarif.Result
+	if len(report.Runs) > 0 {
+		results = report.Runs[0].Results
+
+	}
+	currWd, err := coreutils.GetWorkingDirectory()
+	if err != nil {
+		return nil, err
+	}
+
+	var finalSecretsList []utils.IacOrSecretResult
+	for _, result := range results {
+		text := *result.Message.Text
+		if isSecret {
+			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
+		}
+		newSecret := utils.IacOrSecretResult{
+			Severity:   utils.GetResultSeverity(result),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), currWd),
+			LineColumn: utils.GetResultLocationInFile(result),
+			Text:       text,
+			Type:       *result.RuleID,
+		}
+		finalSecretsList = append(finalSecretsList, newSecret)
+	}
+	return finalSecretsList, nil
 }

@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -91,7 +89,8 @@ func (iac *IacScanManager) run() (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	return iac.setScanResults()
+	iac.iacScannerResults, err = setIacOrSecretsScanResults(iac.resultsFileName, false)
+	return
 }
 
 type iacScanConfig struct {
@@ -106,10 +105,6 @@ type iacScanConfiguration struct {
 }
 
 func (iac *IacScanManager) createConfigFile() error {
-	// Currently, IaC supports only one directory scan at a time.
-	// If the user didn't specify any working directory, we'll use the current working directory.
-	// If the user specified one working directory, we'll use it.
-	// However, if the user specified more than one working directory, due to the current limitation, we'll only take the first one.
 	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(iac.workingDirs)
 	if err != nil {
 		return err
@@ -117,7 +112,7 @@ func (iac *IacScanManager) createConfigFile() error {
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       []string{fullPathWorkingDirs[0]},
+				Roots:       fullPathWorkingDirs,
 				Output:      iac.resultsFileName,
 				Type:        iacScannerType,
 				SkippedDirs: skippedDirs,
@@ -137,32 +132,4 @@ func (iac *IacScanManager) runAnalyzerManager() error {
 		return err
 	}
 	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
-}
-func (iac *IacScanManager) setScanResults() error {
-	report, err := sarif.Open(iac.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	var iacResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		iacResults = report.Runs[0].Results
-	}
-	currWd, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-
-	var finalIacList []utils.IacOrSecretResult
-	for _, result := range iacResults {
-		newIac := utils.IacOrSecretResult{
-			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), currWd),
-			LineColumn: utils.GetResultLocationInFile(result),
-			Text:       *result.Message.Text,
-			Type:       *result.RuleID,
-		}
-		finalIacList = append(finalIacList, newIac)
-	}
-	iac.iacScannerResults = finalIacList
-	return nil
 }

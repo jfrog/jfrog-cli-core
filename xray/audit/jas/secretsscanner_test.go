@@ -67,7 +67,8 @@ func TestParseResults_EmptyResults(t *testing.T) {
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
-	err := secretScanManager.setScanResults()
+	var err error
+	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)
@@ -81,7 +82,8 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
-	err := secretScanManager.setScanResults()
+	var err error
+	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)
@@ -96,7 +98,8 @@ func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
 	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets-multi-wd.sarif")
 
 	// Act
-	err := secretScanManager.setScanResults()
+	var err error
+	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)

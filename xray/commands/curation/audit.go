@@ -216,9 +216,12 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
-	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.FullDependenciesTree()[0].Id, "", "")
+	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, ca.FullDependenciesTree()[0].Id, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
+	}
+	if projectScope != "" {
+		projectName = projectScope + "/" + projectName
 	}
 	if ca.parallelRequests == 0 {
 		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
@@ -240,7 +243,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
 	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
 	analyzer.fillGraphRelations(ca.FullDependenciesTree()[0], &packagesStatusMap,
-		&packagesStatus, "", "", true)
+		&packagesStatus, "", "", map[string]struct{}{}, true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
 	})
@@ -252,7 +255,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 	if format == "" {
 		format = utils.Table
 	}
-	log.Output(fmt.Sprintf("Found %v blocked packges for project %s", len(packagesStatus), projectPath))
+	log.Output(fmt.Sprintf("Found %v blocked packgaes for project %s", len(packagesStatus), projectPath))
 	switch format {
 	case utils.Json:
 		if len(packagesStatus) > 0 {
@@ -336,13 +339,21 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 }
 
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
-	packagesStatus *[]*PackageStatus, parent, parentVersion string, isRoot bool) {
+	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited map[string]struct{}, isRoot bool) {
 	for _, child := range node.Nodes {
-		packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
+		packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
 		if isRoot {
 			parent = name
 			parentVersion = version
+			if scope != "" {
+				parent = scope + "/" + parent
+			}
 		}
+		if _, exist := visited[scope+name+version+"-"+parent+parentVersion]; exist {
+			continue
+		}
+
+		visited[name+version+"-"+parent+parentVersion] = struct{}{}
 		if pkgStatus, exist := preProcessMap.Load(packageUrl); exist {
 			relation := indirectRelation
 			if isRoot {
@@ -357,7 +368,7 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 				*packagesStatus = append(*packagesStatus, &pkgStatusClone)
 			}
 		}
-		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, false)
+		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, visited, false)
 	}
 }
 func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeId string) error {
@@ -388,7 +399,10 @@ func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map
 }
 
 func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) error {
-	packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
+	packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
+	if scope != "" {
+		name = scope + "/" + name
+	}
 	resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
 	if err != nil {
 		if resp != nil && resp.StatusCode >= 400 {
@@ -486,7 +500,7 @@ func makeLegiblePolicyDetails(explanation, recommendation string) (string, strin
 	return explanation, recommendation
 }
 
-func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, version string) {
+func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
 		return getNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
 	}
@@ -495,7 +509,7 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo
 
 // The graph holds, for each node, the component ID (xray representation)
 // from which we extract the package name, version, and construct the Artifactory download URL.
-func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, version string) {
+func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, scope, version string) {
 	id = strings.TrimPrefix(id, tech+"://")
 
 	nameVersion := strings.Split(id, ":")
@@ -504,12 +518,11 @@ func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, 
 		version = nameVersion[1]
 	}
 	scopeSplit := strings.Split(name, "/")
-	var scope string
 	if len(scopeSplit) > 1 {
 		scope = scopeSplit[0]
 		name = scopeSplit[1]
 	}
-	return buildNpmDownloadUrl(artiUrl, repo, name, scope, version), name, version
+	return buildNpmDownloadUrl(artiUrl, repo, name, scope, version), name, scope, version
 }
 
 func buildNpmDownloadUrl(url, repo, name, scope, version string) string {

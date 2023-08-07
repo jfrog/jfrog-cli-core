@@ -152,7 +152,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownloadUrl, gotName, gotVersion := getNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
+			gotDownloadUrl, gotName, _, gotVersion := getNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
 			if gotDownloadUrl != tt.wantDownloadUrl {
 				t.Errorf("getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
 			}
@@ -177,7 +177,7 @@ func TestTreeAnalyzerFillGraphRelations(t *testing.T) {
 			}
 			packageStatus := &[]*PackageStatus{}
 			preProcessedMap := fillSyncedMap(tt.givenMap)
-			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, packageStatus, "", "", true)
+			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, packageStatus, "", "", map[string]struct{}{}, true)
 			assert.Equal(t, *tt.expectedPackagesStatus, *packageStatus)
 		})
 	}

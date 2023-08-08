@@ -94,22 +94,22 @@ func setIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.
 		return nil, err
 	}
 
-	var finalSecretsList []utils.IacOrSecretResult
+	var iacOrSecretResults []utils.IacOrSecretResult
 	for _, result := range results {
 		text := *result.Message.Text
 		if isSecret {
 			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
 		}
-		newSecret := utils.IacOrSecretResult{
+		newResult := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(result),
 			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), currWd),
 			LineColumn: utils.GetResultLocationInFile(result),
 			Text:       text,
 			Type:       *result.RuleID,
 		}
-		finalSecretsList = append(finalSecretsList, newSecret)
+		iacOrSecretResults = append(iacOrSecretResults, newResult)
 	}
-	return finalSecretsList, nil
+	return iacOrSecretResults, nil
 }
 
 func createScannersConfigFile(fileName string, fileContent interface{}) error {

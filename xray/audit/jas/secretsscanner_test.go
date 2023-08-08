@@ -105,7 +105,7 @@ func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
 	assert.NoError(t, secretsManagerError)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
-	assert.Equal(t, 2, len(secretScanManager.secretsScannerResults))
+	assert.Len(t, secretScanManager.secretsScannerResults, 2)
 	firstSecretDir := secretScanManager.secretsScannerResults[0].File
 	secondSecretDir := secretScanManager.secretsScannerResults[1].File
 	assert.Contains(t, firstSecretDir, "more_secrets")

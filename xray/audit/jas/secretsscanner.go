@@ -79,9 +79,9 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, workingDirs []st
 }
 
 func (s *SecretScanManager) run() (err error) {
-	for _, currWd := range s.workingDirs {
+	for _, workingDir := range s.workingDirs {
 		var currWdResults []utils.IacOrSecretResult
-		if currWdResults, err = s.runSecretsScanInWorkingDirectory(currWd); err != nil {
+		if currWdResults, err = s.runSecretsScan(workingDir); err != nil {
 			return
 		}
 		s.secretsScannerResults = append(s.secretsScannerResults, currWdResults...)
@@ -89,14 +89,11 @@ func (s *SecretScanManager) run() (err error) {
 	return
 }
 
-func (s *SecretScanManager) runSecretsScanInWorkingDirectory(currWd string) (results []utils.IacOrSecretResult, err error) {
+func (s *SecretScanManager) runSecretsScan(workingDir string) (results []utils.IacOrSecretResult, err error) {
 	defer func() {
-		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
-			deleteFilesError := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
-			err = errors.Join(err, deleteFilesError)
-		}
+		err = errors.Join(err, deleteJasProcessFiles(s.configFileName, s.resultsFileName))
 	}()
-	if err = s.createConfigFile(currWd); err != nil {
+	if err = s.createConfigFile(workingDir); err != nil {
 		return
 	}
 	if err = s.runAnalyzerManager(); err != nil {

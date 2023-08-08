@@ -78,9 +78,9 @@ func newIacScanManager(serverDetails *config.ServerDetails, workingDirs []string
 }
 
 func (iac *IacScanManager) run() (err error) {
-	for _, currWd := range iac.workingDirs {
+	for _, workingDir := range iac.workingDirs {
 		var currWdResults []utils.IacOrSecretResult
-		if currWdResults, err = iac.runIacScanInWorkingDirectory(currWd); err != nil {
+		if currWdResults, err = iac.runIacScan(workingDir); err != nil {
 			return
 		}
 		iac.iacScannerResults = append(iac.iacScannerResults, currWdResults...)
@@ -88,14 +88,11 @@ func (iac *IacScanManager) run() (err error) {
 	return
 }
 
-func (iac *IacScanManager) runIacScanInWorkingDirectory(currWd string) (results []utils.IacOrSecretResult, err error) {
+func (iac *IacScanManager) runIacScan(workingDir string) (results []utils.IacOrSecretResult, err error) {
 	defer func() {
-		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
-			deleteFilesError := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
-			err = errors.Join(err, deleteFilesError)
-		}
+		err = errors.Join(err, deleteJasProcessFiles(iac.configFileName, iac.resultsFileName))
 	}()
-	if err = iac.createConfigFile(currWd); err != nil {
+	if err = iac.createConfigFile(workingDir); err != nil {
 		return
 	}
 	if err = iac.runAnalyzerManager(); err != nil {

@@ -128,6 +128,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 		wantDownloadUrl string
 		wantName        string
 		wantVersion     string
+		wantScope       string
 	}{
 		{
 			name:            "npm component",
@@ -148,15 +149,19 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 			wantDownloadUrl: "http://localhost:8000/artifactory/api/npm/npm/dev/test/-/test-1.0.0.tgz",
 			wantName:        "test",
 			wantVersion:     "1.0.0",
+			wantScope:       "dev",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownloadUrl, gotName, _, gotVersion := getNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
+			gotDownloadUrl, gotName, gotScope, gotVersion := getNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
 			if gotDownloadUrl != tt.wantDownloadUrl {
 				t.Errorf("getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
 			}
 			if gotName != tt.wantName {
+				t.Errorf("getNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
+			}
+			if gotScope != tt.wantScope {
 				t.Errorf("getNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
 			}
 			if gotVersion != tt.wantVersion {
@@ -198,13 +203,7 @@ func getTestCasesForFillGraphRelations() []struct {
 		{
 			name: "block indirect",
 			givenGraph: &xrayUtils.GraphNode{
-				Id:          "npm://root-test",
-				Sha256:      "",
-				Sha1:        "",
-				Path:        "",
-				DownloadUrl: "",
-				Licenses:    nil,
-				Properties:  nil,
+				Id: "npm://root-test",
 				Nodes: []*xrayUtils.GraphNode{
 					{
 						Id: "npm://test-parent:1.0.0",
@@ -213,8 +212,6 @@ func getTestCasesForFillGraphRelations() []struct {
 						},
 					},
 				},
-				OtherComponentIds: nil,
-				Parent:            nil,
 			},
 			givenMap: []*PackageStatus{
 				{
@@ -238,6 +235,70 @@ func getTestCasesForFillGraphRelations() []struct {
 					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-2.0.0.tgz",
 					PackageName:       "test-child",
 					PackageVersion:    "2.0.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "policy1",
+							Condition: "condition1",
+						},
+					},
+					ParentName:    "test-parent",
+					ParentVersion: "1.0.0",
+					DepRelation:   "indirect",
+				},
+			},
+		},
+		{
+			name: "no duplications",
+			givenGraph: &xrayUtils.GraphNode{
+				Id: "npm://root-test",
+				Nodes: []*xrayUtils.GraphNode{
+					{
+						Id: "npm://test-parent:1.0.0",
+						Nodes: []*xrayUtils.GraphNode{
+							{
+								Id: "npm://test-child:2.0.0",
+								Nodes: []*xrayUtils.GraphNode{
+									{
+										Id: "npm://test-child:4.0.0",
+									},
+								},
+							},
+							{
+								Id: "npm://test-child:3.0.0",
+								Nodes: []*xrayUtils.GraphNode{
+									{
+										Id: "npm://test-child:4.0.0",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			givenMap: []*PackageStatus{
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-4.0.0.tgz",
+					PackageName:       "test-child",
+					PackageVersion:    "4.0.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "policy1",
+							Condition: "condition1",
+						},
+					},
+				},
+			},
+			expectedPackagesStatus: &[]*PackageStatus{
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-4.0.0.tgz",
+					PackageName:       "test-child",
+					PackageVersion:    "4.0.0",
 					BlockingReason:    "Policy violations",
 					PkgType:           "npm",
 					Policy: []Policy{

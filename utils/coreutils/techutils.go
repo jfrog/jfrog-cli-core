@@ -77,11 +77,10 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:                 []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor:          "package.json",
-		packageVersionOperator:     "@",
-		packageInstallationCommand: "up",
-		applicabilityScannable:     true,
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor:      "package.json",
+		packageVersionOperator: "@",
+		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
@@ -166,6 +165,14 @@ func (tech Technology) GetPackageInstallOperator() string {
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
+}
+
+func (tech Technology) SetPackageInstallationCommand(installationCommand string) {
+	// this operation is performed like this since we dont want to access the map in yarnPackageHandler, and we dont want to change the map to map[Technology]*TechData
+	// therefore we cannot change the actual value exists in the map but only a copy of it (go limitation)
+	updatedTechData := technologiesData[tech]
+	updatedTechData.packageInstallationCommand = installationCommand
+	technologiesData[tech] = updatedTechData
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

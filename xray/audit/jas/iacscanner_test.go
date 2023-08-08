@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -21,20 +22,18 @@ func TestNewIacScanManager(t *testing.T) {
 }
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
-	// Arrange
 	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, []string{"currentDir"}, &analyzerManagerMock{})
+	assert.NoError(t, iacManagerError)
 
-	// Act
-	err := iacScanManager.createConfigFile()
+	currWd, err := coreutils.GetWorkingDirectory()
+	assert.NoError(t, err)
+	err = iacScanManager.createConfigFile(currWd)
 
 	defer func() {
 		err = os.Remove(iacScanManager.configFileName)
 		assert.NoError(t, err)
 	}()
 
-	// Assert
-	assert.NoError(t, iacManagerError)
-	assert.NoError(t, err)
 	_, fileNotExistError := os.Stat(iacScanManager.configFileName)
 	assert.NoError(t, fileNotExistError)
 	fileContent, err := os.ReadFile(iacScanManager.configFileName)

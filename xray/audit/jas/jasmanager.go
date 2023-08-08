@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"gopkg.in/yaml.v3"
 	"os"
 )
 
@@ -109,4 +110,13 @@ func setIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.
 		finalSecretsList = append(finalSecretsList, newSecret)
 	}
 	return finalSecretsList, nil
+}
+
+func createScannersConfigFile(fileName string, fileContent interface{}) error {
+	yamlData, err := yaml.Marshal(&fileContent)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	err = os.WriteFile(fileName, yamlData, 0644)
+	return errorutils.CheckError(err)
 }

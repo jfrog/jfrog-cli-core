@@ -2,6 +2,7 @@ package jas
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -21,20 +22,19 @@ func TestNewSecretsScanManager(t *testing.T) {
 }
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
-	// Arrange
 	secretScanManager, _, secretsManagerError := newSecretsScanManager(&fakeServerDetails, nil, &analyzerManagerMock{})
+	assert.NoError(t, secretsManagerError)
 
-	// Act
-	err := secretScanManager.createConfigFile()
+	currWd, err := coreutils.GetWorkingDirectory()
+	assert.NoError(t, err)
+	err = secretScanManager.createConfigFile(currWd)
+	assert.NoError(t, err)
 
 	defer func() {
 		err = os.Remove(secretScanManager.configFileName)
 		assert.NoError(t, err)
 	}()
 
-	// Assert
-	assert.NoError(t, secretsManagerError)
-	assert.NoError(t, err)
 	_, fileNotExistError := os.Stat(secretScanManager.configFileName)
 	assert.NoError(t, fileNotExistError)
 	fileContent, err := os.ReadFile(secretScanManager.configFileName)

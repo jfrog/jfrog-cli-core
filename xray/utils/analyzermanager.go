@@ -104,7 +104,7 @@ func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 //   - sarif file containing the scan results
 type AnalyzerManagerInterface interface {
 	ExistLocally() (bool, error)
-	Exec(string, string) error
+	Exec(string, string, *config.ServerDetails) error
 }
 
 type AnalyzerManager struct {
@@ -120,7 +120,10 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 	return fileutils.IsFileExists(analyzerManagerPath, false)
 }
 
-func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err error) {
+func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
+	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
+		return err
+	}
 	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {

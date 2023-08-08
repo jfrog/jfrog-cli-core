@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"gopkg.in/yaml.v2"
-	"os"
 	"path/filepath"
 )
 
@@ -66,30 +63,45 @@ func newIacScanManager(serverDetails *config.ServerDetails, workingDirs []string
 	cleanup = func() error {
 		return fileutils.RemoveTempDir(tempDir)
 	}
+	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(workingDirs)
+	if err != nil {
+		return nil, cleanup, err
+	}
 	return &IacScanManager{
 		iacScannerResults: []utils.IacOrSecretResult{},
 		configFileName:    filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:   filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:   analyzerManager,
 		serverDetails:     serverDetails,
-		workingDirs:       workingDirs,
+		workingDirs:       fullPathWorkingDirs,
 	}, cleanup, nil
 }
 
 func (iac *IacScanManager) run() (err error) {
+	for _, currWd := range iac.workingDirs {
+		var currWdResults []utils.IacOrSecretResult
+		if currWdResults, err = iac.runIacScanInWorkingDirectory(currWd); err != nil {
+			return
+		}
+		iac.iacScannerResults = append(iac.iacScannerResults, currWdResults...)
+	}
+	return
+}
+
+func (iac *IacScanManager) runIacScanInWorkingDirectory(currWd string) (results []utils.IacOrSecretResult, err error) {
 	defer func() {
 		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
 			deleteFilesError := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
 			err = errors.Join(err, deleteFilesError)
 		}
 	}()
-	if err = iac.createConfigFile(); err != nil {
+	if err = iac.createConfigFile(currWd); err != nil {
 		return
 	}
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	iac.iacScannerResults, err = setIacOrSecretsScanResults(iac.resultsFileName, false)
+	results, err = setIacOrSecretsScanResults(iac.resultsFileName, false)
 	return
 }
 
@@ -104,32 +116,20 @@ type iacScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (iac *IacScanManager) createConfigFile() error {
-	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(iac.workingDirs)
-	if err != nil {
-		return err
-	}
+func (iac *IacScanManager) createConfigFile(currentWd string) error {
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       fullPathWorkingDirs,
+				Roots:       []string{currentWd},
 				Output:      iac.resultsFileName,
 				Type:        iacScannerType,
 				SkippedDirs: skippedDirs,
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(iac.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(iac.configFileName, configFileContent)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(iac.serverDetails); err != nil {
-		return err
-	}
-	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
+	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand, iac.serverDetails)
 }

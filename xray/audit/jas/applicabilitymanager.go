@@ -13,8 +13,6 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v2"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -186,21 +184,13 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(a.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(a.configFileName, configFileContent)
 }
 
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
 // advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
-		return err
-	}
-	return a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
+	return a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand, a.serverDetails)
 }
 
 func (a *ApplicabilityScanManager) setScanResults() error {

@@ -17,7 +17,7 @@ var (
 type analyzerManagerMock struct {
 }
 
-func (am *analyzerManagerMock) Exec(string, string) error {
+func (am *analyzerManagerMock) Exec(string, string, *config.ServerDetails) error {
 	return analyzerManagerExecutionError
 }
 

@@ -3,15 +3,12 @@ package jas
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -67,30 +64,45 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, workingDirs []st
 	cleanup = func() error {
 		return fileutils.RemoveTempDir(tempDir)
 	}
+	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(workingDirs)
+	if err != nil {
+		return nil, cleanup, err
+	}
 	return &SecretScanManager{
 		secretsScannerResults: []utils.IacOrSecretResult{},
 		configFileName:        filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:       analyzerManager,
 		serverDetails:         serverDetails,
-		workingDirs:           workingDirs,
+		workingDirs:           fullPathWorkingDirs,
 	}, cleanup, nil
 }
 
 func (s *SecretScanManager) run() (err error) {
+	for _, currWd := range s.workingDirs {
+		var currWdResults []utils.IacOrSecretResult
+		if currWdResults, err = s.runSecretsScanInWorkingDirectory(currWd); err != nil {
+			return
+		}
+		s.secretsScannerResults = append(s.secretsScannerResults, currWdResults...)
+	}
+	return
+}
+
+func (s *SecretScanManager) runSecretsScanInWorkingDirectory(currWd string) (results []utils.IacOrSecretResult, err error) {
 	defer func() {
 		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
 			deleteFilesError := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
 			err = errors.Join(err, deleteFilesError)
 		}
 	}()
-	if err = s.createConfigFile(); err != nil {
+	if err = s.createConfigFile(currWd); err != nil {
 		return
 	}
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	s.secretsScannerResults, err = setIacOrSecretsScanResults(s.resultsFileName, true)
+	results, err = setIacOrSecretsScanResults(s.resultsFileName, true)
 	return
 }
 
@@ -105,34 +117,22 @@ type secretsScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (s *SecretScanManager) createConfigFile() error {
-	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(s.workingDirs)
-	if err != nil {
-		return err
-	}
+func (s *SecretScanManager) createConfigFile(currentWd string) error {
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       fullPathWorkingDirs,
+				Roots:       []string{currentWd},
 				Output:      s.resultsFileName,
 				Type:        secretsScannerType,
 				SkippedDirs: skippedDirs,
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(s.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(s.configFileName, configFileContent)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(s.serverDetails); err != nil {
-		return err
-	}
-	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
+	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand, s.serverDetails)
 }
 
 func hideSecret(secret string) string {

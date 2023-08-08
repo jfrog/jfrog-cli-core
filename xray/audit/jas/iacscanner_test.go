@@ -48,7 +48,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)
@@ -63,7 +63,7 @@ func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)
@@ -79,7 +79,7 @@ func TestIacParseResults_ResultsContainSecretsWithWorkingDir(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = setIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, iacManagerError)

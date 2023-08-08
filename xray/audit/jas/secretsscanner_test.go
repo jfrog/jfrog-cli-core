@@ -68,7 +68,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
+	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)
@@ -83,7 +83,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
+	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)
@@ -99,7 +99,7 @@ func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = setIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
+	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
 
 	// Assert
 	assert.NoError(t, secretsManagerError)

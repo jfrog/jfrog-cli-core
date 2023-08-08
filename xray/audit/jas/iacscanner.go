@@ -98,7 +98,7 @@ func (iac *IacScanManager) runIacScan(workingDir string) (results []utils.IacOrS
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	results, err = setIacOrSecretsScanResults(iac.resultsFileName, false)
+	results, err = getIacOrSecretsScanResults(iac.resultsFileName, false)
 	return
 }
 

@@ -80,11 +80,11 @@ func newSecretsScanManager(serverDetails *config.ServerDetails, workingDirs []st
 
 func (s *SecretScanManager) run() (err error) {
 	for _, workingDir := range s.workingDirs {
-		var currWdResults []utils.IacOrSecretResult
-		if currWdResults, err = s.runSecretsScan(workingDir); err != nil {
+		var workingDirResults []utils.IacOrSecretResult
+		if workingDirResults, err = s.runSecretsScan(workingDir); err != nil {
 			return
 		}
-		s.secretsScannerResults = append(s.secretsScannerResults, currWdResults...)
+		s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	}
 	return
 }
@@ -99,7 +99,7 @@ func (s *SecretScanManager) runSecretsScan(workingDir string) (results []utils.I
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	results, err = setIacOrSecretsScanResults(s.resultsFileName, true)
+	results, err = getIacOrSecretsScanResults(s.resultsFileName, true)
 	return
 }
 

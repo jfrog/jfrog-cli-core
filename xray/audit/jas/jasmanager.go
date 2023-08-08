@@ -34,7 +34,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
 	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
-		dependencyTrees, serverDetails, scannedTechnologies, analyzerManagerExecuter)
+		dependencyTrees, serverDetails, scannedTechnologies, workingDirs, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func setIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+func getIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.IacOrSecretResult, error) {
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err

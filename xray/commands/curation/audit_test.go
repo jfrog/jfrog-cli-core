@@ -3,6 +3,7 @@ package curation
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	tests2 "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -154,18 +156,18 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownloadUrl, gotName, gotScope, gotVersion := getNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
+			gotDownloadUrl, gotName, gotScope, gotVersion := getNpmNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
 			if gotDownloadUrl != tt.wantDownloadUrl {
-				t.Errorf("getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
+				assert.Equal(t, tt.wantDownloadUrl, gotDownloadUrl, "getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
 			}
 			if gotName != tt.wantName {
-				t.Errorf("getNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
+				assert.Equal(t, tt.wantName, gotName, "getNpmNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
 			}
 			if gotScope != tt.wantScope {
-				t.Errorf("getNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
+				assert.Equal(t, tt.wantScope, gotScope, "getNpmNameScopeAndVersion() gotScope = %v, want %v", gotScope, tt.wantScope)
 			}
 			if gotVersion != tt.wantVersion {
-				t.Errorf("getNameScopeAndVersion() gotVersion = %v, want %v", gotVersion, tt.wantVersion)
+				assert.Equal(t, tt.wantVersion, gotVersion, "getNpmNameScopeAndVersion() gotVersion = %v, want %v", gotVersion, tt.wantVersion)
 			}
 		})
 	}
@@ -180,10 +182,22 @@ func TestTreeAnalyzerFillGraphRelations(t *testing.T) {
 				repo: "npm-repo",
 				tech: "npm",
 			}
-			packageStatus := &[]*PackageStatus{}
+			var packageStatus []*PackageStatus
 			preProcessedMap := fillSyncedMap(tt.givenMap)
-			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, packageStatus, "", "", map[string]struct{}{}, true)
-			assert.Equal(t, *tt.expectedPackagesStatus, *packageStatus)
+			nc.fillGraphRelations(tt.givenGraph, preProcessedMap, &packageStatus, "", "", datastructures.MakeSet[string](), true)
+			sort.Slice(packageStatus, func(i, j int) bool {
+				if packageStatus[i].BlockedPackageUrl == packageStatus[j].BlockedPackageUrl {
+					return packageStatus[i].ParentName < packageStatus[j].ParentName
+				}
+				return packageStatus[i].BlockedPackageUrl < packageStatus[j].BlockedPackageUrl
+			})
+			sort.Slice(tt.expectedPackagesStatus, func(i, j int) bool {
+				if tt.expectedPackagesStatus[i].BlockedPackageUrl == tt.expectedPackagesStatus[j].BlockedPackageUrl {
+					return tt.expectedPackagesStatus[i].ParentName < tt.expectedPackagesStatus[j].ParentName
+				}
+				return tt.expectedPackagesStatus[i].BlockedPackageUrl < tt.expectedPackagesStatus[j].BlockedPackageUrl
+			})
+			assert.Equal(t, tt.expectedPackagesStatus, packageStatus)
 		})
 	}
 }
@@ -192,13 +206,13 @@ func getTestCasesForFillGraphRelations() []struct {
 	name                   string
 	givenGraph             *xrayUtils.GraphNode
 	givenMap               []*PackageStatus
-	expectedPackagesStatus *[]*PackageStatus
+	expectedPackagesStatus []*PackageStatus
 } {
 	tests := []struct {
 		name                   string
 		givenGraph             *xrayUtils.GraphNode
 		givenMap               []*PackageStatus
-		expectedPackagesStatus *[]*PackageStatus
+		expectedPackagesStatus []*PackageStatus
 	}{
 		{
 			name: "block indirect",
@@ -229,7 +243,7 @@ func getTestCasesForFillGraphRelations() []struct {
 					},
 				},
 			},
-			expectedPackagesStatus: &[]*PackageStatus{
+			expectedPackagesStatus: []*PackageStatus{
 				{
 					Action:            "blocked",
 					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-2.0.0.tgz",
@@ -261,12 +275,20 @@ func getTestCasesForFillGraphRelations() []struct {
 								Id: "npm://test-child:2.0.0",
 								Nodes: []*xrayUtils.GraphNode{
 									{
-										Id: "npm://test-child:4.0.0",
+										Id: "npm://@dev/test-child:4.0.0",
 									},
 								},
 							},
 							{
 								Id: "npm://test-child:3.0.0",
+								Nodes: []*xrayUtils.GraphNode{
+									{
+										Id: "npm://@dev/test-child:4.0.0",
+									},
+								},
+							},
+							{
+								Id: "npm://@dev/test-child:5.0.0",
 								Nodes: []*xrayUtils.GraphNode{
 									{
 										Id: "npm://test-child:4.0.0",
@@ -275,9 +297,31 @@ func getTestCasesForFillGraphRelations() []struct {
 							},
 						},
 					},
+					{
+						Id: "npm://@dev/test-parent:1.0.0",
+						Nodes: []*xrayUtils.GraphNode{
+							{
+								Id: "npm://test-child:4.0.0",
+							},
+						},
+					},
 				},
 			},
 			givenMap: []*PackageStatus{
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/@dev/test-child/-/test-child-4.0.0.tgz",
+					PackageName:       "@dev/test-child",
+					PackageVersion:    "4.0.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "policy1",
+							Condition: "condition1",
+						},
+					},
+				},
 				{
 					Action:            "blocked",
 					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-4.0.0.tgz",
@@ -293,11 +337,45 @@ func getTestCasesForFillGraphRelations() []struct {
 					},
 				},
 			},
-			expectedPackagesStatus: &[]*PackageStatus{
+			expectedPackagesStatus: []*PackageStatus{
 				{
 					Action:            "blocked",
 					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-4.0.0.tgz",
 					PackageName:       "test-child",
+					PackageVersion:    "4.0.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "policy1",
+							Condition: "condition1",
+						},
+					},
+					ParentName:    "test-parent",
+					ParentVersion: "1.0.0",
+					DepRelation:   "indirect",
+				},
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/test-child/-/test-child-4.0.0.tgz",
+					PackageName:       "test-child",
+					PackageVersion:    "4.0.0",
+					BlockingReason:    "Policy violations",
+					PkgType:           "npm",
+					Policy: []Policy{
+						{
+							Policy:    "policy1",
+							Condition: "condition1",
+						},
+					},
+					ParentName:    "@dev/test-parent",
+					ParentVersion: "1.0.0",
+					DepRelation:   "indirect",
+				},
+				{
+					Action:            "blocked",
+					BlockedPackageUrl: "http://localhost:8046/artifactory/api/npm/npm-repo/@dev/test-child/-/test-child-4.0.0.tgz",
+					PackageName:       "@dev/test-child",
 					PackageVersion:    "4.0.0",
 					BlockingReason:    "Policy violations",
 					PkgType:           "npm",

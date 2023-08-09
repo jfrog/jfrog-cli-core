@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -243,7 +244,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
 	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
 	analyzer.fillGraphRelations(ca.FullDependenciesTree()[0], &packagesStatusMap,
-		&packagesStatus, "", "", map[string]struct{}{}, true)
+		&packagesStatus, "", "", datastructures.MakeSet[string](), true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
 	})
@@ -255,7 +256,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 	if format == "" {
 		format = utils.Table
 	}
-	log.Output(fmt.Sprintf("Found %v blocked packgaes for project %s", len(packagesStatus), projectPath))
+	log.Output(fmt.Sprintf("Found %v blocked packages for project %s", len(packagesStatus), projectPath))
 	switch format {
 	case utils.Json:
 		if len(packagesStatus) > 0 {
@@ -339,7 +340,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 }
 
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
-	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited map[string]struct{}, isRoot bool) {
+	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited *datastructures.Set[string], isRoot bool) {
 	for _, child := range node.Nodes {
 		packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
 		if isRoot {
@@ -349,11 +350,11 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 				parent = scope + "/" + parent
 			}
 		}
-		if _, exist := visited[scope+name+version+"-"+parent+parentVersion]; exist {
+		if visited.Exists(scope + name + version + "-" + parent + parentVersion) {
 			continue
 		}
 
-		visited[name+version+"-"+parent+parentVersion] = struct{}{}
+		visited.Add(scope + name + version + "-" + parent + parentVersion)
 		if pkgStatus, exist := preProcessMap.Load(packageUrl); exist {
 			relation := indirectRelation
 			if isRoot {
@@ -502,14 +503,14 @@ func makeLegiblePolicyDetails(explanation, recommendation string) (string, strin
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
-		return getNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
+		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
 	}
 	return
 }
 
 // The graph holds, for each node, the component ID (xray representation)
 // from which we extract the package name, version, and construct the Artifactory download URL.
-func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, scope, version string) {
+func getNpmNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, scope, version string) {
 	id = strings.TrimPrefix(id, tech+"://")
 
 	nameVersion := strings.Split(id, ":")

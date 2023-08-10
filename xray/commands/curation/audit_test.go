@@ -157,18 +157,10 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotDownloadUrl, gotName, gotScope, gotVersion := getNpmNameScopeAndVersion(tt.componentId, tt.artiUrl, tt.repo, tt.repo)
-			if gotDownloadUrl != tt.wantDownloadUrl {
-				assert.Equal(t, tt.wantDownloadUrl, gotDownloadUrl, "getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
-			}
-			if gotName != tt.wantName {
-				assert.Equal(t, tt.wantName, gotName, "getNpmNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
-			}
-			if gotScope != tt.wantScope {
-				assert.Equal(t, tt.wantScope, gotScope, "getNpmNameScopeAndVersion() gotScope = %v, want %v", gotScope, tt.wantScope)
-			}
-			if gotVersion != tt.wantVersion {
-				assert.Equal(t, tt.wantVersion, gotVersion, "getNpmNameScopeAndVersion() gotVersion = %v, want %v", gotVersion, tt.wantVersion)
-			}
+			assert.Equal(t, tt.wantDownloadUrl, gotDownloadUrl, "getNameScopeAndVersion() gotDownloadUrl = %v, want %v", gotDownloadUrl, tt.wantDownloadUrl)
+			assert.Equal(t, tt.wantName, gotName, "getNpmNameScopeAndVersion() gotName = %v, want %v", gotName, tt.wantName)
+			assert.Equal(t, tt.wantScope, gotScope, "getNpmNameScopeAndVersion() gotScope = %v, want %v", gotScope, tt.wantScope)
+			assert.Equal(t, tt.wantVersion, gotVersion, "getNpmNameScopeAndVersion() gotVersion = %v, want %v", gotVersion, tt.wantVersion)
 		})
 	}
 }

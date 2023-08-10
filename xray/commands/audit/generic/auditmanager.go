@@ -151,7 +151,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	if isEntitled {
 		xrayScanResults := results.ExtendedScanResults.XrayResults
 		scannedTechnologies := results.ScannedTechnologies
-		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies)
+		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies, auditParams.workingDirs)
 	}
 	return
 }

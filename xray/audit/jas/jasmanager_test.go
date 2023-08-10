@@ -3,27 +3,13 @@ package jas
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
-
-var (
-	analyzerManagerExecutionError error = nil
-	analyzerManagerExists               = true
-)
-
-type analyzerManagerMock struct {
-}
-
-func (am *analyzerManagerMock) Exec(string, string) error {
-	return analyzerManagerExecutionError
-}
-
-func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExists, nil
-}
 
 var fakeBasicXrayResults = []services.ScanResponse{
 	{
@@ -75,23 +61,22 @@ var fakeServerDetails = config.ServerDetails{
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-	// Arrange
-	analyzerManagerExists = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
-
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn})
+	tmpDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
+	}()
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn}, nil)
 
 	// Assert
-	assert.NoError(t, err)
-	assert.False(t, extendedResults.EntitledForJas)
-	assert.Equal(t, 1, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScanResults)
+	assert.Error(t, err)
+	assert.Nil(t, extendedResults)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip})
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip}, nil)
 
 	// Assert
 	assert.NotNil(t, extendedResults)

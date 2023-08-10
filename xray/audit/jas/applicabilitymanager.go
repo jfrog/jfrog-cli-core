@@ -1,21 +1,15 @@
 package jas
 
 import (
-	"errors"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v2"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -34,57 +28,37 @@ const (
 // map[string]string: A map containing the applicability result of each XRAY CVE.
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
-func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
-	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
-	if err != nil {
-		return nil, false, utils.Applicability.FormattedError(err)
-	}
-	defer func() {
-		if cleanupFunc != nil {
-			err = errors.Join(err, cleanupFunc())
-		}
-	}()
+func getApplicabilityScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
+	scannedTechnologies []coreutils.Technology, scanner *AdvancedSecurityScanner) (results map[string]string, err error) {
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, dependencyTrees, scanner)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
-		return nil, false, nil
+		return
 	}
-	if err = applicabilityScanManager.run(); err != nil {
-		return nil, false, utils.ParseAnalyzerManagerError(utils.Applicability, err)
+	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
+		err = utils.ParseAnalyzerManagerError(utils.Applicability, err)
+		return
 	}
-	return applicabilityScanManager.applicabilityScanResults, true, nil
+	results = applicabilityScanManager.applicabilityScanResults
+	return
 }
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults map[string]string
 	directDependenciesCves   *datastructures.Set[string]
 	xrayResults              []services.ScanResponse
-	configFileName           string
-	resultsFileName          string
-	analyzerManager          utils.AnalyzerManagerInterface
-	serverDetails            *config.ServerDetails
+	scanner                  *AdvancedSecurityScanner
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode, scanner *AdvancedSecurityScanner) (manager *ApplicabilityScanManager) {
 	directDependencies := getDirectDependenciesSet(dependencyTrees)
-	tempDir, err := fileutils.CreateTempDir()
-	if err != nil {
-		return
-	}
-	cleanup = func() error {
-		return fileutils.RemoveTempDir(tempDir)
-	}
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: map[string]string{},
 		directDependenciesCves:   directDependenciesCves,
-		configFileName:           filepath.Join(tempDir, "config.yaml"),
-		resultsFileName:          filepath.Join(tempDir, "results.sarif"),
 		xrayResults:              xrayScanResults,
-		analyzerManager:          analyzerManager,
-		serverDetails:            serverDetails,
-	}, cleanup, nil
+		scanner:                  scanner,
+	}
 }
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
@@ -131,21 +105,20 @@ func getDirectDependenciesSet(dependencyTrees []*xrayUtils.GraphNode) *datastruc
 	return directDependencies
 }
 
-func (a *ApplicabilityScanManager) run() (err error) {
-	defer func() {
-		if deleteJasProcessFiles(a.configFileName, a.resultsFileName) != nil {
-			deleteFilesError := deleteJasProcessFiles(a.configFileName, a.resultsFileName)
-			err = errors.Join(err, deleteFilesError)
-		}
-	}()
-	log.Info("Running applicability scanning for the identified vulnerable dependencies...")
-	if err = a.createConfigFile(); err != nil {
+func (a *ApplicabilityScanManager) Run(wd string) (err error) {
+	log.Info("Running applicability scanning for the identified vulnerable direct dependencies...")
+	if err = a.createConfigFile(wd); err != nil {
 		return
 	}
 	if err = a.runAnalyzerManager(); err != nil {
 		return
 	}
-	return a.setScanResults()
+	var workingDirResults map[string]string
+	workingDirResults, err = a.getScanResults()
+	for cve, result := range workingDirResults {
+		a.applicabilityScanResults[cve] = result
+	}
+	return
 }
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
@@ -169,16 +142,12 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (a *ApplicabilityScanManager) createConfigFile() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
+func (a *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:        []string{currentDir},
-				Output:       a.resultsFileName,
+				Roots:        []string{workingDir},
+				Output:       a.scanner.resultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: a.directDependenciesCves.ToSlice(),
@@ -186,47 +155,39 @@ func (a *ApplicabilityScanManager) createConfigFile() error {
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(a.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(a.scanner.configFileName, configFileContent)
 }
 
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
 // advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(a.serverDetails); err != nil {
-		return err
-	}
-	return a.analyzerManager.Exec(a.configFileName, applicabilityScanCommand)
+	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, a.scanner.serverDetails)
 }
 
-func (a *ApplicabilityScanManager) setScanResults() error {
-	report, err := sarif.Open(a.resultsFileName)
+func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
+	report, err := sarif.Open(a.scanner.resultsFileName)
 	if errorutils.CheckError(err) != nil {
-		return err
+		return nil, errorutils.CheckError(err)
 	}
 	var fullVulnerabilitiesList []*sarif.Result
 	if len(report.Runs) > 0 {
 		fullVulnerabilitiesList = report.Runs[0].Results
 	}
 
-	xrayCves := a.directDependenciesCves.ToSlice()
-	for _, xrayCve := range xrayCves {
-		a.applicabilityScanResults[xrayCve] = utils.ApplicabilityUndeterminedStringValue
+	applicabilityScanResults := make(map[string]string)
+	for _, cve := range a.directDependenciesCves.ToSlice() {
+		applicabilityScanResults[cve] = utils.ApplicabilityUndeterminedStringValue
 	}
 
 	for _, vulnerability := range fullVulnerabilitiesList {
 		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
 		if isVulnerabilityApplicable(vulnerability) {
-			a.applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
+			applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
 		} else {
-			a.applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
+			applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
 		}
 	}
-	return nil
+	return applicabilityScanResults, nil
 }
 
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise

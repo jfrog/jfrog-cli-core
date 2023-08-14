@@ -159,19 +159,12 @@ func (tech Technology) GetPackageOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 
-func (tech Technology) GetPackageInstallOperator() string {
+func (tech Technology) GetPackageInstallationCommand() string {
 	return technologiesData[tech].packageInstallationCommand
 }
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
-}
-
-func (tech Technology) SetPackageInstallationCommand(installationCommand string) {
-	// The operation is performed as following since we want to change a field in one of the map's values without changing the map values to be pointers
-	updatedTechData := technologiesData[tech]
-	updatedTechData.packageInstallationCommand = installationCommand
-	technologiesData[tech] = updatedTechData
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

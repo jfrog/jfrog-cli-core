@@ -209,7 +209,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
 	report, err := sarif.Open(a.resultsFileName)
 	if errorutils.CheckError(err) != nil {
-		return nil, errorutils.CheckError(err)
+		return nil, err
 	}
 	var fullVulnerabilitiesList []*sarif.Result
 	if len(report.Runs) > 0 {

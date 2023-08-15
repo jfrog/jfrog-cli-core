@@ -77,11 +77,10 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:                 []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor:          "package.json",
-		packageVersionOperator:     "@",
-		packageInstallationCommand: "up",
-		applicabilityScannable:     true,
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor:      "package.json",
+		packageVersionOperator: "@",
+		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
@@ -160,7 +159,7 @@ func (tech Technology) GetPackageOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 
-func (tech Technology) GetPackageInstallOperator() string {
+func (tech Technology) GetPackageInstallationCommand() string {
 	return technologiesData[tech].packageInstallationCommand
 }
 

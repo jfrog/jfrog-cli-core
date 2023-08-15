@@ -5,7 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"strconv"
 )
 

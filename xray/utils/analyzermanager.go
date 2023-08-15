@@ -26,7 +26,7 @@ const (
 	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.4.1858388"
+	analyzerManagerVersion        = "1.2.4.1921744"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName        = "analyzerManager"
 	analyzerManagerExecutableName = "analyzerManager"
@@ -104,7 +104,7 @@ func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 //   - sarif file containing the scan results
 type AnalyzerManagerInterface interface {
 	ExistLocally() (bool, error)
-	Exec(string, string) error
+	Exec(string, string, *config.ServerDetails) error
 }
 
 type AnalyzerManager struct {
@@ -120,7 +120,10 @@ func (am *AnalyzerManager) ExistLocally() (bool, error) {
 	return fileutils.IsFileExists(analyzerManagerPath, false)
 }
 
-func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err error) {
+func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
+	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
+		return err
+	}
 	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
@@ -193,7 +196,8 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 }
 
 func ParseAnalyzerManagerError(scanner ScanType, err error) error {
-	if exitError, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		exitCode := exitError.ExitCode()
 		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
 			log.Warn(exitCodeDescription)
@@ -249,4 +253,25 @@ func GetResultSeverity(result *sarif.Result) string {
 		}
 	}
 	return SeverityDefaultValue
+}
+
+// Receives a list of relative path working dirs, returns a list of full paths working dirs
+func GetFullPathsWorkingDirs(workingDirs []string) ([]string, error) {
+	if len(workingDirs) == 0 {
+		currentDir, err := coreutils.GetWorkingDirectory()
+		if err != nil {
+			return nil, err
+		}
+		return []string{currentDir}, nil
+	}
+
+	var fullPathsWorkingDirs []string
+	for _, wd := range workingDirs {
+		fullPathWd, err := filepath.Abs(wd)
+		if err != nil {
+			return nil, err
+		}
+		fullPathsWorkingDirs = append(fullPathsWorkingDirs, fullPathWd)
+	}
+	return fullPathsWorkingDirs, nil
 }

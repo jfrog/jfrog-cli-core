@@ -4,14 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/owenrumney/go-sarif/v2/sarif"
-	"gopkg.in/yaml.v2"
-	"os"
 	"path/filepath"
 )
 
@@ -27,7 +22,7 @@ type IacScanManager struct {
 	resultsFileName   string
 	analyzerManager   utils.AnalyzerManagerInterface
 	serverDetails     *config.ServerDetails
-	projectRootPath   string
+	workingDirs       []string
 }
 
 // The getIacScanResults function runs the iac scan flow, which includes the following steps:
@@ -38,9 +33,9 @@ type IacScanManager struct {
 // []utils.IacOrSecretResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
+func getIacScanResults(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
 	bool, error) {
-	iacScanManager, cleanupFunc, err := newIacScanManager(serverDetails, analyzerManager)
+	iacScanManager, cleanupFunc, err := newIacScanManager(serverDetails, workingDirs, analyzerManager)
 	if err != nil {
 		return nil, false, fmt.Errorf(iacScanFailureMessage, err.Error())
 	}
@@ -59,7 +54,7 @@ func getIacScanResults(serverDetails *config.ServerDetails, analyzerManager util
 	return iacScanManager.iacScannerResults, true, nil
 }
 
-func newIacScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
+func newIacScanManager(serverDetails *config.ServerDetails, workingDirs []string, analyzerManager utils.AnalyzerManagerInterface) (manager *IacScanManager,
 	cleanup func() error, err error) {
 	tempDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -68,29 +63,43 @@ func newIacScanManager(serverDetails *config.ServerDetails, analyzerManager util
 	cleanup = func() error {
 		return fileutils.RemoveTempDir(tempDir)
 	}
+	fullPathWorkingDirs, err := utils.GetFullPathsWorkingDirs(workingDirs)
+	if err != nil {
+		return nil, cleanup, err
+	}
 	return &IacScanManager{
 		iacScannerResults: []utils.IacOrSecretResult{},
 		configFileName:    filepath.Join(tempDir, "config.yaml"),
 		resultsFileName:   filepath.Join(tempDir, "results.sarif"),
 		analyzerManager:   analyzerManager,
 		serverDetails:     serverDetails,
+		workingDirs:       fullPathWorkingDirs,
 	}, cleanup, nil
 }
 
 func (iac *IacScanManager) run() (err error) {
-	defer func() {
-		if deleteJasProcessFiles(iac.configFileName, iac.resultsFileName) != nil {
-			deleteFilesError := deleteJasProcessFiles(iac.configFileName, iac.resultsFileName)
-			err = errors.Join(err, deleteFilesError)
+	for _, workingDir := range iac.workingDirs {
+		var currWdResults []utils.IacOrSecretResult
+		if currWdResults, err = iac.runIacScan(workingDir); err != nil {
+			return
 		}
+		iac.iacScannerResults = append(iac.iacScannerResults, currWdResults...)
+	}
+	return
+}
+
+func (iac *IacScanManager) runIacScan(workingDir string) (results []utils.IacOrSecretResult, err error) {
+	defer func() {
+		err = errors.Join(err, deleteJasProcessFiles(iac.configFileName, iac.resultsFileName))
 	}()
-	if err = iac.createConfigFile(); err != nil {
+	if err = iac.createConfigFile(workingDir); err != nil {
 		return
 	}
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	return iac.setScanResults()
+	results, err = getIacOrSecretsScanResults(iac.resultsFileName, workingDir, false)
+	return
 }
 
 type iacScanConfig struct {
@@ -104,59 +113,20 @@ type iacScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (iac *IacScanManager) createConfigFile() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-	iac.projectRootPath = currentDir
+func (iac *IacScanManager) createConfigFile(currentWd string) error {
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       []string{currentDir},
+				Roots:       []string{currentWd},
 				Output:      iac.resultsFileName,
 				Type:        iacScannerType,
 				SkippedDirs: skippedDirs,
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(iac.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(iac.configFileName, configFileContent)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(iac.serverDetails); err != nil {
-		return err
-	}
-	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand)
-}
-
-func (iac *IacScanManager) setScanResults() error {
-	report, err := sarif.Open(iac.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	var iacResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		iacResults = report.Runs[0].Results
-	}
-
-	finalIacList := []utils.IacOrSecretResult{}
-
-	for _, result := range iacResults {
-		newIac := utils.IacOrSecretResult{
-			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), iac.projectRootPath),
-			LineColumn: utils.GetResultLocationInFile(result),
-			Text:       *result.Message.Text,
-			Type:       *result.RuleID,
-		}
-		finalIacList = append(finalIacList, newIac)
-	}
-	iac.iacScannerResults = finalIacList
-	return nil
+	return iac.analyzerManager.Exec(iac.configFileName, iacScanCommand, iac.serverDetails)
 }

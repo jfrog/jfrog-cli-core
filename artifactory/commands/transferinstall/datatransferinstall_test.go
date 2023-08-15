@@ -58,7 +58,7 @@ func TestPluginFileItemToUrlAndToPath(t *testing.T) {
 		file         FileItem
 	}{
 		{"dir/dir2/name.txt", filepath.Join("dir", "dir2", "name.txt"), FileItem{"dir", "dir2", "name.txt"}},
-		{"name.txt", filepath.Join("name.txt"), FileItem{"name.txt"}},
+		{"name.txt", "name.txt", FileItem{"name.txt"}},
 		{"", "", FileItem{}},
 		{"", "", FileItem{""}},
 		{"", "", FileItem{"", ""}},
@@ -168,7 +168,7 @@ func TestGetPluginDirDestination(t *testing.T) {
 }
 
 func TestGetTransferSourceAndAction(t *testing.T) {
-	//baseUrl := "baseurl"
+	// baseUrl := "baseurl"
 	v1 := "1.0.0"
 	cmd := &InstallDataTransferPluginCommand{}
 

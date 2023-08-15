@@ -18,6 +18,7 @@ const (
 	Fail                ChunkFileStatusType = "FAIL"
 	SkippedLargeProps   ChunkFileStatusType = "SKIPPED_LARGE_PROPS"
 	SkippedMetadataFile ChunkFileStatusType = "SKIPPED_METADATA_FILE"
+	SkippedNonEmptyDir  ChunkFileStatusType = "SKIPPED_NON_EMPTY_DIR"
 
 	Phase1 int = 0
 	Phase2 int = 1
@@ -33,16 +34,22 @@ type TargetAuth struct {
 }
 
 type UploadChunk struct {
+	// Authentication details of the target server
 	TargetAuth
-	CheckExistenceInFilestore bool                 `json:"check_existence_in_filestore,omitempty"`
-	UploadCandidates          []FileRepresentation `json:"upload_candidates,omitempty"`
+	// Files and folders to transfer
+	UploadCandidates []FileRepresentation `json:"upload_candidates,omitempty"`
+	// True if should check for the existence of artifacts on the target filestore
+	CheckExistenceInFilestore bool `json:"check_existence_in_filestore,omitempty"`
+	// True if should skip file filtering in the Data Transfer plugin
+	SkipFileFiltering bool `json:"skip_file_filtering,omitempty"`
 }
 
 type FileRepresentation struct {
-	Repo string `json:"repo,omitempty"`
-	Path string `json:"path,omitempty"`
-	Name string `json:"name,omitempty"`
-	Size int64  `json:"size,omitempty"`
+	Repo        string `json:"repo,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Size        int64  `json:"size,omitempty"`
+	NonEmptyDir bool   `json:"non_empty_dir,omitempty"`
 }
 
 type UploadChunkResponse struct {

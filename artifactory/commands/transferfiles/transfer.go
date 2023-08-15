@@ -4,6 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -15,22 +23,15 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
 	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
-	retries                      = 1000
-	retriesWaitMilliSecs         = 1000
-	dataTransferPluginMinVersion = "1.5.0"
+	retries                      = 600
+	retriesWaitMilliSecs         = 5000
+	dataTransferPluginMinVersion = "1.7.0"
 )
 
 type TransferFilesCommand struct {
@@ -52,6 +53,7 @@ type TransferFilesCommand struct {
 	stopSignal                chan os.Signal
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
+	locallyGeneratedFilter    *locallyGeneratedFilter
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -149,7 +151,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
-	if err = tdc.assertRepositorySpecificStructure(); err != nil {
+	if err = assertSupportedTransferDirStructure(); err != nil {
 		return err
 	}
 
@@ -161,9 +163,13 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	allSourceLocalRepos := append(sourceLocalRepos, sourceBuildInfoRepos...)
+	allSourceLocalRepos := append(slices.Clone(sourceLocalRepos), sourceBuildInfoRepos...)
 	targetLocalRepos, targetBuildInfoRepos, err := tdc.getAllLocalRepos(tdc.targetServerDetails, tdc.targetStorageInfoManager)
 	if err != nil {
+		return err
+	}
+
+	if err = tdc.initLocallyGeneratedFilter(); err != nil {
 		return err
 	}
 
@@ -210,7 +216,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 	if err != nil {
 		return err
 	}
-	//Init State Manager's fields values
+	// Init State Manager's fields values
 	tdc.stateManager.OverallTransfer.TotalSizeBytes = totalSizeBytes
 	tdc.stateManager.OverallTransfer.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
@@ -402,24 +408,6 @@ func (tdc *TransferFilesCommand) initTransferDir() error {
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
-// Assert the transfer dir is not in the old structure with a united state.json for all repository.
-// There are no means of conversion to the new structure, where repository has its own separated state file.
-// Therefore, the user must either clear his transfer directory or downgrade his jfrog cli.
-func (tdc *TransferFilesCommand) assertRepositorySpecificStructure() error {
-	transferDir, err := coreutils.GetJfrogTransferDir()
-	if err != nil {
-		return err
-	}
-	exists, err := fileutils.IsFileExists(filepath.Join(transferDir, coreutils.JfrogTransferStateFileName), false)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-	return errorutils.CheckErrorf(OldTransferDirectoryStructureErrorMsg)
-}
-
 func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
 	// If we ignore the old state, we need to remove all the old unused files so the process can start clean
 	if tdc.ignoreState {
@@ -464,9 +452,7 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
-		// We do not return the error returned from the phase's run function,
-		// because the phase is expected to recover from some errors, such as HTTP connection errors.
-		log.Error(err.Error())
+		return err
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
 	return (*newPhase).phaseDone()
@@ -522,6 +508,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setStateManager(tdc.stateManager)
 	newPhase.setBuildInfo(buildInfoRepo)
 	newPhase.setPackageType(repoSummary.PackageType)
+	newPhase.setLocallyGeneratedFilter(tdc.locallyGeneratedFilter)
 	newPhase.setStopSignal(tdc.stopSignal)
 }
 
@@ -533,11 +520,13 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 	if err != nil {
 		return []string{}, []string{}, err
 	}
-	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	excludeRepoPatternsWithBuildInfo := tdc.excludeReposPatterns
+	excludeRepoPatternsWithBuildInfo = append(excludeRepoPatternsWithBuildInfo, "*-build-info")
+	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, utils.Local)
 	if err != nil {
 		return []string{}, []string{}, err
 	}
-	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, utils.Federated)
 	if err != nil {
 		return []string{}, []string{}, err
 	}
@@ -571,6 +560,19 @@ func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 
 	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
 	return nil
+}
+
+func (tdc *TransferFilesCommand) initLocallyGeneratedFilter() error {
+	servicesManager, err := createTransferServiceManager(tdc.context, tdc.targetServerDetails)
+	if err != nil {
+		return err
+	}
+	targetArtifactoryVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return err
+	}
+	tdc.locallyGeneratedFilter = NewLocallyGenerated(tdc.context, servicesManager, targetArtifactoryVersion)
+	return err
 }
 
 func printPhaseChange(message string) {
@@ -713,7 +715,16 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 func getAndValidateDataTransferPlugin(srcUpService *srcUserPluginService) error {
 	verifyResponse, err := srcUpService.verifyCompatibilityRequest()
 	if err != nil {
-		return err
+		errMsg := err.Error()
+		reason := ""
+		if strings.Contains(errMsg, "The execution name '") && strings.Contains(errMsg, "' could not be found") {
+			start := strings.Index(errMsg, "'")
+			missingApi := errMsg[start+1 : strings.Index(errMsg[start+1:], "'")+start+1]
+			reason = fmt.Sprintf(" This is because the '%s' API exposed by the plugin returns a '404 Not Found' response.", missingApi)
+		}
+		return errorutils.CheckErrorf("%s;\nIt looks like the 'data-transfer' user plugin isn't installed on the source instance."+
+			"%s Please refer to the documentation available at "+coreutils.JFrogHelpUrl+"jfrog-hosting-models-documentation/transfer-artifactory-configuration-and-files-to-jfrog-cloud for installation instructions",
+			errMsg, reason)
 	}
 
 	err = validateDataTransferPluginMinimumVersion(verifyResponse.Version)
@@ -749,4 +760,8 @@ func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err erro
 		allErrors.Errors = append(allErrors.Errors, fileErrors.Errors...)
 	}
 	return
+}
+
+func assertSupportedTransferDirStructure() error {
+	return state.VerifyTransferRunStatusVersion()
 }

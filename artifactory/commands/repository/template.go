@@ -19,11 +19,8 @@ type RepoTemplateCommand struct {
 }
 
 const (
-	PathErrorSuffixMsg = " please enter a path, in which the new template file will be created"
-
 	// Strings for prompt questions
-	SelectConfigKeyMsg   = "Select the next configuration key" + utils.PressTabMsg
-	InsertValuePromptMsg = "Insert the value for "
+	SelectConfigKeyMsg = "Select the next configuration key" + utils.PressTabMsg
 
 	TemplateType = "templateType"
 	Create       = "create"
@@ -41,6 +38,7 @@ const (
 	ExcludePatterns = "excludesPattern"
 	RepoLayoutRef   = "repoLayoutRef"
 	ProjectKey      = "projectKey"
+	Environment     = "environment"
 
 	// Mutual local and remote repository configuration JSON keys
 	HandleReleases               = "handleReleases"
@@ -123,9 +121,10 @@ const (
 	ExternalDependenciesRemoteRepo                = "externalDependenciesRemoteRepo"
 
 	// rclasses
-	Local   = "local"
-	Remote  = "remote"
-	Virtual = "virtual"
+	Local     = "local"
+	Remote    = "remote"
+	Virtual   = "virtual"
+	Federated = "federated"
 
 	// PackageTypes
 	Generic   = "generic"
@@ -224,6 +223,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	ExcludePatterns:                   {Text: ExcludePatterns},
 	RepoLayoutRef:                     {Text: RepoLayoutRef},
 	ProjectKey:                        {Text: ProjectKey},
+	Environment:                       {Text: Environment},
 	HandleReleases:                    {Text: HandleReleases},
 	HandleSnapshots:                   {Text: HandleSnapshots},
 	MaxUniqueSnapshots:                {Text: MaxUniqueSnapshots},
@@ -295,7 +295,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 }
 
 var baseLocalRepoConfKeys = []string{
-	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, BlackedOut, XrayIndex,
+	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, BlackedOut, XrayIndex,
 	PropertySets, ArchiveBrowsingEnabled, OptionalIndexCompressionFormats, DownloadRedirect, BlockPushingSchema1,
 }
 
@@ -320,7 +320,7 @@ var dockerLocalRepoConfKeys = []string{
 }
 
 var baseRemoteRepoConfKeys = []string{
-	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, HardFail, Offline,
+	Username, Password, Proxy, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, HardFail, Offline,
 	BlackedOut, XrayIndex, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
 	MissedRetrievalCachePeriodSecs, UnusedArtifactsCleanupEnabled, UnusedArtifactsCleanupPeriodHours, AssumedOfflinePeriodSecs,
 	ShareConfiguration, SynchronizeProperties, BlockMismatchingMimeTypes, PropertySets, AllowAnyHostAuth, EnableCookieManagement,
@@ -385,7 +385,7 @@ var vcsRemoteRepoConfKeys = []string{
 }
 
 var baseVirtualRepoConfKeys = []string{
-	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
+	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
 	DefaultDeploymentRepo,
 }
 
@@ -414,20 +414,24 @@ var goVirtualRepoConfKeys = []string{
 }
 
 var commonPkgTypes = []string{
-	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Yum, Conan,
+	Maven, Gradle, Ivy, Sbt, Helm, Rpm, Nuget, Cran, Gems, Npm, Bower, Debian, Pypi, Docker, Gitlfs, Go, Conan,
 	Chef, Puppet, Alpine, Generic,
 }
 
 var localRepoAdditionalPkgTypes = []string{
-	Cocoapods, Opkg, Composer, Vagrant,
+	Cocoapods, Opkg, Composer, Vagrant, Yum,
 }
 
 var remoteRepoAdditionalPkgTypes = []string{
-	Cocoapods, Opkg, Composer, Conda, P2, Vcs,
+	Cocoapods, Opkg, Composer, Conda, P2, Vcs, Yum,
 }
 
 var virtualRepoAdditionalPkgTypes = []string{
-	Conda, P2,
+	Conda, P2, Yum,
+}
+
+var federatedRepoAdditionalPkgTypes = []string{
+	Vagrant, Opkg, Conda, Composer, Cocoapods,
 }
 
 var pkgTypeSuggestsMap = map[string]prompt.Suggest{
@@ -506,7 +510,7 @@ func (rtc *RepoTemplateCommand) CommandName() string {
 }
 
 func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, error) {
-	var pkgTypes []string
+	var pkgTypes = commonPkgTypes
 	switch rclass {
 	case Remote:
 		// For create template url is mandatory, for update we will allow url as an optional key
@@ -519,11 +523,13 @@ func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, 
 				return "", err
 			}
 		}
-		pkgTypes = append(commonPkgTypes, remoteRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, remoteRepoAdditionalPkgTypes...)
 	case Local:
-		pkgTypes = append(commonPkgTypes, localRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, localRepoAdditionalPkgTypes...)
 	case Virtual:
-		pkgTypes = append(commonPkgTypes, virtualRepoAdditionalPkgTypes...)
+		pkgTypes = append(pkgTypes, virtualRepoAdditionalPkgTypes...)
+	case Federated:
+		pkgTypes = append(pkgTypes, federatedRepoAdditionalPkgTypes...)
 	default:
 		return "", errors.New("unsupported rclass")
 	}
@@ -554,9 +560,11 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 		if _, ok := iq.AnswersMap[TemplateType]; !ok {
 			return "", errors.New("package type is missing in configuration map")
 		}
-		iq.OptionalKeysSuggests = getRemoteRepoConfKeys(pkgType, iq.AnswersMap[TemplateType].(string))
+		iq.OptionalKeysSuggests = getRemoteRepoConfKeys(pkgType, fmt.Sprint(iq.AnswersMap[TemplateType]))
 	case Virtual:
 		iq.OptionalKeysSuggests = getVirtualRepoConfKeys(pkgType)
+	case Federated:
+		iq.OptionalKeysSuggests = getLocalRepoConfKeys(pkgType)
 	default:
 		return "", errors.New("unsupported rclass was configured")
 	}
@@ -588,8 +596,7 @@ func getLocalRepoConfKeys(pkgType string) []prompt.Suggest {
 	optionalKeys := []string{utils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseLocalRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleLocalRepoConfKeys...)
 	case Rpm:
 		optionalKeys = append(optionalKeys, rpmLocalRepoConfKeys...)
@@ -610,8 +617,7 @@ func getRemoteRepoConfKeys(pkgType, templateType string) []prompt.Suggest {
 	}
 	optionalKeys = append(optionalKeys, baseRemoteRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleRemoteRepoConfKeys...)
 	case Cocoapods:
 		optionalKeys = append(optionalKeys, cocoapodsRemoteRepoConfKeys...)
@@ -647,8 +653,7 @@ func getVirtualRepoConfKeys(pkgType string) []prompt.Suggest {
 	optionalKeys := []string{utils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseVirtualRepoConfKeys...)
 	switch pkgType {
-	case Gradle:
-	case Maven:
+	case Maven, Gradle:
 		optionalKeys = append(optionalKeys, mavenGradleVirtualRepoConfKeys...)
 	case Nuget:
 		optionalKeys = append(optionalKeys, nugetVirtualRepoConfKeys...)
@@ -671,17 +676,17 @@ func contentSynchronisationCallBack(iq *utils.InteractiveQuestionnaire, answer s
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for statistic.enable >", false, utils.GetBoolSuggests(), "")
-	//cs.Statistics.Enabled, err = strconv.ParseBool(enabled)
+	// cs.Statistics.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for properties.enable >", false, utils.GetBoolSuggests(), "")
-	//cs.Properties.Enabled, err = strconv.ParseBool(enabled)
+	// cs.Properties.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
 	answer += "," + utils.AskFromList("", "Insert the value for source.originAbsenceDetection >", false, utils.GetBoolSuggests(), "")
-	//cs.Source.OriginAbsenceDetection, err = strconv.ParseBool(enabled)
+	// cs.Source.OriginAbsenceDetection, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
@@ -743,6 +748,7 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: Local, Description: "A physical, locally-managed repository into which you can deploy artifacts"},
 			{Text: Remote, Description: "A caching proxy for a repository managed at a remote URL"},
 			{Text: Virtual, Description: "An Aggregation of several repositories with the same package type under a common URL."},
+			{Text: Federated, Description: "A Federation is a collection of repositories of Federated type in different JPDs that are automatically configured for full bi-directional mirroring."},
 		},
 		Msg:          "",
 		PromptPrefix: "Select the repository class" + utils.PressTabMsg,
@@ -790,6 +796,12 @@ var questionMap = map[string]utils.QuestionInfo{
 		AllowVars: false,
 		Writer:    utils.WriteStringAnswer,
 		Callback:  projectKeyCallback,
+	},
+	Environment: {
+		PromptPrefix: "Insert the name of the environment to assign to >",
+		AllowVars:    true,
+		MapKey:       environmentsKey,
+		Writer:       utils.WriteStringAnswer,
 	},
 	HandleReleases:               BoolToStringQuestionInfo,
 	HandleSnapshots:              BoolToStringQuestionInfo,

@@ -3,59 +3,28 @@ package audit
 import (
 	"os"
 
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type GenericAuditCommand struct {
-	serverDetails           *config.ServerDetails
-	OutputFormat            xrutils.OutputFormat
-	watches                 []string
-	workingDirs             []string
-	projectKey              string
-	targetRepoPath          string
-	IncludeVulnerabilities  bool
-	IncludeLicenses         bool
-	Fail                    bool
-	PrintExtendedTable      bool
-	excludeTestDependencies bool
-	useWrapper              bool
-	insecureTls             bool
-	args                    []string
-	technologies            []string
-	requirementsFile        string
-	progress                ioUtils.ProgressMgr
+	watches                []string
+	projectKey             string
+	targetRepoPath         string
+	IncludeVulnerabilities bool
+	IncludeLicenses        bool
+	Fail                   bool
+	PrintExtendedTable     bool
+	Params
 }
 
 func NewGenericAuditCommand() *GenericAuditCommand {
-	return &GenericAuditCommand{}
-}
-
-func (auditCmd *GenericAuditCommand) SetServerDetails(server *config.ServerDetails) *GenericAuditCommand {
-	auditCmd.serverDetails = server
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetOutputFormat(format xrutils.OutputFormat) *GenericAuditCommand {
-	auditCmd.OutputFormat = format
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) ServerDetails() (*config.ServerDetails, error) {
-	return auditCmd.serverDetails, nil
+	return &GenericAuditCommand{Params: *NewAuditParams()}
 }
 
 func (auditCmd *GenericAuditCommand) SetWatches(watches []string) *GenericAuditCommand {
 	auditCmd.watches = watches
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetWorkingDirs(dirs []string) *GenericAuditCommand {
-	auditCmd.workingDirs = dirs
 	return auditCmd
 }
 
@@ -89,8 +58,8 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGraphScanParams {
-	params := services.XrayGraphScanParams{
+func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
+	params := &services.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
 		Watches:  auditCmd.watches,
 		ScanType: services.Dependency,
@@ -106,51 +75,47 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() services.XrayGr
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
-	server, err := auditCmd.ServerDetails()
-	if err != nil {
-		return
-	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
-		SetServerDetails(server).
-		SetExcludeTestDeps(auditCmd.excludeTestDependencies).
-		SetUseWrapper(auditCmd.useWrapper).
-		SetInsecureTLS(auditCmd.insecureTls).
-		SetArgs(auditCmd.args).
-		SetProgressBar(auditCmd.progress).
-		SetRequirementsFile(auditCmd.requirementsFile).
 		SetWorkingDirs(auditCmd.workingDirs).
-		SetTechnologies(auditCmd.technologies...)
-	results, isMultipleRootProject, auditErr := GenericAudit(auditParams)
-
-	if auditCmd.progress != nil {
-		err = auditCmd.progress.Quit()
-		if err != nil {
+		SetMinSeverityFilter(auditCmd.minSeverityFilter).
+		SetFixableOnly(auditCmd.fixableOnly).
+		SetGraphBasicParams(auditCmd.GraphBasicParams)
+	auditResults, err := RunAudit(auditParams)
+	if err != nil {
+		return err
+	}
+	if auditCmd.Progress() != nil {
+		if err = auditCmd.Progress().Quit(); err != nil {
 			return
 		}
 	}
+	var messages []string
+	if !auditResults.ExtendedScanResults.EntitledForJas {
+		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports the ‘Contextual Analysis’ feature, which is included as part of the ‘Advanced Security’ package. This package isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/xray/")}
+	}
 	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
-	printScanResults := !(auditErr != nil && xrutils.IsEmptyScanResponse(results))
+	printScanResults := !(auditResults.AuditError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
-		err = xrutils.PrintScanResults(results,
+		err = xrutils.PrintScanResults(auditResults.ExtendedScanResults,
 			nil,
-			auditCmd.OutputFormat,
+			auditCmd.OutputFormat(),
 			auditCmd.IncludeVulnerabilities,
 			auditCmd.IncludeLicenses,
-			isMultipleRootProject,
-			auditCmd.PrintExtendedTable,
+			auditResults.IsMultipleRootProject,
+			auditCmd.PrintExtendedTable, false, messages,
 		)
 		if err != nil {
 			return
 		}
 	}
-	if auditErr != nil {
-		err = auditErr
+	if auditResults.AuditError != nil {
+		err = auditResults.AuditError
 		return
 	}
 
-	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities) and the user asked to fail the build accordingly, do so.
-	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(results) {
+	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities), and the user asked to fail the build accordingly, do so.
+	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrutils.CheckIfFailBuild(auditResults.ExtendedScanResults.XrayResults) {
 		err = xrutils.NewFailBuildError()
 	}
 	return
@@ -158,43 +123,4 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 
 func (auditCmd *GenericAuditCommand) CommandName() string {
 	return "generic_audit"
-}
-
-func (auditCmd *GenericAuditCommand) SetNpmScope(depType string) *GenericAuditCommand {
-	switch depType {
-	case "devOnly":
-		auditCmd.args = []string{"--dev"}
-	case "prodOnly":
-		auditCmd.args = []string{"--prod"}
-	}
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetPipRequirementsFile(requirementsFile string) *GenericAuditCommand {
-	auditCmd.requirementsFile = requirementsFile
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetExcludeTestDependencies(excludeTestDependencies bool) *GenericAuditCommand {
-	auditCmd.excludeTestDependencies = excludeTestDependencies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetUseWrapper(useWrapper bool) *GenericAuditCommand {
-	auditCmd.useWrapper = useWrapper
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetInsecureTls(insecureTls bool) *GenericAuditCommand {
-	auditCmd.insecureTls = insecureTls
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetTechnologies(technologies []string) *GenericAuditCommand {
-	auditCmd.technologies = technologies
-	return auditCmd
-}
-
-func (auditCmd *GenericAuditCommand) SetProgress(progress ioUtils.ProgressMgr) {
-	auditCmd.progress = progress
 }

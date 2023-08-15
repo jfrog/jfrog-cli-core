@@ -36,7 +36,7 @@ func TestPrepareConfigData(t *testing.T) {
 			"registry = http://goodRegistry",
 		}
 
-	npmi := NpmInstallOrCiCommand{CommonArgs: CommonArgs{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken, npmVersion: version.NewVersion("9.5.0")}}
+	npmi := NpmCommand{registry: "http://goodRegistry", jsonOutput: true, npmAuth: "_auth = " + authToken, npmVersion: version.NewVersion("9.5.0")}
 	configAfter, err := npmi.prepareConfigData(configBefore)
 	if err != nil {
 		t.Error(err)
@@ -63,13 +63,13 @@ func TestPrepareConfigData(t *testing.T) {
 func TestSetNpmConfigAuthEnv(t *testing.T) {
 	testCases := []struct {
 		name        string
-		com         *CommonArgs
+		npmCm       *NpmCommand
 		value       string
 		expectedEnv string
 	}{
 		{
 			name: "set scoped registry auth env",
-			com: &CommonArgs{
+			npmCm: &NpmCommand{
 				npmVersion: version.NewVersion("9.3.1"),
 				registry:   "https://registry.example.com",
 			},
@@ -78,7 +78,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		},
 		{
 			name: "set legacy auth env",
-			com: &CommonArgs{
+			npmCm: &NpmCommand{
 				npmVersion: version.NewVersion("8.19.3"),
 				registry:   "https://registry.example.com",
 			},
@@ -89,7 +89,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.com.setNpmConfigAuthEnv(tc.value)
+			err := tc.npmCm.setNpmConfigAuthEnv(tc.value)
 			assert.NoError(t, err)
 			envValue := os.Getenv(tc.expectedEnv)
 			assert.Equal(t, tc.value, envValue)

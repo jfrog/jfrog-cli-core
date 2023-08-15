@@ -1,7 +1,9 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"strconv"
 	"time"
 
@@ -9,7 +11,6 @@ import (
 
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 const (
@@ -22,30 +23,24 @@ type DependencyTreeParams struct {
 	IgnoreConfigFile bool
 	ExcludeTestDeps  bool
 	UseWrapper       bool
-	JavaProps        map[string]any
+	Server           *config.ServerDetails
+	DepsRepo         string
 }
 
-func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func(err error)) {
+func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfiguration, func() error) {
 	buildConfiguration := artifactoryUtils.NewBuildConfiguration(buildName, strconv.FormatInt(time.Now().Unix(), 10), "", "")
-	return buildConfiguration, func(err error) {
-		buildName, err := buildConfiguration.GetBuildName()
-		if err != nil {
-			return
-		}
+	return buildConfiguration, func() error {
 		buildNumber, err := buildConfiguration.GetBuildNumber()
 		if err != nil {
-			return
+			return err
 		}
-		err = artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
-		if err != nil {
-			return
-		}
+		return artifactoryUtils.RemoveBuildDir(buildName, buildNumber, buildConfiguration.GetProject())
 	}
 }
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
-func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*services.GraphNode, error) {
+func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*xrayUtils.GraphNode, error) {
 	buildName, err := buildConfig.GetBuildName()
 	if err != nil {
 		return nil, err
@@ -61,7 +56,7 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	if len(generatedBuildsInfos) == 0 {
 		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
 	}
-	modules := []*services.GraphNode{}
+	modules := []*xrayUtils.GraphNode{}
 	for _, module := range generatedBuildsInfos[0].Modules {
 		modules = append(modules, addModuleTree(module))
 	}
@@ -69,8 +64,8 @@ func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) (
 	return modules, nil
 }
 
-func addModuleTree(module buildinfo.Module) *services.GraphNode {
-	moduleTree := &services.GraphNode{
+func addModuleTree(module buildinfo.Module) *xrayUtils.GraphNode {
+	moduleTree := &xrayUtils.GraphNode{
 		Id: GavPackageTypeIdentifier + module.Id,
 	}
 
@@ -110,14 +105,14 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *services.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
+func populateTransitiveDependencies(parent *xrayUtils.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
 	if hasLoop(idsAdded, dependencyId) {
 		return
 	}
 	idsAdded = append(idsAdded, dependencyId)
-	node := &services.GraphNode{
+	node := &xrayUtils.GraphNode{
 		Id:    GavPackageTypeIdentifier + dependencyId,
-		Nodes: []*services.GraphNode{},
+		Nodes: []*xrayUtils.GraphNode{},
 	}
 	parent.Nodes = append(parent.Nodes, node)
 	for _, child := range parentToChildren.getChildren(node.Id) {
@@ -134,11 +129,11 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 	return false
 }
 
-func BuildDependencyTree(params *DependencyTreeParams) (modules []*services.GraphNode, err error) {
+func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, err error) {
 	if params.Tool == coreutils.Maven {
-		return buildMvnDependencyTree(params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, params.JavaProps)
+		return buildMvnDependencyTree(params)
 	}
-	return buildGradleDependencyTree(params.ExcludeTestDeps, params.UseWrapper, params.IgnoreConfigFile, params.JavaProps)
+	return buildGradleDependencyTree(params)
 }
 
 type dependencyMultimap struct {

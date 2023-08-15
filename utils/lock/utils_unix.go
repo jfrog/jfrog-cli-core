@@ -23,7 +23,7 @@ func isProcessRunning(pid int) (bool, error) {
 	if err != nil {
 		// If this is a permission error, then the other process is running
 		if os.IsPermission(err) {
-			log.Debug("Other process still alive: ", err.Error())
+			log.Debug("Other process still alive:", err.Error())
 			return true, nil
 		}
 		// The other process died without unlocking. Let's unlock.

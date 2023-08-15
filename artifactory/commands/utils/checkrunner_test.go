@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"github.com/pkg/errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -18,7 +18,7 @@ func TestChecks(t *testing.T) {
 
 func TestRunChecks(t *testing.T) {
 	// Init
-	expectedErr := errors.Errorf("CHECK_ERROR")
+	expectedErr := fmt.Errorf("CHECK_ERROR")
 	nSuccess := 3
 	nFail := 2
 	runner := NewPreChecksRunner()

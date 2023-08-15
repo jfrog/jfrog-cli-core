@@ -11,6 +11,7 @@ import (
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
+	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -151,17 +152,21 @@ func SaveServersConf(details []*ServerDetails) error {
 		return err
 	}
 	conf.Servers = details
+	conf.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	return saveConfig(conf)
 }
 
 func saveConfig(config *Config) error {
-	config.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
-	err := config.encrypt()
+	cloneConfig, err := config.Clone()
+	if err != nil {
+		return err
+	}
+	err = cloneConfig.encrypt()
 	if err != nil {
 		return err
 	}
 
-	content, err := config.getContent()
+	content, err := cloneConfig.getContent()
 	if err != nil {
 		return err
 	}
@@ -214,7 +219,6 @@ func getConfigFile() (content []byte, err error) {
 	if exists {
 		content, err = fileutils.ReadFile(confFilePath)
 		return
-
 	}
 	// Try to look for older config files
 	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {
@@ -231,12 +235,21 @@ func getConfigFile() (content []byte, err error) {
 			content, err = fileutils.ReadFile(versionedConfigPath)
 			return content, err
 		}
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return content, nil
+}
+
+func (config *Config) Clone() (*Config, error) {
+	bytes, err := json.Marshal(config)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	clone := &Config{}
+	if err = json.Unmarshal(bytes, clone); err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	return clone, nil
 }
 
 func (config *Config) getContent() ([]byte, error) {
@@ -349,6 +362,7 @@ func convertIfNeeded(content []byte) ([]byte, error) {
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
+	result.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
 	err = saveConfig(result)
 	if err != nil {
 		return nil, err
@@ -553,6 +567,7 @@ type ServerDetails struct {
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
+	LifecycleUrl                    string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -566,6 +581,7 @@ type ServerDetails struct {
 	ServerId                        string `json:"serverId,omitempty"`
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
+	WebLogin                        bool   `json:"webLogin,omitempty"`
 }
 
 // Deprecated
@@ -575,7 +591,7 @@ type MissionControlDetails struct {
 }
 
 func (serverDetails *ServerDetails) IsEmpty() bool {
-	return len(serverDetails.ServerId) == 0
+	return len(serverDetails.ServerId) == 0 && serverDetails.Url == ""
 }
 
 func (serverDetails *ServerDetails) SetUser(username string) {
@@ -638,6 +654,10 @@ func (serverDetails *ServerDetails) GetAccessUrl() string {
 	return serverDetails.AccessUrl
 }
 
+func (serverDetails *ServerDetails) GetLifecycleUrl() string {
+	return serverDetails.LifecycleUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -692,20 +712,27 @@ func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetail
 	return serverDetails.createAuthConfig(pAuth)
 }
 
+func (serverDetails *ServerDetails) CreateLifecycleAuthConfig() (auth.ServiceDetails, error) {
+	lcAuth := lifecycleAuth.NewLifecycleDetails()
+	lcAuth.SetUrl(serverDetails.LifecycleUrl)
+	return serverDetails.createAuthConfig(lcAuth)
+}
+
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {
 	details.SetSshUrl(serverDetails.SshUrl)
 	details.SetAccessToken(serverDetails.AccessToken)
 	// If refresh token is not empty, set a refresh handler and skip other credentials.
 	// First we check access's token, if empty we check artifactory's token.
-	if serverDetails.RefreshToken != "" {
+	switch {
+	case serverDetails.RefreshToken != "":
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)
-	} else if serverDetails.ArtifactoryRefreshToken != "" {
+	case serverDetails.ArtifactoryRefreshToken != "":
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(ArtifactoryTokenRefreshPreRequestInterceptor)
-	} else {
+	default:
 		details.SetUser(serverDetails.User)
 		details.SetPassword(serverDetails.Password)
 	}

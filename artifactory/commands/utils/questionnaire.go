@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	InsertValuePromptMsg = "Insert the value for "
+	insertValuePromptMsg = "Insert the value for "
 	DummyDefaultAnswer   = "-"
 )
 
@@ -22,7 +22,7 @@ const (
 //		* We will ask all the questions in MandatoryQuestionsKeys list one after the other.
 //	2. Optional questions:
 //		* We have to provide a slice of prompt.Suggest, in which each suggest.Text is a key of a question in the map.
-//		* After a suggest was chosen from the list, the corresponding question from the map will be asked.
+//		* After a suggestion was chosen from the list, the corresponding question from the map will be asked.
 //		* Each answer is written to the configMap using its writer, under the MapKey specified in the questionInfo.
 //		* We will execute the previous step until the SaveAndExit string was inserted.
 type InteractiveQuestionnaire struct {
@@ -69,7 +69,7 @@ const (
 )
 
 // Var can be inserted in the form of ${key}
-var VarPattern = regexp.MustCompile(`^\$\{\w+\}+$`)
+var VarPattern = regexp.MustCompile(`^\$\{\w+}+$`)
 
 func prefixCompleter(options []prompt.Suggest) prompt.Completer {
 	return func(document prompt.Document) []prompt.Suggest {
@@ -256,25 +256,6 @@ func GetBoolSuggests() []prompt.Suggest {
 	}
 }
 
-var BoolQuestionInfo = QuestionInfo{
-	Options:   GetBoolSuggests(),
-	AllowVars: true,
-	Writer:    WriteBoolAnswer,
-}
-
-var IntQuestionInfo = QuestionInfo{
-	Options:   nil,
-	AllowVars: true,
-	Writer:    WriteIntAnswer,
-}
-
-var StringListQuestionInfo = QuestionInfo{
-	Msg:       CommaSeparatedListMsg,
-	Options:   nil,
-	AllowVars: true,
-	Writer:    WriteStringArrayAnswer,
-}
-
 // Common writers
 func WriteStringAnswer(resultMap *map[string]interface{}, key, value string) error {
 	(*resultMap)[key] = value
@@ -314,10 +295,10 @@ func WriteStringArrayAnswer(resultMap *map[string]interface{}, key, value string
 	return nil
 }
 
-func GetSuggestsFromKeys(keys []string, SuggestionMap map[string]prompt.Suggest) []prompt.Suggest {
+func GetSuggestsFromKeys(keys []string, suggestionMap map[string]prompt.Suggest) []prompt.Suggest {
 	var suggests []prompt.Suggest
 	for _, key := range keys {
-		suggests = append(suggests, SuggestionMap[key])
+		suggests = append(suggests, suggestionMap[key])
 	}
 	return suggests
 }
@@ -335,13 +316,23 @@ func OptionalKeyCallback(iq *InteractiveQuestionnaire, key string) (value string
 	if key != SaveAndExit {
 		valueQuestion := iq.QuestionsMap[key]
 		// Since we are using default question in most of the cases we set the map key here.
-		valueQuestion.MapKey = key
-		valueQuestion.PromptPrefix = InsertValuePromptMsg + key
-		if valueQuestion.Options != nil {
-			valueQuestion.PromptPrefix += PressTabMsg
+		if valueQuestion.MapKey == "" {
+			valueQuestion.MapKey = key
 		}
-		valueQuestion.PromptPrefix += " >"
+		editOptionalQuestionPromptPrefix(&valueQuestion, key)
 		value, err = iq.AskQuestion(valueQuestion)
 	}
 	return value, err
+}
+
+func editOptionalQuestionPromptPrefix(question *QuestionInfo, key string) {
+	if question.PromptPrefix == "" {
+		question.PromptPrefix = insertValuePromptMsg + key
+	}
+	if question.Options != nil {
+		question.PromptPrefix += PressTabMsg
+	}
+	if !strings.HasSuffix(question.PromptPrefix, " >") {
+		question.PromptPrefix += " >"
+	}
 }

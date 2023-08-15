@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 
@@ -76,6 +77,10 @@ func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus
 		// Remove the oldest calculated speed
 		tem.LastSpeedsSum -= tem.LastSpeeds[0]
 		tem.LastSpeeds = tem.LastSpeeds[1:]
+	}
+	if len(tem.LastSpeeds) == 0 {
+		tem.SpeedsAverage = 0
+		return
 	}
 	// Calculate speed in bytes/ms
 	tem.SpeedsAverage = tem.LastSpeedsSum / float64(len(tem.LastSpeeds))
@@ -185,7 +190,7 @@ func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() string {
 		return err.Error()
 	}
 
-	return secondsToLiteralTime(remainingTimeSec, "About ")
+	return SecondsToLiteralTime(remainingTimeSec, "About ")
 }
 
 func (tem *TimeEstimationManager) isTimeEstimationAvailable() bool {

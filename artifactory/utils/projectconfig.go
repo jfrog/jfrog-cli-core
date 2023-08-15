@@ -109,24 +109,37 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 	return
 }
 
-func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (*RepositoryConfig, error) {
+func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
+				err.Error(),
+				vConfig.GetString("type"),
+				prefix,
+			)
+		}
+	}()
 	if !vConfig.IsSet(prefix) {
-		return nil, errorutils.CheckErrorf("%s information is missing within %s", prefix, configFilePath)
+		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
+		return
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		return nil, fmt.Errorf("missing repository for %s within %s", prefix, configFilePath)
+		err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
+		return
 	}
 	serverId := vConfig.GetString(prefix + "." + ProjectConfigServerId)
 	if serverId == "" {
-		return nil, fmt.Errorf("missing server ID for %s within %s", prefix, configFilePath)
+		err = errorutils.CheckErrorf("missing server ID for %s within %s", prefix, configFilePath)
+		return
 	}
 	rtDetails, err := config.GetSpecificConfig(serverId, false, true)
 	if err != nil {
-		return nil, err
+		return
 	}
-	return &RepositoryConfig{targetRepo: repo, serverDetails: rtDetails}, nil
+	repoConfig = &RepositoryConfig{targetRepo: repo, serverDetails: rtDetails}
+	return
 }
 
 func (repo *RepositoryConfig) IsServerDetailsEmpty() bool {

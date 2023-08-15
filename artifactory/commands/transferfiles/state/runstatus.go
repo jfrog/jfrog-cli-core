@@ -11,7 +11,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
-const transferRunStatusVersion = 0
+// The current version of the run-status.json file.
+// Can be used to identify when the version of the CLI doesn't support the structure of the transfer directory.
+const transferRunStatusVersion = 1
 
 var saveRunStatusMutex sync.Mutex
 
@@ -36,6 +38,19 @@ type TransferRunStatus struct {
 	WorkingThreads        int  `json:"working_threads,omitempty"`
 	TransferFailures      uint `json:"transfer_failures,omitempty"`
 	TimeEstimationManager `json:"time_estimation,omitempty"`
+	StaleChunks           []StaleChunks `json:"stale_chunks,omitempty"`
+}
+
+// This structure contains a collection of chunks that have been undergoing processing for over 30 minutes
+type StaleChunks struct {
+	NodeID string       `json:"node_id,omitempty"`
+	Chunks []StaleChunk `json:"stale_node_chunks,omitempty"`
+}
+
+type StaleChunk struct {
+	ChunkID string   `json:"chunk_id,omitempty"`
+	Files   []string `json:"files,omitempty"`
+	Sent    int64    `json:"sent,omitempty"`
 }
 
 func (ts *TransferRunStatus) action(action ActionOnStatusFunc) error {
@@ -76,27 +91,32 @@ func (ts *TransferRunStatus) persistTransferRunStatus() (err error) {
 	return nil
 }
 
-func loadTransferRunStatus() (*TransferRunStatus, error) {
+func loadTransferRunStatus() (transferRunStatus TransferRunStatus, exists bool, err error) {
 	statusFilePath, err := coreutils.GetJfrogTransferRunStatusFilePath()
 	if err != nil {
-		return nil, err
+		return
 	}
-	exists, err := fileutils.IsFileExists(statusFilePath, false)
-	if err != nil {
-		return nil, err
-	}
-	transferRunStatus := &TransferRunStatus{}
-	if !exists {
-		return transferRunStatus, nil
+	exists, err = fileutils.IsFileExists(statusFilePath, false)
+	if err != nil || !exists {
+		return
 	}
 
 	content, err := fileutils.ReadFile(statusFilePath)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if err = json.Unmarshal(content, &transferRunStatus); err != nil {
-		return nil, errorutils.CheckError(err)
+	err = errorutils.CheckError(json.Unmarshal(content, &transferRunStatus))
+	return
+}
+
+func VerifyTransferRunStatusVersion() error {
+	transferRunStatus, exists, err := loadTransferRunStatus()
+	if err != nil || !exists {
+		return err
 	}
-	return transferRunStatus, nil
+	if transferRunStatus.Version != transferRunStatusVersion {
+		return GetOldTransferDirectoryStructureError()
+	}
+	return nil
 }

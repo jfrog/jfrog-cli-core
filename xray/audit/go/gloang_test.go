@@ -44,7 +44,7 @@ func TestBuildGoDependencyList(t *testing.T) {
 	// Test go version node
 	goVersion, err := utils.GetParsedGoVersion()
 	assert.NoError(t, err)
-	audit.GetAndAssertNode(t, rootNode[0].Nodes, strings.Replace(goVersion.GetVersion(), "go", goSourceCodePrefix, -1))
+	audit.GetAndAssertNode(t, rootNode[0].Nodes, strings.ReplaceAll(goVersion.GetVersion(), "go", goSourceCodePrefix))
 
 	// Test child without sub nodes
 	child1 := audit.GetAndAssertNode(t, rootNode[0].Nodes, "golang.org/x/text:v0.3.3")

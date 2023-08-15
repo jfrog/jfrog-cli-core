@@ -9,7 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,25 +28,25 @@ type AuditPython struct {
 	PipRequirementsFile string
 }
 
-func BuildDependencyTree(auditPython *AuditPython) (dependencyTree []*services.GraphNode, err error) {
+func BuildDependencyTree(auditPython *AuditPython) (dependencyTree []*xrayUtils.GraphNode, err error) {
 	dependenciesGraph, directDependenciesList, err := getDependencies(auditPython)
 	if err != nil {
 		return
 	}
-	directDependencies := []*services.GraphNode{}
+	directDependencies := []*xrayUtils.GraphNode{}
 	for _, rootDep := range directDependenciesList {
-		directDependency := &services.GraphNode{
+		directDependency := &xrayUtils.GraphNode{
 			Id:    pythonPackageTypeIdentifier + rootDep,
-			Nodes: []*services.GraphNode{},
+			Nodes: []*xrayUtils.GraphNode{},
 		}
 		populatePythonDependencyTree(directDependency, dependenciesGraph)
 		directDependencies = append(directDependencies, directDependency)
 	}
-	root := &services.GraphNode{
+	root := &xrayUtils.GraphNode{
 		Id:    pythonPackageTypeIdentifier,
 		Nodes: directDependencies,
 	}
-	return []*services.GraphNode{root}, nil
+	return []*xrayUtils.GraphNode{root}, nil
 }
 
 func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]string, directDependencies []string, err error) {
@@ -255,7 +255,7 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	if err != nil {
 		return
 	}
-	venvBinPath := ""
+	var venvBinPath string
 	if runtime.GOOS == "windows" {
 		venvBinPath = filepath.Join(venvPath, "Scripts")
 	} else {
@@ -271,16 +271,16 @@ func SetPipVirtualEnvPath() (restoreEnv func() error, err error) {
 	return
 }
 
-func populatePythonDependencyTree(currNode *services.GraphNode, dependenciesGraph map[string][]string) {
+func populatePythonDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph map[string][]string) {
 	if currNode.NodeHasLoop() {
 		return
 	}
 	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, pythonPackageTypeIdentifier)]
 	// Recursively create & append all node's dependencies.
 	for _, dependency := range currDepChildren {
-		childNode := &services.GraphNode{
+		childNode := &xrayUtils.GraphNode{
 			Id:     pythonPackageTypeIdentifier + dependency,
-			Nodes:  []*services.GraphNode{},
+			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)

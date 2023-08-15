@@ -21,15 +21,16 @@ var transferConfigTestDir = filepath.Join("testdata", "transferconfig")
 func TestIsDefaultCredentialsDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("OK"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -47,15 +48,16 @@ func TestIsDefaultCredentialsDefault(t *testing.T) {
 func TestIsDefaultCredentialsNotDefault(t *testing.T) {
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -74,16 +76,17 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	pingCounter := 0
 	unlockCounter := 0
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/security/lockedUsers" {
+		switch r.RequestURI {
+		case "/api/security/lockedUsers":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("[ \"admin\" ]"))
 			assert.NoError(t, err)
-		} else if r.RequestURI == "/api/system/ping" {
+		case "/api/system/ping":
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("{\n  \"errors\" : [ {\n    \"status\" : 401,\n    \"message\" : \"Bad credentials\"\n  } ]\n}"))
 			assert.NoError(t, err)
 			pingCounter++
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("User admin was successfully unlocked"))
 			assert.NoError(t, err)
@@ -99,38 +102,27 @@ func TestIsDefaultCredentialsLocked(t *testing.T) {
 	assert.Equal(t, 0, unlockCounter)
 }
 
-func TestValidateMinVersionAndDifferentServers(t *testing.T) {
-	var rtVersion string
+func TestValidateDifferentServers(t *testing.T) {
+	var sourceRtVersion string
 	// Create transfer config command
-	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		content, err := json.Marshal(VersionResponse{Version: rtVersion})
+	_, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		content, err := json.Marshal(VersionResponse{Version: sourceRtVersion})
 		assert.NoError(t, err)
 		_, err = w.Write(content)
 		assert.NoError(t, err)
 	})
-	defer testServer.Close()
 
-	// Test low Artifactory version
-	rtVersion = "6.0.0"
-	_, err := createTransferConfigBase(t, serverDetails, serverDetails).ValidateMinVersionAndDifferentServers()
-	assert.ErrorContains(t, err, "while this operation requires version")
-
-	// Test same source and target Artifactory servers
-	rtVersion = minTransferConfigArtifactoryVersion
-	_, err = createTransferConfigBase(t, serverDetails, serverDetails).ValidateMinVersionAndDifferentServers()
-	assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
-
-	// Positive test
-	actualVersion, err := createTransferConfigBase(t, serverDetails, &config.ServerDetails{ArtifactoryUrl: "some-different-url"}).ValidateMinVersionAndDifferentServers()
-	assert.NoError(t, err)
-	assert.Equal(t, rtVersion, actualVersion)
+	t.Run("Same source and target servers", func(t *testing.T) {
+		err := createTransferConfigBase(t, sourceServerDetails, sourceServerDetails).ValidateDifferentServers()
+		assert.ErrorContains(t, err, "The source and target Artifactory servers are identical, but should be different.")
+	})
 }
 
 func TestGetSelectedRepositories(t *testing.T) {
-	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	sourceTestServer, sourceServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		repositories := &[]services.RepositoryDetails{
-			{Key: "generic-local", Type: "local"}, {Key: "generic-local-filter", Type: "local"},
+			{Key: "generic-local", Type: "local"}, {Key: "generic-local-filter", Type: "local"}, {Key: "generic-local-existed", Type: "local"},
 			{Key: "generic-remote", Type: "remote"}, {Key: "generic-filter-remote", Type: "remote"},
 			{Key: "generic-virtual", Type: "virtual"}, {Key: "filter-generic-virtual", Type: "virtual"},
 			{Key: "generic-federated", Type: "federated"}, {Key: "generic-federated-filter", Type: "federated"},
@@ -140,9 +132,18 @@ func TestGetSelectedRepositories(t *testing.T) {
 		_, err = w.Write(reposBytes)
 		assert.NoError(t, err)
 	})
-	defer testServer.Close()
+	defer sourceTestServer.Close()
+	targetTestServer, targetServerDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		repositories := &[]services.RepositoryDetails{{Key: "generic-local-existed", Type: "local"}}
+		reposBytes, err := json.Marshal(repositories)
+		assert.NoError(t, err)
+		_, err = w.Write(reposBytes)
+		assert.NoError(t, err)
+	})
+	defer targetTestServer.Close()
 
-	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
+	transferConfigBase := createTransferConfigBase(t, sourceServerDetails, targetServerDetails)
 	transferConfigBase.SetExcludeReposPatterns([]string{"*filter*"})
 	selectedRepos, err := transferConfigBase.GetSelectedRepositories()
 	assert.NoError(t, err)
@@ -154,39 +155,84 @@ func TestGetSelectedRepositories(t *testing.T) {
 }
 
 func TestTransferRepositoryToTarget(t *testing.T) {
-	federatedRepo, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, "federated_repo.json"))
-	assert.NoError(t, err)
-	federatedRepoWithoutMembers, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, "federated_repo_without_members.json"))
-	assert.NoError(t, err)
+	federatedRepo := readRepoConfig(t, "federated_repo")
+	federatedRepoWithoutMembers := readRepoConfig(t, "federated_repo_without_members")
 
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if r.Method == "GET" {
-			if r.RequestURI == "/api/repositories/federated-local" {
+		switch r.Method {
+		case http.MethodGet:
+			switch r.RequestURI {
+			case "/api/repositories/federated-local":
 				_, err := w.Write(federatedRepo)
 				assert.NoError(t, err)
-			} else if r.RequestURI == "/api/repositories/federated-local-no-members" {
+			case "/api/repositories/federated-local-no-members":
 				_, err := w.Write(federatedRepoWithoutMembers)
 				assert.NoError(t, err)
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
 			}
-		} else if r.Method == "POST" {
+		case http.MethodPut:
 			body, err := io.ReadAll(r.Body)
 			assert.NoError(t, err)
-
-			var repoParams interface{}
-			assert.NoError(t, json.Unmarshal(body, &repoParams))
-			repoParamsMap, err := InterfaceToMap(repoParams)
-			assert.NoError(t, err)
-			assert.Equal(t, getExpectedFederatedRepoParamsMap(t, federatedRepoWithoutMembers), repoParamsMap)
+			assert.Equal(t, getRepoParamsMap(t, federatedRepoWithoutMembers), getRepoParamsMap(t, body))
+		default:
+			assert.Fail(t, "Unexpected method "+r.Method)
 		}
 	})
 	defer testServer.Close()
 
 	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
 	assert.False(t, transferConfigBase.FederatedMembersRemoved)
-	err = transferConfigBase.transferSpecificRepositoriesToTarget([]string{"federated-local", "federated-local-no-members"}, utils.Federated)
+	err := transferConfigBase.transferSpecificRepositoriesToTarget([]string{"federated-local", "federated-local-no-members"}, utils.Federated)
 	assert.NoError(t, err)
 	assert.True(t, transferConfigBase.FederatedMembersRemoved)
+}
+
+func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
+	virtualRepoA := readRepoConfig(t, "virtual_repo_a")
+	virtualRepoB := readRepoConfig(t, "virtual_repo_b")
+
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		switch r.Method {
+		case http.MethodGet:
+			switch r.RequestURI {
+			case "/api/repositories/a-virtual":
+				_, err := w.Write(virtualRepoA)
+				assert.NoError(t, err)
+			case "/api/repositories/b-virtual":
+				_, err := w.Write(virtualRepoB)
+				assert.NoError(t, err)
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
+			}
+		case http.MethodPut, http.MethodPost:
+			body, err := io.ReadAll(r.Body)
+			assert.NoError(t, err)
+
+			expectedVirtualRepoAParamsMap := getRepoParamsMap(t, virtualRepoA)
+			expectedVirtualRepoBParamsMap := getRepoParamsMap(t, virtualRepoB)
+
+			if r.Method == http.MethodPut {
+				delete(expectedVirtualRepoAParamsMap, "repositories")
+				delete(expectedVirtualRepoBParamsMap, "repositories")
+			}
+
+			switch r.RequestURI {
+			case "/api/repositories/a-virtual":
+				assert.Equal(t, expectedVirtualRepoAParamsMap, getRepoParamsMap(t, body))
+			case "/api/repositories/b-virtual":
+				assert.Equal(t, expectedVirtualRepoBParamsMap, getRepoParamsMap(t, body))
+			default:
+				assert.Fail(t, "Unexpected request URI "+r.RequestURI)
+			}
+		}
+	})
+	defer testServer.Close()
+
+	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
+	assert.NoError(t, transferConfigBase.transferVirtualRepositoriesToTarget([]string{"a-virtual", "b-virtual"}))
 }
 
 func TestDeactivateKeyEncryption(t *testing.T) {
@@ -231,10 +277,16 @@ func createTransferConfigBase(t *testing.T, sourceServerDetails, targetServerDet
 	return transferConfigBase
 }
 
-func getExpectedFederatedRepoParamsMap(t *testing.T, federatedRepoWithoutMembers []byte) map[string]interface{} {
-	var expectedRepoParams interface{}
-	assert.NoError(t, json.Unmarshal(federatedRepoWithoutMembers, &expectedRepoParams))
-	expectedRepoParamsMap, err := InterfaceToMap(expectedRepoParams)
+func getRepoParamsMap(t *testing.T, body []byte) map[string]interface{} {
+	var repoParams interface{}
+	assert.NoError(t, json.Unmarshal(body, &repoParams))
+	repoParamsMap, err := InterfaceToMap(repoParams)
 	assert.NoError(t, err)
-	return expectedRepoParamsMap
+	return repoParamsMap
+}
+
+func readRepoConfig(t *testing.T, fileName string) []byte {
+	repoConfig, err := fileutils.ReadFile(filepath.Join(transferConfigTestDir, fileName+".json"))
+	assert.NoError(t, err)
+	return repoConfig
 }

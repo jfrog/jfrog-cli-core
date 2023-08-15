@@ -2,6 +2,9 @@ package transferfiles
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -10,8 +13,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
-	"time"
 )
 
 // Manages the phase of performing a full transfer of the repository.
@@ -78,15 +79,15 @@ func (m *fullTransferPhase) shouldSkipPhase() (bool, error) {
 	if err != nil || !repoTransferred {
 		return false, err
 	}
-	return true, m.skipPhase()
+	m.skipPhase()
+	return true, nil
 }
 
-func (m *fullTransferPhase) skipPhase() error {
+func (m *fullTransferPhase) skipPhase() {
 	// Init progress bar as "done" with 0 tasks.
 	if m.progressBar != nil {
 		m.progressBar.AddPhase1(true)
 	}
-	return nil
 }
 
 func (m *fullTransferPhase) run() error {
@@ -99,7 +100,14 @@ func (m *fullTransferPhase) run() error {
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
-	delayAction := consumeDelayFilesIfNoErrors
+	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
+		// Disable repo transfer snapshot as it is not used for delayed files.
+		if err := m.stateManager.SaveStateAndSnapshots(); err != nil {
+			return err
+		}
+		m.stateManager.DisableRepoTransferSnapshot()
+		return consumeDelayFilesIfNoErrors(phase, addedDelayFiles)
+	}
 	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
 }
 
@@ -124,28 +132,25 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	log.Debug(logMsgPrefix+"Handling folder:", path.Join(m.repoKey, params.relativePath))
 
 	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
-	node, done, previousChildrenMap, err := m.getAndHandleDirectoryNode(params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+	node, done, err := m.getAndHandleDirectoryNode(params, logMsgPrefix)
 	if err != nil || done {
 		return err
 	}
 
 	curUploadChunk, err := m.searchAndHandleFolderContents(params, pcWrapper,
-		uploadChunkChan, delayHelper, errorsChannelMng,
-		node, previousChildrenMap)
+		uploadChunkChan, delayHelper, errorsChannelMng, node)
 	if err != nil {
 		return
 	}
 
 	// Mark that no more results are expected for the current folder.
-	err = node.MarkDoneExploring()
-	if err != nil {
+	if err = node.MarkDoneExploring(); err != nil {
 		return err
 	}
 
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
-		if err != nil {
+		if _, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError); err != nil {
 			return
 		}
 	}
@@ -155,30 +160,35 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
-	node *reposnapshot.Node, previousChildrenMap map[string]*reposnapshot.Node) (curUploadChunk api.UploadChunk, err error) {
+	node *reposnapshot.Node) (curUploadChunk api.UploadChunk, err error) {
 	curUploadChunk = api.UploadChunk{
 		TargetAuth:                createTargetAuth(m.targetRtDetails, m.proxyKey),
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
+		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI.
+		// The local generated filter is enabled in the JFrog CLI for target Artifactory servers >= 7.55.
+		SkipFileFiltering: m.locallyGeneratedFilter.IsEnabled(),
 	}
 
-	var result *servicesUtils.AqlSearchResult
+	var result []servicesUtils.ResultItem
+	var lastPage bool
 	paginationI := 0
-	for {
-		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
-			return
-		}
-		result, err = m.getDirectoryContentsAql(params.relativePath, paginationI)
+	for !lastPage && !ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+		result, lastPage, err = m.getDirectoryContentAql(params.relativePath, paginationI)
 		if err != nil {
 			return
 		}
 
-		// Empty folder. Add it as candidate.
-		if paginationI == 0 && len(result.Results) == 0 {
-			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath}, m.buildInfoRepo)
+		// Add the folder as a candidate to transfer. The reason is that we'd like to transfer only folders with properties or empty folders.
+		if params.relativePath != "." {
+			curUploadChunk.AppendUploadCandidateIfNeeded(api.FileRepresentation{Repo: m.repoKey, Path: params.relativePath, NonEmptyDir: len(result) > 0}, m.buildInfoRepo)
+		}
+
+		// Empty folder
+		if paginationI == 0 && len(result) == 0 {
 			return
 		}
 
-		for _, item := range result.Results {
+		for _, item := range result {
 			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 				return
 			}
@@ -188,8 +198,7 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			switch item.Type {
 			case "folder":
 				err = m.handleFoundChildFolder(params, pcWrapper,
-					uploadChunkChan, delayHelper, errorsChannelMng,
-					node, previousChildrenMap, item)
+					uploadChunkChan, delayHelper, errorsChannelMng, item)
 			case "file":
 				err = m.handleFoundFile(pcWrapper,
 					uploadChunkChan, delayHelper, errorsChannelMng,
@@ -200,9 +209,6 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 			}
 		}
 
-		if len(result.Results) < AqlPaginationLimit {
-			break
-		}
 		paginationI++
 	}
 	return
@@ -210,13 +216,9 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 
 func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
-	node *reposnapshot.Node, previousChildrenMap map[string]*reposnapshot.Node, item servicesUtils.ResultItem) (err error) {
+	item servicesUtils.ResultItem) (err error) {
 	newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
-	// Add a node for the found folder, as a child for the current folder in the snapshot manager.
-	err = node.AddChildNode(item.Name, previousChildrenMap)
-	if err != nil {
-		return
-	}
+
 	folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 	_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
 	return
@@ -227,15 +229,13 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
 	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
-	if stopped {
+	if delayed || stopped {
+		// If delayed, do not increment files count to allow tree collapsing during this phase.
 		return
 	}
-	// Add the file name to the directory's node in the snapshot manager, to track its progress.
-	err = node.AddFile(item.Name, item.Size)
+	// Increment the files count in the directory's node in the snapshot manager, to track its progress.
+	err = node.IncrementFilesCount()
 	if err != nil {
-		return
-	}
-	if delayed {
 		return
 	}
 	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
@@ -257,107 +257,52 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 	return path.Join(relativeLocation, folderName)
 }
 
-func (m *fullTransferPhase) getDirectoryContentsAql(relativePath string, paginationOffset int) (result *servicesUtils.AqlSearchResult, err error) {
-	query := generateFolderContentsAqlQuery(m.repoKey, relativePath, paginationOffset)
-	return runAql(m.context, m.srcRtDetails, query)
+func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset)
+	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, false, err
+	}
+
+	lastPage = len(aqlResults.Results) < AqlPaginationLimit
+	result, err = m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+	return
 }
 
-func generateFolderContentsAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	return query
 }
 
-func convertRepoSnapshotToFileRepresentation(repoKey, relativePath string, snapshot *reposnapshot.Node) (files []api.FileRepresentation, err error) {
-	filesMap, err := snapshot.GetFiles()
-	if err != nil {
-		return
-	}
-	for fileName, size := range filesMap {
-		files = append(files, api.FileRepresentation{
-			Repo: repoKey, Path: relativePath, Name: fileName, Size: size,
-		})
-	}
-	return
-}
-
-// Decide how to continue handling the directory by the node's state in the repository snapshot (completed / done exploring / requires exploring)
+// Decide how to continue handling the directory by the node's state in the repository snapshot (completed or not)
 // Outputs:
 // node - A node in the repository snapshot tree, which represents the current directory.
-// done - Whether the node directory should be explored or not. Exploring means searching for the directory contents. If all contents were previously found, there's no need to search again, just upload the known results.
-// previousChildrenMap - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
-func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
-	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (node *reposnapshot.Node, done bool, previousChildrenMap map[string]*reposnapshot.Node, err error) {
+// completed - Whether handling the node directory was completed. If it wasn't fully transferred, we start exploring and transferring it from scratch.
+// previousChildren - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
+func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string) (node *reposnapshot.Node, completed bool, err error) {
 	node, err = m.stateManager.LookUpNode(params.relativePath)
 	if err != nil {
 		return
 	}
+
 	// If data was not loaded from snapshot, we know that the node is visited for the first time and was not explored.
 	loadedFromSnapshot, err := m.stateManager.WasSnapshotLoaded()
 	if err != nil || !loadedFromSnapshot {
 		return
 	}
 
-	completed, err := node.IsCompleted()
+	completed, err = node.IsCompleted()
 	if err != nil {
 		return
 	}
 	if completed {
-		log.Debug(logMsgPrefix+"Skipping completed folder: ", path.Join(m.repoKey, params.relativePath))
-		return nil, true, nil, nil
-	}
-	doneExploring, err := node.IsDoneExploring()
-	if err != nil {
+		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
 		return
 	}
-	// All directory contents were already found, but not handled.
-	if doneExploring {
-		return nil, true, nil, m.handleNodeExplored(node, params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-	}
-	previousChildrenMap, err = m.handleNodeRequiresExploring(node)
-	return
-}
-
-// If a node had been fully explored before but not completed, complete it by adding all its children as tasks and upload all its files.
-func (m *fullTransferPhase) handleNodeExplored(node *reposnapshot.Node, params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
-	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
-
-	log.Debug(logMsgPrefix + "Folder '" + path.Join(m.repoKey, params.relativePath) + "' was already explored. Uploading remaining files...")
-	children, err := node.GetChildren()
-	if err != nil {
-		return
-	}
-	for childName := range children {
-		folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-		_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: getFolderRelativePath(childName, params.relativePath)}), pcWrapper.errorsQueue.AddError)
-		if err != nil {
-			return
-		}
-	}
-	filesNames, err := node.GetFiles()
-	if err != nil {
-		return
-	}
-	if len(filesNames) > 0 {
-		var files []api.FileRepresentation
-		files, err = convertRepoSnapshotToFileRepresentation(m.repoKey, params.relativePath, node)
-		if err != nil {
-			return
-		}
-		_, err = uploadByChunks(files, uploadChunkChan, m.phaseBase, delayHelper, errorsChannelMng, &pcWrapper)
-	}
-	return
-}
-
-func (m *fullTransferPhase) handleNodeRequiresExploring(node *reposnapshot.Node) (previousChildrenMap map[string]*reposnapshot.Node, err error) {
-	// Return old children map to add every found child with its previous data and references.
-	previousChildrenMap, err = node.GetChildren()
-	if err != nil {
-		return
-	}
+	// If the node was not completed, we will start exploring it from the beginning.
 	// Remove all files names because we will begin exploring from the beginning.
-	// Clear children map to avoid handling directories that may have been deleted.
 	err = node.RestartExploring()
 	return
 }

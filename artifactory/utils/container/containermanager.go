@@ -66,7 +66,10 @@ func (containerManager *containerManager) RunNativeCmd(cmdParams []string) error
 func (containerManager *containerManager) Id(image *Image) (string, error) {
 	cmd := &getImageIdCmd{image: image, containerManager: containerManager.Type}
 	content, err := cmd.RunCmd()
-	return content[:strings.Index(content, "\n")], err
+	if err != nil {
+		return "", err
+	}
+	return strings.Split(content, "\n")[0], nil
 }
 
 // Return the OS and architecture on which the image runs e.g. (linux, amd64, nil).
@@ -121,7 +124,7 @@ func (getImageId *getImageIdCmd) GetCmd() *exec.Cmd {
 	cmd = append(cmd, "--format", "{{.ID}}")
 	cmd = append(cmd, "--no-trunc")
 	cmd = append(cmd, getImageId.image.name)
-	return exec.Command(getImageId.containerManager.String(), cmd[:]...)
+	return exec.Command(getImageId.containerManager.String(), cmd...)
 }
 
 func (getImageId *getImageIdCmd) RunCmd() (string, error) {
@@ -146,7 +149,7 @@ func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) GetCmd() *
 	cmd = append(cmd, getImageSystemCompatibilityCmd.image.name)
 	cmd = append(cmd, "--format")
 	cmd = append(cmd, "{{ .Os}},{{ .Architecture}}")
-	return exec.Command(getImageSystemCompatibilityCmd.containerManager.String(), cmd[:]...)
+	return exec.Command(getImageSystemCompatibilityCmd.containerManager.String(), cmd...)
 }
 
 func (getImageSystemCompatibilityCmd *getImageSystemCompatibilityCmd) RunCmd() (string, error) {

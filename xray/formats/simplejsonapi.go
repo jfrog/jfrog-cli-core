@@ -12,6 +12,8 @@ type SimpleJsonResults struct {
 	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
+	Secrets                   []IacSecretsRow               `json:"secrets"`
+	Iacs                      []IacSecretsRow               `json:"iacViolations"`
 	Errors                    []SimpleJsonError             `json:"errors"`
 }
 
@@ -19,6 +21,7 @@ type SimpleJsonResults struct {
 type VulnerabilityOrViolationRow struct {
 	Summary                   string                    `json:"summary"`
 	Severity                  string                    `json:"severity"`
+	Applicable                string                    `json:"applicable"`
 	SeverityNumValue          int                       `json:"-"` // For sorting
 	ImpactedDependencyName    string                    `json:"impactedPackageName"`
 	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
@@ -45,6 +48,7 @@ type LicenseRow struct {
 type LicenseViolationRow struct {
 	LicenseKey                string         `json:"licenseKey"`
 	Severity                  string         `json:"severity"`
+	Applicable                string         `json:"applicable"`
 	SeverityNumValue          int            `json:"-"` // For sorting
 	ImpactedDependencyName    string         `json:"impactedPackageName"`
 	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
@@ -67,6 +71,15 @@ type OperationalRiskViolationRow struct {
 	Committers                string         `json:"committers"`
 	NewerVersions             string         `json:"newerVersions"`
 	LatestVersion             string         `json:"latestVersion"`
+}
+
+type IacSecretsRow struct {
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
+	File             string `json:"file"`
+	LineColumn       string `json:"lineColumn"`
+	Text             string `json:"text"`
+	Type             string `json:"type"`
 }
 
 type ComponentRow struct {

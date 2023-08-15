@@ -2,20 +2,27 @@ package state
 
 import (
 	"fmt"
-	"github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 const (
 	secondsInMinute = 60
 	secondsInHour   = 60 * secondsInMinute
 	secondsInDay    = 24 * secondsInHour
+
+	oldTransferDirectoryStructureErrorFormat = `unsupported transfer directory structure found.
+This structure was created by a previous run of the transfer-files command, but is no longer supported by this JFrog CLI version.
+You may either downgrade JFrog CLI to the version that was used before, or remove the transfer directory which is located under the JFrog CLI home directory (%s).
+
+Note: Deleting the transfer directory will remove all your transfer history, which means the transfer will start from scratch`
 )
 
 func ConvertTimeToRFC3339(timeToConvert time.Time) string {
@@ -30,9 +37,9 @@ func ConvertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
 }
 
-// secondsToLiteralTime converts a number of seconds to an easy-to-read string.
+// SecondsToLiteralTime converts a number of seconds to an easy-to-read string.
 // Prefix is not taken into account if the time is less than a minute.
-func secondsToLiteralTime(secondsToConvert int64, prefix string) string {
+func SecondsToLiteralTime(secondsToConvert int64, prefix string) string {
 	daysTime := secondsToConvert / secondsInDay
 	daysTimeInSecs := daysTime * secondsInDay
 	hoursTime := (secondsToConvert - daysTimeInSecs) / secondsInHour
@@ -105,4 +112,12 @@ func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(transferDir, subDirName), nil
+}
+
+func GetOldTransferDirectoryStructureError() error {
+	transferDir, err := coreutils.GetJfrogTransferDir()
+	if err != nil {
+		return err
+	}
+	return errorutils.CheckErrorf(oldTransferDirectoryStructureErrorFormat, transferDir)
 }

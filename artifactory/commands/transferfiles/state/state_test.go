@@ -109,7 +109,7 @@ func setAutoSaveSnapshot(interval int) (cleanUp func()) {
 
 // Testing two scenarios here:
 // 1. loading (snapshot file and state) from existing snapshot
-// 1. loading state of fully transferred repository (phase 1 completed)
+// 2. loading state of fully transferred repository (phase 1 completed)
 func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
@@ -122,12 +122,12 @@ func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 3))
 	_ = getRootAndAddSnapshotData(t, stateManager)
 	// Get state before saving.
-	currentState := stateManager.TransferState
+	originalState := stateManager.TransferState
 	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 	// Modify state again, and assert that the loaded state from snapshot was not modified and remained as saved.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 3))
-	assert.NotEqual(t, stateManager.TransferState.CurrentRepo, currentState.CurrentRepo)
-	assertGetTransferStateAndSnapshot(t, false, currentState, stateManager.repoTransferSnapshot, true)
+	assert.NotEqual(t, stateManager.TransferState.CurrentRepo, originalState.CurrentRepo)
+	assertGetTransferStateAndSnapshot(t, false, originalState, stateManager.repoTransferSnapshot, true)
 
 	// After repo fully transferred, expected to load state without snapshots.
 	assert.NoError(t, stateManager.SetRepoFullTransferCompleted())
@@ -146,14 +146,13 @@ func assertGetTransferStateAndSnapshot(t *testing.T, reset bool, expectedTransfe
 		assert.Equal(t, expectedRepoTransferSnapshot, repoTransferSnapshot)
 		return
 	}
-	assert.Equal(t, expectedRepoTransferSnapshot.snapshotManager, repoTransferSnapshot.snapshotManager)
 	assert.Equal(t, expectedSnapshotLoaded, repoTransferSnapshot.loadedFromSnapshot)
 }
 
 func getRootAndAddSnapshotData(t *testing.T, stateManager *TransferStateManager) (root *reposnapshot.Node) {
 	root, err := stateManager.LookUpNode(".")
 	assert.NoError(t, err)
-	assert.NoError(t, root.AddFile("file.txt", 123))
+	assert.NoError(t, root.IncrementFilesCount())
 	assert.NoError(t, root.AddChildNode("child", nil))
 	return
 }

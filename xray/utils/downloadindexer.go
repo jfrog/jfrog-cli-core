@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,10 +11,10 @@ import (
 	"strings"
 
 	gofrogio "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -41,7 +40,7 @@ func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionS
 	if err != nil {
 		return
 	}
-	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, "xray-indexer"))
+	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, indexerDirName))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
 		e := unlockFunc()
@@ -94,11 +93,14 @@ func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, inde
 		LocalFileName: indexerBinaryName,
 	}
 	httpClientDetails := xrayManager.Config().GetServiceDetails().CreateHttpClientDetails()
-	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false)
+	resp, err := xrayManager.Client().DownloadFile(downloadFileDetails, "", &httpClientDetails, false, false)
 	if err != nil {
 		return "", fmt.Errorf("an error occurred while trying to download '%s':\n%s", url, err.Error())
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		if resp.StatusCode == http.StatusUnauthorized {
+			err = fmt.Errorf(err.Error() + "\nHint: It appears that the credentials provided do not have sufficient permissions for JFrog Xray. This could be due to either incorrect credentials or limited permissions restricted to Artifactory only.")
+		}
 		return "", fmt.Errorf("failed while attempting to download '%s':\n%s", url, err.Error())
 	}
 

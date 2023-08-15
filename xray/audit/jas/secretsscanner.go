@@ -99,7 +99,7 @@ func (s *SecretScanManager) runSecretsScan(workingDir string) (results []utils.I
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	results, err = getIacOrSecretsScanResults(s.resultsFileName, true)
+	results, err = getIacOrSecretsScanResults(s.resultsFileName, workingDir, true)
 	return
 }
 

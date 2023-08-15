@@ -94,3 +94,20 @@ func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.NotEmpty(t, iacScanManager.iacScannerResults)
 	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
 }
+
+func TestIacParseResults_ResultsContainSecretsWithWorkingDir(t *testing.T) {
+	// Arrange
+	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, []string{"aws", "azure"}, &analyzerManagerMock{})
+	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations-working-dir.sarif")
+
+	// Act
+	var err error
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
+
+	// Assert
+	assert.NoError(t, iacManagerError)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, iacScanManager.iacScannerResults)
+	assert.Equal(t, 22, len(iacScanManager.iacScannerResults))
+	assert.Contains(t, iacScanManager.iacScannerResults[0].File, "aws")
+}

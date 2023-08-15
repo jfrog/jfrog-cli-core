@@ -117,6 +117,26 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.Equal(t, 8, len(secretScanManager.secretsScannerResults))
 }
 
+func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
+	// Arrange
+	secretScanManager, _, secretsManagerError := newSecretsScanManager(&fakeServerDetails, []string{"secret_generic", "more_secrets"}, &analyzerManagerMock{})
+	secretScanManager.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets-multi-wd.sarif")
+
+	// Act
+	var err error
+	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.resultsFileName, false)
+
+	// Assert
+	assert.NoError(t, secretsManagerError)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
+	assert.Len(t, secretScanManager.secretsScannerResults, 2)
+	firstSecretDir := secretScanManager.secretsScannerResults[0].File
+	secondSecretDir := secretScanManager.secretsScannerResults[1].File
+	assert.Contains(t, firstSecretDir, "more_secrets")
+	assert.Contains(t, secondSecretDir, "secret_generic")
+}
+
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	// Act
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)

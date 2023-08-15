@@ -10,6 +10,7 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
+	"path/filepath"
 	"strings"
 )
 
@@ -106,7 +107,7 @@ func getDirectDependenciesSet(dependencyTrees []*xrayUtils.GraphNode) *datastruc
 }
 
 func (a *ApplicabilityScanManager) Run(wd string) (err error) {
-	log.Info("Running applicability scanning for the identified vulnerable direct dependencies...")
+	log.Info("Running applicability scanning in the", wd, "directory...")
 	if err = a.createConfigFile(wd); err != nil {
 		return
 	}
@@ -167,7 +168,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
 	report, err := sarif.Open(a.scanner.resultsFileName)
 	if errorutils.CheckError(err) != nil {
-		return nil, errorutils.CheckError(err)
+		return nil, err
 	}
 	var fullVulnerabilitiesList []*sarif.Result
 	if len(report.Runs) > 0 {

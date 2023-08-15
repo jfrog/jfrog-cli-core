@@ -25,8 +25,8 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
-	assert.NotEmpty(t, applicabilityManager.configFileName)
-	assert.NotEmpty(t, applicabilityManager.resultsFileName)
+	assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
+	assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
 	assert.Equal(t, applicabilityManager.directDependenciesCves.Size(), 5)
 }
 

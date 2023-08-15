@@ -74,7 +74,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 	assert.Empty(t, iacScanManager.iacScannerResults)
 }
 
-func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
+func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	// Arrange
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
@@ -95,17 +95,22 @@ func TestIacParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
 }
 
-func TestIacParseResults_ResultsContainSecretsWithWorkingDir(t *testing.T) {
+func TestIacParseResults_ResultsContainIacViolationsWithWorkingDir(t *testing.T) {
 	// Arrange
-	iacScanManager, _, iacManagerError := newIacScanManager(&fakeServerDetails, []string{"aws", "azure"}, &analyzerManagerMock{})
+	scanner, err := NewAdvancedSecurityScanner([]string{"aws", "azure"}, &fakeServerDetails)
+	assert.NoError(t, err)
+	defer func() {
+		if scanner.scannerDirCleanupFunc != nil {
+			assert.NoError(t, scanner.scannerDirCleanupFunc())
+		}
+	}()
+	iacScanManager := newIacScanManager(scanner)
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations-working-dir.sarif")
 
 	// Act
-	var err error
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, false)
 
 	// Assert
-	assert.NoError(t, iacManagerError)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, iacScanManager.iacScannerResults)
 	assert.Equal(t, 22, len(iacScanManager.iacScannerResults))

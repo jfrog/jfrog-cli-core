@@ -7,7 +7,7 @@ import (
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray"
+	"github.com/jfrog/jfrog-client-go/xray/manager"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -79,7 +79,7 @@ func (sgp *ScanGraphParams) SetFixableOnly(fixable bool) *ScanGraphParams {
 	return sgp
 }
 
-func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, error) {
+func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (manager.SecurityServiceManager, error) {
 	xrayDetails, err := serviceDetails.CreateXrayAuthConfig()
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (*xray.XrayS
 	if err != nil {
 		return nil, err
 	}
-	return xray.New(serviceConfig)
+	return manager.New(serviceConfig)
 }
 
 func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse, error) {
@@ -173,7 +173,7 @@ func getFixableComponents(components map[string]services.Component) map[string]s
 	return fixableComponents
 }
 
-func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (*xray.XrayServicesManager, string, error) {
+func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (manager.SecurityServiceManager, string, error) {
 	xrayManager, err := CreateXrayServiceManager(serviceDetails)
 	if err != nil {
 		return nil, "", err
